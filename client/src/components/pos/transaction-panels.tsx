@@ -311,60 +311,6 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
         )
     }
 
-    // CONSUMER ACCOUNT CARD
-    if (item.type === 'CONSUMER_SERVICES') {
-        const account = item.originalData as Account;
-        return (
-            <Card className="border-l-4 border-l-primary shadow-sm">
-                <CardHeader className="pb-3 bg-muted/20">
-                    <div className="flex justify-between items-start">
-                        <div className="flex gap-4">
-                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                <User className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <CardTitle className="text-lg">{account.name}</CardTitle>
-                                <p className="text-sm text-muted-foreground font-mono mt-1">{account.accountNo}</p>
-                            </div>
-                        </div>
-                        <div className="text-right">
-                            <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Outstanding</div>
-                            <div className="text-xl font-mono font-bold text-destructive">R {account.outstandingAmount.toFixed(2)}</div>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent className="pt-6 grid grid-cols-2 gap-8">
-                    <div className="space-y-3 text-sm">
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                            <MapPin className="w-4 h-4" /> {account.address}
-                        </div>
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                            <Phone className="w-4 h-4" /> {account.mobile}
-                        </div>
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                            <Mail className="w-4 h-4" /> {account.email}
-                        </div>
-                    </div>
-                    
-                    <div className="bg-muted/30 p-4 rounded-lg space-y-2">
-                        <Label htmlFor={`amount-${item.id}`} className="text-primary font-medium">Payment Allocation</Label>
-                        <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono">R</span>
-                            <Input 
-                                id={`amount-${item.id}`}
-                                type="number" 
-                                className="pl-8 text-lg font-mono font-semibold"
-                                value={item.amountToPay} 
-                                onChange={(e) => updateItemAmount(item.id, parseFloat(e.target.value) || 0)}
-                            />
-                        </div>
-                        <p className="text-xs text-muted-foreground">Adjust amount if partial payment</p>
-                    </div>
-                </CardContent>
-            </Card>
-        );
-    }
-    
     // CLEARANCE CARD
     if (item.type === 'CLEARANCE') {
         const clr = item.originalData as ClearanceCostSchedule;
