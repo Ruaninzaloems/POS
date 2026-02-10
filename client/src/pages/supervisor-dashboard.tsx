@@ -727,6 +727,7 @@ export default function SupervisorDashboard() {
                       )}
                   </DialogFooter>
               </DialogContent>
+            )}
           </Dialog>
       )}
     </div>
