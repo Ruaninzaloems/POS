@@ -121,31 +121,57 @@ export function PaymentDrawer() {
 
                  {/* Input Selection */}
                  <div className="grid grid-cols-2 gap-4">
-                     <button 
+                     <div 
                         onClick={() => setActiveInput('cash')}
-                        className={`p-4 rounded-xl border-2 text-left transition-all ${activeInput === 'cash' ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-transparent bg-muted hover:bg-muted/80'}`}
+                        className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${activeInput === 'cash' ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-transparent bg-muted hover:bg-muted/80'}`}
                      >
                         <div className="flex items-center gap-2 mb-1 text-muted-foreground">
                             <Banknote className="w-5 h-5" />
                             <span className="font-medium text-sm">Cash</span>
                         </div>
-                        <div className="text-2xl font-mono font-bold">
-                            {activeInput === 'cash' && inputBuffer ? inputBuffer : (payment.cashAmount > 0 ? payment.cashAmount.toFixed(2).replace(/\.00$/, '') : <span className="text-muted-foreground/30">0</span>)}
-                        </div>
-                     </button>
+                        <input
+                            type="text"
+                            inputMode="decimal"
+                            className="w-full bg-transparent text-2xl font-mono font-bold focus:outline-none"
+                            value={activeInput === 'cash' ? inputBuffer : (payment.cashAmount > 0 ? payment.cashAmount.toFixed(2).replace(/\.00$/, '') : "")}
+                            placeholder="0"
+                            onChange={(e) => {
+                                if (activeInput !== 'cash') setActiveInput('cash');
+                                const val = e.target.value;
+                                if (/^[0-9]*\.?[0-9]*$/.test(val)) {
+                                    setInputBuffer(val);
+                                    setPaymentAmount('cash', parseFloat(val) || 0);
+                                }
+                            }}
+                            onFocus={() => setActiveInput('cash')}
+                        />
+                     </div>
 
-                     <button 
+                     <div 
                         onClick={() => setActiveInput('card')}
-                        className={`p-4 rounded-xl border-2 text-left transition-all ${activeInput === 'card' ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-transparent bg-muted hover:bg-muted/80'}`}
+                        className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${activeInput === 'card' ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-transparent bg-muted hover:bg-muted/80'}`}
                      >
                         <div className="flex items-center gap-2 mb-1 text-muted-foreground">
                             <CreditCard className="w-5 h-5" />
                             <span className="font-medium text-sm">Card</span>
                         </div>
-                        <div className="text-2xl font-mono font-bold">
-                            {activeInput === 'card' && inputBuffer ? inputBuffer : (payment.cardAmount > 0 ? payment.cardAmount.toFixed(2).replace(/\.00$/, '') : <span className="text-muted-foreground/30">0</span>)}
-                        </div>
-                     </button>
+                         <input
+                            type="text"
+                            inputMode="decimal"
+                            className="w-full bg-transparent text-2xl font-mono font-bold focus:outline-none"
+                            value={activeInput === 'card' ? inputBuffer : (payment.cardAmount > 0 ? payment.cardAmount.toFixed(2).replace(/\.00$/, '') : "")}
+                            placeholder="0"
+                            onChange={(e) => {
+                                if (activeInput !== 'card') setActiveInput('card');
+                                const val = e.target.value;
+                                if (/^[0-9]*\.?[0-9]*$/.test(val)) {
+                                    setInputBuffer(val);
+                                    setPaymentAmount('card', parseFloat(val) || 0);
+                                }
+                            }}
+                            onFocus={() => setActiveInput('card')}
+                        />
+                     </div>
                  </div>
                  
                  {/* Quick Cash */}
