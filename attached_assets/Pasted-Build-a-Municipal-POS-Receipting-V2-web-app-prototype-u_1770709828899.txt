@@ -1,0 +1,128 @@
+Build a Municipal POS Receipting V2 web app (prototype) using Angular.
+
+Goal
+One unified POS screen where a cashier searches once and the system auto-detects transaction type:
+- Consumer Services (single account)
+- Multiple Account Payment (add accounts + CSV import)
+- Account Grouping Payment (select configured group)
+- Prepaid Recharge (search by physical prepaid meter number)
+- Misc / Direct Income Payment (type-ahead direct payment item description from configuration)
+- Clearance (search by account or cost schedule; load linked accounts and breakdown; capture Section 118(1) or 118(3); allow user to edit allocation per linked account)
+
+Payments
+Cash + Card can be split on the same transaction.
+Validate cash+card = total tender.
+Change due calculated on cash portion only.
+
+Receipt completion
+After payment: Print + Email + SMS receipt options.
+Use preloaded email/mobile if available, else allow manual capture.
+Store send/print actions on the receipt record.
+
+Constraints (existing logic/settings to reuse conceptually)
+- Cash Office determines ledger vote and SCOA configuration.
+- Enhancement: cash office must store separate SCOA config for Cash vs Card (different bank accounts).
+- Cashier has unique receipt range per financial year.
+- Cashier has opening float.
+- Cash office determines:
+  group day end per cash office vs per cashier,
+  allow delayed day end,
+  day end deadline rules.
+- Billing run active options:
+  allow normal receipting,
+  allow prepaid + misc,
+  allow prepaid recovery.
+- EFT allocations are NOT part of this unified POS screen (separate module).
+
+Tech stack
+Frontend: Angular 17+ (standalone components, Angular Material)
+Backend: Node.js + Express
+DB: SQLite for prototype (design so it can move to SQL Server/Postgres later)
+
+Non-negotiable UI requirements
+- Single dynamic search bar with type-ahead
+- Keyboard-first workflow (Enter selects, arrows navigate)
+- Minimal clicks, consistent alignment, responsive layout
+- All transactions happen on ONE page (the unified POS screen), with a right-side “Payment Drawer”
+
+Data model (create tables + seed data)
+cash_offices(id, name, scoa_cash_config, scoa_card_config, group_day_end, allow_delayed_day_end, day_end_deadline_days, cash_on_hand_limit, billing_run_allow_normal, billing_run_allow_prepaid_misc, billing_run_allow_prepaid_recovery)
+cashiers(id, name, email, cash_office_id, opening_float)
+receipt_ranges(id, cashier_id, financial_year, start_no, end_no, current_no)
+direct_income_items(id, group_name, description, scoa_item, vat_rate, active)
+accounts(account_no, name, id_no, sg_no, address, outstanding_amount, prepaid_meter_no, email, mobile)
+account_groups(id, group_name)
+account_group_members(group_id, account_no)
+clearances(cost_schedule_no, status, linked_accounts_json, breakdown_json_118_1, breakdown_json_118_3)
+
+Unified POS screen behaviour
+1) Search bar accepts:
+- Account number / Name / ID / SG / Old account code / Street
+- Prepaid meter number
+- Cost schedule number (clearance)
+- Direct payment description (from direct_income_items)
+Auto-detect and route to the right transaction panel.
+If ambiguous, show a small “Select type” chooser.
+
+2) Transaction panels (dynamic)
+- Consumer services: show account + consolidated outstanding amount.
+- Multi-account: “Basket” list. Add via search or CSV upload (AccountNo, Amount optional). Allow manual split of one tender across multiple accounts.
+- Account grouping: choose group → load accounts → allow edits per account amount.
+- Prepaid: select meter/account → enter recharge amount.
+- Direct income: select direct item → capture payer details optional.
+- Clearance: load cost schedule → show linked accounts + breakdown.
+  User selects 118(1) or 118(3). Prefill allocations per linked account. Allow edits but total must match tender.
+
+3) Payment Drawer (always visible)
+- Total tender
+- Cash amount
+- Card amount
+- Change due (cash only)
+- Complete Payment button (enabled only when valid)
+
+4) After Complete Payment
+- Create receipt record with:
+  receipt_no (from cashier receipt range),
+  transaction type,
+  allocations JSON,
+  cash amount, card amount,
+  timestamps, cashier, cash office,
+  SCOA config used for cash + card
+- Immediately update account(s) outstanding amounts on screen
+
+5) Receipt completion modal
+- Print (default on/off toggle on main screen)
+- Email receipt (auto-fill from account email, else manual)
+- SMS receipt (auto-fill from account mobile, else manual)
+- Save send actions to receipt record
+
+Cancellation improvement
+Cashier can request cancellation without doing day end.
+Create cancellation_request record + notify supervisor (prototype: mark as “Pending Approval”).
+Supervisor screens will be separate modules later.
+
+API endpoints
+GET /api/search?q=
+POST /api/receipt/preview
+POST /api/receipt/complete
+POST /api/receipt/send (email/sms/print flags)
+GET /api/receipts?date=
+GET /api/cancellations/pending
+
+Deliverables
+- Angular app + Express API in same repo
+- README with run steps
+- Seed data and sample CSV for multi-account import
+- Modern UI with aligned layout and consistent spacing
+
+Build plan (do it in small steps, run after each step)
+1) Create project structure (Angular + Express) and SQLite schema + seed.
+2) Implement /api/search with fast indexed lookups.
+3) Implement Unified POS screen (search + detection + dynamic panel).
+4) Implement basket + CSV import + split allocations.
+5) Implement clearance workflow (cost schedule + 118(1)/(3) + editable allocations).
+6) Implement cash/card split + receipt generation + receipt range incrementing.
+7) Implement receipt completion modal (print/email/sms logging).
+8) Add basic receipts view endpoint.
+
+Start now with step 1 and show me the folder structure + schema + seed data you created.
