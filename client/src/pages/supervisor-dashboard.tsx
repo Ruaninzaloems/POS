@@ -119,6 +119,10 @@ const MOCK_SHIFTS: CashierShift[] = [
   }
 ];
 
+import { usePos } from '@/lib/pos-state';
+
+// ... (keep types and Mock Data)
+
 // Add function to generate report data
 function generateReportData(shift: CashierShift) {
   // Generate mock detailed transactions for the report since we don't have them in the shift object
@@ -183,11 +187,14 @@ function downloadReport(shift: CashierShift) {
 }
 
 export default function SupervisorDashboard() {
+  const { returnDayEnd } = usePos();
   const [reconMode, setReconMode] = useState<ReconMode>('PER_CASHIER');
   const [selectedShift, setSelectedShift] = useState<CashierShift | null>(null);
   const [shifts, setShifts] = useState<CashierShift[]>(MOCK_SHIFTS);
   const [filterOffice, setFilterOffice] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [returnReason, setReturnReason] = useState('');
+  const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
 
   const filteredShifts = shifts.filter(shift => {
     const matchesOffice = filterOffice === 'All' || shift.cashOffice === filterOffice;
@@ -206,6 +213,17 @@ export default function SupervisorDashboard() {
   const handleReturn = (id: string) => {
     setShifts(prev => prev.map(s => s.id === id ? { ...s, status: 'RETURNED' } : s));
     setSelectedShift(null);
+  };
+  
+  const confirmReturn = () => {
+      if (selectedShift) {
+          handleReturn(selectedShift.id); // Update local mock list
+          // In a real app, this would target the specific cashier.
+          // For prototype demo, we broadcast this to the active PosState
+          returnDayEnd(returnReason); 
+          setIsReturnDialogOpen(false);
+          setReturnReason('');
+      }
   };
 
   // Grouping for Cash Office Mode
@@ -567,7 +585,7 @@ export default function SupervisorDashboard() {
                             <Button 
                                 variant="destructive" 
                                 className="mr-auto"
-                                onClick={() => handleReturn(selectedShift.id)}
+                                onClick={() => setIsReturnDialogOpen(true)}
                             >
                                 Return to Cashier
                             </Button>
@@ -587,6 +605,34 @@ export default function SupervisorDashboard() {
               </DialogContent>
           </Dialog>
       )}
+      
+      {/* Return Reason Dialog */}
+      <Dialog open={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen}>
+          <DialogContent>
+              <DialogHeader>
+                  <DialogTitle>Return Reconciliation</DialogTitle>
+                  <DialogDescription>
+                      Please provide a reason for returning this reconciliation to the cashier.
+                  </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                  <Label htmlFor="reason" className="mb-2 block">Reason / Comment</Label>
+                  <textarea 
+                      id="reason"
+                      className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      placeholder="e.g. Cash count mismatch, please recount."
+                      value={returnReason}
+                      onChange={(e) => setReturnReason(e.target.value)}
+                  />
+              </div>
+              <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsReturnDialogOpen(false)}>Cancel</Button>
+                  <Button variant="destructive" onClick={confirmReturn} disabled={!returnReason.trim()}>
+                      Confirm Return
+                  </Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
     </div>
   );
 }

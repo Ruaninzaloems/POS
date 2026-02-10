@@ -1,5 +1,4 @@
 import React from 'react';
-import { PosProvider } from '@/lib/pos-state';
 import { PosLayout } from '@/components/layout/pos-layout';
 import { UnifiedSearch } from '@/components/pos/unified-search';
 import { TransactionPanels } from '@/components/pos/transaction-panels';
@@ -36,8 +35,6 @@ function PosPageContent() {
 
 export default function PosPage() {
   return (
-    <PosProvider>
       <PosPageContent />
-    </PosProvider>
   );
 }

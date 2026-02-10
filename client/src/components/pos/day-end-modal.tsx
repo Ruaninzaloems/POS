@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertTriangle, CheckCircle2, Lock } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Lock, RotateCcw } from 'lucide-react';
 
 interface DayEndModalProps {
   isOpen: boolean;
@@ -12,7 +12,7 @@ interface DayEndModalProps {
 }
 
 export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
-  const { submitDayEnd, dayEndStatus } = usePos();
+  const { submitDayEnd, dayEndStatus, dayEndReturnReason } = usePos();
   const [cashOnHand, setCashOnHand] = useState('');
   const [cardTotal, setCardTotal] = useState('');
   const [step, setStep] = useState<'capture' | 'confirm' | 'success'>('capture');
@@ -82,6 +82,20 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
             </span>
           </DialogDescription>
         </DialogHeader>
+        
+        {/* Supervisor Return Message */}
+        {dayEndReturnReason && step === 'capture' && (
+            <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded mb-2">
+                <div className="flex items-start gap-3">
+                    <RotateCcw className="w-5 h-5 text-red-600 mt-0.5" />
+                    <div>
+                        <h4 className="font-bold text-red-800 text-sm uppercase">Returned by Supervisor</h4>
+                        <p className="text-sm text-red-700 mt-1">{dayEndReturnReason}</p>
+                        <p className="text-xs text-red-600 mt-2 font-medium">Please verify your cash/card counts and resubmit.</p>
+                    </div>
+                </div>
+            </div>
+        )}
 
         {step === 'capture' && (
           <div className="space-y-6 py-4">

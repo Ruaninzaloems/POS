@@ -56,6 +56,7 @@ interface PosState {
   viewingItemId: string | null;
   recentTransactions: TransactionRecord[];
   dayEndStatus: DayEndStatus;
+  dayEndReturnReason?: string;
 }
 
 interface PosActions {
@@ -69,6 +70,7 @@ interface PosActions {
   closeReceiptModal: () => void;
   setViewingItem: (id: string | null) => void;
   submitDayEnd: (report: { cashOnHand: number, cardTotal: number }) => void;
+  returnDayEnd: (reason: string) => void;
   cancelTransaction: (id: string) => void;
 }
 
@@ -88,6 +90,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [viewingItemId, setViewingItemId] = useState<string | null>(null);
   const [recentTransactions, setRecentTransactions] = useState<TransactionRecord[]>([]);
   const [dayEndStatus, setDayEndStatus] = useState<DayEndStatus>('OPEN');
+  const [dayEndReturnReason, setDayEndReturnReason] = useState<string>('');
 
   // Derived state
   const totalToPay = items.reduce((sum, item) => sum + item.amountToPay, 0);
@@ -164,7 +167,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const submitDayEnd = (report: { cashOnHand: number, cardTotal: number }) => {
       console.log('Day End Report Submitted:', report);
-      setDayEndStatus('RECONCILED');
+      setDayEndStatus('RECONCILED'); // In a real app this would go to PENDING_APPROVAL
+  };
+
+  const returnDayEnd = (reason: string) => {
+      setDayEndStatus('OPEN'); // In real app would be RETURNED status, but here we open it for editing
+      setDayEndReturnReason(reason);
   };
 
   const cancelTransaction = (id: string) => {
@@ -191,6 +199,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       viewingItemId,
       recentTransactions,
       dayEndStatus,
+      dayEndReturnReason,
       setSearchQuery,
       addItem,
       removeItem,
@@ -201,6 +210,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       completeTransaction,
       closeReceiptModal,
       submitDayEnd,
+      returnDayEnd,
       cancelTransaction
     }}>
       {children}
