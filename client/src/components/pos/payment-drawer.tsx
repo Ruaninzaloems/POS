@@ -18,6 +18,17 @@ export function PaymentDrawer() {
   } = usePos();
 
   const [activeInput, setActiveInput] = useState<'cash' | 'card'>('cash');
+  // Local string buffer to allow typing "50." without it becoming "50" immediately
+  const [inputBuffer, setInputBuffer] = useState<string>("");
+
+  // Sync buffer when switching inputs or external changes (simplified)
+  React.useEffect(() => {
+      const val = activeInput === 'cash' ? payment.cashAmount : payment.cardAmount;
+      if (val === 0 && inputBuffer === "") return; // Initial state
+      if (parseFloat(inputBuffer) !== val) {
+          setInputBuffer(val === 0 ? "" : val.toString());
+      }
+  }, [activeInput, payment.cashAmount, payment.cardAmount]);
 
   const isCompleteEnabled = 
     transactionItems.length > 0 && 
@@ -28,42 +39,23 @@ export function PaymentDrawer() {
 
   // Numpad Logic
   const handleNumpadInput = (val: string) => {
-      const currentVal = activeInput === 'cash' ? payment.cashAmount : payment.cardAmount;
-      const currentStr = currentVal.toString();
+      let newStr = inputBuffer;
       
-      // Handle decimal
       if (val === '.') {
-          if (currentStr.includes('.')) return;
-          // Don't convert to number yet if it's just "0."
-          // But for this simple implementation, let's just use string parsing
-      }
-
-      // Simple concatenation logic for prototype
-      // Real POS uses "cent" logic (input * 10 + new) usually
-      let newVal = parseFloat(currentStr + val);
-      if (val === '.' && !currentStr.includes('.')) {
-          // Tricky with number type state. 
-          // For now, let's just append normally but since state is number, we need to be careful.
-          // Actually, let's just mock the behaviour by assuming user types whole numbers mostly or handles decimals via standard keyboard if needed.
-          // Better for touchscreen: Use "Cents" mode. 
-          // Let's implement simple "Append" logic, clearing if it was 0
-          if (currentVal === 0) newVal = parseFloat(val);
-          else newVal = parseFloat(currentStr + val);
+          if (newStr.includes('.')) return;
+          newStr = newStr === "" ? "0." : newStr + ".";
+      } else {
+          newStr = newStr === "0" ? val : newStr + val;
       }
       
-      // A safer "Touch" approach: Treat input as string concatenation of cents then divide by 100?
-      // Let's stick to: If value is 0, replace. If value > 0, append.
-      if (val === '.') return; // Skip decimal for this simple numpad implementation to avoid float issues
-      
-      const str = currentVal === 0 ? val : currentStr + val;
-      setPaymentAmount(activeInput, parseFloat(str));
+      setInputBuffer(newStr);
+      setPaymentAmount(activeInput, parseFloat(newStr) || 0);
   };
 
   const handleBackspace = () => {
-      const currentVal = activeInput === 'cash' ? payment.cashAmount : payment.cardAmount;
-      const str = currentVal.toString();
-      const newStr = str.slice(0, -1);
-      setPaymentAmount(activeInput, newStr === '' ? 0 : parseFloat(newStr));
+      const newStr = inputBuffer.slice(0, -1);
+      setInputBuffer(newStr);
+      setPaymentAmount(activeInput, newStr === '' ? 0 : parseFloat(newStr) || 0);
   };
 
   const QuickAmounts = [10, 20, 50, 100, 200, 500];
@@ -138,7 +130,7 @@ export function PaymentDrawer() {
                             <span className="font-medium text-sm">Cash</span>
                         </div>
                         <div className="text-2xl font-mono font-bold">
-                            {payment.cashAmount > 0 ? payment.cashAmount.toFixed(0) : <span className="text-muted-foreground/30">0</span>}
+                            {activeInput === 'cash' && inputBuffer ? inputBuffer : (payment.cashAmount > 0 ? payment.cashAmount.toFixed(2).replace(/\.00$/, '') : <span className="text-muted-foreground/30">0</span>)}
                         </div>
                      </button>
 
@@ -151,7 +143,7 @@ export function PaymentDrawer() {
                             <span className="font-medium text-sm">Card</span>
                         </div>
                         <div className="text-2xl font-mono font-bold">
-                            {payment.cardAmount > 0 ? payment.cardAmount.toFixed(0) : <span className="text-muted-foreground/30">0</span>}
+                            {activeInput === 'card' && inputBuffer ? inputBuffer : (payment.cardAmount > 0 ? payment.cardAmount.toFixed(2).replace(/\.00$/, '') : <span className="text-muted-foreground/30">0</span>)}
                         </div>
                      </button>
                  </div>
