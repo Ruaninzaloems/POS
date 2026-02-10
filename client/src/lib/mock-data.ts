@@ -34,6 +34,30 @@ export interface AgingItem {
   days180Plus: number;
 }
 
+export interface DirectIncomeItem {
+  id: string;
+  groupName: string;
+  description: string;
+  scoaItem: string;
+  vatRate: number;
+  price?: number;
+}
+
+export interface AccountGroup {
+  id: string;
+  name: string;
+  memberAccountNos: string[];
+}
+
+export interface ClearanceCostSchedule {
+  scheduleNo: string;
+  status: string;
+  totalDue: number;
+  linkedAccounts: Account[];
+  section118_1_Breakdown: { item: string; amount: number }[];
+  section118_3_Breakdown: { item: string; amount: number }[];
+}
+
 // SEED DATA
 
 export const ACCOUNTS: Account[] = [

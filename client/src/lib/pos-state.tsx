@@ -10,6 +10,28 @@ export type TransactionType =
   | 'CLEARANCE'
   | 'NONE';
 
+export type TransactionStatus = 'COMPLETED' | 'CANCELLED' | 'RECONCILED';
+export type DayEndStatus = 'OPEN' | 'RECONCILED';
+
+export interface TransactionRecord {
+  id: string;
+  receiptNumber: string;
+  timestamp: number;
+  items: TransactionItem[];
+  totalAmount: number;
+  payment: {
+    cash: number;
+    card: number;
+  };
+  status: TransactionStatus;
+}
+
+export interface DayEndReport {
+    cashOnHand: number;
+    cardTotal: number;
+    timestamp: number;
+}
+
 export interface TransactionItem {
   id: string; // unique id for the line item
   type: TransactionType;
@@ -32,6 +54,8 @@ interface PosState {
   searchQuery: string;
   isReceiptModalOpen: boolean;
   viewingItemId: string | null;
+  recentTransactions: TransactionRecord[];
+  dayEndStatus: DayEndStatus;
 }
 
 interface PosActions {
@@ -44,6 +68,8 @@ interface PosActions {
   completeTransaction: () => void;
   closeReceiptModal: () => void;
   setViewingItem: (id: string | null) => void;
+  submitDayEnd: (report: { cashOnHand: number, cardTotal: number }) => void;
+  cancelTransaction: (id: string) => void;
 }
 
 const PosContext = createContext<(PosState & PosActions) | null>(null);
@@ -60,6 +86,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [searchQuery, setSearchQuery] = useState('');
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [viewingItemId, setViewingItemId] = useState<string | null>(null);
+  const [recentTransactions, setRecentTransactions] = useState<TransactionRecord[]>([]);
+  const [dayEndStatus, setDayEndStatus] = useState<DayEndStatus>('OPEN');
 
   // Derived state
   const totalToPay = items.reduce((sum, item) => sum + item.amountToPay, 0);
@@ -114,12 +142,37 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const completeTransaction = () => {
+    // Create record
+    const record: TransactionRecord = {
+        id: crypto.randomUUID(),
+        receiptNumber: `REC-${Math.floor(100000 + Math.random() * 900000)}`,
+        timestamp: Date.now(),
+        items: [...items],
+        totalAmount: totalToPay,
+        payment: { ...payment },
+        status: 'COMPLETED'
+    };
+    
+    setRecentTransactions(prev => [record, ...prev]);
     setIsReceiptModalOpen(true);
   };
   
   const closeReceiptModal = () => {
     setIsReceiptModalOpen(false);
     clearTransaction();
+  };
+
+  const submitDayEnd = (report: { cashOnHand: number, cardTotal: number }) => {
+      console.log('Day End Report Submitted:', report);
+      setDayEndStatus('RECONCILED');
+  };
+
+  const cancelTransaction = (id: string) => {
+      if (dayEndStatus === 'RECONCILED') return;
+      
+      setRecentTransactions(prev => prev.map(tx => 
+          tx.id === id ? { ...tx, status: 'CANCELLED' } : tx
+      ));
   };
   
   return (
@@ -135,16 +188,20 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       },
       searchQuery,
       isReceiptModalOpen,
-      viewingItemId, // Add this
+      viewingItemId,
+      recentTransactions,
+      dayEndStatus,
       setSearchQuery,
       addItem,
       removeItem,
       updateItemAmount,
-      setViewingItem, // Add this
+      setViewingItem,
       setPaymentAmount,
       clearTransaction,
       completeTransaction,
-      closeReceiptModal
+      closeReceiptModal,
+      submitDayEnd,
+      cancelTransaction
     }}>
       {children}
     </PosContext.Provider>

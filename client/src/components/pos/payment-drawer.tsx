@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { ArrowRight, CreditCard, Banknote, Trash2, Calculator } from 'lucide-react';
+import { ArrowRight, CreditCard, Banknote, Trash2, Calculator, History, Lock, AlertTriangle } from 'lucide-react';
 import { VirtualNumpad } from '@/components/ui/virtual-numpad';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DayEndModal } from './day-end-modal';
+import { TransactionHistoryModal } from './transaction-history-modal';
 
 export function PaymentDrawer() {
   const { 
@@ -14,12 +16,14 @@ export function PaymentDrawer() {
     setPaymentAmount, 
     completeTransaction, 
     transactionItems, 
-    removeItem 
+    removeItem,
+    dayEndStatus
   } = usePos();
 
   const [activeInput, setActiveInput] = useState<'cash' | 'card'>('cash');
-  // Local string buffer to allow typing "50." without it becoming "50" immediately
   const [inputBuffer, setInputBuffer] = useState<string>("");
+  const [showDayEnd, setShowDayEnd] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   // Sync buffer when switching inputs or external changes (simplified)
   React.useEffect(() => {
@@ -33,7 +37,8 @@ export function PaymentDrawer() {
   const isCompleteEnabled = 
     transactionItems.length > 0 && 
     payment.tenderTotal >= transactionItems.reduce((acc, i) => acc + i.amountToPay, 0) &&
-    transactionItems.reduce((acc, i) => acc + i.amountToPay, 0) > 0;
+    transactionItems.reduce((acc, i) => acc + i.amountToPay, 0) > 0 &&
+    dayEndStatus === 'OPEN';
 
   const totalDue = transactionItems.reduce((acc, i) => acc + i.amountToPay, 0);
 
@@ -61,14 +66,33 @@ export function PaymentDrawer() {
   const QuickAmounts = [10, 20, 50, 100, 200, 500];
 
   return (
+    <>
     <aside className="w-[450px] bg-card border-l flex flex-col shadow-2xl z-20 h-full flex-shrink-0">
       <div className="p-6 border-b bg-muted/30 flex justify-between items-center">
         <div>
            <h2 className="text-xl font-bold tracking-tight">Payment Drawer</h2>
-           <p className="text-sm text-muted-foreground">Touch-enabled checkout</p>
+           <div className="flex items-center gap-2">
+               <p className="text-sm text-muted-foreground">Touch-enabled checkout</p>
+               {dayEndStatus === 'RECONCILED' && (
+                   <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
+                       <Lock className="w-3 h-3" /> Shift Closed
+                   </span>
+               )}
+           </div>
         </div>
-        <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center text-primary animate-pulse">
-           <Calculator className="w-5 h-5" />
+        <div className="flex gap-2">
+            <Button variant="outline" size="icon" onClick={() => setShowHistory(true)} title="Transaction History">
+                <History className="w-5 h-5 text-muted-foreground" />
+            </Button>
+            <Button 
+                variant={dayEndStatus === 'RECONCILED' ? 'destructive' : 'outline'} 
+                size="icon" 
+                onClick={() => setShowDayEnd(true)} 
+                title="Day End Reconciliation"
+                className={dayEndStatus === 'RECONCILED' ? 'opacity-50' : ''}
+            >
+                <Lock className="w-5 h-5 text-muted-foreground" />
+            </Button>
         </div>
       </div>
 
@@ -118,84 +142,94 @@ export function PaymentDrawer() {
                     <div className="text-sm text-muted-foreground uppercase tracking-widest font-semibold mb-1">Total Due</div>
                     <div className="text-4xl font-mono font-bold text-primary">R {totalDue.toFixed(2)}</div>
                  </div>
-
-                 {/* Input Selection */}
-                 <div className="grid grid-cols-2 gap-4">
-                     <div 
-                        onClick={() => setActiveInput('cash')}
-                        className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${activeInput === 'cash' ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-transparent bg-muted hover:bg-muted/80'}`}
-                     >
-                        <div className="flex items-center gap-2 mb-1 text-muted-foreground">
-                            <Banknote className="w-5 h-5" />
-                            <span className="font-medium text-sm">Cash</span>
-                        </div>
-                        <input
-                            type="text"
-                            inputMode="decimal"
-                            className="w-full bg-transparent text-2xl font-mono font-bold focus:outline-none"
-                            value={activeInput === 'cash' ? inputBuffer : (payment.cashAmount > 0 ? payment.cashAmount.toFixed(2).replace(/\.00$/, '') : "")}
-                            placeholder="0"
-                            onChange={(e) => {
-                                if (activeInput !== 'cash') setActiveInput('cash');
-                                const val = e.target.value;
-                                if (/^[0-9]*\.?[0-9]*$/.test(val)) {
-                                    setInputBuffer(val);
-                                    setPaymentAmount('cash', parseFloat(val) || 0);
-                                }
-                            }}
-                            onFocus={() => setActiveInput('cash')}
-                        />
-                     </div>
-
-                     <div 
-                        onClick={() => setActiveInput('card')}
-                        className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${activeInput === 'card' ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-transparent bg-muted hover:bg-muted/80'}`}
-                     >
-                        <div className="flex items-center gap-2 mb-1 text-muted-foreground">
-                            <CreditCard className="w-5 h-5" />
-                            <span className="font-medium text-sm">Card</span>
-                        </div>
-                         <input
-                            type="text"
-                            inputMode="decimal"
-                            className="w-full bg-transparent text-2xl font-mono font-bold focus:outline-none"
-                            value={activeInput === 'card' ? inputBuffer : (payment.cardAmount > 0 ? payment.cardAmount.toFixed(2).replace(/\.00$/, '') : "")}
-                            placeholder="0"
-                            onChange={(e) => {
-                                if (activeInput !== 'card') setActiveInput('card');
-                                const val = e.target.value;
-                                if (/^[0-9]*\.?[0-9]*$/.test(val)) {
-                                    setInputBuffer(val);
-                                    setPaymentAmount('card', parseFloat(val) || 0);
-                                }
-                            }}
-                            onFocus={() => setActiveInput('card')}
-                        />
-                     </div>
-                 </div>
                  
-                 {/* Quick Cash */}
-                 <div className="grid grid-cols-3 gap-2">
-                     {QuickAmounts.map(amt => (
-                         <Button 
-                            key={amt}
-                            variant="outline"
-                            className="h-12 text-lg font-mono bg-white hover:bg-green-50 hover:text-green-700 hover:border-green-200 transition-colors"
-                            onClick={() => setPaymentAmount(activeInput, (activeInput === 'cash' ? payment.cashAmount : payment.cardAmount) + amt)}
-                         >
-                            +R{amt}
-                         </Button>
-                     ))}
-                 </div>
+                 {dayEndStatus === 'RECONCILED' ? (
+                     <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center text-red-800 space-y-2">
+                         <Lock className="w-8 h-8 mx-auto opacity-50" />
+                         <h3 className="font-bold">Shift Closed</h3>
+                         <p className="text-sm">Payments cannot be processed after day end reconciliation.</p>
+                     </div>
+                 ) : (
+                 <>
+                    {/* Input Selection */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div 
+                            onClick={() => setActiveInput('cash')}
+                            className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${activeInput === 'cash' ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-transparent bg-muted hover:bg-muted/80'}`}
+                        >
+                            <div className="flex items-center gap-2 mb-1 text-muted-foreground">
+                                <Banknote className="w-5 h-5" />
+                                <span className="font-medium text-sm">Cash</span>
+                            </div>
+                            <input
+                                type="text"
+                                inputMode="decimal"
+                                className="w-full bg-transparent text-2xl font-mono font-bold focus:outline-none"
+                                value={activeInput === 'cash' ? inputBuffer : (payment.cashAmount > 0 ? payment.cashAmount.toFixed(2).replace(/\.00$/, '') : "")}
+                                placeholder="0"
+                                onChange={(e) => {
+                                    if (activeInput !== 'cash') setActiveInput('cash');
+                                    const val = e.target.value;
+                                    if (/^[0-9]*\.?[0-9]*$/.test(val)) {
+                                        setInputBuffer(val);
+                                        setPaymentAmount('cash', parseFloat(val) || 0);
+                                    }
+                                }}
+                                onFocus={() => setActiveInput('cash')}
+                            />
+                        </div>
 
-                 <Separator />
-                 
-                 {/* Virtual Numpad */}
-                 <VirtualNumpad 
-                    onInput={handleNumpadInput} 
-                    onClear={handleBackspace} 
-                    className="w-full"
-                 />
+                        <div 
+                            onClick={() => setActiveInput('card')}
+                            className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${activeInput === 'card' ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-transparent bg-muted hover:bg-muted/80'}`}
+                        >
+                            <div className="flex items-center gap-2 mb-1 text-muted-foreground">
+                                <CreditCard className="w-5 h-5" />
+                                <span className="font-medium text-sm">Card</span>
+                            </div>
+                            <input
+                                type="text"
+                                inputMode="decimal"
+                                className="w-full bg-transparent text-2xl font-mono font-bold focus:outline-none"
+                                value={activeInput === 'card' ? inputBuffer : (payment.cardAmount > 0 ? payment.cardAmount.toFixed(2).replace(/\.00$/, '') : "")}
+                                placeholder="0"
+                                onChange={(e) => {
+                                    if (activeInput !== 'card') setActiveInput('card');
+                                    const val = e.target.value;
+                                    if (/^[0-9]*\.?[0-9]*$/.test(val)) {
+                                        setInputBuffer(val);
+                                        setPaymentAmount('card', parseFloat(val) || 0);
+                                    }
+                                }}
+                                onFocus={() => setActiveInput('card')}
+                            />
+                        </div>
+                    </div>
+                    
+                    {/* Quick Cash */}
+                    <div className="grid grid-cols-3 gap-2">
+                        {QuickAmounts.map(amt => (
+                            <Button 
+                                key={amt}
+                                variant="outline"
+                                className="h-12 text-lg font-mono bg-white hover:bg-green-50 hover:text-green-700 hover:border-green-200 transition-colors"
+                                onClick={() => setPaymentAmount(activeInput, (activeInput === 'cash' ? payment.cashAmount : payment.cardAmount) + amt)}
+                            >
+                                +R{amt}
+                            </Button>
+                        ))}
+                    </div>
+
+                    <Separator />
+                    
+                    {/* Virtual Numpad */}
+                    <VirtualNumpad 
+                        onInput={handleNumpadInput} 
+                        onClear={handleBackspace} 
+                        className="w-full"
+                    />
+                 </>
+                 )}
            </TabsContent>
         </Tabs>
       </div>
@@ -218,6 +252,11 @@ export function PaymentDrawer() {
         </Button>
       </div>
     </aside>
+
+    <DayEndModal isOpen={showDayEnd} onClose={() => setShowDayEnd(false)} />
+    <TransactionHistoryModal isOpen={showHistory} onClose={() => setShowHistory(false)} />
+    </>
   );
 }
+
 
