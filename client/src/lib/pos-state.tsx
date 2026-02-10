@@ -31,6 +31,7 @@ interface PosState {
   };
   searchQuery: string;
   isReceiptModalOpen: boolean;
+  viewingItemId: string | null;
 }
 
 interface PosActions {
@@ -42,6 +43,7 @@ interface PosActions {
   clearTransaction: () => void;
   completeTransaction: () => void;
   closeReceiptModal: () => void;
+  setViewingItem: (id: string | null) => void;
 }
 
 const PosContext = createContext<(PosState & PosActions) | null>(null);
