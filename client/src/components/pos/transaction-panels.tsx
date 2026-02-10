@@ -6,13 +6,13 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Account, ClearanceCostSchedule, ACCOUNTS } from '@/lib/mock-data';
-import { User, MapPin, Phone, Mail, FileCheck, Zap, Trash2, Droplets, Upload } from 'lucide-react';
+import { User, MapPin, Phone, Mail, FileCheck, Zap, Trash2, Droplets, Upload, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { AccountEnquiryView } from '@/components/pos/account-enquiry-view';
 
 export function TransactionPanels() {
-  const { activeTransactionType, transactionItems, removeItem, updateItemAmount, addItem } = usePos();
+  const { activeTransactionType, transactionItems, removeItem, updateItemAmount, addItem, viewingItemId, setViewingItem } = usePos();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -65,6 +65,21 @@ export function TransactionPanels() {
     };
     reader.readAsText(file);
   };
+
+  // RENDER VIEWING ITEM OVERRIDE
+  if (viewingItemId) {
+      const item = transactionItems.find(i => i.id === viewingItemId);
+      if (item) {
+          // Wrap in a container to maintain layout
+          return (
+              <div className="flex-1 p-6 overflow-y-auto bg-gray-100/50">
+                  <div className="max-w-[1200px] mx-auto space-y-6">
+                      <AccountEnquiryView item={item} />
+                  </div>
+              </div>
+          );
+      }
+  }
 
   if (activeTransactionType === 'NONE') {
     return (
@@ -149,8 +164,21 @@ export function TransactionPanels() {
                                       {item.type === 'ACCOUNT_GROUP' && <Badge variant="outline" className="font-mono text-xs border-purple-500 text-purple-600 bg-purple-50">GRP</Badge>}
                                   </div>
                                   
-                                  <div className="min-w-0">
-                                      <div className="font-medium truncate">{item.description}</div>
+                                  <div className="min-w-0 flex flex-col">
+                                      <div className="font-medium truncate flex items-center gap-2">
+                                          {item.description}
+                                          {item.type === 'CONSUMER_SERVICES' && (
+                                              <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="h-6 w-6 text-blue-600 hover:text-blue-800 hover:bg-blue-50 ml-2"
+                                                title="View Account Enquiry"
+                                                onClick={() => setViewingItem(item.id)}
+                                              >
+                                                  <Search className="w-3.5 h-3.5" />
+                                              </Button>
+                                          )}
+                                      </div>
                                       <div className="text-xs text-muted-foreground font-mono">{item.reference}</div>
                                   </div>
 
@@ -180,7 +208,7 @@ export function TransactionPanels() {
       )
   }
 
-  // Single Item Views (UPDATED)
+  // Single Item Views
   return (
     <div className="flex-1 p-6 overflow-y-auto bg-gray-100/50"> 
       <div className="max-w-[1200px] mx-auto space-y-6"> 
@@ -283,6 +311,60 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
         )
     }
 
+    // CONSUMER ACCOUNT CARD
+    if (item.type === 'CONSUMER_SERVICES') {
+        const account = item.originalData as Account;
+        return (
+            <Card className="border-l-4 border-l-primary shadow-sm">
+                <CardHeader className="pb-3 bg-muted/20">
+                    <div className="flex justify-between items-start">
+                        <div className="flex gap-4">
+                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                <User className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-lg">{account.name}</CardTitle>
+                                <p className="text-sm text-muted-foreground font-mono mt-1">{account.accountNo}</p>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Outstanding</div>
+                            <div className="text-xl font-mono font-bold text-destructive">R {account.outstandingAmount.toFixed(2)}</div>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="pt-6 grid grid-cols-2 gap-8">
+                    <div className="space-y-3 text-sm">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <MapPin className="w-4 h-4" /> {account.address}
+                        </div>
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <Phone className="w-4 h-4" /> {account.mobile}
+                        </div>
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <Mail className="w-4 h-4" /> {account.email}
+                        </div>
+                    </div>
+                    
+                    <div className="bg-muted/30 p-4 rounded-lg space-y-2">
+                        <Label htmlFor={`amount-${item.id}`} className="text-primary font-medium">Payment Allocation</Label>
+                        <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono">R</span>
+                            <Input 
+                                id={`amount-${item.id}`}
+                                type="number" 
+                                className="pl-8 text-lg font-mono font-semibold"
+                                value={item.amountToPay} 
+                                onChange={(e) => updateItemAmount(item.id, parseFloat(e.target.value) || 0)}
+                            />
+                        </div>
+                        <p className="text-xs text-muted-foreground">Adjust amount if partial payment</p>
+                    </div>
+                </CardContent>
+            </Card>
+        );
+    }
+    
     // CLEARANCE CARD
     if (item.type === 'CLEARANCE') {
         const clr = item.originalData as ClearanceCostSchedule;

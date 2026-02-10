@@ -57,6 +57,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [payment, setPayment] = useState({ cash: 0, card: 0 });
   const [searchQuery, setSearchQuery] = useState('');
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [viewingItemId, setViewingItemId] = useState<string | null>(null);
 
   // Derived state
   const totalToPay = items.reduce((sum, item) => sum + item.amountToPay, 0);
@@ -64,8 +65,19 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const changeDue = Math.max(0, payment.cash - (totalToPay - payment.card));
   
   // Determine active transaction type
-  // If multiple items, it's automatically a multi-account/basket transaction
-  const activeTransactionType: TransactionType = items.length > 1 ? 'MULTI_ACCOUNT' : (items.length > 0 ? items[0].type : 'NONE');
+  // If viewing a specific item, that takes precedence
+  // Otherwise if multiple items, it's multi-account
+  // Otherwise single item type or none
+  let activeTransactionType: TransactionType = 'NONE';
+  
+  if (viewingItemId) {
+      const item = items.find(i => i.id === viewingItemId);
+      if (item) activeTransactionType = item.type;
+  } else if (items.length > 1) {
+      activeTransactionType = 'MULTI_ACCOUNT';
+  } else if (items.length > 0) {
+      activeTransactionType = items[0].type;
+  }
 
   const addItem = (item: TransactionItem) => {
      setItems(prev => {
@@ -77,35 +89,27 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const removeItem = (id: string) => {
     setItems(prev => prev.filter(i => i.id !== id));
+    if (viewingItemId === id) setViewingItemId(null);
   };
 
   const updateItemAmount = (id: string, amount: number) => {
     setItems(prev => prev.map(i => i.id === id ? { ...i, amountToPay: amount } : i));
   };
+  
+  const setViewingItem = (id: string | null) => {
+      setViewingItemId(id);
+  }
 
   const setPaymentAmount = (type: 'cash' | 'card', amount: number) => {
     setPayment(prev => ({ ...prev, [type]: amount }));
   };
-
-  const clearTransaction = () => {
-    setItems([]);
-    setPayment({ cash: 0, card: 0 });
-    setSearchQuery('');
-  };
-
-  const completeTransaction = () => {
-    setIsReceiptModalOpen(true);
-  };
+  // ... (keep rest)
   
-  const closeReceiptModal = () => {
-    setIsReceiptModalOpen(false);
-    clearTransaction();
-  };
-
   return (
     <PosContext.Provider value={{
       activeTransactionType,
       transactionItems: items,
+      // ... (keep payment)
       payment: {
         cashAmount: payment.cash,
         cardAmount: payment.card,
@@ -114,10 +118,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       },
       searchQuery,
       isReceiptModalOpen,
+      viewingItemId, // Add this
       setSearchQuery,
       addItem,
       removeItem,
       updateItemAmount,
+      setViewingItem, // Add this
       setPaymentAmount,
       clearTransaction,
       completeTransaction,

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 
 export function AccountEnquiryView({ item }: { item: TransactionItem }) {
   const account = item.originalData as Account;
-  const { updateItemAmount, removeItem, addItem } = usePos(); // Added addItem
+  const { updateItemAmount, removeItem, addItem, viewingItemId, setViewingItem } = usePos(); // Added addItem
 
   const handleBuyPrepaid = () => {
     if (!account.prepaidMeterNo) return;
@@ -56,18 +56,27 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => removeItem(item.id)}
+            onClick={() => {
+                if (viewingItemId) {
+                    setViewingItem(null); // Close just this view if in multi-mode
+                } else {
+                    removeItem(item.id); // Or remove item if in single mode
+                }
+            }}
             className="gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
           >
             <X className="w-4 h-4" />
-            Close Enquiry
+            {viewingItemId ? 'Back to Basket' : 'Close Enquiry'}
           </Button>
        </div>
 
        {/* Main Header */}
        <div className="bg-gradient-to-b from-gray-200 to-gray-300 px-4 py-2 font-bold text-gray-800 border border-gray-300 mb-4 text-sm shadow-sm flex justify-between items-center">
          <div className="flex items-center gap-3">
-             <Button variant="ghost" size="icon" className="h-6 w-6 -ml-1 text-gray-600 hover:bg-gray-300/50 rounded-sm" onClick={() => removeItem(item.id)}>
+             <Button variant="ghost" size="icon" className="h-6 w-6 -ml-1 text-gray-600 hover:bg-gray-300/50 rounded-sm" onClick={() => {
+                 if (viewingItemId) setViewingItem(null);
+                 else removeItem(item.id);
+             }}>
                 <ArrowLeft className="w-4 h-4" />
              </Button>
              <span>Account Information</span>
