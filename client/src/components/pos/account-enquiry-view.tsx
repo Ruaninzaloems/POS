@@ -3,12 +3,12 @@ import { Account } from '@/lib/mock-data';
 import { usePos, TransactionItem } from '@/lib/pos-state';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, ArrowLeft, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function AccountEnquiryView({ item }: { item: TransactionItem }) {
   const account = item.originalData as Account;
-  const { updateItemAmount } = usePos();
+  const { updateItemAmount, removeItem } = usePos();
 
   const Field = ({ label, value }: { label: string, value: string | number | undefined }) => (
     <div className="grid grid-cols-[200px_1fr] border-b border-gray-100 last:border-0 py-1 text-sm">
@@ -24,10 +24,28 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
   );
 
   return (
-    <div className="bg-white p-6 shadow-sm border border-gray-200 text-sm">
+    <div className="bg-white p-6 shadow-sm border border-gray-200 text-sm relative">
+       {/* Navigation / Actions */}
+       <div className="absolute top-6 right-6 flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => removeItem(item.id)}
+            className="gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+          >
+            <X className="w-4 h-4" />
+            Close Enquiry
+          </Button>
+       </div>
+
        {/* Main Header */}
        <div className="bg-gradient-to-b from-gray-200 to-gray-300 px-4 py-2 font-bold text-gray-800 border border-gray-300 mb-4 text-sm shadow-sm flex justify-between items-center">
-         <span>Account Information</span>
+         <div className="flex items-center gap-3">
+             <Button variant="ghost" size="icon" className="h-6 w-6 -ml-1 text-gray-600 hover:bg-gray-300/50 rounded-sm" onClick={() => removeItem(item.id)}>
+                <ArrowLeft className="w-4 h-4" />
+             </Button>
+             <span>Account Information</span>
+         </div>
        </div>
 
        {/* Top Grid - Account Info */}
