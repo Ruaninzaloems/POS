@@ -31,20 +31,20 @@ export function PosLayout({ children }: PosLayoutProps) {
             <div className="w-8 h-8 rounded bg-primary flex items-center justify-center text-primary-foreground font-bold">
               M
             </div>
-            <h1 className="font-semibold text-lg tracking-tight">Municipal POS <span className="text-muted-foreground text-sm font-normal">v2.0</span></h1>
+            <h1 className="font-semibold text-lg tracking-tight hidden sm:inline-block">Municipal POS <span className="text-muted-foreground text-sm font-normal">v2.0</span></h1>
           </div>
-          <div className="h-6 w-px bg-border mx-2" />
+          <div className="h-6 w-px bg-border mx-2 hidden sm:block" />
           <nav className="flex items-center gap-1">
              <Link href="/">
                 <Button variant={location === '/' ? 'secondary' : 'ghost'} size="sm" className="gap-2">
                   <LayoutDashboard className="w-4 h-4" />
-                  Receipting
+                  <span className="hidden sm:inline">Receipting</span>
                 </Button>
              </Link>
              <Link href="/supervisor">
                 <Button variant={location === '/supervisor' ? 'secondary' : 'ghost'} size="sm" className="gap-2">
                   <ShieldCheck className="w-4 h-4" />
-                  Supervisor
+                  <span className="hidden sm:inline">Supervisor</span>
                 </Button>
              </Link>
           </nav>
