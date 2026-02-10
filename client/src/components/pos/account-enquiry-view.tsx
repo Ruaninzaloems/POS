@@ -3,12 +3,26 @@ import { Account } from '@/lib/mock-data';
 import { usePos, TransactionItem } from '@/lib/pos-state';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RefreshCw, ArrowLeft, X } from 'lucide-react';
+import { RefreshCw, ArrowLeft, X, Zap, Droplets } from 'lucide-react'; // Added Zap and Droplets
 import { Button } from '@/components/ui/button';
 
 export function AccountEnquiryView({ item }: { item: TransactionItem }) {
   const account = item.originalData as Account;
-  const { updateItemAmount, removeItem } = usePos();
+  const { updateItemAmount, removeItem, addItem } = usePos(); // Added addItem
+
+  const handleBuyPrepaid = () => {
+    if (!account.prepaidMeterNo) return;
+    
+    addItem({
+        id: crypto.randomUUID(),
+        type: 'PREPAID',
+        description: `${account.prepaidType || 'Prepaid'} Recharge ${account.prepaidMeterNo}`,
+        reference: account.prepaidMeterNo,
+        amountDue: 0,
+        amountToPay: 0,
+        originalData: account
+    });
+  };
 
   const Field = ({ label, value }: { label: string, value: string | number | undefined }) => (
     <div className="grid grid-cols-[200px_1fr] border-b border-gray-100 last:border-0 py-1 text-sm">
@@ -27,6 +41,18 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
     <div className="bg-white p-6 shadow-sm border border-gray-200 text-sm relative">
        {/* Navigation / Actions */}
        <div className="absolute top-6 right-6 flex gap-2">
+          {account.prepaidMeterNo && (
+              <Button 
+                variant="default" 
+                size="sm" 
+                onClick={handleBuyPrepaid}
+                className={`gap-2 ${account.prepaidType === 'Water' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-yellow-600 hover:bg-yellow-700 text-white'}`}
+              >
+                {account.prepaidType === 'Water' ? <Droplets className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+                Buy Prepaid {account.prepaidType || 'Electricity'}
+              </Button>
+          )}
+
           <Button 
             variant="outline" 
             size="sm" 
