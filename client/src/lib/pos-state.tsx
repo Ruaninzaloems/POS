@@ -103,7 +103,22 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const setPaymentAmount = (type: 'cash' | 'card', amount: number) => {
     setPayment(prev => ({ ...prev, [type]: amount }));
   };
-  // ... (keep rest)
+
+  const clearTransaction = () => {
+    setItems([]);
+    setPayment({ cash: 0, card: 0 });
+    setSearchQuery('');
+    setViewingItemId(null);
+  };
+
+  const completeTransaction = () => {
+    setIsReceiptModalOpen(true);
+  };
+  
+  const closeReceiptModal = () => {
+    setIsReceiptModalOpen(false);
+    clearTransaction();
+  };
   
   return (
     <PosContext.Provider value={{
