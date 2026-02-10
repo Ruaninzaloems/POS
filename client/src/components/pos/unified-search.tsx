@@ -229,15 +229,19 @@ export function UnifiedSearch() {
         </PopoverTrigger>
         <PopoverContent className="w-80" align="end">
           <div className="space-y-4">
-            <h4 className="font-medium leading-none">Search Tips</h4>
-            <div className="text-sm text-muted-foreground space-y-2">
-              <p>The unified search bar supports multiple formats:</p>
-              <ul className="list-disc pl-4 space-y-1">
-                <li><span className="font-semibold text-foreground">Accounts:</span> Search by Name, Account No, ID No, SG No, Old Code, or Address.</li>
-                <li><span className="font-semibold text-foreground">Prepaid:</span> Search by Meter No or Owner Details.</li>
-                <li><span className="font-semibold text-foreground">Groups:</span> Type a Group Name (e.g. "Sunset" or "Hilltop") to load all members.</li>
-                <li><span className="font-semibold text-foreground">Clearance:</span> Type a Schedule No (e.g. "CLR-2023").</li>
-              </ul>
+            <h4 className="font-medium leading-none mb-4">Search Tips</h4>
+            <div className="grid grid-cols-[80px_1fr] gap-x-2 gap-y-3 text-sm text-muted-foreground">
+                <span className="font-semibold text-foreground text-right">Accounts:</span>
+                <span>Name, Account No, ID No, SG No, Old Code, or Address.</span>
+                
+                <span className="font-semibold text-foreground text-right">Prepaid:</span>
+                <span>Meter No or Owner Details.</span>
+                
+                <span className="font-semibold text-foreground text-right">Groups:</span>
+                <span>Group Name (e.g. "Sunset").</span>
+                
+                <span className="font-semibold text-foreground text-right">Clearance:</span>
+                <span>Schedule No (e.g. "CLR-2023").</span>
             </div>
           </div>
         </PopoverContent>
