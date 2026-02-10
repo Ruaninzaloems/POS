@@ -1,5 +1,3 @@
-// Mock Data for Municipal POS Prototype
-
 export interface Account {
   accountNo: string;
   name: string;
@@ -12,53 +10,37 @@ export interface Account {
   email: string;
   mobile: string;
   linkedToClearance?: string; // Clearance ID if linked
-}
-
-export interface DirectIncomeItem {
-  id: string;
-  groupName: string;
-  description: string;
-  scoaItem: string;
-  vatRate: number;
-  price?: number; // Optional fixed price
-}
-
-export interface PrepaidMeter {
-  meterNo: string;
-  accountNo: string;
-  address: string;
-  lastPurchaseDate: string;
-}
-
-export interface ClearanceCostSchedule {
-  scheduleNo: string;
-  status: "Pending" | "Finalized";
-  totalDue: number;
-  linkedAccounts: Account[];
-  section118_1_Breakdown: { item: string; amount: number }[];
-  section118_3_Breakdown: { item: string; amount: number }[];
-}
-
-export interface AccountGroup {
-  id: string;
-  name: string;
-  memberAccountNos: string[];
+  // New fields from screenshot
+  unitId?: string;
+  oldCode?: string;
+  accountType?: string;
+  status?: string;
+  deliveryAddress?: string;
+  valuationCategory?: string;
+  marketValue?: number;
 }
 
 // SEED DATA
 
 export const ACCOUNTS: Account[] = [
   {
-    accountNo: "ACC-1001",
-    name: "John Doe",
+    accountNo: "000000000030",
+    name: "Eden Dm",
     idNo: "8001015009087",
-    sgNo: "SG-001-A",
-    address: "123 Main Street, Central",
+    sgNo: "C077/0001/00000846/00000",
+    address: "846 Berlyn Street, Haarlem, Uniondale",
     outstandingAmount: 1540.50,
     prepaidMeterNo: "14253647586",
     prepaidType: "Electricity",
-    email: "john.doe@example.com",
-    mobile: "+27821234567"
+    email: "gmoemailadres@gmail.com",
+    mobile: "+27821234567",
+    unitId: "42001",
+    oldCode: "59231",
+    accountType: "Consumer (Occupier)",
+    status: "Active",
+    deliveryAddress: "Posbus 12, George, 6530",
+    valuationCategory: "Individual Use",
+    marketValue: 146000.00
   },
   {
     accountNo: "ACC-1002",
@@ -70,7 +52,12 @@ export const ACCOUNTS: Account[] = [
     prepaidMeterNo: "W-987654321",
     prepaidType: "Water",
     email: "jane.smith@example.com",
-    mobile: "+27839876543"
+    mobile: "+27839876543",
+    accountType: "Consumer",
+    status: "Active",
+    unitId: "42005",
+    valuationCategory: "Individual Use",
+    marketValue: 950000.00
   },
   {
     accountNo: "ACC-1003",
@@ -80,7 +67,10 @@ export const ACCOUNTS: Account[] = [
     address: "Unit 5, Industrial Park",
     outstandingAmount: 12500.75,
     email: "accounts@abctrading.co.za",
-    mobile: "+27110000000"
+    mobile: "+27110000000",
+    accountType: "Business",
+    status: "Active",
+    marketValue: 2500000.00
   },
   {
     accountNo: "ACC-1004",
@@ -92,7 +82,9 @@ export const ACCOUNTS: Account[] = [
     prepaidMeterNo: "25364758697",
     prepaidType: "Electricity",
     email: "mike.brown@example.com",
-    mobile: "+27841112222"
+    mobile: "+27841112222",
+    accountType: "Consumer",
+    status: "Active"
   },
   {
     accountNo: "ACC-1005",
@@ -102,7 +94,9 @@ export const ACCOUNTS: Account[] = [
     address: "99 Future Road",
     outstandingAmount: 500.00,
     email: "sarah@skynet.com",
-    mobile: "+27820000000"
+    mobile: "+27820000000",
+    accountType: "Consumer",
+    status: "Active"
   }
 ];
 
