@@ -84,7 +84,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
        </div>
 
        {/* Top Grid - Account Info */}
-       <div className="grid grid-cols-2 gap-x-12 gap-y-0">
+       <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-0">
          <div>
             <Field label="Account Number" value={account.accountNo} />
             <Field label="Account Group" value="Himun - Haarlem Munisipaliteit" />
@@ -119,9 +119,9 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
        </div>
 
        {/* Property & Partition Section */}
-       <div className="grid grid-cols-2 gap-x-12 mt-4 relative">
+       <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 mt-4 relative">
           {/* Central Titles */}
-          <div className="absolute left-1/2 -translate-x-1/2 top-4 flex flex-col items-center gap-32">
+          <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 top-4 flex-col items-center gap-32">
              <span className="font-bold underline text-gray-500 text-xs">Property</span>
              <span className="font-bold underline text-gray-500 text-xs">Partition</span>
           </div>
@@ -169,8 +169,8 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
        {/* Total Balance/Debt Table */}
        <SectionHeader title="Total Balance/Debt" />
        
-       <div className="border border-gray-300 overflow-hidden text-xs">
-          <table className="w-full text-left border-collapse">
+       <div className="border border-gray-300 overflow-x-auto text-xs">
+          <table className="w-full text-left border-collapse min-w-[800px]">
              <thead className="bg-gray-100 text-gray-700 font-semibold border-b border-gray-300">
                <tr>
                  <th className="p-2 border-r border-gray-300">Service Description ↑</th>

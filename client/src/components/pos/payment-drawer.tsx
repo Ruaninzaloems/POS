@@ -67,10 +67,10 @@ export function PaymentDrawer() {
 
   return (
     <>
-    <aside className="w-[450px] bg-card border-l flex flex-col shadow-2xl z-20 h-full flex-shrink-0">
-      <div className="p-6 border-b bg-muted/30 flex justify-between items-center">
+    <aside className="w-full lg:w-[450px] bg-card border-t lg:border-t-0 lg:border-l flex flex-col shadow-2xl z-20 h-[50vh] lg:h-full flex-shrink-0">
+      <div className="p-4 lg:p-6 border-b bg-muted/30 flex justify-between items-center">
         <div>
-           <h2 className="text-xl font-bold tracking-tight">Payment Drawer</h2>
+           <h2 className="text-lg lg:text-xl font-bold tracking-tight">Payment Drawer</h2>
            <div className="flex items-center gap-2">
                <p className="text-sm text-muted-foreground">Touch-enabled checkout</p>
                {dayEndStatus === 'RECONCILED' && (
