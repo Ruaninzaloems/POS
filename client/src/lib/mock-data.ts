@@ -8,6 +8,7 @@ export interface Account {
   address: string;
   outstandingAmount: number;
   prepaidMeterNo?: string;
+  prepaidType?: "Electricity" | "Water";
   email: string;
   mobile: string;
   linkedToClearance?: string; // Clearance ID if linked
@@ -55,6 +56,7 @@ export const ACCOUNTS: Account[] = [
     address: "123 Main Street, Central",
     outstandingAmount: 1540.50,
     prepaidMeterNo: "14253647586",
+    prepaidType: "Electricity",
     email: "john.doe@example.com",
     mobile: "+27821234567"
   },
@@ -65,6 +67,8 @@ export const ACCOUNTS: Account[] = [
     sgNo: "SG-002-B",
     address: "45 Oak Avenue, Suburbia",
     outstandingAmount: 250.00,
+    prepaidMeterNo: "W-987654321",
+    prepaidType: "Water",
     email: "jane.smith@example.com",
     mobile: "+27839876543"
   },
@@ -86,8 +90,19 @@ export const ACCOUNTS: Account[] = [
     address: "78 Pine Street, Hilltop",
     outstandingAmount: 0.00,
     prepaidMeterNo: "25364758697",
+    prepaidType: "Electricity",
     email: "mike.brown@example.com",
     mobile: "+27841112222"
+  },
+  {
+    accountNo: "ACC-1005",
+    name: "Sarah Connor",
+    idNo: "8501010000000",
+    sgNo: "SG-005-E",
+    address: "99 Future Road",
+    outstandingAmount: 500.00,
+    email: "sarah@skynet.com",
+    mobile: "+27820000000"
   }
 ];
 
@@ -129,6 +144,11 @@ export const ACCOUNT_GROUPS: AccountGroup[] = [
     id: "GRP-001",
     name: "Sunset Body Corporate",
     memberAccountNos: ["ACC-1001", "ACC-1002"]
+  },
+  {
+    id: "GRP-002",
+    name: "Hilltop Business Park",
+    memberAccountNos: ["ACC-1003", "ACC-1004", "ACC-1005"]
   }
 ];
 

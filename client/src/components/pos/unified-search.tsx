@@ -26,7 +26,7 @@ export function UnifiedSearch() {
 
     // Mock Prepaid Meters (derived from accounts for prototype)
     const prepaid = ACCOUNTS.filter(a => a.prepaidMeterNo && a.prepaidMeterNo.includes(q))
-       .map(a => ({ type: 'PREPAID', data: a, label: `Meter: ${a.prepaidMeterNo} (${a.name})` }));
+       .map(a => ({ type: 'PREPAID', data: a, label: `${a.prepaidType || 'Meter'}: ${a.prepaidMeterNo} (${a.name})` }));
 
     const di = DIRECT_INCOME_ITEMS.filter(d => 
       d.description.toLowerCase().includes(q) ||
@@ -92,24 +92,34 @@ export function UnifiedSearch() {
         newItem = {
             id: crypto.randomUUID(),
             type: 'PREPAID',
-            description: `Prepaid Recharge ${acc.prepaidMeterNo}`,
+            description: `${acc.prepaidType || 'Prepaid'} Recharge ${acc.prepaidMeterNo}`,
             reference: acc.prepaidMeterNo!,
             amountDue: 0,
             amountToPay: 0, // Default to 0, user must enter
             originalData: acc
         }
     } else if (result.type === 'GROUP') {
-        const group = result.data;
-        // Logic to add all members would go here, simplified for now
-        newItem = {
-            id: crypto.randomUUID(),
-            type: 'ACCOUNT_GROUP',
-            description: group.name,
-            reference: group.id,
-            amountDue: 0, 
-            amountToPay: 0,
-            originalData: group
-        }
+        const group = result.data as any; // Cast to avoid TS issues with mock data imports not updating fast enough
+        // Find all members
+        const members = ACCOUNTS.filter(a => group.memberAccountNos.includes(a.accountNo));
+        
+        // Add all members as individual transaction items
+        members.forEach(member => {
+            const memberItem: TransactionItem = {
+                id: crypto.randomUUID(),
+                type: 'CONSUMER_SERVICES',
+                description: `${member.name} (${member.accountNo})`,
+                reference: member.accountNo,
+                amountDue: member.outstandingAmount,
+                amountToPay: member.outstandingAmount,
+                originalData: member
+            };
+            addItem(memberItem);
+        });
+        
+        setSearchQuery('');
+        setIsOpen(false);
+        return; // Exit early as we added multiple
     } else if (result.type === 'CLEARANCE') {
         const clr = result.data;
         newItem = {

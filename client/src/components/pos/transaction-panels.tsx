@@ -1,16 +1,72 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { usePos, TransactionItem } from '@/lib/pos-state';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Account, ClearanceCostSchedule } from '@/lib/mock-data';
-import { User, MapPin, Phone, Mail, FileCheck, Zap, Trash2, CreditCard } from 'lucide-react';
+import { Account, ClearanceCostSchedule, ACCOUNTS } from '@/lib/mock-data';
+import { User, MapPin, Phone, Mail, FileCheck, Zap, Trash2, CreditCard, Droplets, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 export function TransactionPanels() {
-  const { activeTransactionType, transactionItems, removeItem, updateItemAmount } = usePos();
+  const { activeTransactionType, transactionItems, removeItem, updateItemAmount, addItem } = usePos();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      // Simple CSV parser: AccountNo,Amount
+      // Example: ACC-1001,500.00
+      const lines = text.split('\n');
+      let addedCount = 0;
+      
+      lines.forEach(line => {
+        const [accNo, amountStr] = line.split(',').map(s => s.trim());
+        if (!accNo) return;
+        
+        const account = ACCOUNTS.find(a => a.accountNo === accNo);
+        if (account) {
+            const amount = parseFloat(amountStr) || account.outstandingAmount;
+            
+            addItem({
+                id: crypto.randomUUID(),
+                type: 'CONSUMER_SERVICES',
+                description: `${account.name} (CSV Import)`,
+                reference: account.accountNo,
+                amountDue: account.outstandingAmount,
+                amountToPay: amount, // Use CSV amount if present, else outstanding
+                originalData: account
+            });
+            addedCount++;
+        }
+      });
+
+      if (addedCount > 0) {
+          toast({
+              title: "CSV Import Successful",
+              description: `Added ${addedCount} accounts to basket.`,
+              variant: "default"
+          });
+      } else {
+          toast({
+              title: "Import Failed",
+              description: "No matching accounts found in CSV.",
+              variant: "destructive"
+          });
+      }
+      
+      // Reset input
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+    reader.readAsText(file);
+  };
 
   if (activeTransactionType === 'NONE') {
     return (
@@ -20,6 +76,20 @@ export function TransactionPanels() {
         </div>
         <h2 className="text-2xl font-semibold mb-2">Ready to Receipt</h2>
         <p className="max-w-md text-center">Use the search bar above to find an account, prepaid meter, clearance schedule, or direct income item.</p>
+        
+        <div className="mt-8 flex gap-4">
+             <Button variant="outline" className="gap-2" onClick={() => fileInputRef.current?.click()}>
+                 <Upload className="w-4 h-4" />
+                 Import CSV
+             </Button>
+             <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                accept=".csv,.txt" 
+                onChange={handleFileUpload}
+             />
+        </div>
       </div>
     );
   }
@@ -30,10 +100,26 @@ export function TransactionPanels() {
           <div className="flex-1 p-6 overflow-y-auto bg-muted/10">
               <div className="max-w-5xl mx-auto space-y-6">
                   <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-bold tracking-tight text-foreground">Multi-Account Basket</h2>
-                    <Badge variant="outline" className="text-sm px-3 py-1 font-mono uppercase bg-primary/10 text-primary border-primary/20">
-                        Mixed Transaction
-                    </Badge>
+                    <div className="flex items-center gap-3">
+                        <h2 className="text-2xl font-bold tracking-tight text-foreground">Multi-Account Basket</h2>
+                        <Badge variant="outline" className="text-sm px-3 py-1 font-mono uppercase bg-primary/10 text-primary border-primary/20">
+                            Mixed Transaction
+                        </Badge>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                         <Button variant="outline" size="sm" className="gap-2" onClick={() => fileInputRef.current?.click()}>
+                             <Upload className="w-4 h-4" />
+                             Import CSV
+                         </Button>
+                         <input 
+                            type="file" 
+                            ref={fileInputRef} 
+                            className="hidden" 
+                            accept=".csv,.txt" 
+                            onChange={handleFileUpload}
+                         />
+                    </div>
                   </div>
 
                   <Card>
@@ -51,7 +137,15 @@ export function TransactionPanels() {
                               <div key={item.id} className="grid grid-cols-[1fr_2fr_1fr_1fr_auto] gap-4 items-center p-4 border-b last:border-0 hover:bg-muted/5 transition-colors">
                                   <div className="flex items-center gap-2">
                                       {item.type === 'CONSUMER_SERVICES' && <Badge variant="secondary" className="font-mono text-xs">ACC</Badge>}
-                                      {item.type === 'PREPAID' && <Badge variant="outline" className="font-mono text-xs border-yellow-500 text-yellow-600 bg-yellow-50">PRE</Badge>}
+                                      {item.type === 'PREPAID' && (
+                                         <Badge variant="outline" className={`font-mono text-xs ${
+                                             (item.originalData as Account).prepaidType === 'Water' 
+                                             ? 'border-blue-500 text-blue-600 bg-blue-50'
+                                             : 'border-yellow-500 text-yellow-600 bg-yellow-50'
+                                         }`}>
+                                             {(item.originalData as Account).prepaidType === 'Water' ? 'H2O' : 'ELEC'}
+                                         </Badge>
+                                      )}
                                       {item.type === 'CLEARANCE' && <Badge variant="outline" className="font-mono text-xs border-amber-500 text-amber-600 bg-amber-50">CLR</Badge>}
                                       {item.type === 'DIRECT_INCOME' && <Badge variant="outline" className="font-mono text-xs border-green-500 text-green-600 bg-green-50">INC</Badge>}
                                       {item.type === 'ACCOUNT_GROUP' && <Badge variant="outline" className="font-mono text-xs border-purple-500 text-purple-600 bg-purple-50">GRP</Badge>}
@@ -121,16 +215,18 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
     // PREPAID CARD
     if (item.type === 'PREPAID') {
         const account = item.originalData as Account;
+        const isWater = account.prepaidType === 'Water';
+
         return (
-             <Card className="border-l-4 border-l-yellow-400 shadow-sm">
-                <CardHeader className="pb-3 bg-yellow-400/10">
+             <Card className={`border-l-4 shadow-sm ${isWater ? 'border-l-blue-400' : 'border-l-yellow-400'}`}>
+                <CardHeader className={`pb-3 ${isWater ? 'bg-blue-400/10' : 'bg-yellow-400/10'}`}>
                     <div className="flex justify-between items-start">
                         <div className="flex gap-4">
-                            <div className="w-12 h-12 rounded-full bg-yellow-400/20 flex items-center justify-center text-yellow-700">
-                                <Zap className="w-6 h-6" />
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isWater ? 'bg-blue-400/20 text-blue-700' : 'bg-yellow-400/20 text-yellow-700'}`}>
+                                {isWater ? <Droplets className="w-6 h-6" /> : <Zap className="w-6 h-6" />}
                             </div>
                             <div>
-                                <CardTitle className="text-lg">Prepaid Electricity</CardTitle>
+                                <CardTitle className="text-lg">Prepaid {isWater ? 'Water' : 'Electricity'}</CardTitle>
                                 <p className="text-sm text-muted-foreground font-mono mt-1">Meter: {account.prepaidMeterNo}</p>
                             </div>
                         </div>
@@ -150,14 +246,14 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                             </div>
                         </div>
 
-                        <div className="bg-yellow-50 p-6 rounded-lg border border-yellow-100 flex flex-col justify-center space-y-4">
-                            <Label htmlFor={`amount-${item.id}`} className="text-yellow-900 font-medium text-lg">Recharge Amount</Label>
+                        <div className={`p-6 rounded-lg border flex flex-col justify-center space-y-4 ${isWater ? 'bg-blue-50 border-blue-100' : 'bg-yellow-50 border-yellow-100'}`}>
+                            <Label htmlFor={`amount-${item.id}`} className={`font-medium text-lg ${isWater ? 'text-blue-900' : 'text-yellow-900'}`}>Recharge Amount</Label>
                             <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-700 font-mono text-xl">R</span>
+                                <span className={`absolute left-4 top-1/2 -translate-y-1/2 font-mono text-xl ${isWater ? 'text-blue-700' : 'text-yellow-700'}`}>R</span>
                                 <Input 
                                     id={`amount-${item.id}`}
                                     type="number" 
-                                    className="pl-10 text-2xl font-mono font-bold h-14 bg-white border-yellow-200 focus-visible:ring-yellow-400"
+                                    className={`pl-10 text-2xl font-mono font-bold h-14 bg-white focus-visible:ring-2 ${isWater ? 'border-blue-200 focus-visible:ring-blue-400' : 'border-yellow-200 focus-visible:ring-yellow-400'}`}
                                     value={item.amountToPay || ''} 
                                     placeholder="0.00"
                                     onChange={(e) => updateItemAmount(item.id, parseFloat(e.target.value) || 0)}
@@ -170,7 +266,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                                         key={amt} 
                                         variant="outline" 
                                         size="sm" 
-                                        className="flex-1 bg-white hover:bg-yellow-100 border-yellow-200 text-yellow-800"
+                                        className={`flex-1 bg-white transition-colors ${isWater ? 'hover:bg-blue-100 border-blue-200 text-blue-800' : 'hover:bg-yellow-100 border-yellow-200 text-yellow-800'}`}
                                         onClick={() => updateItemAmount(item.id, amt)}
                                     >
                                         R{amt}
