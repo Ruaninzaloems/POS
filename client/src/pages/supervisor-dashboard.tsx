@@ -263,6 +263,9 @@ export default function SupervisorDashboard() {
             <p className="text-muted-foreground">Reconciliation & Approvals</p>
           </div>
           <div className="flex items-center gap-4">
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => window.location.href = '/'}>
+                 <ArrowLeft className="w-4 h-4" /> Back to POS
+             </Button>
               <div className="bg-white rounded-lg border p-1 flex items-center shadow-sm">
                   <Button 
                       variant={reconMode === 'PER_CASHIER' ? 'secondary' : 'ghost'} 
