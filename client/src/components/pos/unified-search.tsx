@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, CreditCard, Users, Zap, FileText, Layers } from 'lucide-react';
+import { Search, CreditCard, Users, Zap, FileText, Layers, Info } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ACCOUNTS, DIRECT_INCOME_ITEMS, ACCOUNT_GROUPS, CLEARANCES, Account } from '@/lib/mock-data';
 import { usePos, TransactionItem } from '@/lib/pos-state';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 
 export function UnifiedSearch() {
   const { searchQuery, setSearchQuery, addItem, clearTransaction } = usePos();
@@ -141,14 +146,14 @@ export function UnifiedSearch() {
   };
 
   return (
-    <div className="relative w-full max-w-2xl z-50" ref={wrapperRef}>
-      <div className="relative">
+    <div className="relative w-full max-w-2xl z-50 flex gap-2" ref={wrapperRef}>
+      <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
         <Input 
           ref={inputRef}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search Account / Name / ID / Meter / Item..." 
+          placeholder="Search Account / Meter / Group / Clearance..." 
           className="pl-10 h-12 text-lg shadow-sm border-primary/20 focus-visible:ring-primary/30"
           autoFocus
         />
@@ -158,6 +163,28 @@ export function UnifiedSearch() {
             </kbd>
         </div>
       </div>
+
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="icon" className="h-12 w-12 shrink-0 border-primary/20 bg-background">
+            <Info className="h-5 w-5 text-muted-foreground" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-80" align="end">
+          <div className="space-y-4">
+            <h4 className="font-medium leading-none">Search Tips</h4>
+            <div className="text-sm text-muted-foreground space-y-2">
+              <p>The unified search bar supports multiple formats:</p>
+              <ul className="list-disc pl-4 space-y-1">
+                <li><span className="font-semibold text-foreground">Accounts:</span> Search by Name, Account No, or ID.</li>
+                <li><span className="font-semibold text-foreground">Prepaid:</span> Type a Meter Number (e.g. "1425..." or "W-987...")</li>
+                <li><span className="font-semibold text-foreground">Groups:</span> Type a Group Name (e.g. "Sunset" or "Hilltop") to load all members.</li>
+                <li><span className="font-semibold text-foreground">Clearance:</span> Type a Schedule No (e.g. "CLR-2023").</li>
+              </ul>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
 
       {isOpen && results.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-popover text-popover-foreground rounded-lg border shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
