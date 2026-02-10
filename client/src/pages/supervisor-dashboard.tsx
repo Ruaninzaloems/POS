@@ -726,7 +726,8 @@ export default function SupervisorDashboard() {
                           <Button onClick={() => setSelectedShift(null)}>Close</Button>
                       )}
                   </DialogFooter>
-              </DialogContent>
+                </DialogContent>
+              )}
           </Dialog>
       )}
     </div>
