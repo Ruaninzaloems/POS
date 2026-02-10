@@ -221,11 +221,10 @@ export function UnifiedSearch() {
             <div className="text-sm text-muted-foreground space-y-2">
               <p>The unified search bar supports multiple formats:</p>
               <ul className="list-disc pl-4 space-y-1">
-                <li><span className="font-semibold text-foreground">Accounts:</span> Search by Name, Account No, ID Number, or Address.</li>
+                <li><span className="font-semibold text-foreground">Accounts:</span> Search by Name, Account No, or ID.</li>
                 <li><span className="font-semibold text-foreground">Prepaid:</span> Type a Meter Number (e.g. "1425..." or "W-987...")</li>
                 <li><span className="font-semibold text-foreground">Groups:</span> Type a Group Name (e.g. "Sunset" or "Hilltop") to load all members.</li>
                 <li><span className="font-semibold text-foreground">Clearance:</span> Type a Schedule No (e.g. "CLR-2023").</li>
-                <li><span className="font-semibold text-foreground">Direct Income:</span> Search by Description or Category (e.g. "Hall Rental").</li>
               </ul>
             </div>
           </div>
