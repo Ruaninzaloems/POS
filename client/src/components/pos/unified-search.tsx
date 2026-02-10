@@ -24,6 +24,10 @@ export function UnifiedSearch() {
       a.address.toLowerCase().includes(q)
     ).map(a => ({ type: 'ACCOUNT', data: a, label: `${a.accountNo} - ${a.name}` }));
 
+    // Mock Prepaid Meters (derived from accounts for prototype)
+    const prepaid = ACCOUNTS.filter(a => a.prepaidMeterNo && a.prepaidMeterNo.includes(q))
+       .map(a => ({ type: 'PREPAID', data: a, label: `Meter: ${a.prepaidMeterNo} (${a.name})` }));
+
     const di = DIRECT_INCOME_ITEMS.filter(d => 
       d.description.toLowerCase().includes(q) ||
       d.groupName.toLowerCase().includes(q)
@@ -37,7 +41,7 @@ export function UnifiedSearch() {
         c.scheduleNo.toLowerCase().includes(q)
     ).map(c => ({ type: 'CLEARANCE', data: c, label: `Clearance: ${c.scheduleNo}` }));
 
-    return [...accounts, ...di, ...groups, ...clearances].slice(0, 8);
+    return [...accounts, ...prepaid, ...di, ...groups, ...clearances].slice(0, 8);
   }, [searchQuery]);
 
   useEffect(() => {
@@ -83,6 +87,17 @@ export function UnifiedSearch() {
         amountToPay: item.price || 0,
         originalData: item
       };
+    } else if (result.type === 'PREPAID') {
+        const acc = result.data as Account;
+        newItem = {
+            id: crypto.randomUUID(),
+            type: 'PREPAID',
+            description: `Prepaid Recharge ${acc.prepaidMeterNo}`,
+            reference: acc.prepaidMeterNo!,
+            amountDue: 0,
+            amountToPay: 0, // Default to 0, user must enter
+            originalData: acc
+        }
     } else if (result.type === 'GROUP') {
         const group = result.data;
         // Logic to add all members would go here, simplified for now
@@ -146,11 +161,13 @@ export function UnifiedSearch() {
                 <div className={`
                   w-8 h-8 rounded-full flex items-center justify-center shrink-0
                   ${result.type === 'ACCOUNT' ? 'bg-blue-100 text-blue-600' : ''}
+                  ${result.type === 'PREPAID' ? 'bg-yellow-100 text-yellow-600' : ''}
                   ${result.type === 'DIRECT' ? 'bg-green-100 text-green-600' : ''}
                   ${result.type === 'GROUP' ? 'bg-purple-100 text-purple-600' : ''}
                   ${result.type === 'CLEARANCE' ? 'bg-amber-100 text-amber-600' : ''}
                 `}>
                   {result.type === 'ACCOUNT' && <Users className="w-4 h-4" />}
+                  {result.type === 'PREPAID' && <Zap className="w-4 h-4" />}
                   {result.type === 'DIRECT' && <CreditCard className="w-4 h-4" />}
                   {result.type === 'GROUP' && <Layers className="w-4 h-4" />}
                   {result.type === 'CLEARANCE' && <FileText className="w-4 h-4" />}

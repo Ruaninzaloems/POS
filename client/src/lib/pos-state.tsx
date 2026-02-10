@@ -63,21 +63,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const tenderTotal = payment.cash + payment.card;
   const changeDue = Math.max(0, payment.cash - (totalToPay - payment.card));
   
-  // Determine active transaction type based on first item (simplified for prototype)
-  const activeTransactionType: TransactionType = items.length > 0 ? items[0].type : 'NONE';
+  // Determine active transaction type
+  // If multiple items, it's automatically a multi-account/basket transaction
+  const activeTransactionType: TransactionType = items.length > 1 ? 'MULTI_ACCOUNT' : (items.length > 0 ? items[0].type : 'NONE');
 
   const addItem = (item: TransactionItem) => {
-    // Logic to enforce single transaction type vs multi-account
-    // For prototype, we'll just append, but in real app we might clear incompatible types
-    if (items.length > 0 && item.type !== 'MULTI_ACCOUNT' && items[0].type !== 'MULTI_ACCOUNT' && item.type !== items[0].type) {
-       // Replace if different type (simple mode)
-       setItems([item]);
-    } else {
-       setItems(prev => [...prev, item]);
-    }
-    
-    // Auto-set cash tender to total for quick workflow
-    // setPayment(p => ({ ...p, cash: 0, card: 0 })); 
+     setItems(prev => {
+        // Prevent duplicates for Accounts/Meters to avoid confusion in prototype
+        if (prev.find(i => i.id === item.id)) return prev;
+        return [...prev, item];
+     });
   };
 
   const removeItem = (id: string) => {
