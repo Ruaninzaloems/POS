@@ -131,47 +131,80 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
           </Button>
        </div>
 
-       {/* Service Type Balance Table */}
-       <SectionHeader title="Service Type Balance" />
+       {/* Total Balance/Debt Table */}
+       <SectionHeader title="Total Balance/Debt" />
        
        <div className="border border-gray-300 overflow-hidden text-xs">
-          <table className="w-full text-left">
-             <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-300">
+          <table className="w-full text-left border-collapse">
+             <thead className="bg-gray-100 text-gray-700 font-semibold border-b border-gray-300">
                <tr>
-                 <th className="p-2 border-r">Status ↑</th>
-                 <th className="p-2 border-r">Service Type ↑</th>
-                 <th className="p-2 border-r">Meter Classification ↑</th>
-                 <th className="p-2 border-r">Tariff ↑</th>
-                 <th className="p-2 border-r">Factor ↑</th>
-                 <th className="p-2 border-r">Meter No ↑</th>
-                 <th className="p-2 border-r">Physical Meter No ↑</th>
-                 <th className="p-2 border-r">Meter Book ↑</th>
-                 <th className="p-2">Route ↑</th>
+                 <th className="p-2 border-r border-gray-300">Service Description ↑</th>
+                 <th className="p-2 border-r border-gray-300 text-right">Total Outstanding Amount ↑</th>
+                 <th className="p-2 border-r border-gray-300 text-right">New Charge ↑</th>
+                 <th className="p-2 border-r border-gray-300 text-right">Current Account ↑</th>
+                 <th className="p-2 border-r border-gray-300 text-right">30 Days ↑</th>
+                 <th className="p-2 border-r border-gray-300 text-right">60 Days ↑</th>
+                 <th className="p-2 border-r border-gray-300 text-right">90 Days ↑</th>
+                 <th className="p-2 border-r border-gray-300 text-right">120 Days ↑</th>
+                 <th className="p-2 border-r border-gray-300 text-right">150 Days ↑</th>
+                 <th className="p-2 text-right">180+ Days ↑</th>
                </tr>
              </thead>
              <tbody>
-               <tr className="border-b last:border-0 hover:bg-blue-50">
-                 <td className="p-2 border-r">Inactive</td>
-                 <td className="p-2 border-r">Waste Disposal</td>
-                 <td className="p-2 border-r"></td>
-                 <td className="p-2 border-r">REFUS/REM/CONV-Grg Refus Rem Conv</td>
-                 <td className="p-2 border-r text-right">1.00</td>
-                 <td className="p-2 border-r"></td>
-                 <td className="p-2 border-r">No Meter</td>
-                 <td className="p-2 border-r">-</td>
-                 <td className="p-2"></td>
-               </tr>
-                <tr className="border-b last:border-0 hover:bg-blue-50">
-                 <td className="p-2 border-r">Active</td>
-                 <td className="p-2 border-r">Electricity</td>
-                 <td className="p-2 border-r">Prepaid</td>
-                 <td className="p-2 border-r">ELEC/DOM/PRE-Elec Dom Pre 60A</td>
-                 <td className="p-2 border-r text-right">1.00</td>
-                 <td className="p-2 border-r">12345</td>
-                 <td className="p-2 border-r">{account.prepaidMeterNo || 'No Meter'}</td>
-                 <td className="p-2 border-r">BK-01</td>
-                 <td className="p-2">RT-A</td>
-               </tr>
+               {account.agingBreakdown ? (
+                   <>
+                       {account.agingBreakdown.map((row, index) => (
+                           <tr key={index} className="border-b last:border-0 hover:bg-blue-50">
+                               <td className="p-2 border-r border-gray-200">{row.serviceDescription}</td>
+                               <td className="p-2 border-r border-gray-200 text-right">{row.totalOutstanding.toFixed(2)}</td>
+                               <td className="p-2 border-r border-gray-200 text-right">{row.newCharge.toFixed(2)}</td>
+                               <td className="p-2 border-r border-gray-200 text-right">{row.currentAccount.toFixed(2)}</td>
+                               <td className="p-2 border-r border-gray-200 text-right">{row.days30.toFixed(2)}</td>
+                               <td className="p-2 border-r border-gray-200 text-right">{row.days60.toFixed(2)}</td>
+                               <td className="p-2 border-r border-gray-200 text-right">{row.days90.toFixed(2)}</td>
+                               <td className="p-2 border-r border-gray-200 text-right">{row.days120.toFixed(2)}</td>
+                               <td className="p-2 border-r border-gray-200 text-right">{row.days150.toFixed(2)}</td>
+                               <td className="p-2 text-right">{row.days180Plus.toFixed(2)}</td>
+                           </tr>
+                       ))}
+                       <tr className="bg-gray-100 font-bold border-t border-gray-300">
+                           <td className="p-2 border-r border-gray-300"></td>
+                           <td className="p-2 border-r border-gray-300 text-right">{account.outstandingAmount.toFixed(2)}</td>
+                           <td className="p-2 border-r border-gray-300 text-right">0.00</td>
+                           <td className="p-2 border-r border-gray-300 text-right">
+                               {account.agingBreakdown.reduce((sum, item) => sum + item.currentAccount, 0).toFixed(2)}
+                           </td>
+                           <td className="p-2 border-r border-gray-300 text-right">
+                               {account.agingBreakdown.reduce((sum, item) => sum + item.days30, 0).toFixed(2)}
+                           </td>
+                           <td className="p-2 border-r border-gray-300 text-right">
+                               {account.agingBreakdown.reduce((sum, item) => sum + item.days60, 0).toFixed(2)}
+                           </td>
+                           <td className="p-2 border-r border-gray-300 text-right">
+                               {account.agingBreakdown.reduce((sum, item) => sum + item.days90, 0).toFixed(2)}
+                           </td>
+                           <td className="p-2 border-r border-gray-300 text-right">0.00</td>
+                           <td className="p-2 border-r border-gray-300 text-right">0.00</td>
+                           <td className="p-2 text-right">
+                               {account.agingBreakdown.reduce((sum, item) => sum + item.days180Plus, 0).toFixed(2)}
+                           </td>
+                       </tr>
+                   </>
+               ) : (
+                    // Fallback if no aging data (simplified row)
+                    <tr className="border-b last:border-0 hover:bg-blue-50">
+                        <td className="p-2 border-r border-gray-200">Balance B/F</td>
+                        <td className="p-2 border-r border-gray-200 text-right">{account.outstandingAmount.toFixed(2)}</td>
+                        <td className="p-2 border-r border-gray-200 text-right">0.00</td>
+                        <td className="p-2 border-r border-gray-200 text-right">{account.outstandingAmount.toFixed(2)}</td>
+                        <td className="p-2 border-r border-gray-200 text-right">0.00</td>
+                        <td className="p-2 border-r border-gray-200 text-right">0.00</td>
+                        <td className="p-2 border-r border-gray-200 text-right">0.00</td>
+                        <td className="p-2 border-r border-gray-200 text-right">0.00</td>
+                        <td className="p-2 border-r border-gray-200 text-right">0.00</td>
+                        <td className="p-2 text-right">0.00</td>
+                    </tr>
+               )}
              </tbody>
           </table>
        </div>

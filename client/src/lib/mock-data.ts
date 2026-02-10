@@ -18,6 +18,20 @@ export interface Account {
   deliveryAddress?: string;
   valuationCategory?: string;
   marketValue?: number;
+  agingBreakdown?: AgingItem[];
+}
+
+export interface AgingItem {
+  serviceDescription: string;
+  totalOutstanding: number;
+  newCharge: number;
+  currentAccount: number;
+  days30: number;
+  days60: number;
+  days90: number;
+  days120: number;
+  days150: number;
+  days180Plus: number;
 }
 
 // SEED DATA
@@ -29,7 +43,7 @@ export const ACCOUNTS: Account[] = [
     idNo: "8001015009087",
     sgNo: "C077/0001/00000846/00000",
     address: "846 Berlyn Street, Haarlem, Uniondale",
-    outstandingAmount: 1540.50,
+    outstandingAmount: 13436.54,
     prepaidMeterNo: "14253647586",
     prepaidType: "Electricity",
     email: "gmoemailadres@gmail.com",
@@ -40,7 +54,45 @@ export const ACCOUNTS: Account[] = [
     status: "Active",
     deliveryAddress: "Posbus 12, George, 6530",
     valuationCategory: "Individual Use",
-    marketValue: 146000.00
+    marketValue: 146000.00,
+    agingBreakdown: [
+      {
+        serviceDescription: "Waste Disposal",
+        totalOutstanding: 7996.32,
+        newCharge: 0.00,
+        currentAccount: 100.94,
+        days30: 100.94,
+        days60: 100.94,
+        days90: 0.00,
+        days120: 0.00,
+        days150: 0.00,
+        days180Plus: 7693.50
+      },
+      {
+        serviceDescription: "Sewer/Stank/Conv - Grg Sewer Stank Conv",
+        totalOutstanding: 865.99,
+        newCharge: 0.00,
+        currentAccount: 7.21,
+        days30: 7.21,
+        days60: 7.21,
+        days90: 0.00,
+        days120: 0.00,
+        days150: 0.00,
+        days180Plus: 844.36
+      },
+      {
+        serviceDescription: "Sewer/Treat/Conv - Grg Sewer Treat Conv",
+        totalOutstanding: 4574.23,
+        newCharge: 0.00,
+        currentAccount: 31.26,
+        days30: 31.26,
+        days60: 31.26,
+        days90: 0.00,
+        days120: 0.00,
+        days150: 0.00,
+        days180Plus: 4480.45
+      }
+    ]
   },
   {
     accountNo: "ACC-1002",
@@ -57,7 +109,21 @@ export const ACCOUNTS: Account[] = [
     status: "Active",
     unitId: "42005",
     valuationCategory: "Individual Use",
-    marketValue: 950000.00
+    marketValue: 950000.00,
+    agingBreakdown: [
+        {
+        serviceDescription: "Water Usage",
+        totalOutstanding: 250.00,
+        newCharge: 50.00,
+        currentAccount: 50.00,
+        days30: 50.00,
+        days60: 50.00,
+        days90: 50.00,
+        days120: 0.00,
+        days150: 0.00,
+        days180Plus: 0.00
+      }
+    ]
   },
   {
     accountNo: "ACC-1003",
