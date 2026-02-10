@@ -1,3 +1,35 @@
+
+export interface EasyPayBill {
+  id: string;
+  reference: string;
+  billerName: string;
+  accountName: string;
+  amount: number;
+  dueDate: string;
+  status: "unpaid" | "paid";
+}
+
+export const mockEasyPayQuery = async (reference: string): Promise<EasyPayBill> => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      // Simulate simple validation - succeed if reference > 5 chars
+      if (reference.length > 5) {
+        resolve({
+          id: `ep-${Math.random().toString(36).substr(2, 9)}`,
+          reference: reference,
+          billerName: "City of Cape Town",
+          accountName: "J. Smith (Erf 4921)",
+          amount: Math.floor(Math.random() * 5000) + 100, // Random amount between 100-5100
+          dueDate: new Date().toISOString().split("T")[0],
+          status: "unpaid"
+        });
+      } else {
+        reject(new Error("Invalid reference"));
+      }
+    }, 1500);
+  });
+};
+
 export interface Account {
   accountNo: string;
   name: string;
