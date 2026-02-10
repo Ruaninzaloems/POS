@@ -3,6 +3,16 @@ import { CURRENT_CASHIER } from '@/lib/mock-data';
 import { LayoutDashboard, LogOut, Printer, History, Search, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link, useLocation } from "wouter";
+import { usePos } from '@/lib/pos-state';
+import { CASHIERS } from '@/lib/mock-data';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuLabel, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
 
 interface PosLayoutProps {
   children: React.ReactNode;
@@ -10,6 +20,7 @@ interface PosLayoutProps {
 
 export function PosLayout({ children }: PosLayoutProps) {
   const [location, setLocation] = useLocation();
+  const { currentUser, switchUser } = usePos();
 
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden">
@@ -40,13 +51,37 @@ export function PosLayout({ children }: PosLayoutProps) {
         </div>
 
         <div className="flex items-center gap-4">
-           <div className="flex flex-col items-end text-sm leading-tight">
-             <span className="font-medium">{CURRENT_CASHIER.name}</span>
-             <span className="text-xs text-muted-foreground">{CURRENT_CASHIER.cashOffice}</span>
-           </div>
-           <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground text-xs font-mono border">
-             {CURRENT_CASHIER.id}
-           </div>
+           {/* User Switcher for Prototype */}
+           <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-auto p-1 pr-3 flex items-center gap-3 hover:bg-muted rounded-full border border-transparent hover:border-border">
+                   <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground text-xs font-mono border">
+                     {currentUser.id.split('-')[1]}
+                   </div>
+                   <div className="flex flex-col items-start text-sm leading-tight mr-1">
+                     <span className="font-medium">{currentUser.name}</span>
+                     <span className="text-xs text-muted-foreground">{currentUser.cashOffice}</span>
+                   </div>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Switch User (Prototype)</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {CASHIERS.map(cashier => (
+                  <DropdownMenuItem 
+                    key={cashier.id} 
+                    onClick={() => switchUser(cashier.id)}
+                    className="flex flex-col items-start gap-1 cursor-pointer"
+                  >
+                    <span className="font-medium">{cashier.name}</span>
+                    <span className="text-xs text-muted-foreground">{cashier.cashOffice}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+           </DropdownMenu>
+
+           <div className="h-6 w-px bg-border" />
+
            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
              <LogOut className="w-4 h-4" />
            </Button>

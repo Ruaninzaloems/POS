@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useMemo } from 'react';
-import { Account, DirectIncomeItem, ClearanceCostSchedule, ACCOUNTS, DIRECT_INCOME_ITEMS, ACCOUNT_GROUPS, CLEARANCES, AccountGroup } from './mock-data';
+import { Account, DirectIncomeItem, ClearanceCostSchedule, ACCOUNTS, DIRECT_INCOME_ITEMS, ACCOUNT_GROUPS, CLEARANCES, AccountGroup, CASHIERS } from './mock-data';
 
 export type TransactionType = 
   | 'CONSUMER_SERVICES' 
@@ -11,7 +11,13 @@ export type TransactionType =
   | 'NONE';
 
 export type TransactionStatus = 'COMPLETED' | 'CANCELLED' | 'RECONCILED';
-export type DayEndStatus = 'OPEN' | 'RECONCILED';
+export type DayEndStatus = 'OPEN' | 'PENDING_APPROVAL' | 'RETURNED' | 'RECONCILED' | 'NOT_SUBMITTED';
+
+export interface CashierProfile {
+    id: string;
+    name: string;
+    cashOffice: string;
+}
 
 export interface TransactionRecord {
   id: string;
@@ -43,6 +49,7 @@ export interface TransactionItem {
 }
 
 interface PosState {
+  currentUser: CashierProfile;
   activeTransactionType: TransactionType;
   transactionItems: TransactionItem[];
   payment: {
@@ -60,6 +67,7 @@ interface PosState {
 }
 
 interface PosActions {
+  switchUser: (cashierId: string) => void;
   setSearchQuery: (query: string) => void;
   addItem: (item: TransactionItem) => void;
   removeItem: (id: string) => void;
@@ -83,6 +91,7 @@ export const usePos = () => {
 };
 
 export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [currentUser, setCurrentUser] = useState<CashierProfile>(CASHIERS[0]);
   const [items, setItems] = useState<TransactionItem[]>([]);
   const [payment, setPayment] = useState({ cash: 0, card: 0 });
   const [searchQuery, setSearchQuery] = useState('');
@@ -111,6 +120,21 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   } else if (items.length > 0) {
       activeTransactionType = items[0].type;
   }
+
+  const switchUser = (cashierId: string) => {
+      const cashier = CASHIERS.find(c => c.id === cashierId);
+      if (cashier) {
+          setCurrentUser(cashier);
+          // In a real app, we would load that cashier's active session here
+          // For prototype, we'll just reset the session slightly to simulate a switch
+          setItems([]);
+          setSearchQuery('');
+          setDayEndStatus('OPEN');
+          setDayEndReturnReason('');
+          setRecentTransactions([]);
+          setPayment({ cash: 0, card: 0 });
+      }
+  };
 
   const addItem = (item: TransactionItem) => {
      setItems(prev => {
@@ -185,6 +209,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   
   return (
     <PosContext.Provider value={{
+      currentUser,
       activeTransactionType,
       transactionItems: items,
       // ... (keep payment)
@@ -200,6 +225,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       recentTransactions,
       dayEndStatus,
       dayEndReturnReason,
+      switchUser,
       setSearchQuery,
       addItem,
       removeItem,

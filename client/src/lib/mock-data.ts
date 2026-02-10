@@ -263,3 +263,11 @@ export const CURRENT_CASHIER = {
   },
   float: 500.00
 };
+
+export const CASHIERS = [
+  { id: "CSH-01", name: "Sarah Jenkins", cashOffice: "Main Civic Center" },
+  { id: "CSH-02", name: "John Doe", cashOffice: "Main Civic Center" },
+  { id: "CSH-03", name: "Emily Davis", cashOffice: "Traffic Dept" },
+  { id: "CSH-04", name: "Michael Brown", cashOffice: "Traffic Dept" },
+  { id: "CSH-05", name: "Jessica Wilson", cashOffice: "Main Civic Center" }
+];
