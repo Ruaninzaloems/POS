@@ -1,13 +1,16 @@
 import React from 'react';
 import { CURRENT_CASHIER } from '@/lib/mock-data';
-import { LayoutDashboard, LogOut, Printer, History, Search } from 'lucide-react';
+import { LayoutDashboard, LogOut, Printer, History, Search, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Link, useLocation } from "wouter";
 
 interface PosLayoutProps {
   children: React.ReactNode;
 }
 
 export function PosLayout({ children }: PosLayoutProps) {
+  const [location, setLocation] = useLocation();
+
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden">
       {/* Top Bar */}
@@ -21,18 +24,18 @@ export function PosLayout({ children }: PosLayoutProps) {
           </div>
           <div className="h-6 w-px bg-border mx-2" />
           <nav className="flex items-center gap-1">
-             <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
-               <LayoutDashboard className="w-4 h-4" />
-               Receipting
-             </Button>
-             <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
-               <Search className="w-4 h-4" />
-               Enquiries
-             </Button>
-             <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
-               <History className="w-4 h-4" />
-               Recent
-             </Button>
+             <Link href="/">
+                <Button variant={location === '/' ? 'secondary' : 'ghost'} size="sm" className="gap-2">
+                  <LayoutDashboard className="w-4 h-4" />
+                  Receipting
+                </Button>
+             </Link>
+             <Link href="/supervisor">
+                <Button variant={location === '/supervisor' ? 'secondary' : 'ghost'} size="sm" className="gap-2">
+                  <ShieldCheck className="w-4 h-4" />
+                  Supervisor
+                </Button>
+             </Link>
           </nav>
         </div>
 
