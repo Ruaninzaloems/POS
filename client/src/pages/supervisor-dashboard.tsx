@@ -24,7 +24,8 @@ import {
   Lock,
   RotateCcw,
   Eye,
-  Filter
+  Filter,
+  Download
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -117,6 +118,69 @@ const MOCK_SHIFTS: CashierShift[] = [
     transactionCount: 38
   }
 ];
+
+// Add function to generate report data
+function generateReportData(shift: CashierShift) {
+  // Generate mock detailed transactions for the report since we don't have them in the shift object
+  const types = ['Consumer Services', 'Prepaid Electricity', 'Prepaid Water', 'Direct Income', 'Clearance'];
+  const transactions = [];
+  
+  // Create ~20 random transactions
+  for(let i=0; i<20; i++) {
+    const type = types[Math.floor(Math.random() * types.length)];
+    const amount = Math.floor(Math.random() * 500) + 50;
+    transactions.push({
+      receiptNo: `REC-${10000 + i}`,
+      time: format(new Date(), 'HH:mm:ss'),
+      type,
+      description: `${type} Payment`,
+      amount: amount
+    });
+  }
+  
+  return transactions;
+}
+
+// Add function to download CSV
+function downloadReport(shift: CashierShift) {
+  const transactions = generateReportData(shift);
+  
+  // Group by Type
+  const groups: Record<string, typeof transactions> = {};
+  transactions.forEach(tx => {
+    if(!groups[tx.type]) groups[tx.type] = [];
+    groups[tx.type].push(tx);
+  });
+  
+  // Build CSV Content
+  let csvContent = "data:text/csv;charset=utf-8,";
+  csvContent += "Transaction Report\n";
+  csvContent += `Cashier,${shift.cashierName}\n`;
+  csvContent += `Office,${shift.cashOffice}\n`;
+  csvContent += `Date,${format(new Date(shift.startTime), 'yyyy-MM-dd')}\n\n`;
+  
+  Object.entries(groups).forEach(([type, txs]) => {
+    csvContent += `TYPE: ${type}\n`;
+    csvContent += "Receipt No,Time,Description,Amount\n";
+    
+    let groupTotal = 0;
+    txs.forEach(tx => {
+      csvContent += `${tx.receiptNo},${tx.time},${tx.description},${tx.amount.toFixed(2)}\n`;
+      groupTotal += tx.amount;
+    });
+    
+    csvContent += `,,TOTAL ${type.toUpperCase()},${groupTotal.toFixed(2)}\n\n`;
+  });
+  
+  // Trigger Download
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `day_end_report_${shift.cashierName.replace(' ', '_')}_${format(new Date(), 'yyyyMMdd')}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
 
 export default function SupervisorDashboard() {
   const [reconMode, setReconMode] = useState<ReconMode>('PER_CASHIER');
@@ -471,7 +535,15 @@ export default function SupervisorDashboard() {
                   <div className="border rounded-lg overflow-hidden mt-2">
                        <div className="bg-gray-50 px-4 py-2 border-b text-xs font-semibold text-muted-foreground flex justify-between items-center">
                            <span>TRANSACTION SUMMARY</span>
-                           <Button variant="link" className="h-auto p-0 text-xs">View Full Audit Log</Button>
+                           <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="h-7 text-xs gap-1 bg-white"
+                              onClick={() => downloadReport(selectedShift)}
+                           >
+                              <Download className="w-3 h-3" />
+                              Export Report
+                           </Button>
                        </div>
                        <div className="max-h-[150px] overflow-y-auto">
                            <Table>
