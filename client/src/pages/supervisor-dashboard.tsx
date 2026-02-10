@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { usePos } from '@/lib/pos-state';
+import { PosLayout } from '@/components/layout/pos-layout';
 
 // Types
 type DayEndStatus = 'NOT_SUBMITTED' | 'PENDING_APPROVAL' | 'RETURNED' | 'COMPLETED';
@@ -256,7 +257,8 @@ export default function SupervisorDashboard() {
   }, [filteredShifts, reconMode]);
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 space-y-6">
+    <PosLayout>
+    <div className="h-full overflow-y-auto bg-slate-50 p-6 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Supervisor Dashboard</h1>
@@ -731,6 +733,7 @@ export default function SupervisorDashboard() {
           </Dialog>
       )}
     </div>
+    </PosLayout>
   );
 }
 

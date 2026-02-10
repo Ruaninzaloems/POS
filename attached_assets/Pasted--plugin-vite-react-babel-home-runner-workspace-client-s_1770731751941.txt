@@ -1,0 +1,36 @@
+[plugin:vite:react-babel] /home/runner/workspace/client/src/pages/supervisor-dashboard.tsx: Unexpected token, expected "}" (739:41)
+  742 |             return <Badge variant="outline" className="text-gray-500 border-gray-300">Open</Badge>;
+/home/runner/workspace/client/src/pages/supervisor-dashboard.tsx:739:41
+737 |  }
+738 |  
+739 |  function StatusBadge({ status }: { status: DayEndStatus }) {
+    |                                           ^
+740 |      switch (status) {
+741 |          case 'NOT_SUBMITTED':
+    at constructor (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:365:19)
+    at TypeScriptParserMixin.raise (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:6599:19)
+    at TypeScriptParserMixin.unexpected (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:6619:16)
+    at TypeScriptParserMixin.expect (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:6899:12)
+    at TypeScriptParserMixin.jsxParseExpressionContainer (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:4637:10)
+    at TypeScriptParserMixin.jsxParseElementAt (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:4711:36)
+    at TypeScriptParserMixin.jsxParseElement (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:4749:17)
+    at TypeScriptParserMixin.parseExprAtom (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:4759:19)
+    at TypeScriptParserMixin.parseExprSubscripts (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:11071:23)
+    at TypeScriptParserMixin.parseUpdate (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:11056:21)
+    at TypeScriptParserMixin.parseMaybeUnary (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:11036:23)
+    at TypeScriptParserMixin.parseMaybeUnary (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:9827:18)
+    at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:10889:61)
+    at TypeScriptParserMixin.parseExprOps (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:10894:23)
+    at TypeScriptParserMixin.parseMaybeConditional (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:10871:23)
+    at TypeScriptParserMixin.parseMaybeAssign (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:10821:21)
+    at /home/runner/workspace/node_modules/@babel/parser/lib/index.js:9765:39
+    at TypeScriptParserMixin.tryParse (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:6907:20)
+    at TypeScriptParserMixin.parseMaybeAssign (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:9765:18)
+    at /home/runner/workspace/node_modules/@babel/parser/lib/index.js:10790:39
+    at TypeScriptParserMixin.allowInAnd (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:12416:12)
+    at TypeScriptParserMixin.parseMaybeAssignAllowIn (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:10790:17)
+    at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:12483:17)
+    at TypeScriptParserMixin.parseParenAndDistinguishExpression (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:11665:28)
+    at TypeScriptParserMixin.parseExprAtom (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:11321:23)
+    at TypeScriptParserMixin.parseExprAtom (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:4764:20)
+    at TypeScriptParserMixin.parseExprSubscripts (/home/runner/workspace/node_modules/@babel/parser/lib/index.js:11071:23)
