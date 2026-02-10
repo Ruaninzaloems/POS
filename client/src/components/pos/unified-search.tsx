@@ -29,12 +29,24 @@ export function UnifiedSearch() {
       a.accountNo.toLowerCase().includes(q) || 
       a.name.toLowerCase().includes(q) ||
       a.idNo.includes(q) ||
-      a.address.toLowerCase().includes(q)
+      a.address.toLowerCase().includes(q) ||
+      (a.sgNo && a.sgNo.toLowerCase().includes(q)) ||
+      (a.oldCode && a.oldCode.toLowerCase().includes(q))
     ).map(a => ({ type: 'ACCOUNT', data: a, label: `${a.accountNo} - ${a.name}` }));
 
     // Mock Prepaid Meters (derived from accounts for prototype)
-    const prepaid = ACCOUNTS.filter(a => a.prepaidMeterNo && a.prepaidMeterNo.includes(q))
-       .map(a => ({ type: 'PREPAID', data: a, label: `${a.prepaidType || 'Meter'}: ${a.prepaidMeterNo} (${a.name})` }));
+    // Extended search to find meters by owner details too
+    const prepaid = ACCOUNTS.filter(a => 
+        a.prepaidMeterNo && (
+            a.prepaidMeterNo.includes(q) ||
+            a.name.toLowerCase().includes(q) ||
+            a.accountNo.toLowerCase().includes(q) ||
+            a.address.toLowerCase().includes(q) ||
+            (a.sgNo && a.sgNo.toLowerCase().includes(q)) ||
+            (a.oldCode && a.oldCode.toLowerCase().includes(q)) ||
+            a.idNo.includes(q)
+        )
+    ).map(a => ({ type: 'PREPAID', data: a, label: `${a.prepaidType || 'Meter'}: ${a.prepaidMeterNo} (${a.name})` }));
 
     const di = DIRECT_INCOME_ITEMS.filter(d => 
       d.description.toLowerCase().includes(q) ||
@@ -221,8 +233,8 @@ export function UnifiedSearch() {
             <div className="text-sm text-muted-foreground space-y-2">
               <p>The unified search bar supports multiple formats:</p>
               <ul className="list-disc pl-4 space-y-1">
-                <li><span className="font-semibold text-foreground">Accounts:</span> Search by Name, Account No, or ID.</li>
-                <li><span className="font-semibold text-foreground">Prepaid:</span> Type a Meter Number (e.g. "1425..." or "W-987...")</li>
+                <li><span className="font-semibold text-foreground">Accounts:</span> Search by Name, Account No, ID No, SG No, Old Code, or Address.</li>
+                <li><span className="font-semibold text-foreground">Prepaid:</span> Search by Meter No or Owner Details.</li>
                 <li><span className="font-semibold text-foreground">Groups:</span> Type a Group Name (e.g. "Sunset" or "Hilltop") to load all members.</li>
                 <li><span className="font-semibold text-foreground">Clearance:</span> Type a Schedule No (e.g. "CLR-2023").</li>
               </ul>
