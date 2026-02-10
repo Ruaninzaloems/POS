@@ -155,26 +155,26 @@ export function UnifiedSearch() {
             {results.map((result, idx) => (
               <button
                 key={idx}
-                className="w-full text-left px-4 py-3 hover:bg-muted/50 focus:bg-muted focus:outline-none flex items-center gap-3 transition-colors group"
+                className="w-full text-left px-4 py-4 hover:bg-muted/50 focus:bg-muted focus:outline-none flex items-center gap-4 transition-colors group border-b last:border-0"
                 onClick={() => handleSelect(result)}
               >
                 <div className={`
-                  w-8 h-8 rounded-full flex items-center justify-center shrink-0
+                  w-12 h-12 rounded-full flex items-center justify-center shrink-0 shadow-sm
                   ${result.type === 'ACCOUNT' ? 'bg-blue-100 text-blue-600' : ''}
                   ${result.type === 'PREPAID' ? 'bg-yellow-100 text-yellow-600' : ''}
                   ${result.type === 'DIRECT' ? 'bg-green-100 text-green-600' : ''}
                   ${result.type === 'GROUP' ? 'bg-purple-100 text-purple-600' : ''}
                   ${result.type === 'CLEARANCE' ? 'bg-amber-100 text-amber-600' : ''}
                 `}>
-                  {result.type === 'ACCOUNT' && <Users className="w-4 h-4" />}
-                  {result.type === 'PREPAID' && <Zap className="w-4 h-4" />}
-                  {result.type === 'DIRECT' && <CreditCard className="w-4 h-4" />}
-                  {result.type === 'GROUP' && <Layers className="w-4 h-4" />}
-                  {result.type === 'CLEARANCE' && <FileText className="w-4 h-4" />}
+                  {result.type === 'ACCOUNT' && <Users className="w-6 h-6" />}
+                  {result.type === 'PREPAID' && <Zap className="w-6 h-6" />}
+                  {result.type === 'DIRECT' && <CreditCard className="w-6 h-6" />}
+                  {result.type === 'GROUP' && <Layers className="w-6 h-6" />}
+                  {result.type === 'CLEARANCE' && <FileText className="w-6 h-6" />}
                 </div>
                 <div>
-                  <div className="font-medium group-hover:text-primary transition-colors">{result.label}</div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="font-semibold text-lg group-hover:text-primary transition-colors">{result.label}</div>
+                  <div className="text-sm text-muted-foreground">
                     {result.type === 'ACCOUNT' && (result.data as any).address}
                     {result.type === 'DIRECT' && (result.data as any).scoaItem}
                   </div>
