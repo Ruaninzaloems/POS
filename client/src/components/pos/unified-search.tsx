@@ -1,18 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, CreditCard, Users, Zap, FileText, Layers, Info } from 'lucide-react';
+import { Search, CreditCard, Users, Zap, FileText, Layers, Info, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ACCOUNTS, DIRECT_INCOME_ITEMS, ACCOUNT_GROUPS, CLEARANCES, Account } from '@/lib/mock-data';
 import { usePos, TransactionItem } from '@/lib/pos-state';
+import { ConsumerSearchForm } from './consumer-search-form';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 
 export function UnifiedSearch() {
   const { searchQuery, setSearchQuery, addItem, clearTransaction } = usePos();
   const [isOpen, setIsOpen] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -145,6 +148,38 @@ export function UnifiedSearch() {
     setIsOpen(false);
   };
 
+  const handleAdvancedSearch = (criteria: any) => {
+      // Mock search logic for prototype
+      // In a real app, this would call an API with the specific criteria
+      console.log("Searching with criteria:", criteria);
+      
+      // For demo, just find first account matching any field
+      const found = ACCOUNTS.find(a => 
+          (criteria.accountNo && a.accountNo.includes(criteria.accountNo)) ||
+          (criteria.name && a.name.toLowerCase().includes(criteria.name.toLowerCase())) ||
+          (criteria.idNo && a.idNo.includes(criteria.idNo))
+      );
+
+      if (found) {
+          handleSelect({ type: 'ACCOUNT', data: found, label: `${found.accountNo} - ${found.name}` });
+          setShowAdvanced(false);
+      } else {
+          // Maybe show a toast or error? For now just log
+          alert("No accounts found matching criteria (Mock Data Limited)");
+      }
+  };
+
+  if (showAdvanced) {
+      return (
+          <div className="w-full max-w-4xl mx-auto">
+              <ConsumerSearchForm 
+                  onSearch={handleAdvancedSearch} 
+                  onCancel={() => setShowAdvanced(false)} 
+              />
+          </div>
+      )
+  }
+
   return (
     <div className="relative w-full max-w-2xl z-50 flex gap-2" ref={wrapperRef}>
       <div className="relative flex-1">
@@ -163,6 +198,16 @@ export function UnifiedSearch() {
             </kbd>
         </div>
       </div>
+
+      <Button 
+        variant="outline" 
+        size="icon" 
+        className="h-12 w-12 shrink-0 border-primary/20 bg-background"
+        onClick={() => setShowAdvanced(true)}
+        title="Advanced Search"
+      >
+        <Filter className="h-5 w-5 text-muted-foreground" />
+      </Button>
 
       <Popover>
         <PopoverTrigger asChild>
