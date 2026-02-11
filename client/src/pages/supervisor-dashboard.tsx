@@ -272,7 +272,17 @@ export default function SupervisorDashboard() {
     const matchesOffice = filterOffice === 'All' || shift.cashOffice === filterOffice;
     const matchesSearch = shift.cashierName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesVariance = !filterVariance || (shift.variance?.total || 0) !== 0;
-    const matchesStatus = filterStatus === 'All' || shift.status === filterStatus;
+    
+    // Status Logic
+    const matchesStatus = filterStatus === 'All' 
+        ? (
+            shift.status !== 'COMPLETED' || 
+            (shift.status === 'COMPLETED' && isWithinInterval(new Date(shift.startTime), { 
+                start: new Date(new Date().setHours(0,0,0,0)), 
+                end: new Date() 
+            }))
+          )
+        : shift.status === filterStatus;
     
     let matchesDate = true;
     if (filterDate === 'Today') {
@@ -623,22 +633,6 @@ export default function SupervisorDashboard() {
                           <h4 className="font-medium text-sm border-b pb-2">Filter Shifts</h4>
                           
                           <div className="space-y-2">
-                              <Label htmlFor="status">Shift Status</Label>
-                              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                                  <SelectTrigger id="status">
-                                      <SelectValue placeholder="All Statuses" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                      <SelectItem value="All">All Statuses</SelectItem>
-                                      <SelectItem value="PENDING_APPROVAL">Pending Approval</SelectItem>
-                                      <SelectItem value="COMPLETED">Completed</SelectItem>
-                                      <SelectItem value="RETURNED">Returned</SelectItem>
-                                      <SelectItem value="NOT_SUBMITTED">Not Submitted</SelectItem>
-                                  </SelectContent>
-                              </Select>
-                          </div>
-
-                          <div className="space-y-2">
                               <Label htmlFor="date">Date Period</Label>
                               <Select value={filterDate} onValueChange={setFilterDate}>
                                   <SelectTrigger id="date">
@@ -676,6 +670,22 @@ export default function SupervisorDashboard() {
               </Popover>
           </Button>
       </div>
+      
+      {/* Quick Status Filters */}
+      <Tabs value={filterStatus} onValueChange={setFilterStatus} className="w-full">
+        <TabsList className="bg-white border w-full justify-start h-auto p-1 flex-wrap gap-1">
+            <TabsTrigger value="All" className="data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900">
+                All Active
+            </TabsTrigger>
+            <TabsTrigger value="PENDING_APPROVAL" className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">
+                Pending Approval
+                {pendingCount > 0 && <Badge variant="secondary" className="ml-2 h-4 px-1 text-[10px] bg-blue-100 text-blue-700 hover:bg-blue-100">{pendingCount}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="NOT_SUBMITTED" className="data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900">Not Submitted</TabsTrigger>
+            <TabsTrigger value="RETURNED" className="data-[state=active]:bg-red-50 data-[state=active]:text-red-700">Returned</TabsTrigger>
+            <TabsTrigger value="COMPLETED" className="data-[state=active]:bg-green-50 data-[state=active]:text-green-700">Completed</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {reconMode === 'PER_CASHIER' ? (
           <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
