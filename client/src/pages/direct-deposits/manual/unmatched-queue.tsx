@@ -5,18 +5,56 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, ArrowRight, Filter, Banknote, FileSpreadsheet, FileText } from 'lucide-react';
+import { Search, ArrowRight, Filter, Banknote, FileSpreadsheet, FileText, X } from 'lucide-react';
 import { MOCK_BANK_TRANSACTIONS } from '@/lib/direct-deposits-data';
 import { filterUnmatchedTransactions } from '@/lib/direct-deposits-logic';
 import { Link, useLocation } from 'wouter';
-import { format } from 'date-fns';
+import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function UnmatchedQueue() {
   const [searchTerm, setSearchTerm] = useState('');
   const [transactions] = useState(MOCK_BANK_TRANSACTIONS);
   const [, setLocation] = useLocation();
 
-  const filtered = filterUnmatchedTransactions(transactions, searchTerm);
+  // Advanced Filters
+  const [txnDateFrom, setTxnDateFrom] = useState('');
+  const [txnDateTo, setTxnDateTo] = useState('');
+  const [bankAccountFilter, setBankAccountFilter] = useState('ALL');
+
+  // Logic to get unique bank accounts for filter
+  const uniqueBankAccounts = Array.from(new Set(transactions.map(t => t.bankAccount)));
+
+  const filtered = filterUnmatchedTransactions(transactions, searchTerm).filter(item => {
+      // Date Filter
+      let matchesDate = true;
+      if (txnDateFrom && txnDateTo) {
+          const date = new Date(item.transactionDate);
+          matchesDate = isWithinInterval(date, { 
+              start: startOfDay(parseISO(txnDateFrom)), 
+              end: endOfDay(parseISO(txnDateTo)) 
+          });
+      }
+
+      // Bank Account Filter
+      let matchesBank = true;
+      if (bankAccountFilter !== 'ALL') {
+          matchesBank = item.bankAccount === bankAccountFilter;
+      }
+
+      return matchesDate && matchesBank;
+  });
+  
+  const activeFiltersCount = [txnDateFrom, bankAccountFilter !== 'ALL'].filter(Boolean).length;
+
+  const clearFilters = () => {
+      setTxnDateFrom('');
+      setTxnDateTo('');
+      setBankAccountFilter('ALL');
+      setSearchTerm('');
+  };
 
   const handleDownload = (format: 'excel' | 'pdf') => {
       // Mock download functionality
@@ -60,9 +98,52 @@ export default function UnmatchedQueue() {
                   onChange={e => setSearchTerm(e.target.value)}
                 />
              </div>
-             <Button variant="outline" className="gap-2">
-                <Filter className="w-4 h-4" /> Filter
-             </Button>
+             
+             <Popover>
+                <PopoverTrigger asChild>
+                    <Button variant="outline" className={`gap-2 ${activeFiltersCount > 0 ? 'bg-slate-100 border-slate-300' : ''}`}>
+                        <Filter className="w-4 h-4" /> 
+                        {activeFiltersCount > 0 ? `${activeFiltersCount} Filters` : 'Filter'}
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-4" align="start">
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center border-b pb-2">
+                            <h4 className="font-medium text-sm">Filter Options</h4>
+                            {activeFiltersCount > 0 && (
+                                <Button variant="ghost" size="sm" className="h-auto p-0 text-xs text-muted-foreground hover:text-red-600" onClick={clearFilters}>
+                                    Clear all
+                                </Button>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-xs">Transaction Date Range</Label>
+                            <div className="flex gap-2">
+                                <Input type="date" className="h-8 text-xs" value={txnDateFrom} onChange={(e) => setTxnDateFrom(e.target.value)} />
+                                <span className="text-muted-foreground">-</span>
+                                <Input type="date" className="h-8 text-xs" value={txnDateTo} onChange={(e) => setTxnDateTo(e.target.value)} />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-xs">Bank Account</Label>
+                            <Select value={bankAccountFilter} onValueChange={setBankAccountFilter}>
+                                <SelectTrigger className="h-8 text-xs">
+                                    <SelectValue placeholder="All Accounts" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="ALL">All Accounts</SelectItem>
+                                    {uniqueBankAccounts.map(account => (
+                                        <SelectItem key={account} value={account}>{account}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                </PopoverContent>
+             </Popover>
+
              <div className="h-10 w-px bg-slate-200 mx-2" />
              <Button variant="outline" size="icon" title="Export Excel" onClick={() => handleDownload('excel')}>
                 <FileSpreadsheet className="w-4 h-4 text-green-600" />
