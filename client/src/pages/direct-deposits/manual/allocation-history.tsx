@@ -24,7 +24,7 @@ export default function AllocationHistory() {
   const selectedAllocation = selectedTx ? getAllocationDetails(selectedTx.id) : null;
 
   const handlePrint = useReactToPrint({
-    content: () => receiptRef.current,
+    contentRef: receiptRef,
     documentTitle: `Receipt-${selectedTx?.id || 'Draft'}`,
   });
 
