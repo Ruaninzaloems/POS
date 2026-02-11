@@ -547,14 +547,17 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                      <div className="flex flex-col md:flex-row gap-6">
                         <div className="flex-1 space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor={`desc-${item.id}`} className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description / Notes</Label>
+                                <Label htmlFor={`desc-${item.id}`} className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description / Notes <span className="text-red-500">*</span></Label>
                                 <Textarea 
                                     id={`desc-${item.id}`}
                                     placeholder="Enter additional details about this payment..."
-                                    className="resize-none h-20 bg-slate-50 border-slate-200"
+                                    className={`resize-none h-20 bg-slate-50 border-slate-200 ${(item as any).notesError ? 'border-red-500 ring-1 ring-red-500' : ''}`}
                                     value={item.notes || ''}
                                     onChange={(e) => updateItemDetails(item.id, { notes: e.target.value })}
                                 />
+                                {(item as any).notesError && (
+                                    <span className="text-[10px] text-red-500 font-medium">This field is required</span>
+                                )}
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
