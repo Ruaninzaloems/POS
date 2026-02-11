@@ -102,8 +102,8 @@ export default function AllocationHistory() {
   const handleDownload = (format: 'excel' | 'pdf') => {
       // Mock download functionality
       const element = document.createElement("a");
-      const fileContent = "TransactionDate,Description,Reference,Amount,Status\n" + 
-          filteredHistory.map(t => `${t.transactionDate},"${t.description}",${t.reference},${t.amount},${t.status}`).join("\n");
+      const fileContent = "TransactionDate,AllocationDate,Description,Reference,Method,AllocatedBy,Amount,Status\n" + 
+          filteredHistory.map(t => `${t.transactionDate},"${t.details?.allocationDate || ''}","${t.description}",${t.reference},${t.details?.method || ''},${t.details?.allocatedBy || ''},${t.amount},${t.status}`).join("\n");
       const fileBlob = new Blob([fileContent], { type: format === 'excel' ? "text/csv" : "text/plain" });
       element.href = URL.createObjectURL(fileBlob);
       element.download = `allocation_history.${format === 'excel' ? 'csv' : 'txt'}`;
