@@ -288,8 +288,8 @@ export default function ViewReceipts() {
                                                 {receipt.cashierOffice}
                                             </TableCell>
                                             <TableCell className="sticky right-0 bg-white shadow-[-5px_0_5px_-5px_rgba(0,0,0,0.1)]">
-                                                <Button variant="link" size="sm" className="h-auto p-0 text-blue-600 underline" onClick={() => triggerPrint(receipt)}>
-                                                    Print Receipt
+                                                <Button variant="outline" size="sm" className="h-7 text-xs bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700 font-medium px-3 shadow-sm" onClick={() => triggerPrint(receipt)}>
+                                                    <Printer className="w-3.5 h-3.5 mr-2" /> Print
                                                 </Button>
                                             </TableCell>
                                             <TableCell className="sticky right-0 bg-white shadow-[-5px_0_5px_-5px_rgba(0,0,0,0.1)]">
