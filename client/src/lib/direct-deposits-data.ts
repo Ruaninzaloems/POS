@@ -64,6 +64,76 @@ export const MOCK_BANK_TRANSACTIONS: BankTransaction[] = [
     status: "ALLOCATED",
     allocatedAmount: 1200.00,
     bankAccount: "FNB MAIN (***1234)"
+  },
+  {
+    id: "TXN-005",
+    transactionDate: "2023-10-27",
+    description: "WATER BILL PAYMENT",
+    amount: 450.00,
+    reference: "WATER",
+    status: "UNMATCHED",
+    allocatedAmount: 0,
+    bankAccount: "FNB MAIN (***1234)"
+  },
+  {
+    id: "TXN-006",
+    transactionDate: "2023-10-27",
+    description: "DEP REF: 12345",
+    amount: 890.50,
+    reference: "12345",
+    status: "UNMATCHED",
+    allocatedAmount: 0,
+    bankAccount: "ABSA (***5678)"
+  },
+  {
+    id: "TXN-007",
+    transactionDate: "2023-10-28",
+    description: "S CONNOR RATES",
+    amount: 500.00,
+    reference: "S CONNOR",
+    status: "UNMATCHED",
+    allocatedAmount: 0,
+    bankAccount: "FNB MAIN (***1234)"
+  },
+  {
+    id: "TXN-008",
+    transactionDate: "2023-10-28",
+    description: "PAYMENT FOR TWO ACCS",
+    amount: 3000.00,
+    reference: "ACC1002/3",
+    status: "UNMATCHED",
+    allocatedAmount: 0,
+    bankAccount: "ABSA (***5678)"
+  },
+  {
+    id: "TXN-009",
+    transactionDate: "2023-10-29",
+    description: "INVOICE 8821 SETTLEMENT",
+    amount: 15000.00,
+    reference: "INV 8821",
+    status: "UNMATCHED",
+    allocatedAmount: 0,
+    bankAccount: "NEDBANK (***9012)"
+  },
+  {
+    id: "TXN-010",
+    transactionDate: "2023-10-29",
+    description: "ERF 4921 TAXES",
+    amount: 2200.00,
+    reference: "ERF 4921",
+    status: "UNMATCHED",
+    allocatedAmount: 0,
+    bankAccount: "FNB MAIN (***1234)"
+  },
+  {
+    id: "TXN-011",
+    transactionDate: "2023-10-30",
+    description: "TRAFFIC FINE J DOE",
+    amount: 500.00,
+    reference: "FINE 123",
+    status: "UNMATCHED",
+    allocatedAmount: 0,
+    bankAccount: "ABSA (***5678)"
   }
 ];
 
