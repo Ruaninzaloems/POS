@@ -47,7 +47,8 @@ export function PaymentDrawer() {
                    (!!item.notes && item.notes.trim().length > 0);
         }
         return true;
-    });
+    }) &&
+    payment.changeDue <= 200; // Limit change to R200
 
   const totalDue = transactionItems.reduce((acc, i) => acc + i.amountToPay, 0);
 
@@ -275,7 +276,17 @@ export function PaymentDrawer() {
       <div className="p-6 bg-card border-t space-y-4 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] z-30 relative pb-8 lg:pb-6">
         <div className="flex justify-between items-baseline">
             <span className="text-muted-foreground font-medium">Change Due</span>
-            <span className="font-mono text-2xl font-bold text-foreground">R {payment.changeDue.toFixed(2)}</span>
+            <div className="flex flex-col items-end">
+                <span className={`font-mono text-2xl font-bold ${payment.changeDue > 200 ? 'text-destructive' : 'text-foreground'}`}>
+                    R {payment.changeDue.toFixed(2)}
+                </span>
+                {payment.changeDue > 200 && (
+                    <span className="text-xs text-destructive font-medium flex items-center gap-1 mt-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        Max change R200.00
+                    </span>
+                )}
+            </div>
         </div>
 
         <Button 
