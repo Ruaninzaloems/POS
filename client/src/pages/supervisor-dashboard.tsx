@@ -528,7 +528,18 @@ export default function SupervisorDashboard() {
                                 <TableCell>
                                     <div className="flex flex-col">
                                         <span className="font-bold text-slate-900">R {tx.totalAmount.toFixed(2)}</span>
-                                        <span className="text-xs text-muted-foreground capitalize">{Object.keys(tx.payment).filter(k => tx.payment[k as keyof typeof tx.payment] > 0).join(' & ')}</span>
+                                        <div className="flex items-center gap-1 mt-0.5">
+                                            {tx.payment.cash > 0 && (
+                                                <Badge variant="outline" className="h-5 px-1.5 bg-green-50 text-green-700 border-green-200 text-[10px] gap-1">
+                                                    <Banknote className="w-3 h-3" /> Cash
+                                                </Badge>
+                                            )}
+                                            {tx.payment.card > 0 && (
+                                                <Badge variant="outline" className="h-5 px-1.5 bg-blue-50 text-blue-700 border-blue-200 text-[10px] gap-1">
+                                                    <CreditCard className="w-3 h-3" /> Card
+                                                </Badge>
+                                            )}
+                                        </div>
                                     </div>
                                 </TableCell>
                                 <TableCell className="text-right">
