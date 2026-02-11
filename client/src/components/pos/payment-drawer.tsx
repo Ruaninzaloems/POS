@@ -43,7 +43,8 @@ export function PaymentDrawer() {
     // Check mandatory fields for Direct Income
     transactionItems.every(item => {
         if (item.type === 'DIRECT_INCOME') {
-            return !!item.paidBy && item.paidBy.trim().length > 0;
+            return (!!item.paidBy && item.paidBy.trim().length > 0) && 
+                   (!!item.notes && item.notes.trim().length > 0);
         }
         return true;
     });

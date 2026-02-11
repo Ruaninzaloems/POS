@@ -7,15 +7,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PosReceiptTemplate } from './pos-receipt-template';
+import { PermitTemplate } from './permit-template';
 import { useReactToPrint } from 'react-to-print';
 
 export function ReceiptModal() {
   const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions } = usePos();
   const printRef = useRef<HTMLDivElement>(null);
+  const permitRef = useRef<HTMLDivElement>(null); // Separate ref for permit
   
   // Get the latest transaction that was just completed
   const currentTransaction = recentTransactions[0];
   
+  // Check if this transaction contains a permit item
+  const permitItem = transactionItems.find(i => i.type === 'DIRECT_INCOME' && 
+      (i.description.toLowerCase().includes('permit') || i.description.toLowerCase().includes('certificate')));
+  const isPermit = !!permitItem;
+
   // State for receipt options
   const [printSelected, setPrintSelected] = useState(true);
   const [emailSelected, setEmailSelected] = useState(false);
@@ -26,8 +33,8 @@ export function ReceiptModal() {
 
   const handlePrint = useReactToPrint({
     // @ts-ignore - react-to-print types can be inconsistent
-    content: () => printRef.current,
-    documentTitle: `Receipt-${currentTransaction?.receiptNumber || 'New'}`,
+    content: () => isPermit ? permitRef.current : printRef.current,
+    documentTitle: `${isPermit ? 'Permit' : 'Receipt'}-${currentTransaction?.receiptNumber || 'New'}`,
   });
 
   // Load default contact info when modal opens
@@ -169,7 +176,11 @@ export function ReceiptModal() {
         
         {/* Hidden Print Template */}
         <div style={{ display: 'none' }}>
-            <PosReceiptTemplate ref={printRef} transaction={currentTransaction} />
+            {isPermit ? (
+                 <PermitTemplate ref={permitRef} transaction={currentTransaction} items={transactionItems} />
+            ) : (
+                 <PosReceiptTemplate ref={printRef} transaction={currentTransaction} />
+            )}
         </div>
       </DialogContent>
     </Dialog>

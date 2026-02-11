@@ -279,6 +279,22 @@ export const DIRECT_INCOME_ITEMS: DirectIncomeItem[] = [
     scoaItem: "SCOA-COM-004",
     vatRate: 0,
     price: 500.00
+  },
+  {
+    id: "DI-005",
+    groupName: "Licensing",
+    description: "Hawker Permit",
+    scoaItem: "SCOA-LIC-005",
+    vatRate: 15,
+    price: 250.00
+  },
+  {
+    id: "DI-006",
+    groupName: "Health",
+    description: "Health Certificate",
+    scoaItem: "SCOA-HEA-006",
+    vatRate: 15,
+    price: 450.00
   }
 ];
 
