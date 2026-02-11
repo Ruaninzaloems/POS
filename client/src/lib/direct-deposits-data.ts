@@ -5,7 +5,7 @@ export interface BankTransaction {
   description: string;
   amount: number;
   reference: string;
-  status: 'UNMATCHED' | 'DRAFT' | 'ALLOCATED' | 'REVERSED' | 'PROCESSING';
+  status: 'UNMATCHED' | 'DRAFT' | 'ALLOCATED' | 'REVERSED' | 'PROCESSING' | 'ERROR';
   allocatedAmount: number;
   bankAccount: string;
 }
@@ -25,7 +25,7 @@ export interface AllocationDraft {
   method: 'MANUAL' | 'BULK';
   allocatedBy: string;
   allocationDate: string;
-  bulkJobStatus?: 'Processing' | 'Performing rebuilds' | 'Completing reconciliation' | 'Bulk allocations complete';
+  bulkJobStatus?: 'Processing' | 'Performing rebuilds' | 'Completing reconciliation' | 'Bulk allocations complete' | 'Error';
 }
 
 // Helper to manage mock persistence
@@ -212,6 +212,16 @@ const DEFAULT_MOCK_TRANSACTIONS: BankTransaction[] = [
     status: "PROCESSING",
     allocatedAmount: 0,
     bankAccount: "NEDBANK (***9012)"
+  },
+  {
+    id: "TXN-106",
+    transactionDate: "2026-02-11",
+    description: "BULK IMPORT BATCH D",
+    amount: 12000.00,
+    reference: "BULK-006",
+    status: "ERROR",
+    allocatedAmount: 0,
+    bankAccount: "FNB MAIN (***1234)"
   }
 ];
 
@@ -280,6 +290,16 @@ const DEFAULT_MOCK_ALLOCATIONS: AllocationDraft[] = [
         allocatedBy: "System Process",
         allocationDate: "2026-02-10T09:30:00",
         bulkJobStatus: "Completing reconciliation"
+    },
+    {
+        transactionId: "TXN-106",
+        lines: [],
+        status: "PROCESSING",
+        updatedAt: "2026-02-11T10:00:00",
+        method: "BULK",
+        allocatedBy: "System Process",
+        allocationDate: "2026-02-11T10:00:00",
+        bulkJobStatus: "Error"
     }
 ];
 

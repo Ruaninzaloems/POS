@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { ArrowLeft, Eye, Printer, FileText, Search, User, FileSpreadsheet, FileIcon, Filter, X } from 'lucide-react';
+import { ArrowLeft, Eye, Printer, FileText, Search, User, FileSpreadsheet, FileIcon, Filter, X, RotateCcw, AlertCircle } from 'lucide-react';
 import { Link } from 'wouter';
 import { MOCK_BANK_TRANSACTIONS, MOCK_ALLOCATIONS, BankTransaction } from '@/lib/direct-deposits-data';
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay, isValid } from 'date-fns';
@@ -18,8 +18,10 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from '@/components/ui/date-picker';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AllocationHistory() {
+  const { toast } = useToast();
   const [filterQuery, setFilterQuery] = useState('');
   const [methodFilter, setMethodFilter] = useState('ALL'); // ALL, MANUAL, BULK
   
@@ -33,7 +35,7 @@ export default function AllocationHistory() {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   
   // Get all allocated and processing transactions
-  const allocatedTxns = MOCK_BANK_TRANSACTIONS.filter(t => t.status === 'ALLOCATED' || t.status === 'PROCESSING');
+  const allocatedTxns = MOCK_BANK_TRANSACTIONS.filter(t => t.status === 'ALLOCATED' || t.status === 'PROCESSING' || t.status === 'ERROR');
   
   // Enrich with allocation details
   const historyData = allocatedTxns.map(tx => {
@@ -115,6 +117,13 @@ export default function AllocationHistory() {
       document.body.appendChild(element);
       element.click();
       document.body.removeChild(element);
+  };
+
+  const handleRetry = (tx: any) => {
+      toast({
+          title: "Retry Initiated",
+          description: `Retrying processing for transaction ${tx.reference}`,
+      });
   };
 
   const toggleStatusFilter = (status: string) => {
@@ -248,7 +257,7 @@ export default function AllocationHistory() {
                                 <div className="space-y-2">
                                     <Label className="text-xs">Status</Label>
                                     <div className="grid grid-cols-2 gap-2">
-                                        {['Allocated', 'Processing', 'Performing rebuilds', 'Completing reconciliation', 'Bulk allocations complete'].map((status) => (
+                                        {['Allocated', 'Processing', 'Performing rebuilds', 'Completing reconciliation', 'Bulk allocations complete', 'Error'].map((status) => (
                                             <div key={status} className="flex items-center space-x-2">
                                                 <Checkbox 
                                                     id={status} 
@@ -353,11 +362,16 @@ export default function AllocationHistory() {
                                                 ? 'bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100'
                                                 : tx.details.bulkJobStatus === 'Performing rebuilds'
                                                 ? 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100'
+                                                : tx.details.bulkJobStatus === 'Error'
+                                                ? 'bg-red-100 text-red-700 border-red-200 hover:bg-red-100'
                                                 : 'bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-100'
                                             }`}
                                         >
-                                            {tx.details.bulkJobStatus !== 'Bulk allocations complete' && (
+                                            {tx.details.bulkJobStatus !== 'Bulk allocations complete' && tx.details.bulkJobStatus !== 'Error' && (
                                                 <Loader2 className="w-3 h-3 mr-1 animate-spin inline-block" />
+                                            )}
+                                            {tx.details.bulkJobStatus === 'Error' && (
+                                                <AlertCircle className="w-3 h-3 mr-1 inline-block" />
                                             )}
                                             {tx.details.bulkJobStatus}
                                         </Badge>
@@ -368,9 +382,16 @@ export default function AllocationHistory() {
                                     )}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    <Button variant="ghost" size="sm" onClick={() => setSelectedTx(tx)}>
-                                        <Eye className="w-4 h-4 mr-2" /> View
-                                    </Button>
+                                    <div className="flex justify-end gap-2">
+                                        {tx.details?.bulkJobStatus === 'Error' && (
+                                            <Button variant="ghost" size="sm" onClick={() => handleRetry(tx)} className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 px-2">
+                                                <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Retry
+                                            </Button>
+                                        )}
+                                        <Button variant="ghost" size="sm" onClick={() => setSelectedTx(tx)} className="h-8 px-2">
+                                            <Eye className="w-4 h-4 mr-2" /> View
+                                        </Button>
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ))}
