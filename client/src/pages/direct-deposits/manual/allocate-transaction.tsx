@@ -238,6 +238,7 @@ export default function AllocateTransaction() {
                                                 if (val.includes('.') && val.split('.')[1].length > 2) return;
                                                 setNewLineAmount(val);
                                             }}
+                                            onFocus={(e) => e.target.select()}
                                             onKeyDown={e => e.key === 'Enter' && handleAddLine()}
                                             autoFocus
                                         />
