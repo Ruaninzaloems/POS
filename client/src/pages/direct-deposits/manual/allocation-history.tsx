@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { useReactToPrint } from 'react-to-print';
 import { PosLayout } from '@/components/layout/pos-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -9,16 +10,23 @@ import { ArrowLeft, Eye, Printer, FileText } from 'lucide-react';
 import { Link } from 'wouter';
 import { MOCK_BANK_TRANSACTIONS, MOCK_ALLOCATIONS, BankTransaction } from '@/lib/direct-deposits-data';
 import { format } from 'date-fns';
+import { ReceiptTemplate } from '@/components/pos/receipt-template';
 
 export default function AllocationHistory() {
   const history = MOCK_BANK_TRANSACTIONS.filter(t => t.status === 'ALLOCATED');
   const [selectedTx, setSelectedTx] = useState<BankTransaction | null>(null);
+  const receiptRef = useRef<HTMLDivElement>(null);
 
   const getAllocationDetails = (txId: string) => {
     return MOCK_ALLOCATIONS.find(a => a.transactionId === txId);
   };
 
   const selectedAllocation = selectedTx ? getAllocationDetails(selectedTx.id) : null;
+
+  const handlePrint = useReactToPrint({
+    content: () => receiptRef.current,
+    documentTitle: `Receipt-${selectedTx?.id || 'Draft'}`,
+  });
 
   return (
     <PosLayout>
@@ -164,6 +172,17 @@ export default function AllocationHistory() {
                     </div>
                 </div>
             )}
+            
+            {/* Hidden Receipt for Printing */}
+            <div style={{ display: 'none' }}>
+                {selectedTx && selectedAllocation && (
+                    <ReceiptTemplate 
+                        ref={receiptRef} 
+                        transaction={selectedTx} 
+                        allocation={selectedAllocation} 
+                    />
+                )}
+            </div>
 
             <DialogFooter className="sm:justify-between">
                 <div className="text-xs text-muted-foreground flex items-center">
@@ -171,7 +190,7 @@ export default function AllocationHistory() {
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={() => setSelectedTx(null)}>Close</Button>
-                    <Button variant="default" className="gap-2">
+                    <Button variant="default" className="gap-2" onClick={handlePrint}>
                         <Printer className="w-4 h-4" /> Print Receipt
                     </Button>
                 </div>
