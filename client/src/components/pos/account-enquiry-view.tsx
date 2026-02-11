@@ -3,9 +3,10 @@ import { Account } from '@/lib/mock-data';
 import { usePos, TransactionItem } from '@/lib/pos-state';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RefreshCw, ArrowLeft, X, Zap, Droplets, ChevronDown, ChevronUp } from 'lucide-react'; // Added Zap and Droplets
+import { RefreshCw, ArrowLeft, X, Zap, Droplets, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'; // Added Zap and Droplets
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export function AccountEnquiryView({ item }: { item: TransactionItem }) {
   const account = item.originalData as Account;
@@ -84,6 +85,17 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
              <span>Account Information</span>
          </div>
        </div>
+
+       {account.prepaidBlocked && (
+           <Alert variant="destructive" className="mb-4 border-red-200 bg-red-50 text-red-800">
+               <AlertTriangle className="h-4 w-4 stroke-red-600" />
+               <AlertTitle className="text-red-900 font-bold ml-2">Prepaid Meter Blocked</AlertTitle>
+               <AlertDescription className="ml-2 text-red-800">
+                   Purchase blocked for Meter {account.prepaidMeterNo} ({account.prepaidType}). 
+                   <span className="block font-medium mt-1">Reason: {account.prepaidBlockReason}</span>
+               </AlertDescription>
+           </Alert>
+       )}
 
        {/* Collapsible Account Details */}
        <Collapsible open={isOpen} onOpenChange={setIsOpen} className="space-y-2 mb-6">

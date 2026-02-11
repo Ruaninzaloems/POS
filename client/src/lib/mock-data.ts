@@ -51,6 +51,8 @@ export interface Account {
   valuationCategory?: string;
   marketValue?: number;
   agingBreakdown?: AgingItem[];
+  prepaidBlocked?: boolean;
+  prepaidBlockReason?: string;
 }
 
 export interface AgingItem {
@@ -123,6 +125,8 @@ export const ACCOUNTS: Account[] = [
     outstandingAmount: 13436.54,
     prepaidMeterNo: "14253647586",
     prepaidType: "Electricity",
+    prepaidBlocked: true,
+    prepaidBlockReason: "Arrears > 90 Days",
     email: "gmoemailadres@gmail.com",
     mobile: "+27821234567",
     unitId: "42001",
