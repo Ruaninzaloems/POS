@@ -128,6 +128,7 @@ export default function ThirdPartyPaymentProcessing() {
                       <SelectItem value="Post Office">Post Office</SelectItem>
                       <SelectItem value="Utilipay">Utilipay</SelectItem>
                       <SelectItem value="Utilipay Distribution">Utilipay Distribution</SelectItem>
+                      <SelectItem value="Generic Import">Generic Import</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -149,28 +150,30 @@ export default function ThirdPartyPaymentProcessing() {
                 </div>
               </div>
 
-              <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100 space-y-4">
-                 <h3 className="text-sm font-semibold text-blue-900 mb-2">Import Settings</h3>
-                 
-                 <div className="space-y-3">
-                    <Label className="text-slate-700">Post transactions to Cashbook?</Label>
-                    <RadioGroup value={postToCashbook} onValueChange={setPostToCashbook} className="flex gap-6">
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="yes" id="post-yes" />
-                        <Label htmlFor="post-yes" className="font-normal cursor-pointer">Yes - Post to Bank & Debtor</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="no" id="post-no" />
-                        <Label htmlFor="post-no" className="font-normal cursor-pointer">No - Only Debtor/Direct Allocation</Label>
-                      </div>
-                    </RadioGroup>
-                    <p className="text-xs text-slate-500 italic">
-                      {postToCashbook === 'yes' 
-                        ? "Transactions will be recognized in the selected Cashbook and allocated to respective accounts." 
-                        : "Transactions will only be allocated to accounts or held for direct deposit allocation. No bank entry will be created."}
-                    </p>
-                 </div>
-              </div>
+              {thirdParty === 'Generic Import' && (
+                <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100 space-y-4">
+                   <h3 className="text-sm font-semibold text-blue-900 mb-2">Import Settings</h3>
+                   
+                   <div className="space-y-3">
+                      <Label className="text-slate-700">Post transactions to Cashbook?</Label>
+                      <RadioGroup value={postToCashbook} onValueChange={setPostToCashbook} className="flex gap-6">
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="yes" id="post-yes" />
+                          <Label htmlFor="post-yes" className="font-normal cursor-pointer">Yes - Post to Bank & Debtor</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="no" id="post-no" />
+                          <Label htmlFor="post-no" className="font-normal cursor-pointer">No - Only Debtor/Direct Allocation</Label>
+                        </div>
+                      </RadioGroup>
+                      <p className="text-xs text-slate-500 italic">
+                        {postToCashbook === 'yes' 
+                          ? "Transactions will be recognized in the selected Cashbook and allocated to respective accounts." 
+                          : "Transactions will only be allocated to accounts or held for direct deposit allocation. No bank entry will be created."}
+                      </p>
+                   </div>
+                </div>
+              )}
 
               <div className="flex items-center justify-between pt-4 border-t">
                 <Button 
