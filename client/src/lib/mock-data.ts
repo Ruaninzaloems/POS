@@ -365,3 +365,83 @@ export const CASHIERS = [
 ];
 
 export const MOCK_TRANSACTIONS: any[] = []; // Global store for transactions
+
+// Helper to generate historical data
+const generateHistoricalData = () => {
+    const transactions = [];
+    const today = new Date();
+    today.setHours(8, 0, 0, 0); // Start at 8 AM today
+
+    CASHIERS.forEach(cashier => {
+        // Generate 5-10 transactions per cashier
+        const count = Math.floor(Math.random() * 6) + 5; 
+        
+        for (let i = 0; i < count; i++) {
+            const timeOffset = Math.floor(Math.random() * (1000 * 60 * 60 * 8)); // Random time within 8 hours
+            const timestamp = today.getTime() + timeOffset;
+            
+            // Randomly select an account or direct income
+            const useAccount = Math.random() > 0.4;
+            let items = [];
+            let totalAmount = 0;
+
+            if (useAccount) {
+                const account = ACCOUNTS[Math.floor(Math.random() * ACCOUNTS.length)];
+                const amount = Math.floor(Math.random() * 1000) + 100;
+                totalAmount = amount;
+                items.push({
+                    id: `item-${Date.now()}-${i}-${cashier.id}`,
+                    type: 'CONSUMER_SERVICES',
+                    description: `${account.name} (${account.accountNo})`,
+                    reference: account.accountNo,
+                    amountDue: account.outstandingAmount,
+                    amountToPay: amount,
+                    originalData: account
+                });
+            } else {
+                const incomeItem = DIRECT_INCOME_ITEMS[Math.floor(Math.random() * DIRECT_INCOME_ITEMS.length)];
+                const amount = incomeItem.price || Math.floor(Math.random() * 500) + 50;
+                totalAmount = amount;
+                items.push({
+                    id: `item-${Date.now()}-${i}-${cashier.id}`,
+                    type: 'DIRECT_INCOME',
+                    description: incomeItem.description,
+                    reference: "CASH",
+                    amountDue: amount,
+                    amountToPay: amount,
+                    originalData: incomeItem,
+                    paidBy: "Walk-in Customer",
+                    notes: "Standard payment"
+                });
+            }
+
+            // Random payment method
+            const isCash = Math.random() > 0.3;
+            
+            // Random Status (mostly completed, some cancelled)
+            let status = 'COMPLETED';
+            if (Math.random() > 0.9) status = 'CANCELLED';
+            if (Math.random() > 0.95) status = 'PENDING_CANCELLATION';
+
+            transactions.push({
+                id: `tx-${cashier.id}-${i}`,
+                receiptNumber: `REC-${Math.floor(Math.random() * 900000) + 100000}`,
+                timestamp: timestamp,
+                items: items,
+                totalAmount: totalAmount,
+                payment: {
+                    cash: isCash ? totalAmount : 0,
+                    card: !isCash ? totalAmount : 0
+                },
+                status: status,
+                cashierId: cashier.id
+            });
+        }
+    });
+
+    return transactions.sort((a, b) => b.timestamp - a.timestamp);
+};
+
+// Populate MOCK_TRANSACTIONS
+const history = generateHistoricalData();
+history.forEach(t => MOCK_TRANSACTIONS.push(t));
