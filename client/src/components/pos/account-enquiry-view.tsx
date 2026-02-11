@@ -3,7 +3,7 @@ import { Account } from '@/lib/mock-data';
 import { usePos, TransactionItem } from '@/lib/pos-state';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RefreshCw, ArrowLeft, X, Zap, Droplets, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'; // Added Zap and Droplets
+import { RefreshCw, ArrowLeft, X, Zap, Droplets, ChevronDown, ChevronUp, AlertTriangle, CalendarRange } from 'lucide-react'; // Added Zap, Droplets, CalendarRange
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -27,6 +27,21 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
     });
   };
 
+  const hasPropertyRates = account.agingBreakdown?.some(s => s.serviceDescription.toLowerCase().includes('property rates'));
+
+  const handlePayRatesAdvance = () => {
+      addItem({
+          id: crypto.randomUUID(),
+          type: 'CONSUMER_SERVICES',
+          description: `Property Rates Advance Payment - ${account.accountNo}`,
+          reference: account.accountNo,
+          amountDue: 0,
+          amountToPay: 0,
+          originalData: account,
+          notes: 'Advance Payment for Property Rates'
+      });
+  };
+
   const Field = ({ label, value }: { label: string, value: string | number | undefined }) => (
     <div className="grid grid-cols-[200px_1fr] border-b border-gray-100 last:border-0 py-1 text-sm">
       <div className="font-semibold text-gray-800 px-2">{label}</div>
@@ -44,6 +59,18 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
     <div className="bg-white p-6 shadow-sm border border-gray-200 text-sm relative">
        {/* Navigation / Actions */}
        <div className="absolute top-6 right-6 flex gap-2">
+          {hasPropertyRates && (
+              <Button 
+                variant="default" 
+                size="sm" 
+                onClick={handlePayRatesAdvance}
+                className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                <CalendarRange className="w-4 h-4" />
+                Pay Rates in Advance
+              </Button>
+          )}
+
           {account.prepaidMeterNo && (
               <Button 
                 variant="default" 

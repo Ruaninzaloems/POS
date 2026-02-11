@@ -196,6 +196,18 @@ export const ACCOUNTS: Account[] = [
     marketValue: 950000.00,
     agingBreakdown: [
         {
+        serviceDescription: "Property Rates",
+        totalOutstanding: 1500.00,
+        newCharge: 1500.00,
+        currentAccount: 1500.00,
+        days30: 0.00,
+        days60: 0.00,
+        days90: 0.00,
+        days120: 0.00,
+        days150: 0.00,
+        days180Plus: 0.00
+      },
+      {
         serviceDescription: "Water Usage",
         totalOutstanding: 250.00,
         newCharge: 50.00,
