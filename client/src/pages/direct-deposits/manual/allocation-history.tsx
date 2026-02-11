@@ -1,24 +1,35 @@
 import React, { useState, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { PosLayout } from '@/components/layout/pos-layout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { ArrowLeft, Eye, Printer, FileText, Search, User, FileSpreadsheet, FileIcon } from 'lucide-react';
+import { ArrowLeft, Eye, Printer, FileText, Search, User, FileSpreadsheet, FileIcon, Filter, X } from 'lucide-react';
 import { Link } from 'wouter';
 import { MOCK_BANK_TRANSACTIONS, MOCK_ALLOCATIONS, BankTransaction } from '@/lib/direct-deposits-data';
-import { format } from 'date-fns';
+import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ReceiptTemplate } from '@/components/pos/receipt-template';
-
 import { Loader2 } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function AllocationHistory() {
   const [filterQuery, setFilterQuery] = useState('');
   const [methodFilter, setMethodFilter] = useState('ALL'); // ALL, MANUAL, BULK
+  
+  // Advanced Filters
+  const [financialYear, setFinancialYear] = useState('2025/2026');
+  const [billingMonth, setBillingMonth] = useState('All');
+  const [allocDateFrom, setAllocDateFrom] = useState('');
+  const [allocDateTo, setAllocDateTo] = useState('');
+  const [txnDateFrom, setTxnDateFrom] = useState('');
+  const [txnDateTo, setTxnDateTo] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   
   // Get all allocated and processing transactions
   const allocatedTxns = MOCK_BANK_TRANSACTIONS.filter(t => t.status === 'ALLOCATED' || t.status === 'PROCESSING');
@@ -44,7 +55,38 @@ export default function AllocationHistory() {
         (methodFilter === 'MANUAL' && item.details?.method === 'MANUAL') ||
         (methodFilter === 'BULK' && item.details?.method === 'BULK');
 
-      return matchesSearch && matchesMethod;
+      // Date Filters
+      let matchesAllocDate = true;
+      if (allocDateFrom && allocDateTo && item.details?.allocationDate) {
+          const date = new Date(item.details.allocationDate);
+          matchesAllocDate = isWithinInterval(date, { 
+              start: startOfDay(parseISO(allocDateFrom)), 
+              end: endOfDay(parseISO(allocDateTo)) 
+          });
+      }
+
+      let matchesTxnDate = true;
+      if (txnDateFrom && txnDateTo) {
+          const date = new Date(item.transactionDate);
+          matchesTxnDate = isWithinInterval(date, { 
+              start: startOfDay(parseISO(txnDateFrom)), 
+              end: endOfDay(parseISO(txnDateTo)) 
+          });
+      }
+
+      // Status Filter
+      let matchesStatus = true;
+      if (statusFilter.length > 0) {
+          const status = item.details?.bulkJobStatus || 'Allocated';
+          matchesStatus = statusFilter.includes(status);
+      }
+
+      // Billing Month & Financial Year (Mock logic as data doesn't explicitly have these fields)
+      // For prototype, we'll just return true if filters are default
+      const matchesFinYear = true; 
+      const matchesBillingMonth = true;
+
+      return matchesSearch && matchesMethod && matchesAllocDate && matchesTxnDate && matchesStatus && matchesFinYear && matchesBillingMonth;
   });
 
   const [selectedTx, setSelectedTx] = useState<BankTransaction | null>(null);
@@ -70,53 +112,180 @@ export default function AllocationHistory() {
       document.body.removeChild(element);
   };
 
+  const toggleStatusFilter = (status: string) => {
+      setStatusFilter(prev => 
+          prev.includes(status) 
+          ? prev.filter(s => s !== status)
+          : [...prev, status]
+      );
+  };
+  
+  const clearFilters = () => {
+      setAllocDateFrom('');
+      setAllocDateTo('');
+      setTxnDateFrom('');
+      setTxnDateTo('');
+      setStatusFilter([]);
+      setMethodFilter('ALL');
+      setFilterQuery('');
+  };
+
+  const activeFiltersCount = [
+      allocDateFrom, txnDateFrom, statusFilter.length > 0
+  ].filter(Boolean).length;
+
   return (
     <PosLayout>
        <div className="flex-1 flex flex-col h-full bg-slate-50/50">
-        <div className="p-6 border-b bg-white flex flex-col md:flex-row md:items-center justify-between gap-4">
-             <div className="flex items-center gap-4">
-                 <Link href="/direct-deposits/manual">
-                    <Button variant="ghost" size="icon">
-                        <ArrowLeft className="w-4 h-4" />
-                    </Button>
-                 </Link>
-                 <div>
-                     <h1 className="text-xl font-bold">Allocation History</h1>
-                     <p className="text-sm text-muted-foreground">View processed allocations (Manual & Bulk)</p>
+        <div className="p-6 border-b bg-white flex flex-col gap-4">
+             {/* Header Row */}
+             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                 <div className="flex items-center gap-4">
+                     <Link href="/direct-deposits/manual">
+                        <Button variant="ghost" size="icon">
+                            <ArrowLeft className="w-4 h-4" />
+                        </Button>
+                     </Link>
+                     <div>
+                         <h1 className="text-xl font-bold">Allocation History</h1>
+                         <p className="text-sm text-muted-foreground">View processed allocations (Manual & Bulk)</p>
+                     </div>
                  </div>
-             </div>
 
-             <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto items-end md:items-center">
-                <div className="flex gap-2 w-full md:w-auto">
-                    <div className="relative w-full md:w-64">
-                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            placeholder="Search description, reference, user..." 
-                            className="pl-8" 
-                            value={filterQuery}
-                            onChange={(e) => setFilterQuery(e.target.value)}
-                        />
-                    </div>
-                    <Select value={methodFilter} onValueChange={setMethodFilter}>
-                        <SelectTrigger className="w-[150px]">
-                            <SelectValue placeholder="All Methods" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="ALL">All Methods</SelectItem>
-                            <SelectItem value="MANUAL">Manual Only</SelectItem>
-                            <SelectItem value="BULK">Bulk Only</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-                
-                <div className="flex gap-2">
+                 <div className="flex gap-2">
                     <Button variant="outline" size="icon" onClick={() => handleDownload('excel')} title="Download Excel">
                         <FileSpreadsheet className="w-4 h-4 text-green-600" />
                     </Button>
                     <Button variant="outline" size="icon" onClick={() => handleDownload('pdf')} title="Download PDF">
                         <FileIcon className="w-4 h-4 text-red-600" />
                     </Button>
+                 </div>
+             </div>
+
+             {/* Filters Row */}
+             <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                
+                {/* Standard Search */}
+                <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Search</Label>
+                    <div className="relative">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            placeholder="Description, Reference..." 
+                            className="pl-8 bg-white" 
+                            value={filterQuery}
+                            onChange={(e) => setFilterQuery(e.target.value)}
+                        />
+                    </div>
                 </div>
+
+                {/* Period Selectors */}
+                <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Financial Period</Label>
+                    <div className="flex gap-2">
+                         <Select value={financialYear} onValueChange={setFinancialYear}>
+                            <SelectTrigger className="bg-white flex-1">
+                                <SelectValue placeholder="Year" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="2025/2026">2025/2026</SelectItem>
+                                <SelectItem value="2024/2025">2024/2025</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Select value={billingMonth} onValueChange={setBillingMonth}>
+                            <SelectTrigger className="bg-white flex-1">
+                                <SelectValue placeholder="Month" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="All">All Months</SelectItem>
+                                <SelectItem value="July">July</SelectItem>
+                                <SelectItem value="August">August</SelectItem>
+                                <SelectItem value="September">September</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+
+                {/* Advanced Filter Popover */}
+                <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Advanced Filters</Label>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" className="w-full justify-between bg-white border-dashed text-slate-600">
+                                <span className="flex items-center gap-2">
+                                    <Filter className="w-3 h-3" />
+                                    {activeFiltersCount > 0 ? `${activeFiltersCount} Filters Active` : "Filter by Date & Status"}
+                                </span>
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-96 p-4" align="start">
+                            <div className="space-y-4">
+                                <h4 className="font-medium text-sm border-b pb-2">Filter Options</h4>
+                                
+                                <div className="space-y-2">
+                                    <Label className="text-xs">Allocation Date Range</Label>
+                                    <div className="flex gap-2">
+                                        <Input type="date" className="h-8 text-xs" value={allocDateFrom} onChange={(e) => setAllocDateFrom(e.target.value)} />
+                                        <span className="text-muted-foreground">-</span>
+                                        <Input type="date" className="h-8 text-xs" value={allocDateTo} onChange={(e) => setAllocDateTo(e.target.value)} />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-xs">Transaction Date Range</Label>
+                                    <div className="flex gap-2">
+                                        <Input type="date" className="h-8 text-xs" value={txnDateFrom} onChange={(e) => setTxnDateFrom(e.target.value)} />
+                                        <span className="text-muted-foreground">-</span>
+                                        <Input type="date" className="h-8 text-xs" value={txnDateTo} onChange={(e) => setTxnDateTo(e.target.value)} />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-xs">Status</Label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {['Allocated', 'Processing', 'Performing rebuilds', 'Completing reconciliation', 'Bulk allocations complete'].map((status) => (
+                                            <div key={status} className="flex items-center space-x-2">
+                                                <Checkbox 
+                                                    id={status} 
+                                                    checked={statusFilter.includes(status)}
+                                                    onCheckedChange={() => toggleStatusFilter(status)}
+                                                />
+                                                <label
+                                                    htmlFor={status}
+                                                    className="text-xs leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 truncate"
+                                                    title={status}
+                                                >
+                                                    {status}
+                                                </label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+                </div>
+                
+                {/* Clear & Method */}
+                 <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Allocation Method</Label>
+                    <div className="flex gap-2">
+                        <Select value={methodFilter} onValueChange={setMethodFilter}>
+                            <SelectTrigger className="bg-white flex-1">
+                                <SelectValue placeholder="All Methods" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ALL">All Methods</SelectItem>
+                                <SelectItem value="MANUAL">Manual Only</SelectItem>
+                                <SelectItem value="BULK">Bulk Only</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Button variant="ghost" size="icon" onClick={clearFilters} title="Clear all filters">
+                            <X className="w-4 h-4 text-muted-foreground" />
+                        </Button>
+                    </div>
+                </div>
+
              </div>
         </div>
 
