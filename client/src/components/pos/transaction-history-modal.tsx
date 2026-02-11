@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { usePos } from '@/lib/pos-state';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertCircle, Ban, Receipt, CheckCircle2, Clock } from 'lucide-react';
 import { format } from 'date-fns';
@@ -16,33 +18,46 @@ interface TransactionHistoryModalProps {
 export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryModalProps) {
   const { recentTransactions, cancelTransaction, dayEndStatus, currentUser } = usePos();
   const { toast } = useToast();
+  
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [cancellationReason, setCancellationReason] = useState('');
 
-  const handleCancel = (id: string) => {
+  const initiateCancel = (id: string) => {
+      setCancellingId(id);
+      setCancellationReason('');
+  };
+
+  const handleConfirmCancel = () => {
+    if (!cancellingId || !cancellationReason.trim()) return;
+
     const isSupervisor = currentUser.role === 'SUPERVISOR';
     
-    if (confirm(isSupervisor 
-        ? 'Are you sure you want to CANCEL this receipt? This action cannot be undone.'
-        : 'Request cancellation for this receipt? This will be sent to a supervisor for approval.'
-    )) {
-        cancelTransaction(id);
-        
-        if (!isSupervisor) {
-            toast({
-                title: "Cancellation Requested",
-                description: "Receipt sent to supervisor for approval.",
-            });
-        } else {
-            toast({
-                title: "Receipt Cancelled",
-                description: "Transaction has been voided.",
-                variant: "destructive"
-            });
-        }
+    cancelTransaction(cancellingId, cancellationReason);
+    
+    if (!isSupervisor) {
+        toast({
+            title: "Cancellation Requested",
+            description: "Receipt sent to supervisor for approval.",
+        });
+    } else {
+        toast({
+            title: "Receipt Cancelled",
+            description: "Transaction has been voided.",
+            variant: "destructive"
+        });
     }
+    
+    setCancellingId(null);
+    setCancellationReason('');
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+        if (!open) {
+            setCancellingId(null);
+            onClose();
+        }
+    }}>
       <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -110,7 +125,7 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
                                             size="sm" 
                                             className="h-7 text-red-600 hover:text-red-700 hover:bg-red-50"
                                             disabled={dayEndStatus === 'RECONCILED'}
-                                            onClick={() => handleCancel(tx.id)}
+                                            onClick={() => initiateCancel(tx.id)}
                                             title={dayEndStatus === 'RECONCILED' ? "Cannot cancel reconciled transactions" : "Cancel Receipt"}
                                          >
                                              <Ban className="w-3.5 h-3.5 mr-1" />
@@ -131,6 +146,38 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
           <Button variant="outline" onClick={onClose}>Close History</Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Reason Dialog */}
+      <Dialog open={!!cancellingId} onOpenChange={(o) => !o && setCancellingId(null)}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle>Cancel Receipt</DialogTitle>
+                <DialogDescription>
+                    Please provide a reason for cancelling this receipt. 
+                    {currentUser.role !== 'SUPERVISOR' && " This will be sent for supervisor approval."}
+                </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 py-2">
+                <Label>Reason for Cancellation</Label>
+                <Input 
+                    placeholder="e.g. Wrong amount entered, Customer request..." 
+                    value={cancellationReason}
+                    onChange={(e) => setCancellationReason(e.target.value)}
+                    autoFocus
+                />
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setCancellingId(null)}>Back</Button>
+                <Button 
+                    variant="destructive" 
+                    disabled={!cancellationReason.trim()}
+                    onClick={handleConfirmCancel}
+                >
+                    Confirm Cancellation
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

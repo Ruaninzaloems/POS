@@ -34,6 +34,8 @@ export interface TransactionRecord {
   };
   status: TransactionStatus;
   cashierId: string; // Add cashierId to track who made it
+  cancellationReason?: string;
+  cancellationRequestTime?: number;
 }
 
 export interface DayEndReport {
@@ -105,7 +107,7 @@ interface PosActions {
   setViewingItem: (id: string | null) => void;
   submitDayEnd: (report: { cashOnHand: number, cardTotal: number }) => void;
   returnDayEnd: (reason: string) => void;
-  cancelTransaction: (id: string) => void;
+  cancelTransaction: (id: string, reason: string) => void;
   approveCancellation: (id: string, approved: boolean) => void;
 }
 
@@ -271,7 +273,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setDayEndReturnReason(reason);
   };
 
-  const cancelTransaction = (id: string) => {
+  const cancelTransaction = (id: string, reason: string) => {
       if (dayEndStatus === 'RECONCILED') return;
       
       const isSupervisor = currentUser.role === 'SUPERVISOR';
@@ -281,6 +283,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const idx = MOCK_TRANSACTIONS.findIndex(t => t.id === id);
       if (idx !== -1) {
           MOCK_TRANSACTIONS[idx].status = newStatus;
+          MOCK_TRANSACTIONS[idx].cancellationReason = reason;
+          MOCK_TRANSACTIONS[idx].cancellationRequestTime = Date.now();
       }
 
       // Update Local State

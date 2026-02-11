@@ -12,10 +12,14 @@ interface DayEndModalProps {
 }
 
 export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
-  const { submitDayEnd, dayEndStatus, dayEndReturnReason, systemSettings } = usePos();
+  const { submitDayEnd, dayEndStatus, dayEndReturnReason, systemSettings, recentTransactions } = usePos();
   const [cashOnHand, setCashOnHand] = useState('');
   const [cardTotal, setCardTotal] = useState('');
   const [step, setStep] = useState<'capture' | 'confirm' | 'success'>('capture');
+
+  // Check for pending cancellations
+  const pendingCancellations = recentTransactions.filter(tx => tx.status === 'PENDING_CANCELLATION');
+  const hasPendingCancellations = pendingCancellations.length > 0;
 
   // Denomination State
   const [denominations, setDenominations] = useState<Record<string, string>>({
@@ -80,6 +84,37 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
        onClose();
     }
   };
+
+  if (hasPendingCancellations) {
+      return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-orange-600">
+                <AlertTriangle className="w-6 h-6" />
+                Pending Cancellations
+              </DialogTitle>
+              <DialogDescription>
+                You cannot perform Day End Reconciliation while there are pending cancellation requests.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+                <div className="bg-orange-50 border border-orange-200 p-4 rounded-lg flex flex-col gap-2">
+                    <p className="font-medium text-orange-800">Please contact a supervisor to approve or reject the following requests:</p>
+                    <ul className="list-disc pl-5 text-sm text-orange-700 space-y-1">
+                        {pendingCancellations.map(tx => (
+                            <li key={tx.id}>Receipt {tx.receiptNumber} - R {tx.totalAmount.toFixed(2)}</li>
+                        ))}
+                    </ul>
+                </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={onClose}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      );
+  }
 
   if (dayEndStatus === 'RECONCILED') {
       return (
