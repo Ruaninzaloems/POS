@@ -108,6 +108,13 @@ export default function AllocateTransaction() {
           toast({ title: "Validation Error", description: "Allocated total must equal transaction amount.", variant: "destructive" });
           return;
       }
+
+      // Update the global mock data
+      const txIndex = MOCK_BANK_TRANSACTIONS.findIndex(t => t.id === transaction?.id);
+      if (txIndex !== -1) {
+          MOCK_BANK_TRANSACTIONS[txIndex].status = "ALLOCATED";
+          MOCK_BANK_TRANSACTIONS[txIndex].allocatedAmount = MOCK_BANK_TRANSACTIONS[txIndex].amount;
+      }
       
       toast({ title: "Allocation Posted", description: "Transaction successfully allocated." });
       setLocation('/direct-deposits/manual');
