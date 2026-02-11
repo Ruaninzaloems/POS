@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { CASHIERS, ACCOUNTS } from '@/lib/mock-data';
 import { 
   LayoutDashboard, 
   Users, 
@@ -27,8 +28,14 @@ import {
   Filter,
   Download,
   AlertTriangle,
-  RefreshCcw
+  RefreshCcw,
+  Info
 } from 'lucide-react';
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card"
 import { format } from 'date-fns';
 import { usePos } from '@/lib/pos-state';
 import { PosLayout } from '@/components/layout/pos-layout';
@@ -358,7 +365,7 @@ export default function SupervisorDashboard() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Receipt</TableHead>
+                            <TableHead>Receipt Details</TableHead>
                             <TableHead>Cashier</TableHead>
                             <TableHead>Time</TableHead>
                             <TableHead>Amount</TableHead>
@@ -366,25 +373,86 @@ export default function SupervisorDashboard() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {pendingCancellations.map(tx => (
+                        {pendingCancellations.map(tx => {
+                            const cashier = CASHIERS.find(c => c.id === tx.cashierId);
+                            const mainType = tx.items[0]?.type.replace('_', ' ') || 'Unknown';
+                            
+                            return (
                             <TableRow key={tx.id}>
-                                <TableCell className="font-mono">{tx.receiptNumber}</TableCell>
-                                <TableCell>{tx.cashierId}</TableCell>
-                                <TableCell>{format(new Date(tx.timestamp), 'HH:mm')}</TableCell>
-                                <TableCell>R {tx.totalAmount.toFixed(2)}</TableCell>
+                                <TableCell>
+                                    <div className="flex flex-col">
+                                        <span className="font-mono font-bold text-slate-900">{tx.receiptNumber}</span>
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                                            <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 uppercase text-[10px] tracking-wider font-semibold">
+                                                {mainType}
+                                            </span>
+                                            
+                                            <HoverCard>
+                                                <HoverCardTrigger asChild>
+                                                    <Button variant="link" className="h-auto p-0 text-xs text-blue-600 flex items-center gap-1">
+                                                        <Info className="w-3 h-3" /> View Items
+                                                    </Button>
+                                                </HoverCardTrigger>
+                                                <HoverCardContent className="w-80">
+                                                    <div className="space-y-2">
+                                                        <h4 className="text-sm font-semibold text-slate-900 border-b pb-1">Transaction Items</h4>
+                                                        {tx.items.map((item, idx) => (
+                                                            <div key={idx} className="text-xs grid grid-cols-[1fr_auto] gap-2">
+                                                                <span className="text-slate-600 truncate" title={item.description}>
+                                                                    {item.description}
+                                                                </span>
+                                                                <span className="font-mono font-medium">
+                                                                    R {item.amountToPay.toFixed(2)}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                        <div className="border-t pt-2 mt-2 flex justify-between font-bold text-xs">
+                                                            <span>Total</span>
+                                                            <span>R {tx.totalAmount.toFixed(2)}</span>
+                                                        </div>
+                                                        {tx.cancellationReason && (
+                                                            <div className="mt-3 bg-red-50 p-2 rounded border border-red-100 text-xs">
+                                                                <span className="font-bold text-red-700 block mb-0.5">Cancellation Reason:</span>
+                                                                <span className="text-red-600">{tx.cancellationReason}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </HoverCardContent>
+                                            </HoverCard>
+                                        </div>
+                                    </div>
+                                </TableCell>
+                                <TableCell>
+                                    <div className="flex flex-col">
+                                        <span className="font-medium text-slate-900">{cashier?.name || 'Unknown Cashier'}</span>
+                                        <span className="text-xs text-muted-foreground">{tx.cashierId}</span>
+                                    </div>
+                                </TableCell>
+                                <TableCell>
+                                    <div className="flex flex-col">
+                                        <span className="text-slate-900">{format(new Date(tx.timestamp), 'HH:mm')}</span>
+                                        <span className="text-xs text-muted-foreground">{format(new Date(tx.timestamp), 'MMM dd')}</span>
+                                    </div>
+                                </TableCell>
+                                <TableCell>
+                                    <div className="flex flex-col">
+                                        <span className="font-bold text-slate-900">R {tx.totalAmount.toFixed(2)}</span>
+                                        <span className="text-xs text-muted-foreground capitalize">{Object.keys(tx.payment).filter(k => tx.payment[k as keyof typeof tx.payment] > 0).join(' & ')}</span>
+                                    </div>
+                                </TableCell>
                                 <TableCell className="text-right">
                                     <div className="flex justify-end gap-2">
                                         <Button 
                                             size="sm" 
                                             variant="outline"
-                                            className="text-red-600 border-red-200 hover:bg-red-50"
+                                            className="text-red-600 border-red-200 hover:bg-red-50 h-8"
                                             onClick={() => approveCancellation(tx.id, false)}
                                         >
                                             Reject
                                         </Button>
                                         <Button 
                                             size="sm" 
-                                            className="bg-green-600 hover:bg-green-700 text-white"
+                                            className="bg-green-600 hover:bg-green-700 text-white h-8"
                                             onClick={() => approveCancellation(tx.id, true)}
                                         >
                                             Approve Void
@@ -392,7 +460,7 @@ export default function SupervisorDashboard() {
                                     </div>
                                 </TableCell>
                             </TableRow>
-                        ))}
+                        )})}
                     </TableBody>
                 </Table>
             </div>
