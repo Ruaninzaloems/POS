@@ -89,10 +89,20 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
        {account.prepaidBlocked && (
            <Alert variant="destructive" className="mb-4 border-red-200 bg-red-50 text-red-800">
                <AlertTriangle className="h-4 w-4 stroke-red-600" />
-               <AlertTitle className="text-red-900 font-bold ml-2">Prepaid Meter Blocked</AlertTitle>
+               <AlertTitle className="text-red-900 font-bold ml-2">
+                   {account.blockedServices && account.blockedServices.length > 1 
+                    ? `Prepaid Services Blocked: ${account.blockedServices.join(' & ')}` 
+                    : `Prepaid ${account.blockedServices?.[0] || account.prepaidType || 'Service'} Blocked`}
+               </AlertTitle>
                <AlertDescription className="ml-2 text-red-800">
-                   Purchase blocked for Meter {account.prepaidMeterNo} ({account.prepaidType}). 
-                   <span className="block font-medium mt-1">Reason: {account.prepaidBlockReason}</span>
+                   <div className="flex flex-col gap-1 mt-1">
+                       <span>
+                           Purchases are currently blocked for <strong>{account.blockedServices?.join(' and ') || account.prepaidType}</strong>.
+                       </span>
+                       <span className="font-medium bg-red-100 w-fit px-2 py-0.5 rounded text-xs border border-red-200">
+                           Reason: {account.prepaidBlockReason}
+                       </span>
+                   </div>
                </AlertDescription>
            </Alert>
        )}

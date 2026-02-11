@@ -53,6 +53,7 @@ export interface Account {
   agingBreakdown?: AgingItem[];
   prepaidBlocked?: boolean;
   prepaidBlockReason?: string;
+  blockedServices?: string[];
 }
 
 export interface AgingItem {
@@ -127,6 +128,7 @@ export const ACCOUNTS: Account[] = [
     prepaidType: "Electricity",
     prepaidBlocked: true,
     prepaidBlockReason: "Arrears > 90 Days",
+    blockedServices: ["Electricity", "Water"],
     email: "gmoemailadres@gmail.com",
     mobile: "+27821234567",
     unitId: "42001",
