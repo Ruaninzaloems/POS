@@ -318,6 +318,7 @@ export default function ViewReceipts() {
                             transaction={templateData.transaction} 
                             allocation={templateData.allocation} 
                             isReprint={true}
+                            isCancelled={selectedReceipt.status === 'CANCELLED'}
                         />
                     )}
                 </div>

@@ -8,9 +8,10 @@ interface ReceiptTemplateProps {
   allocation: AllocationDraft;
   onClose?: () => void;
   isReprint?: boolean;
+  isCancelled?: boolean;
 }
 
-export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptTemplateProps>(({ transaction, allocation, isReprint }, ref) => {
+export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptTemplateProps>(({ transaction, allocation, isReprint, isCancelled }, ref) => {
   // Find linked account details if available (use the first line's account number as primary for header)
   const primaryLine = allocation.lines[0];
   const primaryAccount = ACCOUNTS.find(a => a.accountNo === primaryLine?.accountNo);
@@ -48,10 +49,19 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptTemplateP
       `}</style>
 
       {/* Watermark for reprints */}
-      {isReprint && (
+      {isReprint && !isCancelled && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10 z-0 overflow-hidden">
             <div className="transform -rotate-45 text-slate-900 text-3xl font-bold border-2 border-slate-900 p-2 rounded-xl whitespace-nowrap">
                 COPY / REPRINT
+            </div>
+        </div>
+      )}
+
+      {/* Watermark for cancelled */}
+      {isCancelled && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20 z-0 overflow-hidden">
+            <div className="transform -rotate-45 text-red-900 text-3xl font-bold border-4 border-red-900 p-2 rounded-xl whitespace-nowrap">
+                CANCELLED
             </div>
         </div>
       )}
@@ -62,7 +72,8 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptTemplateP
         <p className="mb-0.5">Agatha St, Tzaneen 567</p>
         <p className="mb-0.5">Tzaneen. 0850</p>
         <p>VAT Reg: 4130193669</p>
-        {isReprint && <h2 className="font-bold mt-2 text-xs uppercase tracking-widest border-b border-black pb-0.5 inline-block">** REPRINT **</h2>}
+        {isReprint && !isCancelled && <h2 className="font-bold mt-2 text-xs uppercase tracking-widest border-b border-black pb-0.5 inline-block">** REPRINT **</h2>}
+        {isCancelled && <h2 className="font-bold mt-2 text-xs uppercase tracking-widest border-b border-red-600 pb-0.5 inline-block text-red-600">** CANCELLED **</h2>}
       </div>
 
       {/* Transaction Info */}
