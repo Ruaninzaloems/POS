@@ -249,6 +249,10 @@ export default function SupervisorDashboard() {
   
   // Pending Cancellations
   const pendingCancellations = recentTransactions.filter(tx => tx.status === 'PENDING_CANCELLATION');
+  const processedCancellations = recentTransactions.filter(tx => 
+      tx.status === 'CANCELLED' || 
+      (tx.status === 'COMPLETED' && tx.cancellationReason && tx.cancellationRequestTime)
+  );
 
   const [selectedShift, setSelectedShift] = useState<CashierShift | null>(null);
   const [shifts, setShifts] = useState<CashierShift[]>(MOCK_SHIFTS);
@@ -474,128 +478,212 @@ export default function SupervisorDashboard() {
       </div>
 
       {/* Cancellation Approvals Section */}
-      {pendingCancellations.length > 0 && (
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-            <h3 className="font-semibold text-orange-900 mb-4 flex items-center gap-2">
-                <AlertCircle className="h-5 w-5" />
-                Cancellation Requests ({pendingCancellations.length})
-            </h3>
-            <div className="bg-white rounded border overflow-hidden">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Receipt Details</TableHead>
-                            <TableHead>Cashier</TableHead>
-                            <TableHead>Time</TableHead>
-                            <TableHead>Amount</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {pendingCancellations.map(tx => {
-                            const cashier = CASHIERS.find(c => c.id === tx.cashierId);
-                            const mainType = tx.items[0]?.type.replace('_', ' ') || 'Unknown';
-                            
-                            return (
-                            <TableRow key={tx.id}>
-                                <TableCell>
-                                    <div className="flex flex-col">
-                                        <span className="font-mono font-bold text-slate-900">{tx.receiptNumber}</span>
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                                            <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 uppercase text-[10px] tracking-wider font-semibold">
-                                                {mainType}
-                                            </span>
-                                            
-                                            <HoverCard>
-                                                <HoverCardTrigger asChild>
-                                                    <Button variant="link" className="h-auto p-0 text-xs text-blue-600 flex items-center gap-1">
-                                                        <Info className="w-3 h-3" /> View Items
-                                                    </Button>
-                                                </HoverCardTrigger>
-                                                <HoverCardContent className="w-80">
-                                                    <div className="space-y-2">
-                                                        <h4 className="text-sm font-semibold text-slate-900 border-b pb-1">Transaction Items</h4>
-                                                        {tx.items.map((item, idx) => (
-                                                            <div key={idx} className="text-xs grid grid-cols-[1fr_auto] gap-2">
-                                                                <span className="text-slate-600 truncate" title={item.description}>
-                                                                    {item.description}
-                                                                </span>
-                                                                <span className="font-mono font-medium">
-                                                                    R {item.amountToPay.toFixed(2)}
-                                                                </span>
-                                                            </div>
-                                                        ))}
-                                                        <div className="border-t pt-2 mt-2 flex justify-between font-bold text-xs">
-                                                            <span>Total</span>
-                                                            <span>R {tx.totalAmount.toFixed(2)}</span>
-                                                        </div>
-                                                        {tx.cancellationReason && (
-                                                            <div className="mt-3 bg-red-50 p-2 rounded border border-red-100 text-xs">
-                                                                <span className="font-bold text-red-700 block mb-0.5">Cancellation Reason:</span>
-                                                                <span className="text-red-600">{tx.cancellationReason}</span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </HoverCardContent>
-                                            </HoverCard>
-                                        </div>
-                                    </div>
-                                </TableCell>
-                                <TableCell>
-                                    <div className="flex flex-col">
-                                        <span className="font-medium text-slate-900">{cashier?.name || 'Unknown Cashier'}</span>
-                                        <span className="text-xs text-muted-foreground">{tx.cashierId}</span>
-                                    </div>
-                                </TableCell>
-                                <TableCell>
-                                    <div className="flex flex-col">
-                                        <span className="text-slate-900">{format(new Date(tx.timestamp), 'HH:mm')}</span>
-                                        <span className="text-xs text-muted-foreground">{format(new Date(tx.timestamp), 'MMM dd')}</span>
-                                    </div>
-                                </TableCell>
-                                <TableCell>
-                                    <div className="flex flex-col">
-                                        <span className="font-bold text-slate-900">R {tx.totalAmount.toFixed(2)}</span>
-                                        <div className="flex items-center gap-1 mt-0.5">
-                                            {tx.payment.cash > 0 && (
-                                                <Badge variant="outline" className="h-5 px-1.5 bg-green-50 text-green-700 border-green-200 text-[10px] gap-1">
-                                                    <Banknote className="w-3 h-3" /> Cash
-                                                </Badge>
-                                            )}
-                                            {tx.payment.card > 0 && (
-                                                <Badge variant="outline" className="h-5 px-1.5 bg-blue-50 text-blue-700 border-blue-200 text-[10px] gap-1">
-                                                    <CreditCard className="w-3 h-3" /> Card
-                                                </Badge>
-                                            )}
-                                        </div>
-                                    </div>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <div className="flex justify-end gap-2">
-                                        <Button 
-                                            size="sm" 
-                                            variant="outline"
-                                            className="text-red-600 border-red-200 hover:bg-red-50 h-8"
-                                            onClick={() => approveCancellation(tx.id, false)}
-                                        >
-                                            Reject
-                                        </Button>
-                                        <Button 
-                                            size="sm" 
-                                            className="bg-green-600 hover:bg-green-700 text-white h-8"
-                                            onClick={() => approveCancellation(tx.id, true)}
-                                        >
-                                            Approve Void
-                                        </Button>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        )})}
-                    </TableBody>
-                </Table>
+      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+          <Tabs defaultValue="pending" className="w-full">
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-orange-900 flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5" />
+                    Cancellation Requests
+                </h3>
+                <TabsList className="bg-white/50 border border-orange-100">
+                    <TabsTrigger value="pending" className="data-[state=active]:bg-orange-100 data-[state=active]:text-orange-900">
+                        Pending ({pendingCancellations.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="history" className="data-[state=active]:bg-orange-100 data-[state=active]:text-orange-900">
+                        History
+                    </TabsTrigger>
+                </TabsList>
             </div>
-        </div>
-      )}
+            
+            <TabsContent value="pending" className="mt-0">
+                {pendingCancellations.length === 0 ? (
+                    <div className="text-center py-8 bg-white/50 rounded border border-dashed border-orange-200 text-orange-800/60 text-sm">
+                        No pending cancellation requests
+                    </div>
+                ) : (
+                    <div className="bg-white rounded border overflow-hidden">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Receipt Details</TableHead>
+                                    <TableHead>Cashier</TableHead>
+                                    <TableHead>Time</TableHead>
+                                    <TableHead>Amount</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {pendingCancellations.map(tx => {
+                                    const cashier = CASHIERS.find(c => c.id === tx.cashierId);
+                                    const mainType = tx.items[0]?.type.replace('_', ' ') || 'Unknown';
+                                    
+                                    return (
+                                    <TableRow key={tx.id}>
+                                        <TableCell>
+                                            <div className="flex flex-col">
+                                                <span className="font-mono font-bold text-slate-900">{tx.receiptNumber}</span>
+                                                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                                                    <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 uppercase text-[10px] tracking-wider font-semibold">
+                                                        {mainType}
+                                                    </span>
+                                                    
+                                                    <HoverCard>
+                                                        <HoverCardTrigger asChild>
+                                                            <Button variant="link" className="h-auto p-0 text-xs text-blue-600 flex items-center gap-1">
+                                                                <Info className="w-3 h-3" /> View Items
+                                                            </Button>
+                                                        </HoverCardTrigger>
+                                                        <HoverCardContent className="w-80">
+                                                            <div className="space-y-2">
+                                                                <h4 className="text-sm font-semibold text-slate-900 border-b pb-1">Transaction Items</h4>
+                                                                {tx.items.map((item, idx) => (
+                                                                    <div key={idx} className="text-xs grid grid-cols-[1fr_auto] gap-2">
+                                                                        <span className="text-slate-600 truncate" title={item.description}>
+                                                                            {item.description}
+                                                                        </span>
+                                                                        <span className="font-mono font-medium">
+                                                                            R {item.amountToPay.toFixed(2)}
+                                                                        </span>
+                                                                    </div>
+                                                                ))}
+                                                                <div className="border-t pt-2 mt-2 flex justify-between font-bold text-xs">
+                                                                    <span>Total</span>
+                                                                    <span>R {tx.totalAmount.toFixed(2)}</span>
+                                                                </div>
+                                                                {tx.cancellationReason && (
+                                                                    <div className="mt-3 bg-red-50 p-2 rounded border border-red-100 text-xs">
+                                                                        <span className="font-bold text-red-700 block mb-0.5">Cancellation Reason:</span>
+                                                                        <span className="text-red-600">{tx.cancellationReason}</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </HoverCardContent>
+                                                    </HoverCard>
+                                                </div>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col">
+                                                <span className="font-medium text-slate-900">{cashier?.name || 'Unknown Cashier'}</span>
+                                                <span className="text-xs text-muted-foreground">{tx.cashierId}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col">
+                                                <span className="text-slate-900">{format(new Date(tx.timestamp), 'HH:mm')}</span>
+                                                <span className="text-xs text-muted-foreground">{format(new Date(tx.timestamp), 'MMM dd')}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-slate-900">R {tx.totalAmount.toFixed(2)}</span>
+                                                <div className="flex items-center gap-1 mt-0.5">
+                                                    {tx.payment.cash > 0 && (
+                                                        <Badge variant="outline" className="h-5 px-1.5 bg-green-50 text-green-700 border-green-200 text-[10px] gap-1">
+                                                            <Banknote className="w-3 h-3" /> Cash
+                                                        </Badge>
+                                                    )}
+                                                    {tx.payment.card > 0 && (
+                                                        <Badge variant="outline" className="h-5 px-1.5 bg-blue-50 text-blue-700 border-blue-200 text-[10px] gap-1">
+                                                            <CreditCard className="w-3 h-3" /> Card
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <div className="flex justify-end gap-2">
+                                                <Button 
+                                                    size="sm" 
+                                                    variant="outline"
+                                                    className="text-red-600 border-red-200 hover:bg-red-50 h-8"
+                                                    onClick={() => approveCancellation(tx.id, false)}
+                                                >
+                                                    Reject
+                                                </Button>
+                                                <Button 
+                                                    size="sm" 
+                                                    className="bg-green-600 hover:bg-green-700 text-white h-8"
+                                                    onClick={() => approveCancellation(tx.id, true)}
+                                                >
+                                                    Approve Void
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                    )})}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
+            </TabsContent>
+            
+            <TabsContent value="history" className="mt-0">
+                {processedCancellations.length === 0 ? (
+                    <div className="text-center py-8 bg-white/50 rounded border border-dashed border-slate-200 text-slate-500 text-sm">
+                        No cancellation history found
+                    </div>
+                ) : (
+                    <div className="bg-white rounded border overflow-hidden">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Receipt Details</TableHead>
+                                    <TableHead>Cashier</TableHead>
+                                    <TableHead>Processed Time</TableHead>
+                                    <TableHead>Status</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {processedCancellations.map(tx => {
+                                    const cashier = CASHIERS.find(c => c.id === tx.cashierId);
+                                    const mainType = tx.items[0]?.type.replace('_', ' ') || 'Unknown';
+                                    const isRejected = tx.status === 'COMPLETED';
+                                    
+                                    return (
+                                    <TableRow key={tx.id}>
+                                        <TableCell>
+                                            <div className="flex flex-col">
+                                                <span className="font-mono font-bold text-slate-900">{tx.receiptNumber}</span>
+                                                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                                                    <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 uppercase text-[10px] tracking-wider font-semibold">
+                                                        {mainType}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col">
+                                                <span className="font-medium text-slate-900">{cashier?.name || 'Unknown Cashier'}</span>
+                                                <span className="text-xs text-muted-foreground">{tx.cashierId}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col">
+                                                <span className="text-slate-900">{format(new Date(tx.timestamp), 'HH:mm')}</span>
+                                                <span className="text-xs text-muted-foreground">{format(new Date(tx.timestamp), 'MMM dd')}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            {isRejected ? (
+                                                <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                                                    Rejected
+                                                </Badge>
+                                            ) : (
+                                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                                    Approved
+                                                </Badge>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                    )})}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
+            </TabsContent>
+          </Tabs>
+      </div>
 
       <div className="flex flex-col md:flex-row gap-4 items-center bg-white p-4 rounded-lg border shadow-sm">
           <div className="relative flex-1 w-full md:w-auto">
