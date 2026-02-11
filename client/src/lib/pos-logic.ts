@@ -71,11 +71,26 @@ export function createTransactionRecord(
   payment: PaymentState,
   cashierId: string
 ): TransactionRecord {
+  // Sort items: Account payments first, Prepaid last
+  const sortedItems = [...items].sort((a, b) => {
+      const getPriority = (type: string) => {
+          switch (type) {
+              case 'CONSUMER_SERVICES': return 1;
+              case 'CLEARANCE': return 2;
+              case 'DIRECT_INCOME': return 3;
+              case 'ACCOUNT_GROUP': return 4;
+              case 'PREPAID': return 10; // Prepaid always last
+              default: return 5;
+          }
+      };
+      return getPriority(a.type) - getPriority(b.type);
+  });
+
   return {
       id: crypto.randomUUID(),
       receiptNumber: `REC-${Math.floor(100000 + Math.random() * 900000)}`,
       timestamp: Date.now(),
-      items: [...items],
+      items: sortedItems,
       totalAmount: totalToPay,
       payment: { ...payment },
       status: 'COMPLETED',

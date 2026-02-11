@@ -147,7 +147,21 @@ export function TransactionPanels() {
                           </div>
                       </CardHeader>
                       <CardContent className="p-0">
-                          {transactionItems.map((item) => (
+                          {transactionItems
+                            .sort((a, b) => {
+                                const getPriority = (type: string) => {
+                                    switch (type) {
+                                        case 'CONSUMER_SERVICES': return 1;
+                                        case 'CLEARANCE': return 2;
+                                        case 'DIRECT_INCOME': return 3;
+                                        case 'ACCOUNT_GROUP': return 4;
+                                        case 'PREPAID': return 10; // Prepaid always last
+                                        default: return 5;
+                                    }
+                                };
+                                return getPriority(a.type) - getPriority(b.type);
+                            })
+                            .map((item) => (
                               <div key={item.id} className="grid grid-cols-[1fr_2fr_1fr_1fr_auto] gap-4 items-center p-4 border-b last:border-0 hover:bg-muted/5 transition-colors">
                                   <div className="flex items-center gap-2">
                                       {item.type === 'CONSUMER_SERVICES' && <Badge variant="secondary" className="font-mono text-xs">ACC</Badge>}
