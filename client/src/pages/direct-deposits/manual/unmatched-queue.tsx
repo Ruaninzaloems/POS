@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, ArrowRight, Filter, Banknote, FileSpreadsheet, FileText, X } from 'lucide-react';
+import { Search, ArrowRight, Filter, Banknote, FileSpreadsheet, FileText, X, Info, HelpCircle } from 'lucide-react';
 import { MOCK_BANK_TRANSACTIONS } from '@/lib/direct-deposits-data';
 import { filterUnmatchedTransactions } from '@/lib/direct-deposits-logic';
 import { Link, useLocation } from 'wouter';
@@ -14,6 +14,8 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 export default function UnmatchedQueue() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -90,6 +92,42 @@ export default function UnmatchedQueue() {
                 </Link>
             </div>
           </div>
+
+          <Accordion type="single" collapsible className="w-full bg-blue-50/50 border border-blue-100 rounded-lg px-4">
+            <AccordionItem value="help" className="border-0">
+                <AccordionTrigger className="hover:no-underline py-2 text-sm text-blue-700">
+                    <span className="flex items-center gap-2">
+                        <HelpCircle className="w-4 h-4" />
+                        How to use this page
+                    </span>
+                </AccordionTrigger>
+                <AccordionContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-2 text-sm text-slate-600">
+                        <div className="space-y-1">
+                            <h4 className="font-medium text-slate-900 flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">1</div>
+                                Review Unmatched
+                            </h4>
+                            <p>This queue shows all bank deposits that couldn't be automatically matched to a customer account. Review the description and reference columns to identify the payer.</p>
+                        </div>
+                        <div className="space-y-1">
+                            <h4 className="font-medium text-slate-900 flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">2</div>
+                                Search & Filter
+                            </h4>
+                            <p>Use the search bar to find specific amounts or references. Use the filter button to narrow down by date range or specific bank accounts.</p>
+                        </div>
+                        <div className="space-y-1">
+                            <h4 className="font-medium text-slate-900 flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">3</div>
+                                Allocate Funds
+                            </h4>
+                            <p>Click the <strong>Allocate</strong> button on any transaction to open the allocation screen, where you can assign the funds to the correct municipal account(s).</p>
+                        </div>
+                    </div>
+                </AccordionContent>
+            </AccordionItem>
+          </Accordion>
 
           <div className="flex gap-4">
              <div className="relative flex-1 max-w-md">
