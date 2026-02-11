@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { usePos, TransactionItem } from '@/lib/pos-state';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,15 +7,37 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Account, ClearanceCostSchedule, ACCOUNTS, DirectIncomeItem } from '@/lib/mock-data';
-import { User, MapPin, Phone, Mail, FileCheck, Zap, Trash2, Droplets, Upload, Search, Info } from 'lucide-react';
+import { User, MapPin, Phone, Mail, FileCheck, Zap, Trash2, Droplets, Upload, Search, Info, Download, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { AccountEnquiryView } from '@/components/pos/account-enquiry-view';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 export function TransactionPanels() {
   const { activeTransactionType, transactionItems, removeItem, updateItemAmount, addItem, viewingItemId, setViewingItem } = usePos();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const [isImportOpen, setIsImportOpen] = useState(false);
+
+  const handleDownloadTemplate = () => {
+      const csvContent = "Receipt Date,Account Number,Amount\n2023-10-25,000000000030,150.00\n2023-10-25,ACC-1002,200.50";
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", "receipt_import_template.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -26,9 +48,30 @@ export function TransactionPanels() {
       const text = e.target?.result as string;
       const lines = text.split('\n');
       let addedCount = 0;
+      let failedCount = 0;
       
-      lines.forEach(line => {
-        const [accNo, amountStr] = line.split(',').map(s => s.trim());
+      lines.forEach((line, index) => {
+        if (!line.trim()) return;
+        
+        // Skip header if detected
+        if (index === 0 && line.toLowerCase().includes('account number')) return;
+
+        // Expected format: Date, Account, Amount (or just Account, Amount for backward compat)
+        const parts = line.split(',').map(s => s.trim());
+        
+        let receiptDate = '';
+        let accNo = '';
+        let amountStr = '';
+
+        if (parts.length >= 3) {
+            [receiptDate, accNo, amountStr] = parts;
+        } else if (parts.length === 2) {
+            [accNo, amountStr] = parts;
+            receiptDate = new Date().toISOString().split('T')[0];
+        } else {
+            return;
+        }
+        
         if (!accNo) return;
         
         const account = ACCOUNTS.find(a => a.accountNo === accNo);
@@ -38,22 +81,26 @@ export function TransactionPanels() {
             addItem({
                 id: crypto.randomUUID(),
                 type: 'CONSUMER_SERVICES',
-                description: `${account.name} (CSV Import)`,
+                description: `${account.name} (Import)`,
                 reference: account.accountNo,
                 amountDue: account.outstandingAmount,
                 amountToPay: amount, 
-                originalData: account
-            });
+                originalData: account,
+                notes: `CSV Import. Receipt Date: ${receiptDate}`
+            }, true); // Allow duplicates
             addedCount++;
+        } else {
+            failedCount++;
         }
       });
 
       if (addedCount > 0) {
           toast({
               title: "CSV Import Successful",
-              description: `Added ${addedCount} accounts to basket.`,
+              description: `Added ${addedCount} transactions to basket. ${failedCount > 0 ? `(${failedCount} failed)` : ''}`,
               variant: "default"
           });
+          setIsImportOpen(false);
       } else {
           toast({
               title: "Import Failed",
@@ -92,10 +139,50 @@ export function TransactionPanels() {
         <p className="max-w-md text-center">Use the search bar above to find an account, prepaid meter, clearance schedule, or direct income item.</p>
         
         <div className="mt-8 flex gap-4">
-             <Button variant="outline" className="gap-2" onClick={() => fileInputRef.current?.click()}>
-                 <Upload className="w-4 h-4" />
-                 Import CSV
-             </Button>
+             <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
+                 <DialogTrigger asChild>
+                    <Button variant="outline" className="gap-2">
+                        <Upload className="w-4 h-4" />
+                        Import CSV
+                    </Button>
+                 </DialogTrigger>
+                 <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Import Transactions</DialogTitle>
+                        <DialogDescription>
+                            Upload a CSV file to add multiple transactions at once.
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="bg-slate-50 p-4 rounded-md border text-sm space-y-3">
+                        <div className="font-semibold text-slate-700">Required CSV Format:</div>
+                        <div className="bg-white border rounded p-2 font-mono text-xs text-slate-600">
+                            Receipt Date, Account Number, Amount
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                            Example:<br/>
+                            2023-10-25, 000000000030, 150.00<br/>
+                            2023-10-25, ACC-1002, 200.50
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-100">
+                            <Info className="w-4 h-4" />
+                            Duplicate accounts allowed (e.g. multiple receipts for same account).
+                        </div>
+                    </div>
+
+                    <DialogFooter className="sm:justify-between gap-2">
+                         <Button variant="ghost" size="sm" onClick={handleDownloadTemplate} className="gap-2 text-muted-foreground">
+                             <Download className="w-4 h-4" />
+                             Download Template
+                         </Button>
+                         <Button onClick={() => fileInputRef.current?.click()} className="gap-2">
+                             <FileText className="w-4 h-4" />
+                             Select File
+                         </Button>
+                    </DialogFooter>
+                 </DialogContent>
+             </Dialog>
+
              <input 
                 type="file" 
                 ref={fileInputRef} 
@@ -122,10 +209,50 @@ export function TransactionPanels() {
                     </div>
                     
                     <div className="flex gap-2">
-                         <Button variant="outline" size="sm" className="gap-2" onClick={() => fileInputRef.current?.click()}>
-                             <Upload className="w-4 h-4" />
-                             Import CSV
-                         </Button>
+                         <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
+                             <DialogTrigger asChild>
+                                <Button variant="outline" size="sm" className="gap-2">
+                                    <Upload className="w-4 h-4" />
+                                    Import CSV
+                                </Button>
+                             </DialogTrigger>
+                             <DialogContent className="sm:max-w-md">
+                                <DialogHeader>
+                                    <DialogTitle>Import Transactions</DialogTitle>
+                                    <DialogDescription>
+                                        Upload a CSV file to add multiple transactions at once.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                
+                                <div className="bg-slate-50 p-4 rounded-md border text-sm space-y-3">
+                                    <div className="font-semibold text-slate-700">Required CSV Format:</div>
+                                    <div className="bg-white border rounded p-2 font-mono text-xs text-slate-600">
+                                        Receipt Date, Account Number, Amount
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                        Example:<br/>
+                                        2023-10-25, 000000000030, 150.00<br/>
+                                        2023-10-25, ACC-1002, 200.50
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-100">
+                                        <Info className="w-4 h-4" />
+                                        Duplicate accounts allowed (e.g. multiple receipts for same account).
+                                    </div>
+                                </div>
+
+                                <DialogFooter className="sm:justify-between gap-2">
+                                     <Button variant="ghost" size="sm" onClick={handleDownloadTemplate} className="gap-2 text-muted-foreground">
+                                         <Download className="w-4 h-4" />
+                                         Download Template
+                                     </Button>
+                                     <Button onClick={() => fileInputRef.current?.click()} className="gap-2">
+                                         <FileText className="w-4 h-4" />
+                                         Select File
+                                     </Button>
+                                </DialogFooter>
+                             </DialogContent>
+                         </Dialog>
+                         
                          <input 
                             type="file" 
                             ref={fileInputRef} 

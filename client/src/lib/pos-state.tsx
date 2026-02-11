@@ -97,7 +97,7 @@ interface PosActions {
   updateOfficeLimit: (officeId: string, limit: number) => void;
   updateSystemSettings: (settings: Partial<PosState['systemSettings']>) => void;
   setSearchQuery: (query: string) => void;
-  addItem: (item: TransactionItem) => void;
+  addItem: (item: TransactionItem, allowDuplicates?: boolean) => void;
   removeItem: (id: string) => void;
   updateItemAmount: (id: string, amount: number) => void;
   updateItemDetails: (id: string, details: Partial<TransactionItem>) => void;
@@ -213,13 +213,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setOfficeLimits(prev => ({ ...prev, [officeId]: limit }));
   };
 
-  const addItem = (item: TransactionItem) => {
+  const addItem = (item: TransactionItem, allowDuplicates: boolean = false) => {
      setItems(prev => {
         // Prevent duplicates for Accounts/Meters to avoid confusion in prototype
         if (prev.find(i => i.id === item.id)) return prev;
         
-        // Prevent duplicate accounts/meters by reference
-        if (item.type === 'CONSUMER_SERVICES' || item.type === 'PREPAID') {
+        // Prevent duplicate accounts/meters by reference UNLESS allowDuplicates is true
+        if (!allowDuplicates && (item.type === 'CONSUMER_SERVICES' || item.type === 'PREPAID')) {
             const existing = prev.find(i => 
                 (i.type === 'CONSUMER_SERVICES' || i.type === 'PREPAID') && 
                 i.reference === item.reference
