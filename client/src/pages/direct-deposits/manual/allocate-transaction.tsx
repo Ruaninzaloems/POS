@@ -67,7 +67,24 @@ export default function AllocateTransaction() {
             description: `Direct Income: ${item.description}`
         });
         setNewLineAmount(remaining > 0 ? remaining.toFixed(2) : (item.price || 0).toFixed(2));
+    } else if (result.type === 'GROUP') {
+        const group = result.data as any;
+        setSelectedAccount({
+            accountNo: group.id,
+            name: group.name,
+            description: `Group Payment: ${group.name}`
+        });
+        setNewLineAmount(remaining > 0 ? remaining.toFixed(2) : "0.00");
+    } else if (result.type === 'CLEARANCE') {
+        const clr = result.data as any;
+        setSelectedAccount({
+            accountNo: clr.scheduleNo,
+            name: `Clearance ${clr.scheduleNo}`,
+            description: `Clearance Payment: ${clr.scheduleNo}`
+        });
+        setNewLineAmount(remaining > 0 ? remaining.toFixed(2) : clr.totalDue.toFixed(2));
     } else {
+        // Fallback for any other type - just use it as is if possible, or show error
         toast({ title: "Unsupported Type", description: "This item type cannot be allocated to directly.", variant: "destructive" });
     }
   };
