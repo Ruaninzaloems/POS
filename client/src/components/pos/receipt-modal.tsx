@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { usePos } from '@/lib/pos-state';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -6,9 +6,15 @@ import { CheckCircle2, Printer, Mail, MessageSquare, Check } from 'lucide-react'
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { PosReceiptTemplate } from './pos-receipt-template';
+import { useReactToPrint } from 'react-to-print';
 
 export function ReceiptModal() {
-  const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems } = usePos();
+  const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions } = usePos();
+  const printRef = useRef<HTMLDivElement>(null);
+  
+  // Get the latest transaction that was just completed
+  const currentTransaction = recentTransactions[0];
   
   // State for receipt options
   const [printSelected, setPrintSelected] = useState(true);
@@ -18,8 +24,11 @@ export function ReceiptModal() {
   const [emailAddress, setEmailAddress] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
 
-  // Fake receipt number
-  const receiptNo = `REC-${Math.floor(Math.random() * 100000)}`;
+  const handlePrint = useReactToPrint({
+    // @ts-ignore - react-to-print types can be inconsistent
+    content: () => printRef.current,
+    documentTitle: `Receipt-${currentTransaction?.receiptNumber || 'New'}`,
+  });
 
   // Load default contact info when modal opens
   useEffect(() => {
@@ -31,9 +40,6 @@ export function ReceiptModal() {
             const data = accountItem.originalData;
             if (data.email) {
                 setEmailAddress(data.email);
-                // Auto-select if email exists? optional, but prompt says "allow user to add... default email address is pulled"
-                // Let's keep it unselected by default but pre-filled, or maybe select if available?
-                // "print by default" was requested.
             }
             if (data.mobile) {
                 setMobileNumber(data.mobile);
@@ -48,15 +54,24 @@ export function ReceiptModal() {
   }, [isReceiptModalOpen, transactionItems]);
 
   const handleComplete = () => {
-      // In a real app, this would trigger the actual print/send jobs
+      if (printSelected) {
+          handlePrint();
+      }
+      
       console.log('Receipt Options:', {
-          receiptNo,
+          receiptNo: currentTransaction?.receiptNumber,
           print: printSelected,
           email: emailSelected ? emailAddress : null,
           sms: smsSelected ? mobileNumber : null
       });
-      closeReceiptModal();
+      
+      // Delay closing slightly to allow print dialog to spawn if selected
+      if (!printSelected) {
+        closeReceiptModal();
+      }
   };
+
+  if (!currentTransaction) return null;
 
   return (
     <Dialog open={isReceiptModalOpen} onOpenChange={(open) => !open && closeReceiptModal()}>
@@ -67,7 +82,7 @@ export function ReceiptModal() {
           </div>
           <DialogTitle className="text-2xl">Payment Successful</DialogTitle>
           <DialogDescription className="text-lg font-mono text-foreground font-medium">
-             {receiptNo}
+             {currentTransaction.receiptNumber}
           </DialogDescription>
         </DialogHeader>
         
@@ -148,10 +163,16 @@ export function ReceiptModal() {
         <DialogFooter className="sm:justify-between gap-2 border-t pt-4">
           <Button variant="ghost" onClick={closeReceiptModal}>Close</Button>
           <Button onClick={handleComplete} className="min-w-[140px]">
-              New Transaction
+              {printSelected ? 'Print & Complete' : 'Complete'}
           </Button>
         </DialogFooter>
+        
+        {/* Hidden Print Template */}
+        <div style={{ display: 'none' }}>
+            <PosReceiptTemplate ref={printRef} transaction={currentTransaction} />
+        </div>
       </DialogContent>
     </Dialog>
   );
 }
+
