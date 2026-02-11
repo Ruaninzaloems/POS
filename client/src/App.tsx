@@ -12,6 +12,7 @@ import PlaceholderPage from "@/pages/placeholder-page";
 import UnmatchedQueue from "@/pages/direct-deposits/manual/unmatched-queue";
 import AllocateTransaction from "@/pages/direct-deposits/manual/allocate-transaction";
 import AllocationHistory from "@/pages/direct-deposits/manual/allocation-history";
+import ViewReceipts from "@/pages/view-receipts";
 
 function Router() {
   return (
@@ -35,9 +36,7 @@ function Router() {
       <Route path="/bulk-allocation">
         <PlaceholderPage title="Bulk Allocation Progress" description="Consolidated view of bulk allocation progress and errors" />
       </Route>
-      <Route path="/view-receipts">
-        <PlaceholderPage title="View Receipts" description="Search and view historical receipts" />
-      </Route>
+      <Route path="/view-receipts" component={ViewReceipts} />
       <Route path="/supervisor" component={SupervisorDashboard} />
       <Route component={NotFound} />
     </Switch>
