@@ -258,7 +258,7 @@ export function PaymentDrawer() {
                     </div>
                     
                     {/* Quick Cash */}
-                    <div className="grid grid-cols-3 gap-2 lg:hidden">
+                    <div className={`grid grid-cols-3 gap-2 ${viewMode === 'desktop' ? 'lg:hidden' : ''}`}>
                         {QuickAmounts.map(amt => (
                             <Button 
                                 key={amt}
@@ -271,10 +271,10 @@ export function PaymentDrawer() {
                         ))}
                     </div>
 
-                    <Separator className="lg:hidden" />
+                    <Separator className={`${viewMode === 'desktop' ? 'lg:hidden' : ''}`} />
                     
                     {/* Virtual Numpad */}
-                    <div className="lg:hidden">
+                    <div className={`${viewMode === 'desktop' ? 'lg:hidden' : ''}`}>
                         <VirtualNumpad 
                             onInput={handleNumpadInput} 
                             onClear={handleBackspace} 
