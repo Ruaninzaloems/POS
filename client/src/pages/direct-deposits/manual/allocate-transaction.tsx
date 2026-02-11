@@ -21,7 +21,7 @@ export default function AllocateTransaction() {
   const [lines, setLines] = useState<AllocationLine[]>([]);
   
   // New Line State
-  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+  const [selectedAccount, setSelectedAccount] = useState<{accountNo: string, name: string} | null>(null);
   const [newLineAmount, setNewLineAmount] = useState('');
   
   useEffect(() => {
@@ -33,12 +33,13 @@ export default function AllocateTransaction() {
 
   const allocatedTotal = lines.reduce((sum, line) => sum + line.amount, 0);
   const remaining = transaction ? transaction.amount - allocatedTotal : 0;
-  const isFullyAllocated = Math.abs(remaining) < 0.01;
+  // Use a small epsilon for floating point comparison to ensure full allocation is detected
+  const isFullyAllocated = Math.abs(remaining) < 0.005;
 
   const handleSearchResult = (result: SearchResult) => {
     if (result.type === 'ACCOUNT') {
         const acc = result.data as Account;
-        setSelectedAccount(acc);
+        setSelectedAccount({ accountNo: acc.accountNo, name: acc.name });
         // Auto-fill amount if remaining > 0, otherwise outstanding
         if (remaining > 0) {
             setNewLineAmount(Math.min(remaining, acc.outstandingAmount).toFixed(2));
@@ -47,11 +48,26 @@ export default function AllocateTransaction() {
         }
     } else if (result.type === 'PREPAID') {
         const acc = result.data as Account;
-        setSelectedAccount(acc); // Using account even for prepaid for now
+        setSelectedAccount({ accountNo: acc.accountNo, name: acc.name });
         setNewLineAmount(remaining > 0 ? remaining.toFixed(2) : "0.00");
+    } else if (result.type === 'DIRECT') {
+        const item = result.data;
+        setSelectedAccount({ accountNo: item.scoaItem, name: item.description });
+        setNewLineAmount(remaining > 0 ? remaining.toFixed(2) : (item.price || 0).toFixed(2));
     } else {
-        toast({ title: "Unsupported Type", description: "Only Accounts and Prepaid Meters can be allocated to.", variant: "destructive" });
+        toast({ title: "Unsupported Type", description: "This item type cannot be allocated to directly.", variant: "destructive" });
     }
+  };
+
+  const handleReturnToCashbook = () => {
+      if (remaining <= 0) return;
+      
+      setLines(prev => [...prev, {
+          id: Math.random().toString(36).substr(2, 9),
+          accountNo: "CASHBOOK-RTN",
+          amount: remaining,
+          description: "Returned to Cashbook (Unallocated)"
+      }]);
   };
 
   const handleAddLine = () => {
@@ -151,7 +167,7 @@ export default function AllocateTransaction() {
                             <div className="flex-1">
                                 <SearchComponent 
                                     onSelect={handleSearchResult} 
-                                    placeholder="Search Account / Meter / Group / Clearance..."
+                                    placeholder="Search Account / Meter / Group / Clearance / Direct Item..."
                                     className="max-w-full"
                                 />
                             </div>
@@ -167,7 +183,7 @@ export default function AllocateTransaction() {
                         {selectedAccount && (
                             <div className="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-lg flex items-end gap-4 animate-in fade-in slide-in-from-top-2">
                                 <div className="flex-1">
-                                    <div className="text-xs text-blue-600 font-bold uppercase tracking-wider mb-1">Selected Account</div>
+                                    <div className="text-xs text-blue-600 font-bold uppercase tracking-wider mb-1">Selected Allocation Target</div>
                                     <div className="font-medium text-lg text-slate-900">{selectedAccount.accountNo}</div>
                                     <div className="text-sm text-slate-500">{selectedAccount.name}</div>
                                 </div>
@@ -205,7 +221,14 @@ export default function AllocateTransaction() {
                                 {lines.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={4} className="h-40 text-center text-muted-foreground bg-slate-50/30">
-                                            No allocations yet. Use the search bar above to find accounts.
+                                            <div className="flex flex-col items-center gap-2">
+                                                <p>No allocations yet. Use the search bar above to find accounts or items.</p>
+                                                {remaining > 0 && (
+                                                    <Button variant="outline" size="sm" onClick={handleReturnToCashbook} className="mt-2 text-orange-600 border-orange-200 hover:bg-orange-50">
+                                                        Return Remaining (R {remaining.toFixed(2)}) to Cashbook
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -238,14 +261,21 @@ export default function AllocateTransaction() {
                                  </span>
                              </div>
                          </div>
-                         <Button 
-                            className={`${isFullyAllocated ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-300'}`}
-                            disabled={!isFullyAllocated}
-                            onClick={handlePost}
-                         >
-                            {isFullyAllocated ? <CheckCircle className="w-4 h-4 mr-2" /> : <AlertCircle className="w-4 h-4 mr-2" />}
-                            Post Allocation
-                         </Button>
+                         <div className="flex gap-2">
+                             {remaining > 0 && (
+                                <Button variant="outline" onClick={handleReturnToCashbook} className="text-orange-700 border-orange-200 hover:bg-orange-50">
+                                    Return Balance to Cashbook
+                                </Button>
+                             )}
+                             <Button 
+                                className={`${isFullyAllocated ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-300'}`}
+                                disabled={!isFullyAllocated}
+                                onClick={handlePost}
+                             >
+                                {isFullyAllocated ? <CheckCircle className="w-4 h-4 mr-2" /> : <AlertCircle className="w-4 h-4 mr-2" />}
+                                Post Allocation
+                             </Button>
+                         </div>
                     </CardFooter>
                 </Card>
             </div>
