@@ -13,7 +13,7 @@ import { useReactToPrint } from 'react-to-print';
 export function ReceiptModal() {
   const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions } = usePos();
   const printRef = useRef<HTMLDivElement>(null);
-  const permitRef = useRef<HTMLDivElement>(null); // Separate ref for permit
+  const permitRef = useRef<any>(null); // Separate ref for permit
   
   // Get the latest transaction that was just completed
   const currentTransaction = recentTransactions[0];
@@ -35,6 +35,9 @@ export function ReceiptModal() {
     // @ts-ignore - react-to-print types can be inconsistent
     content: () => isPermit ? permitRef.current : printRef.current,
     documentTitle: `${isPermit ? 'Permit' : 'Receipt'}-${currentTransaction?.receiptNumber || 'New'}`,
+    onAfterPrint: () => {
+        closeReceiptModal();
+    }
   });
 
   // Load default contact info when modal opens
@@ -61,20 +64,20 @@ export function ReceiptModal() {
   }, [isReceiptModalOpen, transactionItems]);
 
   const handleComplete = () => {
-      if (printSelected) {
-          handlePrint();
-      }
-      
+      // Log options for demo/debugging
       console.log('Receipt Options:', {
           receiptNo: currentTransaction?.receiptNumber,
           print: printSelected,
           email: emailSelected ? emailAddress : null,
           sms: smsSelected ? mobileNumber : null
       });
-      
-      // Delay closing slightly to allow print dialog to spawn if selected
-      if (!printSelected) {
-        closeReceiptModal();
+
+      if (printSelected) {
+          // Triggers print dialog. Modal closes via onAfterPrint callback
+          handlePrint();
+      } else {
+          // If no print selected, close immediately
+          closeReceiptModal();
       }
   };
 
