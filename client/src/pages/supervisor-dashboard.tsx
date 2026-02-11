@@ -264,10 +264,28 @@ export default function SupervisorDashboard() {
   });
   const [statsCashier, setStatsCashier] = useState<string>('All');
 
+  const [filterVariance, setFilterVariance] = useState<boolean>(false);
+  const [filterStatus, setFilterStatus] = useState<string>('All');
+  const [filterDate, setFilterDate] = useState<string>('All');
+
   const filteredShifts = shifts.filter(shift => {
     const matchesOffice = filterOffice === 'All' || shift.cashOffice === filterOffice;
     const matchesSearch = shift.cashierName.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesOffice && matchesSearch;
+    const matchesVariance = !filterVariance || (shift.variance?.total || 0) !== 0;
+    const matchesStatus = filterStatus === 'All' || shift.status === filterStatus;
+    
+    let matchesDate = true;
+    if (filterDate === 'Today') {
+        matchesDate = isWithinInterval(new Date(shift.startTime), { start: new Date(new Date().setHours(0,0,0,0)), end: new Date() });
+    } else if (filterDate === 'Yesterday') {
+        const yesterday = subDays(new Date(), 1);
+        matchesDate = isWithinInterval(new Date(shift.startTime), { 
+            start: new Date(yesterday.setHours(0,0,0,0)), 
+            end: new Date(yesterday.setHours(23,59,59,999)) 
+        });
+    }
+
+    return matchesOffice && matchesSearch && matchesVariance && matchesStatus && matchesDate;
   });
 
   const pendingCount = shifts.filter(s => s.status === 'PENDING_APPROVAL').length;
@@ -589,9 +607,73 @@ export default function SupervisorDashboard() {
                   <SelectItem value="Traffic Dept">Traffic Dept</SelectItem>
               </SelectContent>
           </Select>
-          <Button variant="outline" className="gap-2 w-full md:w-auto">
-              <Filter className="w-4 h-4" />
-              More Filters
+          <Button variant="outline" className="gap-2 w-full md:w-auto" asChild>
+              <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={`gap-2 w-full md:w-auto ${filterVariance || filterStatus !== 'All' || filterDate !== 'All' ? 'bg-slate-100 border-slate-300' : ''}`}>
+                        <Filter className="w-4 h-4" />
+                        More Filters
+                        {(filterVariance || filterStatus !== 'All' || filterDate !== 'All') && (
+                            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">Active</Badge>
+                        )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80" align="end">
+                      <div className="space-y-4">
+                          <h4 className="font-medium text-sm border-b pb-2">Filter Shifts</h4>
+                          
+                          <div className="space-y-2">
+                              <Label htmlFor="status">Shift Status</Label>
+                              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                                  <SelectTrigger id="status">
+                                      <SelectValue placeholder="All Statuses" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                      <SelectItem value="All">All Statuses</SelectItem>
+                                      <SelectItem value="PENDING_APPROVAL">Pending Approval</SelectItem>
+                                      <SelectItem value="COMPLETED">Completed</SelectItem>
+                                      <SelectItem value="RETURNED">Returned</SelectItem>
+                                      <SelectItem value="NOT_SUBMITTED">Not Submitted</SelectItem>
+                                  </SelectContent>
+                              </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                              <Label htmlFor="date">Date Period</Label>
+                              <Select value={filterDate} onValueChange={setFilterDate}>
+                                  <SelectTrigger id="date">
+                                      <SelectValue placeholder="Any Time" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                      <SelectItem value="All">Any Time</SelectItem>
+                                      <SelectItem value="Today">Today</SelectItem>
+                                      <SelectItem value="Yesterday">Yesterday</SelectItem>
+                                  </SelectContent>
+                              </Select>
+                          </div>
+
+                          <div className="flex items-center space-x-2 pt-2">
+                              <Switch id="variance-mode" checked={filterVariance} onCheckedChange={setFilterVariance} />
+                              <Label htmlFor="variance-mode">Show Variances Only</Label>
+                          </div>
+                          
+                          {(filterVariance || filterStatus !== 'All' || filterDate !== 'All') && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 h-8 mt-2"
+                                onClick={() => {
+                                    setFilterStatus('All');
+                                    setFilterVariance(false);
+                                    setFilterDate('All');
+                                }}
+                              >
+                                  Reset Filters
+                              </Button>
+                          )}
+                      </div>
+                  </PopoverContent>
+              </Popover>
           </Button>
       </div>
 
