@@ -243,6 +243,23 @@ function downloadReport(shift: CashierShift) {
   document.body.removeChild(link);
 }
 
+// Helper constants
+const FINANCIAL_YEARS = ['2025/2026', '2024/2025', '2023/2024', '2022/2023'];
+const MONTHS = [
+    { value: '0', label: 'January' },
+    { value: '1', label: 'February' },
+    { value: '2', label: 'March' },
+    { value: '3', label: 'April' },
+    { value: '4', label: 'May' },
+    { value: '5', label: 'June' },
+    { value: '6', label: 'July' },
+    { value: '7', label: 'August' },
+    { value: '8', label: 'September' },
+    { value: '9', label: 'October' },
+    { value: '10', label: 'November' },
+    { value: '11', label: 'December' },
+];
+
 export default function SupervisorDashboard() {
   const { returnDayEnd, approveCancellation, recentTransactions } = usePos();
   const [reconMode, setReconMode] = useState<ReconMode>('PER_CASHIER');
@@ -267,6 +284,44 @@ export default function SupervisorDashboard() {
       to: new Date()
   });
   const [statsCashier, setStatsCashier] = useState<string>('All');
+  const [statsFinancialYear, setStatsFinancialYear] = useState<string>('All');
+  const [statsMonth, setStatsMonth] = useState<string>('All');
+
+  // Handle Financial Period Change
+  const updateStatsPeriod = (fy: string, month: string) => {
+      setStatsFinancialYear(fy);
+      setStatsMonth(month);
+
+      if (fy !== 'All') {
+          const [startYearStr, endYearStr] = fy.split('/');
+          const startYear = parseInt(startYearStr);
+          const endYear = parseInt(endYearStr);
+
+          if (month !== 'All') {
+              // Specific Month in FY
+              const monthIndex = parseInt(month);
+              let targetYear = startYear;
+              
+              // If month is Jan(0) to Jun(5), it belongs to the second year (endYear)
+              // If month is Jul(6) to Dec(11), it belongs to the first year (startYear)
+              if (monthIndex < 6) {
+                  targetYear = endYear;
+              } else {
+                  targetYear = startYear;
+              }
+
+              const fromDate = new Date(targetYear, monthIndex, 1);
+              const toDate = endOfMonth(fromDate);
+              setStatsDateRange({ from: fromDate, to: toDate });
+          } else {
+              // Whole FY
+              setStatsDateRange({
+                  from: new Date(startYear, 6, 1), // July 1st
+                  to: new Date(endYear, 5, 30) // June 30th
+              });
+          }
+      }
+  };
 
   const [filterVariance, setFilterVariance] = useState<boolean>(false);
   const [filterStatus, setFilterStatus] = useState<string>('All');
@@ -917,23 +972,44 @@ export default function SupervisorDashboard() {
                 {/* Filters */}
                 <div className="flex flex-wrap items-end gap-4 bg-slate-50 p-4 rounded-lg border">
                     <div className="flex flex-col gap-1.5">
-                        <Label>Date Range Preset</Label>
+                        <Label>Financial Year</Label>
+                        <Select value={statsFinancialYear} onValueChange={(val) => updateStatsPeriod(val, statsMonth)}>
+                            <SelectTrigger className="w-[140px] bg-white">
+                                <SelectValue placeholder="All Years" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="All">All Years</SelectItem>
+                                {FINANCIAL_YEARS.map(fy => (
+                                    <SelectItem key={fy} value={fy}>{fy}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                        <Label>Month</Label>
+                        <Select value={statsMonth} onValueChange={(val) => updateStatsPeriod(statsFinancialYear, val)} disabled={statsFinancialYear === 'All'}>
+                            <SelectTrigger className="w-[140px] bg-white">
+                                <SelectValue placeholder="All Months" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="All">All Months</SelectItem>
+                                {MONTHS.map(m => (
+                                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                        <Label>Quick Presets</Label>
                         <Select onValueChange={(val) => {
+                            // Reset specialized filters when using quick presets
+                            setStatsFinancialYear('All');
+                            setStatsMonth('All');
+                            
                             const now = new Date();
-                            if (val === 'financial_year') {
-                                // Assume Fin Year starts July 1st
-                                const currentYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
-                                setStatsDateRange({
-                                    from: new Date(currentYear, 6, 1), // July 1st
-                                    to: new Date(currentYear + 1, 5, 30) // June 30th
-                                });
-                            } else if (val === 'billing_month') {
-                                // Current billing month (e.g., 25th prev month to 24th this month)
-                                const startDay = 25;
-                                let fromDate = new Date(now.getFullYear(), now.getMonth() - 1, startDay);
-                                let toDate = new Date(now.getFullYear(), now.getMonth(), startDay - 1);
-                                setStatsDateRange({ from: fromDate, to: toDate });
-                            } else if (val === 'last_30') {
+                            if (val === 'last_30') {
                                 setStatsDateRange({ from: subDays(now, 30), to: now });
                             } else if (val === 'this_year') {
                                 setStatsDateRange({ from: startOfYear(now), to: now });
@@ -944,12 +1020,11 @@ export default function SupervisorDashboard() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="last_30">Last 30 Days</SelectItem>
-                                <SelectItem value="billing_month">Current Billing Month</SelectItem>
-                                <SelectItem value="financial_year">Financial Year (Jul-Jun)</SelectItem>
                                 <SelectItem value="this_year">This Calendar Year</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
+
 
                     <div className="flex flex-col gap-1.5">
                         <Label>Cashier</Label>
