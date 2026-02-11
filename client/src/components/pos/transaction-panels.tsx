@@ -1,12 +1,13 @@
 import React, { useRef } from 'react';
 import { usePos, TransactionItem } from '@/lib/pos-state';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Account, ClearanceCostSchedule, ACCOUNTS } from '@/lib/mock-data';
-import { User, MapPin, Phone, Mail, FileCheck, Zap, Trash2, Droplets, Upload, Search } from 'lucide-react';
+import { Account, ClearanceCostSchedule, ACCOUNTS, DirectIncomeItem } from '@/lib/mock-data';
+import { User, MapPin, Phone, Mail, FileCheck, Zap, Trash2, Droplets, Upload, Search, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { AccountEnquiryView } from '@/components/pos/account-enquiry-view';
@@ -243,7 +244,7 @@ export function TransactionPanels() {
 }
 
 function TransactionItemCard({ item }: { item: TransactionItem }) {
-    const { updateItemAmount } = usePos();
+    const { updateItemAmount, updateItemDetails } = usePos();
     
     // CONSUMER ACCOUNT CARD -> USE NEW VIEW
     if (item.type === 'CONSUMER_SERVICES') {
@@ -492,6 +493,107 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                 </CardContent>
             </Card>
         )
+    }
+
+    // DIRECT INCOME / DEFAULT CARD
+    if (item.type === 'DIRECT_INCOME') {
+        const incomeItem = item.originalData as DirectIncomeItem;
+        
+        return (
+            <Card className="border-l-4 border-l-green-500 shadow-sm">
+                <CardHeader className="pb-3 bg-green-500/5">
+                    <div className="flex justify-between items-start">
+                        <div className="flex gap-4">
+                            <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center text-green-600">
+                                <Badge variant="outline" className="border-green-500 text-green-700 bg-white font-mono">INC</Badge>
+                            </div>
+                            <div>
+                                <CardTitle className="text-lg">{item.description}</CardTitle>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <Badge variant="secondary" className="font-mono text-xs bg-slate-100 text-slate-600 border border-slate-200">
+                                        Vote: {incomeItem.scoaItem}
+                                    </Badge>
+                                    <span className="text-xs text-muted-foreground">{incomeItem.groupName}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-6">
+                     <div className="flex flex-col md:flex-row gap-6">
+                        <div className="flex-1 space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor={`desc-${item.id}`} className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description / Notes</Label>
+                                <Textarea 
+                                    id={`desc-${item.id}`}
+                                    placeholder="Enter additional details about this payment..."
+                                    className="resize-none h-20 bg-slate-50 border-slate-200"
+                                    value={item.notes || ''}
+                                    onChange={(e) => updateItemDetails(item.id, { notes: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor={`paidBy-${item.id}`} className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Paid By (Name/Company)</Label>
+                                    <Input 
+                                        id={`paidBy-${item.id}`}
+                                        placeholder="e.g. John Doe Construction"
+                                        className="bg-slate-50 border-slate-200"
+                                        value={item.paidBy || ''}
+                                        onChange={(e) => updateItemDetails(item.id, { paidBy: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor={`info-${item.id}`} className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Additional Information</Label>
+                                    <Input 
+                                        id={`info-${item.id}`}
+                                        placeholder="Reference / Permit No."
+                                        className="bg-slate-50 border-slate-200"
+                                        value={item.additionalInfo || ''}
+                                        onChange={(e) => updateItemDetails(item.id, { additionalInfo: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="w-full md:w-[280px] p-6 rounded-lg bg-green-50 border border-green-100 flex flex-col justify-center space-y-4">
+                            <Label htmlFor={`amount-${item.id}`} className="font-medium text-lg text-green-900">Payment Amount</Label>
+                            <div className="relative">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 font-mono text-xl text-green-700">R</span>
+                                <Input 
+                                    id={`amount-${item.id}`}
+                                    type="number" 
+                                    min="0"
+                                    step="0.01"
+                                    className="pl-10 text-2xl font-mono font-bold h-14 bg-white border-green-200 focus-visible:ring-green-400 focus-visible:ring-2"
+                                    value={item.amountToPay || ''} 
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val && parseFloat(val) < 0) return;
+                                        if (val.includes('.') && val.split('.')[1].length > 2) return;
+                                        updateItemAmount(item.id, parseFloat(val) || 0);
+                                    }}
+                                />
+                            </div>
+                            <div className="flex gap-2">
+                                {[50, 100, 200, 500].map(amt => (
+                                    <Button 
+                                        key={amt} 
+                                        variant="outline" 
+                                        size="sm" 
+                                        className="flex-1 bg-white hover:bg-green-100 border-green-200 text-green-800 transition-colors"
+                                        onClick={() => updateItemAmount(item.id, amt)}
+                                    >
+                                        R{amt}
+                                    </Button>
+                                ))}
+                            </div>
+                        </div>
+                     </div>
+                </CardContent>
+            </Card>
+        );
     }
 
     // Default Fallback

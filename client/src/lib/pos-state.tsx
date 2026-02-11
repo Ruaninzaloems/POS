@@ -50,6 +50,9 @@ export interface TransactionItem {
   amountDue: number;
   amountToPay: number;
   originalData: any; // The full object (Account, Item, etc)
+  paidBy?: string;
+  notes?: string;
+  additionalInfo?: string;
 }
 
 interface PosState {
@@ -84,6 +87,7 @@ interface PosActions {
   addItem: (item: TransactionItem) => void;
   removeItem: (id: string) => void;
   updateItemAmount: (id: string, amount: number) => void;
+  updateItemDetails: (id: string, details: Partial<TransactionItem>) => void;
   setPaymentAmount: (type: 'cash' | 'card', amount: number) => void;
   clearTransaction: () => void;
   completeTransaction: () => void;
@@ -180,6 +184,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateItemAmount = (id: string, amount: number) => {
     setItems(prev => prev.map(i => i.id === id ? { ...i, amountToPay: amount } : i));
   };
+
+  const updateItemDetails = (id: string, details: Partial<TransactionItem>) => {
+    setItems(prev => prev.map(i => i.id === id ? { ...i, ...details } : i));
+  };
   
   const setViewingItem = (id: string | null) => {
       setViewingItemId(id);
@@ -272,6 +280,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addItem,
       removeItem,
       updateItemAmount,
+      updateItemDetails,
       setViewingItem,
       setPaymentAmount,
       clearTransaction,
