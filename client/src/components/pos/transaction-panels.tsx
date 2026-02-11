@@ -525,7 +525,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                                 <CardTitle className="text-lg">{item.description}</CardTitle>
                                 <div className="flex items-center gap-2 mt-1">
                                     <Badge variant="secondary" className="font-mono text-xs bg-slate-100 text-slate-600 border border-slate-200">
-                                        Vote: {incomeItem.scoaItem}
+                                        SCOA Item: {incomeItem.scoaItem}
                                     </Badge>
                                     <span className="text-xs text-muted-foreground">{incomeItem.groupName}</span>
                                 </div>
