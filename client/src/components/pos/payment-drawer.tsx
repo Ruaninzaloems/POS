@@ -39,7 +39,14 @@ export function PaymentDrawer() {
     transactionItems.length > 0 && 
     payment.tenderTotal >= transactionItems.reduce((acc, i) => acc + i.amountToPay, 0) &&
     transactionItems.reduce((acc, i) => acc + i.amountToPay, 0) > 0 &&
-    dayEndStatus === 'OPEN';
+    dayEndStatus === 'OPEN' &&
+    // Check mandatory fields for Direct Income
+    transactionItems.every(item => {
+        if (item.type === 'DIRECT_INCOME') {
+            return !!item.paidBy && item.paidBy.trim().length > 0;
+        }
+        return true;
+    });
 
   const totalDue = transactionItems.reduce((acc, i) => acc + i.amountToPay, 0);
 

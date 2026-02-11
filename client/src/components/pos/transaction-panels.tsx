@@ -559,14 +559,24 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor={`paidBy-${item.id}`} className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Paid By (Name/Company)</Label>
+                                    <Label htmlFor={`paidBy-${item.id}`} className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Paid By (Name/Company) <span className="text-red-500">*</span></Label>
                                     <Input 
                                         id={`paidBy-${item.id}`}
                                         placeholder="e.g. John Doe Construction"
-                                        className="bg-slate-50 border-slate-200"
+                                        className={`bg-slate-50 border-slate-200 ${(item as any).paidByError ? 'border-red-500 ring-1 ring-red-500' : ''}`}
                                         value={item.paidBy || ''}
-                                        onChange={(e) => updateItemDetails(item.id, { paidBy: e.target.value })}
+                                        onChange={(e) => {
+                                            updateItemDetails(item.id, { paidBy: e.target.value });
+                                            // Clear error if present
+                                            if ((item as any).paidByError) {
+                                                // We can't clear error directly via updateItemDetails unless we add error field to type
+                                                // So we just update the value for now, validation happens on Complete
+                                            }
+                                        }}
                                     />
+                                    {(item as any).paidByError && (
+                                        <span className="text-[10px] text-red-500 font-medium">This field is required</span>
+                                    )}
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor={`info-${item.id}`} className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Additional Information</Label>

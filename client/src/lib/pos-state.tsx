@@ -51,6 +51,7 @@ export interface TransactionItem {
   amountToPay: number;
   originalData: any; // The full object (Account, Item, etc)
   paidBy?: string;
+  paidByError?: boolean;
   notes?: string;
   additionalInfo?: string;
 }
