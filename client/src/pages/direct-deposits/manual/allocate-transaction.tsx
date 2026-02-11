@@ -11,6 +11,7 @@ import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { ACCOUNTS, Account } from '@/lib/mock-data';
 import { UnifiedSearch as SearchComponent, SearchResult } from '@/components/pos/search-component';
+import { validateAllocationAmount, calculateAllocationTotals, mapSearchResultToAllocationTarget } from '@/lib/allocation-logic';
 
 export default function AllocateTransaction() {
   const [, params] = useRoute('/direct-deposits/manual/allocate/:id');
@@ -43,55 +44,17 @@ export default function AllocateTransaction() {
     }
   }, [params?.id]);
 
-  const allocatedTotal = lines.reduce((sum, line) => sum + line.amount, 0);
-  const remaining = transaction ? transaction.amount - allocatedTotal : 0;
-  // Use a small epsilon for floating point comparison to ensure full allocation is detected
-  const isFullyAllocated = Math.abs(remaining) < 0.005;
+  const { allocatedTotal, remaining, isFullyAllocated } = transaction 
+    ? calculateAllocationTotals(lines, transaction.amount)
+    : { allocatedTotal: 0, remaining: 0, isFullyAllocated: false };
 
   const handleSearchResult = (result: SearchResult) => {
-    if (result.type === 'ACCOUNT') {
-        const acc = result.data as Account;
-        setSelectedAccount({ 
-            accountNo: acc.accountNo, 
-            name: acc.name,
-            description: `Payment to ${acc.name}` 
-        });
-        setNewLineAmount("0.00");
-    } else if (result.type === 'PREPAID') {
-        const acc = result.data as Account;
-        const prepaidType = acc.prepaidType || 'Electricity';
-        setSelectedAccount({ 
-            accountNo: acc.accountNo, 
-            name: `${prepaidType} Meter: ${acc.prepaidMeterNo}`,
-            description: `Prepaid ${prepaidType}: ${acc.prepaidMeterNo} (${acc.name})`
-        }); 
-        setNewLineAmount("0.00");
-    } else if (result.type === 'DIRECT') {
-        const item = result.data;
-        setSelectedAccount({ 
-            accountNo: item.scoaItem, 
-            name: item.description,
-            description: `Direct Income: ${item.description}`
-        });
-        setNewLineAmount("0.00");
-    } else if (result.type === 'GROUP') {
-        const group = result.data as any;
-        setSelectedAccount({
-            accountNo: group.id,
-            name: group.name,
-            description: `Group Payment: ${group.name}`
-        });
-        setNewLineAmount("0.00");
-    } else if (result.type === 'CLEARANCE') {
-        const clr = result.data as any;
-        setSelectedAccount({
-            accountNo: clr.scheduleNo,
-            name: `Clearance ${clr.scheduleNo}`,
-            description: `Clearance Payment: ${clr.scheduleNo}`
-        });
+    const target = mapSearchResultToAllocationTarget(result);
+    
+    if (target) {
+        setSelectedAccount(target);
         setNewLineAmount("0.00");
     } else {
-        // Fallback for any other type - just use it as is if possible, or show error
         toast({ title: "Unsupported Type", description: "This item type cannot be allocated to directly.", variant: "destructive" });
     }
   };
@@ -111,18 +74,16 @@ export default function AllocateTransaction() {
       if (!selectedAccount || !newLineAmount) return;
       
       const amount = parseFloat(newLineAmount);
-      if (isNaN(amount) || amount <= 0) {
-          toast({ title: "Invalid Amount", variant: "destructive" });
-          return;
-      }
+      
+      if (!transaction) return;
 
-      // Validation: Check if new amount + allocatedTotal exceeds transaction amount
-      // Floating point safe comparison
-      if (transaction && (allocatedTotal + amount) > (transaction.amount + 0.005)) {
+      const validation = validateAllocationAmount(amount, allocatedTotal, transaction.amount);
+      
+      if (!validation.valid) {
           toast({ 
-              title: "Over-allocation Error", 
-              description: `Cannot allocate R ${amount.toFixed(2)}. Remaining balance is R ${remaining.toFixed(2)}.`, 
-              variant: "destructive" 
+            title: validation.error?.includes("Invalid") ? "Invalid Amount" : "Over-allocation Error", 
+            description: validation.error, 
+            variant: "destructive" 
           });
           return;
       }
