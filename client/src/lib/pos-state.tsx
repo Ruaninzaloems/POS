@@ -67,6 +67,14 @@ interface PosState {
   recentTransactions: TransactionRecord[];
   dayEndStatus: DayEndStatus;
   dayEndReturnReason?: string;
+  activeSession: boolean;
+  startSession: (officeId: string, floatAmount: number) => void;
+  endSession: () => void;
+  sessionDetails?: {
+      startTime: number;
+      officeId: string;
+      floatAmount: number;
+  };
 }
 
 interface PosActions {
@@ -104,6 +112,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [recentTransactions, setRecentTransactions] = useState<TransactionRecord[]>([]);
   const [dayEndStatus, setDayEndStatus] = useState<DayEndStatus>('OPEN');
   const [dayEndReturnReason, setDayEndReturnReason] = useState<string>('');
+  
+  // Session State
+  const [activeSession, setActiveSession] = useState(false);
+  const [sessionDetails, setSessionDetails] = useState<{startTime: number; officeId: string; floatAmount: number} | undefined>(undefined);
 
   // Sync with global mock transactions on mount and updates
   useEffect(() => {
@@ -131,7 +143,24 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setDayEndReturnReason('');
           setRecentTransactions([]);
           setPayment({ cash: 0, card: 0 });
+          setActiveSession(false); // Require new session start on switch
+          setSessionDetails(undefined);
       }
+  };
+
+  const startSession = (officeId: string, floatAmount: number) => {
+      setActiveSession(true);
+      setSessionDetails({
+          startTime: Date.now(),
+          officeId,
+          floatAmount
+      });
+      // Optionally update currentUser's office to match selection
+  };
+
+  const endSession = () => {
+      setActiveSession(false);
+      setSessionDetails(undefined);
   };
 
   const addItem = (item: TransactionItem) => {
@@ -250,7 +279,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       submitDayEnd,
       returnDayEnd,
       cancelTransaction,
-      approveCancellation
+      approveCancellation,
+      activeSession,
+      startSession,
+      endSession,
+      sessionDetails
     }}>
       {children}
     </PosContext.Provider>

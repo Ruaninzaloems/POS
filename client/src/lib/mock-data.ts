@@ -92,6 +92,27 @@ export interface ClearanceCostSchedule {
 
 // SEED DATA
 
+export interface CashOffice {
+  id: string;
+  name: string;
+  ledgerVote: string;
+}
+
+export const CASH_OFFICES: CashOffice[] = [
+  { id: "CO-001", name: "Bulk Direct Deposits", ledgerVote: "Bulk Direct Deposits 0000 Deposits" },
+  { id: "CO-002", name: "Cashier - Machuene", ledgerVote: "Cashier - Machuene 0001 Deposits" },
+  { id: "CO-003", name: "Cashier - Madibaki", ledgerVote: "Cashier - Madibaki 0002 Deposits" },
+  { id: "CO-004", name: "Cashier - Mmammolai", ledgerVote: "Cashier - Mmammolai 0003 Deposits" },
+  { id: "CO-005", name: "Cashier - Venda", ledgerVote: "Cashier - Venda 0004 Deposits" },
+  { id: "CO-006", name: "Direct Deposits", ledgerVote: "Direct Deposits 0005 Deposits" },
+  { id: "CO-007", name: "Lephalale Cash Office Civic Center", ledgerVote: "Lephalale Cash Office Civic Center 0006 Deposits" },
+  { id: "CO-008", name: "Lephalale Easypay", ledgerVote: "Lephalale Easypay 0007 Deposits" },
+  { id: "CO-009", name: "Lephalale Traffic Office", ledgerVote: "Lephalale Traffic Office 0008 Deposits" },
+  { id: "CO-010", name: "Palala Cash Office", ledgerVote: "Palala Cash Office 0009 Deposits" },
+  { id: "CO-011", name: "RD Cheques", ledgerVote: "RD Cheques 0010 Deposits" },
+  { id: "CO-012", name: "UPDI Cash Office", ledgerVote: "UPDI Cash Office 0011 Deposits" },
+];
+
 export const ACCOUNTS: Account[] = [
   {
     accountNo: "000000000030",

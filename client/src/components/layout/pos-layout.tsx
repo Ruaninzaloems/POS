@@ -30,13 +30,21 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 
+import CashierSetup from '@/pages/cashier-setup';
+
 interface PosLayoutProps {
   children: React.ReactNode;
 }
 
 export function PosLayout({ children }: PosLayoutProps) {
   const [location, setLocation] = useLocation();
-  const { currentUser, switchUser } = usePos();
+  const { currentUser, switchUser, activeSession, endSession } = usePos();
+
+  // If no active session, show setup screen (blocking everything else)
+  // But allow switching users or logging out still? For now, simple block.
+  if (!activeSession) {
+      return <CashierSetup />;
+  }
 
   const getPageTitle = (path: string) => {
     if (path === '/') return 'POS Unified';
@@ -133,7 +141,7 @@ export function PosLayout({ children }: PosLayoutProps) {
 
            <div className="h-6 w-px bg-border" />
 
-           <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+           <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={endSession} title="End Session">
              <LogOut className="w-4 h-4" />
            </Button>
         </div>
