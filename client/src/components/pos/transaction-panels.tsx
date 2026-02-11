@@ -356,7 +356,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                                         </div>
                                         {breakdown.block2.units > 0 && (
                                             <div className="flex justify-between text-xs">
-                                                <span>Block 2 (>350 @ R{breakdown.block2.rate.toFixed(2)})</span>
+                                                <span>Block 2 (&gt;350 @ R{breakdown.block2.rate.toFixed(2)})</span>
                                                 <span>{breakdown.block2.units.toFixed(1)} kWh</span>
                                             </div>
                                         )}
