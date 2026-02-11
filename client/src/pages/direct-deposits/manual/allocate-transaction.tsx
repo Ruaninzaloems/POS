@@ -24,6 +24,18 @@ export default function AllocateTransaction() {
   const [selectedAccount, setSelectedAccount] = useState<{accountNo: string, name: string, description?: string} | null>(null);
   const [newLineAmount, setNewLineAmount] = useState('');
   
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (selectedAccount && inputRef.current) {
+        // Short timeout to ensure DOM is ready and focus takes precedence
+        setTimeout(() => {
+            inputRef.current?.focus();
+            inputRef.current?.select();
+        }, 10);
+    }
+  }, [selectedAccount]);
+
   useEffect(() => {
     if (params?.id) {
         const tx = MOCK_BANK_TRANSACTIONS.find(t => t.id === params.id);
@@ -227,6 +239,7 @@ export default function AllocateTransaction() {
                                     <label className="text-xs text-slate-500 block mb-1">Amount to Allocate</label>
                                     <div className="flex gap-2">
                                         <Input 
+                                            ref={inputRef}
                                             type="number" 
                                             min="0"
                                             step="0.01"
@@ -240,7 +253,6 @@ export default function AllocateTransaction() {
                                             }}
                                             onFocus={(e) => e.target.select()}
                                             onKeyDown={e => e.key === 'Enter' && handleAddLine()}
-                                            autoFocus
                                         />
                                         <Button onClick={handleAddLine} className="bg-blue-600 hover:bg-blue-700">
                                             <Plus className="w-4 h-4" />
