@@ -157,17 +157,12 @@ export default function ViewReceipts() {
 
                                     <div className="grid grid-cols-[120px_1fr] items-center gap-4">
                                         <label className="text-sm font-medium text-right text-slate-600">From Date <span className="text-red-500">*</span></label>
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <Button variant="outline" className={cn("h-9 justify-start text-left font-normal", !fromDate && "text-muted-foreground")}>
-                                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                                    {fromDate ? format(fromDate, "dd/MM/yyyy") : <span>Pick a date</span>}
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0">
-                                                <Calendar mode="single" selected={fromDate} onSelect={setFromDate} initialFocus />
-                                            </PopoverContent>
-                                        </Popover>
+                                        <Input 
+                                            type="date" 
+                                            className="h-9"
+                                            value={fromDate ? format(fromDate, 'yyyy-MM-dd') : ''}
+                                            onChange={(e) => setFromDate(e.target.value ? new Date(e.target.value) : undefined)}
+                                        />
                                     </div>
 
                                     <div className="grid grid-cols-[120px_1fr] items-center gap-4">
@@ -187,17 +182,12 @@ export default function ViewReceipts() {
 
                                     <div className="grid grid-cols-[120px_1fr] items-center gap-4">
                                         <label className="text-sm font-medium text-right text-slate-600">To Date <span className="text-red-500">*</span></label>
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <Button variant="outline" className={cn("h-9 justify-start text-left font-normal", !toDate && "text-muted-foreground")}>
-                                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                                    {toDate ? format(toDate, "dd/MM/yyyy") : <span>Pick a date</span>}
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0">
-                                                <Calendar mode="single" selected={toDate} onSelect={setToDate} initialFocus />
-                                            </PopoverContent>
-                                        </Popover>
+                                        <Input 
+                                            type="date" 
+                                            className="h-9"
+                                            value={toDate ? format(toDate, 'yyyy-MM-dd') : ''}
+                                            onChange={(e) => setToDate(e.target.value ? new Date(e.target.value) : undefined)}
+                                        />
                                     </div>
 
                                     <div className="grid grid-cols-[120px_1fr] items-center gap-4">
