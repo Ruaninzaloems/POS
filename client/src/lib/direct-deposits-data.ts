@@ -24,7 +24,30 @@ export interface AllocationDraft {
   updatedAt: string;
 }
 
-export const MOCK_BANK_TRANSACTIONS: BankTransaction[] = [
+// Helper to manage mock persistence
+const PERSISTENCE_KEY_TX = 'mock_bank_transactions_v1';
+const PERSISTENCE_KEY_ALLOC = 'mock_allocations_v1';
+
+// Load from storage or default
+const loadTransactions = (): BankTransaction[] => {
+    try {
+        const stored = localStorage.getItem(PERSISTENCE_KEY_TX);
+        return stored ? JSON.parse(stored) : DEFAULT_MOCK_TRANSACTIONS;
+    } catch (e) {
+        return DEFAULT_MOCK_TRANSACTIONS;
+    }
+}
+
+const loadAllocations = (): AllocationDraft[] => {
+    try {
+        const stored = localStorage.getItem(PERSISTENCE_KEY_ALLOC);
+        return stored ? JSON.parse(stored) : DEFAULT_MOCK_ALLOCATIONS;
+    } catch (e) {
+        return DEFAULT_MOCK_ALLOCATIONS;
+    }
+}
+
+const DEFAULT_MOCK_TRANSACTIONS: BankTransaction[] = [
   {
     id: "TXN-001",
     transactionDate: "2023-10-25",
@@ -137,7 +160,7 @@ export const MOCK_BANK_TRANSACTIONS: BankTransaction[] = [
   }
 ];
 
-export const MOCK_ALLOCATIONS: AllocationDraft[] = [
+const DEFAULT_MOCK_ALLOCATIONS: AllocationDraft[] = [
     {
         transactionId: "TXN-004",
         lines: [
@@ -147,3 +170,20 @@ export const MOCK_ALLOCATIONS: AllocationDraft[] = [
         updatedAt: "2023-10-21T10:00:00"
     }
 ];
+
+// In-memory mutable arrays that initialize from storage (if in browser)
+export const MOCK_BANK_TRANSACTIONS: BankTransaction[] = typeof window !== 'undefined' ? loadTransactions() : DEFAULT_MOCK_TRANSACTIONS;
+export const MOCK_ALLOCATIONS: AllocationDraft[] = typeof window !== 'undefined' ? loadAllocations() : DEFAULT_MOCK_ALLOCATIONS;
+
+// Helpers to save back to storage
+export const saveTransactions = () => {
+    if (typeof window !== 'undefined') {
+        localStorage.setItem(PERSISTENCE_KEY_TX, JSON.stringify(MOCK_BANK_TRANSACTIONS));
+    }
+}
+
+export const saveAllocations = () => {
+    if (typeof window !== 'undefined') {
+        localStorage.setItem(PERSISTENCE_KEY_ALLOC, JSON.stringify(MOCK_ALLOCATIONS));
+    }
+}

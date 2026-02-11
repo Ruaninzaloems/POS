@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Save, Plus, Trash2, CheckCircle, AlertCircle, Upload, Filter } from 'lucide-react';
-import { MOCK_BANK_TRANSACTIONS, MOCK_ALLOCATIONS, BankTransaction, AllocationLine } from '@/lib/direct-deposits-data';
+import { MOCK_BANK_TRANSACTIONS, MOCK_ALLOCATIONS, BankTransaction, AllocationLine, saveTransactions, saveAllocations } from '@/lib/direct-deposits-data';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { ACCOUNTS, Account } from '@/lib/mock-data';
@@ -122,6 +122,10 @@ export default function AllocateTransaction() {
             status: 'POSTED',
             updatedAt: new Date().toISOString()
           });
+
+          // Persist changes
+          saveTransactions();
+          saveAllocations();
       }
       
       toast({ title: "Allocation Posted", description: "Transaction successfully allocated." });
