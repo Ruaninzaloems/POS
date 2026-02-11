@@ -109,7 +109,7 @@ export default function UnmatchedQueue() {
                         {activeFiltersCount > 0 ? `${activeFiltersCount} Filters` : 'Filter'}
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-80 p-4" align="start">
+                <PopoverContent className="w-96 p-4" align="start">
                     <div className="space-y-4">
                         <div className="flex justify-between items-center border-b pb-2">
                             <h4 className="font-medium text-sm">Filter Options</h4>
@@ -122,10 +122,10 @@ export default function UnmatchedQueue() {
 
                         <div className="space-y-2">
                             <Label className="text-xs">Transaction Date Range</Label>
-                            <div className="flex gap-2">
-                                <div className="flex-1"><DatePicker date={txnDateFrom} setDate={setTxnDateFrom} placeholder="From" className="h-8 text-xs" /></div>
-                                <span className="text-muted-foreground self-center">-</span>
-                                <div className="flex-1"><DatePicker date={txnDateTo} setDate={setTxnDateTo} placeholder="To" className="h-8 text-xs" /></div>
+                            <div className="flex gap-2 items-center">
+                                <div className="flex-1"><DatePicker date={txnDateFrom} setDate={setTxnDateFrom} placeholder="dd/mm/yyyy" className="h-8 text-xs" /></div>
+                                <span className="text-muted-foreground">-</span>
+                                <div className="flex-1"><DatePicker date={txnDateTo} setDate={setTxnDateTo} placeholder="dd/mm/yyyy" className="h-8 text-xs" /></div>
                             </div>
                         </div>
 
