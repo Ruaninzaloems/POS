@@ -21,7 +21,7 @@ export default function AllocateTransaction() {
   const [lines, setLines] = useState<AllocationLine[]>([]);
   
   // New Line State
-  const [selectedAccount, setSelectedAccount] = useState<{accountNo: string, name: string} | null>(null);
+  const [selectedAccount, setSelectedAccount] = useState<{accountNo: string, name: string, description?: string} | null>(null);
   const [newLineAmount, setNewLineAmount] = useState('');
   
   useEffect(() => {
@@ -39,7 +39,11 @@ export default function AllocateTransaction() {
   const handleSearchResult = (result: SearchResult) => {
     if (result.type === 'ACCOUNT') {
         const acc = result.data as Account;
-        setSelectedAccount({ accountNo: acc.accountNo, name: acc.name });
+        setSelectedAccount({ 
+            accountNo: acc.accountNo, 
+            name: acc.name,
+            description: `Payment to ${acc.name}` 
+        });
         // Auto-fill amount if remaining > 0, otherwise outstanding
         if (remaining > 0) {
             setNewLineAmount(Math.min(remaining, acc.outstandingAmount).toFixed(2));
@@ -48,11 +52,20 @@ export default function AllocateTransaction() {
         }
     } else if (result.type === 'PREPAID') {
         const acc = result.data as Account;
-        setSelectedAccount({ accountNo: acc.accountNo, name: acc.name });
+        const prepaidType = acc.prepaidType || 'Electricity';
+        setSelectedAccount({ 
+            accountNo: acc.accountNo, 
+            name: `${prepaidType} Meter: ${acc.prepaidMeterNo}`,
+            description: `Prepaid ${prepaidType}: ${acc.prepaidMeterNo} (${acc.name})`
+        }); 
         setNewLineAmount(remaining > 0 ? remaining.toFixed(2) : "0.00");
     } else if (result.type === 'DIRECT') {
         const item = result.data;
-        setSelectedAccount({ accountNo: item.scoaItem, name: item.description });
+        setSelectedAccount({ 
+            accountNo: item.scoaItem, 
+            name: item.description,
+            description: `Direct Income: ${item.description}`
+        });
         setNewLineAmount(remaining > 0 ? remaining.toFixed(2) : (item.price || 0).toFixed(2));
     } else {
         toast({ title: "Unsupported Type", description: "This item type cannot be allocated to directly.", variant: "destructive" });
@@ -83,7 +96,7 @@ export default function AllocateTransaction() {
           id: Math.random().toString(36).substr(2, 9),
           accountNo: selectedAccount.accountNo,
           amount: amount,
-          description: `Payment to ${selectedAccount.name}`
+          description: selectedAccount.description || `Payment to ${selectedAccount.name}`
       }]);
       
       setSelectedAccount(null);
