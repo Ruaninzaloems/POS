@@ -177,8 +177,8 @@ export function ReceiptModal() {
           </Button>
         </DialogFooter>
         
-        {/* Hidden Print Template */}
-        <div style={{ display: 'none' }}>
+        {/* Hidden Print Template - using off-screen positioning instead of display:none for better print support */}
+        <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
             {isPermit ? (
                  <PermitTemplate ref={permitRef} transaction={currentTransaction} items={transactionItems} />
             ) : (
