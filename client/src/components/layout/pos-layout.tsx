@@ -11,7 +11,7 @@ import {
   ChevronDown,
   Layers,
   Banknote,
-  Refreshcw,
+  RefreshCw,
   Users,
   Zap,
   FileBarChart,
@@ -39,8 +39,7 @@ export function PosLayout({ children }: PosLayoutProps) {
   const { currentUser, switchUser } = usePos();
 
   const getPageTitle = (path: string) => {
-    if (path === '/') return 'POS Receipting';
-    if (path === '/unified') return 'POS Unified';
+    if (path === '/') return 'POS Unified';
     if (path.startsWith('/direct-deposits/manual')) return 'Direct Deposits Manual';
     if (path.startsWith('/direct-deposits/auto')) return 'Direct Deposits Auto';
     if (path.startsWith('/third-party')) return 'Third Party Payments';
@@ -52,10 +51,9 @@ export function PosLayout({ children }: PosLayoutProps) {
   };
 
   const navItems = [
-    { label: 'POS Receipting', href: '/', icon: LayoutDashboard },
-    { label: 'POS Unified', href: '/unified', icon: Layers },
+    { label: 'POS Unified', href: '/', icon: Layers },
     { label: 'Direct Deposits Manual', href: '/direct-deposits/manual', icon: Banknote },
-    { label: 'Direct Deposits Auto', href: '/direct-deposits/auto', icon: Refreshcw },
+    { label: 'Direct Deposits Auto', href: '/direct-deposits/auto', icon: RefreshCw },
     { label: 'Third Party Payments', href: '/third-party', icon: Users },
     { label: 'Utilipay Distribution', href: '/utilipay', icon: Zap },
     { label: 'Bulk Allocation Progress', href: '/bulk-allocation', icon: FileBarChart },

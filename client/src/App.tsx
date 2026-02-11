@@ -13,9 +13,6 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={PosPage} />
-      <Route path="/unified">
-        <PlaceholderPage title="POS Unified" description="Unified Point of Sale Interface" />
-      </Route>
       <Route path="/direct-deposits/manual">
         <PlaceholderPage title="Direct Deposits Manual" description="Manual allocation of direct deposits" />
       </Route>
