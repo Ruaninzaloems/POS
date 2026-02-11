@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Account } from '@/lib/mock-data';
 import { usePos, TransactionItem } from '@/lib/pos-state';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RefreshCw, ArrowLeft, X, Zap, Droplets } from 'lucide-react'; // Added Zap and Droplets
+import { RefreshCw, ArrowLeft, X, Zap, Droplets, ChevronDown, ChevronUp } from 'lucide-react'; // Added Zap and Droplets
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export function AccountEnquiryView({ item }: { item: TransactionItem }) {
   const account = item.originalData as Account;
   const { updateItemAmount, removeItem, addItem, viewingItemId, setViewingItem } = usePos(); // Added addItem
+  const [isOpen, setIsOpen] = useState(false);
 
   const handleBuyPrepaid = () => {
     if (!account.prepaidMeterNo) return;
@@ -83,82 +85,100 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
          </div>
        </div>
 
-       {/* Top Grid - Account Info */}
-       <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-0">
-         <div>
-            <Field label="Account Number" value={account.accountNo} />
-            <Field label="Account Group" value="Himun - Haarlem Munisipaliteit" />
-            <Field label="Payment Group" value="-" />
-            <Field label="Account Type" value={account.accountType} />
-            <Field label="Incentive Scheme Code" value="-" />
-            <Field label="Email" value={account.email} />
-            <Field label="Paid Deposit Amount" value={`R0.00`} />
-            
-            <div className="h-4"></div>
-            <div className="border-t border-gray-300 my-2"></div>
-            
-            <Field label="Interest Waiver Status" value="No Interest Waiver on Account" />
-            <Field label="Indigent Subsidy Status" value="-" />
-            <Field label="Consumer RPP Status" value="N/A" />
-            <Field label="Departmental Account" value={account.status === 'Active' ? 'Inactive' : 'Active'} />
-         </div>
-
-         <div>
-            <Field label="Name" value={account.name} />
-            <Field label="Sub Account Group" value="-" />
-            <Field label="Account Status" value={account.status || 'Active'} />
-            <Field label="Delivery Address" value={account.deliveryAddress || account.address} />
-            <Field label="Contact Number" value={account.mobile} />
-            
-            <div className="mt-8 text-xs font-bold underline text-gray-500 mb-2">Additional Account Details</div>
-            
-            <Field label="Rebate Status" value="No Rebate on Account" />
-            <Field label="Handover Status" value="N/A" />
-            <Field label="Loan RPP Status" value="N/A" />
-         </div>
-       </div>
-
-       {/* Property & Partition Section */}
-       <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 mt-4 relative">
-          {/* Central Titles */}
-          <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 top-4 flex-col items-center gap-32">
-             <span className="font-bold underline text-gray-500 text-xs">Property</span>
-             <span className="font-bold underline text-gray-500 text-xs">Partition</span>
+       {/* Collapsible Account Details */}
+       <Collapsible open={isOpen} onOpenChange={setIsOpen} className="space-y-2 mb-6">
+          <div className="flex items-center justify-between px-4 py-2 bg-slate-50 border rounded-md">
+              <div className="flex flex-col">
+                  <span className="font-semibold text-sm text-slate-900">{account.name}</span>
+                  <span className="text-xs text-muted-foreground">Acc: {account.accountNo}</span>
+              </div>
+              <CollapsibleTrigger asChild>
+                  <Button variant="outline" size="sm" className="w-9 p-0 h-8">
+                      {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      <span className="sr-only">Toggle details</span>
+                  </Button>
+              </CollapsibleTrigger>
           </div>
+          
+          <CollapsibleContent>
+               {/* Top Grid - Account Info */}
+               <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-0 pt-2">
+                 <div>
+                    <Field label="Account Number" value={account.accountNo} />
+                    <Field label="Account Group" value="Himun - Haarlem Munisipaliteit" />
+                    <Field label="Payment Group" value="-" />
+                    <Field label="Account Type" value={account.accountType} />
+                    <Field label="Incentive Scheme Code" value="-" />
+                    <Field label="Email" value={account.email} />
+                    <Field label="Paid Deposit Amount" value={`R0.00`} />
+                    
+                    <div className="h-4"></div>
+                    <div className="border-t border-gray-300 my-2"></div>
+                    
+                    <Field label="Interest Waiver Status" value="No Interest Waiver on Account" />
+                    <Field label="Indigent Subsidy Status" value="-" />
+                    <Field label="Consumer RPP Status" value="N/A" />
+                    <Field label="Departmental Account" value={account.status === 'Active' ? 'Inactive' : 'Active'} />
+                 </div>
 
-          <div>
-             <Field label="SG Number" value={account.sgNo} />
-             <Field label="Old Property Code" value={account.oldCode || "Grg 71 0000084600000"} />
-             <Field label="Billing Cycle" value="1 Consumer Account Cycle" />
-             <Field label="Sectional Title Scheme" value="-" />
-             <Field label="Location Address" value={account.address} />
-             <Field label="Longitude" value="-" />
-             <Field label="Registration Status" value="-" />
-             <div className="h-8"></div>
-             <div className="border-t border-gray-300 my-2"></div>
-             <Field label="Property Type of Use" value="RES" />
-             <Field label="Property Category" value="RES" />
-             <Field label="Accountable Owner Name" value={account.name} />
-          </div>
+                 <div>
+                    <Field label="Name" value={account.name} />
+                    <Field label="Sub Account Group" value="-" />
+                    <Field label="Account Status" value={account.status || 'Active'} />
+                    <Field label="Delivery Address" value={account.deliveryAddress || account.address} />
+                    <Field label="Contact Number" value={account.mobile} />
+                    
+                    <div className="mt-8 text-xs font-bold underline text-gray-500 mb-2">Additional Account Details</div>
+                    
+                    <Field label="Rebate Status" value="No Rebate on Account" />
+                    <Field label="Handover Status" value="N/A" />
+                    <Field label="Loan RPP Status" value="N/A" />
+                 </div>
+               </div>
 
-          <div>
-             <Field label="Property ID" value={account.unitId || "42001"} />
-             <Field label="Property Status" value="Active" />
-             <Field label="Allotment Area" value="Haarlem" />
-             <Field label="Farm Name" value="-" />
-             <Field label="Property Type" value="Erf" />
-             <Field label="Latitude" value="-" />
-             <Field label="Magisterial District" value="WC044" />
-             <Field label="Property Market Value" value={`R${(account.marketValue || 146000).toFixed(2)}`} />
-             
-             <div className="h-8"></div>
-             <div className="border-t border-gray-300 my-2"></div>
-             
-             <Field label="Valuation Category" value={account.valuationCategory || "Individual Use"} />
-             <Field label="Partition Description" value="Individual Use" />
-             <Field label="Partition Market Value" value={`R${(account.marketValue || 146000).toFixed(2)}`} />
-          </div>
-       </div>
+               {/* Property & Partition Section */}
+               <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 mt-4 relative">
+                  {/* Central Titles */}
+                  <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 top-4 flex-col items-center gap-32">
+                     <span className="font-bold underline text-gray-500 text-xs">Property</span>
+                     <span className="font-bold underline text-gray-500 text-xs">Partition</span>
+                  </div>
+
+                  <div>
+                     <Field label="SG Number" value={account.sgNo} />
+                     <Field label="Old Property Code" value={account.oldCode || "Grg 71 0000084600000"} />
+                     <Field label="Billing Cycle" value="1 Consumer Account Cycle" />
+                     <Field label="Sectional Title Scheme" value="-" />
+                     <Field label="Location Address" value={account.address} />
+                     <Field label="Longitude" value="-" />
+                     <Field label="Registration Status" value="-" />
+                     <div className="h-8"></div>
+                     <div className="border-t border-gray-300 my-2"></div>
+                     <Field label="Property Type of Use" value="RES" />
+                     <Field label="Property Category" value="RES" />
+                     <Field label="Accountable Owner Name" value={account.name} />
+                  </div>
+
+                  <div>
+                     <Field label="Property ID" value={account.unitId || "42001"} />
+                     <Field label="Property Status" value="Active" />
+                     <Field label="Allotment Area" value="Haarlem" />
+                     <Field label="Farm Name" value="-" />
+                     <Field label="Property Type" value="Erf" />
+                     <Field label="Latitude" value="-" />
+                     <Field label="Magisterial District" value="WC044" />
+                     <Field label="Property Market Value" value={`R${(account.marketValue || 146000).toFixed(2)}`} />
+                     
+                     <div className="h-8"></div>
+                     <div className="border-t border-gray-300 my-2"></div>
+                     
+                     <Field label="Valuation Category" value={account.valuationCategory || "Individual Use"} />
+                     <Field label="Partition Description" value="Individual Use" />
+                     <Field label="Partition Market Value" value={`R${(account.marketValue || 146000).toFixed(2)}`} />
+                  </div>
+               </div>
+          </CollapsibleContent>
+       </Collapsible>
 
        <div className="flex justify-end mt-4">
           <Button variant="secondary" size="sm" className="bg-orange-200 text-orange-900 border-orange-300 hover:bg-orange-300 font-semibold text-xs shadow-sm">
