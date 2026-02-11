@@ -258,7 +258,7 @@ export function TransactionPanels() {
 }
 
 function TransactionItemCard({ item }: { item: TransactionItem }) {
-    const { updateItemAmount, updateItemDetails } = usePos();
+    const { updateItemAmount, updateItemDetails, removeItem } = usePos();
     
     // CONSUMER ACCOUNT CARD -> USE NEW VIEW
     if (item.type === 'CONSUMER_SERVICES') {
@@ -531,6 +531,16 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                                 </div>
                             </div>
                         </div>
+                        
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                            onClick={() => removeItem(item.id)}
+                            title="Remove Item"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </Button>
                     </div>
                 </CardHeader>
                 <CardContent className="pt-6 space-y-6">
