@@ -103,6 +103,17 @@ export default function AllocateTransaction() {
           toast({ title: "Invalid Amount", variant: "destructive" });
           return;
       }
+
+      // Validation: Check if new amount + allocatedTotal exceeds transaction amount
+      // Floating point safe comparison
+      if (transaction && (allocatedTotal + amount) > (transaction.amount + 0.005)) {
+          toast({ 
+              title: "Over-allocation Error", 
+              description: `Cannot allocate R ${amount.toFixed(2)}. Remaining balance is R ${remaining.toFixed(2)}.`, 
+              variant: "destructive" 
+          });
+          return;
+      }
       
       setLines(prev => [...prev, {
           id: Math.random().toString(36).substr(2, 9),
