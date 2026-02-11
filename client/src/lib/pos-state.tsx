@@ -83,12 +83,16 @@ interface PosState {
   officeLimits: Record<string, number>;
   currentTransactionLimit: number;
   viewMode: 'desktop' | 'mobile';
+  systemSettings: {
+      enableDenominationCounting: boolean;
+  };
 }
 
 interface PosActions {
   switchUser: (cashierId: string) => void;
   toggleViewMode: () => void;
   updateOfficeLimit: (officeId: string, limit: number) => void;
+  updateSystemSettings: (settings: Partial<PosState['systemSettings']>) => void;
   setSearchQuery: (query: string) => void;
   addItem: (item: TransactionItem) => void;
   removeItem: (id: string) => void;
@@ -138,6 +142,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
+  const [systemSettings, setSystemSettings] = useState({
+      enableDenominationCounting: false
+  });
 
   const currentTransactionLimit = useMemo(() => {
       if (!sessionDetails?.officeId) return 5000; // Default fallback
@@ -177,6 +184,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const toggleViewMode = () => {
     setViewMode(prev => prev === 'desktop' ? 'mobile' : 'desktop');
+  };
+
+  const updateSystemSettings = (settings: Partial<typeof systemSettings>) => {
+      setSystemSettings(prev => ({ ...prev, ...settings }));
   };
 
   const startSession = (officeId: string, floatAmount: number) => {
@@ -328,7 +339,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updateOfficeLimit,
       currentTransactionLimit,
       viewMode,
-      toggleViewMode
+      toggleViewMode,
+      systemSettings,
+      updateSystemSettings
     }}>
       {children}
     </PosContext.Provider>

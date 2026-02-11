@@ -12,10 +12,50 @@ interface DayEndModalProps {
 }
 
 export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
-  const { submitDayEnd, dayEndStatus, dayEndReturnReason } = usePos();
+  const { submitDayEnd, dayEndStatus, dayEndReturnReason, systemSettings } = usePos();
   const [cashOnHand, setCashOnHand] = useState('');
   const [cardTotal, setCardTotal] = useState('');
   const [step, setStep] = useState<'capture' | 'confirm' | 'success'>('capture');
+
+  // Denomination State
+  const [denominations, setDenominations] = useState<Record<string, string>>({
+      'note_200': '', 'note_100': '', 'note_50': '', 'note_20': '', 'note_10': '',
+      'coin_5': '', 'coin_2': '', 'coin_1': '', 'coin_0.5': '', 'coin_0.2': '', 'coin_0.1': ''
+  });
+
+  const calculateDenominationTotal = () => {
+      let total = 0;
+      const getValue = (key: string, multiplier: number) => {
+          const count = parseInt(denominations[key]) || 0;
+          return count * multiplier;
+      };
+
+      total += getValue('note_200', 200);
+      total += getValue('note_100', 100);
+      total += getValue('note_50', 50);
+      total += getValue('note_20', 20);
+      total += getValue('note_10', 10);
+      total += getValue('coin_5', 5);
+      total += getValue('coin_2', 2);
+      total += getValue('coin_1', 1);
+      total += getValue('coin_0.5', 0.5);
+      total += getValue('coin_0.2', 0.2);
+      total += getValue('coin_0.1', 0.1);
+      
+      return total;
+  };
+
+  // Update total whenever denominations change if enabled
+  React.useEffect(() => {
+      if (systemSettings.enableDenominationCounting && isOpen) {
+          const total = calculateDenominationTotal();
+          setCashOnHand(total.toFixed(2));
+      }
+  }, [denominations, systemSettings.enableDenominationCounting, isOpen]);
+
+  const handleDenominationChange = (key: string, value: string) => {
+      setDenominations(prev => ({ ...prev, [key]: value }));
+  };
 
   const handleSubmit = () => {
     if (step === 'capture') {
@@ -99,22 +139,75 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
 
         {step === 'capture' && (
           <div className="space-y-6 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="cash-total" className="text-lg font-semibold">Cash On Hand Total</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono">R</span>
-                <Input 
-                  id="cash-total" 
-                  type="number" 
-                  className="pl-8 text-2xl font-mono font-bold h-14" 
-                  placeholder="0.00"
-                  value={cashOnHand}
-                  onChange={(e) => setCashOnHand(e.target.value)}
-                  autoFocus
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">Count all notes and coins in your drawer.</p>
-            </div>
+            
+            {/* Cash Capture Section */}
+            {systemSettings.enableDenominationCounting ? (
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center mb-2">
+                        <Label className="text-lg font-semibold">Cash Breakdown</Label>
+                        <div className="text-xl font-mono font-bold text-primary bg-primary/10 px-3 py-1 rounded">
+                            R {parseFloat(cashOnHand || '0').toFixed(2)}
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4 max-h-[300px] overflow-y-auto pr-2">
+                        {/* Notes */}
+                        <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Notes</Label>
+                            {[200, 100, 50, 20, 10].map(val => (
+                                <div key={`note_${val}`} className="flex items-center gap-2">
+                                    <div className="w-16 text-sm font-medium text-right">R {val}</div>
+                                    <Input 
+                                        type="number" 
+                                        min="0"
+                                        placeholder="0"
+                                        className="h-8 font-mono text-right"
+                                        value={denominations[`note_${val}`]}
+                                        onChange={(e) => handleDenominationChange(`note_${val}`, e.target.value)}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Coins */}
+                        <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Coins</Label>
+                            {[5, 2, 1, 0.5, 0.2, 0.1].map(val => (
+                                <div key={`coin_${val}`} className="flex items-center gap-2">
+                                    <div className="w-16 text-sm font-medium text-right">
+                                        {val >= 1 ? `R ${val}` : `${val * 100}c`}
+                                    </div>
+                                    <Input 
+                                        type="number" 
+                                        min="0"
+                                        placeholder="0"
+                                        className="h-8 font-mono text-right"
+                                        value={denominations[`coin_${val}`]}
+                                        onChange={(e) => handleDenominationChange(`coin_${val}`, e.target.value)}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <div className="space-y-2">
+                    <Label htmlFor="cash-total" className="text-lg font-semibold">Cash On Hand Total</Label>
+                    <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono">R</span>
+                        <Input 
+                        id="cash-total" 
+                        type="number" 
+                        className="pl-8 text-2xl font-mono font-bold h-14" 
+                        placeholder="0.00"
+                        value={cashOnHand}
+                        onChange={(e) => setCashOnHand(e.target.value)}
+                        autoFocus
+                        />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Count all notes and coins in your drawer.</p>
+                </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="card-total" className="text-lg font-semibold">Credit Card Total</Label>

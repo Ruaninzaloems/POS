@@ -6,11 +6,12 @@ import { Input } from '@/components/ui/input';
 import { usePos } from '@/lib/pos-state';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Save, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { Save, ShieldAlert, AlertTriangle, Calculator, Check } from 'lucide-react';
 import { CASH_OFFICES } from '@/lib/mock-data';
+import { Switch } from '@/components/ui/switch';
 
 export default function SettingsPage() {
-  const { officeLimits, updateOfficeLimit } = usePos();
+  const { officeLimits, updateOfficeLimit, systemSettings, updateSystemSettings } = usePos();
   const { toast } = useToast();
 
   const handleLimitChange = (officeId: string, value: string) => {
@@ -30,6 +31,34 @@ export default function SettingsPage() {
           </div>
 
           <div className="grid gap-6">
+            <Card>
+                <CardHeader>
+                    <div className="flex items-center gap-2">
+                        <div className="p-2 bg-purple-100 rounded-lg text-purple-700">
+                            <Calculator className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <CardTitle>Reconciliation Features</CardTitle>
+                            <CardDescription>Configure day-end and cash up processes.</CardDescription>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="space-y-0.5">
+                            <Label className="text-base font-medium">Denomination Counting</Label>
+                            <p className="text-sm text-muted-foreground">
+                                Require cashiers to count individual notes and coins during day end reconciliation instead of entering a total.
+                            </p>
+                        </div>
+                        <Switch 
+                            checked={systemSettings.enableDenominationCounting}
+                            onCheckedChange={(checked) => updateSystemSettings({ enableDenominationCounting: checked })}
+                        />
+                    </div>
+                </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
