@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Save, Plus, Trash2, CheckCircle, AlertCircle, Upload, Filter } from 'lucide-react';
-import { MOCK_BANK_TRANSACTIONS, BankTransaction, AllocationLine } from '@/lib/direct-deposits-data';
+import { MOCK_BANK_TRANSACTIONS, MOCK_ALLOCATIONS, BankTransaction, AllocationLine } from '@/lib/direct-deposits-data';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { ACCOUNTS, Account } from '@/lib/mock-data';
@@ -111,9 +111,17 @@ export default function AllocateTransaction() {
 
       // Update the global mock data
       const txIndex = MOCK_BANK_TRANSACTIONS.findIndex(t => t.id === transaction?.id);
-      if (txIndex !== -1) {
+      if (txIndex !== -1 && transaction) {
           MOCK_BANK_TRANSACTIONS[txIndex].status = "ALLOCATED";
           MOCK_BANK_TRANSACTIONS[txIndex].allocatedAmount = MOCK_BANK_TRANSACTIONS[txIndex].amount;
+
+          // Save the allocation lines
+          MOCK_ALLOCATIONS.push({
+            transactionId: transaction.id,
+            lines: [...lines],
+            status: 'POSTED',
+            updatedAt: new Date().toISOString()
+          });
       }
       
       toast({ title: "Allocation Posted", description: "Transaction successfully allocated." });
