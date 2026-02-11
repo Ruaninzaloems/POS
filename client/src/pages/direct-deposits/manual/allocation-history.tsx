@@ -5,23 +5,50 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { ArrowLeft, Eye, Printer, FileText } from 'lucide-react';
+import { ArrowLeft, Eye, Printer, FileText, Search, User } from 'lucide-react';
 import { Link } from 'wouter';
 import { MOCK_BANK_TRANSACTIONS, MOCK_ALLOCATIONS, BankTransaction } from '@/lib/direct-deposits-data';
 import { format } from 'date-fns';
 import { ReceiptTemplate } from '@/components/pos/receipt-template';
 
 export default function AllocationHistory() {
-  const history = MOCK_BANK_TRANSACTIONS.filter(t => t.status === 'ALLOCATED');
+  const [filterQuery, setFilterQuery] = useState('');
+  const [methodFilter, setMethodFilter] = useState('ALL'); // ALL, MANUAL, BULK
+  
+  // Get all allocated transactions
+  const allocatedTxns = MOCK_BANK_TRANSACTIONS.filter(t => t.status === 'ALLOCATED');
+  
+  // Enrich with allocation details
+  const historyData = allocatedTxns.map(tx => {
+      const details = MOCK_ALLOCATIONS.find(a => a.transactionId === tx.id);
+      return {
+          ...tx,
+          details
+      };
+  });
+
+  // Filter
+  const filteredHistory = historyData.filter(item => {
+      const matchesSearch = 
+        item.description.toLowerCase().includes(filterQuery.toLowerCase()) || 
+        item.reference.toLowerCase().includes(filterQuery.toLowerCase()) ||
+        (item.details?.allocatedBy || '').toLowerCase().includes(filterQuery.toLowerCase());
+      
+      const matchesMethod = 
+        methodFilter === 'ALL' || 
+        (methodFilter === 'MANUAL' && item.details?.method === 'MANUAL') ||
+        (methodFilter === 'BULK' && item.details?.method === 'BULK');
+
+      return matchesSearch && matchesMethod;
+  });
+
   const [selectedTx, setSelectedTx] = useState<BankTransaction | null>(null);
   const receiptRef = useRef<HTMLDivElement>(null);
 
-  const getAllocationDetails = (txId: string) => {
-    return MOCK_ALLOCATIONS.find(a => a.transactionId === txId);
-  };
-
-  const selectedAllocation = selectedTx ? getAllocationDetails(selectedTx.id) : null;
+  const selectedAllocation = selectedTx ? MOCK_ALLOCATIONS.find(a => a.transactionId === selectedTx.id) : null;
 
   const handlePrint = useReactToPrint({
     contentRef: receiptRef,
@@ -31,15 +58,39 @@ export default function AllocationHistory() {
   return (
     <PosLayout>
        <div className="flex-1 flex flex-col h-full bg-slate-50/50">
-        <div className="p-6 border-b bg-white flex items-center gap-4">
-             <Link href="/direct-deposits/manual">
-                <Button variant="ghost" size="icon">
-                    <ArrowLeft className="w-4 h-4" />
-                </Button>
-             </Link>
-             <div>
-                 <h1 className="text-xl font-bold">Allocation History</h1>
-                 <p className="text-sm text-muted-foreground">View processed allocations</p>
+        <div className="p-6 border-b bg-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+             <div className="flex items-center gap-4">
+                 <Link href="/direct-deposits/manual">
+                    <Button variant="ghost" size="icon">
+                        <ArrowLeft className="w-4 h-4" />
+                    </Button>
+                 </Link>
+                 <div>
+                     <h1 className="text-xl font-bold">Allocation History</h1>
+                     <p className="text-sm text-muted-foreground">View processed allocations (Manual & Bulk)</p>
+                 </div>
+             </div>
+
+             <div className="flex gap-2 w-full md:w-auto">
+                <div className="relative w-full md:w-64">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        placeholder="Search description, reference, user..." 
+                        className="pl-8" 
+                        value={filterQuery}
+                        onChange={(e) => setFilterQuery(e.target.value)}
+                    />
+                </div>
+                <Select value={methodFilter} onValueChange={setMethodFilter}>
+                    <SelectTrigger className="w-[150px]">
+                        <SelectValue placeholder="All Methods" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="ALL">All Methods</SelectItem>
+                        <SelectItem value="MANUAL">Manual Only</SelectItem>
+                        <SelectItem value="BULK">Bulk Only</SelectItem>
+                    </SelectContent>
+                </Select>
              </div>
         </div>
 
@@ -48,35 +99,54 @@ export default function AllocationHistory() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Date</TableHead>
+                            <TableHead>Transaction Date</TableHead>
+                            <TableHead>Allocation Date</TableHead>
                             <TableHead>Description</TableHead>
                             <TableHead>Reference</TableHead>
+                            <TableHead>Method</TableHead>
+                            <TableHead>Allocated By</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
                             <TableHead className="text-center">Status</TableHead>
-                            <TableHead>Allocated To</TableHead>
                             <TableHead className="text-right">Action</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {history.map(tx => (
+                        {filteredHistory.map(tx => (
                             <TableRow key={tx.id}>
-                                <TableCell className="font-mono text-xs">
+                                <TableCell className="font-mono text-xs text-muted-foreground">
                                     {format(new Date(tx.transactionDate), 'dd/MM/yyyy')}
                                 </TableCell>
-                                <TableCell>{tx.description}</TableCell>
+                                <TableCell className="font-mono text-xs">
+                                    {tx.details?.allocationDate ? format(new Date(tx.details.allocationDate), 'dd/MM/yyyy HH:mm') : '-'}
+                                </TableCell>
+                                <TableCell className="text-sm font-medium">{tx.description}</TableCell>
                                 <TableCell>
-                                    <Badge variant="outline">{tx.reference}</Badge>
+                                    <Badge variant="outline" className="font-mono">{tx.reference}</Badge>
+                                </TableCell>
+                                <TableCell>
+                                    {tx.details?.method === 'BULK' ? (
+                                        <Badge variant="secondary" className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-200">
+                                            Bulk
+                                        </Badge>
+                                    ) : (
+                                        <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200">
+                                            Manual
+                                        </Badge>
+                                    )}
+                                </TableCell>
+                                <TableCell className="text-xs">
+                                    <div className="flex items-center gap-1.5">
+                                        <User className="w-3 h-3 text-muted-foreground" />
+                                        <span>{tx.details?.allocatedBy || 'Unknown'}</span>
+                                    </div>
                                 </TableCell>
                                 <TableCell className="text-right font-mono font-medium">
                                     R {tx.amount.toFixed(2)}
                                 </TableCell>
                                 <TableCell className="text-center">
-                                    <Badge className="bg-green-100 text-green-700 border-green-200 shadow-none">
+                                    <Badge className="bg-green-100 text-green-700 border-green-200 shadow-none hover:bg-green-100">
                                         Allocated
                                     </Badge>
-                                </TableCell>
-                                <TableCell className="text-xs text-muted-foreground">
-                                    Multiple Accounts
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <Button variant="ghost" size="sm" onClick={() => setSelectedTx(tx)}>
@@ -85,10 +155,10 @@ export default function AllocationHistory() {
                                 </TableCell>
                             </TableRow>
                         ))}
-                        {history.length === 0 && (
+                        {filteredHistory.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                                    No history available.
+                                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                                    No allocation history found matching your criteria.
                                 </TableCell>
                             </TableRow>
                         )}
@@ -108,18 +178,29 @@ export default function AllocationHistory() {
             {selectedTx && (
                 <div className="space-y-6">
                     {/* Bank Transaction Info */}
-                    <div className="bg-slate-50 p-4 rounded-lg grid grid-cols-2 gap-4 text-sm">
-                        <div>
+                    <div className="bg-slate-50 p-4 rounded-lg grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div className="md:col-span-2">
                             <span className="text-muted-foreground block text-xs">Bank Description</span>
                             <span className="font-medium">{selectedTx.description}</span>
                         </div>
-                        <div>
+                        <div className="md:col-span-2">
                             <span className="text-muted-foreground block text-xs">Bank Reference</span>
                             <span className="font-mono">{selectedTx.reference}</span>
                         </div>
                         <div>
                             <span className="text-muted-foreground block text-xs">Transaction Date</span>
                             <span>{format(new Date(selectedTx.transactionDate), 'dd MMM yyyy')}</span>
+                        </div>
+                        <div>
+                            <span className="text-muted-foreground block text-xs">Allocation Date</span>
+                            <span>{selectedAllocation?.allocationDate ? format(new Date(selectedAllocation.allocationDate), 'dd MMM yyyy HH:mm') : '-'}</span>
+                        </div>
+                        <div>
+                            <span className="text-muted-foreground block text-xs">Allocated By</span>
+                            <span className="font-medium flex items-center gap-1">
+                                <User className="w-3 h-3" />
+                                {selectedAllocation?.allocatedBy || 'Unknown'}
+                            </span>
                         </div>
                         <div>
                             <span className="text-muted-foreground block text-xs">Total Amount</span>
@@ -133,10 +214,10 @@ export default function AllocationHistory() {
                             <FileText className="w-4 h-4 text-blue-600" />
                             Allocated Lines
                         </h4>
-                        <div className="border rounded-md overflow-hidden">
+                        <div className="border rounded-md overflow-hidden max-h-[300px] overflow-y-auto">
                             <Table>
-                                <TableHeader>
-                                    <TableRow className="bg-slate-50">
+                                <TableHeader className="sticky top-0 bg-white z-10 shadow-sm">
+                                    <TableRow>
                                         <TableHead className="h-8">Account / Reference</TableHead>
                                         <TableHead className="h-8">Description</TableHead>
                                         <TableHead className="h-8 text-right">Amount</TableHead>
@@ -187,7 +268,7 @@ export default function AllocationHistory() {
 
             <DialogFooter className="sm:justify-between">
                 <div className="text-xs text-muted-foreground flex items-center">
-                    Processed: {selectedAllocation ? format(new Date(selectedAllocation.updatedAt), 'dd MMM yyyy HH:mm') : '-'}
+                    Method: {selectedAllocation?.method === 'BULK' ? 'Bulk Import' : 'Manual Allocation'}
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={() => setSelectedTx(null)}>Close</Button>

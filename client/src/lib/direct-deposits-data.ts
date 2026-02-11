@@ -22,6 +22,9 @@ export interface AllocationDraft {
   lines: AllocationLine[];
   status: 'DRAFT' | 'POSTED';
   updatedAt: string;
+  method: 'MANUAL' | 'BULK';
+  allocatedBy: string;
+  allocationDate: string;
 }
 
 // Helper to manage mock persistence
@@ -157,6 +160,27 @@ const DEFAULT_MOCK_TRANSACTIONS: BankTransaction[] = [
     status: "UNMATCHED",
     allocatedAmount: 0,
     bankAccount: "ABSA (***5678)"
+  },
+  // Add some allocated bulk transactions for the demo
+  {
+    id: "TXN-101",
+    transactionDate: "2026-02-09",
+    description: "BULK UPLOAD CONSUMER",
+    amount: 50000.00,
+    reference: "BULK-001",
+    status: "ALLOCATED",
+    allocatedAmount: 50000.00,
+    bankAccount: "FNB MAIN (***1234)"
+  },
+  {
+    id: "TXN-102",
+    transactionDate: "2026-02-09",
+    description: "BULK UPLOAD CONSUMER",
+    amount: 17219.06,
+    reference: "BULK-002",
+    status: "ALLOCATED",
+    allocatedAmount: 17219.06,
+    bankAccount: "FNB MAIN (***1234)"
   }
 ];
 
@@ -167,7 +191,32 @@ const DEFAULT_MOCK_ALLOCATIONS: AllocationDraft[] = [
             { id: "L-1", accountNo: "ACC-1005", amount: 1200.00, description: "Rates Payment" }
         ],
         status: "POSTED",
-        updatedAt: "2023-10-21T10:00:00"
+        updatedAt: "2023-10-21T10:00:00",
+        method: "MANUAL",
+        allocatedBy: "Sarah Jenkins",
+        allocationDate: "2023-10-21T10:00:00"
+    },
+    {
+        transactionId: "TXN-101",
+        lines: [
+            { id: "L-2", accountNo: "ACC-4872", amount: 50000.00, description: "Bulk Consumer Services" }
+        ],
+        status: "POSTED",
+        updatedAt: "2026-02-09T14:22:52",
+        method: "BULK",
+        allocatedBy: "System Process",
+        allocationDate: "2026-02-09T14:22:52"
+    },
+    {
+        transactionId: "TXN-102",
+        lines: [
+            { id: "L-3", accountNo: "ACC-22780", amount: 17219.06, description: "Bulk Consumer Services" }
+        ],
+        status: "POSTED",
+        updatedAt: "2026-02-09T14:11:53",
+        method: "BULK",
+        allocatedBy: "System Process",
+        allocationDate: "2026-02-09T14:11:53"
     }
 ];
 
