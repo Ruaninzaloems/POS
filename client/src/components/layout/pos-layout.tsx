@@ -15,7 +15,8 @@ import {
   Users,
   Zap,
   FileBarChart,
-  FileSearch
+  FileSearch,
+  Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link, useLocation } from "wouter";
@@ -77,6 +78,7 @@ export function PosLayout({ children }: PosLayoutProps) {
     // { label: 'Utilipay Distribution', href: '/utilipay', icon: Zap }, // Moved to Third Party as per request
     { label: 'Bulk Allocation Progress', href: '/bulk-allocation', icon: FileBarChart },
     { label: 'View Receipts', href: '/view-receipts', icon: FileSearch },
+    { label: 'System Settings', href: '/settings', icon: Settings },
     { label: 'Supervisor', href: '/supervisor', icon: ShieldCheck },
   ];
 

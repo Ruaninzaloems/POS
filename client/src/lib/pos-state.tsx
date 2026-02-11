@@ -80,10 +80,14 @@ interface PosState {
       officeId: string;
       floatAmount: number;
   };
+  settings: {
+      maxTransactionLimit: number;
+  };
 }
 
 interface PosActions {
   switchUser: (cashierId: string) => void;
+  updateSettings: (settings: Partial<PosState['settings']>) => void;
   setSearchQuery: (query: string) => void;
   addItem: (item: TransactionItem) => void;
   removeItem: (id: string) => void;
@@ -122,6 +126,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Session State
   const [activeSession, setActiveSession] = useState(false);
   const [sessionDetails, setSessionDetails] = useState<{startTime: number; officeId: string; floatAmount: number} | undefined>(undefined);
+  const [settings, setSettings] = useState({ maxTransactionLimit: 1200 }); // Default limit R1200
 
   // Sync with global mock transactions on mount and updates
   useEffect(() => {
@@ -167,6 +172,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const endSession = () => {
       setActiveSession(false);
       setSessionDetails(undefined);
+  };
+
+  const updateSettings = (newSettings: Partial<PosState['settings']>) => {
+      setSettings(prev => ({ ...prev, ...newSettings }));
   };
 
   const addItem = (item: TransactionItem) => {
@@ -294,7 +303,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       activeSession,
       startSession,
       endSession,
-      sessionDetails
+      sessionDetails,
+      settings,
+      updateSettings
     }}>
       {children}
     </PosContext.Provider>

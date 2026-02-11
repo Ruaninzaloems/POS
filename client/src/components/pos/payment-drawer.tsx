@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { ArrowRight, CreditCard, Banknote, Trash2, Calculator, History, Lock, AlertTriangle, ChevronUp, ChevronDown } from 'lucide-react';
+import { ArrowRight, CreditCard, Banknote, Trash2, Calculator, History, Lock, AlertTriangle, ChevronUp, ChevronDown, ShieldAlert } from 'lucide-react';
 import { VirtualNumpad } from '@/components/ui/virtual-numpad';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DayEndModal } from './day-end-modal';
@@ -17,7 +17,8 @@ export function PaymentDrawer() {
     completeTransaction, 
     transactionItems, 
     removeItem,
-    dayEndStatus
+    dayEndStatus,
+    settings
   } = usePos();
 
   const [activeInput, setActiveInput] = useState<'cash' | 'card'>('cash');
@@ -48,7 +49,8 @@ export function PaymentDrawer() {
         }
         return true;
     }) &&
-    payment.changeDue <= 200; // Limit change to R200
+    payment.changeDue <= 200 && // Limit change to R200
+    payment.tenderTotal <= settings.maxTransactionLimit; // Check against configured limit
 
   const totalDue = transactionItems.reduce((acc, i) => acc + i.amountToPay, 0);
 
@@ -178,6 +180,18 @@ export function PaymentDrawer() {
                     <div className="text-sm text-muted-foreground uppercase tracking-widest font-semibold mb-1">Total Due</div>
                     <div className="text-4xl font-mono font-bold text-primary">R {totalDue.toFixed(2)}</div>
                  </div>
+
+                 {totalDue > settings.maxTransactionLimit && (
+                     <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center text-red-800 flex items-center gap-3">
+                         <div className="bg-red-100 p-2 rounded-full">
+                            <ShieldAlert className="w-5 h-5" />
+                         </div>
+                         <div className="text-left">
+                             <h3 className="font-bold text-sm">Limit Exceeded</h3>
+                             <p className="text-xs">Transaction exceeds limit of R {settings.maxTransactionLimit.toFixed(2)}</p>
+                         </div>
+                     </div>
+                 )}
                  
                  {dayEndStatus === 'RECONCILED' ? (
                      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center text-red-800 space-y-2">

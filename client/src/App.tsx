@@ -15,10 +15,13 @@ import AllocationHistory from "@/pages/direct-deposits/manual/allocation-history
 import ViewReceipts from "@/pages/view-receipts";
 import ThirdPartyPaymentProcessing from "@/pages/third-party/payment-processing";
 
+import SettingsPage from "@/pages/settings";
+
 function Router() {
   return (
     <Switch>
       <Route path="/" component={PosPage} />
+      <Route path="/settings" component={SettingsPage} />
       
       {/* Direct Deposits Manual Module */}
       <Route path="/direct-deposits/manual" component={UnmatchedQueue} />
