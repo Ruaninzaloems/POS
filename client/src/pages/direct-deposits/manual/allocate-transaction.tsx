@@ -5,11 +5,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Save, Plus, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, CheckCircle, AlertCircle, Upload, Filter } from 'lucide-react';
 import { MOCK_BANK_TRANSACTIONS, BankTransaction, AllocationLine } from '@/lib/direct-deposits-data';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
-import { ACCOUNTS } from '@/lib/mock-data';
+import { ACCOUNTS, Account } from '@/lib/mock-data';
+import { UnifiedSearch as SearchComponent, SearchResult } from '@/components/pos/search-component';
 
 export default function AllocateTransaction() {
   const [, params] = useRoute('/direct-deposits/manual/allocate/:id');
@@ -20,7 +21,7 @@ export default function AllocateTransaction() {
   const [lines, setLines] = useState<AllocationLine[]>([]);
   
   // New Line State
-  const [newLineAccount, setNewLineAccount] = useState('');
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [newLineAmount, setNewLineAmount] = useState('');
   
   useEffect(() => {
@@ -34,8 +35,27 @@ export default function AllocateTransaction() {
   const remaining = transaction ? transaction.amount - allocatedTotal : 0;
   const isFullyAllocated = Math.abs(remaining) < 0.01;
 
+  const handleSearchResult = (result: SearchResult) => {
+    if (result.type === 'ACCOUNT') {
+        const acc = result.data as Account;
+        setSelectedAccount(acc);
+        // Auto-fill amount if remaining > 0, otherwise outstanding
+        if (remaining > 0) {
+            setNewLineAmount(Math.min(remaining, acc.outstandingAmount).toFixed(2));
+        } else {
+            setNewLineAmount(acc.outstandingAmount.toFixed(2));
+        }
+    } else if (result.type === 'PREPAID') {
+        const acc = result.data as Account;
+        setSelectedAccount(acc); // Using account even for prepaid for now
+        setNewLineAmount(remaining > 0 ? remaining.toFixed(2) : "0.00");
+    } else {
+        toast({ title: "Unsupported Type", description: "Only Accounts and Prepaid Meters can be allocated to.", variant: "destructive" });
+    }
+  };
+
   const handleAddLine = () => {
-      if (!newLineAccount || !newLineAmount) return;
+      if (!selectedAccount || !newLineAmount) return;
       
       const amount = parseFloat(newLineAmount);
       if (isNaN(amount) || amount <= 0) {
@@ -43,17 +63,14 @@ export default function AllocateTransaction() {
           return;
       }
       
-      // Basic Account Lookup Validation
-      const accountExists = ACCOUNTS.find(a => a.accountNo === newLineAccount);
-      
       setLines(prev => [...prev, {
           id: Math.random().toString(36).substr(2, 9),
-          accountNo: newLineAccount,
+          accountNo: selectedAccount.accountNo,
           amount: amount,
-          description: accountExists ? `Payment to ${accountExists.name}` : 'Unknown Account'
+          description: `Payment to ${selectedAccount.name}`
       }]);
       
-      setNewLineAccount('');
+      setSelectedAccount(null);
       setNewLineAmount('');
   };
 
@@ -124,10 +141,57 @@ export default function AllocateTransaction() {
             {/* Allocation Workspace (Right Panel) */}
             <div className="lg:col-span-2 space-y-6">
                 <Card>
-                    <CardHeader>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                         <CardTitle className="text-lg">Allocation Lines</CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    
+                    {/* Unified Search Bar Area */}
+                    <div className="px-6 pb-6 border-b">
+                        <div className="flex gap-2">
+                            <div className="flex-1">
+                                <SearchComponent 
+                                    onSelect={handleSearchResult} 
+                                    placeholder="Search Account / Meter / Group / Clearance..."
+                                    className="max-w-full"
+                                />
+                            </div>
+                            <Button variant="outline" className="h-12 border-slate-200">
+                                <Filter className="w-4 h-4 mr-2" /> Filter
+                            </Button>
+                            <Button variant="outline" className="h-12 border-slate-200">
+                                <Upload className="w-4 h-4 mr-2" /> Import CSV
+                            </Button>
+                        </div>
+                        
+                        {/* Selected Account Preview / Amount Entry */}
+                        {selectedAccount && (
+                            <div className="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-lg flex items-end gap-4 animate-in fade-in slide-in-from-top-2">
+                                <div className="flex-1">
+                                    <div className="text-xs text-blue-600 font-bold uppercase tracking-wider mb-1">Selected Account</div>
+                                    <div className="font-medium text-lg text-slate-900">{selectedAccount.accountNo}</div>
+                                    <div className="text-sm text-slate-500">{selectedAccount.name}</div>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-slate-500 block mb-1">Amount to Allocate</label>
+                                    <div className="flex gap-2">
+                                        <Input 
+                                            type="number" 
+                                            className="h-10 w-32 font-bold text-right" 
+                                            value={newLineAmount}
+                                            onChange={e => setNewLineAmount(e.target.value)}
+                                            onKeyDown={e => e.key === 'Enter' && handleAddLine()}
+                                            autoFocus
+                                        />
+                                        <Button onClick={handleAddLine} className="bg-blue-600 hover:bg-blue-700">
+                                            <Plus className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <CardContent className="pt-0 min-h-[300px]">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -138,49 +202,26 @@ export default function AllocateTransaction() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {lines.map(line => (
-                                    <TableRow key={line.id}>
-                                        <TableCell className="font-mono">{line.accountNo}</TableCell>
-                                        <TableCell className="text-sm text-muted-foreground">{line.description}</TableCell>
-                                        <TableCell className="text-right font-mono">R {line.amount.toFixed(2)}</TableCell>
-                                        <TableCell>
-                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-red-500" onClick={() => handleRemoveLine(line.id)}>
-                                                <Trash2 className="w-3 h-3" />
-                                            </Button>
+                                {lines.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="h-40 text-center text-muted-foreground bg-slate-50/30">
+                                            No allocations yet. Use the search bar above to find accounts.
                                         </TableCell>
                                     </TableRow>
-                                ))}
-                                {/* Input Row */}
-                                <TableRow className="bg-slate-50 hover:bg-slate-50">
-                                    <TableCell>
-                                        <Input 
-                                            placeholder="ACC-..." 
-                                            className="h-8 w-32 font-mono"
-                                            value={newLineAccount}
-                                            onChange={e => setNewLineAccount(e.target.value)}
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className="text-xs text-muted-foreground italic">
-                                            {newLineAccount ? (ACCOUNTS.find(a => a.accountNo === newLineAccount)?.name || "Unknown Account") : "Enter account no..."}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Input 
-                                            type="number" 
-                                            placeholder="0.00" 
-                                            className="h-8 w-32 text-right ml-auto"
-                                            value={newLineAmount}
-                                            onChange={e => setNewLineAmount(e.target.value)}
-                                            onKeyDown={e => e.key === 'Enter' && handleAddLine()}
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <Button size="icon" className="h-8 w-8" onClick={handleAddLine}>
-                                            <Plus className="w-4 h-4" />
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
+                                ) : (
+                                    lines.map(line => (
+                                        <TableRow key={line.id}>
+                                            <TableCell className="font-mono">{line.accountNo}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{line.description}</TableCell>
+                                            <TableCell className="text-right font-mono">R {line.amount.toFixed(2)}</TableCell>
+                                            <TableCell>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleRemoveLine(line.id)}>
+                                                    <Trash2 className="w-3 h-3" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
                             </TableBody>
                         </Table>
                     </CardContent>
