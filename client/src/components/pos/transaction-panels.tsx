@@ -254,6 +254,68 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
     if (item.type === 'PREPAID') {
         const account = item.originalData as Account;
         const isWater = account.prepaidType === 'Water';
+        const [showBreakdown, setShowBreakdown] = React.useState(false);
+        const [stagedAmount, setStagedAmount] = React.useState<number>(item.amountToPay || 0);
+
+        // Mock sliding scale logic
+        const calculateBreakdown = (amount: number) => {
+            if (amount <= 0) return null;
+            
+            // Remove VAT (15%) to get base amount
+            const vatRate = 0.15;
+            const vatAmount = amount * (vatRate / (1 + vatRate));
+            const baseAmount = amount - vatAmount;
+            
+            // Fixed charges
+            const fixedCharge = 0; // Could be dynamic
+            const amountForUnits = baseAmount - fixedCharge;
+            
+            // Sliding scale (simplified)
+            // Block 1: R1.50/unit
+            // Block 2: R2.10/unit (> 350 units)
+            
+            const rate1 = 1.50;
+            const rate2 = 2.10;
+            const block1Limit = 350;
+            
+            let units = 0;
+            let block1Units = 0;
+            let block1Cost = 0;
+            let block2Units = 0;
+            let block2Cost = 0;
+            
+            const maxBlock1Cost = block1Limit * rate1;
+            
+            if (amountForUnits <= maxBlock1Cost) {
+                block1Units = amountForUnits / rate1;
+                block1Cost = amountForUnits;
+            } else {
+                block1Units = block1Limit;
+                block1Cost = maxBlock1Cost;
+                
+                const remaining = amountForUnits - maxBlock1Cost;
+                block2Units = remaining / rate2;
+                block2Cost = remaining;
+            }
+            
+            units = block1Units + block2Units;
+            
+            return {
+                amount,
+                vatAmount,
+                fixedCharge,
+                block1: { units: block1Units, rate: rate1, cost: block1Cost },
+                block2: { units: block2Units, rate: rate2, cost: block2Cost },
+                totalUnits: units
+            };
+        };
+
+        const breakdown = showBreakdown ? calculateBreakdown(stagedAmount) : null;
+
+        const handleStage = () => {
+             updateItemAmount(item.id, stagedAmount);
+             setShowBreakdown(true);
+        };
 
         return (
              <Card className={`border-l-4 shadow-sm ${isWater ? 'border-l-blue-400' : 'border-l-yellow-400'}`}>
@@ -282,6 +344,33 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                                 <Label className="text-xs text-muted-foreground uppercase tracking-wider">Last Purchase</Label>
                                 <div className="font-medium font-mono">2023-10-15 (R 200.00)</div>
                             </div>
+                            
+                            {breakdown && (
+                                <div className="mt-4 bg-slate-50 p-4 rounded-md border text-sm">
+                                    <h4 className="font-semibold mb-2">Estimated Units Breakdown</h4>
+                                    <div className="space-y-1">
+                                        <div className="flex justify-between text-xs">
+                                            <span>Block 1 (0-350 @ R{breakdown.block1.rate.toFixed(2)})</span>
+                                            <span>{breakdown.block1.units.toFixed(1)} kWh</span>
+                                        </div>
+                                        {breakdown.block2.units > 0 && (
+                                            <div className="flex justify-between text-xs">
+                                                <span>Block 2 (>350 @ R{breakdown.block2.rate.toFixed(2)})</span>
+                                                <span>{breakdown.block2.units.toFixed(1)} kWh</span>
+                                            </div>
+                                        )}
+                                        <div className="border-t my-2"></div>
+                                        <div className="flex justify-between font-medium">
+                                            <span>Total Estimated Units</span>
+                                            <span>{breakdown.totalUnits.toFixed(1)} kWh</span>
+                                        </div>
+                                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                                            <span>VAT (15%)</span>
+                                            <span>R {breakdown.vatAmount.toFixed(2)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className={`p-6 rounded-lg border flex flex-col justify-center space-y-4 ${isWater ? 'bg-blue-50 border-blue-100' : 'bg-yellow-50 border-yellow-100'}`}>
@@ -294,25 +383,41 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                                     min="0"
                                     step="0.01"
                                     className={`pl-10 text-2xl font-mono font-bold h-14 bg-white focus-visible:ring-2 ${isWater ? 'border-blue-200 focus-visible:ring-blue-400' : 'border-yellow-200 focus-visible:ring-yellow-400'}`}
-                                    value={item.amountToPay || ''} 
+                                    value={stagedAmount || ''} 
                                     placeholder="0.00"
                                     onChange={(e) => {
                                         const val = e.target.value;
                                         if (val && parseFloat(val) < 0) return;
                                         if (val.includes('.') && val.split('.')[1].length > 2) return;
-                                        updateItemAmount(item.id, parseFloat(val) || 0);
+                                        const numVal = parseFloat(val) || 0;
+                                        setStagedAmount(numVal);
+                                        // Auto-update item if already staged
+                                        if (showBreakdown) {
+                                            updateItemAmount(item.id, numVal);
+                                        }
                                     }}
                                     autoFocus
                                 />
                             </div>
-                            <div className="flex gap-2">
+                            <Button 
+                                className={`w-full font-bold h-10 ${isWater ? 'bg-blue-600 hover:bg-blue-700' : 'bg-yellow-600 hover:bg-yellow-700 text-white'}`}
+                                onClick={handleStage}
+                            >
+                                Stage Transaction & Calculate Units
+                            </Button>
+                            
+                            <div className="flex gap-2 mt-2">
                                 {[50, 100, 200, 500].map(amt => (
                                     <Button 
                                         key={amt} 
                                         variant="outline" 
                                         size="sm" 
                                         className={`flex-1 bg-white transition-colors ${isWater ? 'hover:bg-blue-100 border-blue-200 text-blue-800' : 'hover:bg-yellow-100 border-yellow-200 text-yellow-800'}`}
-                                        onClick={() => updateItemAmount(item.id, amt)}
+                                        onClick={() => {
+                                            setStagedAmount(amt);
+                                            updateItemAmount(item.id, amt);
+                                            setShowBreakdown(true);
+                                        }}
                                     >
                                         R{amt}
                                     </Button>
