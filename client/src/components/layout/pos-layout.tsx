@@ -27,7 +27,11 @@ import {
   DropdownMenuItem, 
   DropdownMenuLabel, 
   DropdownMenuSeparator, 
-  DropdownMenuTrigger 
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal
 } from "@/components/ui/dropdown-menu";
 
 import CashierSetup from '@/pages/cashier-setup';
@@ -62,8 +66,15 @@ export function PosLayout({ children }: PosLayoutProps) {
     { label: 'POS Unified', href: '/', icon: Layers },
     { label: 'Direct Deposits Manual', href: '/direct-deposits/manual', icon: Banknote },
     { label: 'Direct Deposits Auto', href: '/direct-deposits/auto', icon: RefreshCw },
-    { label: 'Third Party Payments', href: '/third-party', icon: Users },
-    { label: 'Utilipay Distribution', href: '/utilipay', icon: Zap },
+    { 
+        label: 'Third Party Payments', 
+        icon: Users,
+        children: [
+            { label: 'Third Party Payment Processing', href: '/third-party/processing', icon: Users },
+            { label: 'Utilipay Distribution Reconciliation Processing', href: '/third-party/utilipay-reconciliation', icon: Zap }
+        ]
+    },
+    // { label: 'Utilipay Distribution', href: '/utilipay', icon: Zap }, // Moved to Third Party as per request
     { label: 'Bulk Allocation Progress', href: '/bulk-allocation', icon: FileBarChart },
     { label: 'View Receipts', href: '/view-receipts', icon: FileSearch },
     { label: 'Supervisor', href: '/supervisor', icon: ShieldCheck },
@@ -93,16 +104,37 @@ export function PosLayout({ children }: PosLayoutProps) {
                    <ChevronDown className="w-4 h-4 opacity-50" />
                  </Button>
                </DropdownMenuTrigger>
-               <DropdownMenuContent align="start" className="w-64">
+               <DropdownMenuContent align="start" className="w-72">
                  <DropdownMenuLabel>Navigation</DropdownMenuLabel>
                  <DropdownMenuSeparator />
-                 {navItems.map((item) => (
-                   <Link key={item.href} href={item.href}>
-                     <DropdownMenuItem className="gap-2 cursor-pointer">
-                       <item.icon className="w-4 h-4 text-muted-foreground" />
-                       <span>{item.label}</span>
-                     </DropdownMenuItem>
-                   </Link>
+                 {navItems.map((item, idx) => (
+                   item.children ? (
+                     <DropdownMenuSub key={idx}>
+                       <DropdownMenuSubTrigger className="gap-2 cursor-pointer">
+                         <item.icon className="w-4 h-4 text-muted-foreground" />
+                         <span>{item.label}</span>
+                       </DropdownMenuSubTrigger>
+                       <DropdownMenuPortal>
+                         <DropdownMenuSubContent className="w-72">
+                           {item.children.map((child, childIdx) => (
+                             <Link key={childIdx} href={child.href}>
+                               <DropdownMenuItem className="gap-2 cursor-pointer">
+                                 {child.icon && <child.icon className="w-4 h-4 text-muted-foreground" />}
+                                 <span>{child.label}</span>
+                               </DropdownMenuItem>
+                             </Link>
+                           ))}
+                         </DropdownMenuSubContent>
+                       </DropdownMenuPortal>
+                     </DropdownMenuSub>
+                   ) : (
+                     <Link key={idx} href={item.href}>
+                       <DropdownMenuItem className="gap-2 cursor-pointer">
+                         <item.icon className="w-4 h-4 text-muted-foreground" />
+                         <span>{item.label}</span>
+                       </DropdownMenuItem>
+                     </Link>
+                   )
                  ))}
                </DropdownMenuContent>
              </DropdownMenu>
