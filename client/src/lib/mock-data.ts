@@ -333,12 +333,12 @@ export const CURRENT_CASHIER = {
 };
 
 export const CASHIERS = [
-  { id: "CSH-01", name: "Sarah Jenkins", role: "CASHIER", cashOffice: "Main Civic Center" },
-  { id: "CSH-02", name: "John Doe", role: "CASHIER", cashOffice: "Main Civic Center" },
-  { id: "CSH-03", name: "Emily Davis", role: "CASHIER", cashOffice: "Traffic Dept" },
-  { id: "CSH-04", name: "Michael Brown", role: "CASHIER", cashOffice: "Traffic Dept" },
-  { id: "CSH-05", name: "Jessica Wilson", role: "CASHIER", cashOffice: "Main Civic Center" },
-  { id: "SUP-01", name: "Admin User", role: "SUPERVISOR", cashOffice: "Main Civic Center" }
+  { id: "CSH-01", name: "Sarah Jenkins", role: "CASHIER", cashOffice: "Main Civic Center", float: 500.00 },
+  { id: "CSH-02", name: "John Doe", role: "CASHIER", cashOffice: "Main Civic Center", float: 0.00 },
+  { id: "CSH-03", name: "Emily Davis", role: "CASHIER", cashOffice: "Traffic Dept", float: 250.00 },
+  { id: "CSH-04", name: "Michael Brown", role: "CASHIER", cashOffice: "Traffic Dept", float: 250.00 },
+  { id: "CSH-05", name: "Jessica Wilson", role: "CASHIER", cashOffice: "Main Civic Center", float: 0.00 },
+  { id: "SUP-01", name: "Admin User", role: "SUPERVISOR", cashOffice: "Main Civic Center", float: 0.00 }
 ];
 
 export const MOCK_TRANSACTIONS: any[] = []; // Global store for transactions

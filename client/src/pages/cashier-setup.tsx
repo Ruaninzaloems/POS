@@ -10,7 +10,8 @@ import { Separator } from '@/components/ui/separator';
 
 export default function CashierSetup() {
     const { currentUser, startSession } = usePos();
-    const [floatAmount, setFloatAmount] = useState<string>('0.00');
+    // Float is pulled from user table and cannot be edited
+    const floatAmount = currentUser.float ? currentUser.float.toFixed(2) : '0.00';
     const [selectedOfficeId, setSelectedOfficeId] = useState<string>('');
     const [error, setError] = useState<string>('');
 
@@ -24,8 +25,9 @@ export default function CashierSetup() {
         }
         
         const float = parseFloat(floatAmount);
+        // Float validation might not be needed if it's read-only, but keeping safety check
         if (isNaN(float) || float < 0) {
-            setError('Please enter a valid float amount.');
+            setError('Invalid float amount configured for this user.');
             return;
         }
 
@@ -55,8 +57,9 @@ export default function CashierSetup() {
                                 type="number"
                                 step="0.01"
                                 value={floatAmount}
-                                onChange={(e) => setFloatAmount(e.target.value)}
-                                className="bg-slate-100 border-slate-300 text-right"
+                                readOnly
+                                disabled
+                                className="bg-slate-100 border-slate-300 text-right text-slate-600 cursor-not-allowed"
                             />
                         </div>
 

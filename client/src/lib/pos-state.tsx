@@ -19,6 +19,7 @@ export interface CashierProfile {
     name: string;
     role?: string;
     cashOffice: string;
+    float?: number;
 }
 
 export interface TransactionRecord {
