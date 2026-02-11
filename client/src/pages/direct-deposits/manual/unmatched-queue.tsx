@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, ArrowRight, Filter, Banknote } from 'lucide-react';
+import { Search, ArrowRight, Filter, Banknote, FileSpreadsheet, FileText } from 'lucide-react';
 import { MOCK_BANK_TRANSACTIONS } from '@/lib/direct-deposits-data';
 import { Link, useLocation } from 'wouter';
 import { format } from 'date-fns';
@@ -54,6 +54,13 @@ export default function UnmatchedQueue() {
              <Button variant="outline" className="gap-2">
                 <Filter className="w-4 h-4" /> Filter
              </Button>
+             <div className="h-10 w-px bg-slate-200 mx-2" />
+             <Button variant="outline" size="icon" title="Export Excel">
+                <FileSpreadsheet className="w-4 h-4 text-green-600" />
+             </Button>
+             <Button variant="outline" size="icon" title="Export PDF">
+                <FileText className="w-4 h-4 text-red-600" />
+             </Button>
           </div>
         </div>
 
@@ -75,7 +82,7 @@ export default function UnmatchedQueue() {
                 {filtered.map(tx => (
                   <TableRow key={tx.id}>
                     <TableCell className="whitespace-nowrap font-mono text-xs">
-                        {tx.transactionDate}
+                        {format(new Date(tx.transactionDate), 'dd/MM/yyyy')}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{tx.bankAccount}</TableCell>
                     <TableCell className="font-medium">{tx.description}</TableCell>
