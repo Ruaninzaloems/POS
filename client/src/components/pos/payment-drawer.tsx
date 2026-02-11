@@ -234,7 +234,7 @@ export function PaymentDrawer() {
                     </div>
                     
                     {/* Quick Cash */}
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-3 gap-2 lg:hidden">
                         {QuickAmounts.map(amt => (
                             <Button 
                                 key={amt}
@@ -247,14 +247,16 @@ export function PaymentDrawer() {
                         ))}
                     </div>
 
-                    <Separator />
+                    <Separator className="lg:hidden" />
                     
                     {/* Virtual Numpad */}
-                    <VirtualNumpad 
-                        onInput={handleNumpadInput} 
-                        onClear={handleBackspace} 
-                        className="w-full"
-                    />
+                    <div className="lg:hidden">
+                        <VirtualNumpad 
+                            onInput={handleNumpadInput} 
+                            onClear={handleBackspace} 
+                            className="w-full"
+                        />
+                    </div>
                  </>
                  )}
            </TabsContent>
