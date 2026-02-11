@@ -13,6 +13,7 @@ import UnmatchedQueue from "@/pages/direct-deposits/manual/unmatched-queue";
 import AllocateTransaction from "@/pages/direct-deposits/manual/allocate-transaction";
 import AllocationHistory from "@/pages/direct-deposits/manual/allocation-history";
 import ViewReceipts from "@/pages/view-receipts";
+import ThirdPartyPaymentProcessing from "@/pages/third-party/payment-processing";
 
 function Router() {
   return (
@@ -27,9 +28,7 @@ function Router() {
       <Route path="/direct-deposits/auto">
         <PlaceholderPage title="Direct Deposits Auto" description="Automatic processing of direct deposits" />
       </Route>
-      <Route path="/third-party/processing">
-        <PlaceholderPage title="Third Party Payment Processing" description="Processing of payments from third party vendors" />
-      </Route>
+      <Route path="/third-party/processing" component={ThirdPartyPaymentProcessing} />
       <Route path="/third-party/utilipay-reconciliation">
         <PlaceholderPage title="Utilipay Distribution Reconciliation" description="Reconciliation of Utilipay distribution records" />
       </Route>
