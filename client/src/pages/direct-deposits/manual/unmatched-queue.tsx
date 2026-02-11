@@ -18,6 +18,19 @@ export default function UnmatchedQueue() {
 
   const filtered = filterUnmatchedTransactions(transactions, searchTerm);
 
+  const handleDownload = (format: 'excel' | 'pdf') => {
+      // Mock download functionality
+      const element = document.createElement("a");
+      const fileContent = "Date,BankAccount,Description,Reference,Amount,Status\n" + 
+          filtered.map(t => `${t.transactionDate},"${t.bankAccount}","${t.description}",${t.reference},${t.amount},Unmatched`).join("\n");
+      const fileBlob = new Blob([fileContent], { type: format === 'excel' ? "text/csv" : "text/plain" });
+      element.href = URL.createObjectURL(fileBlob);
+      element.download = `unmatched_transactions.${format === 'excel' ? 'csv' : 'txt'}`;
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+  };
+
   return (
     <PosLayout>
       <div className="flex-1 flex flex-col h-full bg-slate-50/50">
@@ -51,10 +64,10 @@ export default function UnmatchedQueue() {
                 <Filter className="w-4 h-4" /> Filter
              </Button>
              <div className="h-10 w-px bg-slate-200 mx-2" />
-             <Button variant="outline" size="icon" title="Export Excel">
+             <Button variant="outline" size="icon" title="Export Excel" onClick={() => handleDownload('excel')}>
                 <FileSpreadsheet className="w-4 h-4 text-green-600" />
              </Button>
-             <Button variant="outline" size="icon" title="Export PDF">
+             <Button variant="outline" size="icon" title="Export PDF" onClick={() => handleDownload('pdf')}>
                 <FileText className="w-4 h-4 text-red-600" />
              </Button>
           </div>
