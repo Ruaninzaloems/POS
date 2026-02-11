@@ -44,12 +44,7 @@ export default function AllocateTransaction() {
             name: acc.name,
             description: `Payment to ${acc.name}` 
         });
-        // Auto-fill amount if remaining > 0, otherwise outstanding
-        if (remaining > 0) {
-            setNewLineAmount(Math.min(remaining, acc.outstandingAmount).toFixed(2));
-        } else {
-            setNewLineAmount(acc.outstandingAmount.toFixed(2));
-        }
+        setNewLineAmount("0.00");
     } else if (result.type === 'PREPAID') {
         const acc = result.data as Account;
         const prepaidType = acc.prepaidType || 'Electricity';
@@ -58,7 +53,7 @@ export default function AllocateTransaction() {
             name: `${prepaidType} Meter: ${acc.prepaidMeterNo}`,
             description: `Prepaid ${prepaidType}: ${acc.prepaidMeterNo} (${acc.name})`
         }); 
-        setNewLineAmount(remaining > 0 ? remaining.toFixed(2) : "0.00");
+        setNewLineAmount("0.00");
     } else if (result.type === 'DIRECT') {
         const item = result.data;
         setSelectedAccount({ 
@@ -66,7 +61,7 @@ export default function AllocateTransaction() {
             name: item.description,
             description: `Direct Income: ${item.description}`
         });
-        setNewLineAmount(remaining > 0 ? remaining.toFixed(2) : (item.price || 0).toFixed(2));
+        setNewLineAmount("0.00");
     } else if (result.type === 'GROUP') {
         const group = result.data as any;
         setSelectedAccount({
@@ -74,7 +69,7 @@ export default function AllocateTransaction() {
             name: group.name,
             description: `Group Payment: ${group.name}`
         });
-        setNewLineAmount(remaining > 0 ? remaining.toFixed(2) : "0.00");
+        setNewLineAmount("0.00");
     } else if (result.type === 'CLEARANCE') {
         const clr = result.data as any;
         setSelectedAccount({
@@ -82,7 +77,7 @@ export default function AllocateTransaction() {
             name: `Clearance ${clr.scheduleNo}`,
             description: `Clearance Payment: ${clr.scheduleNo}`
         });
-        setNewLineAmount(remaining > 0 ? remaining.toFixed(2) : clr.totalDue.toFixed(2));
+        setNewLineAmount("0.00");
     } else {
         // Fallback for any other type - just use it as is if possible, or show error
         toast({ title: "Unsupported Type", description: "This item type cannot be allocated to directly.", variant: "destructive" });
