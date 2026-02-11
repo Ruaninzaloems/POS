@@ -30,17 +30,17 @@ function PosPageContent() {
     <PosLayout>
       <div className="flex flex-col lg:flex-row flex-1 overflow-hidden relative">
         {/* Central Area */}
-        <div className="flex-1 flex flex-col min-w-0 bg-background relative z-0 overflow-y-auto lg:overflow-visible">
+        <div className="flex-1 flex flex-col min-w-0 bg-background relative z-0 overflow-hidden">
           
           {/* Search Area */}
-          <div className="px-4 lg:px-6 py-4 bg-background border-b z-10 sticky top-0 flex gap-2">
+          <div className="px-4 lg:px-6 py-4 bg-background border-b z-10 shrink-0 flex gap-2">
              <div className="flex-1 max-w-2xl mx-auto">
                <UnifiedSearch />
              </div>
           </div>
 
           {/* Dynamic Panel Area */}
-          <div className="flex-1 overflow-y-auto lg:overflow-visible">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             <TransactionPanels />
           </div>
         </div>
