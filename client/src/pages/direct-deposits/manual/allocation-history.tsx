@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { ArrowLeft, Eye, Printer, FileText, Search, User } from 'lucide-react';
+import { ArrowLeft, Eye, Printer, FileText, Search, User, FileSpreadsheet, FileIcon } from 'lucide-react';
 import { Link } from 'wouter';
 import { MOCK_BANK_TRANSACTIONS, MOCK_ALLOCATIONS, BankTransaction } from '@/lib/direct-deposits-data';
 import { format } from 'date-fns';
@@ -57,6 +57,19 @@ export default function AllocationHistory() {
     documentTitle: `Receipt-${selectedTx?.id || 'Draft'}`,
   });
 
+  const handleDownload = (format: 'excel' | 'pdf') => {
+      // Mock download functionality
+      const element = document.createElement("a");
+      const fileContent = "TransactionDate,Description,Reference,Amount,Status\n" + 
+          filteredHistory.map(t => `${t.transactionDate},"${t.description}",${t.reference},${t.amount},${t.status}`).join("\n");
+      const fileBlob = new Blob([fileContent], { type: format === 'excel' ? "text/csv" : "text/plain" });
+      element.href = URL.createObjectURL(fileBlob);
+      element.download = `allocation_history.${format === 'excel' ? 'csv' : 'txt'}`;
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+  };
+
   return (
     <PosLayout>
        <div className="flex-1 flex flex-col h-full bg-slate-50/50">
@@ -73,26 +86,37 @@ export default function AllocationHistory() {
                  </div>
              </div>
 
-             <div className="flex gap-2 w-full md:w-auto">
-                <div className="relative w-full md:w-64">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        placeholder="Search description, reference, user..." 
-                        className="pl-8" 
-                        value={filterQuery}
-                        onChange={(e) => setFilterQuery(e.target.value)}
-                    />
+             <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto items-end md:items-center">
+                <div className="flex gap-2 w-full md:w-auto">
+                    <div className="relative w-full md:w-64">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            placeholder="Search description, reference, user..." 
+                            className="pl-8" 
+                            value={filterQuery}
+                            onChange={(e) => setFilterQuery(e.target.value)}
+                        />
+                    </div>
+                    <Select value={methodFilter} onValueChange={setMethodFilter}>
+                        <SelectTrigger className="w-[150px]">
+                            <SelectValue placeholder="All Methods" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="ALL">All Methods</SelectItem>
+                            <SelectItem value="MANUAL">Manual Only</SelectItem>
+                            <SelectItem value="BULK">Bulk Only</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
-                <Select value={methodFilter} onValueChange={setMethodFilter}>
-                    <SelectTrigger className="w-[150px]">
-                        <SelectValue placeholder="All Methods" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="ALL">All Methods</SelectItem>
-                        <SelectItem value="MANUAL">Manual Only</SelectItem>
-                        <SelectItem value="BULK">Bulk Only</SelectItem>
-                    </SelectContent>
-                </Select>
+                
+                <div className="flex gap-2">
+                    <Button variant="outline" size="icon" onClick={() => handleDownload('excel')} title="Download Excel">
+                        <FileSpreadsheet className="w-4 h-4 text-green-600" />
+                    </Button>
+                    <Button variant="outline" size="icon" onClick={() => handleDownload('pdf')} title="Download PDF">
+                        <FileIcon className="w-4 h-4 text-red-600" />
+                    </Button>
+                </div>
              </div>
         </div>
 
