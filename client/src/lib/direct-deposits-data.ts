@@ -26,6 +26,9 @@ export interface AllocationDraft {
   allocatedBy: string;
   allocationDate: string;
   bulkJobStatus?: 'Processing' | 'Performing rebuilds' | 'Completing reconciliation' | 'Bulk allocations complete' | 'Error';
+  allocationType?: 'DIRECT_PAYMENT' | 'CLEARANCE_PAYMENT' | 'ACCOUNT_PAYMENT' | 'ELECTRICITY_RECHARGE' | 'WATER_RECHARGE' | 'CSV_FILE';
+  fileName?: string;
+  fileUrl?: string; // Mock URL for viewing the file
 }
 
 // Helper to manage mock persistence
@@ -235,7 +238,8 @@ const DEFAULT_MOCK_ALLOCATIONS: AllocationDraft[] = [
         updatedAt: "2023-10-21T10:00:00",
         method: "MANUAL",
         allocatedBy: "Sarah Jenkins",
-        allocationDate: "2023-10-21T10:00:00"
+        allocationDate: "2023-10-21T10:00:00",
+        allocationType: 'DIRECT_PAYMENT'
     },
     {
         transactionId: "TXN-101",
@@ -247,7 +251,9 @@ const DEFAULT_MOCK_ALLOCATIONS: AllocationDraft[] = [
         method: "BULK",
         allocatedBy: "System Process",
         allocationDate: "2026-02-09T14:22:52",
-        bulkJobStatus: "Bulk allocations complete"
+        bulkJobStatus: "Bulk allocations complete",
+        allocationType: 'CSV_FILE',
+        fileName: 'bulk_consumer_upload_feb.csv'
     },
     {
         transactionId: "TXN-102",
@@ -259,7 +265,9 @@ const DEFAULT_MOCK_ALLOCATIONS: AllocationDraft[] = [
         method: "BULK",
         allocatedBy: "System Process",
         allocationDate: "2026-02-09T14:11:53",
-        bulkJobStatus: "Bulk allocations complete"
+        bulkJobStatus: "Bulk allocations complete",
+        allocationType: 'CSV_FILE',
+        fileName: 'bulk_consumer_upload_feb_part2.csv'
     },
     {
         transactionId: "TXN-103",
@@ -269,7 +277,9 @@ const DEFAULT_MOCK_ALLOCATIONS: AllocationDraft[] = [
         method: "BULK",
         allocatedBy: "System Process",
         allocationDate: "2026-02-10T09:15:00",
-        bulkJobStatus: "Processing"
+        bulkJobStatus: "Processing",
+        allocationType: 'CSV_FILE',
+        fileName: 'import_batch_a.csv'
     },
     {
         transactionId: "TXN-104",
@@ -279,7 +289,8 @@ const DEFAULT_MOCK_ALLOCATIONS: AllocationDraft[] = [
         method: "BULK",
         allocatedBy: "System Process",
         allocationDate: "2026-02-10T09:20:00",
-        bulkJobStatus: "Performing rebuilds"
+        bulkJobStatus: "Performing rebuilds",
+        allocationType: 'WATER_RECHARGE'
     },
     {
         transactionId: "TXN-105",
@@ -289,7 +300,8 @@ const DEFAULT_MOCK_ALLOCATIONS: AllocationDraft[] = [
         method: "BULK",
         allocatedBy: "System Process",
         allocationDate: "2026-02-10T09:30:00",
-        bulkJobStatus: "Completing reconciliation"
+        bulkJobStatus: "Completing reconciliation",
+        allocationType: 'ELECTRICITY_RECHARGE'
     },
     {
         transactionId: "TXN-106",
@@ -299,7 +311,9 @@ const DEFAULT_MOCK_ALLOCATIONS: AllocationDraft[] = [
         method: "BULK",
         allocatedBy: "System Process",
         allocationDate: "2026-02-11T10:00:00",
-        bulkJobStatus: "Error"
+        bulkJobStatus: "Error",
+        allocationType: 'CSV_FILE',
+        fileName: 'failed_batch_d.csv'
     }
 ];
 

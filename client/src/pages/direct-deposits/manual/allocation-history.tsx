@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { ArrowLeft, Eye, Printer, FileText, Search, User, FileSpreadsheet, FileIcon, Filter, X, RotateCcw, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Eye, Printer, FileText, Search, User, FileSpreadsheet, FileIcon, Filter, X, RotateCcw, AlertCircle, File, Download } from 'lucide-react';
 import { Link } from 'wouter';
 import { MOCK_BANK_TRANSACTIONS, MOCK_ALLOCATIONS, BankTransaction } from '@/lib/direct-deposits-data';
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay, isValid } from 'date-fns';
@@ -19,6 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from '@/components/ui/date-picker';
 import { useToast } from '@/hooks/use-toast';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function AllocationHistory() {
   const { toast } = useToast();
@@ -51,7 +52,9 @@ export default function AllocationHistory() {
       const matchesSearch = 
         item.description.toLowerCase().includes(filterQuery.toLowerCase()) || 
         item.reference.toLowerCase().includes(filterQuery.toLowerCase()) ||
-        (item.details?.allocatedBy || '').toLowerCase().includes(filterQuery.toLowerCase());
+        (item.details?.allocatedBy || '').toLowerCase().includes(filterQuery.toLowerCase()) ||
+        (item.details?.allocationType || '').toLowerCase().includes(filterQuery.toLowerCase()) ||
+        (item.details?.fileName || '').toLowerCase().includes(filterQuery.toLowerCase());
       
       const matchesMethod = 
         methodFilter === 'ALL' || 
@@ -109,8 +112,8 @@ export default function AllocationHistory() {
   const handleDownload = (format: 'excel' | 'pdf') => {
       // Mock download functionality
       const element = document.createElement("a");
-      const fileContent = "TransactionDate,AllocationDate,Description,Reference,Method,AllocatedBy,Amount,Status\n" + 
-          filteredHistory.map(t => `${t.transactionDate},"${t.details?.allocationDate || ''}","${t.description}",${t.reference},${t.details?.method || ''},${t.details?.allocatedBy || ''},${t.amount},${t.status}`).join("\n");
+      const fileContent = "TransactionDate,AllocationDate,Description,Reference,Method,AllocatedBy,Amount,Status,Type,File\n" + 
+          filteredHistory.map(t => `${t.transactionDate},"${t.details?.allocationDate || ''}","${t.description}",${t.reference},${t.details?.method || ''},${t.details?.allocatedBy || ''},${t.amount},${t.status},${t.details?.allocationType || ''},${t.details?.fileName || ''}`).join("\n");
       const fileBlob = new Blob([fileContent], { type: format === 'excel' ? "text/csv" : "text/plain" });
       element.href = URL.createObjectURL(fileBlob);
       element.download = `allocation_history.${format === 'excel' ? 'csv' : 'txt'}`;
@@ -126,7 +129,37 @@ export default function AllocationHistory() {
       });
   };
 
-  const toggleStatusFilter = (status: string) => {
+  const handleDownloadFile = (fileName: string) => {
+      // Mock download
+      toast({
+          title: "Downloading File",
+          description: `Downloading source file: ${fileName}`,
+      });
+  };
+
+  const getAllocationTypeLabel = (type?: string) => {
+      switch(type) {
+          case 'DIRECT_PAYMENT': return 'Direct Payment';
+          case 'CLEARANCE_PAYMENT': return 'Clearance Payment';
+          case 'ACCOUNT_PAYMENT': return 'Account Payment';
+          case 'ELECTRICITY_RECHARGE': return 'Electricity Recharge';
+          case 'WATER_RECHARGE': return 'Water Recharge';
+          case 'CSV_FILE': return 'CSV File Upload';
+          default: return 'Standard Allocation';
+      }
+  };
+
+  const getAllocationTypeBadgeColor = (type?: string) => {
+      switch(type) {
+          case 'DIRECT_PAYMENT': return 'bg-cyan-100 text-cyan-700 border-cyan-200';
+          case 'CLEARANCE_PAYMENT': return 'bg-indigo-100 text-indigo-700 border-indigo-200';
+          case 'ACCOUNT_PAYMENT': return 'bg-sky-100 text-sky-700 border-sky-200';
+          case 'ELECTRICITY_RECHARGE': return 'bg-amber-100 text-amber-700 border-amber-200';
+          case 'WATER_RECHARGE': return 'bg-blue-100 text-blue-700 border-blue-200';
+          case 'CSV_FILE': return 'bg-slate-100 text-slate-700 border-slate-200';
+          default: return 'bg-gray-100 text-gray-700 border-gray-200';
+      }
+  };
       setStatusFilter(prev => 
           prev.includes(status) 
           ? prev.filter(s => s !== status)
@@ -312,6 +345,7 @@ export default function AllocationHistory() {
                             <TableHead>Allocation Date</TableHead>
                             <TableHead>Description</TableHead>
                             <TableHead>Reference</TableHead>
+                            <TableHead>Type</TableHead>
                             <TableHead>Method</TableHead>
                             <TableHead>Allocated By</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
@@ -331,6 +365,32 @@ export default function AllocationHistory() {
                                 <TableCell className="text-sm font-medium">{tx.description}</TableCell>
                                 <TableCell>
                                     <Badge variant="outline" className="font-mono">{tx.reference}</Badge>
+                                </TableCell>
+                                <TableCell>
+                                    <Badge variant="secondary" className={`border ${getAllocationTypeBadgeColor(tx.details?.allocationType)} shadow-none font-normal`}>
+                                        {getAllocationTypeLabel(tx.details?.allocationType)}
+                                    </Badge>
+                                    {tx.details?.allocationType === 'CSV_FILE' && tx.details?.fileName && (
+                                        <div className="mt-1">
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button 
+                                                            variant="link" 
+                                                            className="h-auto p-0 text-[10px] text-blue-600 flex items-center gap-1"
+                                                            onClick={() => handleDownloadFile(tx.details?.fileName || '')}
+                                                        >
+                                                            <File className="w-3 h-3" />
+                                                            <span className="truncate max-w-[100px]">{tx.details.fileName}</span>
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>Download {tx.details.fileName}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </div>
+                                    )}
                                 </TableCell>
                                 <TableCell>
                                     {tx.details?.method === 'BULK' ? (
@@ -389,7 +449,7 @@ export default function AllocationHistory() {
                                             </Button>
                                         )}
                                         <Button variant="ghost" size="sm" onClick={() => setSelectedTx(tx)} className="h-8 px-2">
-                                            <Eye className="w-4 h-4 mr-2" /> View
+                                            <FileText className="w-4 h-4 mr-2 text-slate-500" /> Report
                                         </Button>
                                     </div>
                                 </TableCell>
@@ -397,7 +457,7 @@ export default function AllocationHistory() {
                         ))}
                         {filteredHistory.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                                <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
                                     No allocation history found matching your criteria.
                                 </TableCell>
                             </TableRow>
@@ -409,54 +469,115 @@ export default function AllocationHistory() {
        </div>
 
        <Dialog open={!!selectedTx} onOpenChange={(open) => !open && setSelectedTx(null)}>
-        <DialogContent className="max-w-3xl">
-            <DialogHeader>
-                <DialogTitle>Allocation Details</DialogTitle>
-                <DialogDescription>Transaction ID: {selectedTx?.id}</DialogDescription>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogHeader className="border-b pb-4">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <DialogTitle>Allocation Report</DialogTitle>
+                        <DialogDescription>Transaction ID: {selectedTx?.id}</DialogDescription>
+                    </div>
+                    <div className="flex gap-2">
+                         <Button size="sm" variant="outline" onClick={handlePrint}>
+                            <Printer className="w-4 h-4 mr-2" /> Print Report
+                         </Button>
+                         <Button size="sm" variant="outline" onClick={() => handleDownload('pdf')}>
+                            <FileIcon className="w-4 h-4 mr-2" /> Export PDF
+                         </Button>
+                    </div>
+                </div>
             </DialogHeader>
             
             {selectedTx && (
-                <div className="space-y-6">
-                    {/* Bank Transaction Info */}
-                    <div className="bg-slate-50 p-4 rounded-lg grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div className="md:col-span-2">
-                            <span className="text-muted-foreground block text-xs">Bank Description</span>
-                            <span className="font-medium">{selectedTx.description}</span>
+                <div className="space-y-6 overflow-y-auto p-4 flex-1" ref={receiptRef}>
+                    {/* Report Header */}
+                    <div className="flex justify-between items-start border-b pb-6">
+                        <div className="flex gap-4">
+                           <div className="h-12 w-12 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-xl">
+                                M
+                           </div>
+                           <div>
+                               <h2 className="text-xl font-bold text-slate-900">Municipal POS</h2>
+                               <p className="text-sm text-muted-foreground">Direct Deposit Allocation Report</p>
+                           </div>
                         </div>
-                        <div className="md:col-span-2">
-                            <span className="text-muted-foreground block text-xs">Bank Reference</span>
-                            <span className="font-mono">{selectedTx.reference}</span>
+                        <div className="text-right">
+                            <div className="text-sm font-medium text-slate-500">Report Date</div>
+                            <div className="font-mono">{format(new Date(), 'dd MMM yyyy HH:mm')}</div>
+                        </div>
+                    </div>
+
+                    {/* Allocation Info Grid */}
+                    <div className="grid grid-cols-2 gap-8">
+                        <div>
+                             <h3 className="font-bold text-sm text-slate-900 uppercase tracking-wider mb-4 border-b pb-2">Transaction Details</h3>
+                             <dl className="space-y-2 text-sm">
+                                <div className="grid grid-cols-3">
+                                    <dt className="text-muted-foreground">Description:</dt>
+                                    <dd className="col-span-2 font-medium">{selectedTx.description}</dd>
+                                </div>
+                                <div className="grid grid-cols-3">
+                                    <dt className="text-muted-foreground">Reference:</dt>
+                                    <dd className="col-span-2 font-mono bg-slate-100 w-fit px-1 rounded">{selectedTx.reference}</dd>
+                                </div>
+                                <div className="grid grid-cols-3">
+                                    <dt className="text-muted-foreground">Date:</dt>
+                                    <dd className="col-span-2">{format(new Date(selectedTx.transactionDate), 'dd/MM/yyyy')}</dd>
+                                </div>
+                                <div className="grid grid-cols-3">
+                                    <dt className="text-muted-foreground">Bank Account:</dt>
+                                    <dd className="col-span-2">{selectedTx.bankAccount}</dd>
+                                </div>
+                                <div className="grid grid-cols-3 mt-4 pt-2 border-t">
+                                    <dt className="font-bold text-slate-900">Total Amount:</dt>
+                                    <dd className="col-span-2 font-bold text-slate-900">R {selectedTx.amount.toFixed(2)}</dd>
+                                </div>
+                             </dl>
                         </div>
                         <div>
-                            <span className="text-muted-foreground block text-xs">Transaction Date</span>
-                            <span>{format(new Date(selectedTx.transactionDate), 'dd MMM yyyy')}</span>
-                        </div>
-                        <div>
-                            <span className="text-muted-foreground block text-xs">Allocation Date</span>
-                            <span>{selectedAllocation?.allocationDate ? format(new Date(selectedAllocation.allocationDate), 'dd MMM yyyy HH:mm') : '-'}</span>
-                        </div>
-                        <div>
-                            <span className="text-muted-foreground block text-xs">Allocated By</span>
-                            <span className="font-medium flex items-center gap-1">
-                                <User className="w-3 h-3" />
-                                {selectedAllocation?.allocatedBy || 'Unknown'}
-                            </span>
-                        </div>
-                        <div>
-                            <span className="text-muted-foreground block text-xs">Total Amount</span>
-                            <span className="font-bold">R {selectedTx.amount.toFixed(2)}</span>
+                             <h3 className="font-bold text-sm text-slate-900 uppercase tracking-wider mb-4 border-b pb-2">Allocation Details</h3>
+                             <dl className="space-y-2 text-sm">
+                                <div className="grid grid-cols-3">
+                                    <dt className="text-muted-foreground">Status:</dt>
+                                    <dd className="col-span-2">
+                                        <Badge variant="outline" className={getAllocationTypeBadgeColor(selectedAllocation?.allocationType)}>
+                                            {selectedAllocation?.bulkJobStatus || selectedTx.status}
+                                        </Badge>
+                                    </dd>
+                                </div>
+                                <div className="grid grid-cols-3">
+                                    <dt className="text-muted-foreground">Allocated By:</dt>
+                                    <dd className="col-span-2">{selectedAllocation?.allocatedBy || 'Unknown'}</dd>
+                                </div>
+                                <div className="grid grid-cols-3">
+                                    <dt className="text-muted-foreground">Allocation Date:</dt>
+                                    <dd className="col-span-2">{selectedAllocation?.allocationDate ? format(new Date(selectedAllocation.allocationDate), 'dd MMM yyyy HH:mm') : '-'}</dd>
+                                </div>
+                                <div className="grid grid-cols-3">
+                                    <dt className="text-muted-foreground">Type:</dt>
+                                    <dd className="col-span-2 font-medium">{getAllocationTypeLabel(selectedAllocation?.allocationType)}</dd>
+                                </div>
+                                {selectedAllocation?.allocationType === 'CSV_FILE' && (
+                                    <div className="grid grid-cols-3">
+                                        <dt className="text-muted-foreground">Source File:</dt>
+                                        <dd className="col-span-2 font-mono text-xs flex items-center gap-1 text-blue-600">
+                                            <File className="w-3 h-3" />
+                                            {selectedAllocation.fileName || 'Unknown File'}
+                                        </dd>
+                                    </div>
+                                )}
+                             </dl>
                         </div>
                     </div>
 
                     {/* Allocation Lines */}
                     <div>
-                        <h4 className="font-medium mb-3 flex items-center gap-2">
-                            <FileText className="w-4 h-4 text-blue-600" />
-                            Allocated Lines
-                        </h4>
-                        <div className="border rounded-md overflow-hidden max-h-[300px] overflow-y-auto">
+                        <h3 className="font-bold text-sm text-slate-900 uppercase tracking-wider mb-4 border-b pb-2 flex items-center gap-2">
+                            <FileText className="w-4 h-4" />
+                            Allocation Breakdown
+                        </h3>
+                        <div className="border rounded-md overflow-hidden">
                             <Table>
-                                <TableHeader className="sticky top-0 bg-white z-10 shadow-sm">
+                                <TableHeader className="bg-slate-50">
                                     <TableRow>
                                         <TableHead className="h-8">Account / Reference</TableHead>
                                         <TableHead className="h-8">Description</TableHead>
@@ -464,59 +585,39 @@ export default function AllocationHistory() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {selectedAllocation ? (
-                                        selectedAllocation.lines.map((line, idx) => (
-                                            <TableRow key={idx}>
-                                                <TableCell className="font-mono text-xs">{line.accountNo}</TableCell>
-                                                <TableCell className="text-xs">{line.description}</TableCell>
-                                                <TableCell className="text-right font-mono text-sm">R {line.amount.toFixed(2)}</TableCell>
+                                    {(selectedAllocation?.lines || []).length > 0 ? (
+                                        selectedAllocation!.lines.map(line => (
+                                            <TableRow key={line.id}>
+                                                <TableCell className="font-mono text-xs font-medium">{line.accountNo}</TableCell>
+                                                <TableCell className="text-sm">{line.description}</TableCell>
+                                                <TableCell className="text-right font-mono font-medium">R {line.amount.toFixed(2)}</TableCell>
                                             </TableRow>
                                         ))
                                     ) : (
                                         <TableRow>
-                                            <TableCell colSpan={3} className="text-center text-muted-foreground py-4">
-                                                No allocation details found.
+                                            <TableCell colSpan={3} className="h-24 text-center text-muted-foreground italic">
+                                                No specific allocation lines available (e.g. bulk process in progress)
                                             </TableCell>
                                         </TableRow>
                                     )}
-                                    {selectedAllocation && (
-                                        <TableRow className="bg-slate-50 font-bold">
-                                            <TableCell colSpan={2} className="text-right">Total Allocated:</TableCell>
-                                            <TableCell className="text-right font-mono">
-                                                R {selectedAllocation.lines.reduce((s, l) => s + l.amount, 0).toFixed(2)}
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
+                                    {/* Total Footer */}
+                                    <TableRow className="bg-slate-50 font-bold border-t-2 border-slate-200">
+                                        <TableCell colSpan={2} className="text-right">Total Allocated:</TableCell>
+                                        <TableCell className="text-right">
+                                            R {(selectedAllocation?.lines || []).reduce((acc, curr) => acc + curr.amount, 0).toFixed(2)}
+                                        </TableCell>
+                                    </TableRow>
                                 </TableBody>
                             </Table>
                         </div>
                     </div>
+
+                    {/* Footer */}
+                    <div className="border-t pt-4 text-xs text-center text-muted-foreground mt-8">
+                        <p>Generated by Municipal POS System</p>
+                    </div>
                 </div>
             )}
-            
-            {/* Hidden Receipt for Printing */}
-            <div style={{ display: 'none' }}>
-                {selectedTx && selectedAllocation && (
-                    <ReceiptTemplate 
-                        ref={receiptRef} 
-                        transaction={selectedTx} 
-                        allocation={selectedAllocation} 
-                        isReprint={true}
-                    />
-                )}
-            </div>
-
-            <DialogFooter className="sm:justify-between">
-                <div className="text-xs text-muted-foreground flex items-center">
-                    Method: {selectedAllocation?.method === 'BULK' ? 'Bulk Import' : 'Manual Allocation'}
-                </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => setSelectedTx(null)}>Close</Button>
-                    <Button variant="default" className="gap-2" onClick={handlePrint}>
-                        <Printer className="w-4 h-4" /> Print Receipt
-                    </Button>
-                </div>
-            </DialogFooter>
         </DialogContent>
        </Dialog>
     </PosLayout>
