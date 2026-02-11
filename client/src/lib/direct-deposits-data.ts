@@ -5,7 +5,7 @@ export interface BankTransaction {
   description: string;
   amount: number;
   reference: string;
-  status: 'UNMATCHED' | 'DRAFT' | 'ALLOCATED' | 'REVERSED';
+  status: 'UNMATCHED' | 'DRAFT' | 'ALLOCATED' | 'REVERSED' | 'PROCESSING';
   allocatedAmount: number;
   bankAccount: string;
 }
@@ -20,11 +20,12 @@ export interface AllocationLine {
 export interface AllocationDraft {
   transactionId: string;
   lines: AllocationLine[];
-  status: 'DRAFT' | 'POSTED';
+  status: 'DRAFT' | 'POSTED' | 'PROCESSING';
   updatedAt: string;
   method: 'MANUAL' | 'BULK';
   allocatedBy: string;
   allocationDate: string;
+  bulkJobStatus?: 'Processing' | 'Performing rebuilds' | 'Completing reconciliation' | 'Bulk allocations complete';
 }
 
 // Helper to manage mock persistence
@@ -181,6 +182,36 @@ const DEFAULT_MOCK_TRANSACTIONS: BankTransaction[] = [
     status: "ALLOCATED",
     allocatedAmount: 17219.06,
     bankAccount: "FNB MAIN (***1234)"
+  },
+  {
+    id: "TXN-103",
+    transactionDate: "2026-02-10",
+    description: "BULK IMPORT BATCH A",
+    amount: 125000.00,
+    reference: "BULK-003",
+    status: "PROCESSING",
+    allocatedAmount: 0,
+    bankAccount: "ABSA (***5678)"
+  },
+  {
+    id: "TXN-104",
+    transactionDate: "2026-02-10",
+    description: "BULK IMPORT BATCH B",
+    amount: 45000.00,
+    reference: "BULK-004",
+    status: "PROCESSING",
+    allocatedAmount: 0,
+    bankAccount: "ABSA (***5678)"
+  },
+  {
+    id: "TXN-105",
+    transactionDate: "2026-02-10",
+    description: "BULK IMPORT BATCH C",
+    amount: 88500.00,
+    reference: "BULK-005",
+    status: "PROCESSING",
+    allocatedAmount: 0,
+    bankAccount: "NEDBANK (***9012)"
   }
 ];
 
@@ -205,7 +236,8 @@ const DEFAULT_MOCK_ALLOCATIONS: AllocationDraft[] = [
         updatedAt: "2026-02-09T14:22:52",
         method: "BULK",
         allocatedBy: "System Process",
-        allocationDate: "2026-02-09T14:22:52"
+        allocationDate: "2026-02-09T14:22:52",
+        bulkJobStatus: "Bulk allocations complete"
     },
     {
         transactionId: "TXN-102",
@@ -216,7 +248,38 @@ const DEFAULT_MOCK_ALLOCATIONS: AllocationDraft[] = [
         updatedAt: "2026-02-09T14:11:53",
         method: "BULK",
         allocatedBy: "System Process",
-        allocationDate: "2026-02-09T14:11:53"
+        allocationDate: "2026-02-09T14:11:53",
+        bulkJobStatus: "Bulk allocations complete"
+    },
+    {
+        transactionId: "TXN-103",
+        lines: [],
+        status: "PROCESSING",
+        updatedAt: "2026-02-10T09:15:00",
+        method: "BULK",
+        allocatedBy: "System Process",
+        allocationDate: "2026-02-10T09:15:00",
+        bulkJobStatus: "Processing"
+    },
+    {
+        transactionId: "TXN-104",
+        lines: [],
+        status: "PROCESSING",
+        updatedAt: "2026-02-10T09:20:00",
+        method: "BULK",
+        allocatedBy: "System Process",
+        allocationDate: "2026-02-10T09:20:00",
+        bulkJobStatus: "Performing rebuilds"
+    },
+    {
+        transactionId: "TXN-105",
+        lines: [],
+        status: "PROCESSING",
+        updatedAt: "2026-02-10T09:30:00",
+        method: "BULK",
+        allocatedBy: "System Process",
+        allocationDate: "2026-02-10T09:30:00",
+        bulkJobStatus: "Completing reconciliation"
     }
 ];
 

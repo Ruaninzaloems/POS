@@ -14,12 +14,14 @@ import { MOCK_BANK_TRANSACTIONS, MOCK_ALLOCATIONS, BankTransaction } from '@/lib
 import { format } from 'date-fns';
 import { ReceiptTemplate } from '@/components/pos/receipt-template';
 
+import { Loader2 } from 'lucide-react';
+
 export default function AllocationHistory() {
   const [filterQuery, setFilterQuery] = useState('');
   const [methodFilter, setMethodFilter] = useState('ALL'); // ALL, MANUAL, BULK
   
-  // Get all allocated transactions
-  const allocatedTxns = MOCK_BANK_TRANSACTIONS.filter(t => t.status === 'ALLOCATED');
+  // Get all allocated and processing transactions
+  const allocatedTxns = MOCK_BANK_TRANSACTIONS.filter(t => t.status === 'ALLOCATED' || t.status === 'PROCESSING');
   
   // Enrich with allocation details
   const historyData = allocatedTxns.map(tx => {
@@ -144,9 +146,28 @@ export default function AllocationHistory() {
                                     R {tx.amount.toFixed(2)}
                                 </TableCell>
                                 <TableCell className="text-center">
-                                    <Badge className="bg-green-100 text-green-700 border-green-200 shadow-none hover:bg-green-100">
-                                        Allocated
-                                    </Badge>
+                                    {tx.details?.bulkJobStatus ? (
+                                        <Badge 
+                                            className={`shadow-none border ${
+                                                tx.details.bulkJobStatus === 'Bulk allocations complete' 
+                                                ? 'bg-green-100 text-green-700 border-green-200 hover:bg-green-100'
+                                                : tx.details.bulkJobStatus === 'Processing'
+                                                ? 'bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100'
+                                                : tx.details.bulkJobStatus === 'Performing rebuilds'
+                                                ? 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100'
+                                                : 'bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-100'
+                                            }`}
+                                        >
+                                            {tx.details.bulkJobStatus !== 'Bulk allocations complete' && (
+                                                <Loader2 className="w-3 h-3 mr-1 animate-spin inline-block" />
+                                            )}
+                                            {tx.details.bulkJobStatus}
+                                        </Badge>
+                                    ) : (
+                                        <Badge className="bg-green-100 text-green-700 border-green-200 shadow-none hover:bg-green-100">
+                                            Allocated
+                                        </Badge>
+                                    )}
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <Button variant="ghost" size="sm" onClick={() => setSelectedTx(tx)}>
