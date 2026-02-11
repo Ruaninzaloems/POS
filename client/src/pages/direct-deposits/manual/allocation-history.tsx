@@ -180,6 +180,7 @@ export default function AllocationHistory() {
                         ref={receiptRef} 
                         transaction={selectedTx} 
                         allocation={selectedAllocation} 
+                        isReprint={true}
                     />
                 )}
             </div>

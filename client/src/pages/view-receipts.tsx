@@ -317,6 +317,7 @@ export default function ViewReceipts() {
                             ref={receiptRef} 
                             transaction={templateData.transaction} 
                             allocation={templateData.allocation} 
+                            isReprint={true}
                         />
                     )}
                 </div>

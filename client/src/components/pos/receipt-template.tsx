@@ -7,9 +7,10 @@ interface ReceiptTemplateProps {
   transaction: BankTransaction;
   allocation: AllocationDraft;
   onClose?: () => void;
+  isReprint?: boolean;
 }
 
-export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptTemplateProps>(({ transaction, allocation }, ref) => {
+export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptTemplateProps>(({ transaction, allocation, isReprint }, ref) => {
   // Find linked account details if available (use the first line's account number as primary for header)
   const primaryLine = allocation.lines[0];
   const primaryAccount = ACCOUNTS.find(a => a.accountNo === primaryLine?.accountNo);
@@ -22,7 +23,7 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptTemplateP
   const vatAmount = totalAllocated * 0.15; // Mock VAT calculation (inclusive)
 
   return (
-    <div ref={ref} className="bg-white p-8 max-w-[400px] mx-auto text-xs font-mono leading-tight receipt-print">
+    <div ref={ref} className="bg-white p-8 max-w-[400px] mx-auto text-xs font-mono leading-tight receipt-print relative">
       <style>{`
         @media print {
           body * {
@@ -42,12 +43,21 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptTemplateP
         }
       `}</style>
 
+      {/* Watermark for reprints */}
+      {isReprint && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10 z-0 overflow-hidden">
+            <div className="transform -rotate-45 text-slate-900 text-6xl font-bold border-4 border-slate-900 p-4 rounded-xl">
+                COPY / REPRINT
+            </div>
+        </div>
+      )}
+
       {/* Header */}
-      <div className="text-center mb-6">
+      <div className="text-center mb-6 relative z-10">
         <h1 className="font-bold text-sm mb-1">Greater Tzaneen Municipality</h1>
         <p>Agatha St, Tzaneen 567 Tzaneen. 0850</p>
         <p>VAT Registration Number: 4130193669</p>
-        <h2 className="font-bold mt-4 text-sm">Reprint</h2>
+        {isReprint && <h2 className="font-bold mt-4 text-sm uppercase tracking-widest border-b border-black pb-1 inline-block">** REPRINT **</h2>}
       </div>
 
       {/* Transaction Info */}
