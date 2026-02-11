@@ -9,13 +9,20 @@ import PosPage from "@/pages/pos";
 import SupervisorDashboard from "@/pages/supervisor-dashboard";
 import PlaceholderPage from "@/pages/placeholder-page";
 
+import UnmatchedQueue from "@/pages/direct-deposits/manual/unmatched-queue";
+import AllocateTransaction from "@/pages/direct-deposits/manual/allocate-transaction";
+import AllocationHistory from "@/pages/direct-deposits/manual/allocation-history";
+
 function Router() {
   return (
     <Switch>
       <Route path="/" component={PosPage} />
-      <Route path="/direct-deposits/manual">
-        <PlaceholderPage title="Direct Deposits Manual" description="Manual allocation of direct deposits" />
-      </Route>
+      
+      {/* Direct Deposits Manual Module */}
+      <Route path="/direct-deposits/manual" component={UnmatchedQueue} />
+      <Route path="/direct-deposits/manual/allocate/:id" component={AllocateTransaction} />
+      <Route path="/direct-deposits/manual/history" component={AllocationHistory} />
+      
       <Route path="/direct-deposits/auto">
         <PlaceholderPage title="Direct Deposits Auto" description="Automatic processing of direct deposits" />
       </Route>
