@@ -114,12 +114,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Derived state
   const rawTotal = items.reduce((sum, item) => sum + item.amountToPay, 0);
-  // Round to nearest 10c (0.10)
+  // Round UP to nearest 10c (0.10) to ensure no outstanding balance
   // Logic: 
-  // 12.34 -> 12.30
-  // 12.35 -> 12.40
-  // 12.36 -> 12.40
-  const totalToPay = Math.round(rawTotal * 10) / 10;
+  // 12.31 -> 12.40
+  // 12.30 -> 12.30
+  const totalToPay = Math.ceil(rawTotal * 10) / 10;
   
   const tenderTotal = payment.cash + payment.card;
   const changeDue = Math.max(0, payment.cash - (totalToPay - payment.card));
