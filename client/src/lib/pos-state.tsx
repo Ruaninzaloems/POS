@@ -82,10 +82,12 @@ interface PosState {
   };
   officeLimits: Record<string, number>;
   currentTransactionLimit: number;
+  viewMode: 'desktop' | 'mobile';
 }
 
 interface PosActions {
   switchUser: (cashierId: string) => void;
+  toggleViewMode: () => void;
   updateOfficeLimit: (officeId: string, limit: number) => void;
   setSearchQuery: (query: string) => void;
   addItem: (item: TransactionItem) => void;
@@ -135,6 +137,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return limits;
   });
 
+  const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
+
   const currentTransactionLimit = useMemo(() => {
       if (!sessionDetails?.officeId) return 5000; // Default fallback
       return officeLimits[sessionDetails.officeId] || 5000;
@@ -169,6 +173,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setActiveSession(false); // Require new session start on switch
           setSessionDetails(undefined);
       }
+  };
+
+  const toggleViewMode = () => {
+    setViewMode(prev => prev === 'desktop' ? 'mobile' : 'desktop');
   };
 
   const startSession = (officeId: string, floatAmount: number) => {
@@ -318,7 +326,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       sessionDetails,
       officeLimits,
       updateOfficeLimit,
-      currentTransactionLimit
+      currentTransactionLimit,
+      viewMode,
+      toggleViewMode
     }}>
       {children}
     </PosContext.Provider>

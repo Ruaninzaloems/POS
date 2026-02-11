@@ -16,7 +16,9 @@ import {
   Zap,
   FileBarChart,
   FileSearch,
-  Settings
+  Settings,
+  Monitor,
+  Smartphone
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link, useLocation } from "wouter";
@@ -43,7 +45,7 @@ interface PosLayoutProps {
 
 export function PosLayout({ children }: PosLayoutProps) {
   const [location, setLocation] = useLocation();
-  const { currentUser, switchUser, activeSession, endSession } = usePos();
+  const { currentUser, switchUser, activeSession, endSession, viewMode, toggleViewMode } = usePos();
 
   // If no active session, show setup screen (blocking everything else)
   // But allow switching users or logging out still? For now, simple block.
@@ -144,6 +146,18 @@ export function PosLayout({ children }: PosLayoutProps) {
         </div>
 
         <div className="flex items-center gap-4">
+           <Button 
+             variant="ghost" 
+             size="icon" 
+             className="text-muted-foreground hidden sm:inline-flex" 
+             onClick={toggleViewMode} 
+             title={viewMode === 'desktop' ? "Switch to Mobile View" : "Switch to Desktop View"}
+           >
+             {viewMode === 'desktop' ? <Smartphone className="w-5 h-5" /> : <Monitor className="w-5 h-5" />}
+           </Button>
+
+           <div className="h-6 w-px bg-border hidden sm:block" />
+
            {/* User Switcher for Prototype */}
            <DropdownMenu>
               <DropdownMenuTrigger asChild>

@@ -18,7 +18,8 @@ export function PaymentDrawer() {
     transactionItems, 
     removeItem,
     dayEndStatus,
-    currentTransactionLimit
+    currentTransactionLimit,
+    viewMode
   } = usePos();
 
   const [activeInput, setActiveInput] = useState<'cash' | 'card'>('cash');
@@ -80,7 +81,7 @@ export function PaymentDrawer() {
   return (
     <>
     {/* Mobile Toggle Button (when collapsed) */}
-    <div className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-card border-t shadow-[0_-4px_10px_rgba(0,0,0,0.1)] transition-transform duration-300 ${isMobileExpanded ? 'translate-y-full' : 'translate-y-0'}`}>
+    <div className={`${viewMode === 'desktop' ? 'lg:hidden' : ''} fixed bottom-0 left-0 right-0 z-40 bg-card border-t shadow-[0_-4px_10px_rgba(0,0,0,0.1)] transition-transform duration-300 ${isMobileExpanded ? 'translate-y-full' : 'translate-y-0'}`}>
         <div className="p-4 flex items-center justify-between" onClick={() => setIsMobileExpanded(true)}>
              <div>
                 <div className="text-xs text-muted-foreground uppercase font-bold">Total Due</div>
@@ -95,11 +96,11 @@ export function PaymentDrawer() {
     {/* Main Drawer */}
     <aside className={`
         fixed inset-x-0 bottom-0 z-50 bg-card shadow-2xl transition-all duration-300 flex flex-col
-        lg:static lg:w-[450px] lg:h-full lg:border-l lg:border-t-0 lg:shadow-none
-        ${isMobileExpanded ? 'h-[85vh] rounded-t-2xl' : 'h-0 lg:h-full overflow-hidden'}
+        ${viewMode === 'desktop' ? 'lg:static lg:w-[450px] lg:h-full lg:border-l lg:border-t-0 lg:shadow-none' : ''}
+        ${isMobileExpanded ? 'h-[85vh] rounded-t-2xl' : `h-0 ${viewMode === 'desktop' ? 'lg:h-full' : ''} overflow-hidden`}
     `}>
       {/* Mobile Handle */}
-      <div className="lg:hidden w-full flex justify-center pt-2 pb-1 cursor-pointer" onClick={() => setIsMobileExpanded(false)}>
+      <div className={`${viewMode === 'desktop' ? 'lg:hidden' : ''} w-full flex justify-center pt-2 pb-1 cursor-pointer`} onClick={() => setIsMobileExpanded(false)}>
           <div className="w-12 h-1.5 bg-muted rounded-full" />
       </div>
 
@@ -107,7 +108,7 @@ export function PaymentDrawer() {
         <div>
            <h2 className="text-lg lg:text-xl font-bold tracking-tight">Payment Drawer</h2>
            <div className="flex items-center gap-2">
-               <p className="text-sm text-muted-foreground hidden lg:block">Touch-enabled checkout</p>
+               <p className={`text-sm text-muted-foreground ${viewMode === 'desktop' ? 'hidden lg:block' : 'hidden'}`}>Touch-enabled checkout</p>
                {dayEndStatus === 'RECONCILED' && (
                    <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
                        <Lock className="w-3 h-3" /> Shift Closed
@@ -116,7 +117,7 @@ export function PaymentDrawer() {
            </div>
         </div>
         <div className="flex gap-2">
-            <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setIsMobileExpanded(false)}>
+            <Button variant="ghost" size="icon" className={viewMode === 'desktop' ? "lg:hidden" : ""} onClick={() => setIsMobileExpanded(false)}>
                 <ChevronDown className="w-6 h-6" />
             </Button>
             <Button variant="outline" size="icon" onClick={() => setShowHistory(true)} title="Transaction History">
@@ -318,7 +319,7 @@ export function PaymentDrawer() {
     {/* Backdrop for mobile */}
     {isMobileExpanded && (
         <div 
-            className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm"
+            className={`fixed inset-0 bg-black/50 z-40 ${viewMode === 'desktop' ? 'lg:hidden' : ''} backdrop-blur-sm`}
             onClick={() => setIsMobileExpanded(false)}
         />
     )}
