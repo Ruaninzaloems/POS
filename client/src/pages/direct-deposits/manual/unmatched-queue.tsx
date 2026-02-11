@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Search, ArrowRight, Filter, Banknote, FileSpreadsheet, FileText } from 'lucide-react';
 import { MOCK_BANK_TRANSACTIONS } from '@/lib/direct-deposits-data';
+import { filterUnmatchedTransactions } from '@/lib/direct-deposits-logic';
 import { Link, useLocation } from 'wouter';
 import { format } from 'date-fns';
 
@@ -15,12 +16,7 @@ export default function UnmatchedQueue() {
   const [transactions] = useState(MOCK_BANK_TRANSACTIONS);
   const [, setLocation] = useLocation();
 
-  const filtered = transactions.filter(t => 
-    t.status === 'UNMATCHED' && 
-    (t.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-     t.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
-     t.amount.toString().includes(searchTerm))
-  );
+  const filtered = filterUnmatchedTransactions(transactions, searchTerm);
 
   return (
     <PosLayout>

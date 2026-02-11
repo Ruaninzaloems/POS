@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, ACCOUNTS, DIRECT_INCOME_ITEMS, ACCOUNT_GROUPS, CLEARANCES, AccountGroup, CASHIERS, MOCK_TRANSACTIONS } from './mock-data';
+import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
 
 export type TransactionType = 
   | 'CONSUMER_SERVICES' 
@@ -112,31 +113,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setRecentTransactions([...MOCK_TRANSACTIONS].sort((a, b) => b.timestamp - a.timestamp));
   }, [currentUser]); // Re-fetch when user switches
 
-  // Derived state
-  const rawTotal = items.reduce((sum, item) => sum + item.amountToPay, 0);
-  // Round UP to nearest 10c (0.10) to ensure no outstanding balance
-  // Logic: 
-  // 12.31 -> 12.40
-  // 12.30 -> 12.30
-  const totalToPay = Math.ceil(rawTotal * 10) / 10;
+  // Derived state (Logic extracted to pos-logic.ts)
+  const { totalToPay, tenderTotal, changeDue } = calculateTransactionTotals(items, payment);
   
-  const tenderTotal = payment.cash + payment.card;
-  const changeDue = Math.max(0, payment.cash - (totalToPay - payment.card));
-  
-  // Determine active transaction type
-  // If viewing a specific item, that takes precedence
-  // Otherwise if multiple items, it's multi-account
-  // Otherwise single item type or none
-  let activeTransactionType: TransactionType = 'NONE';
-  
-  if (viewingItemId) {
-      const item = items.find(i => i.id === viewingItemId);
-      if (item) activeTransactionType = item.type;
-  } else if (items.length > 1) {
-      activeTransactionType = 'MULTI_ACCOUNT';
-  } else if (items.length > 0) {
-      activeTransactionType = items[0].type;
-  }
+  // Determine active transaction type (Logic extracted to pos-logic.ts)
+  const activeTransactionType = determineTransactionType(items, viewingItemId);
 
   const switchUser = (cashierId: string) => {
       const cashier = CASHIERS.find(c => c.id === cashierId);
@@ -186,17 +167,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const completeTransaction = () => {
-    // Create record
-    const record: TransactionRecord = {
-        id: crypto.randomUUID(),
-        receiptNumber: `REC-${Math.floor(100000 + Math.random() * 900000)}`,
-        timestamp: Date.now(),
-        items: [...items],
-        totalAmount: totalToPay,
-        payment: { ...payment },
-        status: 'COMPLETED',
-        cashierId: currentUser.id
-    };
+    // Create record (Logic extracted to pos-logic.ts)
+    const record = createTransactionRecord(items, totalToPay, payment, currentUser.id);
     
     // Add to Global Mock
     MOCK_TRANSACTIONS.push(record);
