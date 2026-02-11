@@ -20,9 +20,10 @@ interface UnifiedSearchProps {
     placeholder?: string;
     autoFocus?: boolean;
     className?: string;
+    scope?: 'ALL' | 'ACCOUNT' | 'PREPAID' | 'DIRECT' | 'GROUP' | 'CLEARANCE';
 }
 
-export function UnifiedSearch({ onSelect, placeholder, autoFocus, className }: UnifiedSearchProps) {
+export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, scope = 'ALL' }: UnifiedSearchProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -32,43 +33,59 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className }: U
     if (!searchQuery || searchQuery.length < 2) return [];
     
     const q = searchQuery.toLowerCase();
+    let combinedResults: SearchResult[] = [];
     
-    const accounts = ACCOUNTS.filter(a => 
-      a.accountNo.toLowerCase().includes(q) || 
-      a.name.toLowerCase().includes(q) ||
-      a.idNo.includes(q) ||
-      a.address.toLowerCase().includes(q) ||
-      (a.sgNo && a.sgNo.toLowerCase().includes(q)) ||
-      (a.oldCode && a.oldCode.toLowerCase().includes(q))
-    ).map(a => ({ type: 'ACCOUNT' as const, data: a, label: `${a.accountNo} - ${a.name}` }));
+    if (scope === 'ALL' || scope === 'ACCOUNT') {
+        const accounts = ACCOUNTS.filter(a => 
+          a.accountNo.toLowerCase().includes(q) || 
+          a.name.toLowerCase().includes(q) ||
+          a.idNo.includes(q) ||
+          a.address.toLowerCase().includes(q) ||
+          (a.sgNo && a.sgNo.toLowerCase().includes(q)) ||
+          (a.oldCode && a.oldCode.toLowerCase().includes(q))
+        ).map(a => ({ type: 'ACCOUNT' as const, data: a, label: `${a.accountNo} - ${a.name}` }));
+        combinedResults = [...combinedResults, ...accounts];
+    }
 
-    const prepaid = ACCOUNTS.filter(a => 
-        a.prepaidMeterNo && (
-            a.prepaidMeterNo.includes(q) ||
-            a.name.toLowerCase().includes(q) ||
-            a.accountNo.toLowerCase().includes(q) ||
-            a.address.toLowerCase().includes(q) ||
-            (a.sgNo && a.sgNo.toLowerCase().includes(q)) ||
-            (a.oldCode && a.oldCode.toLowerCase().includes(q)) ||
-            a.idNo.includes(q)
-        )
-    ).map(a => ({ type: 'PREPAID' as const, data: a, label: `${a.prepaidType || 'Meter'}: ${a.prepaidMeterNo} (${a.name})` }));
+    if (scope === 'ALL' || scope === 'PREPAID') {
+        const prepaid = ACCOUNTS.filter(a => 
+            a.prepaidMeterNo && (
+                a.prepaidMeterNo.includes(q) ||
+                a.name.toLowerCase().includes(q) ||
+                a.accountNo.toLowerCase().includes(q) ||
+                a.address.toLowerCase().includes(q) ||
+                (a.sgNo && a.sgNo.toLowerCase().includes(q)) ||
+                (a.oldCode && a.oldCode.toLowerCase().includes(q)) ||
+                a.idNo.includes(q)
+            )
+        ).map(a => ({ type: 'PREPAID' as const, data: a, label: `${a.prepaidType || 'Meter'}: ${a.prepaidMeterNo} (${a.name})` }));
+        combinedResults = [...combinedResults, ...prepaid];
+    }
 
-    const di = DIRECT_INCOME_ITEMS.filter(d => 
-      d.description.toLowerCase().includes(q) ||
-      d.groupName.toLowerCase().includes(q)
-    ).map(d => ({ type: 'DIRECT' as const, data: d, label: `${d.description} (${d.groupName})` }));
+    if (scope === 'ALL' || scope === 'DIRECT') {
+        const di = DIRECT_INCOME_ITEMS.filter(d => 
+          d.description.toLowerCase().includes(q) ||
+          d.groupName.toLowerCase().includes(q)
+        ).map(d => ({ type: 'DIRECT' as const, data: d, label: `${d.description} (${d.groupName})` }));
+        combinedResults = [...combinedResults, ...di];
+    }
 
-    const groups = ACCOUNT_GROUPS.filter(g =>
-      g.name.toLowerCase().includes(q)
-    ).map(g => ({ type: 'GROUP' as const, data: g, label: `Group: ${g.name}` }));
+    if (scope === 'ALL' || scope === 'GROUP') {
+        const groups = ACCOUNT_GROUPS.filter(g =>
+          g.name.toLowerCase().includes(q)
+        ).map(g => ({ type: 'GROUP' as const, data: g, label: `Group: ${g.name}` }));
+        combinedResults = [...combinedResults, ...groups];
+    }
 
-    const clearances = CLEARANCES.filter(c =>
-        c.scheduleNo.toLowerCase().includes(q)
-    ).map(c => ({ type: 'CLEARANCE' as const, data: c, label: `Clearance: ${c.scheduleNo}` }));
+    if (scope === 'ALL' || scope === 'CLEARANCE') {
+        const clearances = CLEARANCES.filter(c =>
+            c.scheduleNo.toLowerCase().includes(q)
+        ).map(c => ({ type: 'CLEARANCE' as const, data: c, label: `Clearance: ${c.scheduleNo}` }));
+        combinedResults = [...combinedResults, ...clearances];
+    }
 
-    return [...accounts, ...prepaid, ...di, ...groups, ...clearances].slice(0, 8);
-  }, [searchQuery]);
+    return combinedResults.slice(0, 8);
+  }, [searchQuery, scope]);
 
   useEffect(() => {
     if (searchQuery.length >= 2) setIsOpen(true);

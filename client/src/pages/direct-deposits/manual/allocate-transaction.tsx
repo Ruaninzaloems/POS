@@ -5,13 +5,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Save, Plus, Trash2, CheckCircle, AlertCircle, Upload, Filter } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, CheckCircle, AlertCircle, Upload, Filter, X } from 'lucide-react';
 import { MOCK_BANK_TRANSACTIONS, MOCK_ALLOCATIONS, BankTransaction, AllocationLine, saveTransactions, saveAllocations } from '@/lib/direct-deposits-data';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { ACCOUNTS, Account, ClearanceCostSchedule } from '@/lib/mock-data';
 import { UnifiedSearch as SearchComponent, SearchResult } from '@/components/pos/search-component';
 import { validateAllocationAmount, calculateAllocationTotals, mapSearchResultToAllocationTarget } from '@/lib/allocation-logic';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 export default function AllocateTransaction() {
   const [, params] = useRoute('/direct-deposits/manual/allocate/:id');
@@ -20,6 +23,9 @@ export default function AllocateTransaction() {
   
   const [transaction, setTransaction] = useState<BankTransaction | null>(null);
   const [lines, setLines] = useState<AllocationLine[]>([]);
+  
+  // Search Filter Scope
+  const [searchScope, setSearchScope] = useState<'ALL' | 'ACCOUNT' | 'PREPAID' | 'DIRECT' | 'GROUP' | 'CLEARANCE'>('ALL');
   
   // New Line State
   const [selectedAccount, setSelectedAccount] = useState<{accountNo: string, name: string, description?: string} | null>(null);
@@ -278,13 +284,67 @@ export default function AllocateTransaction() {
                             <div className="flex-1">
                                 <SearchComponent 
                                     onSelect={handleSearchResult} 
-                                    placeholder="Search Account / Meter / Group / Clearance / Direct Item..."
+                                    placeholder={
+                                        searchScope === 'ALL' ? "Search Account / Meter / Group / Clearance..." : 
+                                        `Search ${searchScope.charAt(0) + searchScope.slice(1).toLowerCase()}...`
+                                    }
                                     className="max-w-full"
+                                    scope={searchScope}
                                 />
                             </div>
-                            <Button variant="outline" className="h-12 border-slate-200">
-                                <Filter className="w-4 h-4 mr-2" /> Filter
-                            </Button>
+                            
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" className={`h-12 border-slate-200 ${searchScope !== 'ALL' ? 'bg-slate-100 border-slate-300' : ''}`}>
+                                        <Filter className="w-4 h-4 mr-2" /> 
+                                        {searchScope === 'ALL' ? 'Filter' : searchScope.charAt(0) + searchScope.slice(1).toLowerCase()}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-64 p-4" align="end">
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between border-b pb-2">
+                                            <h4 className="font-medium text-sm">Search Scope</h4>
+                                            {searchScope !== 'ALL' && (
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="sm" 
+                                                    className="h-auto p-0 text-xs text-red-600 hover:text-red-700 hover:bg-transparent"
+                                                    onClick={() => setSearchScope('ALL')}
+                                                >
+                                                    Reset
+                                                </Button>
+                                            )}
+                                        </div>
+                                        <RadioGroup value={searchScope} onValueChange={(val: any) => setSearchScope(val)}>
+                                            <div className="flex items-center space-x-2">
+                                                <RadioGroupItem value="ALL" id="scope-all" />
+                                                <Label htmlFor="scope-all">All Items</Label>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <RadioGroupItem value="ACCOUNT" id="scope-account" />
+                                                <Label htmlFor="scope-account">Consumer Accounts</Label>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <RadioGroupItem value="PREPAID" id="scope-prepaid" />
+                                                <Label htmlFor="scope-prepaid">Prepaid Meters</Label>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <RadioGroupItem value="GROUP" id="scope-group" />
+                                                <Label htmlFor="scope-group">Groups</Label>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <RadioGroupItem value="CLEARANCE" id="scope-clearance" />
+                                                <Label htmlFor="scope-clearance">Clearance Certificates</Label>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <RadioGroupItem value="DIRECT" id="scope-direct" />
+                                                <Label htmlFor="scope-direct">Direct Income Items</Label>
+                                            </div>
+                                        </RadioGroup>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+
                             <Button variant="outline" className="h-12 border-slate-200">
                                 <Upload className="w-4 h-4 mr-2" /> Import CSV
                             </Button>
