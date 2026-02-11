@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
+import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, ACCOUNTS, DIRECT_INCOME_ITEMS, ACCOUNT_GROUPS, CLEARANCES, AccountGroup, CASHIERS, MOCK_TRANSACTIONS, CASH_OFFICES, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
 
@@ -120,6 +121,7 @@ export const usePos = () => {
 };
 
 export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { toast } = useToast();
   const [currentUser, setCurrentUser] = useState<CashierProfile>(CASHIERS[0]);
   const [items, setItems] = useState<TransactionItem[]>([]);
   const [payment, setPayment] = useState({ cash: 0, card: 0 });
@@ -215,6 +217,24 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
      setItems(prev => {
         // Prevent duplicates for Accounts/Meters to avoid confusion in prototype
         if (prev.find(i => i.id === item.id)) return prev;
+        
+        // Prevent duplicate accounts/meters by reference
+        if (item.type === 'CONSUMER_SERVICES' || item.type === 'PREPAID') {
+            const existing = prev.find(i => 
+                (i.type === 'CONSUMER_SERVICES' || i.type === 'PREPAID') && 
+                i.reference === item.reference
+            );
+            
+            if (existing) {
+                toast({
+                    title: "Duplicate Item",
+                    description: `Account/Meter ${item.reference} is already in the transaction.`,
+                    variant: "destructive"
+                });
+                return prev;
+            }
+        }
+        
         return [...prev, item];
      });
   };
