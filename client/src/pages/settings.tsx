@@ -7,28 +7,17 @@ import { usePos } from '@/lib/pos-state';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Save, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { CASH_OFFICES } from '@/lib/mock-data';
 
 export default function SettingsPage() {
-  const { settings, updateSettings, currentUser } = usePos();
+  const { officeLimits, updateOfficeLimit } = usePos();
   const { toast } = useToast();
-  const [localLimit, setLocalLimit] = React.useState(settings.maxTransactionLimit.toString());
 
-  const handleSave = () => {
-    const limit = parseFloat(localLimit);
-    if (isNaN(limit) || limit < 0) {
-      toast({
-        title: "Invalid Amount",
-        description: "Please enter a valid positive number for the transaction limit.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    updateSettings({ maxTransactionLimit: limit });
-    toast({
-      title: "Settings Saved",
-      description: `Maximum transaction limit updated to R ${limit.toFixed(2)}`,
-    });
+  const handleLimitChange = (officeId: string, value: string) => {
+      const limit = parseFloat(value);
+      if (!isNaN(limit) && limit >= 0) {
+          updateOfficeLimit(officeId, limit);
+      }
   };
 
   return (
@@ -48,45 +37,41 @@ export default function SettingsPage() {
                         <ShieldAlert className="w-5 h-5" />
                     </div>
                     <div>
-                        <CardTitle>Transaction Limits</CardTitle>
-                        <CardDescription>Control the maximum amount a cashier can process per transaction.</CardDescription>
+                        <CardTitle>Cash Office Limits</CardTitle>
+                        <CardDescription>Control the maximum transaction amount for each cash office.</CardDescription>
                     </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                        <Label htmlFor="max-limit">Maximum Cash Transaction Amount (R)</Label>
-                        <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-mono">R</span>
-                            <Input 
-                                id="max-limit" 
-                                type="number" 
-                                className="pl-8 font-mono text-lg" 
-                                value={localLimit}
-                                onChange={(e) => setLocalLimit(e.target.value)}
-                            />
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            Transactions exceeding this amount will be blocked and require supervisor override.
-                        </p>
-                    </div>
-
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800 flex items-start gap-3">
-                        <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
-                        <div>
-                            <p className="font-semibold mb-1">Security Note</p>
-                            <p>Changing this limit affects all cashiers immediately. Current active transactions will be validated against this new limit upon completion.</p>
-                        </div>
+                
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800 flex items-start gap-3 mb-6">
+                    <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+                    <div>
+                        <p className="font-semibold mb-1">Security Note</p>
+                        <p>Changes apply immediately to all active sessions in the respective office. Transactions exceeding these limits will be blocked.</p>
                     </div>
                 </div>
 
-                <div className="pt-4 flex justify-end">
-                    <Button onClick={handleSave} className="gap-2">
-                        <Save className="w-4 h-4" />
-                        Save Changes
-                    </Button>
+                <div className="space-y-4">
+                    {CASH_OFFICES.map((office) => (
+                        <div key={office.id} className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4 items-center p-4 border rounded-lg bg-card hover:bg-muted/20 transition-colors">
+                            <div>
+                                <h3 className="font-semibold text-sm">{office.name}</h3>
+                                <p className="text-xs text-muted-foreground font-mono mt-1">{office.ledgerVote}</p>
+                            </div>
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-mono">R</span>
+                                <Input 
+                                    type="number" 
+                                    className="pl-8 font-mono text-right" 
+                                    value={officeLimits[office.id] ?? office.maxTransactionLimit ?? 5000}
+                                    onChange={(e) => handleLimitChange(office.id, e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    ))}
                 </div>
+
               </CardContent>
             </Card>
 

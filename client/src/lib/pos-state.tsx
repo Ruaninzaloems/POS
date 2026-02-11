@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
-import { Account, DirectIncomeItem, ClearanceCostSchedule, ACCOUNTS, DIRECT_INCOME_ITEMS, ACCOUNT_GROUPS, CLEARANCES, AccountGroup, CASHIERS, MOCK_TRANSACTIONS } from './mock-data';
+import { Account, DirectIncomeItem, ClearanceCostSchedule, ACCOUNTS, DIRECT_INCOME_ITEMS, ACCOUNT_GROUPS, CLEARANCES, AccountGroup, CASHIERS, MOCK_TRANSACTIONS, CASH_OFFICES, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
 
 export type TransactionType = 
@@ -80,14 +80,13 @@ interface PosState {
       officeId: string;
       floatAmount: number;
   };
-  settings: {
-      maxTransactionLimit: number;
-  };
+  officeLimits: Record<string, number>;
+  currentTransactionLimit: number;
 }
 
 interface PosActions {
   switchUser: (cashierId: string) => void;
-  updateSettings: (settings: Partial<PosState['settings']>) => void;
+  updateOfficeLimit: (officeId: string, limit: number) => void;
   setSearchQuery: (query: string) => void;
   addItem: (item: TransactionItem) => void;
   removeItem: (id: string) => void;
@@ -126,7 +125,20 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Session State
   const [activeSession, setActiveSession] = useState(false);
   const [sessionDetails, setSessionDetails] = useState<{startTime: number; officeId: string; floatAmount: number} | undefined>(undefined);
-  const [settings, setSettings] = useState({ maxTransactionLimit: 1200 }); // Default limit R1200
+  
+  // Initialize limits from mock data
+  const [officeLimits, setOfficeLimits] = useState<Record<string, number>>(() => {
+    const limits: Record<string, number> = {};
+    CASH_OFFICES.forEach(office => {
+        limits[office.id] = office.maxTransactionLimit || 5000;
+    });
+    return limits;
+  });
+
+  const currentTransactionLimit = useMemo(() => {
+      if (!sessionDetails?.officeId) return 5000; // Default fallback
+      return officeLimits[sessionDetails.officeId] || 5000;
+  }, [sessionDetails?.officeId, officeLimits]);
 
   // Sync with global mock transactions on mount and updates
   useEffect(() => {
@@ -174,8 +186,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setSessionDetails(undefined);
   };
 
-  const updateSettings = (newSettings: Partial<PosState['settings']>) => {
-      setSettings(prev => ({ ...prev, ...newSettings }));
+  const updateOfficeLimit = (officeId: string, limit: number) => {
+      setOfficeLimits(prev => ({ ...prev, [officeId]: limit }));
   };
 
   const addItem = (item: TransactionItem) => {
@@ -304,8 +316,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       startSession,
       endSession,
       sessionDetails,
-      settings,
-      updateSettings
+      officeLimits,
+      updateOfficeLimit,
+      currentTransactionLimit
     }}>
       {children}
     </PosContext.Provider>
