@@ -160,6 +160,8 @@ export default function AllocationHistory() {
           default: return 'bg-gray-100 text-gray-700 border-gray-200';
       }
   };
+
+  const toggleStatusFilter = (status: string) => {
       setStatusFilter(prev => 
           prev.includes(status) 
           ? prev.filter(s => s !== status)
