@@ -4,8 +4,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AlertCircle, Ban, Receipt, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, Ban, Receipt, CheckCircle2, Clock } from 'lucide-react';
 import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
 interface TransactionHistoryModalProps {
   isOpen: boolean;
@@ -13,7 +14,32 @@ interface TransactionHistoryModalProps {
 }
 
 export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryModalProps) {
-  const { recentTransactions, cancelTransaction, dayEndStatus } = usePos();
+  const { recentTransactions, cancelTransaction, dayEndStatus, currentUser } = usePos();
+  const { toast } = useToast();
+
+  const handleCancel = (id: string) => {
+    const isSupervisor = currentUser.role === 'SUPERVISOR';
+    
+    if (confirm(isSupervisor 
+        ? 'Are you sure you want to CANCEL this receipt? This action cannot be undone.'
+        : 'Request cancellation for this receipt? This will be sent to a supervisor for approval.'
+    )) {
+        cancelTransaction(id);
+        
+        if (!isSupervisor) {
+            toast({
+                title: "Cancellation Requested",
+                description: "Receipt sent to supervisor for approval.",
+            });
+        } else {
+            toast({
+                title: "Receipt Cancelled",
+                description: "Transaction has been voided.",
+                variant: "destructive"
+            });
+        }
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -48,7 +74,10 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
                      </TableHeader>
                      <TableBody>
                          {recentTransactions.map((tx) => (
-                             <TableRow key={tx.id} className={tx.status === 'CANCELLED' ? 'opacity-60 bg-red-50/50' : ''}>
+                             <TableRow key={tx.id} className={
+                                 tx.status === 'CANCELLED' ? 'opacity-60 bg-red-50/50' : 
+                                 tx.status === 'PENDING_CANCELLATION' ? 'bg-orange-50/50' : ''
+                             }>
                                  <TableCell className="font-mono text-xs">{tx.receiptNumber}</TableCell>
                                  <TableCell className="text-xs text-muted-foreground">
                                      {format(new Date(tx.timestamp), 'HH:mm:ss')}
@@ -71,6 +100,7 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
                                  <TableCell>
                                      {tx.status === 'COMPLETED' && <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200 shadow-none">Paid</Badge>}
                                      {tx.status === 'CANCELLED' && <Badge variant="destructive" className="shadow-none">Cancelled</Badge>}
+                                     {tx.status === 'PENDING_CANCELLATION' && <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200 shadow-none"><Clock className="w-3 h-3 mr-1" /> Pending</Badge>}
                                      {tx.status === 'RECONCILED' && <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200 shadow-none"><CheckCircle2 className="w-3 h-3 mr-1" /> Reconciled</Badge>}
                                  </TableCell>
                                  <TableCell className="text-right">
@@ -80,17 +110,14 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
                                             size="sm" 
                                             className="h-7 text-red-600 hover:text-red-700 hover:bg-red-50"
                                             disabled={dayEndStatus === 'RECONCILED'}
-                                            onClick={() => {
-                                                if (confirm('Are you sure you want to CANCEL this receipt? This action cannot be undone.')) {
-                                                    cancelTransaction(tx.id);
-                                                }
-                                            }}
+                                            onClick={() => handleCancel(tx.id)}
                                             title={dayEndStatus === 'RECONCILED' ? "Cannot cancel reconciled transactions" : "Cancel Receipt"}
                                          >
                                              <Ban className="w-3.5 h-3.5 mr-1" />
                                              Cancel
                                          </Button>
                                      )}
+                                     {tx.status === 'PENDING_CANCELLATION' && <span className="text-xs text-muted-foreground italic">Waiting Approval</span>}
                                      {tx.status === 'CANCELLED' && <span className="text-xs text-muted-foreground italic">Voided</span>}
                                  </TableCell>
                              </TableRow>

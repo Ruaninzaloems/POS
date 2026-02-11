@@ -192,8 +192,12 @@ function downloadReport(shift: CashierShift) {
 }
 
 export default function SupervisorDashboard() {
-  const { returnDayEnd } = usePos();
+  const { returnDayEnd, approveCancellation, recentTransactions } = usePos();
   const [reconMode, setReconMode] = useState<ReconMode>('PER_CASHIER');
+  
+  // Pending Cancellations
+  const pendingCancellations = recentTransactions.filter(tx => tx.status === 'PENDING_CANCELLATION');
+
   const [selectedShift, setSelectedShift] = useState<CashierShift | null>(null);
   const [shifts, setShifts] = useState<CashierShift[]>(MOCK_SHIFTS);
   const [filterOffice, setFilterOffice] = useState<string>('All');
@@ -299,9 +303,9 @@ export default function SupervisorDashboard() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Pending Approvals</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600">{pendingCount}</div>
+            <div className="text-3xl font-bold text-blue-600">{pendingCount + pendingCancellations.length}</div>
             <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                <RefreshCcw className="w-3 h-3" /> Waiting for review
+                <RefreshCcw className="w-3 h-3" /> {pendingCount} shifts, {pendingCancellations.length} voids
             </p>
           </CardContent>
         </Card>
@@ -342,6 +346,58 @@ export default function SupervisorDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Cancellation Approvals Section */}
+      {pendingCancellations.length > 0 && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+            <h3 className="font-semibold text-orange-900 mb-4 flex items-center gap-2">
+                <AlertCircle className="h-5 w-5" />
+                Cancellation Requests ({pendingCancellations.length})
+            </h3>
+            <div className="bg-white rounded border overflow-hidden">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Receipt</TableHead>
+                            <TableHead>Cashier</TableHead>
+                            <TableHead>Time</TableHead>
+                            <TableHead>Amount</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {pendingCancellations.map(tx => (
+                            <TableRow key={tx.id}>
+                                <TableCell className="font-mono">{tx.receiptNumber}</TableCell>
+                                <TableCell>{tx.cashierId}</TableCell>
+                                <TableCell>{format(new Date(tx.timestamp), 'HH:mm')}</TableCell>
+                                <TableCell>R {tx.totalAmount.toFixed(2)}</TableCell>
+                                <TableCell className="text-right">
+                                    <div className="flex justify-end gap-2">
+                                        <Button 
+                                            size="sm" 
+                                            variant="outline"
+                                            className="text-red-600 border-red-200 hover:bg-red-50"
+                                            onClick={() => approveCancellation(tx.id, false)}
+                                        >
+                                            Reject
+                                        </Button>
+                                        <Button 
+                                            size="sm" 
+                                            className="bg-green-600 hover:bg-green-700 text-white"
+                                            onClick={() => approveCancellation(tx.id, true)}
+                                        >
+                                            Approve Void
+                                        </Button>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
+        </div>
+      )}
 
       <div className="flex flex-col md:flex-row gap-4 items-center bg-white p-4 rounded-lg border shadow-sm">
           <div className="relative flex-1 w-full md:w-auto">

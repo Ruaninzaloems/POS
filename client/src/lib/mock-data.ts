@@ -287,6 +287,7 @@ export const CLEARANCES: ClearanceCostSchedule[] = [
 export const CURRENT_CASHIER = {
   id: "CSH-01",
   name: "Sarah Jenkins",
+  role: "CASHIER",
   cashOffice: "Main Civic Center",
   receiptRange: {
     start: 50000,
@@ -297,9 +298,12 @@ export const CURRENT_CASHIER = {
 };
 
 export const CASHIERS = [
-  { id: "CSH-01", name: "Sarah Jenkins", cashOffice: "Main Civic Center" },
-  { id: "CSH-02", name: "John Doe", cashOffice: "Main Civic Center" },
-  { id: "CSH-03", name: "Emily Davis", cashOffice: "Traffic Dept" },
-  { id: "CSH-04", name: "Michael Brown", cashOffice: "Traffic Dept" },
-  { id: "CSH-05", name: "Jessica Wilson", cashOffice: "Main Civic Center" }
+  { id: "CSH-01", name: "Sarah Jenkins", role: "CASHIER", cashOffice: "Main Civic Center" },
+  { id: "CSH-02", name: "John Doe", role: "CASHIER", cashOffice: "Main Civic Center" },
+  { id: "CSH-03", name: "Emily Davis", role: "CASHIER", cashOffice: "Traffic Dept" },
+  { id: "CSH-04", name: "Michael Brown", role: "CASHIER", cashOffice: "Traffic Dept" },
+  { id: "CSH-05", name: "Jessica Wilson", role: "CASHIER", cashOffice: "Main Civic Center" },
+  { id: "SUP-01", name: "Admin User", role: "SUPERVISOR", cashOffice: "Main Civic Center" }
 ];
+
+export const MOCK_TRANSACTIONS: any[] = []; // Global store for transactions

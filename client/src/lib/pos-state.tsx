@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useMemo } from 'react';
-import { Account, DirectIncomeItem, ClearanceCostSchedule, ACCOUNTS, DIRECT_INCOME_ITEMS, ACCOUNT_GROUPS, CLEARANCES, AccountGroup, CASHIERS } from './mock-data';
+import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
+import { Account, DirectIncomeItem, ClearanceCostSchedule, ACCOUNTS, DIRECT_INCOME_ITEMS, ACCOUNT_GROUPS, CLEARANCES, AccountGroup, CASHIERS, MOCK_TRANSACTIONS } from './mock-data';
 
 export type TransactionType = 
   | 'CONSUMER_SERVICES' 
@@ -10,12 +10,13 @@ export type TransactionType =
   | 'CLEARANCE'
   | 'NONE';
 
-export type TransactionStatus = 'COMPLETED' | 'CANCELLED' | 'RECONCILED';
+export type TransactionStatus = 'COMPLETED' | 'CANCELLED' | 'RECONCILED' | 'PENDING_CANCELLATION';
 export type DayEndStatus = 'OPEN' | 'PENDING_APPROVAL' | 'RETURNED' | 'RECONCILED' | 'NOT_SUBMITTED';
 
 export interface CashierProfile {
     id: string;
     name: string;
+    role?: string;
     cashOffice: string;
 }
 
@@ -30,6 +31,7 @@ export interface TransactionRecord {
     card: number;
   };
   status: TransactionStatus;
+  cashierId: string; // Add cashierId to track who made it
 }
 
 export interface DayEndReport {
@@ -80,6 +82,7 @@ interface PosActions {
   submitDayEnd: (report: { cashOnHand: number, cardTotal: number }) => void;
   returnDayEnd: (reason: string) => void;
   cancelTransaction: (id: string) => void;
+  approveCancellation: (id: string, approved: boolean) => void;
 }
 
 const PosContext = createContext<(PosState & PosActions) | null>(null);
@@ -100,6 +103,14 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [recentTransactions, setRecentTransactions] = useState<TransactionRecord[]>([]);
   const [dayEndStatus, setDayEndStatus] = useState<DayEndStatus>('OPEN');
   const [dayEndReturnReason, setDayEndReturnReason] = useState<string>('');
+
+  // Sync with global mock transactions on mount and updates
+  useEffect(() => {
+    // Filter transactions relevant to current view if needed, or show all for prototype
+    // For Supervisor, show all. For Cashier, maybe just theirs? 
+    // For simplicity in prototype, we show all but highlight ownership
+    setRecentTransactions([...MOCK_TRANSACTIONS].sort((a, b) => b.timestamp - a.timestamp));
+  }, [currentUser]); // Re-fetch when user switches
 
   // Derived state
   const totalToPay = items.reduce((sum, item) => sum + item.amountToPay, 0);
@@ -177,10 +188,14 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         items: [...items],
         totalAmount: totalToPay,
         payment: { ...payment },
-        status: 'COMPLETED'
+        status: 'COMPLETED',
+        cashierId: currentUser.id
     };
     
-    setRecentTransactions(prev => [record, ...prev]);
+    // Add to Global Mock
+    MOCK_TRANSACTIONS.push(record);
+    
+    setRecentTransactions([...MOCK_TRANSACTIONS].sort((a, b) => b.timestamp - a.timestamp));
     setIsReceiptModalOpen(true);
   };
   
@@ -202,9 +217,28 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const cancelTransaction = (id: string) => {
       if (dayEndStatus === 'RECONCILED') return;
       
-      setRecentTransactions(prev => prev.map(tx => 
-          tx.id === id ? { ...tx, status: 'CANCELLED' } : tx
-      ));
+      const isSupervisor = currentUser.role === 'SUPERVISOR';
+      const newStatus = isSupervisor ? 'CANCELLED' : 'PENDING_CANCELLATION';
+      
+      // Update Global Mock
+      const idx = MOCK_TRANSACTIONS.findIndex(t => t.id === id);
+      if (idx !== -1) {
+          MOCK_TRANSACTIONS[idx].status = newStatus;
+      }
+
+      // Update Local State
+      setRecentTransactions([...MOCK_TRANSACTIONS].sort((a, b) => b.timestamp - a.timestamp));
+  };
+  
+  const approveCancellation = (id: string, approved: boolean) => {
+      // Update Global Mock
+      const idx = MOCK_TRANSACTIONS.findIndex(t => t.id === id);
+      if (idx !== -1) {
+          MOCK_TRANSACTIONS[idx].status = approved ? 'CANCELLED' : 'COMPLETED';
+      }
+      
+      // Update Local State
+      setRecentTransactions([...MOCK_TRANSACTIONS].sort((a, b) => b.timestamp - a.timestamp));
   };
   
   return (
@@ -237,7 +271,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       closeReceiptModal,
       submitDayEnd,
       returnDayEnd,
-      cancelTransaction
+      cancelTransaction,
+      approveCancellation
     }}>
       {children}
     </PosContext.Provider>
