@@ -11,12 +11,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { ArrowLeft, Eye, Printer, FileText, Search, User, FileSpreadsheet, FileIcon, Filter, X } from 'lucide-react';
 import { Link } from 'wouter';
 import { MOCK_BANK_TRANSACTIONS, MOCK_ALLOCATIONS, BankTransaction } from '@/lib/direct-deposits-data';
-import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { format, parseISO, isWithinInterval, startOfDay, endOfDay, isValid } from 'date-fns';
 import { ReceiptTemplate } from '@/components/pos/receipt-template';
 import { Loader2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from "@/components/ui/checkbox";
+import { DatePicker } from '@/components/ui/date-picker';
 
 export default function AllocationHistory() {
   const [filterQuery, setFilterQuery] = useState('');
@@ -25,10 +26,10 @@ export default function AllocationHistory() {
   // Advanced Filters
   const [financialYear, setFinancialYear] = useState('2025/2026');
   const [billingMonth, setBillingMonth] = useState('All');
-  const [allocDateFrom, setAllocDateFrom] = useState('');
-  const [allocDateTo, setAllocDateTo] = useState('');
-  const [txnDateFrom, setTxnDateFrom] = useState('');
-  const [txnDateTo, setTxnDateTo] = useState('');
+  const [allocDateFrom, setAllocDateFrom] = useState<Date | undefined>();
+  const [allocDateTo, setAllocDateTo] = useState<Date | undefined>();
+  const [txnDateFrom, setTxnDateFrom] = useState<Date | undefined>();
+  const [txnDateTo, setTxnDateTo] = useState<Date | undefined>();
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   
   // Get all allocated and processing transactions
@@ -59,19 +60,23 @@ export default function AllocationHistory() {
       let matchesAllocDate = true;
       if (allocDateFrom && allocDateTo && item.details?.allocationDate) {
           const date = new Date(item.details.allocationDate);
-          matchesAllocDate = isWithinInterval(date, { 
-              start: startOfDay(parseISO(allocDateFrom)), 
-              end: endOfDay(parseISO(allocDateTo)) 
-          });
+          if (isValid(date)) {
+              matchesAllocDate = isWithinInterval(date, { 
+                  start: startOfDay(allocDateFrom), 
+                  end: endOfDay(allocDateTo) 
+              });
+          }
       }
 
       let matchesTxnDate = true;
       if (txnDateFrom && txnDateTo) {
           const date = new Date(item.transactionDate);
-          matchesTxnDate = isWithinInterval(date, { 
-              start: startOfDay(parseISO(txnDateFrom)), 
-              end: endOfDay(parseISO(txnDateTo)) 
-          });
+          if (isValid(date)) {
+              matchesTxnDate = isWithinInterval(date, { 
+                  start: startOfDay(txnDateFrom), 
+                  end: endOfDay(txnDateTo) 
+              });
+          }
       }
 
       // Status Filter
@@ -121,10 +126,10 @@ export default function AllocationHistory() {
   };
   
   const clearFilters = () => {
-      setAllocDateFrom('');
-      setAllocDateTo('');
-      setTxnDateFrom('');
-      setTxnDateTo('');
+      setAllocDateFrom(undefined);
+      setAllocDateTo(undefined);
+      setTxnDateFrom(undefined);
+      setTxnDateTo(undefined);
       setStatusFilter([]);
       setMethodFilter('ALL');
       setFilterQuery('');
@@ -225,18 +230,18 @@ export default function AllocationHistory() {
                                 <div className="space-y-2">
                                     <Label className="text-xs">Allocation Date Range</Label>
                                     <div className="flex gap-2">
-                                        <Input type="date" className="h-8 text-xs" value={allocDateFrom} onChange={(e) => setAllocDateFrom(e.target.value)} />
-                                        <span className="text-muted-foreground">-</span>
-                                        <Input type="date" className="h-8 text-xs" value={allocDateTo} onChange={(e) => setAllocDateTo(e.target.value)} />
+                                        <div className="flex-1"><DatePicker date={allocDateFrom} setDate={setAllocDateFrom} placeholder="From" className="h-8 text-xs" /></div>
+                                        <span className="text-muted-foreground self-center">-</span>
+                                        <div className="flex-1"><DatePicker date={allocDateTo} setDate={setAllocDateTo} placeholder="To" className="h-8 text-xs" /></div>
                                     </div>
                                 </div>
 
                                 <div className="space-y-2">
                                     <Label className="text-xs">Transaction Date Range</Label>
                                     <div className="flex gap-2">
-                                        <Input type="date" className="h-8 text-xs" value={txnDateFrom} onChange={(e) => setTxnDateFrom(e.target.value)} />
-                                        <span className="text-muted-foreground">-</span>
-                                        <Input type="date" className="h-8 text-xs" value={txnDateTo} onChange={(e) => setTxnDateTo(e.target.value)} />
+                                        <div className="flex-1"><DatePicker date={txnDateFrom} setDate={setTxnDateFrom} placeholder="From" className="h-8 text-xs" /></div>
+                                        <span className="text-muted-foreground self-center">-</span>
+                                        <div className="flex-1"><DatePicker date={txnDateTo} setDate={setTxnDateTo} placeholder="To" className="h-8 text-xs" /></div>
                                     </div>
                                 </div>
 

@@ -9,10 +9,11 @@ import { Search, ArrowRight, Filter, Banknote, FileSpreadsheet, FileText, X } fr
 import { MOCK_BANK_TRANSACTIONS } from '@/lib/direct-deposits-data';
 import { filterUnmatchedTransactions } from '@/lib/direct-deposits-logic';
 import { Link, useLocation } from 'wouter';
-import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { format, parseISO, isWithinInterval, startOfDay, endOfDay, isValid } from 'date-fns';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DatePicker } from '@/components/ui/date-picker';
 
 export default function UnmatchedQueue() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -20,8 +21,8 @@ export default function UnmatchedQueue() {
   const [, setLocation] = useLocation();
 
   // Advanced Filters
-  const [txnDateFrom, setTxnDateFrom] = useState('');
-  const [txnDateTo, setTxnDateTo] = useState('');
+  const [txnDateFrom, setTxnDateFrom] = useState<Date | undefined>();
+  const [txnDateTo, setTxnDateTo] = useState<Date | undefined>();
   const [bankAccountFilter, setBankAccountFilter] = useState('ALL');
 
   // Logic to get unique bank accounts for filter
@@ -32,10 +33,12 @@ export default function UnmatchedQueue() {
       let matchesDate = true;
       if (txnDateFrom && txnDateTo) {
           const date = new Date(item.transactionDate);
-          matchesDate = isWithinInterval(date, { 
-              start: startOfDay(parseISO(txnDateFrom)), 
-              end: endOfDay(parseISO(txnDateTo)) 
-          });
+          if (isValid(date)) {
+              matchesDate = isWithinInterval(date, { 
+                  start: startOfDay(txnDateFrom), 
+                  end: endOfDay(txnDateTo) 
+              });
+          }
       }
 
       // Bank Account Filter
@@ -50,8 +53,8 @@ export default function UnmatchedQueue() {
   const activeFiltersCount = [txnDateFrom, bankAccountFilter !== 'ALL'].filter(Boolean).length;
 
   const clearFilters = () => {
-      setTxnDateFrom('');
-      setTxnDateTo('');
+      setTxnDateFrom(undefined);
+      setTxnDateTo(undefined);
       setBankAccountFilter('ALL');
       setSearchTerm('');
   };
@@ -120,9 +123,9 @@ export default function UnmatchedQueue() {
                         <div className="space-y-2">
                             <Label className="text-xs">Transaction Date Range</Label>
                             <div className="flex gap-2">
-                                <Input type="date" className="h-8 text-xs" value={txnDateFrom} onChange={(e) => setTxnDateFrom(e.target.value)} />
-                                <span className="text-muted-foreground">-</span>
-                                <Input type="date" className="h-8 text-xs" value={txnDateTo} onChange={(e) => setTxnDateTo(e.target.value)} />
+                                <div className="flex-1"><DatePicker date={txnDateFrom} setDate={setTxnDateFrom} placeholder="From" className="h-8 text-xs" /></div>
+                                <span className="text-muted-foreground self-center">-</span>
+                                <div className="flex-1"><DatePicker date={txnDateTo} setDate={setTxnDateTo} placeholder="To" className="h-8 text-xs" /></div>
                             </div>
                         </div>
 

@@ -11,6 +11,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { CalendarIcon, Search, Printer, FileDown, AlertTriangle, RefreshCw } from 'lucide-react';
+import { DatePicker } from '@/components/ui/date-picker';
 import { MOCK_RECEIPTS, Receipt } from '@/lib/receipt-data';
 import { CASHIERS } from '@/lib/mock-data';
 import { ReceiptTemplate } from '@/components/pos/receipt-template';
@@ -157,11 +158,10 @@ export default function ViewReceipts() {
 
                                     <div className="grid grid-cols-[120px_1fr] items-center gap-4">
                                         <label className="text-sm font-medium text-right text-slate-600">From Date <span className="text-red-500">*</span></label>
-                                        <Input 
-                                            type="date" 
-                                            className="h-9"
-                                            value={fromDate ? format(fromDate, 'yyyy-MM-dd') : ''}
-                                            onChange={(e) => setFromDate(e.target.value ? new Date(e.target.value) : undefined)}
+                                        <DatePicker 
+                                            date={fromDate} 
+                                            setDate={setFromDate} 
+                                            className="h-9" 
                                         />
                                     </div>
 
@@ -182,11 +182,10 @@ export default function ViewReceipts() {
 
                                     <div className="grid grid-cols-[120px_1fr] items-center gap-4">
                                         <label className="text-sm font-medium text-right text-slate-600">To Date <span className="text-red-500">*</span></label>
-                                        <Input 
-                                            type="date" 
-                                            className="h-9"
-                                            value={toDate ? format(toDate, 'yyyy-MM-dd') : ''}
-                                            onChange={(e) => setToDate(e.target.value ? new Date(e.target.value) : undefined)}
+                                        <DatePicker 
+                                            date={toDate} 
+                                            setDate={setToDate} 
+                                            className="h-9" 
                                         />
                                     </div>
 
