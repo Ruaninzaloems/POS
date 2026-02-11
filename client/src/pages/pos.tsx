@@ -37,23 +37,6 @@ function PosPageContent() {
              <div className="flex-1 max-w-2xl mx-auto">
                <UnifiedSearch />
              </div>
-             <Button 
-               variant="outline" 
-               className="hidden md:flex gap-2 border-blue-200 text-blue-700 hover:bg-blue-50"
-               onClick={() => setIsEasyPayOpen(true)}
-             >
-               <Globe className="h-4 w-4" />
-               EasyPay
-             </Button>
-             {/* Mobile Icon Button */}
-             <Button 
-               variant="outline" 
-               size="icon"
-               className="md:hidden border-blue-200 text-blue-700"
-               onClick={() => setIsEasyPayOpen(true)}
-             >
-               <Globe className="h-4 w-4" />
-             </Button>
           </div>
 
           {/* Dynamic Panel Area */}
