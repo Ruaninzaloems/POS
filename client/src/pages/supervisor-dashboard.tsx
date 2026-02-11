@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { CASHIERS, ACCOUNTS } from '@/lib/mock-data';
 import { 
   LayoutDashboard, 
@@ -29,16 +31,19 @@ import {
   Download,
   AlertTriangle,
   RefreshCcw,
-  Info
+  Info,
+  Calendar as CalendarIcon,
+  BarChart3
 } from 'lucide-react';
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card"
-import { format } from 'date-fns';
+import { format, subDays, startOfMonth, endOfMonth, startOfYear, endOfYear, isWithinInterval, subMonths } from 'date-fns';
 import { usePos } from '@/lib/pos-state';
 import { PosLayout } from '@/components/layout/pos-layout';
+import { cn } from '@/lib/utils';
 
 // Types
 type DayEndStatus = 'NOT_SUBMITTED' | 'PENDING_APPROVAL' | 'RETURNED' | 'COMPLETED';
@@ -69,7 +74,47 @@ interface CashierShift {
   transactionCount: number;
 }
 
-// Mock Data
+// Generate Historical Shifts with Variances
+const generateHistoricalShifts = () => {
+    const shifts: CashierShift[] = [];
+    const today = new Date();
+    
+    // Generate for past 12 months
+    for (let i = 0; i < 365; i++) {
+        const date = subDays(today, i);
+        // Skip weekends roughly
+        if (date.getDay() === 0 || date.getDay() === 6) continue;
+        
+        CASHIERS.forEach(cashier => {
+             // 80% chance cashier worked
+             if (Math.random() > 0.2) {
+                 const hasVariance = Math.random() > 0.7; // 30% chance of variance
+                 const varianceAmount = hasVariance ? (Math.random() * 200 - 100) : 0; // -100 to +100
+                 
+                 const systemTotal = 5000 + Math.random() * 10000;
+                 const declaredTotal = systemTotal + varianceAmount;
+                 
+                 shifts.push({
+                     id: `HIST-SH-${format(date, 'yyyyMMdd')}-${cashier.id}`,
+                     cashierName: cashier.name,
+                     cashOffice: cashier.cashOffice,
+                     startTime: date.toISOString(),
+                     endTime: new Date(date.getTime() + 8 * 60 * 60 * 1000).toISOString(),
+                     status: 'COMPLETED',
+                     systemTotals: { cash: systemTotal * 0.4, card: systemTotal * 0.6, total: systemTotal },
+                     declaredTotals: { cash: (systemTotal * 0.4) + varianceAmount, card: systemTotal * 0.6, total: declaredTotal },
+                     variance: { cash: varianceAmount, card: 0, total: varianceAmount },
+                     transactionCount: Math.floor(20 + Math.random() * 50)
+                 });
+             }
+        });
+    }
+    return shifts;
+};
+
+const HISTORICAL_SHIFTS = generateHistoricalShifts();
+
+// ... existing MOCK_SHIFTS ...
 const MOCK_SHIFTS: CashierShift[] = [
   {
     id: "SH-001",
@@ -210,7 +255,14 @@ export default function SupervisorDashboard() {
   const [filterOffice, setFilterOffice] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [returnReason, setReturnReason] = useState('');
-  // const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false); // Removed state
+  
+  // Variance History State
+  const [showVarianceHistory, setShowVarianceHistory] = useState(false);
+  const [statsDateRange, setStatsDateRange] = useState<{from: Date, to: Date} | undefined>({
+      from: subDays(new Date(), 30),
+      to: new Date()
+  });
+  const [statsCashier, setStatsCashier] = useState<string>('All');
 
   const filteredShifts = shifts.filter(shift => {
     const matchesOffice = filterOffice === 'All' || shift.cashOffice === filterOffice;
@@ -267,6 +319,37 @@ export default function SupervisorDashboard() {
     return groups;
   }, [filteredShifts, reconMode]);
 
+  // Variance History Calculation
+  const varianceStats = useMemo(() => {
+      if (!statsDateRange?.from || !statsDateRange?.to) return null;
+
+      const filteredHistory = HISTORICAL_SHIFTS.filter(shift => {
+          const shiftDate = new Date(shift.startTime);
+          const inDateRange = isWithinInterval(shiftDate, { start: statsDateRange.from, end: statsDateRange.to });
+          const matchesCashier = statsCashier === 'All' || shift.cashierName === statsCashier;
+          return inDateRange && matchesCashier;
+      });
+
+      const totalShortage = filteredHistory.reduce((acc, shift) => acc + (shift.variance?.total && shift.variance.total < 0 ? Math.abs(shift.variance.total) : 0), 0);
+      const totalSurplus = filteredHistory.reduce((acc, shift) => acc + (shift.variance?.total && shift.variance.total > 0 ? shift.variance.total : 0), 0);
+      const netVariance = totalSurplus - totalShortage;
+      const shortageCount = filteredHistory.filter(s => s.variance?.total && s.variance.total < 0).length;
+      const surplusCount = filteredHistory.filter(s => s.variance?.total && s.variance.total > 0).length;
+      
+      // Sort by date desc
+      const sortedHistory = [...filteredHistory].sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+
+      return {
+          history: sortedHistory,
+          totalShortage,
+          totalSurplus,
+          netVariance,
+          shortageCount,
+          surplusCount,
+          shiftCount: filteredHistory.length
+      };
+  }, [statsDateRange, statsCashier]);
+
   return (
     <PosLayout>
     <div className="h-full overflow-y-auto bg-slate-50 p-6 space-y-6">
@@ -276,6 +359,14 @@ export default function SupervisorDashboard() {
             <p className="text-muted-foreground">Reconciliation & Approvals</p>
           </div>
           <div className="flex items-center gap-4">
+              <Button 
+                variant="outline" 
+                className="gap-2 bg-white"
+                onClick={() => setShowVarianceHistory(true)}
+              >
+                  <BarChart3 className="w-4 h-4" />
+                  Cashier Statistics
+              </Button>
               <div className="bg-white rounded-lg border p-1 flex items-center shadow-sm">
                   <Button 
                       variant={reconMode === 'PER_CASHIER' ? 'secondary' : 'ghost'} 
@@ -505,6 +596,7 @@ export default function SupervisorDashboard() {
                           <TableHead>Office</TableHead>
                           <TableHead>Shift Start</TableHead>
                           <TableHead className="text-right">Tx Count</TableHead>
+                          <TableHead className="text-right">Voids</TableHead>
                           <TableHead className="text-right">System Total</TableHead>
                           <TableHead className="text-right">Variance</TableHead>
                           <TableHead className="text-center">Status</TableHead>
@@ -512,12 +604,38 @@ export default function SupervisorDashboard() {
                       </TableRow>
                   </TableHeader>
                   <TableBody>
-                      {filteredShifts.map(shift => (
+                      {filteredShifts.map(shift => {
+                          // Find cashier ID from name to look up transactions
+                          const cashierProfile = CASHIERS.find(c => c.name === shift.cashierName);
+                          // Calculate void count from global transactions
+                          const voidCount = recentTransactions.filter(t => 
+                              t.cashierId === cashierProfile?.id && 
+                              (t.status === 'CANCELLED' || t.status === 'PENDING_CANCELLATION')
+                          ).length;
+
+                          return (
                           <TableRow key={shift.id}>
                               <TableCell className="font-medium">{shift.cashierName}</TableCell>
                               <TableCell className="text-muted-foreground">{shift.cashOffice}</TableCell>
                               <TableCell>{format(new Date(shift.startTime), 'MMM dd, HH:mm')}</TableCell>
                               <TableCell className="text-right">{shift.transactionCount}</TableCell>
+                              <TableCell className="text-right">
+                                  <div className="flex items-center justify-end gap-1">
+                                      <span className={`font-bold ${voidCount > 0 ? 'text-red-600' : 'text-slate-400'}`}>
+                                          {voidCount}
+                                      </span>
+                                      {voidCount > 2 && (
+                                          <HoverCard>
+                                              <HoverCardTrigger>
+                                                  <AlertCircle className="w-3 h-3 text-red-500 cursor-help" />
+                                              </HoverCardTrigger>
+                                              <HoverCardContent className="w-60 text-xs">
+                                                  High cancellation rate detected for this cashier. Monitor performance.
+                                              </HoverCardContent>
+                                          </HoverCard>
+                                      )}
+                                  </div>
+                              </TableCell>
                               <TableCell className="text-right font-mono">{formatCurrency(shift.systemTotals.total)}</TableCell>
                               <TableCell className={`text-right font-mono font-bold ${(shift.variance?.total || 0) !== 0 ? 'text-red-600' : 'text-green-600'}`}>
                                   {(shift.variance?.total || 0) === 0 ? '-' : formatCurrency(shift.variance?.total || 0)}
@@ -539,7 +657,7 @@ export default function SupervisorDashboard() {
                                   </Button>
                               </TableCell>
                           </TableRow>
-                      ))}
+                      )})}
                   </TableBody>
               </Table>
           </div>
@@ -590,6 +708,223 @@ export default function SupervisorDashboard() {
               ))}
           </div>
       )}
+
+      {/* Variance History Modal */}
+      <Dialog open={showVarianceHistory} onOpenChange={setShowVarianceHistory}>
+        <DialogContent className="max-w-5xl h-[90vh] flex flex-col">
+            <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-blue-600" />
+                    Cashier Variance Statistics
+                </DialogTitle>
+                <DialogDescription>
+                    Analyze historical shortages and surpluses per cashier
+                </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex flex-col gap-6 py-4 flex-1 overflow-hidden">
+                {/* Filters */}
+                <div className="flex flex-wrap items-end gap-4 bg-slate-50 p-4 rounded-lg border">
+                    <div className="flex flex-col gap-1.5">
+                        <Label>Date Range Preset</Label>
+                        <Select onValueChange={(val) => {
+                            const now = new Date();
+                            if (val === 'financial_year') {
+                                // Assume Fin Year starts July 1st
+                                const currentYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+                                setStatsDateRange({
+                                    from: new Date(currentYear, 6, 1), // July 1st
+                                    to: new Date(currentYear + 1, 5, 30) // June 30th
+                                });
+                            } else if (val === 'billing_month') {
+                                // Current billing month (e.g., 25th prev month to 24th this month)
+                                const startDay = 25;
+                                let fromDate = new Date(now.getFullYear(), now.getMonth() - 1, startDay);
+                                let toDate = new Date(now.getFullYear(), now.getMonth(), startDay - 1);
+                                setStatsDateRange({ from: fromDate, to: toDate });
+                            } else if (val === 'last_30') {
+                                setStatsDateRange({ from: subDays(now, 30), to: now });
+                            } else if (val === 'this_year') {
+                                setStatsDateRange({ from: startOfYear(now), to: now });
+                            }
+                        }}>
+                            <SelectTrigger className="w-[180px] bg-white">
+                                <SelectValue placeholder="Select Range" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="last_30">Last 30 Days</SelectItem>
+                                <SelectItem value="billing_month">Current Billing Month</SelectItem>
+                                <SelectItem value="financial_year">Financial Year (Jul-Jun)</SelectItem>
+                                <SelectItem value="this_year">This Calendar Year</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                        <Label>Cashier</Label>
+                        <Select value={statsCashier} onValueChange={setStatsCashier}>
+                            <SelectTrigger className="w-[200px] bg-white">
+                                <SelectValue placeholder="All Cashiers" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="All">All Cashiers</SelectItem>
+                                {CASHIERS.map(c => (
+                                    <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                        <Label>Custom Range</Label>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                        "w-[240px] justify-start text-left font-normal bg-white",
+                                        !statsDateRange && "text-muted-foreground"
+                                    )}
+                                >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {statsDateRange?.from ? (
+                                        statsDateRange.to ? (
+                                            <>
+                                                {format(statsDateRange.from, "LLL dd, y")} -{" "}
+                                                {format(statsDateRange.to, "LLL dd, y")}
+                                            </>
+                                        ) : (
+                                            format(statsDateRange.from, "LLL dd, y")
+                                        )
+                                    ) : (
+                                        <span>Pick a date</span>
+                                    )}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                    initialFocus
+                                    mode="range"
+                                    defaultMonth={statsDateRange?.from}
+                                    selected={statsDateRange as any}
+                                    onSelect={setStatsDateRange as any}
+                                    numberOfMonths={2}
+                                />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                </div>
+
+                {/* Stats Cards */}
+                <div className="grid grid-cols-4 gap-4">
+                    <Card className="bg-red-50 border-red-200 shadow-sm">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium text-red-800">Total Shortages</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-red-600">
+                                {formatCurrency(varianceStats?.totalShortage || 0)}
+                            </div>
+                            <p className="text-xs text-red-700 mt-1">
+                                {varianceStats?.shortageCount} shifts with shortages
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="bg-green-50 border-green-200 shadow-sm">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium text-green-800">Total Surpluses</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-green-600">
+                                {formatCurrency(varianceStats?.totalSurplus || 0)}
+                            </div>
+                            <p className="text-xs text-green-700 mt-1">
+                                {varianceStats?.surplusCount} shifts with surpluses
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="bg-blue-50 border-blue-200 shadow-sm">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium text-blue-800">Net Variance</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className={`text-2xl font-bold ${
+                                (varianceStats?.netVariance || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                                {formatCurrency(varianceStats?.netVariance || 0)}
+                            </div>
+                            <p className="text-xs text-blue-700 mt-1">
+                                Over {varianceStats?.shiftCount} shifts
+                            </p>
+                        </CardContent>
+                    </Card>
+                    
+                    <Card className="bg-slate-50 border-slate-200 shadow-sm">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium text-slate-800">Performance Rating</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-slate-700">
+                                {varianceStats?.shiftCount ? 
+                                    `${(100 - (((varianceStats.shortageCount + varianceStats.surplusCount) / varianceStats.shiftCount) * 100)).toFixed(0)}%` 
+                                    : 'N/A'
+                                }
+                            </div>
+                            <p className="text-xs text-slate-600 mt-1">
+                                Accuracy Rate
+                            </p>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* History Table */}
+                <div className="border rounded-md flex-1 overflow-auto">
+                    <Table>
+                        <TableHeader className="bg-slate-50 sticky top-0">
+                            <TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Cashier</TableHead>
+                                <TableHead className="text-right">System Total</TableHead>
+                                <TableHead className="text-right">Declared Total</TableHead>
+                                <TableHead className="text-right">Variance</TableHead>
+                                <TableHead className="text-center">Status</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {varianceStats?.history.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                        No historical data found for this period
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                varianceStats?.history.map(shift => (
+                                    <TableRow key={shift.id}>
+                                        <TableCell>{format(new Date(shift.startTime), 'yyyy-MM-dd')}</TableCell>
+                                        <TableCell>{shift.cashierName}</TableCell>
+                                        <TableCell className="text-right font-mono text-muted-foreground">{formatCurrency(shift.systemTotals.total)}</TableCell>
+                                        <TableCell className="text-right font-mono">{formatCurrency(shift.declaredTotals?.total || 0)}</TableCell>
+                                        <TableCell className={`text-right font-mono font-bold ${(shift.variance?.total || 0) !== 0 ? ((shift.variance?.total || 0) < 0 ? 'text-red-600' : 'text-green-600') : 'text-slate-400'}`}>
+                                            {formatCurrency(shift.variance?.total || 0)}
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <Badge variant="outline" className={
+                                                (shift.variance?.total || 0) === 0 ? "bg-green-50 text-green-700 border-green-200" : "bg-yellow-50 text-yellow-700 border-yellow-200"
+                                            }>
+                                                {(shift.variance?.total || 0) === 0 ? 'Balanced' : 'Variance'}
+                                            </Badge>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            </div>
+        </DialogContent>
+      </Dialog>
 
       {selectedShift && (
           <Dialog open={!!selectedShift} onOpenChange={() => setSelectedShift(null)}>
