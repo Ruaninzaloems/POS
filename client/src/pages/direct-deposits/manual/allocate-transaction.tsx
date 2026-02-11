@@ -9,7 +9,7 @@ import { ArrowLeft, Save, Plus, Trash2, CheckCircle, AlertCircle, Upload, Filter
 import { MOCK_BANK_TRANSACTIONS, MOCK_ALLOCATIONS, BankTransaction, AllocationLine, saveTransactions, saveAllocations } from '@/lib/direct-deposits-data';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
-import { ACCOUNTS, Account } from '@/lib/mock-data';
+import { ACCOUNTS, Account, ClearanceCostSchedule } from '@/lib/mock-data';
 import { UnifiedSearch as SearchComponent, SearchResult } from '@/components/pos/search-component';
 import { validateAllocationAmount, calculateAllocationTotals, mapSearchResultToAllocationTarget } from '@/lib/allocation-logic';
 
@@ -24,6 +24,10 @@ export default function AllocateTransaction() {
   // New Line State
   const [selectedAccount, setSelectedAccount] = useState<{accountNo: string, name: string, description?: string} | null>(null);
   const [newLineAmount, setNewLineAmount] = useState('');
+
+  // Clearance Allocation State
+  const [selectedClearance, setSelectedClearance] = useState<ClearanceCostSchedule | null>(null);
+  const [clearanceAllocations, setClearanceAllocations] = useState<Record<string, number>>({});
   
   const inputRef = React.useRef<HTMLInputElement>(null);
 
@@ -49,11 +53,32 @@ export default function AllocateTransaction() {
     : { allocatedTotal: 0, remaining: 0, isFullyAllocated: false };
 
   const handleSearchResult = (result: SearchResult) => {
+    if (result.type === 'CLEARANCE') {
+        const clearance = result.data as ClearanceCostSchedule;
+        setSelectedClearance(clearance);
+        setSelectedAccount(null); // Clear account selection if any
+        
+        // Initialize allocations with defaults
+        const defaults: Record<string, number> = {};
+        
+        clearance.section118_1_Breakdown.forEach((item, idx) => {
+             defaults[`118_1_${item.accountNo}_${idx}`] = item.amount;
+        });
+        
+        clearance.section118_3_Breakdown.forEach((item, idx) => {
+             defaults[`118_3_${item.accountNo}_${idx}`] = item.amount;
+        });
+        
+        setClearanceAllocations(defaults);
+        return;
+    }
+
     const target = mapSearchResultToAllocationTarget(result);
     
     if (target) {
         setSelectedAccount(target);
         setNewLineAmount("0.00");
+        setSelectedClearance(null); // Clear clearance selection if any
     } else {
         toast({ title: "Unsupported Type", description: "This item type cannot be allocated to directly.", variant: "destructive" });
     }
@@ -97,6 +122,64 @@ export default function AllocateTransaction() {
       
       setSelectedAccount(null);
       setNewLineAmount('');
+  };
+
+  const handleAddClearanceLines = () => {
+     if (!selectedClearance) return;
+     
+     const newLines: AllocationLine[] = [];
+     let totalToAdd = 0;
+
+     // Process 118(1) allocations
+     selectedClearance.section118_1_Breakdown.forEach((item, idx) => {
+         const key = `118_1_${item.accountNo}_${idx}`;
+         const amount = clearanceAllocations[key] || 0;
+         if (amount > 0) {
+             newLines.push({
+                 id: Math.random().toString(36).substr(2, 9),
+                 accountNo: item.accountNo,
+                 amount: amount,
+                 description: `Clearance ${selectedClearance.scheduleNo} - 118(1): ${item.item}`
+             });
+             totalToAdd += amount;
+         }
+     });
+
+     // Process 118(3) allocations
+     selectedClearance.section118_3_Breakdown.forEach((item, idx) => {
+         const key = `118_3_${item.accountNo}_${idx}`;
+         const amount = clearanceAllocations[key] || 0;
+         if (amount > 0) {
+             newLines.push({
+                 id: Math.random().toString(36).substr(2, 9),
+                 accountNo: item.accountNo,
+                 amount: amount,
+                 description: `Clearance ${selectedClearance.scheduleNo} - 118(3): ${item.item}`
+             });
+             totalToAdd += amount;
+         }
+     });
+
+     if (totalToAdd === 0) {
+         toast({ title: "No Amounts", description: "Please enter at least one allocation amount.", variant: "destructive" });
+         return;
+     }
+     
+     if (transaction) {
+         const validation = validateAllocationAmount(totalToAdd, allocatedTotal, transaction.amount);
+         if (!validation.valid) {
+             toast({ 
+                title: "Over-allocation Error", 
+                description: validation.error, 
+                variant: "destructive" 
+             });
+             return;
+         }
+     }
+
+     setLines(prev => [...prev, ...newLines]);
+     setSelectedClearance(null);
+     setClearanceAllocations({});
   };
 
   const handleRemoveLine = (id: string) => {
@@ -238,6 +321,99 @@ export default function AllocateTransaction() {
                                             <Plus className="w-4 h-4" />
                                         </Button>
                                     </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Clearance Cost Schedule Allocator */}
+                        {selectedClearance && (
+                            <div className="mt-4 p-4 bg-amber-50 border border-amber-100 rounded-lg animate-in fade-in slide-in-from-top-2">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div>
+                                        <div className="text-xs text-amber-600 font-bold uppercase tracking-wider mb-1">Clearance Allocation</div>
+                                        <div className="font-medium text-lg text-slate-900">{selectedClearance.scheduleNo}</div>
+                                        <div className="text-sm text-slate-500">
+                                            Linked Accounts: {selectedClearance.linkedAccounts.length} | 
+                                            Total Due: <span className="font-mono font-medium">R {selectedClearance.totalDue.toFixed(2)}</span>
+                                        </div>
+                                    </div>
+                                    <Button size="sm" variant="ghost" onClick={() => setSelectedClearance(null)} className="h-6 w-6 p-0 text-slate-400">
+                                        <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                </div>
+
+                                <div className="space-y-6">
+                                    {selectedClearance.linkedAccounts.map(account => {
+                                        const s118_1 = selectedClearance.section118_1_Breakdown.filter(i => i.accountNo === account.accountNo);
+                                        const s118_3 = selectedClearance.section118_3_Breakdown.filter(i => i.accountNo === account.accountNo);
+                                        
+                                        if (s118_1.length === 0 && s118_3.length === 0) return null;
+
+                                        return (
+                                            <div key={account.accountNo} className="bg-white/60 p-3 rounded border border-amber-100">
+                                                <div className="text-sm font-semibold mb-2 flex items-center gap-2">
+                                                    <span className="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono">{account.accountNo}</span>
+                                                    {account.name}
+                                                </div>
+                                                
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {/* Section 118(1) */}
+                                                    {s118_1.length > 0 && (
+                                                        <div className="space-y-2">
+                                                            <label className="text-xs font-medium text-muted-foreground uppercase">Section 118(1)</label>
+                                                            {s118_1.map((item, idx) => (
+                                                                <div key={idx} className="flex items-center justify-between gap-2">
+                                                                    <span className="text-xs truncate flex-1" title={item.item}>{item.item}</span>
+                                                                    <Input
+                                                                        type="number"
+                                                                        className="h-8 w-28 text-right font-mono text-sm"
+                                                                        value={clearanceAllocations[`118_1_${account.accountNo}_${idx}`] || ''}
+                                                                        onChange={e => setClearanceAllocations(prev => ({
+                                                                            ...prev,
+                                                                            [`118_1_${account.accountNo}_${idx}`]: parseFloat(e.target.value) || 0
+                                                                        }))}
+                                                                    />
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Section 118(3) */}
+                                                    {s118_3.length > 0 && (
+                                                        <div className="space-y-2">
+                                                            <label className="text-xs font-medium text-muted-foreground uppercase">Section 118(3)</label>
+                                                            {s118_3.map((item, idx) => (
+                                                                <div key={idx} className="flex items-center justify-between gap-2">
+                                                                    <span className="text-xs truncate flex-1" title={item.item}>{item.item}</span>
+                                                                    <Input
+                                                                        type="number"
+                                                                        className="h-8 w-28 text-right font-mono text-sm"
+                                                                        value={clearanceAllocations[`118_3_${account.accountNo}_${idx}`] || ''}
+                                                                        onChange={e => setClearanceAllocations(prev => ({
+                                                                            ...prev,
+                                                                            [`118_3_${account.accountNo}_${idx}`]: parseFloat(e.target.value) || 0
+                                                                        }))}
+                                                                    />
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                <div className="mt-4 pt-3 border-t border-amber-200 flex justify-between items-center">
+                                    <div className="text-sm">
+                                        <span className="text-muted-foreground">Total Clearance Allocation:</span>
+                                        <span className="ml-2 font-bold font-mono">
+                                            R {Object.values(clearanceAllocations).reduce((a, b) => a + b, 0).toFixed(2)}
+                                        </span>
+                                    </div>
+                                    <Button onClick={handleAddClearanceLines} className="bg-amber-600 hover:bg-amber-700 text-white">
+                                        <Plus className="w-4 h-4 mr-2" /> Add Clearance Lines
+                                    </Button>
                                 </div>
                             </div>
                         )}

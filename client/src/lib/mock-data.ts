@@ -86,8 +86,8 @@ export interface ClearanceCostSchedule {
   status: string;
   totalDue: number;
   linkedAccounts: Account[];
-  section118_1_Breakdown: { item: string; amount: number }[];
-  section118_3_Breakdown: { item: string; amount: number }[];
+  section118_1_Breakdown: { item: string; amount: number; accountNo: string }[];
+  section118_3_Breakdown: { item: string; amount: number; accountNo: string }[];
 }
 
 // SEED DATA
@@ -272,14 +272,28 @@ export const CLEARANCES: ClearanceCostSchedule[] = [
   {
     scheduleNo: "CLR-2023-001",
     status: "Pending",
-    totalDue: 5000.00,
-    linkedAccounts: [ACCOUNTS[0]], // Linked to John Doe
+    totalDue: 4500.00,
+    linkedAccounts: [ACCOUNTS[1]], // Linked to Jane Smith (ACC-1002)
     section118_1_Breakdown: [
-      { item: "Rates & Taxes (2 years)", amount: 3500.00 },
-      { item: "Water & Lights", amount: 1000.00 }
+      { item: "Rates & Taxes (2 years)", amount: 3500.00, accountNo: "ACC-1002" },
+      { item: "Water & Lights", amount: 1000.00, accountNo: "ACC-1002" }
     ],
     section118_3_Breakdown: [
-      { item: "Historical Debt", amount: 500.00 }
+      { item: "Historical Debt", amount: 0.00, accountNo: "ACC-1002" }
+    ]
+  },
+  {
+    scheduleNo: "CLR-2023-002",
+    status: "Pending",
+    totalDue: 12500.00,
+    linkedAccounts: [ACCOUNTS[1], ACCOUNTS[4]], // Jane Smith (ACC-1002) and Sarah Connor (ACC-1005)
+    section118_1_Breakdown: [
+      { item: "Rates (Erf 123)", amount: 5000.00, accountNo: "ACC-1002" },
+      { item: "Rates (Erf 124)", amount: 4500.00, accountNo: "ACC-1005" }
+    ],
+    section118_3_Breakdown: [
+      { item: "Historical Interest", amount: 1500.00, accountNo: "ACC-1002" },
+      { item: "Arrears", amount: 1500.00, accountNo: "ACC-1005" }
     ]
   }
 ];
