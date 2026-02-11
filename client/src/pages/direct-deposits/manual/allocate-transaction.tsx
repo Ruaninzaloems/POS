@@ -192,9 +192,16 @@ export default function AllocateTransaction() {
                                     <div className="flex gap-2">
                                         <Input 
                                             type="number" 
+                                            min="0"
+                                            step="0.01"
                                             className="h-10 w-32 font-bold text-right" 
                                             value={newLineAmount}
-                                            onChange={e => setNewLineAmount(e.target.value)}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                if (val && parseFloat(val) < 0) return;
+                                                if (val.includes('.') && val.split('.')[1].length > 2) return;
+                                                setNewLineAmount(val);
+                                            }}
                                             onKeyDown={e => e.key === 'Enter' && handleAddLine()}
                                             autoFocus
                                         />

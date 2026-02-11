@@ -257,9 +257,16 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                    <Input 
                         id={`pay-${item.id}`}
                         type="number" 
+                        min="0"
+                        step="0.01"
                         className="pl-8 w-40 font-mono font-bold border-gray-400 focus:ring-blue-500 bg-white"
                         value={item.amountToPay} 
-                        onChange={(e) => updateItemAmount(item.id, parseFloat(e.target.value) || 0)}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            if (val && parseFloat(val) < 0) return;
+                            if (val.includes('.') && val.split('.')[1].length > 2) return;
+                            updateItemAmount(item.id, parseFloat(val) || 0);
+                        }}
                     />
                </div>
            </div>

@@ -190,9 +190,16 @@ export function TransactionPanels() {
                                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-xs">R</span>
                                      <Input 
                                         type="number" 
+                                        min="0"
+                                        step="0.01"
                                         className="h-9 pl-6 text-right font-mono"
                                         value={item.amountToPay}
-                                        onChange={(e) => updateItemAmount(item.id, parseFloat(e.target.value) || 0)}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (val && parseFloat(val) < 0) return;
+                                            if (val.includes('.') && val.split('.')[1].length > 2) return;
+                                            updateItemAmount(item.id, parseFloat(val) || 0);
+                                        }}
                                      />
                                   </div>
 
@@ -284,10 +291,17 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                                 <Input 
                                     id={`amount-${item.id}`}
                                     type="number" 
+                                    min="0"
+                                    step="0.01"
                                     className={`pl-10 text-2xl font-mono font-bold h-14 bg-white focus-visible:ring-2 ${isWater ? 'border-blue-200 focus-visible:ring-blue-400' : 'border-yellow-200 focus-visible:ring-yellow-400'}`}
                                     value={item.amountToPay || ''} 
                                     placeholder="0.00"
-                                    onChange={(e) => updateItemAmount(item.id, parseFloat(e.target.value) || 0)}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val && parseFloat(val) < 0) return;
+                                        if (val.includes('.') && val.split('.')[1].length > 2) return;
+                                        updateItemAmount(item.id, parseFloat(val) || 0);
+                                    }}
                                     autoFocus
                                 />
                             </div>
@@ -386,8 +400,15 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                     <Label>Amount:</Label>
                     <Input 
                         type="number" 
+                        min="0"
+                        step="0.01"
                         value={item.amountToPay} 
-                        onChange={(e) => updateItemAmount(item.id, parseFloat(e.target.value) || 0)}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            if (val && parseFloat(val) < 0) return;
+                            if (val.includes('.') && val.split('.')[1].length > 2) return;
+                            updateItemAmount(item.id, parseFloat(val) || 0);
+                        }}
                         className="max-w-[200px]"
                     />
                  </div>
