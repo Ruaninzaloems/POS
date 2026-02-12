@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from '
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, ACCOUNTS, DIRECT_INCOME_ITEMS, ACCOUNT_GROUPS, CLEARANCES, AccountGroup, CASHIERS, MOCK_TRANSACTIONS, CASH_OFFICES, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, ApiCashier, BillingConfig, createSessionApi, endSessionApi, createTransactionApi } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, ApiCashier, BillingConfig, createSessionApi, endSessionApi, createTransactionApi, postMultipleAccountPaymentReceipt } from './external-api';
 
 export type TransactionType = 
   | 'CONSUMER_SERVICES' 
@@ -416,6 +416,24 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
     } catch (e) {
         console.warn("Failed to persist transaction to backend", e);
+    }
+
+    const accountItems = record.items.filter(item =>
+        item.type === 'CONSUMER_SERVICES' || item.type === 'MULTI_ACCOUNT' || item.type === 'ACCOUNT_GROUP'
+    );
+    if (accountItems.length > 0) {
+        const receiptId = record.receiptNumber.replace(/\D/g, '') || '0';
+        for (const item of accountItems) {
+            const accountId = item.originalData?.apiId || item.originalData?.accountID || item.originalData?.accountId;
+            if (accountId) {
+                try {
+                    await postMultipleAccountPaymentReceipt(currentUser.id, accountId, receiptId);
+                    console.log(`Posted receipt ${receiptId} for account ${accountId}`);
+                } catch (e) {
+                    console.warn(`Failed to post receipt for account ${accountId}`, e);
+                }
+            }
+        }
     }
   };
   

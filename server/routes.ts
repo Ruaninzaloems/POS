@@ -136,6 +136,24 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/proxy/pos-multiple-account-payments/:capturerId/:accountId/receipt/:receiptId", async (req, res) => {
+    try {
+      const { capturerId, accountId, receiptId } = req.params;
+      const url = `${EXTERNAL_API_BASE}/api/pos-multiple-account-payments/${capturerId}/${accountId}/receipt/${receiptId}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) {
+        return res.status(response.status).json({ message: response.statusText });
+      }
+      const text = await response.text();
+      res.json(text ? JSON.parse(text) : { success: true });
+    } catch (e: any) {
+      res.status(502).json({ message: "External API unreachable", detail: e.message });
+    }
+  });
+
   // =====================================================
   // CASHIER SESSION ROUTES
   // =====================================================

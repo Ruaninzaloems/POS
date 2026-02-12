@@ -329,6 +329,15 @@ export async function listTransactionsApi(filters?: {
     return res.json();
 }
 
+export async function postMultipleAccountPaymentReceipt(capturerId: string, accountId: string | number, receiptId: string | number): Promise<any> {
+    const res = await fetch(`/api/proxy/pos-multiple-account-payments/${capturerId}/${accountId}/receipt/${receiptId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error(`Failed to post receipt for account ${accountId}`);
+    return res.json();
+}
+
 export async function updateTransactionStatusApi(id: string, status: string, reason?: string): Promise<any> {
     const res = await fetch(`/api/transactions/${id}/status`, {
         method: 'PATCH',
