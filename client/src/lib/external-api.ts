@@ -22,12 +22,23 @@ export interface Institution {
 export async function fetchCashOffices(): Promise<CashOffice[]> {
     try {
         // Attempt to fetch from API first
+        // Based on user screenshot: Const_CashOffice table
+        // URL seems to follow OData convention based on table name
         const res = await fetch(`${API_BASE}/odata/ConstCashOffices`, {
             headers: { 'Accept': 'application/json' }
         });
         if (res.ok) {
             const data = await res.json();
-            return data.value || [];
+            const items = data.value || [];
+            
+            // Map API fields to internal CashOffice interface
+            return items.map((item: any) => ({
+                id: item.cashOfficeId?.toString() || item.id?.toString(),
+                name: item.cashOfficeDesc || item.name,
+                // Default values for fields not in screenshot
+                ledgerVote: item.ledgerVote || "Unknown Vote",
+                maxTransactionLimit: item.maxTransactionLimit || 5000
+            }));
         }
     } catch (e) {
         console.warn("Failed to fetch cash offices from API, using mock data", e);
