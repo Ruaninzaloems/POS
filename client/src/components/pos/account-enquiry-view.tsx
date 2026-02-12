@@ -154,34 +154,34 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-0 pt-2">
                  <div>
                     <Field label="Account Number" value={account.accountNo} />
-                    <Field label="Account Group" value="Himun - Haarlem Munisipaliteit" />
-                    <Field label="Payment Group" value="-" />
+                    <Field label="Account Group" value={account.accountGroup} />
+                    <Field label="Payment Group" value={account.paymentGroup} />
                     <Field label="Account Type" value={account.accountType} />
-                    <Field label="Incentive Scheme Code" value="-" />
+                    <Field label="Incentive Scheme Code" value={undefined} />
                     <Field label="Email" value={account.email} />
-                    <Field label="Paid Deposit Amount" value={`R0.00`} />
+                    <Field label="Paid Deposit Amount" value={account.paidDepositAmount != null ? `R${account.paidDepositAmount.toFixed(2)}` : 'R0.00'} />
                     
                     <div className="h-4"></div>
                     <div className="border-t border-gray-300 my-2"></div>
                     
-                    <Field label="Interest Waiver Status" value="No Interest Waiver on Account" />
-                    <Field label="Indigent Subsidy Status" value="-" />
-                    <Field label="Consumer RPP Status" value="N/A" />
-                    <Field label="Departmental Account" value={account.status === 'Active' ? 'Inactive' : 'Active'} />
+                    <Field label="Interest Waiver Status" value={undefined} />
+                    <Field label="Indigent Subsidy Status" value={undefined} />
+                    <Field label="Consumer RPP Status" value={undefined} />
+                    <Field label="Departmental Account" value={undefined} />
                  </div>
 
                  <div>
                     <Field label="Name" value={account.name} />
-                    <Field label="Sub Account Group" value="-" />
+                    <Field label="Sub Account Group" value={account.subAccountGroup} />
                     <Field label="Account Status" value={account.status || 'Active'} />
                     <Field label="Delivery Address" value={account.deliveryAddress || account.address} />
                     <Field label="Contact Number" value={account.mobile} />
                     
                     <div className="mt-8 text-xs font-bold underline text-gray-500 mb-2">Additional Account Details</div>
                     
-                    <Field label="Rebate Status" value="No Rebate on Account" />
-                    <Field label="Handover Status" value="N/A" />
-                    <Field label="Loan RPP Status" value="N/A" />
+                    <Field label="Rebate Status" value={undefined} />
+                    <Field label="Handover Status" value={undefined} />
+                    <Field label="Loan RPP Status" value={undefined} />
                  </div>
                </div>
 
@@ -195,35 +195,35 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
 
                   <div>
                      <Field label="SG Number" value={account.sgNo} />
-                     <Field label="Old Property Code" value={account.oldCode || "Grg 71 0000084600000"} />
-                     <Field label="Billing Cycle" value="1 Consumer Account Cycle" />
-                     <Field label="Sectional Title Scheme" value="-" />
-                     <Field label="Location Address" value={account.address} />
-                     <Field label="Longitude" value="-" />
-                     <Field label="Registration Status" value="-" />
+                     <Field label="Old Property Code" value={account.oldCode} />
+                     <Field label="Billing Cycle" value={account.billingCycle} />
+                     <Field label="Sectional Title Scheme" value={undefined} />
+                     <Field label="Location Address" value={account.locationAddress || account.address} />
+                     <Field label="Longitude" value={undefined} />
+                     <Field label="Registration Status" value={undefined} />
                      <div className="h-8"></div>
                      <div className="border-t border-gray-300 my-2"></div>
-                     <Field label="Property Type of Use" value="RES" />
-                     <Field label="Property Category" value="RES" />
+                     <Field label="Property Type of Use" value={undefined} />
+                     <Field label="Property Category" value={undefined} />
                      <Field label="Accountable Owner Name" value={account.name} />
                   </div>
 
                   <div>
-                     <Field label="Property ID" value={account.unitId || "42001"} />
-                     <Field label="Property Status" value="Active" />
-                     <Field label="Allotment Area" value="Haarlem" />
-                     <Field label="Farm Name" value="-" />
-                     <Field label="Property Type" value="Erf" />
-                     <Field label="Latitude" value="-" />
-                     <Field label="Magisterial District" value="WC044" />
-                     <Field label="Property Market Value" value={`R${(account.marketValue || 146000).toFixed(2)}`} />
+                     <Field label="Property ID" value={account.propertyId || account.unitId} />
+                     <Field label="Property Status" value={account.status || 'Active'} />
+                     <Field label="Allotment Area" value={undefined} />
+                     <Field label="Farm Name" value={undefined} />
+                     <Field label="Property Type" value={undefined} />
+                     <Field label="Latitude" value={undefined} />
+                     <Field label="Magisterial District" value={undefined} />
+                     <Field label="Property Market Value" value={account.marketValue != null ? `R${account.marketValue.toFixed(2)}` : undefined} />
                      
                      <div className="h-8"></div>
                      <div className="border-t border-gray-300 my-2"></div>
                      
-                     <Field label="Valuation Category" value={account.valuationCategory || "Individual Use"} />
-                     <Field label="Partition Description" value="Individual Use" />
-                     <Field label="Partition Market Value" value={`R${(account.marketValue || 146000).toFixed(2)}`} />
+                     <Field label="Valuation Category" value={account.valuationCategory} />
+                     <Field label="Partition Description" value={undefined} />
+                     <Field label="Partition Market Value" value={account.marketValue != null ? `R${account.marketValue.toFixed(2)}` : undefined} />
                   </div>
                </div>
           </CollapsibleContent>

@@ -34,15 +34,14 @@ export interface Account {
   accountNo: string;
   name: string;
   idNo: string;
-  sgNo: string; // Surveyor General No
+  sgNo: string;
   address: string;
   outstandingAmount: number;
   prepaidMeterNo?: string;
   prepaidType?: "Electricity" | "Water";
   email: string;
   mobile: string;
-  linkedToClearance?: string; // Clearance ID if linked
-  // New fields from screenshot
+  linkedToClearance?: string;
   unitId?: string;
   oldCode?: string;
   accountType?: string;
@@ -54,6 +53,17 @@ export interface Account {
   prepaidBlocked?: boolean;
   prepaidBlockReason?: string;
   blockedServices?: string[];
+  apiId?: number;
+  accountGroup?: string;
+  subAccountGroup?: string;
+  paymentGroup?: string;
+  locationAddress?: string;
+  propertyId?: string;
+  addName?: string;
+  contactDetails?: string;
+  unitPartitionId?: number;
+  paidDepositAmount?: number;
+  billingCycle?: string;
 }
 
 export interface AgingItem {

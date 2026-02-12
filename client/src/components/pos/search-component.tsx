@@ -168,26 +168,37 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
 
           const uniqueAccounts = Array.from(new Map(allAccountData.map(item => [item.accountID, item])).values());
 
-          const accountResults: SearchResult[] = uniqueAccounts.slice(0, 10).map((item: any) => ({
-              type: 'ACCOUNT' as const,
-              data: {
-                  accountNo: item.accountNumber || item.oldAccountCode || `${item.accountID}`,
-                  name: item.name || 'Unknown',
-                  idNo: '-',
-                  address: item.address || item.locationAddress || '',
-                  outstandingAmount: item.outStandingAmount || 0,
-                  status: item.accountStatus || 'Active',
-                  email: '',
-                  mobile: parseMobileFromContactDetails(item.contactDetails),
-                  accountType: item.accountType || 'Consumer',
-                  sgNo: item.sgNumber || '',
-                  oldCode: item.oldAccountCode || '',
-                  prepaidMeterNo: '',
-                  unitId: item.unitID,
-                  apiId: item.accountID,
-              } as Account,
-              label: `${item.accountNumber || item.oldAccountCode || item.accountID} - ${item.name || 'Unknown'}`
-          }));
+          const accountResults: SearchResult[] = uniqueAccounts.slice(0, 10).map((item: any) => {
+              const parsed = parseMobileFromContactDetails(item.contactDetails);
+              const emailMatch = item.contactDetails?.match(/Email\s*:<\/b>\s*([^<\s]+)/i);
+              const extractedEmail = emailMatch ? emailMatch[1] : '';
+              return {
+                  type: 'ACCOUNT' as const,
+                  data: {
+                      accountNo: item.accountNumber || item.oldAccountCode || `${item.accountID}`,
+                      name: item.name || 'Unknown',
+                      idNo: '-',
+                      address: item.address || item.locationAddress || '',
+                      outstandingAmount: item.outStandingAmount || 0,
+                      status: item.accountStatus || 'Active',
+                      email: extractedEmail,
+                      mobile: parsed,
+                      accountType: item.accountType || 'Consumer',
+                      sgNo: item.sgNumber || '',
+                      oldCode: item.oldAccountCode || '',
+                      prepaidMeterNo: '',
+                      unitId: item.unitID?.toString(),
+                      apiId: item.accountID,
+                      deliveryAddress: item.address || '',
+                      locationAddress: item.locationAddress || '',
+                      propertyId: item.propertyID || '',
+                      addName: item.addNAME || '',
+                      contactDetails: item.contactDetails || '',
+                      unitPartitionId: item.unitPartitionID,
+                  } as Account,
+                  label: `${item.accountNumber || item.oldAccountCode || item.accountID} - ${item.name || 'Unknown'}`
+              };
+          });
 
           const groupedInstitutions = new Map<number, { desc: string; members: InstitutionSearchResult[] }>();
           for (const inst of institutionResults) {
