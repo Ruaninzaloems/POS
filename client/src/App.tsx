@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PosProvider } from "@/lib/pos-state";
 import NotFound from "@/pages/not-found";
+import HomePage from "@/pages/home";
 import PosPage from "@/pages/pos";
 import SupervisorDashboard from "@/pages/supervisor-dashboard";
 import PlaceholderPage from "@/pages/placeholder-page";
@@ -20,7 +21,8 @@ import SettingsPage from "@/pages/settings";
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={PosPage} />
+      <Route path="/" component={HomePage} />
+      <Route path="/pos" component={PosPage} />
       <Route path="/settings" component={SettingsPage} />
       
       {/* Direct Deposits Manual Module */}

@@ -7,9 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { CASHIERS, CASH_OFFICES } from '@/lib/mock-data';
+import { useLocation } from 'wouter';
 
 export default function CashierSetup() {
     const { currentUser, startSession, switchUser } = usePos();
+    const [, setLocation] = useLocation();
     
     // Use mock data directly as requested
     const cashOffices = CASH_OFFICES;
@@ -125,7 +127,7 @@ export default function CashierSetup() {
                             <Button type="submit" className="w-32 bg-slate-800 hover:bg-slate-900">
                                 Submit
                             </Button>
-                            <Button type="button" variant="outline" className="w-32 bg-slate-700 hover:bg-slate-800 text-white hover:text-white border-slate-700">
+                            <Button type="button" variant="outline" className="w-32 bg-slate-700 hover:bg-slate-800 text-white hover:text-white border-slate-700" onClick={() => setLocation('/')}>
                                 Cancel
                             </Button>
                         </div>
