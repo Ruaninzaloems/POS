@@ -212,6 +212,32 @@ export async function fetchInstitutions(): Promise<Institution[]> {
     return [];
 }
 
+export interface InstitutionSearchResult {
+    institutionDesc: string | null;
+    institutionID: number | null;
+    groupCodeID: number | null;
+    groupCodeDesc: string | null;
+    accountID: number | null;
+    accountNumber: string | null;
+    outStandingAmt: number | null;
+    activeServiceCount: number | null;
+}
+
+export async function searchInstitutions(query: string): Promise<InstitutionSearchResult[]> {
+    try {
+        const params = new URLSearchParams();
+        params.append('name', query);
+        const res = await fetch(`/api/proxy/const-institutions/search?${params.toString()}`);
+        if (res.ok) {
+            const data = await res.json();
+            return Array.isArray(data) ? data : [];
+        }
+    } catch (e) {
+        console.error("Failed to search institutions", e);
+    }
+    return [];
+}
+
 export async function fetchAccounts(criteria: any): Promise<any[]> {
     try {
         const params = new URLSearchParams();

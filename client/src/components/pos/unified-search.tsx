@@ -5,7 +5,7 @@ import { UnifiedSearch as SearchComponent, SearchResult } from './search-compone
 import { Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ACCOUNTS, Account } from '@/lib/mock-data';
-import { fetchAccounts, fetchBillingStagePrepaidRecharge, fetchBillingStagePrepaidRecovery } from '@/lib/external-api';
+import { fetchAccounts, fetchBillingStagePrepaidRecharge, fetchBillingStagePrepaidRecovery, searchInstitutions } from '@/lib/external-api';
 
 export function UnifiedSearch() {
   const { addItem, clearTransaction, referenceData } = usePos();
@@ -78,25 +78,49 @@ export function UnifiedSearch() {
             originalData: acc
         }
     } else if (result.type === 'GROUP') {
-        const group = result.data as any; // Cast to avoid TS issues with mock data imports not updating fast enough
-        // Find all members
-        const members = ACCOUNTS.filter(a => group.memberAccountNos.includes(a.accountNo));
+        const group = result.data as any;
         
-        // Add all members as individual transaction items
-        members.forEach(member => {
-            const memberItem: TransactionItem = {
-                id: crypto.randomUUID(),
-                type: 'CONSUMER_SERVICES',
-                description: `${member.name} (${member.accountNo})`,
-                reference: member.accountNo,
-                amountDue: member.outstandingAmount,
-                amountToPay: member.outstandingAmount,
-                originalData: member
-            };
-            addItem(memberItem);
-        });
+        if (group.members && Array.isArray(group.members) && group.members.length > 0) {
+            group.members.forEach((member: any) => {
+                const memberItem: TransactionItem = {
+                    id: crypto.randomUUID(),
+                    type: 'CONSUMER_SERVICES',
+                    description: `${group.institutionDesc} - Acc ${member.accountNumber || member.accountID}`,
+                    reference: member.accountNumber || `${member.accountID}`,
+                    amountDue: member.outStandingAmt || 0,
+                    amountToPay: member.outStandingAmt || 0,
+                    originalData: { ...member, institutionDesc: group.institutionDesc }
+                };
+                addItem(memberItem);
+            });
+        } else if (group.isLocal && group.institutionDesc) {
+            try {
+                const results = await searchInstitutions(group.institutionDesc.split(' - ')[0]);
+                if (results.length > 0) {
+                    results.forEach((member) => {
+                        const memberItem: TransactionItem = {
+                            id: crypto.randomUUID(),
+                            type: 'CONSUMER_SERVICES',
+                            description: `${group.institutionDesc} - Acc ${member.accountNumber || member.accountID}`,
+                            reference: member.accountNumber || `${member.accountID}`,
+                            amountDue: member.outStandingAmt || 0,
+                            amountToPay: member.outStandingAmt || 0,
+                            originalData: { ...member, institutionDesc: group.institutionDesc }
+                        };
+                        addItem(memberItem);
+                    });
+                } else {
+                    alert(`No linked accounts found for group "${group.institutionDesc}".`);
+                    return;
+                }
+            } catch (e) {
+                console.error("Failed to fetch institution members", e);
+                alert("Failed to load group accounts. Please try again.");
+                return;
+            }
+        }
         
-        return; // Exit early as we added multiple
+        return;
     } else if (result.type === 'CLEARANCE') {
         const clr = result.data;
         newItem = {
@@ -164,7 +188,7 @@ export function UnifiedSearch() {
 
   return (
       <div className="flex gap-2 w-full max-w-2xl">
-          <SearchComponent onSelect={handleSelect} className="flex-1" />
+          <SearchComponent onSelect={handleSelect} className="flex-1" institutions={referenceData.institutions} />
           <Button 
             variant="outline" 
             size="icon" 

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, CreditCard, Users, Zap, FileText, Layers, Info, Filter, Loader2 } from 'lucide-react';
+import { Search, CreditCard, Users, Zap, FileText, Layers, Info, Filter, Loader2, Building } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ACCOUNTS, DIRECT_INCOME_ITEMS, ACCOUNT_GROUPS, CLEARANCES, Account } from '@/lib/mock-data';
+import { searchInstitutions, InstitutionSearchResult } from '@/lib/external-api';
 import {
   Popover,
   PopoverContent,
@@ -21,9 +22,10 @@ interface UnifiedSearchProps {
     autoFocus?: boolean;
     className?: string;
     scope?: 'ALL' | 'ACCOUNT' | 'PREPAID' | 'DIRECT' | 'GROUP' | 'CLEARANCE';
+    institutions?: any[];
 }
 
-export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, scope = 'ALL' }: UnifiedSearchProps) {
+export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, scope = 'ALL', institutions = [] }: UnifiedSearchProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -84,10 +86,14 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
     }
 
     if (scope === 'ALL' || scope === 'GROUP') {
-        const groups = ACCOUNT_GROUPS.filter(g =>
-          g.name.toLowerCase().includes(q)
-        ).map(g => ({ type: 'GROUP' as const, data: g, label: `Group: ${g.name}` }));
-        combinedResults = [...combinedResults, ...groups];
+        const instResults = institutions.filter((inst: any) =>
+          inst.Description && inst.Description.toLowerCase().includes(q) && inst.IsEnabled
+        ).slice(0, 5).map((inst: any) => ({
+            type: 'GROUP' as const,
+            data: { institutionID: inst.Id, institutionDesc: inst.Description, isLocal: true },
+            label: `Group: ${inst.Description}`
+        }));
+        combinedResults = [...combinedResults, ...instResults];
     }
 
     if (scope === 'ALL' || scope === 'CLEARANCE') {
@@ -98,7 +104,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
     }
 
     return combinedResults.slice(0, 8);
-  }, [searchQuery, scope]);
+  }, [searchQuery, scope, institutions]);
 
   // External Search Logic
   const [externalResults, setExternalResults] = useState<SearchResult[]>([]);
@@ -110,69 +116,93 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
       try {
           const proxyBase = '/api/proxy/billing-enquiry-search';
           
-          let requests = [];
+          let accountRequests = [];
 
           if (/^\d+$/.test(query)) {
               const p1 = new URLSearchParams();
               p1.append('accountId', query);
-              requests.push(fetch(`${proxyBase}?${p1.toString()}`));
+              accountRequests.push(fetch(`${proxyBase}?${p1.toString()}`));
 
               const p2 = new URLSearchParams();
               p2.append('oldAccount', query);
-              requests.push(fetch(`${proxyBase}?${p2.toString()}`));
+              accountRequests.push(fetch(`${proxyBase}?${p2.toString()}`));
 
               const p3 = new URLSearchParams();
               p3.append('physicalMeterNumber', query);
-              requests.push(fetch(`${proxyBase}?${p3.toString()}`));
+              accountRequests.push(fetch(`${proxyBase}?${p3.toString()}`));
           } else {
               const p = new URLSearchParams();
               p.append('companyName', query);
-              requests.push(fetch(`${proxyBase}?${p.toString()}`));
+              accountRequests.push(fetch(`${proxyBase}?${p.toString()}`));
 
               const p2 = new URLSearchParams();
               p2.append('deliveryAddress', query);
-              requests.push(fetch(`${proxyBase}?${p2.toString()}`));
+              accountRequests.push(fetch(`${proxyBase}?${p2.toString()}`));
           }
 
-          const responses = await Promise.all(requests);
-          let allData: any[] = [];
+          const [accountResponses, institutionResults] = await Promise.all([
+              Promise.all(accountRequests),
+              searchInstitutions(query),
+          ]);
 
-          for (const res of responses) {
+          let allAccountData: any[] = [];
+          for (const res of accountResponses) {
               if (res.ok) {
                   const data = await res.json();
                   if (Array.isArray(data)) {
-                      allData = [...allData, ...data];
+                      allAccountData = [...allAccountData, ...data];
                   } else if (data.value && Array.isArray(data.value)) {
-                      allData = [...allData, ...data.value];
+                      allAccountData = [...allAccountData, ...data.value];
                   }
               }
           }
 
-          const uniqueData = Array.from(new Map(allData.map(item => [item.accountID, item])).values());
+          const uniqueAccounts = Array.from(new Map(allAccountData.map(item => [item.accountID, item])).values());
 
-          const mapped = uniqueData.slice(0, 10).map((item: any) => {
-              return {
-                  type: 'ACCOUNT' as const,
-                  data: {
-                      accountNo: item.accountNumber || item.oldAccountCode || `${item.accountID}`,
-                      name: item.name || 'Unknown',
-                      idNo: '-',
-                      address: item.address || item.locationAddress || '',
-                      outstandingAmount: item.outStandingAmount || 0,
-                      status: item.accountStatus || 'Active',
-                      email: '',
-                      mobile: item.contactDetails || '',
-                      accountType: item.accountType || 'Consumer',
-                      sgNo: item.sgNumber || '',
-                      oldCode: item.oldAccountCode || '',
-                      prepaidMeterNo: '',
-                      unitId: item.unitID,
-                      apiId: item.accountID,
-                  } as Account,
-                  label: `${item.accountNumber || item.oldAccountCode || item.accountID} - ${item.name || 'Unknown'}`
-              };
-          });
-          setExternalResults(mapped);
+          const accountResults: SearchResult[] = uniqueAccounts.slice(0, 10).map((item: any) => ({
+              type: 'ACCOUNT' as const,
+              data: {
+                  accountNo: item.accountNumber || item.oldAccountCode || `${item.accountID}`,
+                  name: item.name || 'Unknown',
+                  idNo: '-',
+                  address: item.address || item.locationAddress || '',
+                  outstandingAmount: item.outStandingAmount || 0,
+                  status: item.accountStatus || 'Active',
+                  email: '',
+                  mobile: item.contactDetails || '',
+                  accountType: item.accountType || 'Consumer',
+                  sgNo: item.sgNumber || '',
+                  oldCode: item.oldAccountCode || '',
+                  prepaidMeterNo: '',
+                  unitId: item.unitID,
+                  apiId: item.accountID,
+              } as Account,
+              label: `${item.accountNumber || item.oldAccountCode || item.accountID} - ${item.name || 'Unknown'}`
+          }));
+
+          const groupedInstitutions = new Map<number, { desc: string; members: InstitutionSearchResult[] }>();
+          for (const inst of institutionResults) {
+              if (inst.institutionID != null) {
+                  if (!groupedInstitutions.has(inst.institutionID)) {
+                      groupedInstitutions.set(inst.institutionID, { desc: inst.institutionDesc || 'Unknown Group', members: [] });
+                  }
+                  groupedInstitutions.get(inst.institutionID)!.members.push(inst);
+              }
+          }
+
+          const groupResults: SearchResult[] = Array.from(groupedInstitutions.entries()).slice(0, 5).map(([instId, group]) => ({
+              type: 'GROUP' as const,
+              data: {
+                  institutionID: instId,
+                  institutionDesc: group.desc,
+                  members: group.members,
+                  totalOutstanding: group.members.reduce((sum, m) => sum + (m.outStandingAmt || 0), 0),
+                  memberCount: group.members.length,
+              },
+              label: `Group: ${group.desc} (${group.members.length} accounts)`
+          }));
+
+          setExternalResults([...groupResults, ...accountResults]);
       } catch (error) {
           console.error("Account search failed:", error);
           setExternalResults([]);
@@ -294,16 +324,19 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                   {result.type === 'ACCOUNT' && <Users className="w-6 h-6" />}
                   {result.type === 'PREPAID' && <Zap className="w-6 h-6" />}
                   {result.type === 'DIRECT' && <CreditCard className="w-6 h-6" />}
-                  {result.type === 'GROUP' && <Layers className="w-6 h-6" />}
+                  {result.type === 'GROUP' && <Building className="w-6 h-6" />}
                   {result.type === 'CLEARANCE' && <FileText className="w-6 h-6" />}
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <div className="font-semibold text-lg group-hover:text-primary transition-colors flex items-center gap-2">
                       {result.label}
                   </div>
                   <div className="text-sm text-muted-foreground">
                     {result.type === 'ACCOUNT' && (result.data as any).address}
                     {result.type === 'DIRECT' && (result.data as any).scoaItem}
+                    {result.type === 'GROUP' && (result.data as any).members && (
+                        <span>Total Outstanding: R {((result.data as any).totalOutstanding || 0).toFixed(2)} | {(result.data as any).memberCount} account(s)</span>
+                    )}
                   </div>
                 </div>
               </button>
