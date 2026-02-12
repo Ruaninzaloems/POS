@@ -110,17 +110,17 @@ export async function fetchBillingConfig(): Promise<BillingConfig | null> {
     return null;
 }
 
-export async function fetchBillingStageCashierReceiptDetails(reference: string): Promise<any[]> {
+export async function fetchBillingStageCashierReceiptDetails(referenceId: string): Promise<any[]> {
     try {
         const params = new URLSearchParams();
-        params.append('reference', reference);
+        params.append('referenceId', referenceId);
         const res = await fetch(`/api/proxy/billing-stage-cashier-receipt-details/reference?${params.toString()}`);
         if (res.ok) {
             const data = await res.json();
             return Array.isArray(data) ? data : (data.value || []);
         }
     } catch (e) {
-        console.warn(`Failed to fetch receipt details for reference ${reference}`, e);
+        console.warn(`Failed to fetch receipt details for referenceId ${referenceId}`, e);
     }
     return [];
 }

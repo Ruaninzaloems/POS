@@ -7,110 +7,143 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
-import { CalendarIcon, Search, Printer, FileDown, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Search, Printer, FileDown, RefreshCw, Loader2 } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
-import { MOCK_RECEIPTS, Receipt } from '@/lib/receipt-data';
-import { CASHIERS } from '@/lib/mock-data';
 import { ReceiptTemplate } from '@/components/pos/receipt-template';
 import { useReactToPrint } from 'react-to-print';
 import { BankTransaction, AllocationDraft } from '@/lib/direct-deposits-data';
 import { cn } from '@/lib/utils';
-import { fetchBillingStageCashierReceiptDetails } from '@/lib/external-api';
+import { listTransactionsApi, fetchBillingStageCashierReceiptDetails } from '@/lib/external-api';
 import { useToast } from '@/hooks/use-toast';
+import { usePos } from '@/lib/pos-state';
+
+interface ReceiptRow {
+    id: string;
+    receiptNo: string;
+    accountId: string;
+    paymentType: string;
+    paymentOption: string;
+    receiptDate: string;
+    staged: boolean;
+    amount: number;
+    tenderAmount: number;
+    changeAmount: number;
+    cashierName: string;
+    cashBook: string;
+    cashierOffice: string;
+    status: string;
+    cancellationReason?: string;
+    billingDetails?: any[];
+}
 
 export default function ViewReceipts() {
-    // Filters
+    const { referenceData } = usePos();
+    const cashiers = referenceData.cashiers || [];
+
     const [cashierFilter, setCashierFilter] = useState("ALL");
     const [fromDate, setFromDate] = useState<Date | undefined>(new Date(2023, 0, 1));
     const [toDate, setToDate] = useState<Date | undefined>(new Date());
     const [accountFilter, setAccountFilter] = useState("");
     const [receiptFilter, setReceiptFilter] = useState("");
-    
-    // Data
-    const [filteredReceipts, setFilteredReceipts] = useState<Receipt[]>(MOCK_RECEIPTS);
-    const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
+
+    const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
+    const [selectedReceipt, setSelectedReceipt] = useState<ReceiptRow | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const receiptRef = useRef<HTMLDivElement>(null);
     const { toast } = useToast();
 
-    // Filter Logic
     const handleSearch = async () => {
         setIsLoading(true);
-        let results = [];
-        
-        // If we have a receipt filter, try fetching from API first
-        if (receiptFilter) {
-            try {
-                // The API endpoint takes a reference ID, which seems to map to receipt number or similar
-                const apiReceipts = await fetchBillingStageCashierReceiptDetails(receiptFilter);
-                
-                if (apiReceipts && apiReceipts.length > 0) {
-                    // Map API receipts to local Receipt type
-                    const mappedReceipts: Receipt[] = apiReceipts.map((r: any) => ({
-                        id: r.id?.toString() || crypto.randomUUID(),
-                        receiptNo: r.receiptNumber || r.receiptNo || receiptFilter,
-                        receiptDate: r.transactionDate || new Date().toISOString(),
-                        amount: r.amount || 0,
-                        tenderAmount: r.tenderAmount || r.amount || 0,
-                        changeAmount: r.changeAmount || 0,
-                        paymentType: r.paymentType || 'Cash',
-                        paymentOption: 'Standard', // Default
-                        cashierName: r.cashierName || 'Unknown',
-                        cashierId: r.cashierId || 'Unknown',
-                        accountId: r.accountNumber || r.reference || 'Unknown',
-                        cashBook: r.cashBook || 'Main',
-                        cashierOffice: r.officeName || 'Main Office',
-                        status: r.status || 'COMPLETED',
-                        staged: true, // Assuming API returns staged receipts
-                        cancellationReason: r.cancellationReason
-                    }));
-                    
-                    results = mappedReceipts;
-                }
-            } catch (error) {
-                console.error("Failed to fetch receipts from API", error);
-                toast({
-                     title: "API Error",
-                     description: "Failed to fetch receipt details from server.",
-                     variant: "destructive"
-                });
-            }
-        }
-
-        // If no API results (or no search term), fall back to mock data filtering
-        if (results.length === 0) {
-             let mockResults = MOCK_RECEIPTS;
-
+        try {
+            const filters: any = {};
             if (cashierFilter && cashierFilter !== "ALL") {
-                mockResults = mockResults.filter(r => r.cashierName === cashierFilter);
+                const matchedCashier = cashiers.find(c => c.name === cashierFilter);
+                if (matchedCashier) filters.cashierId = matchedCashier.id;
             }
-
-            if (fromDate) {
-                mockResults = mockResults.filter(r => new Date(r.receiptDate) >= fromDate);
-            }
-
+            if (fromDate) filters.fromDate = fromDate.toISOString();
             if (toDate) {
-                // Set to end of day
                 const endOfDay = new Date(toDate);
                 endOfDay.setHours(23, 59, 59, 999);
-                mockResults = mockResults.filter(r => new Date(r.receiptDate) <= endOfDay);
+                filters.toDate = endOfDay.toISOString();
             }
+
+            const transactions = await listTransactionsApi(filters);
+
+            let rows: ReceiptRow[] = transactions.map((tx: any) => {
+                const items = tx.items || [];
+                const firstItem = items[0];
+                const accountRef = firstItem?.reference || firstItem?.accountNo || '';
+
+                return {
+                    id: tx.id?.toString() || crypto.randomUUID(),
+                    receiptNo: tx.receiptNumber || '',
+                    accountId: accountRef,
+                    paymentType: tx.paymentType || 'Cash',
+                    paymentOption: firstItem?.type === 'CONSUMER_SERVICES' ? 'Consumer Services'
+                        : firstItem?.type === 'PREPAID' ? 'Prepaid Recharge'
+                        : firstItem?.type === 'DIRECT_INCOME' ? 'Direct Income'
+                        : firstItem?.type === 'CLEARANCE' ? 'Clearance'
+                        : firstItem?.description || 'Payment',
+                    receiptDate: tx.createdAt || new Date().toISOString(),
+                    staged: false,
+                    amount: parseFloat(tx.totalAmount) || 0,
+                    tenderAmount: parseFloat(tx.tenderAmount) || 0,
+                    changeAmount: parseFloat(tx.changeAmount) || 0,
+                    cashierName: tx.cashierName || 'Unknown',
+                    cashBook: '',
+                    cashierOffice: tx.cashOfficeId || '',
+                    status: tx.status || 'COMPLETED',
+                    cancellationReason: tx.cancellationReason || undefined,
+                };
+            });
 
             if (accountFilter) {
-                mockResults = mockResults.filter(r => r.accountId.toLowerCase().includes(accountFilter.toLowerCase()));
+                rows = rows.filter(r => r.accountId.toLowerCase().includes(accountFilter.toLowerCase()));
             }
-
             if (receiptFilter) {
-                mockResults = mockResults.filter(r => r.receiptNo.toLowerCase().includes(receiptFilter.toLowerCase()));
+                rows = rows.filter(r => r.receiptNo.toLowerCase().includes(receiptFilter.toLowerCase()));
             }
-            results = mockResults;
-        }
 
-        setFilteredReceipts(results);
-        setIsLoading(false);
+            rows.sort((a, b) => new Date(b.receiptDate).getTime() - new Date(a.receiptDate).getTime());
+
+            for (const row of rows) {
+                if (row.receiptNo) {
+                    try {
+                        const details = await fetchBillingStageCashierReceiptDetails(row.receiptNo);
+                        if (details && details.length > 0) {
+                            row.billingDetails = details;
+                            row.staged = true;
+                            const totalBillingAmount = details.reduce((sum: number, d: any) => sum + (d.amount || 0), 0);
+                            if (totalBillingAmount > 0) {
+                                row.amount = totalBillingAmount;
+                            }
+                        }
+                    } catch (e) {
+                        // API detail fetch failed silently, continue with DB data
+                    }
+                }
+            }
+
+            setReceipts(rows);
+
+            if (rows.length === 0) {
+                toast({
+                    title: "No Results",
+                    description: "No receipts found matching your criteria.",
+                });
+            }
+        } catch (error) {
+            console.error("Failed to load receipts", error);
+            toast({
+                title: "Error",
+                description: "Failed to load receipt data. Please try again.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleClear = () => {
@@ -119,31 +152,26 @@ export default function ViewReceipts() {
         setToDate(new Date());
         setAccountFilter("");
         setReceiptFilter("");
-        setFilteredReceipts(MOCK_RECEIPTS);
+        setReceipts([]);
     };
 
-    // Print Logic
     const handlePrint = useReactToPrint({
         contentRef: receiptRef,
         documentTitle: `Receipt-${selectedReceipt?.receiptNo || 'Copy'}`,
     });
 
-    const triggerPrint = (receipt: Receipt) => {
+    const triggerPrint = (receipt: ReceiptRow) => {
         setSelectedReceipt(receipt);
-        // Small timeout to allow state update and render before printing
         setTimeout(() => {
             handlePrint();
         }, 100);
     };
 
-    // Mock PDF/Excel Export
     const handleExport = (type: 'PDF' | 'EXCEL') => {
-        alert(`Exporting to ${type} is not implemented in mock mode, but would generate a file for ${filteredReceipts.length} receipts.`);
+        alert(`Exporting to ${type} is not implemented yet, but would generate a file for ${receipts.length} receipts.`);
     };
 
-    // Helper to map Receipt to the ReceiptTemplate props (since template uses BankTransaction type)
-    // In a real app these types would likely be shared or properly mapped
-    const mapReceiptToTemplateData = (receipt: Receipt) => {
+    const mapReceiptToTemplateData = (receipt: ReceiptRow) => {
         if (!receipt) return { transaction: {} as any, allocation: {} as any };
 
         const mockTx: BankTransaction = {
@@ -177,30 +205,28 @@ export default function ViewReceipts() {
     return (
         <PosLayout>
             <div className="flex-1 flex flex-col h-full bg-slate-100 overflow-hidden">
-                {/* Header / Filter Section */}
                 <div className="bg-white border-b shadow-sm">
                     <div className="px-6 py-4 border-b">
-                        <h1 className="text-xl font-bold text-slate-800">View Receipts</h1>
+                        <h1 className="text-xl font-bold text-slate-800" data-testid="text-page-title">View Receipts</h1>
                     </div>
-                    
+
                     <div className="p-6 bg-slate-50/50">
                         <div className="bg-white p-4 rounded-lg border shadow-sm">
                             <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 border-l-2 border-blue-500 pl-2">
                                 View Receipt Information
                             </div>
-                            
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-                                {/* Left Column */}
                                 <div className="space-y-4">
                                     <div className="grid grid-cols-[120px_1fr] items-center gap-4">
                                         <label className="text-sm font-medium text-right text-slate-600">Cashier Name <span className="text-red-500">*</span></label>
                                         <Select value={cashierFilter} onValueChange={setCashierFilter}>
-                                            <SelectTrigger className="h-9">
+                                            <SelectTrigger className="h-9" data-testid="select-cashier-filter">
                                                 <SelectValue placeholder="-- All --" />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="ALL">-- All --</SelectItem>
-                                                {CASHIERS.map(c => (
+                                                {cashiers.map(c => (
                                                     <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -209,54 +235,55 @@ export default function ViewReceipts() {
 
                                     <div className="grid grid-cols-[120px_1fr] items-center gap-4">
                                         <label className="text-sm font-medium text-right text-slate-600">From Date <span className="text-red-500">*</span></label>
-                                        <DatePicker 
-                                            date={fromDate} 
-                                            setDate={setFromDate} 
-                                            className="h-9" 
+                                        <DatePicker
+                                            date={fromDate}
+                                            setDate={setFromDate}
+                                            className="h-9"
                                         />
                                     </div>
 
                                     <div className="grid grid-cols-[120px_1fr] items-center gap-4">
                                         <label className="text-sm font-medium text-right text-slate-600">Account Number</label>
-                                        <Input 
-                                            className="h-9" 
+                                        <Input
+                                            className="h-9"
                                             value={accountFilter}
                                             onChange={e => setAccountFilter(e.target.value)}
                                             placeholder="e.g. 000000059905"
+                                            data-testid="input-account-filter"
                                         />
                                     </div>
                                 </div>
 
-                                {/* Right Column */}
                                 <div className="space-y-4">
-                                    <div className="hidden md:block h-9"></div> {/* Spacer for Cashier Name */}
+                                    <div className="hidden md:block h-9"></div>
 
                                     <div className="grid grid-cols-[120px_1fr] items-center gap-4">
                                         <label className="text-sm font-medium text-right text-slate-600">To Date <span className="text-red-500">*</span></label>
-                                        <DatePicker 
-                                            date={toDate} 
-                                            setDate={setToDate} 
-                                            className="h-9" 
+                                        <DatePicker
+                                            date={toDate}
+                                            setDate={setToDate}
+                                            className="h-9"
                                         />
                                     </div>
 
                                     <div className="grid grid-cols-[120px_1fr] items-center gap-4">
                                         <label className="text-sm font-medium text-right text-slate-600">Receipt Number</label>
-                                        <Input 
-                                            className="h-9" 
+                                        <Input
+                                            className="h-9"
                                             value={receiptFilter}
                                             onChange={e => setReceiptFilter(e.target.value)}
                                             placeholder="Enter Receipt Number"
+                                            data-testid="input-receipt-filter"
                                         />
                                     </div>
                                 </div>
                             </div>
 
                             <div className="flex justify-center gap-3 mt-8">
-                                <Button className="bg-slate-800 hover:bg-slate-900 w-32" onClick={handleSearch}>
-                                    <Search className="w-4 h-4 mr-2" /> Load
+                                <Button className="bg-slate-800 hover:bg-slate-900 w-32" onClick={handleSearch} disabled={isLoading} data-testid="button-load">
+                                    {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />} Load
                                 </Button>
-                                <Button variant="outline" className="w-32 bg-slate-100 hover:bg-slate-200 border-slate-300" onClick={handleClear}>
+                                <Button variant="outline" className="w-32 bg-slate-100 hover:bg-slate-200 border-slate-300" onClick={handleClear} data-testid="button-cancel">
                                     <RefreshCw className="w-4 h-4 mr-2" /> Cancel
                                 </Button>
                             </div>
@@ -264,17 +291,16 @@ export default function ViewReceipts() {
                     </div>
                 </div>
 
-                {/* Results Section */}
                 <div className="flex-1 p-6 overflow-hidden flex flex-col">
                     <div className="flex justify-between items-center mb-4">
                         <div className="text-xs font-bold text-slate-500 uppercase tracking-wider border-l-2 border-slate-500 pl-2">
                             Receipt Information
                         </div>
                         <div className="flex gap-2">
-                             <Button variant="outline" size="sm" className="h-8 gap-2 text-green-700 bg-green-50 border-green-200 hover:bg-green-100" onClick={() => handleExport('EXCEL')}>
+                             <Button variant="outline" size="sm" className="h-8 gap-2 text-green-700 bg-green-50 border-green-200 hover:bg-green-100" onClick={() => handleExport('EXCEL')} data-testid="button-export-excel">
                                 <FileDown className="w-4 h-4" /> Excel
                              </Button>
-                             <Button variant="outline" size="sm" className="h-8 gap-2 text-red-700 bg-red-50 border-red-200 hover:bg-red-100" onClick={() => handleExport('PDF')}>
+                             <Button variant="outline" size="sm" className="h-8 gap-2 text-red-700 bg-red-50 border-red-200 hover:bg-red-100" onClick={() => handleExport('PDF')} data-testid="button-export-pdf">
                                 <FileDown className="w-4 h-4" /> PDF
                              </Button>
                         </div>
@@ -303,22 +329,31 @@ export default function ViewReceipts() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {filteredReceipts.length === 0 ? (
+                                {isLoading ? (
                                     <TableRow>
                                         <TableCell colSpan={16} className="h-24 text-center text-muted-foreground">
-                                            No receipts found matching criteria.
+                                            <div className="flex items-center justify-center gap-2">
+                                                <Loader2 className="w-5 h-5 animate-spin" />
+                                                Loading receipts...
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : receipts.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={16} className="h-24 text-center text-muted-foreground">
+                                            No receipts found. Use the filters above and click Load.
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    filteredReceipts.map((receipt, idx) => (
-                                        <TableRow key={receipt.id} className={receipt.status === 'CANCELLED' ? 'bg-red-50/50' : ''}>
+                                    receipts.map((receipt, idx) => (
+                                        <TableRow key={receipt.id} className={receipt.status === 'CANCELLED' ? 'bg-red-50/50' : ''} data-testid={`row-receipt-${idx}`}>
                                             <TableCell>{idx + 1}</TableCell>
                                             <TableCell className="font-mono text-xs">{receipt.accountId}</TableCell>
                                             <TableCell className="font-mono text-xs font-medium text-blue-700">{receipt.receiptNo}</TableCell>
                                             <TableCell>{receipt.paymentType}</TableCell>
                                             <TableCell className="text-xs">{receipt.paymentOption}</TableCell>
                                             <TableCell className="text-xs whitespace-nowrap">
-                                                {format(new Date(receipt.receiptDate), 'dd/MM/yyyy HH:mm')}
+                                                {receipt.receiptDate ? format(new Date(receipt.receiptDate), 'dd/MM/yyyy HH:mm') : '-'}
                                             </TableCell>
                                             <TableCell>{receipt.staged ? 'Yes' : 'No'}</TableCell>
                                             <TableCell className="text-right font-mono font-medium">
@@ -332,13 +367,13 @@ export default function ViewReceipts() {
                                             </TableCell>
                                             <TableCell className="text-xs">{receipt.cashierName}</TableCell>
                                             <TableCell className="text-xs text-muted-foreground truncate max-w-[200px]" title={receipt.cashBook}>
-                                                {receipt.cashBook}
+                                                {receipt.cashBook || '-'}
                                             </TableCell>
                                             <TableCell className="text-xs text-muted-foreground">
-                                                {receipt.cashierOffice}
+                                                {receipt.cashierOffice || '-'}
                                             </TableCell>
                                             <TableCell className="sticky right-0 bg-white shadow-[-5px_0_5px_-5px_rgba(0,0,0,0.1)]">
-                                                <Button variant="outline" size="sm" className="h-7 text-xs bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700 font-medium px-3 shadow-sm" onClick={() => triggerPrint(receipt)}>
+                                                <Button variant="outline" size="sm" className="h-7 text-xs bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700 font-medium px-3 shadow-sm" onClick={() => triggerPrint(receipt)} data-testid={`button-print-${idx}`}>
                                                     <Printer className="w-3.5 h-3.5 mr-2" /> Print
                                                 </Button>
                                             </TableCell>
@@ -346,7 +381,7 @@ export default function ViewReceipts() {
                                                 {receipt.status === 'CANCELLED' ? (
                                                     <Badge variant="destructive" className="rounded-sm px-1 py-0 text-[10px]">Cancelled</Badge>
                                                 ) : (
-                                                    <span className="text-slate-400 text-xs">-</span>
+                                                    <Badge variant="outline" className="rounded-sm px-1 py-0 text-[10px] text-green-700 border-green-300 bg-green-50">Completed</Badge>
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-xs italic text-red-600">
@@ -360,13 +395,12 @@ export default function ViewReceipts() {
                     </div>
                 </div>
 
-                {/* Hidden Receipt for Printing */}
                 <div style={{ display: 'none' }}>
                     {selectedReceipt && templateData && (
-                        <ReceiptTemplate 
-                            ref={receiptRef} 
-                            transaction={templateData.transaction} 
-                            allocation={templateData.allocation} 
+                        <ReceiptTemplate
+                            ref={receiptRef}
+                            transaction={templateData.transaction}
+                            allocation={templateData.allocation}
                             isReprint={true}
                             isCancelled={selectedReceipt.status === 'CANCELLED'}
                         />
