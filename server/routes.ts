@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { platinumGet, platinumPost } from "./platinum-auth";
 
 const EXTERNAL_API_BASE = "https://george-uat-ems-billing-api.azurewebsites.net";
 
@@ -14,13 +15,1051 @@ async function proxyGet(url: string): Promise<any> {
   return res.json();
 }
 
+function handlePlatinumResult(res: any, data: any) {
+  if (data && data._error) {
+    return res.status(data.status || 502).json({ message: data.statusText || "Platinum API error" });
+  }
+  res.json(data);
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
 
   // =====================================================
-  // EXTERNAL API PROXY ROUTES (solves CORS)
+  // PLATINUM API PROXY ROUTES (authenticated)
+  // =====================================================
+
+  // --- ReceiptPrepaid endpoints ---
+
+  app.get("/api/platinum/receipt-prepaid/validate-cashier", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/ReceiptPrepaid/validate-cashier", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/receipt-prepaid/cons-accounts", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/ReceiptPrepaid/cons-accounts", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/receipt-prepaid/cons-account-details", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/ReceiptPrepaid/cons-account-details", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/receipt-prepaid/prepaid-account-details", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/ReceiptPrepaid/prepaid-account-details", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/receipt-prepaid/cashier-details-by-id", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/ReceiptPrepaid/cashier-detailsById", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/receipt-prepaid/active-cashier-details", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/ReceiptPrepaid/active-cashier-details", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/receipt-prepaid/active-cash-office-details", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/ReceiptPrepaid/active-cashOffice-details", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/receipt-prepaid/pos-payment-type", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/ReceiptPrepaid/pos-payment-type");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/receipt-prepaid/is-billing", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/ReceiptPrepaid/is-billing");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/receipt-prepaid/search-property-rates-payment", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/ReceiptPrepaid/search-property-rates-payment", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/receipt-prepaid/validate-cashier-day-end-recon", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/ReceiptPrepaid/ValidateCashierDayEndRecon", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/receipt-prepaid/get-billing-runs", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/ReceiptPrepaid/GetBillingRuns");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/receipt-prepaid/service-type-wise-prepaid-list", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/ReceiptPrepaid/ServiceTypeWisePrepaidList", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/receipt-prepaid/cash-offices", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/ReceiptPrepaid/cash-offices", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/receipt-prepaid/cheque-amend-list", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/ReceiptPrepaid/cheque-amendList", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/receipt-prepaid/utilipay-breakdown-request", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/ReceiptPrepaid/UtiliPayBreakdownRequest", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/receipt-prepaid/utilipay-token-request", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/ReceiptPrepaid/UtiliPayTokenRequest", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/receipt-prepaid/submit-prepaid-payment", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/ReceiptPrepaid/SubmitPrepaidPayment", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/receipt-prepaid/submit-cashier-setup", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/ReceiptPrepaid/submit-cashier-setup", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  // --- Billing Payment endpoints ---
+
+  app.post("/api/platinum/billing-payment/submit-consumer-payment/:userId", async (req, res) => {
+    try {
+      const data = await platinumPost(`/api/billing-payment/submit-consumer-payment/${req.params.userId}`, req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/billing-payment/save-multiple-account-payment", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing-payment/save-multiple-account-payment", req.body, req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-payment/get-multiple-account-payment", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing-payment/get-multiple-account-payment", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/billing-payment/submit-multiple-payment/:userId", async (req, res) => {
+    try {
+      const data = await platinumPost(`/api/billing-payment/submit-multiple-payment/${req.params.userId}`, req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/billing-payment/search-accounts", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing-payment/search-accounts", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/billing-payment/print-receipt", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing-payment/print-receipt", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/billing-payment/print-miscellaneous-receipt", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing-payment/print-miscellaneous-receipt", req.body, req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  // --- Billing Payment Clearance endpoints ---
+
+  app.get("/api/platinum/billing-payment-clearance/get-clearanceids", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing-payment-clearance/get-clearanceids", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-payment-clearance/pos-payment-type", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing-payment-clearance/pos-payment-type");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-payment-clearance/get-banks", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing-payment-clearance/get-banks");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-payment-clearance/get-branches-by-bank", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing-payment-clearance/get-brances-by-bank", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/billing-payment-clearance/get-clearance-data", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing-payment-clearance/get-clearance-data", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/billing-payment-clearance/get-accounts-for-clearance", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing-payment-clearance/get-accounts-for-clearance", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/billing-payment-clearance/submit-payment", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing-payment-clearance/submit-payment", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  // --- Billing Payment Miscellaneous endpoints ---
+
+  app.get("/api/platinum/billing-payment-miscellaneous/get-groups", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing-payment-miscellaneous/get-groups");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-payment-miscellaneous/get-scoa-items", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing-payment-miscellaneous/get-scoa-items", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-payment-miscellaneous/get-vat-rate", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing-payment-miscellaneous/get-vat-rate");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/billing-payment-miscellaneous/submit", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing-payment-miscellaneous/submit", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  // --- Day-End Reconciliation (Cashier) ---
+
+  app.get("/api/platinum/billing-payment-day-end/get-cashier-list", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing-payment-day-end-reconcile/get-cashier-list");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-payment-day-end/get-cashier-details", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing-payment-day-end-reconcile/get-cashier-details", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/billing-payment-day-end/get-cashier-receipt-cheque-list", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing-payment-day-end-reconcile/get-cashier-receipt-cheque-list", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/billing-payment-day-end/get-cashier-receipt-card-list", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing-payment-day-end-reconcile/get-cashier-receipt-card-list", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/billing-payment-day-end/get-cashier-receipt-drop-box-list", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing-payment-day-end-reconcile/get-cashier-receipt-drop-box-list", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-payment-day-end/get-cashier-receipt-reconcile-list", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing-payment-day-end-reconcile/get-cashier-receipt-reconcile-list", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/billing-payment-day-end/save-reconcile-data", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing-payment-day-end-reconcile/save-Reconcile-data", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  // --- Auth Day-End Reconciliation (Supervisor) ---
+
+  app.get("/api/platinum/auth-day-end/cashier-list", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing/auth-day-end-reconcile/cashier-list");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/auth-day-end/cashier-reconcile-by-cashierid", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing/auth-day-end-reconcile/cashier-reconcile-by-cashierid", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/auth-day-end/pos-cashier", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing/auth-day-end-reconcile/pos-cashier");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/auth-day-end/active-cashierid-by-userid", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing/auth-day-end-reconcile/active-cashierid-by-userid", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/auth-day-end/cashier-details", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing/auth-day-end-reconcile/cashier-details", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end/cashier-receipt-cash-list", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cashier-receipt-cash-list", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end/cashier-receipt-cheque-list", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cashier-receipt-cheque-list", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end/cashier-receipt-card-list", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cashier-receipt-card-list", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end/cashier-receipt-postal-order-list", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cashier-receipt-postal-order-list", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end/cashier-receipt-offline-data-list", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cashier-receipt-offline-data-list", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end/cashier-receipt-drop-box-list", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cashier-receipt-drop-box-list", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end/system-vs-cashier-data-list", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/system-vs-cashier-data-list", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end/finish-day-end-reconcile", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/finish-day-end-reconcile", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end/return-day-end-reconcile", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/return-day-end-reconcile", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end/validate-cashbook", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/validate-cashbook", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end/submit-day-auth-reconcile", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/submit-day-auth-reconcile", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end/cancel-receipt", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cancel-day-auth-reconcile-receipt", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end/print-receipt", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/print-receipt", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end/print-cash-report", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/print-cash-report", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end/print-deposit-slip", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/print-deposit-slip", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  // --- Direct Deposit Allocation endpoints ---
+
+  app.post("/api/platinum/direct-deposit-allocation/get-bank-recon-positem-list", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing-direct-deposit-allocation/get-bank-recon-positem-list", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/direct-deposit-allocation/check-selected-item-processed", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing-direct-deposit-allocation/check-selected-item-processed", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/direct-deposit-allocation/get-misc-payment-group", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing-direct-deposit-allocation/get-misc-payment-group");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/direct-deposit-allocation/get-misc-vote-id-by-group", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing-direct-deposit-allocation/get-misc-vote-id-by-group", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/direct-deposit-allocation/get-group-payment-details", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing-direct-deposit-allocation/get-group-payment-details", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/direct-deposit-allocation/get-vat-rate", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing-direct-deposit-allocation/get-vat-rate");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/direct-deposit-allocation/get-pos-item-details", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing-direct-deposit-allocation/get-pos-item-details", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/direct-deposit-allocation/get-account-autocomplete", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing-direct-deposit-allocation/get-account-autocomplete", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/direct-deposit-allocation/get-clearance-autocomplete", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing-direct-deposit-allocation/get-clearence-autocomplete", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/direct-deposit-allocation/get-old-account-autocomplete", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing-direct-deposit-allocation/get-old-account-autocomplete", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/direct-deposit-allocation/load-details-payment-grouping", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-details-payment-grouping", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/direct-deposit-allocation/load-details-consumer-services", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-details-consumer-services", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/direct-deposit-allocation/load-details-clearance", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-details-clearance", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/direct-deposit-allocation/get-consumer-details-data", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing-direct-deposit-allocation/get-consumer-details-data", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/direct-deposit-allocation/load-confirm-payment-details", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-confirm-payment-details", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/direct-deposit-allocation/submit-details-data", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing-direct-deposit-allocation/submit-details-data", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/direct-deposit-allocation/get-misc-receipt-data", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing-direct-deposit-allocation/get-misc-receipt-data", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/direct-deposit-allocation/vote-details", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing-direct-deposit-allocation/vote-details", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  // --- Direct Deposit Bulk Allocation ---
+
+  app.post("/api/platinum/direct-deposit-bulk/get-unprocessed", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing/direct-deposit-bulk-allocation/get-unprocessed-direct-deposits", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/direct-deposit-bulk/get-processed", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing/direct-deposit-bulk-allocation/get-processed-deposits", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/direct-deposit-bulk/reconcile", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing/direct-deposit-bulk-allocation/reconcile-processed-data", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/direct-deposit-bulk/print-processed", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing/direct-deposit-bulk-allocation/print-processed-deposits", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  // --- Bulk Progress ---
+
+  app.post("/api/platinum/bulk-progress/get-bulk-allocation-list", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/BulkProgress/get-bulk-allocation-list", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/bulk-progress/direct-deposit/:jobId", async (req, res) => {
+    try {
+      const data = await platinumGet(`/api/BulkProgress/direct-deposit/${req.params.jobId}`);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  // --- Direct Deposit Errors ---
+
+  app.get("/api/platinum/direct-deposit-errors/failed-jobs", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/DirectDepositErrors/failed-jobs");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/direct-deposit-errors/job-details/:jobId", async (req, res) => {
+    try {
+      const data = await platinumGet(`/api/DirectDepositErrors/job-details/${req.params.jobId}`);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/direct-deposit-errors/account-details/:jobId", async (req, res) => {
+    try {
+      const data = await platinumGet(`/api/DirectDepositErrors/account-details/${req.params.jobId}`);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/direct-deposit-errors/retry/:jobId/:userId", async (req, res) => {
+    try {
+      const data = await platinumPost(`/api/DirectDepositErrors/retry/${req.params.jobId}/${req.params.userId}`, req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  // --- Third Party Payments V2 ---
+
+  app.post("/api/platinum/third-party-payments/import", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/v2/pos/third-party-payments/import", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/third-party-payments/:importId/transactions", async (req, res) => {
+    try {
+      const data = await platinumGet(`/api/v2/pos/third-party-payments/${req.params.importId}/transactions`);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/third-party-payments/validate-account", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/v2/pos/third-party-payments/validate-account", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/third-party-payments/:importId/reconcile", async (req, res) => {
+    try {
+      const data = await platinumPost(`/api/v2/pos/third-party-payments/${req.params.importId}/reconcile`, req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/third-party-payments/:importId/commit", async (req, res) => {
+    try {
+      const data = await platinumPost(`/api/v2/pos/third-party-payments/${req.params.importId}/commit`, req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  // --- Billing Enquiry endpoints ---
+
+  app.get("/api/platinum/billing-enquiry/deposit-amount", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/BillingEnquiry/DepositAmount", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-enquiry/deposits-by-account-id", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/BillingEnquiry/DepositsByAccountId", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-enquiry/receipt-transaction-detail", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/BillingEnquiry/getReceiptTransactionDetail", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/billing-enquiry/reconcile/:receiptId", async (req, res) => {
+    try {
+      const data = await platinumPost(`/api/BillingEnquiry/reconcile/${req.params.receiptId}`, req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  // --- Billing Dashboard POS counts ---
+
+  app.get("/api/platinum/billing-dashboard/pos-count", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/BillingDashboard/pos-count");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-dashboard/pos-tab-item-details-count", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/BillingDashboard/get-pos-tab-item-details-count");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/billing-dashboard/get-deposit-table-data", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/BillingDashboard/get-deposit-table-data", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/billing-dashboard/get-direct-deposits-allocation-table-data", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/BillingDashboard/get-direct-deposits-allocation-table-data", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/billing-dashboard/get-third-party-payment-pending-table-data", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/BillingDashboard/get-third-party-payment-pending-table-data", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  // --- Billing Account Management (selected endpoints) ---
+
+  app.post("/api/platinum/billing-account-management/search-accounts", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing/account-management/search-accounts", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-account-management/account-details", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing/account-management/account-details", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-account-management/account-information", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing/account-management/account-information", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-account-management/get-contact-details", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing/account-management/get-contact-details", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-account-management/get-property-details", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing/account-management/get-property-details", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  // =====================================================
+  // LEGACY EXTERNAL API PROXY ROUTES (old billing API, no auth needed)
   // =====================================================
 
   app.get("/api/proxy/odata/:entity", async (req, res) => {
