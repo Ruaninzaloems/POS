@@ -118,7 +118,7 @@ export default function CashierSetup() {
     const selectedCashierName = cashiers.find(c => c.id.toString() === selectedCashierId)?.name || '';
     const cashOffice = cashierDetail?.const_CashOffice;
     const matchedOfficeView = cashOffice ? cashOfficeViews.find(o => o.cashOffice_ID === cashOffice.cashOffice_ID) : null;
-    const ledgerVoteDisplay = matchedOfficeView?.voteDesc || matchedOfficeView?.vote || matchedOfficeView?.vote1 || (cashOffice?.scoaConfigurationID ? `SCOA ${cashOffice.scoaConfigurationID}` : '');
+    const ledgerVoteDisplay = matchedOfficeView?.voteDesc || matchedOfficeView?.vote || matchedOfficeView?.vote1 || (cashOffice?.scoaConfigurationID != null ? String(cashOffice.scoaConfigurationID) : '');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
