@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from '
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, ACCOUNTS, DIRECT_INCOME_ITEMS, ACCOUNT_GROUPS, CLEARANCES, AccountGroup, CASHIERS, MOCK_TRANSACTIONS, CASH_OFFICES, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings } from './external-api';
 
 export type TransactionType = 
   | 'CONSUMER_SERVICES' 
@@ -89,6 +90,12 @@ interface PosState {
   systemSettings: {
       enableDenominationCounting: boolean;
   };
+  referenceData: {
+      banks: any[];
+      groups: any[];
+      institutions: any[];
+      settings: any[];
+  };
 }
 
 interface PosActions {
@@ -149,6 +156,47 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [systemSettings, setSystemSettings] = useState({
       enableDenominationCounting: false
   });
+
+  const [referenceData, setReferenceData] = useState<{
+      banks: any[];
+      groups: any[];
+      institutions: any[];
+      settings: any[];
+  }>({
+      banks: [],
+      groups: [],
+      institutions: [],
+      settings: []
+  });
+
+  // Fetch reference data on mount
+  useEffect(() => {
+      const loadData = async () => {
+          try {
+              console.log("Fetching reference data...");
+              const [banks, groups, institutions, settings] = await Promise.all([
+                  fetchBanks(),
+                  fetchGroups(),
+                  fetchInstitutions(),
+                  fetchConfigSettings()
+              ]);
+              
+              setReferenceData({
+                  banks: banks || [],
+                  groups: groups || [],
+                  institutions: institutions || [],
+                  settings: settings || []
+              });
+              
+              console.log("Reference Data Loaded:", { banks, groups, institutions, settings });
+          } catch (error) {
+              console.error("Failed to load reference data", error);
+              // Don't show toast on mount to avoid annoyance, just log
+          }
+      };
+      
+      loadData();
+  }, []);
 
   const currentTransactionLimit = useMemo(() => {
       if (!sessionDetails?.officeId) return 5000; // Default fallback
@@ -365,7 +413,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       viewMode,
       toggleViewMode,
       systemSettings,
-      updateSystemSettings
+      updateSystemSettings,
+      referenceData
     }}>
       {children}
     </PosContext.Provider>
