@@ -122,28 +122,23 @@ export function UnifiedSearch() {
   const handleAdvancedSearch = async (criteria: any) => {
       setIsSearching(true);
       try {
-        console.log("Searching with criteria:", criteria);
-        
-        // Attempt to search via API first
         const apiResults = await fetchAccounts(criteria);
         
         if (apiResults && apiResults.length > 0) {
-            // Use the first result from API
             const acc = apiResults[0];
-            // Map API result to Account interface if needed
-            // The API returns fields like accountID, accountNumber, name, outStandingAmt
             const mappedAccount: Account = {
-                accountNo: acc.accountNumber || acc.accountNo,
-                name: acc.name,
-                idNo: acc.idNumber || '', // specific field might vary
-                outstandingAmount: acc.outStandingAmt || acc.outstandingAmount || 0,
-                address: acc.locationAddress || acc.address || '',
-                // Map other required fields with defaults
+                accountNo: acc.accountNumber || acc.oldAccountCode || `ID-${acc.id}`,
+                name: acc.name || 'Unknown',
+                idNo: acc.idNumber || '-',
+                outstandingAmount: acc.outStandingAmt || 0,
+                address: acc.deliveryAddress || [acc.streetName, acc.town].filter(Boolean).join(', ') || '',
                 sgNo: acc.sgNumber || '',
                 email: '',
                 mobile: '',
-                accountType: acc.accountType || 'Consumer',
-                status: acc.accountStatus || 'Active'
+                accountType: acc.accountDesc || 'Consumer',
+                status: acc.statusDesc || 'Active',
+                oldCode: acc.oldAccountCode || '',
+                prepaidMeterNo: acc.physicalMeterNumber || '',
             };
             
             handleSelect({ type: 'ACCOUNT', data: mappedAccount, label: `${mappedAccount.accountNo} - ${mappedAccount.name}` });
@@ -151,19 +146,7 @@ export function UnifiedSearch() {
             return;
         }
 
-        // Fallback to mock data if API yields no results
-        const found = ACCOUNTS.find(a => 
-            (criteria.accountNo && a.accountNo.includes(criteria.accountNo)) ||
-            (criteria.name && a.name.toLowerCase().includes(criteria.name.toLowerCase())) ||
-            (criteria.idNo && a.idNo.includes(criteria.idNo))
-        );
-
-        if (found) {
-            handleSelect({ type: 'ACCOUNT', data: found, label: `${found.accountNo} - ${found.name}` });
-            setShowAdvanced(false);
-        } else {
-            alert("No accounts found matching criteria");
-        }
+        alert("No accounts found matching your search criteria.");
       } catch (error) {
           console.error("Search failed", error);
           alert("Search failed. Please try again.");

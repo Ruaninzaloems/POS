@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, CreditCard, Users, Zap, FileText, Layers, Info, Filter, Cloud, Loader2 } from 'lucide-react';
+import { Search, CreditCard, Users, Zap, FileText, Layers, Info, Filter, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ACCOUNTS, DIRECT_INCOME_ITEMS, ACCOUNT_GROUPS, CLEARANCES, Account } from '@/lib/mock-data';
@@ -108,27 +108,30 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
       if (query.length < 3) return;
       setIsSearchingExternal(true);
       try {
-          // Construct query params
-          const baseUrl = 'https://george-uat-ems-billing-api.azurewebsites.net/api/cons-accounts/search';
+          const proxyBase = '/api/proxy/cons-accounts/search';
           
           let requests = [];
 
           if (/^\d+$/.test(query)) {
-              // Digits: Search by Account Number AND Physical Meter Number (Parallel)
-              
               const p1 = new URLSearchParams();
               p1.append('accountNumber', query);
-              requests.push(fetch(`${baseUrl}?${p1.toString()}`, { headers: { 'Accept': 'application/json' } }));
+              requests.push(fetch(`${proxyBase}?${p1.toString()}`));
 
               const p2 = new URLSearchParams();
               p2.append('physicalMeterNumber', query);
-              requests.push(fetch(`${baseUrl}?${p2.toString()}`, { headers: { 'Accept': 'application/json' } }));
+              requests.push(fetch(`${proxyBase}?${p2.toString()}`));
 
+              const p3 = new URLSearchParams();
+              p3.append('oldAccountCode', query);
+              requests.push(fetch(`${proxyBase}?${p3.toString()}`));
           } else {
-              // Text: Search by Name
               const p = new URLSearchParams();
               p.append('name', query);
-              requests.push(fetch(`${baseUrl}?${p.toString()}`, { headers: { 'Accept': 'application/json' } }));
+              requests.push(fetch(`${proxyBase}?${p.toString()}`));
+
+              const p2 = new URLSearchParams();
+              p2.append('streetName', query);
+              requests.push(fetch(`${proxyBase}?${p2.toString()}`));
           }
 
           const responses = await Promise.all(requests);
@@ -139,109 +142,43 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                   const data = await res.json();
                   if (Array.isArray(data)) {
                       allData = [...allData, ...data];
+                  } else if (data.value && Array.isArray(data.value)) {
+                      allData = [...allData, ...data.value];
                   }
               }
           }
 
-          // Deduplicate by accountID
-          const uniqueData = Array.from(new Map(allData.map(item => [item.accountID, item])).values());
+          const uniqueData = Array.from(new Map(allData.map(item => [item.id || item.accountID, item])).values());
 
-          if (uniqueData.length > 0) {
-              const mapped = uniqueData.map((item: any) => {
-                  const addressDisplay = item.deliveryAddress || [item.streetName, item.town].filter(Boolean).join(', ') || 'Unknown Address';
+          const mapped = uniqueData.slice(0, 10).map((item: any) => {
+              const addressDisplay = item.deliveryAddress || [item.streetName, item.town].filter(Boolean).join(', ') || '';
 
-                  return {
-                      type: 'ACCOUNT' as const,
-                      data: {
-                          // Map ConsAccount API fields to our internal Account interface
-                          accountNo: item.accountNumber || `ID-${item.accountID}`,
-                          name: item.name || 'Unknown Name',
-                          idNo: '-', // Not in search view
-                          address: addressDisplay,
-                          outstandingAmount: item.outStandingAmt || 0,
-                          status: item.statusDesc || 'Active',
-                          email: '', // Not in search view
-                          mobile: '', // Not in search view
-                          accountType: item.accountDesc || 'External Consumer',
-                          // Helper for display
-                          valuationCategory: item.typeOfUseDesc
-                      } as Account,
-                      label: `${item.accountNumber} - ${item.name} (${item.statusDesc || 'Active'})`
-                  };
-              });
-              setExternalResults(mapped);
-          } else {
-             // If no results found, maybe throw to trigger fallback if strictly needed, 
-             // but usually empty list is valid. 
-             // HOWEVER, for prototype we WANT fallback to show if live fails.
-             // But if live succeeds and returns empty, we shouldn't show mock.
-             // Let's only throw if ALL requests failed or network error.
-             if (uniqueData.length === 0 && responses.every(r => !r.ok)) {
-                 throw new Error("All API calls failed");
-             }
-             setExternalResults([]);
-          }
+              return {
+                  type: 'ACCOUNT' as const,
+                  data: {
+                      accountNo: item.accountNumber || item.oldAccountCode || `ID-${item.id}`,
+                      name: item.name || 'Unknown',
+                      idNo: item.idNumber || '-',
+                      address: addressDisplay,
+                      outstandingAmount: item.outStandingAmt || 0,
+                      status: item.statusDesc || 'Active',
+                      email: '',
+                      mobile: '',
+                      accountType: item.accountDesc || 'Consumer',
+                      sgNo: item.sgNumber || '',
+                      oldCode: item.oldAccountCode || '',
+                      prepaidMeterNo: item.physicalMeterNumber || '',
+                      unitId: item.unitId,
+                      nameId: item.nameId,
+                      apiId: item.id,
+                  } as Account,
+                  label: `${item.accountNumber || item.oldAccountCode || item.id} - ${item.name || 'Unknown'}`
+              };
+          });
+          setExternalResults(mapped);
       } catch (error) {
-          console.error("External API Search Failed:", error);
-          
-          // FALLBACK SIMULATION FOR PROTOTYPE
-          
-          const simulatedResults = [
-              {
-                  accountID: 101,
-                  accountNumber: "01", 
-                  name: "Simulated User 01",
-                  statusDesc: "Active",
-                  outStandingAmt: 5432.10,
-                  deliveryAddress: "123 Live API Road, Cloud City",
-                  accountDesc: "Residential"
-              },
-              {
-                  accountID: 102,
-                  accountNumber: "999000123456",
-                  name: "External Live User 1",
-                  statusDesc: "Active",
-                  outStandingAmt: 1200.50,
-                  deliveryAddress: "77 Sunset Strip",
-                  accountDesc: "Business"
-              },
-              {
-                  accountID: 103,
-                  accountNumber: "ACC-METER-TEST",
-                  name: "Meter Test User",
-                  statusDesc: "Active",
-                  outStandingAmt: 0,
-                  deliveryAddress: "888 Terminator Blvd",
-                  accountDesc: "Indigent"
-              }
-          ].filter(item => 
-              item.accountNumber.includes(query) || 
-              (item.name && item.name.toLowerCase().includes(query.toLowerCase()))
-          );
-
-          if (simulatedResults.length > 0) {
-              const mapped = simulatedResults.map((item: any) => {
-                  return {
-                      type: 'ACCOUNT' as const,
-                      data: {
-                          accountNo: item.accountNumber,
-                          name: item.name,
-                          idNo: '-',
-                          address: item.deliveryAddress,
-                          outstandingAmount: item.outStandingAmt,
-                          status: item.statusDesc,
-                          email: '',
-                          mobile: '',
-                          accountType: item.accountDesc
-                      } as Account,
-                      label: `${item.accountNumber} - ${item.name} (External-Sim)`
-                  };
-              });
-              setExternalResults(mapped);
-          } else {
-              setExternalResults([]);
-          }
-
+          console.error("Account search failed:", error);
+          setExternalResults([]);
       } finally {
           setIsSearchingExternal(false);
       }
@@ -357,7 +294,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                   ${result.type === 'GROUP' ? 'bg-purple-100 text-purple-600' : ''}
                   ${result.type === 'CLEARANCE' ? 'bg-amber-100 text-amber-600' : ''}
                 `}>
-                  {result.type === 'ACCOUNT' && (result.label.includes('(External)') ? <Cloud className="w-6 h-6" /> : <Users className="w-6 h-6" />)}
+                  {result.type === 'ACCOUNT' && <Users className="w-6 h-6" />}
                   {result.type === 'PREPAID' && <Zap className="w-6 h-6" />}
                   {result.type === 'DIRECT' && <CreditCard className="w-6 h-6" />}
                   {result.type === 'GROUP' && <Layers className="w-6 h-6" />}
@@ -366,8 +303,6 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                 <div>
                   <div className="font-semibold text-lg group-hover:text-primary transition-colors flex items-center gap-2">
                       {result.label}
-                      {result.label.includes('(External)') && <span className="text-[10px] uppercase bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 font-bold">Live</span>}
-                      {result.label.includes('(External-Sim)') && <span className="text-[10px] uppercase bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200 font-bold" title="Connection Failed - Using Mock Data">Simulated</span>}
                   </div>
                   <div className="text-sm text-muted-foreground">
                     {result.type === 'ACCOUNT' && (result.data as any).address}

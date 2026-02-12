@@ -6,9 +6,10 @@ import { Search } from 'lucide-react';
 interface ConsumerSearchFormProps {
   onSearch: (criteria: any) => void;
   onCancel: () => void;
+  isLoading?: boolean;
 }
 
-export function ConsumerSearchForm({ onSearch, onCancel }: ConsumerSearchFormProps) {
+export function ConsumerSearchForm({ onSearch, onCancel, isLoading }: ConsumerSearchFormProps) {
   const [criteria, setCriteria] = useState({
     accountNo: '',
     name: '',
