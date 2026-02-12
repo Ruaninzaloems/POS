@@ -98,44 +98,56 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
           // Construct query params - try to match query against multiple fields since it's a unified search
           const baseUrl = 'https://george-uat-ems-billing-api.azurewebsites.net/api/billing-enquiry-search';
           
-          // We'll try to guess the type of input or just send it as multiple params?
-          // The API takes individual params. Let's try sending it as accountId if numeric, or companyName/other if string
           const params = new URLSearchParams();
           
+          // Heuristics for search type
           if (/^\d+$/.test(query)) {
+              // Digits only: Likely Account No or Meter No (numeric)
               params.append('accountId', query);
+              params.append('meterNumber', query); // Try meter number search
           } else {
-              params.append('companyName', query); // Fallback search field
-              // potentially add mobileNumber or emailAddress if query looks like them
+              // Text: Likely Name or Meter No (alphanumeric)
+              params.append('companyName', query); // Main name search
+              params.append('meterNumber', query); // Meter numbers can be alphanumeric
+              // params.append('consumerName', query); // Try explicit consumer name if supported
           }
 
           const response = await fetch(`${baseUrl}?${params.toString()}`, {
               method: 'GET',
               headers: {
                   'Accept': 'application/json',
-                  // 'Content-Type': 'application/json' 
               }
           });
 
           if (response.ok) {
               const data = await response.json();
               if (Array.isArray(data)) {
-                  const mapped = data.map((item: any) => ({
-                      type: 'ACCOUNT' as const,
-                      data: {
-                          // Map external API fields to our internal Account interface
-                          accountNo: item.accountNumber || item.accountId || 'Unknown',
-                          name: item.consumerName || item.companyName || 'Unknown',
-                          idNo: item.idNumber || item.registrationNumber || '-',
-                          address: item.physicalAddress || item.locationAddress || 'Unknown Address',
-                          outstandingAmount: item.balance || item.outstandingBalance || 0,
-                          status: item.status || 'Active',
-                          email: item.emailAddress,
-                          mobile: item.cellNumber || item.mobileNumber,
-                          accountType: 'External Consumer'
-                      } as Account,
-                      label: `${item.accountNumber || item.accountId} - ${item.consumerName || item.companyName} (External)`
-                  }));
+                  const mapped = data.map((item: any) => {
+                      // Determine best display label based on what matched or is available
+                      const nameDisplay = [item.consumerName, item.companyName, item.firstName, item.surname]
+                          .filter(Boolean).join(' ').trim() || 'Unknown Name';
+                          
+                      const meterInfo = item.meterNumber ? ` (Meter: ${item.meterNumber})` : '';
+
+                      return {
+                          type: 'ACCOUNT' as const,
+                          data: {
+                              // Map external API fields to our internal Account interface
+                              accountNo: item.accountNumber || item.accountId || 'Unknown',
+                              name: nameDisplay,
+                              idNo: item.idNumber || item.registrationNumber || '-',
+                              address: item.physicalAddress || item.locationAddress || 'Unknown Address',
+                              outstandingAmount: item.balance || item.outstandingBalance || 0,
+                              status: item.status || 'Active',
+                              email: item.emailAddress,
+                              mobile: item.cellNumber || item.mobileNumber,
+                              // Store extra fields for display if needed
+                              prepaidMeterNo: item.meterNumber, 
+                              accountType: 'External Consumer'
+                          } as Account,
+                          label: `${item.accountNumber || item.accountId} - ${nameDisplay}${meterInfo} (External)`
+                      };
+                  });
                   setExternalResults(mapped);
               }
           } else {
@@ -145,51 +157,73 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
           console.error("External API Search Failed:", error);
           
           // FALLBACK SIMULATION FOR PROTOTYPE
-          // Since we can't control CORS on the target server, we simulate what a successful response looks like
-          // so the user can verify the UI/UX integration.
           
           const simulatedResults = [
               {
                   accountNumber: "999000123456",
                   consumerName: "External Live User 1",
+                  firstName: "John",
+                  surname: "Doe",
                   idNumber: "8001015555089",
                   physicalAddress: "123 Live API Road, Cloud City",
                   balance: 5432.10,
                   status: "Active",
                   emailAddress: "live.user@example.com",
-                  cellNumber: "0829999999"
+                  cellNumber: "0829999999",
+                  meterNumber: "METER-001"
               },
               {
                   accountNumber: "999000987654",
                   consumerName: "Azure Services Ltd",
+                  companyName: "Azure Services Ltd",
                   registrationNumber: "2023/555555/07",
                   physicalAddress: "456 Server Lane, Datacenter Park",
                   balance: 12500.00,
                   status: "Arrears",
                   emailAddress: "billing@azure-test.com",
-                  cellNumber: "0118888888"
+                  cellNumber: "0118888888",
+                  meterNumber: "METER-999"
+              },
+              {
+                  accountNumber: "ACC-METER-TEST",
+                  consumerName: "Meter Test User",
+                  firstName: "Sarah",
+                  surname: "Connor",
+                  meterNumber: "14253647586", // Matches query "1425" potentially
+                  physicalAddress: "888 Terminator Blvd",
+                  balance: 0,
+                  status: "Active"
               }
           ].filter(item => 
               item.accountNumber.includes(query) || 
-              item.consumerName.toLowerCase().includes(query.toLowerCase())
+              (item.consumerName && item.consumerName.toLowerCase().includes(query.toLowerCase())) ||
+              (item.firstName && item.firstName.toLowerCase().includes(query.toLowerCase())) ||
+              (item.surname && item.surname.toLowerCase().includes(query.toLowerCase())) ||
+              (item.meterNumber && item.meterNumber.toLowerCase().includes(query.toLowerCase()))
           );
 
           if (simulatedResults.length > 0) {
-              const mapped = simulatedResults.map((item: any) => ({
-                  type: 'ACCOUNT' as const,
-                  data: {
-                      accountNo: item.accountNumber,
-                      name: item.consumerName,
-                      idNo: item.idNumber || item.registrationNumber || '-',
-                      address: item.physicalAddress,
-                      outstandingAmount: item.balance,
-                      status: item.status,
-                      email: item.emailAddress,
-                      mobile: item.cellNumber,
-                      accountType: 'External Consumer'
-                  } as Account,
-                  label: `${item.accountNumber} - ${item.consumerName} (External-Sim)`
-              }));
+              const mapped = simulatedResults.map((item: any) => {
+                  const nameDisplay = item.consumerName || `${item.firstName} ${item.surname}`.trim();
+                  const meterInfo = item.meterNumber ? ` (Meter: ${item.meterNumber})` : '';
+
+                  return {
+                      type: 'ACCOUNT' as const,
+                      data: {
+                          accountNo: item.accountNumber,
+                          name: nameDisplay,
+                          idNo: item.idNumber || item.registrationNumber || '-',
+                          address: item.physicalAddress,
+                          outstandingAmount: item.balance,
+                          status: item.status,
+                          email: item.emailAddress,
+                          mobile: item.cellNumber,
+                          prepaidMeterNo: item.meterNumber,
+                          accountType: 'External Consumer'
+                      } as Account,
+                      label: `${item.accountNumber} - ${nameDisplay}${meterInfo} (External-Sim)`
+                  };
+              });
               setExternalResults(mapped);
           } else {
               setExternalResults([]);
