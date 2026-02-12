@@ -125,6 +125,47 @@ export async function fetchBillingStageCashierReceiptDetails(referenceId: string
     return [];
 }
 
+export interface PosMultiReceiptPrintItem {
+    receiptNo: string | null;
+    cashOfficeName: string | null;
+    billType: string | null;
+    amount: number | null;
+    vatAmount: number | null;
+    amountInWord: string | null;
+    payMode: string | null;
+    accountId: string | null;
+    oldAccountCode: string | null;
+    sgNumber: string | null;
+    accAddress: string | null;
+    accName: string | null;
+    prePaidUnit: string | null;
+    receiptDate: string | null;
+    paymentDate: string | null;
+    billTypeId: number | null;
+    cutOffAmount: number | null;
+    isCancelled: boolean | null;
+    tenderAmount: number | null;
+    changeAmount: number | null;
+    paymentTypeId: number | null;
+    cashierName: string | null;
+    outstandingAmount: number | null;
+}
+
+export async function fetchPosMultiReceiptPrint(receiptId: string): Promise<PosMultiReceiptPrintItem[]> {
+    try {
+        const params = new URLSearchParams();
+        params.append('receiptId', receiptId);
+        const res = await fetch(`/api/proxy/pos-multi-receipt-print?${params.toString()}`);
+        if (res.ok) {
+            const data = await res.json();
+            return Array.isArray(data) ? data : (data.value || []);
+        }
+    } catch (e) {
+        console.warn(`Failed to fetch pos multi receipt print for receiptId ${receiptId}`, e);
+    }
+    return [];
+}
+
 export async function fetchBillingStagePrepaidRecharge(id: string): Promise<any | null> {
     try {
         const res = await fetch(`/api/proxy/billing-stage-prepaid-recharge/${id}`);

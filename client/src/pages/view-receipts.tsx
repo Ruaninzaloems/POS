@@ -15,7 +15,7 @@ import { ReceiptTemplate } from '@/components/pos/receipt-template';
 import { useReactToPrint } from 'react-to-print';
 import { BankTransaction, AllocationDraft } from '@/lib/direct-deposits-data';
 import { cn } from '@/lib/utils';
-import { listTransactionsApi, fetchBillingStageCashierReceiptDetails } from '@/lib/external-api';
+import { listTransactionsApi, fetchPosMultiReceiptPrint, PosMultiReceiptPrintItem } from '@/lib/external-api';
 import { useToast } from '@/hooks/use-toast';
 import { usePos } from '@/lib/pos-state';
 
@@ -35,7 +35,10 @@ interface ReceiptRow {
     cashierOffice: string;
     status: string;
     cancellationReason?: string;
-    billingDetails?: any[];
+    accName?: string;
+    accAddress?: string;
+    outstandingAmount?: number;
+    printData?: PosMultiReceiptPrintItem[];
 }
 
 export default function ViewReceipts() {
@@ -111,17 +114,34 @@ export default function ViewReceipts() {
             for (const row of rows) {
                 if (row.receiptNo) {
                     try {
-                        const details = await fetchBillingStageCashierReceiptDetails(row.receiptNo);
-                        if (details && details.length > 0) {
-                            row.billingDetails = details;
+                        const printItems = await fetchPosMultiReceiptPrint(row.receiptNo);
+                        if (printItems && printItems.length > 0) {
+                            row.printData = printItems;
                             row.staged = true;
-                            const totalBillingAmount = details.reduce((sum: number, d: any) => sum + (d.amount || 0), 0);
-                            if (totalBillingAmount > 0) {
-                                row.amount = totalBillingAmount;
+                            const first = printItems[0];
+                            if (first.accountId) row.accountId = first.accountId;
+                            if (first.billType) row.paymentOption = first.billType;
+                            if (first.payMode) row.paymentType = first.payMode;
+                            if (first.receiptDate) row.receiptDate = first.receiptDate;
+                            if (first.cashierName) row.cashierName = first.cashierName;
+                            if (first.cashOfficeName) row.cashierOffice = first.cashOfficeName;
+                            if (first.accName) row.accName = first.accName;
+                            if (first.accAddress) row.accAddress = first.accAddress;
+                            if (first.isCancelled) {
+                                row.status = 'CANCELLED';
+                            }
+                            const totalAmount = printItems.reduce((sum, d) => sum + (d.amount || 0), 0);
+                            if (totalAmount > 0) row.amount = totalAmount;
+                            const totalTender = printItems.reduce((sum, d) => sum + (d.tenderAmount || 0), 0);
+                            if (totalTender > 0) row.tenderAmount = totalTender;
+                            const totalChange = printItems.reduce((sum, d) => sum + (d.changeAmount || 0), 0);
+                            row.changeAmount = totalChange;
+                            if (first.outstandingAmount !== null && first.outstandingAmount !== undefined) {
+                                row.outstandingAmount = first.outstandingAmount;
                             }
                         }
                     } catch (e) {
-                        // API detail fetch failed silently, continue with DB data
+                        // API detail fetch failed, continue with DB data
                     }
                 }
             }
@@ -185,6 +205,20 @@ export default function ViewReceipts() {
             bankAccount: receipt.cashBook
         };
 
+        const lines = receipt.printData && receipt.printData.length > 0
+            ? receipt.printData.map((item, idx) => ({
+                id: `${idx + 1}`,
+                accountNo: item.accountId || receipt.accountId,
+                amount: item.amount || 0,
+                description: item.billType || receipt.paymentOption
+            }))
+            : [{
+                id: '1',
+                accountNo: receipt.accountId,
+                amount: receipt.amount,
+                description: `${receipt.paymentOption} - ${receipt.paymentType}`
+            }];
+
         const mockAllocation: AllocationDraft = {
             transactionId: receipt.id,
             status: 'POSTED',
@@ -192,12 +226,7 @@ export default function ViewReceipts() {
             method: 'MANUAL',
             allocatedBy: receipt.cashierName,
             allocationDate: receipt.receiptDate,
-            lines: [{
-                id: '1',
-                accountNo: receipt.accountId,
-                amount: receipt.amount,
-                description: `${receipt.paymentOption} - ${receipt.paymentType}`
-            }]
+            lines
         };
 
         return { transaction: mockTx, allocation: mockAllocation };

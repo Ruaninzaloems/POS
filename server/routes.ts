@@ -154,6 +154,24 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/proxy/pos-multi-receipt-print", async (req, res) => {
+    try {
+      const params = new URLSearchParams(req.query as Record<string, string>);
+      const url = `${EXTERNAL_API_BASE}/api/pos-multi-receipt-print?${params.toString()}`;
+      const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
+      if (response.ok) {
+        const data = await response.json();
+        res.json(data);
+      } else if (response.status === 400 || response.status === 404) {
+        res.json([]);
+      } else {
+        res.status(response.status).json({ message: response.statusText });
+      }
+    } catch (e: any) {
+      res.status(502).json({ message: "External API unreachable", detail: e.message });
+    }
+  });
+
   // =====================================================
   // CASHIER SESSION ROUTES
   // =====================================================
