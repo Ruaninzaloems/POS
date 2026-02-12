@@ -28,13 +28,24 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // Filter logic (mocked)
+  // Filter logic
   const results = React.useMemo(() => {
     if (!searchQuery || searchQuery.length < 2) return [];
+    
+    // User requested to ONLY return from microservices for accounts.
+    // We will disable local account search.
+    // We will keep other types (Direct Income, etc) if they are not part of the account microservice yet, 
+    // but based on "only return from microservices", we might want to hide them or user implies account search.
+    
+    // For safety in this prototype step, I will comment out the local ACCOUNT search 
+    // but keep the others (Direct Income, Clearance) as they likely don't have endpoints yet 
+    // and might be needed for the POS to function (e.g. paying for a fine).
     
     const q = searchQuery.toLowerCase();
     let combinedResults: SearchResult[] = [];
     
+    /* 
+    // DISABLED LOCAL ACCOUNT SEARCH - USING EXTERNAL API ONLY
     if (scope === 'ALL' || scope === 'ACCOUNT') {
         const accounts = ACCOUNTS.filter(a => 
           a.accountNo.toLowerCase().includes(q) || 
@@ -61,7 +72,9 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
         ).map(a => ({ type: 'PREPAID' as const, data: a, label: `${a.prepaidType || 'Meter'}: ${a.prepaidMeterNo} (${a.name})` }));
         combinedResults = [...combinedResults, ...prepaid];
     }
+    */
 
+    // Keep these valid for POS functionality until replaced by APIs
     if (scope === 'ALL' || scope === 'DIRECT') {
         const di = DIRECT_INCOME_ITEMS.filter(d => 
           d.description.toLowerCase().includes(q) ||
