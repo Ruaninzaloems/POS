@@ -95,64 +95,78 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
       if (query.length < 3) return;
       setIsSearchingExternal(true);
       try {
-          // Construct query params - try to match query against multiple fields since it's a unified search
-          const baseUrl = 'https://george-uat-ems-billing-api.azurewebsites.net/api/billing-enquiry-search';
+          // Construct query params
+          const baseUrl = 'https://george-uat-ems-billing-api.azurewebsites.net/api/cons-accounts/search';
           
-          const params = new URLSearchParams();
-          
-          // Heuristics for search type
+          let requests = [];
+
           if (/^\d+$/.test(query)) {
-              // Digits only: Likely Account No or Meter No (numeric)
-              params.append('accountId', query);
-              params.append('meterNumber', query); // Try meter number search
+              // Digits: Search by Account Number AND Physical Meter Number (Parallel)
+              
+              const p1 = new URLSearchParams();
+              p1.append('accountNumber', query);
+              requests.push(fetch(`${baseUrl}?${p1.toString()}`, { headers: { 'Accept': 'application/json' } }));
+
+              const p2 = new URLSearchParams();
+              p2.append('physicalMeterNumber', query);
+              requests.push(fetch(`${baseUrl}?${p2.toString()}`, { headers: { 'Accept': 'application/json' } }));
+
           } else {
-              // Text: Likely Name or Meter No (alphanumeric)
-              params.append('companyName', query); // Main name search
-              params.append('meterNumber', query); // Meter numbers can be alphanumeric
-              // params.append('consumerName', query); // Try explicit consumer name if supported
+              // Text: Search by Name
+              const p = new URLSearchParams();
+              p.append('name', query);
+              requests.push(fetch(`${baseUrl}?${p.toString()}`, { headers: { 'Accept': 'application/json' } }));
           }
 
-          const response = await fetch(`${baseUrl}?${params.toString()}`, {
-              method: 'GET',
-              headers: {
-                  'Accept': 'application/json',
-              }
-          });
+          const responses = await Promise.all(requests);
+          let allData: any[] = [];
 
-          if (response.ok) {
-              const data = await response.json();
-              if (Array.isArray(data)) {
-                  const mapped = data.map((item: any) => {
-                      // Determine best display label based on what matched or is available
-                      const nameDisplay = [item.consumerName, item.companyName, item.firstName, item.surname]
-                          .filter(Boolean).join(' ').trim() || 'Unknown Name';
-                          
-                      const meterInfo = item.meterNumber ? ` (Meter: ${item.meterNumber})` : '';
-                      const itemAddress = item.physicalAddress || item.locationAddress || 'Unknown Address';
-
-                      return {
-                          type: 'ACCOUNT' as const,
-                          data: {
-                              // Map external API fields to our internal Account interface
-                              accountNo: item.accountNumber || item.accountId || 'Unknown',
-                              name: nameDisplay,
-                              idNo: item.idNumber || item.registrationNumber || '-',
-                              address: itemAddress,
-                              outstandingAmount: item.balance || item.outstandingBalance || 0,
-                              status: item.status || 'Active',
-                              email: item.emailAddress,
-                              mobile: item.cellNumber || item.mobileNumber,
-                              // Store extra fields for display if needed
-                              prepaidMeterNo: item.meterNumber, 
-                              accountType: 'External Consumer'
-                          } as Account,
-                          label: `${item.accountNumber || item.accountId} - ${nameDisplay}${meterInfo} (External)`
-                      };
-                  });
-                  setExternalResults(mapped);
+          for (const res of responses) {
+              if (res.ok) {
+                  const data = await res.json();
+                  if (Array.isArray(data)) {
+                      allData = [...allData, ...data];
+                  }
               }
+          }
+
+          // Deduplicate by accountID
+          const uniqueData = Array.from(new Map(allData.map(item => [item.accountID, item])).values());
+
+          if (uniqueData.length > 0) {
+              const mapped = uniqueData.map((item: any) => {
+                  const addressDisplay = item.deliveryAddress || [item.streetName, item.town].filter(Boolean).join(', ') || 'Unknown Address';
+
+                  return {
+                      type: 'ACCOUNT' as const,
+                      data: {
+                          // Map ConsAccount API fields to our internal Account interface
+                          accountNo: item.accountNumber || `ID-${item.accountID}`,
+                          name: item.name || 'Unknown Name',
+                          idNo: '-', // Not in search view
+                          address: addressDisplay,
+                          outstandingAmount: item.outStandingAmt || 0,
+                          status: item.statusDesc || 'Active',
+                          email: '', // Not in search view
+                          mobile: '', // Not in search view
+                          accountType: item.accountDesc || 'External Consumer',
+                          // Helper for display
+                          valuationCategory: item.typeOfUseDesc
+                      } as Account,
+                      label: `${item.accountNumber} - ${item.name} (${item.statusDesc || 'Active'})`
+                  };
+              });
+              setExternalResults(mapped);
           } else {
-             throw new Error(`API returned ${response.status}`);
+             // If no results found, maybe throw to trigger fallback if strictly needed, 
+             // but usually empty list is valid. 
+             // HOWEVER, for prototype we WANT fallback to show if live fails.
+             // But if live succeeds and returns empty, we shouldn't show mock.
+             // Let's only throw if ALL requests failed or network error.
+             if (uniqueData.length === 0 && responses.every(r => !r.ok)) {
+                 throw new Error("All API calls failed");
+             }
+             setExternalResults([]);
           }
       } catch (error) {
           console.error("External API Search Failed:", error);
@@ -161,81 +175,53 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
           
           const simulatedResults = [
               {
-                  accountNumber: "01", // Match query "01"
-                  consumerName: "Simulated User 01",
-                  firstName: "John",
-                  surname: "Doe",
-                  idNumber: "8001015555089",
-                  physicalAddress: "123 Live API Road, Cloud City",
-                  balance: 5432.10,
-                  status: "Active",
-                  emailAddress: "live.user@example.com",
-                  cellNumber: "0829999999",
-                  meterNumber: "METER-001"
+                  accountID: 101,
+                  accountNumber: "01", 
+                  name: "Simulated User 01",
+                  statusDesc: "Active",
+                  outStandingAmt: 5432.10,
+                  deliveryAddress: "123 Live API Road, Cloud City",
+                  accountDesc: "Residential"
               },
               {
+                  accountID: 102,
                   accountNumber: "999000123456",
-                  consumerName: "External Live User 1",
-                  firstName: "John",
-                  surname: "Doe",
-                  idNumber: "8001015555089",
-                  physicalAddress: "123 Live API Road, Cloud City",
-                  balance: 5432.10,
-                  status: "Active",
-                  emailAddress: "live.user@example.com",
-                  cellNumber: "0829999999",
-                  meterNumber: "METER-001"
+                  name: "External Live User 1",
+                  statusDesc: "Active",
+                  outStandingAmt: 1200.50,
+                  deliveryAddress: "77 Sunset Strip",
+                  accountDesc: "Business"
               },
               {
-                  accountNumber: "999000987654",
-                  consumerName: "Azure Services Ltd",
-                  companyName: "Azure Services Ltd",
-                  registrationNumber: "2023/555555/07",
-                  physicalAddress: "456 Server Lane, Datacenter Park",
-                  balance: 12500.00,
-                  status: "Arrears",
-                  emailAddress: "billing@azure-test.com",
-                  cellNumber: "0118888888",
-                  meterNumber: "METER-999"
-              },
-              {
+                  accountID: 103,
                   accountNumber: "ACC-METER-TEST",
-                  consumerName: "Meter Test User",
-                  firstName: "Sarah",
-                  surname: "Connor",
-                  meterNumber: "14253647586", // Matches query "1425" potentially
-                  physicalAddress: "888 Terminator Blvd",
-                  balance: 0,
-                  status: "Active"
+                  name: "Meter Test User",
+                  statusDesc: "Active",
+                  outStandingAmt: 0,
+                  deliveryAddress: "888 Terminator Blvd",
+                  accountDesc: "Indigent"
               }
           ].filter(item => 
               item.accountNumber.includes(query) || 
-              (item.consumerName && item.consumerName.toLowerCase().includes(query.toLowerCase())) ||
-              (item.firstName && item.firstName.toLowerCase().includes(query.toLowerCase())) ||
-              (item.surname && item.surname.toLowerCase().includes(query.toLowerCase())) ||
-              (item.meterNumber && item.meterNumber.toLowerCase().includes(query.toLowerCase()))
+              (item.name && item.name.toLowerCase().includes(query.toLowerCase()))
           );
 
           if (simulatedResults.length > 0) {
               const mapped = simulatedResults.map((item: any) => {
-                  const nameDisplay = item.consumerName || `${item.firstName} ${item.surname}`.trim();
-                  const meterInfo = item.meterNumber ? ` (Meter: ${item.meterNumber})` : '';
-
                   return {
                       type: 'ACCOUNT' as const,
                       data: {
                           accountNo: item.accountNumber,
-                          name: nameDisplay,
-                          idNo: item.idNumber || item.registrationNumber || '-',
-                          address: item.physicalAddress,
-                          outstandingAmount: item.balance,
-                          status: item.status,
-                          email: item.emailAddress,
-                          mobile: item.cellNumber,
-                          prepaidMeterNo: item.meterNumber,
-                          accountType: 'External Consumer'
+                          name: item.name,
+                          idNo: '-',
+                          address: item.deliveryAddress,
+                          outstandingAmount: item.outStandingAmt,
+                          status: item.statusDesc,
+                          email: '',
+                          mobile: '',
+                          accountType: item.accountDesc
                       } as Account,
-                      label: `${item.accountNumber} - ${nameDisplay}${meterInfo} (External-Sim)`
+                      label: `${item.accountNumber} - ${item.name} (External-Sim)`
                   };
               });
               setExternalResults(mapped);

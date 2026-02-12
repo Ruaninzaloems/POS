@@ -1,0 +1,5048 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Sebata.Microservice.Billing",
+    "version": "1.0"
+  },
+  "paths": {
+    "/odata/BillingBillingCycleProcess": {
+      "get": {
+        "tags": [
+          "BillingBillingCycleProcess"
+        ],
+        "operationId": "odata/BillingBillingCycleProcess",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/odata/BillingBillingCycleProcess/$count": {
+      "get": {
+        "tags": [
+          "BillingBillingCycleProcess"
+        ],
+        "operationId": "odata/BillingBillingCycleProcess/$count",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/odata/BillingConfigSettings": {
+      "get": {
+        "tags": [
+          "BillingConfigSettings"
+        ],
+        "operationId": "odata/BillingConfigSettings",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/odata/BillingConfigSettings/$count": {
+      "get": {
+        "tags": [
+          "BillingConfigSettings"
+        ],
+        "operationId": "odata/BillingConfigSettings/$count",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/odata/ConsServices": {
+      "get": {
+        "tags": [
+          "ConsServices"
+        ],
+        "operationId": "odata/ConsServices",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/odata/ConsServices/$count": {
+      "get": {
+        "tags": [
+          "ConsServices"
+        ],
+        "operationId": "odata/ConsServices/$count",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/odata/ConstBanks": {
+      "get": {
+        "tags": [
+          "ConstBanks"
+        ],
+        "operationId": "odata/ConstBanks",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/odata/ConstBanks/$count": {
+      "get": {
+        "tags": [
+          "ConstBanks"
+        ],
+        "operationId": "odata/ConstBanks/$count",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/odata/ConstGroupCodes": {
+      "get": {
+        "tags": [
+          "ConstGroupCodes"
+        ],
+        "operationId": "odata/ConstGroupCodes",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/odata/ConstGroupCodes/$count": {
+      "get": {
+        "tags": [
+          "ConstGroupCodes"
+        ],
+        "operationId": "odata/ConstGroupCodes/$count",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/odata/ConstInstitutions": {
+      "get": {
+        "tags": [
+          "ConstInstitutions"
+        ],
+        "operationId": "odata/ConstInstitutions",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/odata/ConstInstitutions/$count": {
+      "get": {
+        "tags": [
+          "ConstInstitutions"
+        ],
+        "operationId": "odata/ConstInstitutions/$count",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/odata/$metadata": {
+      "get": {
+        "tags": [
+          "Metadata"
+        ],
+        "operationId": "odata/$metadata",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json;odata.metadata=minimal;odata.streaming=true": {
+                "schema": {
+                  "$ref": "#/components/schemas/IEdmModel"
+                }
+              },
+              "application/json;odata.metadata=minimal;odata.streaming=false": {
+                "schema": {
+                  "$ref": "#/components/schemas/IEdmModel"
+                }
+              },
+              "application/json;odata.metadata=minimal": {
+                "schema": {
+                  "$ref": "#/components/schemas/IEdmModel"
+                }
+              },
+              "application/json;odata.metadata=full;odata.streaming=true": {
+                "schema": {
+                  "$ref": "#/components/schemas/IEdmModel"
+                }
+              },
+              "application/json;odata.metadata=full;odata.streaming=false": {
+                "schema": {
+                  "$ref": "#/components/schemas/IEdmModel"
+                }
+              },
+              "application/json;odata.metadata=full": {
+                "schema": {
+                  "$ref": "#/components/schemas/IEdmModel"
+                }
+              },
+              "application/json;odata.metadata=none;odata.streaming=true": {
+                "schema": {
+                  "$ref": "#/components/schemas/IEdmModel"
+                }
+              },
+              "application/json;odata.metadata=none;odata.streaming=false": {
+                "schema": {
+                  "$ref": "#/components/schemas/IEdmModel"
+                }
+              },
+              "application/json;odata.metadata=none": {
+                "schema": {
+                  "$ref": "#/components/schemas/IEdmModel"
+                }
+              },
+              "application/json;odata.streaming=true": {
+                "schema": {
+                  "$ref": "#/components/schemas/IEdmModel"
+                }
+              },
+              "application/json;odata.streaming=false": {
+                "schema": {
+                  "$ref": "#/components/schemas/IEdmModel"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IEdmModel"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/IEdmModel"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/IEdmModel"
+                }
+              },
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/IEdmModel"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IEdmModel"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/odata": {
+      "get": {
+        "tags": [
+          "Metadata"
+        ],
+        "operationId": "odata/",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json;odata.metadata=minimal;odata.streaming=true": {
+                "schema": {
+                  "$ref": "#/components/schemas/ODataServiceDocument"
+                }
+              },
+              "application/json;odata.metadata=minimal;odata.streaming=false": {
+                "schema": {
+                  "$ref": "#/components/schemas/ODataServiceDocument"
+                }
+              },
+              "application/json;odata.metadata=minimal": {
+                "schema": {
+                  "$ref": "#/components/schemas/ODataServiceDocument"
+                }
+              },
+              "application/json;odata.metadata=full;odata.streaming=true": {
+                "schema": {
+                  "$ref": "#/components/schemas/ODataServiceDocument"
+                }
+              },
+              "application/json;odata.metadata=full;odata.streaming=false": {
+                "schema": {
+                  "$ref": "#/components/schemas/ODataServiceDocument"
+                }
+              },
+              "application/json;odata.metadata=full": {
+                "schema": {
+                  "$ref": "#/components/schemas/ODataServiceDocument"
+                }
+              },
+              "application/json;odata.metadata=none;odata.streaming=true": {
+                "schema": {
+                  "$ref": "#/components/schemas/ODataServiceDocument"
+                }
+              },
+              "application/json;odata.metadata=none;odata.streaming=false": {
+                "schema": {
+                  "$ref": "#/components/schemas/ODataServiceDocument"
+                }
+              },
+              "application/json;odata.metadata=none": {
+                "schema": {
+                  "$ref": "#/components/schemas/ODataServiceDocument"
+                }
+              },
+              "application/json;odata.streaming=true": {
+                "schema": {
+                  "$ref": "#/components/schemas/ODataServiceDocument"
+                }
+              },
+              "application/json;odata.streaming=false": {
+                "schema": {
+                  "$ref": "#/components/schemas/ODataServiceDocument"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ODataServiceDocument"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/ODataServiceDocument"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ODataServiceDocument"
+                }
+              },
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ODataServiceDocument"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ODataServiceDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ping": {
+      "get": {
+        "tags": [
+          "Sebata.Microservice.Billing"
+        ],
+        "operationId": "GetPing",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/aaaa-config-settings": {
+      "get": {
+        "tags": [
+          "Aaaa Config Settings"
+        ],
+        "summary": "View all aaaa config settings",
+        "operationId": "GetAaaaConfigSettings",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AaaaConfigSettingView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing-enquiry-search": {
+      "get": {
+        "tags": [
+          "Billing Enquiry Search"
+        ],
+        "summary": "View all billing enquiry search",
+        "operationId": "GetBillingEnquirySearch",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "oldAccount",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "deliveryAddress",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "locationAddress",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "allotmentArea",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "eftNumber",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "companyName",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "idRegistrationNumber",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "passportNumber",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "trading",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "accountGroup",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "subAccountGroup",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "emailAddress",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mobileNumber",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "homeNumber",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workNumber",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "faxNumber",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "physicalMeterNumber",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "meterLocationAddress",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "route",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BillingEnquirySearchView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing-handovers": {
+      "get": {
+        "tags": [
+          "Billing Handovers"
+        ],
+        "summary": "View all billing handovers",
+        "operationId": "GetBillingHandovers",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingHandoverView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing-periods/financial-year": {
+      "get": {
+        "tags": [
+          "Billing Periods"
+        ],
+        "summary": "View all for billing period by financial year",
+        "operationId": "GetAllForBillingPeriodByFinancialYear",
+        "parameters": [
+          {
+            "name": "financialYear",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BillingPeriodView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing-stage-cashier-receipt-details/reference": {
+      "get": {
+        "tags": [
+          "Billing Stage Cashier Receipt Details"
+        ],
+        "summary": "Retrieve a list of billing stage cashier receipt detail with the reference Id",
+        "operationId": "GetByReferenceIdForBillingStageCashierReceiptDetails",
+        "parameters": [
+          {
+            "name": "referenceId",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BillingStageCashierReceiptDetailView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing-stage-prepaid-recharge/{id}": {
+      "get": {
+        "tags": [
+          "Billing Stage Prepaid Recharge"
+        ],
+        "summary": "Retrieve a specific billing stage prepaid recharge with the Id",
+        "operationId": "GetBillingStagePrepaidRechargeById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingStagePrepaidRechargeView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing-stage-prepaid-recovery/{id}": {
+      "get": {
+        "tags": [
+          "Billing Stage Prepaid Recovery"
+        ],
+        "summary": "Retrieve a specific billing stage prepaid recovery with the Id",
+        "operationId": "GetBillingStagePrepaidRecoveryById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingStagePrepaidRecoveryView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing-stage-prepaid-recovery/reference": {
+      "get": {
+        "tags": [
+          "Billing Stage Prepaid Recovery"
+        ],
+        "summary": "Retrieve a specific billing stage prepaid recovery with the reference Id",
+        "operationId": "GetByReferenceIdForBillingStagePrepaidRecovery",
+        "parameters": [
+          {
+            "name": "referenceId",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingStagePrepaidRecoveryView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cons-accounts/{id}": {
+      "get": {
+        "tags": [
+          "Cons Accounts"
+        ],
+        "summary": "Retrieve a specific cons account with the Id",
+        "operationId": "GetConsAccountById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cons-accounts/search": {
+      "get": {
+        "tags": [
+          "Cons Accounts"
+        ],
+        "summary": "Search all cons accounts",
+        "operationId": "SearchConsAccounts",
+        "parameters": [
+          {
+            "name": "accountNumber",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "idNumber",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sgNumber",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "streetName",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "physicalMeterNumber",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "oldAccountCode",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AccountSearchView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cons-names/{id}": {
+      "get": {
+        "tags": [
+          "Cons Names"
+        ],
+        "summary": "Retrieve a specific cons name with the Id",
+        "operationId": "GetConsNameById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NameView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/const-institutions/search": {
+      "get": {
+        "tags": [
+          "Const Institutions"
+        ],
+        "summary": "Search all const institutions",
+        "operationId": "SearchConstInstitutions",
+        "parameters": [
+          {
+            "name": "instituteName",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "subInstitute",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "accountId",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InstitutionSearchView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/const-service-types/{id}": {
+      "get": {
+        "tags": [
+          "Const Service Types"
+        ],
+        "summary": "Retrieve a specific const service type with the Id",
+        "operationId": "GetConstServiceTypeById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceTypeView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cons-units/{id}": {
+      "get": {
+        "tags": [
+          "Cons Units"
+        ],
+        "summary": "Retrieve a specific cons unit with the Id",
+        "operationId": "GetConsUnitById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnitView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos-cheque-write-back-details": {
+      "get": {
+        "tags": [
+          "Pos Cheque Write Back Details"
+        ],
+        "summary": "View all pos cheque write back details",
+        "operationId": "GetPosChequeWriteBackDetails",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PosChequeWriteBackDetailView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos-multiple-account-payments/{capturerId}/{accountId}/receipt/{receiptId}": {
+      "post": {
+        "tags": [
+          "Pos Multiple Account Payments"
+        ],
+        "summary": "Update receipt Id for pos multiple account payment's capturer Id and account Id",
+        "operationId": "PostReceiptIdForPosMultipleAccountPaymentCapturerIdAndAccountId",
+        "parameters": [
+          {
+            "name": "capturerId",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "receiptId",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/pos-multi-receipt-print": {
+      "get": {
+        "tags": [
+          "Pos Multi Receipt Print"
+        ],
+        "summary": "View all pos multi receipt print",
+        "operationId": "GetPosMultiReceiptPrint",
+        "parameters": [
+          {
+            "name": "receiptId",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PosMultiReceiptPrintView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos-offline-unallocated-receipts": {
+      "get": {
+        "tags": [
+          "Pos Offline Unallocated Receipts"
+        ],
+        "summary": "View all pos offline unallocated receipts",
+        "operationId": "GetPosOfflineUnallocatedReceipts",
+        "parameters": [
+          {
+            "name": "receiptId",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosOfflineUnallocatedReceiptView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing-debit-order-deduction/{id}": {
+      "get": {
+        "tags": [
+          "Billing Debit Order Deduction"
+        ],
+        "summary": "Retrieve a specific billing debit order deductio with the Id",
+        "operationId": "GetBillingDebitOrderDeductioById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingDebitOrderDeductionView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Billing Debit Order Deduction"
+        ],
+        "summary": "Update a specific billing debit order deductio",
+        "operationId": "PutBillingDebitOrderDeductio",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingDebitOrderDeductionView"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingDebitOrderDeductionView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing-debit-order-deduction": {
+      "post": {
+        "tags": [
+          "Billing Debit Order Deduction"
+        ],
+        "summary": "Create a new billing debit order deductio",
+        "operationId": "PostBillingDebitOrderDeductio",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingDebitOrderDeductionView"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingDebitOrderDeductionView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing-debit-order-deduction/search": {
+      "get": {
+        "tags": [
+          "Billing Debit Order Deduction"
+        ],
+        "summary": "Search all billing debit order deduction",
+        "operationId": "SearchBillingDebitOrderDeduction",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "idRegistrationNumber",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lastName",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sgNumber",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "locationAddress",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "isTerminated",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BillingDebitOrderDeductionSearchView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing-debit-order-deduction/enquiry": {
+      "get": {
+        "tags": [
+          "Billing Debit Order Deduction"
+        ],
+        "summary": "Enquiry all billing debit order deduction",
+        "operationId": "EnquiryBillingDebitOrderDeduction",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "finYear",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "billingMonth",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BillingDebitOrderDeductionEnquiryView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing-debit-order-deduction/byaccount": {
+      "get": {
+        "tags": [
+          "Billing Debit Order Deduction"
+        ],
+        "summary": "By Account billing debit order deduction",
+        "operationId": "ByAccountBillingDebitOrderDeduction",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BillingDebitOrderDeductionView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing-debit-order-deduction/MonthlyDeductionProcess": {
+      "get": {
+        "tags": [
+          "Billing Debit Order Deduction"
+        ],
+        "summary": "Monthly Deduction Process billing debit order deduction",
+        "operationId": "MonthlyDeductionProcessBillingDebitOrderDeduction",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing-debit-order-deduction/DebitOrderSetupGet": {
+      "get": {
+        "tags": [
+          "Billing Debit Order Deduction"
+        ],
+        "summary": "Debit Order Setup billing debit order deduction",
+        "operationId": "DebitOrderSetupGetBillingDebitOrderDeduction",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsDebitOrderSetupView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing-debit-order-deduction/DebitOrderSetupAdd": {
+      "post": {
+        "tags": [
+          "Billing Debit Order Deduction"
+        ],
+        "summary": "Debit Order Setup billing debit order deduction",
+        "operationId": "DebitOrderSetupAddBillingDebitOrderDeduction",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsDebitOrderSetupView"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsDebitOrderSetupView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing-section-129/{id}": {
+      "get": {
+        "tags": [
+          "Billing Section 129"
+        ],
+        "summary": "Retrieve a specific billing section 12 with the Id",
+        "operationId": "GetBillingSection12ById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingSection129LetterOfDemandView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Billing Section 129"
+        ],
+        "summary": "Update a specific billing section 12",
+        "operationId": "PutBillingSection12",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingSection129LetterOfDemandView"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingSection129LetterOfDemandView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Billing Section 129"
+        ],
+        "summary": "Delete a specific billing section 12 with the Id",
+        "operationId": "DeleteBillingSection12ById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/billing-section-129": {
+      "post": {
+        "tags": [
+          "Billing Section 129"
+        ],
+        "summary": "Create a new billing section 12",
+        "operationId": "PostBillingSection12",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingSection129LetterOfDemandView"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingSection129LetterOfDemandView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing-section-129/search": {
+      "get": {
+        "tags": [
+          "Billing Section 129"
+        ],
+        "summary": "Search all billing section 129",
+        "operationId": "SearchBillingSection129",
+        "parameters": [
+          {
+            "name": "finYear",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "billingCycleID",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "billingMonth",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "handOverOptionId",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "isAuthorise",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "isTrialNoticeIssued",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BillingSection129LetterOfDemandView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing-section-129/GetSection129NoticeFilesGrid": {
+      "get": {
+        "tags": [
+          "Billing Section 129"
+        ],
+        "summary": "GetSection129NoticeFilesGrid all billing section 129",
+        "operationId": "GetSection129NoticeFilesGridBillingSection129",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "billingCycleId",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "adminFees",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "allowDeposit",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "includeIndigent",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "town",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "suburbId",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "subSuburb",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "typeOfProperty",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "typeOfAccount",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "typeOfPerson",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "cutoffBalance",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ageing",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "serviceGroupId",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BillingSection129View"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing-section-129/GetGeneratedSection129NoticeFilesGrid": {
+      "get": {
+        "tags": [
+          "Billing Section 129"
+        ],
+        "summary": "GetGeneratedSection129NoticeFilesGrid all billing section 129",
+        "operationId": "GetGeneratedSection129NoticeFilesGridBillingSection129",
+        "parameters": [
+          {
+            "name": "letterOfDemandID",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BillingSection129View"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing-section-129/GetSection129HandoverStatusByAccountId": {
+      "get": {
+        "tags": [
+          "Billing Section 129"
+        ],
+        "summary": "GetSection129HandoverStatusByAccountId all billing section 129",
+        "operationId": "GetSection129HandoverStatusByAccountIdBillingSection129",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Section129HandoverStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/billing-section-129/GetSection129AccountEnquiry": {
+      "get": {
+        "tags": [
+          "Billing Section 129"
+        ],
+        "summary": "GetSection129AccountEnquiry all billing section 129",
+        "operationId": "GetSection129AccountEnquiryBillingSection129",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "finYear",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "billingMonth",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Section129AccountEnquiryView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cons-handovers/{id}": {
+      "get": {
+        "tags": [
+          "Cons Handovers"
+        ],
+        "summary": "Retrieve a specific cons handover with the Id",
+        "operationId": "GetConsHandoverById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsHandoverResponseView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Cons Handovers"
+        ],
+        "summary": "Update a specific cons handover",
+        "operationId": "PutConsHandover",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsHandoverResponseView"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsHandoverResponseView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Cons Handovers"
+        ],
+        "summary": "Delete a specific cons handover with the Id",
+        "operationId": "DeleteConsHandoverById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/cons-handovers": {
+      "post": {
+        "tags": [
+          "Cons Handovers"
+        ],
+        "summary": "Create a new cons handover",
+        "operationId": "PostConsHandover",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsHandoverResponseView"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsHandoverResponseView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cons-handovers/search": {
+      "get": {
+        "tags": [
+          "Cons Handovers"
+        ],
+        "summary": "Search all cons handovers",
+        "operationId": "SearchConsHandovers",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "isAuthorise",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "isTermPending",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConsHandoversView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cons-handovers/GetHandoverAccountEnquiry": {
+      "get": {
+        "tags": [
+          "Cons Handovers"
+        ],
+        "summary": "GetHandoverAccountEnquiry all cons handovers",
+        "operationId": "GetHandoverAccountEnquiryConsHandovers",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "finYear",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "billingMonth",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConsHandoverAccountEnquiry"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cons-handovers/GetHandoverTransactionsAccountEnquiry": {
+      "get": {
+        "tags": [
+          "Cons Handovers"
+        ],
+        "summary": "GetHandoverTransactionsAccountEnquiry all cons handovers",
+        "operationId": "GetHandoverTransactionsAccountEnquiryConsHandovers",
+        "parameters": [
+          {
+            "name": "handOverId",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConsHandoverTransactionEnquiry"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sys-error-log/{id}": {
+      "get": {
+        "tags": [
+          "Sys Error Log"
+        ],
+        "summary": "Retrieve a specific sys error lo with the Id",
+        "operationId": "GetSysErrorLoById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SysErrorLogView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Sys Error Log"
+        ],
+        "summary": "Update a specific sys error lo",
+        "operationId": "PutSysErrorLo",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SysErrorLogView"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SysErrorLogView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Sys Error Log"
+        ],
+        "summary": "Delete a specific sys error lo with the Id",
+        "operationId": "DeleteSysErrorLoById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/sys-error-log": {
+      "post": {
+        "tags": [
+          "Sys Error Log"
+        ],
+        "summary": "Create a new sys error lo",
+        "operationId": "PostSysErrorLo",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SysErrorLogView"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SysErrorLogView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rebuild-accounts/RebuildAccountSummary": {
+      "post": {
+        "tags": [
+          "Rebuild Accounts"
+        ],
+        "summary": "Rebuild Account Summary Process rebuild accounts",
+        "operationId": "RebuildAccountSummaryRebuildAccounts",
+        "parameters": [
+          {
+            "name": "currentPeriodId",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "billingCycleId",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/rebuild-accounts/RebuildAccountSummaryAccountId": {
+      "post": {
+        "tags": [
+          "Rebuild Accounts"
+        ],
+        "summary": "Rebuild Account Summary For AccountID Process rebuild accounts",
+        "operationId": "RebuildAccountSummaryAccountIdRebuildAccounts",
+        "parameters": [
+          {
+            "name": "currentPeriodId",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "accountId",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/rebuild-accounts/RebuildAccountTransactions": {
+      "post": {
+        "tags": [
+          "Rebuild Accounts"
+        ],
+        "summary": "Rebuild AccountTransaction Process rebuild accounts",
+        "operationId": "RebuildAccountTransactionsRebuildAccounts",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "periodRebuild",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "specificPeriodId",
+            "in": "query",
+            "required": true,
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AaaaConfigSettingView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fmsDatabaseName": {
+            "type": "string",
+            "nullable": true
+          },
+          "webApiUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "webApiName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AccountSearchView": {
+        "type": "object",
+        "properties": {
+          "accountID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "accountNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "statusDesc": {
+            "type": "string",
+            "nullable": true
+          },
+          "accountDesc": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "deliveryAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "erfNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "town": {
+            "type": "string",
+            "nullable": true
+          },
+          "streetName": {
+            "type": "string",
+            "nullable": true
+          },
+          "activeServices": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "closedServices": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "typeOfUseDesc": {
+            "type": "string",
+            "nullable": true
+          },
+          "zoneDesc": {
+            "type": "string",
+            "nullable": true
+          },
+          "outStandingAmt": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "billId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "certificateNo": {
+            "type": "string",
+            "nullable": true
+          },
+          "clearanceID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "clearanceAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "clearanceSellDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "clearanceScheduleCost": {
+            "type": "number",
+            "format": "double"
+          },
+          "clearanceTotalCost": {
+            "type": "number",
+            "format": "double"
+          },
+          "clearancePaidAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "miscServiceType": {
+            "type": "string",
+            "nullable": true
+          },
+          "miscDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "miscDescription": {
+            "type": "string",
+            "nullable": true
+          },
+          "miscAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "deposit": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "cutOffAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "cutOffID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "debtAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "debtArrangementId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "instituationID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "instituationDeptID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "clearance": {
+            "type": "string",
+            "nullable": true
+          },
+          "physicalMeterNo": {
+            "type": "string",
+            "nullable": true
+          },
+          "oldAccountCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "billingCycleId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AccountView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unitId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nameId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "oldAccountCode": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BillingDebitOrderDeductionEnquiryView": {
+        "type": "object",
+        "properties": {
+          "debitOrderDeductionId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "serviceType": {
+            "type": "string",
+            "nullable": true
+          },
+          "maximumAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "totalMaximumAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "ageing": {
+            "type": "string",
+            "nullable": true
+          },
+          "commencementDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deductionDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dateCaptured": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "capturedBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "terminationDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "terminationReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "terminatedBy": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BillingDebitOrderDeductionSearchView": {
+        "type": "object",
+        "properties": {
+          "debitOrderDeductionId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "accountNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "oldAccountCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "accountType": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "sgNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "locationAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "accountStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "outStandingAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "maximumAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "oustandingDays": {
+            "type": "string",
+            "nullable": true
+          },
+          "fileName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BillingDebitOrderDeductionView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "propertyId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "accountId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "serviceTypeId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "maximumAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalMaximumAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "oustandingDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "commencementDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deductionDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "terminationDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "terminationReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "dateCaptured": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "capturerId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "dateModified": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "modifierId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BillingEnquirySearchView": {
+        "type": "object",
+        "properties": {
+          "accountID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "accountNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "propertyID": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "type": "string",
+            "nullable": true
+          },
+          "locationAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "sgNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "accountStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "outStandingAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "oldAccountCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "addNAME": {
+            "type": "string",
+            "nullable": true
+          },
+          "contactDetails": {
+            "type": "string",
+            "nullable": true
+          },
+          "accountType": {
+            "type": "string",
+            "nullable": true
+          },
+          "unitID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unitPartitionID": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "BillingHandoverView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "accountId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "activateDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cancelDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "handoverStatus": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "BillingPeriodView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "periodInFinancialYear": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "financialYear": {
+            "type": "string",
+            "nullable": true
+          },
+          "processingMonth": {
+            "type": "string",
+            "nullable": true
+          },
+          "monthEndProcessed": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "BillingSection129LetterOfDemandDetailsView": {
+        "type": "object",
+        "properties": {
+          "letterOfDemandDetails_ID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "letterOfDemandID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "accountId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "outstandingAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "posted": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "datePosted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "isPaid": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "paidAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "totalBalance": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "currentBalance": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "balanceDue": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BillingSection129LetterOfDemandView": {
+        "type": "object",
+        "properties": {
+          "letterOfDemandID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "runType": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "handOverOptionId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "attorneyId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "executionDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "email": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "sms": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "printLetter": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "printEmailAccount": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "smsNotification": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "periodId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "billingCycleID": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "demandLetter": {
+            "type": "string",
+            "nullable": true
+          },
+          "financialYear": {
+            "type": "string",
+            "nullable": true
+          },
+          "adminFee": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "includeIndigent": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "excludeDepositBalances": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "townId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "suburbId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "subSuburbId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "propertyCategoryId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "accountTypeId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "typeOfPersonId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "magisterialDistrictId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "serviceGroupID": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "ageing": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "amountGreaterThen": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "lapseDays": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "excelPath": {
+            "type": "string",
+            "nullable": true
+          },
+          "pdfPath": {
+            "type": "string",
+            "nullable": true
+          },
+          "zipFilePath": {
+            "type": "string",
+            "nullable": true
+          },
+          "fileName": {
+            "type": "string",
+            "nullable": true
+          },
+          "postingId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "dateCaptured": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "capturerID": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "dateModified": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "modifierID": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "enquirieName": {
+            "type": "string",
+            "nullable": true
+          },
+          "enquiryPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "enquiryEmail": {
+            "type": "string",
+            "nullable": true
+          },
+          "trialRunReviewStatusID": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "trialRunReviewerID": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "trialRunReviewDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "trialRunReviewerNotes": {
+            "type": "string",
+            "nullable": true
+          },
+          "finalRunReviewStatusID": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "finalRunReviewerID": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "finalRunReviewDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "finalRunReviewerNotes": {
+            "type": "string",
+            "nullable": true
+          },
+          "isFinalReviewComplete": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BillingSection129LetterOfDemandDetailsView"
+            },
+            "nullable": true
+          },
+          "statusDescription": {
+            "type": "string",
+            "nullable": true
+          },
+          "captureBy": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BillingSection129View": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isSelected": {
+            "type": "boolean"
+          },
+          "indigantStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "rebateStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "sgNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "propertyID": {
+            "type": "string",
+            "nullable": true
+          },
+          "accountid": {
+            "type": "string",
+            "nullable": true
+          },
+          "property": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "account": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "accountAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "typeofProperty": {
+            "type": "string",
+            "nullable": true
+          },
+          "typeofAccount": {
+            "type": "string",
+            "nullable": true
+          },
+          "town": {
+            "type": "string",
+            "nullable": true
+          },
+          "suburb": {
+            "type": "string",
+            "nullable": true
+          },
+          "subSuburb": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "adminFees": {
+            "type": "string",
+            "nullable": true
+          },
+          "outstandingDays": {
+            "type": "string",
+            "nullable": true
+          },
+          "outstandingAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalBalance": {
+            "type": "number",
+            "format": "double"
+          },
+          "balanceDue": {
+            "type": "number",
+            "format": "double"
+          },
+          "currentBalance": {
+            "type": "number",
+            "format": "double"
+          },
+          "letterOfDemandDetailsID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "letterOfDemandID": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "BillingStageCashierReceiptDetailView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "vatAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "prepaidUnit": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "prepaidTokenNo": {
+            "type": "string",
+            "nullable": true
+          },
+          "serviceTypeId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "referenceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "prepaidTariffDesc": {
+            "type": "string",
+            "nullable": true
+          },
+          "physicalMeterNo": {
+            "type": "string",
+            "nullable": true
+          },
+          "freeUnits": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "BillingStagePrepaidRechargeView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "accountNumberId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "prepaidAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "prepaidVatAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "tenderAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "changeAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "paymentTypeId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "receiptDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cashierId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "referenceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isCancelled": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "receiptNo": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BillingStagePrepaidRecoveryView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "recoveryAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "referenceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "receiptNo": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConsDebitOrderSetupView": {
+        "type": "object",
+        "properties": {
+          "debitOrderSetupId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "actionDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dateCaptured": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "capturerId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "dateModified": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "modifierId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "lastTransactionDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConsHandoverAccountEnquiry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "letterOfDemandID": {
+            "type": "string",
+            "nullable": true
+          },
+          "handoverAccountNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "accountNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "statusID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "statusDesc": {
+            "type": "string",
+            "nullable": true
+          },
+          "handedOverAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "handedOverDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "outstandingDaysDescription": {
+            "type": "string",
+            "nullable": true
+          },
+          "outstandingMonth": {
+            "type": "string",
+            "nullable": true
+          },
+          "attorneyID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "attorneyDesc": {
+            "type": "string",
+            "nullable": true
+          },
+          "accountName": {
+            "type": "string",
+            "nullable": true
+          },
+          "accountAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "sgNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "captureBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "dateCaptured": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "terminationDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "terminationReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "reviewedBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "reviewDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "authorisedby": {
+            "type": "string",
+            "nullable": true
+          },
+          "trialReviewedBy": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConsHandoverResponseView": {
+        "type": "object",
+        "properties": {
+          "handoverID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "accountID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "handoverAccountID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "handedOverAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "handedOverDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "outstandingDaysDescription": {
+            "type": "string",
+            "nullable": true
+          },
+          "outstandingPeriodID": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "attorneyID": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "referenceNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "comment": {
+            "type": "string",
+            "nullable": true
+          },
+          "dateCaptured": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "capturerID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "dateModified": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "modifierID": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "statusID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "terminationDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "reviewerID": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "reviewDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "transactions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsTransactionResponseView"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConsHandoverTransactionEnquiry": {
+        "type": "object",
+        "properties": {
+          "handOverId": {
+            "type": "string",
+            "nullable": true
+          },
+          "serviceDesc": {
+            "type": "string",
+            "nullable": true
+          },
+          "serviceTotal": {
+            "type": "number",
+            "format": "double"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "vatAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "interestAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "additionalBilling": {
+            "type": "string",
+            "nullable": true
+          },
+          "additionalTotal": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "amountAdditionalBilling": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "vatAmountAdditionalBilling": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "interestAmountAdditionalBilling": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "transationDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "journalId": {
+            "type": "string",
+            "nullable": true
+          },
+          "transactionID": {
+            "type": "string",
+            "nullable": true
+          },
+          "documentTypeDesc": {
+            "type": "string",
+            "nullable": true
+          },
+          "documentNumber": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConsHandoversView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "handoverAccountNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "accountNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "statusID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "statusDesc": {
+            "type": "string",
+            "nullable": true
+          },
+          "handedOverAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "handedOverDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "attorneyID": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "attorneyDesc": {
+            "type": "string",
+            "nullable": true
+          },
+          "accountName": {
+            "type": "string",
+            "nullable": true
+          },
+          "accountAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "sgNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "captureBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "dateCaptured": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConsTransactionResponseView": {
+        "type": "object",
+        "properties": {
+          "handOverTransaction_ID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "handOverID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "handOverAccountID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "serviceTypeID": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "amount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "vatAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "interestAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "additionalBillingID": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "amountAdditionalBilling": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "vatAmountAdditionalBilling": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "interestAmountAdditionalBilling": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "transationDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "journalID": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "documentTypeID": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "documentNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "transactionID": {
+            "type": "string",
+            "nullable": true
+          },
+          "comment": {
+            "type": "string",
+            "nullable": true
+          },
+          "dateCaptured": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "capturerID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "dateModified": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "modifierID": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "statusID": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EdmContainerElementKind": {
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "EdmExpressionKind": {
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "EdmSchemaElementKind": {
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "EdmTypeKind": {
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "IEdmDirectValueAnnotationsManager": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "IEdmEntityContainer": {
+        "type": "object",
+        "properties": {
+          "elements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IEdmEntityContainerElement"
+            },
+            "nullable": true,
+            "readOnly": true
+          },
+          "schemaElementKind": {
+            "$ref": "#/components/schemas/EdmSchemaElementKind"
+          },
+          "namespace": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "IEdmEntityContainerElement": {
+        "type": "object",
+        "properties": {
+          "containerElementKind": {
+            "$ref": "#/components/schemas/EdmContainerElementKind"
+          },
+          "container": {
+            "$ref": "#/components/schemas/IEdmEntityContainer"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "IEdmExpression": {
+        "type": "object",
+        "properties": {
+          "expressionKind": {
+            "$ref": "#/components/schemas/EdmExpressionKind"
+          }
+        },
+        "additionalProperties": false
+      },
+      "IEdmModel": {
+        "type": "object",
+        "properties": {
+          "schemaElements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IEdmSchemaElement"
+            },
+            "nullable": true,
+            "readOnly": true
+          },
+          "vocabularyAnnotations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IEdmVocabularyAnnotation"
+            },
+            "nullable": true,
+            "readOnly": true
+          },
+          "referencedModels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IEdmModel"
+            },
+            "nullable": true,
+            "readOnly": true
+          },
+          "declaredNamespaces": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "readOnly": true
+          },
+          "directValueAnnotationsManager": {
+            "$ref": "#/components/schemas/IEdmDirectValueAnnotationsManager"
+          },
+          "entityContainer": {
+            "$ref": "#/components/schemas/IEdmEntityContainer"
+          }
+        },
+        "additionalProperties": false
+      },
+      "IEdmSchemaElement": {
+        "type": "object",
+        "properties": {
+          "schemaElementKind": {
+            "$ref": "#/components/schemas/EdmSchemaElementKind"
+          },
+          "namespace": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "IEdmTerm": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/IEdmTypeReference"
+          },
+          "appliesTo": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
+          },
+          "defaultValue": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
+          },
+          "schemaElementKind": {
+            "$ref": "#/components/schemas/EdmSchemaElementKind"
+          },
+          "namespace": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "IEdmType": {
+        "type": "object",
+        "properties": {
+          "typeKind": {
+            "$ref": "#/components/schemas/EdmTypeKind"
+          }
+        },
+        "additionalProperties": false
+      },
+      "IEdmTypeReference": {
+        "type": "object",
+        "properties": {
+          "isNullable": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "definition": {
+            "$ref": "#/components/schemas/IEdmType"
+          }
+        },
+        "additionalProperties": false
+      },
+      "IEdmVocabularyAnnotatable": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "IEdmVocabularyAnnotation": {
+        "type": "object",
+        "properties": {
+          "qualifier": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
+          },
+          "term": {
+            "$ref": "#/components/schemas/IEdmTerm"
+          },
+          "target": {
+            "$ref": "#/components/schemas/IEdmVocabularyAnnotatable"
+          },
+          "value": {
+            "$ref": "#/components/schemas/IEdmExpression"
+          }
+        },
+        "additionalProperties": false
+      },
+      "InstitutionSearchView": {
+        "type": "object",
+        "properties": {
+          "institutionDesc": {
+            "type": "string",
+            "nullable": true
+          },
+          "institutionID": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "groupCodeID": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "groupCodeDesc": {
+            "type": "string",
+            "nullable": true
+          },
+          "accountID": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "accountNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "outStandingAmt": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "activeServiceCount": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "NameView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "firstNames": {
+            "type": "string",
+            "nullable": true
+          },
+          "surnameCompany": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ODataEntitySetInfo": {
+        "type": "object",
+        "properties": {
+          "typeAnnotation": {
+            "$ref": "#/components/schemas/ODataTypeAnnotation"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ODataFunctionImportInfo": {
+        "type": "object",
+        "properties": {
+          "typeAnnotation": {
+            "$ref": "#/components/schemas/ODataTypeAnnotation"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ODataServiceDocument": {
+        "type": "object",
+        "properties": {
+          "typeAnnotation": {
+            "$ref": "#/components/schemas/ODataTypeAnnotation"
+          },
+          "entitySets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ODataEntitySetInfo"
+            },
+            "nullable": true
+          },
+          "singletons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ODataSingletonInfo"
+            },
+            "nullable": true
+          },
+          "functionImports": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ODataFunctionImportInfo"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ODataSingletonInfo": {
+        "type": "object",
+        "properties": {
+          "typeAnnotation": {
+            "$ref": "#/components/schemas/ODataTypeAnnotation"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ODataTypeAnnotation": {
+        "type": "object",
+        "properties": {
+          "typeName": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PosChequeWriteBackDetailView": {
+        "type": "object",
+        "properties": {
+          "nameOnCheque": {
+            "type": "string",
+            "nullable": true
+          },
+          "receiptNo": {
+            "type": "string",
+            "nullable": true
+          },
+          "receiptDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "chequeNo": {
+            "type": "string",
+            "nullable": true
+          },
+          "bank": {
+            "type": "string",
+            "nullable": true
+          },
+          "bankBranchCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "isCancelled": {
+            "type": "boolean"
+          },
+          "adminAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "transactionDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "comment": {
+            "type": "string",
+            "nullable": true
+          },
+          "documentNumber": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PosMultiReceiptPrintView": {
+        "type": "object",
+        "properties": {
+          "receiptNo": {
+            "type": "string",
+            "nullable": true
+          },
+          "cashOfficeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "billType": {
+            "type": "string",
+            "nullable": true
+          },
+          "amount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "vatAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "amountInWord": {
+            "type": "string",
+            "nullable": true
+          },
+          "payMode": {
+            "type": "string",
+            "nullable": true
+          },
+          "accountId": {
+            "type": "string",
+            "nullable": true
+          },
+          "oldAccountCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "sgNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "accAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "accName": {
+            "type": "string",
+            "nullable": true
+          },
+          "prePaidUnit": {
+            "type": "string",
+            "nullable": true
+          },
+          "receiptDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "paymentDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "billTypeId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "cutOffAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "isCancelled": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "tenderAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "changeAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "paymentTypeId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "cashierName": {
+            "type": "string",
+            "nullable": true
+          },
+          "outstandingAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PosOfflineUnallocatedReceiptView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "receiptNo": {
+            "type": "string",
+            "nullable": true
+          },
+          "paidAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "cashierId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "billType": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "paymentTypeId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "chequeNo": {
+            "type": "string",
+            "nullable": true
+          },
+          "bankBranch": {
+            "type": "string",
+            "nullable": true
+          },
+          "bankBrachCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "cardNo": {
+            "type": "string",
+            "nullable": true
+          },
+          "dateCaptured": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "capturerId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "accountId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "voteId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cardExpiryDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "accHolderName": {
+            "type": "string",
+            "nullable": true
+          },
+          "systemDateCaptured": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "comment": {
+            "type": "string",
+            "nullable": true
+          },
+          "billPeriodID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "finPeriodId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sourceReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "sourceReferenceID": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "cashBookId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "reconciled": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "reconciledDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "tenderAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "changeAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "cashOfficeDesc": {
+            "type": "string",
+            "nullable": true
+          },
+          "cashierFullName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "Section129AccountEnquiryView": {
+        "type": "object",
+        "properties": {
+          "letterOfDemandID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "runType": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sec129Status": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "sms": {
+            "type": "string",
+            "nullable": true
+          },
+          "printLetter": {
+            "type": "string",
+            "nullable": true
+          },
+          "distributionType": {
+            "type": "string",
+            "nullable": true
+          },
+          "qualifyingAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "issueDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "handOverOptionId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "rotationAttorney": {
+            "type": "boolean"
+          },
+          "attorneyId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "attorneyDesc": {
+            "type": "string",
+            "nullable": true
+          },
+          "deliveryDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "deliveryStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "deliveryMessage": {
+            "type": "string",
+            "nullable": true
+          },
+          "smsFileDownload": {
+            "type": "string",
+            "nullable": true
+          },
+          "actionedby": {
+            "type": "string",
+            "nullable": true
+          },
+          "dateCreated": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "authorisedby": {
+            "type": "string",
+            "nullable": true
+          },
+          "dateAuthorised": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "Section129HandoverStatus": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "sec129Status": {
+            "type": "string",
+            "nullable": true
+          },
+          "handoverStatus": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ServiceTypeView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SysErrorLogView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "moduleName": {
+            "type": "string",
+            "nullable": true
+          },
+          "pageName": {
+            "type": "string",
+            "nullable": true
+          },
+          "procedureName": {
+            "type": "string",
+            "nullable": true
+          },
+          "errorMessage": {
+            "type": "string",
+            "nullable": true
+          },
+          "errorType": {
+            "type": "string",
+            "nullable": true
+          },
+          "detailedErrorMessage": {
+            "type": "string",
+            "nullable": true
+          },
+          "errorDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "userName": {
+            "type": "string",
+            "nullable": true
+          },
+          "severity": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "stackTrace": {
+            "type": "string",
+            "nullable": true
+          },
+          "userID": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UnitView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sgNumber": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}
