@@ -172,6 +172,43 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/proxy/pos-multi-receipt-print/batch", async (req, res) => {
+    try {
+      const startId = parseInt(req.query.startId as string) || 312979;
+      const count = Math.min(parseInt(req.query.count as string) || 50, 200);
+      const direction = (req.query.direction as string) === 'forward' ? 1 : -1;
+
+      const ids: number[] = [];
+      for (let i = 0; i < count; i++) {
+        ids.push(startId + (i * direction));
+      }
+
+      const fetchOne = async (id: number) => {
+        try {
+          const url = `${EXTERNAL_API_BASE}/api/pos-multi-receipt-print?receiptId=${id}`;
+          const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
+          if (response.ok) {
+            const data = await response.json();
+            if (Array.isArray(data) && data.length > 0) {
+              return data.map((item: any) => ({ ...item, _receiptId: id }));
+            }
+          }
+        } catch {}
+        return null;
+      };
+
+      const results = await Promise.all(ids.map(fetchOne));
+      const allResults: any[] = [];
+      for (const r of results) {
+        if (r) allResults.push(...r);
+      }
+
+      res.json(allResults);
+    } catch (e: any) {
+      res.status(502).json({ message: "Batch fetch failed", detail: e.message });
+    }
+  });
+
   // =====================================================
   // CASHIER SESSION ROUTES
   // =====================================================

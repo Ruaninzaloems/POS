@@ -379,6 +379,17 @@ export async function postMultipleAccountPaymentReceipt(capturerId: string, acco
     return res.json();
 }
 
+export async function fetchReceiptsBatch(startId: number, count: number = 50, direction: 'backward' | 'forward' = 'backward'): Promise<PosMultiReceiptPrintItem[]> {
+    const params = new URLSearchParams({
+        startId: startId.toString(),
+        count: count.toString(),
+        direction
+    });
+    const res = await fetch(`/api/proxy/pos-multi-receipt-print/batch?${params.toString()}`);
+    if (!res.ok) throw new Error('Failed to fetch receipts batch');
+    return res.json();
+}
+
 export async function updateTransactionStatusApi(id: string, status: string, reason?: string): Promise<any> {
     const res = await fetch(`/api/transactions/${id}/status`, {
         method: 'PATCH',

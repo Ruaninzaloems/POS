@@ -15,7 +15,7 @@ import { ReceiptTemplate } from '@/components/pos/receipt-template';
 import { useReactToPrint } from 'react-to-print';
 import { BankTransaction, AllocationDraft } from '@/lib/direct-deposits-data';
 import { cn } from '@/lib/utils';
-import { listTransactionsApi, fetchPosMultiReceiptPrint, PosMultiReceiptPrintItem } from '@/lib/external-api';
+import { listTransactionsApi, fetchPosMultiReceiptPrint, fetchReceiptsBatch, PosMultiReceiptPrintItem } from '@/lib/external-api';
 import { useToast } from '@/hooks/use-toast';
 import { usePos } from '@/lib/pos-state';
 
@@ -60,43 +60,87 @@ export default function ViewReceipts() {
     const handleSearch = async () => {
         setIsLoading(true);
         try {
-            const filters: any = {};
-            if (fromDate) filters.fromDate = fromDate.toISOString();
-            if (toDate) {
-                const endOfDay = new Date(toDate);
-                endOfDay.setHours(23, 59, 59, 999);
-                filters.toDate = endOfDay.toISOString();
+            const apiReceipts = await fetchReceiptsBatch(313000, 50, 'backward');
+
+            const rowMap = new Map<string, ReceiptRow>();
+
+            for (const item of apiReceipts) {
+                const receiptId = (item as any)._receiptId?.toString() || '';
+                const key = item.receiptNo || receiptId;
+                if (!key) continue;
+
+                if (!rowMap.has(key)) {
+                    rowMap.set(key, {
+                        id: receiptId || crypto.randomUUID(),
+                        receiptNo: item.receiptNo || '',
+                        accountId: item.accountId || '',
+                        paymentType: item.payMode || 'Cash',
+                        paymentOption: item.billType || 'Payment',
+                        receiptDate: item.receiptDate || new Date().toISOString(),
+                        staged: true,
+                        amount: item.amount || 0,
+                        tenderAmount: item.tenderAmount || 0,
+                        changeAmount: item.changeAmount || 0,
+                        cashierName: item.cashierName || 'Unknown',
+                        cashBook: item.cashOfficeName || '',
+                        cashierOffice: item.cashOfficeName || '',
+                        status: item.isCancelled ? 'CANCELLED' : 'COMPLETED',
+                        accName: item.accName || '',
+                        accAddress: item.accAddress || '',
+                        outstandingAmount: item.outstandingAmount,
+                        printData: [item],
+                    });
+                } else {
+                    const existing = rowMap.get(key)!;
+                    existing.printData = [...(existing.printData || []), item];
+                    existing.amount += item.amount || 0;
+                    existing.tenderAmount += item.tenderAmount || 0;
+                    existing.changeAmount += item.changeAmount || 0;
+                }
             }
 
-            const transactions = await listTransactionsApi(filters);
+            try {
+                const filters: any = {};
+                if (fromDate) filters.fromDate = fromDate.toISOString();
+                if (toDate) {
+                    const endOfDay = new Date(toDate);
+                    endOfDay.setHours(23, 59, 59, 999);
+                    filters.toDate = endOfDay.toISOString();
+                }
+                const transactions = await listTransactionsApi(filters);
+                for (const tx of transactions) {
+                    const receiptNo = tx.receiptNumber || '';
+                    if (receiptNo && !rowMap.has(receiptNo)) {
+                        const items = tx.items || [];
+                        const firstItem = items[0];
+                        rowMap.set(receiptNo, {
+                            id: tx.id?.toString() || crypto.randomUUID(),
+                            receiptNo,
+                            accountId: firstItem?.reference || firstItem?.accountNo || '',
+                            paymentType: tx.paymentType || 'Cash',
+                            paymentOption: firstItem?.type === 'CONSUMER_SERVICES' ? 'Consumer Services'
+                                : firstItem?.type === 'PREPAID' ? 'Prepaid Recharge'
+                                : firstItem?.type === 'DIRECT_INCOME' ? 'Direct Income'
+                                : firstItem?.type === 'CLEARANCE' ? 'Clearance'
+                                : firstItem?.description || 'Payment',
+                            receiptDate: tx.createdAt || new Date().toISOString(),
+                            staged: false,
+                            amount: parseFloat(tx.totalAmount) || 0,
+                            tenderAmount: parseFloat(tx.tenderAmount) || 0,
+                            changeAmount: parseFloat(tx.changeAmount) || 0,
+                            cashierName: tx.cashierName || 'Unknown',
+                            cashBook: '',
+                            cashierOffice: tx.cashOfficeId || '',
+                            status: tx.status || 'COMPLETED',
+                            cancellationReason: tx.cancellationReason || undefined,
+                        });
+                    }
+                }
+            } catch (e) {
+                console.warn("Local DB fetch failed, showing API receipts only", e);
+            }
 
-            let rows: ReceiptRow[] = transactions.map((tx: any) => {
-                const items = tx.items || [];
-                const firstItem = items[0];
-                const accountRef = firstItem?.reference || firstItem?.accountNo || '';
-
-                return {
-                    id: tx.id?.toString() || crypto.randomUUID(),
-                    receiptNo: tx.receiptNumber || '',
-                    accountId: accountRef,
-                    paymentType: tx.paymentType || 'Cash',
-                    paymentOption: firstItem?.type === 'CONSUMER_SERVICES' ? 'Consumer Services'
-                        : firstItem?.type === 'PREPAID' ? 'Prepaid Recharge'
-                        : firstItem?.type === 'DIRECT_INCOME' ? 'Direct Income'
-                        : firstItem?.type === 'CLEARANCE' ? 'Clearance'
-                        : firstItem?.description || 'Payment',
-                    receiptDate: tx.createdAt || new Date().toISOString(),
-                    staged: false,
-                    amount: parseFloat(tx.totalAmount) || 0,
-                    tenderAmount: parseFloat(tx.tenderAmount) || 0,
-                    changeAmount: parseFloat(tx.changeAmount) || 0,
-                    cashierName: tx.cashierName || 'Unknown',
-                    cashBook: '',
-                    cashierOffice: tx.cashOfficeId || '',
-                    status: tx.status || 'COMPLETED',
-                    cancellationReason: tx.cancellationReason || undefined,
-                };
-            });
+            let rows = Array.from(rowMap.values());
 
             const uniqueNames = Array.from(new Set(rows.map(r => r.cashierName).filter(Boolean)));
             setCashierNames(uniqueNames);
@@ -111,42 +155,37 @@ export default function ViewReceipts() {
                 rows = rows.filter(r => r.receiptNo.toLowerCase().includes(receiptFilter.toLowerCase()));
             }
 
-            rows.sort((a, b) => new Date(b.receiptDate).getTime() - new Date(a.receiptDate).getTime());
-
-            for (const row of rows) {
-                if (row.receiptNo) {
-                    try {
-                        const printItems = await fetchPosMultiReceiptPrint(row.receiptNo);
-                        if (printItems && printItems.length > 0) {
-                            row.printData = printItems;
-                            row.staged = true;
-                            const first = printItems[0];
-                            if (first.accountId) row.accountId = first.accountId;
-                            if (first.billType) row.paymentOption = first.billType;
-                            if (first.payMode) row.paymentType = first.payMode;
-                            if (first.receiptDate) row.receiptDate = first.receiptDate;
-                            if (first.cashierName) row.cashierName = first.cashierName;
-                            if (first.cashOfficeName) row.cashierOffice = first.cashOfficeName;
-                            if (first.accName) row.accName = first.accName;
-                            if (first.accAddress) row.accAddress = first.accAddress;
-                            if (first.isCancelled) {
-                                row.status = 'CANCELLED';
-                            }
-                            const totalAmount = printItems.reduce((sum, d) => sum + (d.amount || 0), 0);
-                            if (totalAmount > 0) row.amount = totalAmount;
-                            const totalTender = printItems.reduce((sum, d) => sum + (d.tenderAmount || 0), 0);
-                            if (totalTender > 0) row.tenderAmount = totalTender;
-                            const totalChange = printItems.reduce((sum, d) => sum + (d.changeAmount || 0), 0);
-                            row.changeAmount = totalChange;
-                            if (first.outstandingAmount !== null && first.outstandingAmount !== undefined) {
-                                row.outstandingAmount = first.outstandingAmount;
-                            }
-                        }
-                    } catch (e) {
-                        // API detail fetch failed, continue with DB data
+            if (fromDate || toDate) {
+                rows = rows.filter(r => {
+                    const dateStr = r.receiptDate;
+                    let receiptTime: number;
+                    if (dateStr.includes('/')) {
+                        const parts = dateStr.split(' ')[0].split('/');
+                        receiptTime = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0])).getTime();
+                    } else {
+                        receiptTime = new Date(dateStr).getTime();
                     }
-                }
+                    if (fromDate && receiptTime < fromDate.getTime()) return false;
+                    if (toDate) {
+                        const endOfDay = new Date(toDate);
+                        endOfDay.setHours(23, 59, 59, 999);
+                        if (receiptTime > endOfDay.getTime()) return false;
+                    }
+                    return true;
+                });
             }
+
+            rows.sort((a, b) => {
+                const parseDate = (d: string) => {
+                    if (d.includes('/')) {
+                        const parts = d.split(' ');
+                        const dateParts = parts[0].split('/');
+                        return new Date(parseInt(dateParts[2]), parseInt(dateParts[1]) - 1, parseInt(dateParts[0])).getTime();
+                    }
+                    return new Date(d).getTime();
+                };
+                return parseDate(b.receiptDate) - parseDate(a.receiptDate);
+            });
 
             setReceipts(rows);
 
@@ -387,7 +426,14 @@ export default function ViewReceipts() {
                                             <TableCell>{receipt.paymentType}</TableCell>
                                             <TableCell className="text-xs">{receipt.paymentOption}</TableCell>
                                             <TableCell className="text-xs whitespace-nowrap">
-                                                {receipt.receiptDate ? format(new Date(receipt.receiptDate), 'dd/MM/yyyy HH:mm') : '-'}
+                                                {receipt.receiptDate ? (() => {
+                                                    try {
+                                                        if (receipt.receiptDate.includes('/')) {
+                                                            return receipt.receiptDate.substring(0, 16);
+                                                        }
+                                                        return format(new Date(receipt.receiptDate), 'dd/MM/yyyy HH:mm');
+                                                    } catch { return receipt.receiptDate; }
+                                                })() : '-'}
                                             </TableCell>
                                             <TableCell>{receipt.staged ? 'Yes' : 'No'}</TableCell>
                                             <TableCell className="text-right font-mono font-medium">
