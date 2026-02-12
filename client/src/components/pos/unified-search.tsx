@@ -5,10 +5,12 @@ import { UnifiedSearch as SearchComponent, SearchResult } from './search-compone
 import { Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ACCOUNTS, Account } from '@/lib/mock-data';
+import { fetchAccounts } from '@/lib/external-api';
 
 export function UnifiedSearch() {
   const { addItem, clearTransaction } = usePos();
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   const handleSelect = (result: SearchResult) => {
     // clearTransaction(); // Optional: reset before adding new
@@ -86,24 +88,56 @@ export function UnifiedSearch() {
     addItem(newItem!);
   };
 
-  const handleAdvancedSearch = (criteria: any) => {
-      // Mock search logic for prototype
-      // In a real app, this would call an API with the specific criteria
-      console.log("Searching with criteria:", criteria);
-      
-      // For demo, just find first account matching any field
-      const found = ACCOUNTS.find(a => 
-          (criteria.accountNo && a.accountNo.includes(criteria.accountNo)) ||
-          (criteria.name && a.name.toLowerCase().includes(criteria.name.toLowerCase())) ||
-          (criteria.idNo && a.idNo.includes(criteria.idNo))
-      );
+  const handleAdvancedSearch = async (criteria: any) => {
+      setIsSearching(true);
+      try {
+        console.log("Searching with criteria:", criteria);
+        
+        // Attempt to search via API first
+        const apiResults = await fetchAccounts(criteria);
+        
+        if (apiResults && apiResults.length > 0) {
+            // Use the first result from API
+            const acc = apiResults[0];
+            // Map API result to Account interface if needed
+            // The API returns fields like accountID, accountNumber, name, outStandingAmt
+            const mappedAccount: Account = {
+                accountNo: acc.accountNumber || acc.accountNo,
+                name: acc.name,
+                idNo: acc.idNumber || '', // specific field might vary
+                outstandingAmount: acc.outStandingAmt || acc.outstandingAmount || 0,
+                address: acc.locationAddress || acc.address || '',
+                // Map other required fields with defaults
+                sgNo: acc.sgNumber || '',
+                email: '',
+                mobile: '',
+                accountType: acc.accountType || 'Consumer',
+                status: acc.accountStatus || 'Active'
+            };
+            
+            handleSelect({ type: 'ACCOUNT', data: mappedAccount, label: `${mappedAccount.accountNo} - ${mappedAccount.name}` });
+            setShowAdvanced(false);
+            return;
+        }
 
-      if (found) {
-          handleSelect({ type: 'ACCOUNT', data: found, label: `${found.accountNo} - ${found.name}` });
-          setShowAdvanced(false);
-      } else {
-          // Maybe show a toast or error? For now just log
-          alert("No accounts found matching criteria (Mock Data Limited)");
+        // Fallback to mock data if API yields no results
+        const found = ACCOUNTS.find(a => 
+            (criteria.accountNo && a.accountNo.includes(criteria.accountNo)) ||
+            (criteria.name && a.name.toLowerCase().includes(criteria.name.toLowerCase())) ||
+            (criteria.idNo && a.idNo.includes(criteria.idNo))
+        );
+
+        if (found) {
+            handleSelect({ type: 'ACCOUNT', data: found, label: `${found.accountNo} - ${found.name}` });
+            setShowAdvanced(false);
+        } else {
+            alert("No accounts found matching criteria");
+        }
+      } catch (error) {
+          console.error("Search failed", error);
+          alert("Search failed. Please try again.");
+      } finally {
+          setIsSearching(false);
       }
   };
 
@@ -113,6 +147,7 @@ export function UnifiedSearch() {
               <ConsumerSearchForm 
                   onSearch={handleAdvancedSearch} 
                   onCancel={() => setShowAdvanced(false)} 
+                  isLoading={isSearching}
               />
           </div>
       )

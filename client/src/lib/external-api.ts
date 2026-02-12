@@ -138,6 +138,30 @@ export async function fetchInstitutions(): Promise<Institution[]> {
     return [];
 }
 
+export async function fetchAccounts(criteria: any): Promise<any[]> {
+    try {
+        // Construct query parameters based on criteria
+        const params = new URLSearchParams();
+        if (criteria.accountNo) params.append('accountNumber', criteria.accountNo);
+        if (criteria.name) params.append('name', criteria.name);
+        if (criteria.idNo) params.append('idNumber', criteria.idNo);
+        
+        // Use the endpoint provided by user
+        const res = await fetch(`${API_BASE}/api/cons-accounts/search?${params.toString()}`, {
+            headers: { 'Accept': 'application/json' }
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            // Handle both OData wrapper and direct array return styles
+            return Array.isArray(data) ? data : (data.value || []);
+        }
+    } catch (e) {
+        console.error("Failed to fetch accounts", e);
+    }
+    return [];
+}
+
 export async function fetchConfigSettings(): Promise<any[]> {
     try {
         const res = await fetch(`${API_BASE}/api/aaaa-config-settings`, {
