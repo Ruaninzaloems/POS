@@ -150,9 +150,26 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/platinum/active-fin-year", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/UserPermission/ActiveFinYear", {});
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.get("/api/platinum/receipt-prepaid/cash-offices", async (req, res) => {
     try {
-      const data = await platinumGet("/api/ReceiptPrepaid/cash-offices", req.query as Record<string, string>);
+      let query = req.query as Record<string, string>;
+      if (!query.finYear) {
+        const finYearData = await platinumGet("/api/UserPermission/ActiveFinYear", {});
+        if (finYearData && !finYearData._error) {
+          const finYear = typeof finYearData === 'string' ? finYearData.replace(/"/g, '') : String(finYearData);
+          query = { ...query, finYear };
+        }
+      }
+      const data = await platinumGet("/api/ReceiptPrepaid/cash-offices", query);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
