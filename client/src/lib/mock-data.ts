@@ -355,25 +355,24 @@ export const CLEARANCES: ClearanceCostSchedule[] = [
 ];
 
 export const CURRENT_CASHIER = {
-  id: "CSH-01",
-  name: "Sarah Jenkins",
+  id: "CSH-00",
+  name: "System User",
   role: "CASHIER",
-  cashOffice: "Main Civic Center",
+  cashOffice: "Unassigned",
   receiptRange: {
-    start: 50000,
-    end: 60000,
-    current: 50042
+    start: 0,
+    end: 0,
+    current: 0
   },
-  float: 500.00
+  float: 0.00
 };
 
 export const CASHIERS = [
-  { id: "CSH-01", name: "Sarah Jenkins", role: "CASHIER", cashOffice: "Main Civic Center", float: 500.00 },
-  { id: "CSH-02", name: "John Doe", role: "CASHIER", cashOffice: "Main Civic Center", float: 0.00 },
-  { id: "CSH-03", name: "Emily Davis", role: "CASHIER", cashOffice: "Traffic Dept", float: 250.00 },
-  { id: "CSH-04", name: "Michael Brown", role: "CASHIER", cashOffice: "Traffic Dept", float: 250.00 },
-  { id: "CSH-05", name: "Jessica Wilson", role: "CASHIER", cashOffice: "Main Civic Center", float: 0.00 },
-  { id: "SUP-01", name: "Admin User", role: "SUPERVISOR", cashOffice: "Main Civic Center", float: 0.00 }
+  { id: "CSH-00", name: "System User", role: "CASHIER", cashOffice: "Unassigned", float: 0.00 },
+  { id: "CSH-01", name: "Cashier 1", role: "CASHIER", cashOffice: "Main Civic Center", float: 500.00 },
+  { id: "CSH-02", name: "Cashier 2", role: "CASHIER", cashOffice: "Main Civic Center", float: 0.00 },
+  { id: "CSH-03", name: "Cashier 3", role: "CASHIER", cashOffice: "Traffic Dept", float: 250.00 },
+  { id: "SUP-01", name: "Supervisor", role: "SUPERVISOR", cashOffice: "Main Civic Center", float: 0.00 }
 ];
 
 export const MOCK_TRANSACTIONS: any[] = []; // Global store for transactions

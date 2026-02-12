@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from '
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, ACCOUNTS, DIRECT_INCOME_ITEMS, ACCOUNT_GROUPS, CLEARANCES, AccountGroup, CASHIERS, MOCK_TRANSACTIONS, CASH_OFFICES, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, ApiCashier, BillingConfig } from './external-api';
 
 export type TransactionType = 
   | 'CONSUMER_SERVICES' 
@@ -96,6 +96,8 @@ interface PosState {
       institutions: any[];
       settings: any[];
       cashOffices: CashOffice[];
+      cashiers: ApiCashier[];
+      billingConfig: BillingConfig | null;
   };
 }
 
@@ -164,12 +166,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       institutions: any[];
       settings: any[];
       cashOffices: CashOffice[];
+      cashiers: ApiCashier[];
+      billingConfig: BillingConfig | null;
   }>({
       banks: [],
       groups: [],
       institutions: [],
       settings: [],
-      cashOffices: []
+      cashOffices: [],
+      cashiers: [],
+      billingConfig: null
   });
 
   // Fetch reference data on mount
@@ -177,12 +183,14 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const loadData = async () => {
           try {
               console.log("Fetching reference data...");
-              const [banks, groups, institutions, settings, cashOffices] = await Promise.all([
+              const [banks, groups, institutions, settings, cashOffices, cashiers, billingConfig] = await Promise.all([
                   fetchBanks(),
                   fetchGroups(),
                   fetchInstitutions(),
                   fetchConfigSettings(),
-                  fetchCashOffices()
+                  fetchCashOffices(),
+                  fetchCashiers(),
+                  fetchBillingConfig()
               ]);
               
               setReferenceData({
@@ -190,10 +198,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   groups: groups || [],
                   institutions: institutions || [],
                   settings: settings || [],
-                  cashOffices: cashOffices || []
+                  cashOffices: cashOffices || [],
+                  cashiers: cashiers || [],
+                  billingConfig: billingConfig || null
               });
               
-              console.log("Reference Data Loaded:", { banks, groups, institutions, settings, cashOffices });
+              console.log("Reference Data Loaded:", { banks, groups, institutions, settings, cashOffices, cashiers, billingConfig });
           } catch (error) {
               console.error("Failed to load reference data", error);
               // Don't show toast on mount to avoid annoyance, just log
@@ -216,6 +226,20 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setRecentTransactions([...MOCK_TRANSACTIONS].sort((a, b) => b.timestamp - a.timestamp));
   }, [currentUser]); // Re-fetch when user switches
 
+  // Update currentUser when cashiers are loaded from API to replace mock data
+  useEffect(() => {
+      if (referenceData.cashiers.length > 0) {
+          const apiCashier = referenceData.cashiers[0];
+          setCurrentUser({
+              id: apiCashier.id,
+              name: apiCashier.name,
+              role: 'CASHIER', // Default role since API might not return it
+              cashOffice: apiCashier.cashOfficeId || 'Unknown',
+              float: apiCashier.float
+          });
+      }
+  }, [referenceData.cashiers]);
+
   // Derived state (Logic extracted to pos-logic.ts)
   const { totalToPay, tenderTotal, changeDue } = calculateTransactionTotals(items, payment);
   
@@ -223,20 +247,40 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const activeTransactionType = determineTransactionType(items, viewingItemId);
 
   const switchUser = (cashierId: string) => {
+      // Try to find in API cashiers first
+      const apiCashier = referenceData.cashiers.find(c => c.id === cashierId);
+      
+      if (apiCashier) {
+          setCurrentUser({
+              id: apiCashier.id,
+              name: apiCashier.name,
+              role: 'CASHIER',
+              cashOffice: apiCashier.cashOfficeId || 'Unknown',
+              float: apiCashier.float
+          });
+          resetSession();
+          return;
+      }
+
+      // Fallback to mock cashiers
       const cashier = CASHIERS.find(c => c.id === cashierId);
       if (cashier) {
           setCurrentUser(cashier);
-          // In a real app, we would load that cashier's active session here
-          // For prototype, we'll just reset the session slightly to simulate a switch
-          setItems([]);
-          setSearchQuery('');
-          setDayEndStatus('OPEN');
-          setDayEndReturnReason('');
-          setRecentTransactions([]);
-          setPayment({ cash: 0, card: 0 });
-          setActiveSession(false); // Require new session start on switch
-          setSessionDetails(undefined);
+          resetSession();
       }
+  };
+
+  const resetSession = () => {
+      // In a real app, we would load that cashier's active session here
+      // For prototype, we'll just reset the session slightly to simulate a switch
+      setItems([]);
+      setSearchQuery('');
+      setDayEndStatus('OPEN');
+      setDayEndReturnReason('');
+      setRecentTransactions([]);
+      setPayment({ cash: 0, card: 0 });
+      setActiveSession(false); // Require new session start on switch
+      setSessionDetails(undefined);
   };
 
   const toggleViewMode = () => {

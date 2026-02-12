@@ -17,6 +17,10 @@ export default function CashierSetup() {
 
     const selectedOffice = cashOffices.find(o => o.id === selectedOfficeId);
 
+    // Apply receipting configuration if available
+    const receiptingConfig = referenceData.billingConfig?.receiptingOptions || {};
+    // Example usage: const showFloat = receiptingConfig.showFloat !== false;
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedOfficeId) {

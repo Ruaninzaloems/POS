@@ -37,6 +37,55 @@ export async function fetchCashOffices(): Promise<CashOffice[]> {
     return CASH_OFFICES;
 }
 
+export interface ApiCashier {
+    id: string;
+    name: string;
+    cashOfficeId: string;
+    float: number;
+    // Add other fields as they appear in the API
+}
+
+export async function fetchCashiers(): Promise<ApiCashier[]> {
+    try {
+        const res = await fetch(`${API_BASE}/odata/ConstCashiers`, {
+            headers: { 'Accept': 'application/json' }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            // Map API response to our expected format if needed
+            return data.value.map((c: any) => ({
+                id: c.id || c.cashierId, // specific field mapping might be needed
+                name: c.name || c.cashierName,
+                cashOfficeId: c.cashOfficeId,
+                float: c.float || 0
+            })) || [];
+        }
+    } catch (e) {
+        console.warn("Failed to fetch cashiers from API", e);
+    }
+    return [];
+}
+
+export interface BillingConfig {
+    receiptingOptions?: any;
+    // Add other config fields
+}
+
+export async function fetchBillingConfig(): Promise<BillingConfig | null> {
+    try {
+        const res = await fetch(`${API_BASE}/odata/BillingConfigSettings`, {
+            headers: { 'Accept': 'application/json' }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            return data.value?.[0] || null; // OData returns array
+        }
+    } catch (e) {
+        console.warn("Failed to fetch billing config", e);
+    }
+    return null;
+}
+
 export async function fetchBanks(): Promise<Bank[]> {
     try {
         const res = await fetch(`${API_BASE}/odata/ConstBanks`, {
