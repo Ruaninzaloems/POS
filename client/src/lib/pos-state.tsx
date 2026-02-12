@@ -1,11 +1,13 @@
-import React, { createContext, useContext, useState, useMemo, useEffect, Component, type ErrorInfo, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, ACCOUNTS, DIRECT_INCOME_ITEMS, ACCOUNT_GROUPS, CLEARANCES, AccountGroup, CASHIERS, MOCK_TRANSACTIONS, CASH_OFFICES, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
 import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, ApiCashier, BillingConfig, createSessionApi, endSessionApi, createTransactionApi, postMultipleAccountPaymentReceipt } from './external-api';
 
 if (import.meta.hot) {
-  import.meta.hot.decline();
+  import.meta.hot.accept(() => {
+    window.location.reload();
+  });
 }
 
 export type TransactionType = 
