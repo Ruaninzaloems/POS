@@ -13,7 +13,7 @@ Key business capabilities:
 - **Supervisor Dashboard**: Transaction oversight, cancellation approvals, day-end reviews
 - **Direct Deposit Allocation**: Manual and bulk allocation of unmatched bank transactions to consumer accounts
 - **Receipt Management**: Print, email, SMS receipt delivery with permit/certificate generation
-- **External API Integration**: Proxied connections to Sebata Billing microservices for live account data
+- **External API Integration**: Proxied connections to Platinum Inzalo EMS API and legacy Sebata Billing microservices for live account data
 
 ## User Preferences
 
@@ -38,7 +38,9 @@ Preferred communication style: Simple, everyday language.
 ### Backend (Express + Node.js)
 - **Framework**: Express 5 with TypeScript, compiled via `tsx`
 - **API Pattern**: RESTful routes registered in `server/routes.ts`
-- **Proxy Layer**: Backend proxies requests to an external Sebata Billing API (`george-uat-ems-billing-api.azurewebsites.net`) to solve CORS issues. Routes prefixed with `/api/proxy/` forward to the external OData endpoints
+- **Proxy Layer**: Backend proxies requests to two external APIs:
+  - **Platinum Inzalo EMS API** (`georgeplatinumuatapi.azurewebsites.net`): Authenticated via JWT tokens (`server/platinum-auth.ts`). Routes prefixed with `/api/platinum/` cover all POS operations (payments, prepaid, clearance, miscellaneous, day-end reconciliation, direct deposits, third-party payments, account management, billing enquiry, dashboard)
+  - **Legacy Sebata Billing API** (`george-uat-ems-billing-api.azurewebsites.net`): Unauthenticated OData proxy. Routes prefixed with `/api/proxy/` for backward compatibility
 - **Static Serving**: Production builds served from `dist/public/`; development uses Vite middleware with HMR
 - **Storage Layer**: `server/storage.ts` implements `IStorage` interface with a `DatabaseStorage` class using Drizzle ORM
 
@@ -67,8 +69,9 @@ Preferred communication style: Simple, everyday language.
 ## External Dependencies
 
 ### External APIs
-- **Sebata Billing Microservice** (`george-uat-ems-billing-api.azurewebsites.net`): OData-based API providing consumer account data, cash office configuration, cashier details, billing config, and receipt staging. Accessed via server-side proxy routes to avoid CORS. The Swagger spec is included in `swagger.json`.
-  - Key endpoints proxied: `ConstCashOffices`, `ConstCashiers`, `UserUserDetails`, `BillingConfigSettings`, consumer account search
+- **Platinum Inzalo EMS API** (`georgeplatinumuatapi.azurewebsites.net`): Full POS system API authenticated via JWT bearer tokens. Auth module in `server/platinum-auth.ts` handles token management with auto-refresh. Credentials stored as environment secrets (PLATINUM_API_PASSWORD) and env vars (PLATINUM_API_USERNAME, PLATINUM_API_DBNAME). OpenAPI spec in `platinum-openapi.json`.
+  - Key endpoint groups: ReceiptPrepaid (cashier/account operations), billing-payment (consumer/clearance/misc payments), auth-day-end-reconcile (supervisor), billing-payment-day-end-reconcile (cashier), billing-direct-deposit-allocation (manual), billing/direct-deposit-bulk-allocation (bulk), third-party-payments v2, BillingEnquiry, BillingDashboard
+- **Sebata Billing Microservice** (`george-uat-ems-billing-api.azurewebsites.net`): Legacy OData-based API providing consumer account data, billing config, and receipt staging. Accessed via server-side proxy routes (`/api/proxy/`) for backward compatibility. Swagger spec in `swagger.json`.
   
 ### Database
 - **PostgreSQL**: Required. Connection via `DATABASE_URL` environment variable. Used for users, cashier sessions, and transaction persistence.

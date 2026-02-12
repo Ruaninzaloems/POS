@@ -399,3 +399,556 @@ export async function updateTransactionStatusApi(id: string, status: string, rea
     if (!res.ok) throw new Error('Failed to update transaction status');
     return res.json();
 }
+
+// =====================================================
+// PLATINUM API FUNCTIONS
+// =====================================================
+
+async function platinumFetch(url: string, options?: RequestInit): Promise<any> {
+    const res = await fetch(url, options);
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Platinum API error (${res.status}): ${text}`);
+    }
+    return res.json();
+}
+
+export async function platinumValidateCashier(userId: number, finYear: number): Promise<any> {
+    return platinumFetch(`/api/platinum/receipt-prepaid/validate-cashier?userId=${userId}&finYear=${finYear}`);
+}
+
+export async function platinumGetConsAccounts(params: Record<string, string>): Promise<any[]> {
+    const qs = new URLSearchParams(params).toString();
+    return platinumFetch(`/api/platinum/receipt-prepaid/cons-accounts?${qs}`);
+}
+
+export async function platinumGetConsAccountDetails(accountId: number): Promise<any> {
+    return platinumFetch(`/api/platinum/receipt-prepaid/cons-account-details?accountId=${accountId}`);
+}
+
+export async function platinumGetPrepaidAccountDetails(accountId: number): Promise<any> {
+    return platinumFetch(`/api/platinum/receipt-prepaid/prepaid-account-details?accountId=${accountId}`);
+}
+
+export async function platinumGetCashierDetailsById(cashierId: number): Promise<any> {
+    return platinumFetch(`/api/platinum/receipt-prepaid/cashier-details-by-id?cashierId=${cashierId}`);
+}
+
+export async function platinumGetActiveCashierDetails(): Promise<any[]> {
+    return platinumFetch(`/api/platinum/receipt-prepaid/active-cashier-details`);
+}
+
+export async function platinumGetActiveCashOfficeDetails(): Promise<any[]> {
+    return platinumFetch(`/api/platinum/receipt-prepaid/active-cash-office-details`);
+}
+
+export async function platinumGetPosPaymentTypes(): Promise<any[]> {
+    return platinumFetch(`/api/platinum/receipt-prepaid/pos-payment-type`);
+}
+
+export async function platinumIsBilling(): Promise<any> {
+    return platinumFetch(`/api/platinum/receipt-prepaid/is-billing`);
+}
+
+export async function platinumGetServiceTypePrepaidList(accountId: number): Promise<any[]> {
+    return platinumFetch(`/api/platinum/receipt-prepaid/service-type-wise-prepaid-list?accountId=${accountId}`);
+}
+
+export async function platinumGetCashOffices(): Promise<any[]> {
+    return platinumFetch(`/api/platinum/receipt-prepaid/cash-offices`);
+}
+
+export async function platinumSubmitCashierSetup(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/receipt-prepaid/submit-cashier-setup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumSubmitPrepaidPayment(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/receipt-prepaid/submit-prepaid-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumUtiliPayBreakdownRequest(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/receipt-prepaid/utilipay-breakdown-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumUtiliPayTokenRequest(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/receipt-prepaid/utilipay-token-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumSearchPropertyRatesPayment(params: Record<string, string>): Promise<any> {
+    const qs = new URLSearchParams(params).toString();
+    return platinumFetch(`/api/platinum/receipt-prepaid/search-property-rates-payment?${qs}`);
+}
+
+export async function platinumValidateCashierDayEndRecon(params: Record<string, string>): Promise<any> {
+    const qs = new URLSearchParams(params).toString();
+    return platinumFetch(`/api/platinum/receipt-prepaid/validate-cashier-day-end-recon?${qs}`);
+}
+
+export async function platinumGetBillingRuns(): Promise<any[]> {
+    return platinumFetch(`/api/platinum/receipt-prepaid/get-billing-runs`);
+}
+
+export async function platinumGetChequeAmendList(params: Record<string, string>): Promise<any[]> {
+    const qs = new URLSearchParams(params).toString();
+    return platinumFetch(`/api/platinum/receipt-prepaid/cheque-amend-list?${qs}`);
+}
+
+// --- Billing Payment ---
+
+export async function platinumSubmitConsumerPayment(userId: string, data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-payment/submit-consumer-payment/${userId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumSaveMultipleAccountPayment(data: any, params?: Record<string, string>): Promise<any> {
+    const qs = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return platinumFetch(`/api/platinum/billing-payment/save-multiple-account-payment${qs}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumGetMultipleAccountPayment(params: Record<string, string>): Promise<any> {
+    const qs = new URLSearchParams(params).toString();
+    return platinumFetch(`/api/platinum/billing-payment/get-multiple-account-payment?${qs}`);
+}
+
+export async function platinumSubmitMultiplePayment(userId: string, data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-payment/submit-multiple-payment/${userId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumSearchAccountsPayment(data: any): Promise<any[]> {
+    return platinumFetch(`/api/platinum/billing-payment/search-accounts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumPrintReceipt(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-payment/print-receipt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumPrintMiscellaneousReceipt(data: any, params?: Record<string, string>): Promise<any> {
+    const qs = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return platinumFetch(`/api/platinum/billing-payment/print-miscellaneous-receipt${qs}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+// --- Clearance ---
+
+export async function platinumGetClearanceIds(params: Record<string, string>): Promise<any[]> {
+    const qs = new URLSearchParams(params).toString();
+    return platinumFetch(`/api/platinum/billing-payment-clearance/get-clearanceids?${qs}`);
+}
+
+export async function platinumGetClearancePaymentTypes(): Promise<any[]> {
+    return platinumFetch(`/api/platinum/billing-payment-clearance/pos-payment-type`);
+}
+
+export async function platinumGetBanks(): Promise<any[]> {
+    return platinumFetch(`/api/platinum/billing-payment-clearance/get-banks`);
+}
+
+export async function platinumGetBranchesByBank(params: Record<string, string>): Promise<any[]> {
+    const qs = new URLSearchParams(params).toString();
+    return platinumFetch(`/api/platinum/billing-payment-clearance/get-branches-by-bank?${qs}`);
+}
+
+export async function platinumGetClearanceData(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-payment-clearance/get-clearance-data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumGetAccountsForClearance(data: any): Promise<any[]> {
+    return platinumFetch(`/api/platinum/billing-payment-clearance/get-accounts-for-clearance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumSubmitClearancePayment(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-payment-clearance/submit-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+// --- Miscellaneous Payments ---
+
+export async function platinumGetMiscGroups(): Promise<any[]> {
+    return platinumFetch(`/api/platinum/billing-payment-miscellaneous/get-groups`);
+}
+
+export async function platinumGetMiscScoaItems(params: Record<string, string>): Promise<any[]> {
+    const qs = new URLSearchParams(params).toString();
+    return platinumFetch(`/api/platinum/billing-payment-miscellaneous/get-scoa-items?${qs}`);
+}
+
+export async function platinumGetMiscVatRate(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-payment-miscellaneous/get-vat-rate`);
+}
+
+export async function platinumSubmitMiscPayment(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-payment-miscellaneous/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+// --- Day-End Reconciliation (Cashier) ---
+
+export async function platinumGetDayEndCashierList(): Promise<any[]> {
+    return platinumFetch(`/api/platinum/billing-payment-day-end/get-cashier-list`);
+}
+
+export async function platinumGetDayEndCashierDetails(params: Record<string, string>): Promise<any> {
+    const qs = new URLSearchParams(params).toString();
+    return platinumFetch(`/api/platinum/billing-payment-day-end/get-cashier-details?${qs}`);
+}
+
+export async function platinumGetDayEndReconcileList(params: Record<string, string>): Promise<any[]> {
+    const qs = new URLSearchParams(params).toString();
+    return platinumFetch(`/api/platinum/billing-payment-day-end/get-cashier-receipt-reconcile-list?${qs}`);
+}
+
+export async function platinumSaveDayEndReconcileData(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-payment-day-end/save-reconcile-data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+// --- Auth Day-End Reconciliation (Supervisor) ---
+
+export async function platinumGetAuthDayEndCashierList(): Promise<any[]> {
+    return platinumFetch(`/api/platinum/auth-day-end/cashier-list`);
+}
+
+export async function platinumGetAuthDayEndCashierReconcile(params: Record<string, string>): Promise<any> {
+    const qs = new URLSearchParams(params).toString();
+    return platinumFetch(`/api/platinum/auth-day-end/cashier-reconcile-by-cashierid?${qs}`);
+}
+
+export async function platinumGetAuthDayEndPosCashier(): Promise<any[]> {
+    return platinumFetch(`/api/platinum/auth-day-end/pos-cashier`);
+}
+
+export async function platinumGetAuthDayEndCashierDetails(params: Record<string, string>): Promise<any> {
+    const qs = new URLSearchParams(params).toString();
+    return platinumFetch(`/api/platinum/auth-day-end/cashier-details?${qs}`);
+}
+
+export async function platinumAuthDayEndCashierReceiptCashList(data: any): Promise<any[]> {
+    return platinumFetch(`/api/platinum/auth-day-end/cashier-receipt-cash-list`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumAuthDayEndSystemVsCashierDataList(data: any): Promise<any[]> {
+    return platinumFetch(`/api/platinum/auth-day-end/system-vs-cashier-data-list`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumAuthDayEndFinishReconcile(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end/finish-day-end-reconcile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumAuthDayEndReturnReconcile(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end/return-day-end-reconcile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumAuthDayEndCancelReceipt(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end/cancel-receipt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumAuthDayEndPrintReceipt(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end/print-receipt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumAuthDayEndPrintCashReport(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end/print-cash-report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumAuthDayEndPrintDepositSlip(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end/print-deposit-slip`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumAuthDayEndSubmitReconcile(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end/submit-day-auth-reconcile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumAuthDayEndValidateCashbook(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end/validate-cashbook`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+// --- Direct Deposit Allocation ---
+
+export async function platinumGetBankReconPosItemList(data: any): Promise<any[]> {
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/get-bank-recon-positem-list`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumGetMiscPaymentGroup(): Promise<any[]> {
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/get-misc-payment-group`);
+}
+
+export async function platinumGetMiscVoteIdByGroup(params: Record<string, string>): Promise<any[]> {
+    const qs = new URLSearchParams(params).toString();
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/get-misc-vote-id-by-group?${qs}`);
+}
+
+export async function platinumGetGroupPaymentDetails(params: Record<string, string>): Promise<any> {
+    const qs = new URLSearchParams(params).toString();
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/get-group-payment-details?${qs}`);
+}
+
+export async function platinumGetDDVatRate(): Promise<any> {
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/get-vat-rate`);
+}
+
+export async function platinumGetAccountAutocomplete(params: Record<string, string>): Promise<any[]> {
+    const qs = new URLSearchParams(params).toString();
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/get-account-autocomplete?${qs}`);
+}
+
+export async function platinumGetClearanceAutocomplete(params: Record<string, string>): Promise<any[]> {
+    const qs = new URLSearchParams(params).toString();
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/get-clearance-autocomplete?${qs}`);
+}
+
+export async function platinumGetOldAccountAutocomplete(params: Record<string, string>): Promise<any[]> {
+    const qs = new URLSearchParams(params).toString();
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/get-old-account-autocomplete?${qs}`);
+}
+
+export async function platinumLoadDetailsPaymentGrouping(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/load-details-payment-grouping`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumLoadDetailsConsumerServices(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/load-details-consumer-services`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumLoadDetailsClearance(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/load-details-clearance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumSubmitDirectDepositAllocation(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/submit-details-data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+// --- Direct Deposit Bulk ---
+
+export async function platinumGetBulkUnprocessed(data: any): Promise<any[]> {
+    return platinumFetch(`/api/platinum/direct-deposit-bulk/get-unprocessed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumGetBulkProcessed(data: any): Promise<any[]> {
+    return platinumFetch(`/api/platinum/direct-deposit-bulk/get-processed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumBulkReconcile(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/direct-deposit-bulk/reconcile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+// --- Third Party Payments V2 ---
+
+export async function platinumThirdPartyImport(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/third-party-payments/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumThirdPartyGetTransactions(importId: string): Promise<any[]> {
+    return platinumFetch(`/api/platinum/third-party-payments/${importId}/transactions`);
+}
+
+export async function platinumThirdPartyValidateAccount(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/third-party-payments/validate-account`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumThirdPartyReconcile(importId: string, data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/third-party-payments/${importId}/reconcile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumThirdPartyCommit(importId: string, data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/third-party-payments/${importId}/commit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+// --- Billing Enquiry ---
+
+export async function platinumGetDepositAmount(params: Record<string, string>): Promise<any> {
+    const qs = new URLSearchParams(params).toString();
+    return platinumFetch(`/api/platinum/billing-enquiry/deposit-amount?${qs}`);
+}
+
+export async function platinumGetDepositsByAccountId(params: Record<string, string>): Promise<any[]> {
+    const qs = new URLSearchParams(params).toString();
+    return platinumFetch(`/api/platinum/billing-enquiry/deposits-by-account-id?${qs}`);
+}
+
+export async function platinumGetReceiptTransactionDetail(params: Record<string, string>): Promise<any> {
+    const qs = new URLSearchParams(params).toString();
+    return platinumFetch(`/api/platinum/billing-enquiry/receipt-transaction-detail?${qs}`);
+}
+
+// --- Account Management ---
+
+export async function platinumSearchAccountsManagement(data: any): Promise<any[]> {
+    return platinumFetch(`/api/platinum/billing-account-management/search-accounts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumGetAccountDetails(params: Record<string, string>): Promise<any> {
+    const qs = new URLSearchParams(params).toString();
+    return platinumFetch(`/api/platinum/billing-account-management/account-details?${qs}`);
+}
+
+export async function platinumGetAccountInformation(params: Record<string, string>): Promise<any> {
+    const qs = new URLSearchParams(params).toString();
+    return platinumFetch(`/api/platinum/billing-account-management/account-information?${qs}`);
+}
+
+export async function platinumGetContactDetails(params: Record<string, string>): Promise<any> {
+    const qs = new URLSearchParams(params).toString();
+    return platinumFetch(`/api/platinum/billing-account-management/get-contact-details?${qs}`);
+}
+
+export async function platinumGetPropertyDetails(params: Record<string, string>): Promise<any> {
+    const qs = new URLSearchParams(params).toString();
+    return platinumFetch(`/api/platinum/billing-account-management/get-property-details?${qs}`);
+}
+
+// --- Dashboard ---
+
+export async function platinumGetPosCount(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/pos-count`);
+}
+
+export async function platinumGetPosTabItemDetailsCount(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/pos-tab-item-details-count`);
+}
