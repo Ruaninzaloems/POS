@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { usePos, TransactionItem } from '@/lib/pos-state';
 import { ConsumerSearchForm } from './consumer-search-form';
-import { UnifiedSearch as SearchComponent, SearchResult } from './search-component';
+import { UnifiedSearch as SearchComponent, SearchResult, parseMobileFromContactDetails } from './search-component';
 import { Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ACCOUNTS, Account } from '@/lib/mock-data';
@@ -154,7 +154,7 @@ export function UnifiedSearch() {
                 address: acc.address || acc.locationAddress || '',
                 sgNo: acc.sgNumber || '',
                 email: '',
-                mobile: acc.contactDetails || '',
+                mobile: parseMobileFromContactDetails(acc.contactDetails),
                 accountType: acc.accountType || 'Consumer',
                 status: acc.accountStatus || 'Active',
                 oldCode: acc.oldAccountCode || '',

@@ -4,6 +4,15 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ACCOUNTS, DIRECT_INCOME_ITEMS, ACCOUNT_GROUPS, CLEARANCES, Account } from '@/lib/mock-data';
 import { searchInstitutions, InstitutionSearchResult } from '@/lib/external-api';
+
+export function parseMobileFromContactDetails(contactDetails: string | undefined | null): string {
+    if (!contactDetails) return '';
+    const mobileMatch = contactDetails.match(/<b>\s*Mobile\s*No\.?\s*:?\s*<\/b>\s*([^<]*)/i);
+    if (mobileMatch && mobileMatch[1].trim()) return mobileMatch[1].trim();
+    const telMatch = contactDetails.match(/<b>\s*Tel\s*Number\s*:?\s*<\/b>\s*([^<]*)/i);
+    if (telMatch && telMatch[1].trim()) return telMatch[1].trim();
+    return '';
+}
 import {
   Popover,
   PopoverContent,
@@ -169,7 +178,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                   outstandingAmount: item.outStandingAmount || 0,
                   status: item.accountStatus || 'Active',
                   email: '',
-                  mobile: item.contactDetails || '',
+                  mobile: parseMobileFromContactDetails(item.contactDetails),
                   accountType: item.accountType || 'Consumer',
                   sgNo: item.sgNumber || '',
                   oldCode: item.oldAccountCode || '',
