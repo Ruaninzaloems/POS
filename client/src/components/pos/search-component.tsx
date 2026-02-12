@@ -138,10 +138,63 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                   }));
                   setExternalResults(mapped);
               }
+          } else {
+             throw new Error(`API returned ${response.status}`);
           }
       } catch (error) {
           console.error("External API Search Failed:", error);
-          // Silently fail or show toast - for now just log as we expect CORS issues potentially
+          
+          // FALLBACK SIMULATION FOR PROTOTYPE
+          // Since we can't control CORS on the target server, we simulate what a successful response looks like
+          // so the user can verify the UI/UX integration.
+          
+          const simulatedResults = [
+              {
+                  accountNumber: "999000123456",
+                  consumerName: "External Live User 1",
+                  idNumber: "8001015555089",
+                  physicalAddress: "123 Live API Road, Cloud City",
+                  balance: 5432.10,
+                  status: "Active",
+                  emailAddress: "live.user@example.com",
+                  cellNumber: "0829999999"
+              },
+              {
+                  accountNumber: "999000987654",
+                  consumerName: "Azure Services Ltd",
+                  registrationNumber: "2023/555555/07",
+                  physicalAddress: "456 Server Lane, Datacenter Park",
+                  balance: 12500.00,
+                  status: "Arrears",
+                  emailAddress: "billing@azure-test.com",
+                  cellNumber: "0118888888"
+              }
+          ].filter(item => 
+              item.accountNumber.includes(query) || 
+              item.consumerName.toLowerCase().includes(query.toLowerCase())
+          );
+
+          if (simulatedResults.length > 0) {
+              const mapped = simulatedResults.map((item: any) => ({
+                  type: 'ACCOUNT' as const,
+                  data: {
+                      accountNo: item.accountNumber,
+                      name: item.consumerName,
+                      idNo: item.idNumber || item.registrationNumber || '-',
+                      address: item.physicalAddress,
+                      outstandingAmount: item.balance,
+                      status: item.status,
+                      email: item.emailAddress,
+                      mobile: item.cellNumber,
+                      accountType: 'External Consumer'
+                  } as Account,
+                  label: `${item.accountNumber} - ${item.consumerName} (External-Sim)`
+              }));
+              setExternalResults(mapped);
+          } else {
+              setExternalResults([]);
+          }
+
       } finally {
           setIsSearchingExternal(false);
       }
@@ -267,6 +320,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                   <div className="font-semibold text-lg group-hover:text-primary transition-colors flex items-center gap-2">
                       {result.label}
                       {result.label.includes('(External)') && <span className="text-[10px] uppercase bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 font-bold">Live</span>}
+                      {result.label.includes('(External-Sim)') && <span className="text-[10px] uppercase bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200 font-bold" title="Connection Failed - Using Mock Data">Simulated</span>}
                   </div>
                   <div className="text-sm text-muted-foreground">
                     {result.type === 'ACCOUNT' && (result.data as any).address}
