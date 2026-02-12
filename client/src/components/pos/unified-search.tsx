@@ -5,20 +5,38 @@ import { UnifiedSearch as SearchComponent, SearchResult } from './search-compone
 import { Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ACCOUNTS, Account } from '@/lib/mock-data';
-import { fetchAccounts } from '@/lib/external-api';
+import { fetchAccounts, fetchBillingStagePrepaidRecharge, fetchBillingStagePrepaidRecovery } from '@/lib/external-api';
 
 export function UnifiedSearch() {
   const { addItem, clearTransaction } = usePos();
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
-  const handleSelect = (result: SearchResult) => {
+  const handleSelect = async (result: SearchResult) => {
     // clearTransaction(); // Optional: reset before adding new
     
     let newItem: TransactionItem;
 
     if (result.type === 'ACCOUNT') {
       const acc = result.data as Account;
+      
+      // Check for related prepaid info if it's a prepaid account
+      if (acc.accountType === 'Prepaid' || acc.prepaidMeterNo) {
+           console.log("Checking for prepaid recovery/recharge info...");
+           try {
+               // specific logic: check for recovery debt on this meter/account
+               const recovery = await fetchBillingStagePrepaidRecovery(acc.prepaidMeterNo || acc.accountNo, 'reference');
+               if (recovery) {
+                   console.log("Found prepaid recovery:", recovery);
+                   // In a real app, we might force this to be paid or show a modal
+                   // For now, we'll just append a note to the description or similar
+                   // or maybe just alert the cashier
+               }
+           } catch (err) {
+               console.error("Error checking prepaid recovery", err);
+           }
+      }
+
       newItem = {
         id: crypto.randomUUID(),
         type: 'CONSUMER_SERVICES',

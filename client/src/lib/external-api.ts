@@ -104,6 +104,80 @@ export async function fetchBillingConfig(): Promise<BillingConfig | null> {
     return null;
 }
 
+export async function fetchBillingStageCashierReceiptDetails(reference: string): Promise<any[]> {
+    try {
+        const params = new URLSearchParams();
+        params.append('reference', reference);
+        
+        const res = await fetch(`${API_BASE}/api/billing-stage-cashier-receipt-details/reference?${params.toString()}`, {
+            headers: { 'Accept': 'application/json' }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            return Array.isArray(data) ? data : (data.value || []);
+        }
+    } catch (e) {
+        console.warn(`Failed to fetch receipt details for reference ${reference}`, e);
+    }
+    return [];
+}
+
+export async function fetchBillingStagePrepaidRecharge(id: string): Promise<any | null> {
+    try {
+        const res = await fetch(`${API_BASE}/api/billing-stage-prepaid-recharge/${id}`, {
+            headers: { 'Accept': 'application/json' }
+        });
+        if (res.ok) {
+            return await res.json();
+        }
+    } catch (e) {
+        console.warn(`Failed to fetch prepaid recharge for id ${id}`, e);
+    }
+    return null;
+}
+
+export async function fetchBillingStagePrepaidRecovery(identifier: string, type: 'id' | 'reference' = 'id'): Promise<any | null> {
+    try {
+        let url = '';
+        if (type === 'id') {
+            url = `${API_BASE}/api/billing-stage-prepaid-recovery/${identifier}`;
+        } else {
+            const params = new URLSearchParams();
+            params.append('reference', identifier);
+            url = `${API_BASE}/api/billing-stage-prepaid-recovery/reference?${params.toString()}`;
+        }
+
+        const res = await fetch(url, {
+            headers: { 'Accept': 'application/json' }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            // Handle array return for reference search if needed, but assuming single object or list based on endpoint name
+            if (type === 'reference' && Array.isArray(data)) {
+                 return data[0] || null;
+            }
+            return data;
+        }
+    } catch (e) {
+        console.warn(`Failed to fetch prepaid recovery for ${type} ${identifier}`, e);
+    }
+    return null;
+}
+
+export async function fetchConsAccountById(id: string): Promise<any | null> {
+    try {
+        const res = await fetch(`${API_BASE}/api/cons-accounts/${id}`, {
+             headers: { 'Accept': 'application/json' }
+        });
+        if (res.ok) {
+            return await res.json();
+        }
+    } catch (e) {
+        console.warn(`Failed to fetch cons account for id ${id}`, e);
+    }
+    return null;
+}
+
 export async function fetchBanks(): Promise<Bank[]> {
     try {
         const res = await fetch(`${API_BASE}/odata/ConstBanks`, {
