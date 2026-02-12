@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, CreditCard, Users, Zap, FileText, Layers, Info, Filter } from 'lucide-react';
+import { Search, CreditCard, Users, Zap, FileText, Layers, Info, Filter, Cloud, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ACCOUNTS, DIRECT_INCOME_ITEMS, ACCOUNT_GROUPS, CLEARANCES, Account } from '@/lib/mock-data';
@@ -87,6 +87,84 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
     return combinedResults.slice(0, 8);
   }, [searchQuery, scope]);
 
+  // External Search Logic
+  const [externalResults, setExternalResults] = useState<SearchResult[]>([]);
+  const [isSearchingExternal, setIsSearchingExternal] = useState(false);
+
+  const searchExternalApi = async (query: string) => {
+      if (query.length < 3) return;
+      setIsSearchingExternal(true);
+      try {
+          // Construct query params - try to match query against multiple fields since it's a unified search
+          const baseUrl = 'https://george-uat-ems-billing-api.azurewebsites.net/api/billing-enquiry-search';
+          
+          // We'll try to guess the type of input or just send it as multiple params?
+          // The API takes individual params. Let's try sending it as accountId if numeric, or companyName/other if string
+          const params = new URLSearchParams();
+          
+          if (/^\d+$/.test(query)) {
+              params.append('accountId', query);
+          } else {
+              params.append('companyName', query); // Fallback search field
+              // potentially add mobileNumber or emailAddress if query looks like them
+          }
+
+          const response = await fetch(`${baseUrl}?${params.toString()}`, {
+              method: 'GET',
+              headers: {
+                  'Accept': 'application/json',
+                  // 'Content-Type': 'application/json' 
+              }
+          });
+
+          if (response.ok) {
+              const data = await response.json();
+              if (Array.isArray(data)) {
+                  const mapped = data.map((item: any) => ({
+                      type: 'ACCOUNT' as const,
+                      data: {
+                          // Map external API fields to our internal Account interface
+                          accountNo: item.accountNumber || item.accountId || 'Unknown',
+                          name: item.consumerName || item.companyName || 'Unknown',
+                          idNo: item.idNumber || item.registrationNumber || '-',
+                          address: item.physicalAddress || item.locationAddress || 'Unknown Address',
+                          outstandingAmount: item.balance || item.outstandingBalance || 0,
+                          status: item.status || 'Active',
+                          email: item.emailAddress,
+                          mobile: item.cellNumber || item.mobileNumber,
+                          accountType: 'External Consumer'
+                      } as Account,
+                      label: `${item.accountNumber || item.accountId} - ${item.consumerName || item.companyName} (External)`
+                  }));
+                  setExternalResults(mapped);
+              }
+          }
+      } catch (error) {
+          console.error("External API Search Failed:", error);
+          // Silently fail or show toast - for now just log as we expect CORS issues potentially
+      } finally {
+          setIsSearchingExternal(false);
+      }
+  };
+
+  // Debounce external search
+  useEffect(() => {
+      const timer = setTimeout(() => {
+          if (searchQuery.length >= 3) {
+              searchExternalApi(searchQuery);
+          } else {
+              setExternalResults([]);
+          }
+      }, 800); // 800ms debounce for network calls
+
+      return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Combine results
+  const combinedResults = React.useMemo(() => {
+      return [...results, ...externalResults];
+  }, [results, externalResults]);
+
   useEffect(() => {
     if (searchQuery.length >= 2) setIsOpen(true);
     else setIsOpen(false);
@@ -155,12 +233,19 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
         </PopoverContent>
       </Popover>
 
-      {isOpen && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-popover text-popover-foreground rounded-lg border shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100 z-[100]">
+      {isOpen && (results.length > 0 || externalResults.length > 0 || isSearchingExternal) && (
+        <div className="absolute top-full left-0 right-0 mt-2 bg-popover text-popover-foreground rounded-lg border shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100 z-[100] max-h-[60vh] overflow-y-auto">
           <div className="py-1">
-            {results.map((result, idx) => (
+            {isSearchingExternal && (
+                <div className="px-4 py-2 text-xs text-muted-foreground flex items-center gap-2 bg-muted/30">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Searching external database...
+                </div>
+            )}
+            
+            {combinedResults.map((result, idx) => (
               <button
-                key={idx}
+                key={`${result.type}-${idx}`}
                 className="w-full text-left px-4 py-4 hover:bg-muted/50 focus:bg-muted focus:outline-none flex items-center gap-4 transition-colors group border-b last:border-0"
                 onClick={() => handleSelect(result)}
               >
@@ -172,14 +257,17 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                   ${result.type === 'GROUP' ? 'bg-purple-100 text-purple-600' : ''}
                   ${result.type === 'CLEARANCE' ? 'bg-amber-100 text-amber-600' : ''}
                 `}>
-                  {result.type === 'ACCOUNT' && <Users className="w-6 h-6" />}
+                  {result.type === 'ACCOUNT' && (result.label.includes('(External)') ? <Cloud className="w-6 h-6" /> : <Users className="w-6 h-6" />)}
                   {result.type === 'PREPAID' && <Zap className="w-6 h-6" />}
                   {result.type === 'DIRECT' && <CreditCard className="w-6 h-6" />}
                   {result.type === 'GROUP' && <Layers className="w-6 h-6" />}
                   {result.type === 'CLEARANCE' && <FileText className="w-6 h-6" />}
                 </div>
                 <div>
-                  <div className="font-semibold text-lg group-hover:text-primary transition-colors">{result.label}</div>
+                  <div className="font-semibold text-lg group-hover:text-primary transition-colors flex items-center gap-2">
+                      {result.label}
+                      {result.label.includes('(External)') && <span className="text-[10px] uppercase bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 font-bold">Live</span>}
+                  </div>
                   <div className="text-sm text-muted-foreground">
                     {result.type === 'ACCOUNT' && (result.data as any).address}
                     {result.type === 'DIRECT' && (result.data as any).scoaItem}
@@ -187,6 +275,12 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                 </div>
               </button>
             ))}
+            
+            {combinedResults.length === 0 && !isSearchingExternal && (
+                <div className="p-4 text-center text-muted-foreground text-sm">
+                    No results found locally or externally.
+                </div>
+            )}
           </div>
         </div>
       )}
