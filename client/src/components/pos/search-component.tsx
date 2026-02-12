@@ -128,6 +128,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                           .filter(Boolean).join(' ').trim() || 'Unknown Name';
                           
                       const meterInfo = item.meterNumber ? ` (Meter: ${item.meterNumber})` : '';
+                      const itemAddress = item.physicalAddress || item.locationAddress || 'Unknown Address';
 
                       return {
                           type: 'ACCOUNT' as const,
@@ -136,7 +137,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                               accountNo: item.accountNumber || item.accountId || 'Unknown',
                               name: nameDisplay,
                               idNo: item.idNumber || item.registrationNumber || '-',
-                              address: item.physicalAddress || item.locationAddress || 'Unknown Address',
+                              address: itemAddress,
                               outstandingAmount: item.balance || item.outstandingBalance || 0,
                               status: item.status || 'Active',
                               email: item.emailAddress,
@@ -159,6 +160,19 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
           // FALLBACK SIMULATION FOR PROTOTYPE
           
           const simulatedResults = [
+              {
+                  accountNumber: "01", // Match query "01"
+                  consumerName: "Simulated User 01",
+                  firstName: "John",
+                  surname: "Doe",
+                  idNumber: "8001015555089",
+                  physicalAddress: "123 Live API Road, Cloud City",
+                  balance: 5432.10,
+                  status: "Active",
+                  emailAddress: "live.user@example.com",
+                  cellNumber: "0829999999",
+                  meterNumber: "METER-001"
+              },
               {
                   accountNumber: "999000123456",
                   consumerName: "External Live User 1",
