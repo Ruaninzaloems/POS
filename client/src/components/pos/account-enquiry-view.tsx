@@ -324,13 +324,10 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                </div>
 
                {/* Property & Partition Section */}
-               <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 mt-4 relative">
-                  {/* Central Titles */}
-                  <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 top-4 flex-col items-center gap-32">
-                     <span className="font-bold underline text-gray-500 text-xs">Property</span>
-                     <span className="font-bold underline text-gray-500 text-xs">Partition</span>
-                  </div>
-
+               <div className="mt-4 text-center">
+                  <span className="font-bold underline text-gray-500 text-xs">Property</span>
+               </div>
+               <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 mt-1">
                   <div>
                      <Field label="SG Number" value={account.sgNo} />
                      <Field label="Old Property Code" value={account.oldPropertyCode || account.oldCode} />
@@ -339,13 +336,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                      <Field label="Location Address" value={account.locationAddress || account.address} />
                      <Field label="Longitude" value={undefined} />
                      <Field label="Registration Status" value={account.registrationStatus || 'Registered'} />
-                     <div className="h-8"></div>
-                     <div className="border-t border-gray-300 my-2"></div>
-                     <Field label="Property Type of Use" value={account.propertyTypeOfUse || 'RES'} />
-                     <Field label="Property Category" value={account.propertyCategory || 'RES'} />
-                     <Field label="Accountable Owner Name" value={account.accountableOwnerName || account.addName || account.name} />
                   </div>
-
                   <div>
                      <Field label="Property ID" value={formatPropertyId(account.propertyId) || account.unitId} />
                      <Field label="Property Status" value={account.propertyStatus || account.status || 'Active'} />
@@ -355,10 +346,19 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                      <Field label="Latitude" value={undefined} />
                      <Field label="Magisterial District" value={account.magisterialDistrict || 'WC044'} />
                      <Field label="Property Market Value" value={account.marketValue != null ? `R${account.marketValue.toFixed(2)}` : undefined} />
-                     
-                     <div className="h-8"></div>
-                     <div className="border-t border-gray-300 my-2"></div>
-                     
+                  </div>
+               </div>
+
+               <div className="mt-4 text-center">
+                  <span className="font-bold underline text-gray-500 text-xs">Partition</span>
+               </div>
+               <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 mt-1">
+                  <div>
+                     <Field label="Property Type of Use" value={account.propertyTypeOfUse || 'RES'} />
+                     <Field label="Property Category" value={account.propertyCategory || 'RES'} />
+                     <Field label="Accountable Owner Name" value={account.accountableOwnerName || account.addName || account.name} />
+                  </div>
+                  <div>
                      <Field label="Valuation Category" value={account.valuationCategory || 'Individual Use'} />
                      <Field label="Partition Description" value={account.partitionDescription || 'Individual Use'} />
                      <Field label="Partition Market Value" value={account.partitionMarketValue != null ? `R${(account.partitionMarketValue).toFixed(2)}` : (account.marketValue != null ? `R${account.marketValue.toFixed(2)}` : undefined)} />
