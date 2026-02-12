@@ -955,6 +955,24 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/platinum/billing-enquiry/total-balance-debt", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/BillingEnquiry/TotalBalanceDebtInquiry", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-enquiry/service-type-balance", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/BillingEnquiry/ServiceTypeBalanceDetails", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.post("/api/platinum/billing-enquiry/reconcile/:receiptId", async (req, res) => {
     try {
       const data = await platinumPost(`/api/BillingEnquiry/reconcile/${req.params.receiptId}`, req.body);
