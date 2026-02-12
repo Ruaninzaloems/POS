@@ -14,6 +14,17 @@ interface PlatinumCashier {
     name: string;
 }
 
+interface PlatinumCashOfficeView {
+    cashOffice_ID: number;
+    cashOfficeDesc: string | null;
+    cashOnHandLimit: number | null;
+    scoaConfigurationID: number | null;
+    vote1: string | null;
+    vote: string | null;
+    vote_ID: number | null;
+    voteDesc: string | null;
+}
+
 interface PlatinumCashierDetail {
     id: number;
     cashFloat: number | null;
@@ -35,6 +46,7 @@ export default function CashierSetup() {
     const [, setLocation] = useLocation();
 
     const [cashiers, setCashiers] = useState<PlatinumCashier[]>([]);
+    const [cashOfficeViews, setCashOfficeViews] = useState<PlatinumCashOfficeView[]>([]);
     const [selectedCashierId, setSelectedCashierId] = useState<string>('');
     const [cashierDetail, setCashierDetail] = useState<PlatinumCashierDetail | null>(null);
     const [loadingCashiers, setLoadingCashiers] = useState(true);
@@ -43,14 +55,23 @@ export default function CashierSetup() {
     const [error, setError] = useState<string>('');
 
     useEffect(() => {
-        const loadCashiers = async () => {
+        const loadData = async () => {
             try {
                 setLoadingCashiers(true);
-                const res = await fetch('/api/platinum/auth-day-end/cashier-list');
-                if (res.ok) {
-                    const data = await res.json();
+                const [cashierRes, officesRes] = await Promise.all([
+                    fetch('/api/platinum/auth-day-end/cashier-list'),
+                    fetch('/api/platinum/receipt-prepaid/cash-offices').catch(() => null)
+                ]);
+                if (cashierRes.ok) {
+                    const data = await cashierRes.json();
                     if (Array.isArray(data) && data.length > 0) {
                         setCashiers(data);
+                    }
+                }
+                if (officesRes && officesRes.ok) {
+                    const data = await officesRes.json();
+                    if (Array.isArray(data)) {
+                        setCashOfficeViews(data);
                     }
                 }
             } catch (e) {
@@ -59,7 +80,7 @@ export default function CashierSetup() {
                 setLoadingCashiers(false);
             }
         };
-        loadCashiers();
+        loadData();
     }, []);
 
     useEffect(() => {
@@ -96,6 +117,8 @@ export default function CashierSetup() {
 
     const selectedCashierName = cashiers.find(c => c.id.toString() === selectedCashierId)?.name || '';
     const cashOffice = cashierDetail?.const_CashOffice;
+    const matchedOfficeView = cashOffice ? cashOfficeViews.find(o => o.cashOffice_ID === cashOffice.cashOffice_ID) : null;
+    const ledgerVoteDisplay = matchedOfficeView?.voteDesc || matchedOfficeView?.vote || matchedOfficeView?.vote1 || (cashOffice?.scoaConfigurationID ? `SCOA ${cashOffice.scoaConfigurationID}` : '');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -203,9 +226,9 @@ export default function CashierSetup() {
                         <div className="grid grid-cols-[200px_1fr] items-center gap-4">
                             <Label className="text-right text-slate-600">Ledger Vote <span className="text-red-500">*</span></Label>
                             <Input
-                                value={cashOffice?.scoaConfigurationID ? `Vote ${cashOffice.scoaConfigurationID}` : ''}
+                                value={ledgerVoteDisplay}
                                 disabled
-                                className={`bg-slate-100 border-slate-300 ${cashOffice?.scoaConfigurationID ? 'text-slate-800 font-medium' : 'text-slate-400'}`}
+                                className={`bg-slate-100 border-slate-300 ${ledgerVoteDisplay ? 'text-slate-800 font-medium' : 'text-slate-400'}`}
                                 placeholder="Select a cashier to view ledger vote"
                                 data-testid="input-ledger-vote"
                             />
