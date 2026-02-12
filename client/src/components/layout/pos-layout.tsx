@@ -47,9 +47,9 @@ export function PosLayout({ children }: PosLayoutProps) {
   const [location, setLocation] = useLocation();
   const { currentUser, switchUser, activeSession, endSession, viewMode, toggleViewMode } = usePos();
 
-  // If no active session, show setup screen (blocking everything else)
-  // But allow switching users or logging out still? For now, simple block.
-  if (!activeSession) {
+  const isPosPage = location === '/';
+
+  if (!activeSession && isPosPage) {
       return <CashierSetup />;
   }
 
@@ -158,40 +158,49 @@ export function PosLayout({ children }: PosLayoutProps) {
 
            <div className="h-6 w-px bg-border hidden sm:block" />
 
-           {/* User Switcher for Prototype */}
-           <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-auto p-1 pr-3 flex items-center gap-3 hover:bg-muted rounded-full border border-transparent hover:border-border">
-                   <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground text-xs font-mono border">
-                     {currentUser.id.split('-')[1]}
-                   </div>
-                   <div className="flex flex-col items-start text-sm leading-tight mr-1">
-                     <span className="font-medium">{currentUser.name}</span>
-                     <span className="text-xs text-muted-foreground">{currentUser.cashOffice}</span>
-                   </div>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Switch User (Prototype)</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {CASHIERS.map(cashier => (
-                  <DropdownMenuItem 
-                    key={cashier.id} 
-                    onClick={() => switchUser(cashier.id)}
-                    className="flex flex-col items-start gap-1 cursor-pointer"
-                  >
-                    <span className="font-medium">{cashier.name}</span>
-                    <span className="text-xs text-muted-foreground">{cashier.cashOffice}</span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-           </DropdownMenu>
+           {activeSession ? (
+             <>
+               {/* User Switcher for Prototype */}
+               <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-auto p-1 pr-3 flex items-center gap-3 hover:bg-muted rounded-full border border-transparent hover:border-border">
+                       <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground text-xs font-mono border">
+                         {currentUser.id.split('-')[1]}
+                       </div>
+                       <div className="flex flex-col items-start text-sm leading-tight mr-1">
+                         <span className="font-medium">{currentUser.name}</span>
+                         <span className="text-xs text-muted-foreground">{currentUser.cashOffice}</span>
+                       </div>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>Switch User (Prototype)</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {CASHIERS.map(cashier => (
+                      <DropdownMenuItem 
+                        key={cashier.id} 
+                        onClick={() => switchUser(cashier.id)}
+                        className="flex flex-col items-start gap-1 cursor-pointer"
+                      >
+                        <span className="font-medium">{cashier.name}</span>
+                        <span className="text-xs text-muted-foreground">{cashier.cashOffice}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+               </DropdownMenu>
 
-           <div className="h-6 w-px bg-border" />
+               <div className="h-6 w-px bg-border" />
 
-           <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={endSession} title="End Session">
-             <LogOut className="w-4 h-4" />
-           </Button>
+               <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={endSession} title="End Session">
+                 <LogOut className="w-4 h-4" />
+               </Button>
+             </>
+           ) : (
+             <Button variant="outline" size="sm" onClick={() => setLocation('/')} className="gap-2">
+               <LogOut className="w-4 h-4" />
+               Start POS Session
+             </Button>
+           )}
         </div>
       </header>
 
