@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from '
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, ACCOUNTS, DIRECT_INCOME_ITEMS, ACCOUNT_GROUPS, CLEARANCES, AccountGroup, CASHIERS, MOCK_TRANSACTIONS, CASH_OFFICES, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, ApiCashier, BillingConfig } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, ApiCashier, BillingConfig, createSessionApi, endSessionApi, createTransactionApi } from './external-api';
 
 export type TransactionType = 
   | 'CONSUMER_SERVICES' 
@@ -295,19 +295,42 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setSystemSettings(prev => ({ ...prev, ...settings }));
   };
 
-  const startSession = (officeId: string, floatAmount: number) => {
+  const [dbSessionId, setDbSessionId] = useState<string | null>(null);
+
+  const startSession = async (officeId: string, floatAmount: number) => {
       setActiveSession(true);
       setSessionDetails({
           startTime: Date.now(),
           officeId,
           floatAmount
       });
-      // Optionally update currentUser's office to match selection
+
+      try {
+          const office = CASH_OFFICES.find(o => o.id === officeId);
+          const session = await createSessionApi({
+              cashierId: currentUser.id,
+              cashierName: currentUser.name,
+              cashOfficeId: officeId,
+              cashOfficeName: office?.name,
+              floatAmount,
+          });
+          setDbSessionId(session.id);
+      } catch (e) {
+          console.warn("Failed to persist session to backend", e);
+      }
   };
 
-  const endSession = () => {
+  const endSession = async () => {
+      if (dbSessionId) {
+          try {
+              await endSessionApi(dbSessionId);
+          } catch (e) {
+              console.warn("Failed to end session in backend", e);
+          }
+      }
       setActiveSession(false);
       setSessionDetails(undefined);
+      setDbSessionId(null);
   };
 
   const updateOfficeLimit = (officeId: string, limit: number) => {
@@ -368,15 +391,32 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setViewingItemId(null);
   };
 
-  const completeTransaction = () => {
-    // Create record (Logic extracted to pos-logic.ts)
+  const completeTransaction = async () => {
     const record = createTransactionRecord(items, totalToPay, payment, currentUser.id);
     
-    // Add to Global Mock
     MOCK_TRANSACTIONS.push(record);
-    
     setRecentTransactions([...MOCK_TRANSACTIONS].sort((a, b) => b.timestamp - a.timestamp));
     setIsReceiptModalOpen(true);
+
+    try {
+        await createTransactionApi({
+            receiptNumber: record.receiptNumber,
+            sessionId: dbSessionId,
+            cashierId: currentUser.id,
+            cashierName: currentUser.name,
+            cashOfficeId: sessionDetails?.officeId,
+            totalAmount: record.totalAmount,
+            cashAmount: record.payment.cash,
+            cardAmount: record.payment.card,
+            tenderAmount: record.payment.cash + record.payment.card,
+            changeAmount: Math.max(0, (record.payment.cash + record.payment.card) - record.totalAmount),
+            paymentType: record.payment.card > 0 ? 'Card' : 'Cash',
+            status: record.status,
+            items: record.items,
+        });
+    } catch (e) {
+        console.warn("Failed to persist transaction to backend", e);
+    }
   };
   
   const closeReceiptModal = () => {
