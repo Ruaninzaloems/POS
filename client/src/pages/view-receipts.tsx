@@ -43,7 +43,6 @@ interface ReceiptRow {
 
 export default function ViewReceipts() {
     const { referenceData } = usePos();
-    const cashiers = referenceData.cashiers || [];
 
     const [cashierFilter, setCashierFilter] = useState("ALL");
     const [fromDate, setFromDate] = useState<Date | undefined>(new Date(2023, 0, 1));
@@ -52,6 +51,7 @@ export default function ViewReceipts() {
     const [receiptFilter, setReceiptFilter] = useState("");
 
     const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
+    const [cashierNames, setCashierNames] = useState<string[]>([]);
     const [selectedReceipt, setSelectedReceipt] = useState<ReceiptRow | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const receiptRef = useRef<HTMLDivElement>(null);
@@ -61,10 +61,6 @@ export default function ViewReceipts() {
         setIsLoading(true);
         try {
             const filters: any = {};
-            if (cashierFilter && cashierFilter !== "ALL") {
-                const matchedCashier = cashiers.find(c => c.name === cashierFilter);
-                if (matchedCashier) filters.cashierId = matchedCashier.id;
-            }
             if (fromDate) filters.fromDate = fromDate.toISOString();
             if (toDate) {
                 const endOfDay = new Date(toDate);
@@ -102,6 +98,12 @@ export default function ViewReceipts() {
                 };
             });
 
+            const uniqueNames = Array.from(new Set(rows.map(r => r.cashierName).filter(Boolean)));
+            setCashierNames(uniqueNames);
+
+            if (cashierFilter && cashierFilter !== "ALL") {
+                rows = rows.filter(r => r.cashierName === cashierFilter);
+            }
             if (accountFilter) {
                 rows = rows.filter(r => r.accountId.toLowerCase().includes(accountFilter.toLowerCase()));
             }
@@ -258,8 +260,8 @@ export default function ViewReceipts() {
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="ALL">-- All --</SelectItem>
-                                                {cashiers.map(c => (
-                                                    <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                                                {cashierNames.map(name => (
+                                                    <SelectItem key={name} value={name}>{name}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
