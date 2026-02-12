@@ -8,8 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 
 export default function CashierSetup() {
-    const { currentUser, startSession, referenceData } = usePos();
+    const { currentUser, startSession, referenceData, switchUser } = usePos();
     const cashOffices = referenceData.cashOffices;
+    const cashiers = referenceData.cashiers;
+    
     // Float is pulled from user table and cannot be edited
     const floatAmount = currentUser.float ? currentUser.float.toFixed(2) : '0.00';
     const [selectedOfficeId, setSelectedOfficeId] = useState<string>('');
@@ -19,7 +21,12 @@ export default function CashierSetup() {
 
     // Apply receipting configuration if available
     const receiptingConfig = referenceData.billingConfig?.receiptingOptions || {};
-    // Example usage: const showFloat = receiptingConfig.showFloat !== false;
+
+    const handleUserChange = (cashierId: string) => {
+        switchUser(cashierId);
+        // Clear office selection when user changes as they might belong to a different office
+        setSelectedOfficeId(''); 
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -48,11 +55,16 @@ export default function CashierSetup() {
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="grid grid-cols-[200px_1fr] items-center gap-4">
                             <Label className="text-right text-slate-600">Name <span className="text-red-500">*</span></Label>
-                            <Input 
-                                value={currentUser.name} 
-                                disabled 
-                                className="bg-slate-100 border-slate-300 text-slate-600"
-                            />
+                            <Select value={currentUser.id} onValueChange={handleUserChange}>
+                                <SelectTrigger className="bg-slate-100 border-slate-300 text-slate-600">
+                                    <SelectValue placeholder="Select Cashier" />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-[300px]">
+                                    {cashiers.map(cashier => (
+                                        <SelectItem key={cashier.id} value={cashier.id}>{cashier.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         <div className="grid grid-cols-[200px_1fr] items-center gap-4">

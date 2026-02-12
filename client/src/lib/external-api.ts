@@ -63,7 +63,14 @@ export async function fetchCashiers(): Promise<ApiCashier[]> {
     } catch (e) {
         console.warn("Failed to fetch cashiers from API", e);
     }
-    return [];
+    
+    // Fallback to mock data if API fails or doesn't exist yet
+    return CASHIERS.map(c => ({
+        id: c.id,
+        name: c.name,
+        cashOfficeId: c.cashOffice, 
+        float: c.float || 0
+    }));
 }
 
 export interface BillingConfig {
