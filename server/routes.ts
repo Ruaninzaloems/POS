@@ -87,6 +87,54 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/proxy/cons-names/:id", async (req, res) => {
+    try {
+      const data = await proxyGet(`${EXTERNAL_API_BASE}/api/cons-names/${req.params.id}`);
+      if (data.error) {
+        return res.status(data.status).json({ message: data.statusText });
+      }
+      res.json(data);
+    } catch (e: any) {
+      res.status(502).json({ message: "External API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/proxy/cons-units/:id", async (req, res) => {
+    try {
+      const data = await proxyGet(`${EXTERNAL_API_BASE}/api/cons-units/${req.params.id}`);
+      if (data.error) {
+        return res.status(data.status).json({ message: data.statusText });
+      }
+      res.json(data);
+    } catch (e: any) {
+      res.status(502).json({ message: "External API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/proxy/account-full-details/:id", async (req, res) => {
+    try {
+      const accountId = req.params.id;
+      const accountData = await proxyGet(`${EXTERNAL_API_BASE}/api/cons-accounts/${accountId}`);
+      if (accountData.error) {
+        return res.status(accountData.status).json({ message: accountData.statusText });
+      }
+
+      const results: any = { account: accountData };
+
+      const [nameData, unitData] = await Promise.all([
+        accountData.nameId ? proxyGet(`${EXTERNAL_API_BASE}/api/cons-names/${accountData.nameId}`) : null,
+        accountData.unitId ? proxyGet(`${EXTERNAL_API_BASE}/api/cons-units/${accountData.unitId}`) : null,
+      ]);
+
+      if (nameData && !nameData.error) results.name = nameData;
+      if (unitData && !unitData.error) results.unit = unitData;
+
+      res.json(results);
+    } catch (e: any) {
+      res.status(502).json({ message: "External API unreachable", detail: e.message });
+    }
+  });
+
   app.get("/api/proxy/billing-stage-cashier-receipt-details/reference", async (req, res) => {
     try {
       const params = new URLSearchParams(req.query as Record<string, string>);

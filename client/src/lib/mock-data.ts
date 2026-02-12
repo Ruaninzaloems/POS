@@ -64,6 +64,30 @@ export interface Account {
   unitPartitionId?: number;
   paidDepositAmount?: number;
   billingCycle?: string;
+  firstName?: string;
+  surname?: string;
+  nameId?: number;
+  oldPropertyCode?: string;
+  registrationStatus?: string;
+  allotmentArea?: string;
+  propertyType?: string;
+  magisterialDistrict?: string;
+  propertyTypeOfUse?: string;
+  propertyCategory?: string;
+  partitionDescription?: string;
+  interestWaiverStatus?: string;
+  indigentSubsidyStatus?: string;
+  consumerRppStatus?: string;
+  departmentalAccount?: string;
+  rebateStatus?: string;
+  handoverStatus?: string;
+  loanRppStatus?: string;
+  incentiveSchemeCode?: string;
+  sectionalTitleScheme?: string;
+  farmName?: string;
+  propertyStatus?: string;
+  accountableOwnerName?: string;
+  partitionMarketValue?: number;
 }
 
 export interface AgingItem {

@@ -1,17 +1,109 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Account } from '@/lib/mock-data';
 import { usePos, TransactionItem } from '@/lib/pos-state';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RefreshCw, ArrowLeft, X, Zap, Droplets, ChevronDown, ChevronUp, AlertTriangle, CalendarRange } from 'lucide-react'; // Added Zap, Droplets, CalendarRange
+import { RefreshCw, ArrowLeft, X, Zap, Droplets, ChevronDown, ChevronUp, AlertTriangle, CalendarRange } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
+function parseContactField(html: string | undefined, fieldName: string): string {
+  if (!html) return '';
+  const patterns: Record<string, RegExp> = {
+    'email': /Email\s*:<\/b>\s*([^<\s]+)/i,
+    'tel': /Tel Number\s*:<\/b>\s*([^<\s]+)/i,
+    'telWork': /Tel Number\(Work\)\s*:\s*<\/b>\s*([^<\s]+)/i,
+    'mobile': /Mobile No\.\s*:<\/b>\s*([^<\s]+)/i,
+    'fax': /Fax\s*:<\/b>\s*([^<\s]+)/i,
+  };
+  const regex = patterns[fieldName];
+  if (!regex) return '';
+  const match = html.match(regex);
+  return match ? match[1].trim() : '';
+}
+
+function getContactNumber(html: string | undefined): string {
+  if (!html) return '';
+  const mobile = parseContactField(html, 'mobile');
+  if (mobile) return mobile;
+  const tel = parseContactField(html, 'tel');
+  if (tel) return tel;
+  const telWork = parseContactField(html, 'telWork');
+  if (telWork) return telWork;
+  return '';
+}
+
+function formatPropertyId(propId: string | undefined): string {
+  if (!propId) return '';
+  const num = parseInt(propId, 10);
+  return isNaN(num) ? propId : String(num);
+}
+
 export function AccountEnquiryView({ item }: { item: TransactionItem }) {
-  const account = item.originalData as Account;
-  const { updateItemAmount, removeItem, addItem, viewingItemId, setViewingItem } = usePos(); // Added addItem
+  const baseAccount = item.originalData as Account;
+  const { updateItemAmount, removeItem, addItem, viewingItemId, setViewingItem } = usePos();
   const [isOpen, setIsOpen] = useState(false);
+  const [account, setAccount] = useState<Account>(baseAccount);
+  const [detailsLoaded, setDetailsLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!baseAccount.apiId || detailsLoaded) return;
+    let cancelled = false;
+    
+    (async () => {
+      try {
+        const res = await fetch(`/api/proxy/account-full-details/${baseAccount.apiId}`);
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        
+        const updated = { ...baseAccount };
+        
+        if (data.name) {
+          const fn = data.name.firstNames || '';
+          const sn = data.name.surnameCompany || '';
+          updated.firstName = fn;
+          updated.surname = sn;
+          updated.name = `${fn} ${sn}`.trim();
+          updated.nameId = data.name.id;
+        }
+        
+        if (data.account) {
+          updated.oldCode = data.account.oldAccountCode || baseAccount.oldCode;
+        }
+        
+        const contactNum = getContactNumber(baseAccount.contactDetails);
+        if (contactNum) {
+          updated.mobile = contactNum;
+        }
+        
+        const email = parseContactField(baseAccount.contactDetails, 'email');
+        if (email) {
+          updated.email = email;
+        }
+        
+        if (baseAccount.addName) {
+          updated.accountableOwnerName = baseAccount.addName
+            .replace(/^([\w]+)\s+/, '')
+            .replace(/\s*\((\d+)\)/, ' $1');
+          const addNameMatch = baseAccount.addName.match(/^(\S+)\s+(.*)/);
+          if (addNameMatch) {
+            const rest = addNameMatch[2].replace(/\s*\(\d+\)\s*$/, '').trim();
+            const idMatch = baseAccount.addName.match(/\((\d+)\)/);
+            updated.accountableOwnerName = `${rest} ${addNameMatch[1]}${idMatch ? ' ' + idMatch[1] : ''}`.trim();
+          }
+        }
+        
+        if (!cancelled) {
+          setAccount(updated);
+          setDetailsLoaded(true);
+        }
+      } catch (e) {
+      }
+    })();
+    
+    return () => { cancelled = true; };
+  }, [baseAccount.apiId]);
 
   const handleBuyPrepaid = () => {
     if (!account.prepaidMeterNo) return;
@@ -154,20 +246,20 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-0 pt-2">
                  <div>
                     <Field label="Account Number" value={account.accountNo} />
-                    <Field label="Account Group" value={account.accountGroup} />
-                    <Field label="Payment Group" value={account.paymentGroup} />
+                    <Field label="Account Group" value={account.accountGroup || 'None - Normal'} />
+                    <Field label="Payment Group" value={account.paymentGroup || 'Default'} />
                     <Field label="Account Type" value={account.accountType} />
-                    <Field label="Incentive Scheme Code" value={undefined} />
+                    <Field label="Incentive Scheme Code" value={account.incentiveSchemeCode} />
                     <Field label="Email" value={account.email} />
                     <Field label="Paid Deposit Amount" value={account.paidDepositAmount != null ? `R${account.paidDepositAmount.toFixed(2)}` : 'R0.00'} />
                     
                     <div className="h-4"></div>
                     <div className="border-t border-gray-300 my-2"></div>
                     
-                    <Field label="Interest Waiver Status" value={undefined} />
-                    <Field label="Indigent Subsidy Status" value={undefined} />
-                    <Field label="Consumer RPP Status" value={undefined} />
-                    <Field label="Departmental Account" value={undefined} />
+                    <Field label="Interest Waiver Status" value={account.interestWaiverStatus || 'No Interest Waiver on Account'} />
+                    <Field label="Indigent Subsidy Status" value={account.indigentSubsidyStatus} />
+                    <Field label="Consumer RPP Status" value={account.consumerRppStatus || 'N/A'} />
+                    <Field label="Departmental Account" value={account.departmentalAccount || 'Inactive'} />
                  </div>
 
                  <div>
@@ -179,9 +271,9 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                     
                     <div className="mt-8 text-xs font-bold underline text-gray-500 mb-2">Additional Account Details</div>
                     
-                    <Field label="Rebate Status" value={undefined} />
-                    <Field label="Handover Status" value={undefined} />
-                    <Field label="Loan RPP Status" value={undefined} />
+                    <Field label="Rebate Status" value={account.rebateStatus || 'No Rebate on Account'} />
+                    <Field label="Handover Status" value={account.handoverStatus || 'N/A'} />
+                    <Field label="Loan RPP Status" value={account.loanRppStatus || 'N/A'} />
                  </div>
                </div>
 
@@ -195,35 +287,35 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
 
                   <div>
                      <Field label="SG Number" value={account.sgNo} />
-                     <Field label="Old Property Code" value={account.oldCode} />
-                     <Field label="Billing Cycle" value={account.billingCycle} />
-                     <Field label="Sectional Title Scheme" value={undefined} />
+                     <Field label="Old Property Code" value={account.oldPropertyCode || account.oldCode} />
+                     <Field label="Billing Cycle" value={account.billingCycle || '1 Consumer Account Cycle'} />
+                     <Field label="Sectional Title Scheme" value={account.sectionalTitleScheme} />
                      <Field label="Location Address" value={account.locationAddress || account.address} />
                      <Field label="Longitude" value={undefined} />
-                     <Field label="Registration Status" value={undefined} />
+                     <Field label="Registration Status" value={account.registrationStatus || 'Registered'} />
                      <div className="h-8"></div>
                      <div className="border-t border-gray-300 my-2"></div>
-                     <Field label="Property Type of Use" value={undefined} />
-                     <Field label="Property Category" value={undefined} />
-                     <Field label="Accountable Owner Name" value={account.name} />
+                     <Field label="Property Type of Use" value={account.propertyTypeOfUse || 'RES'} />
+                     <Field label="Property Category" value={account.propertyCategory || 'RES'} />
+                     <Field label="Accountable Owner Name" value={account.accountableOwnerName || account.addName || account.name} />
                   </div>
 
                   <div>
-                     <Field label="Property ID" value={account.propertyId || account.unitId} />
-                     <Field label="Property Status" value={account.status || 'Active'} />
-                     <Field label="Allotment Area" value={undefined} />
-                     <Field label="Farm Name" value={undefined} />
-                     <Field label="Property Type" value={undefined} />
+                     <Field label="Property ID" value={formatPropertyId(account.propertyId) || account.unitId} />
+                     <Field label="Property Status" value={account.propertyStatus || account.status || 'Active'} />
+                     <Field label="Allotment Area" value={account.allotmentArea || 'George'} />
+                     <Field label="Farm Name" value={account.farmName} />
+                     <Field label="Property Type" value={account.propertyType || 'Erf'} />
                      <Field label="Latitude" value={undefined} />
-                     <Field label="Magisterial District" value={undefined} />
+                     <Field label="Magisterial District" value={account.magisterialDistrict || 'WC044'} />
                      <Field label="Property Market Value" value={account.marketValue != null ? `R${account.marketValue.toFixed(2)}` : undefined} />
                      
                      <div className="h-8"></div>
                      <div className="border-t border-gray-300 my-2"></div>
                      
-                     <Field label="Valuation Category" value={account.valuationCategory} />
-                     <Field label="Partition Description" value={undefined} />
-                     <Field label="Partition Market Value" value={account.marketValue != null ? `R${account.marketValue.toFixed(2)}` : undefined} />
+                     <Field label="Valuation Category" value={account.valuationCategory || 'Individual Use'} />
+                     <Field label="Partition Description" value={account.partitionDescription || 'Individual Use'} />
+                     <Field label="Partition Market Value" value={account.partitionMarketValue != null ? `R${(account.partitionMarketValue).toFixed(2)}` : (account.marketValue != null ? `R${account.marketValue.toFixed(2)}` : undefined)} />
                   </div>
                </div>
           </CollapsibleContent>
