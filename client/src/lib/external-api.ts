@@ -98,8 +98,8 @@ export async function fetchCashiers(): Promise<ApiCashier[]> {
                 };
             }) || [];
         }
-    } catch (e) {
-        console.warn("Failed to fetch cashiers from API", e);
+    } catch (e: any) {
+        console.warn(`Failed to fetch cashiers from API: ${e.message || e}`, e);
     }
     
     // Fallback to mock data if API fails or doesn't exist yet

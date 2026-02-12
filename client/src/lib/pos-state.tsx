@@ -204,9 +204,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               });
               
               console.log("Reference Data Loaded:", { banks, groups, institutions, settings, cashOffices, cashiers, billingConfig });
-          } catch (error) {
+          } catch (error: any) {
               console.error("Failed to load reference data", error);
-              // Don't show toast on mount to avoid annoyance, just log
+              toast({
+                  title: "Connection Error",
+                  description: `Failed to load data from API. Using mock data. Error: ${error.message || 'Unknown network error'}`,
+                  variant: "destructive"
+              });
           }
       };
       
