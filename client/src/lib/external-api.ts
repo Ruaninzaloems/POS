@@ -113,6 +113,9 @@ export async function fetchCashiers(): Promise<ApiCashier[]> {
 
 export interface BillingConfig {
     receiptingOptions?: any;
+    allowPrepaidAndMiscellaneous?: boolean;
+    allowPrepaidAndRecovery?: boolean;
+    allowNormalReceipting?: boolean;
     // Add other config fields
 }
 
@@ -123,7 +126,17 @@ export async function fetchBillingConfig(): Promise<BillingConfig | null> {
         });
         if (res.ok) {
             const data = await res.json();
-            return data.value?.[0] || null; // OData returns array
+            const items = data.value || []; // Array of { Id, KeyName, KeyValue }
+            
+            // Transform array of KV pairs into a single object
+            const config: BillingConfig = {
+                allowPrepaidAndMiscellaneous: items.find((i: any) => i.KeyName === "Allow Prepaid And Miscellaneous")?.KeyValue === "1",
+                allowPrepaidAndRecovery: items.find((i: any) => i.KeyName === "Allow Prepaid And Recovery")?.KeyValue === "1",
+                allowNormalReceipting: items.find((i: any) => i.KeyName === "Allow Normal Receipting")?.KeyValue === "1",
+                receiptingOptions: items // Store raw items too if needed
+            };
+            
+            return config;
         }
     } catch (e) {
         console.warn("Failed to fetch billing config", e);

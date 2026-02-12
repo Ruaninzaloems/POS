@@ -8,13 +8,24 @@ import { ACCOUNTS, Account } from '@/lib/mock-data';
 import { fetchAccounts, fetchBillingStagePrepaidRecharge, fetchBillingStagePrepaidRecovery } from '@/lib/external-api';
 
 export function UnifiedSearch() {
-  const { addItem, clearTransaction } = usePos();
+  const { addItem, clearTransaction, referenceData } = usePos();
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  
+  // Access configuration settings
+  const config = referenceData.billingConfig;
+  const allowNormalReceipting = config?.allowNormalReceipting !== false; // Default to true if not set
+  const allowPrepaidAndRecovery = config?.allowPrepaidAndRecovery !== false;
 
   const handleSelect = async (result: SearchResult) => {
     // clearTransaction(); // Optional: reset before adding new
     
+    // Check configuration constraints
+    if (result.type === 'ACCOUNT' && !allowNormalReceipting) {
+        alert("Normal receipting is currently disabled by system configuration.");
+        return;
+    }
+
     let newItem: TransactionItem;
 
     if (result.type === 'ACCOUNT') {
@@ -22,18 +33,20 @@ export function UnifiedSearch() {
       
       // Check for related prepaid info if it's a prepaid account
       if (acc.accountType === 'Prepaid' || acc.prepaidMeterNo) {
-           console.log("Checking for prepaid recovery/recharge info...");
-           try {
-               // specific logic: check for recovery debt on this meter/account
-               const recovery = await fetchBillingStagePrepaidRecovery(acc.prepaidMeterNo || acc.accountNo, 'reference');
-               if (recovery) {
-                   console.log("Found prepaid recovery:", recovery);
-                   // In a real app, we might force this to be paid or show a modal
-                   // For now, we'll just append a note to the description or similar
-                   // or maybe just alert the cashier
+           if (allowPrepaidAndRecovery) {
+               console.log("Checking for prepaid recovery/recharge info...");
+               try {
+                   // specific logic: check for recovery debt on this meter/account
+                   const recovery = await fetchBillingStagePrepaidRecovery(acc.prepaidMeterNo || acc.accountNo, 'reference');
+                   if (recovery) {
+                       console.log("Found prepaid recovery:", recovery);
+                       // In a real app, we might force this to be paid or show a modal
+                   }
+               } catch (err) {
+                   console.error("Error checking prepaid recovery", err);
                }
-           } catch (err) {
-               console.error("Error checking prepaid recovery", err);
+           } else {
+               console.log("Prepaid recovery check skipped (disabled by config)");
            }
       }
 
