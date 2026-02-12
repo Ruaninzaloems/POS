@@ -127,18 +127,17 @@ export function UnifiedSearch() {
         if (apiResults && apiResults.length > 0) {
             const acc = apiResults[0];
             const mappedAccount: Account = {
-                accountNo: acc.accountNumber || acc.oldAccountCode || `ID-${acc.id}`,
+                accountNo: acc.accountNumber || acc.oldAccountCode || `${acc.accountID}`,
                 name: acc.name || 'Unknown',
-                idNo: acc.idNumber || '-',
-                outstandingAmount: acc.outStandingAmt || 0,
-                address: acc.deliveryAddress || [acc.streetName, acc.town].filter(Boolean).join(', ') || '',
+                idNo: '-',
+                outstandingAmount: acc.outStandingAmount || 0,
+                address: acc.address || acc.locationAddress || '',
                 sgNo: acc.sgNumber || '',
                 email: '',
-                mobile: '',
-                accountType: acc.accountDesc || 'Consumer',
-                status: acc.statusDesc || 'Active',
+                mobile: acc.contactDetails || '',
+                accountType: acc.accountType || 'Consumer',
+                status: acc.accountStatus || 'Active',
                 oldCode: acc.oldAccountCode || '',
-                prepaidMeterNo: acc.physicalMeterNumber || '',
             };
             
             handleSelect({ type: 'ACCOUNT', data: mappedAccount, label: `${mappedAccount.accountNo} - ${mappedAccount.name}` });

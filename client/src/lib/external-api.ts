@@ -215,15 +215,22 @@ export async function fetchInstitutions(): Promise<Institution[]> {
 export async function fetchAccounts(criteria: any): Promise<any[]> {
     try {
         const params = new URLSearchParams();
-        if (criteria.accountNo) params.append('accountNumber', criteria.accountNo);
-        if (criteria.name) params.append('name', criteria.name);
-        if (criteria.idNo) params.append('idNumber', criteria.idNo);
-        if (criteria.sgNumber) params.append('sgNumber', criteria.sgNumber);
-        if (criteria.street) params.append('streetName', criteria.street);
+        if (criteria.accountNo) params.append('accountId', criteria.accountNo);
+        if (criteria.oldAccountCode) params.append('oldAccount', criteria.oldAccountCode);
+        if (criteria.name) params.append('companyName', criteria.name);
+        if (criteria.idNo) params.append('idRegistrationNumber', criteria.idNo);
+        if (criteria.passportNumber) params.append('passportNumber', criteria.passportNumber);
+        if (criteria.deliveryAddress) params.append('deliveryAddress', criteria.deliveryAddress);
+        if (criteria.locationAddress) params.append('locationAddress', criteria.locationAddress);
+        if (criteria.street) params.append('locationAddress', criteria.street);
+        if (criteria.allotmentArea) params.append('allotmentArea', criteria.allotmentArea);
+        if (criteria.erfNumber) params.append('eftNumber', criteria.erfNumber);
+        if (criteria.emailAddress) params.append('emailAddress', criteria.emailAddress);
+        if (criteria.mobileNumber) params.append('mobileNumber', criteria.mobileNumber);
         if (criteria.physicalMeterNumber) params.append('physicalMeterNumber', criteria.physicalMeterNumber);
-        if (criteria.oldAccountCode) params.append('oldAccountCode', criteria.oldAccountCode);
+        if (criteria.trading) params.append('trading', criteria.trading);
 
-        const res = await fetch(`/api/proxy/cons-accounts/search?${params.toString()}`);
+        const res = await fetch(`/api/proxy/billing-enquiry-search?${params.toString()}`);
         if (res.ok) {
             const data = await res.json();
             return Array.isArray(data) ? data : (data.value || []);

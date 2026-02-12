@@ -49,6 +49,19 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/proxy/billing-enquiry-search", async (req, res) => {
+    try {
+      const params = new URLSearchParams(req.query as Record<string, string>);
+      const data = await proxyGet(`${EXTERNAL_API_BASE}/api/billing-enquiry-search?${params.toString()}`);
+      if (data.error) {
+        return res.status(data.status).json({ message: data.statusText });
+      }
+      res.json(data);
+    } catch (e: any) {
+      res.status(502).json({ message: "External API unreachable", detail: e.message });
+    }
+  });
+
   app.get("/api/proxy/cons-accounts/:id", async (req, res) => {
     try {
       const data = await proxyGet(`${EXTERNAL_API_BASE}/api/cons-accounts/${req.params.id}`);

@@ -108,29 +108,29 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
       if (query.length < 3) return;
       setIsSearchingExternal(true);
       try {
-          const proxyBase = '/api/proxy/cons-accounts/search';
+          const proxyBase = '/api/proxy/billing-enquiry-search';
           
           let requests = [];
 
           if (/^\d+$/.test(query)) {
               const p1 = new URLSearchParams();
-              p1.append('accountNumber', query);
+              p1.append('accountId', query);
               requests.push(fetch(`${proxyBase}?${p1.toString()}`));
 
               const p2 = new URLSearchParams();
-              p2.append('physicalMeterNumber', query);
+              p2.append('oldAccount', query);
               requests.push(fetch(`${proxyBase}?${p2.toString()}`));
 
               const p3 = new URLSearchParams();
-              p3.append('oldAccountCode', query);
+              p3.append('physicalMeterNumber', query);
               requests.push(fetch(`${proxyBase}?${p3.toString()}`));
           } else {
               const p = new URLSearchParams();
-              p.append('name', query);
+              p.append('companyName', query);
               requests.push(fetch(`${proxyBase}?${p.toString()}`));
 
               const p2 = new URLSearchParams();
-              p2.append('streetName', query);
+              p2.append('deliveryAddress', query);
               requests.push(fetch(`${proxyBase}?${p2.toString()}`));
           }
 
@@ -148,31 +148,28 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
               }
           }
 
-          const uniqueData = Array.from(new Map(allData.map(item => [item.id || item.accountID, item])).values());
+          const uniqueData = Array.from(new Map(allData.map(item => [item.accountID, item])).values());
 
           const mapped = uniqueData.slice(0, 10).map((item: any) => {
-              const addressDisplay = item.deliveryAddress || [item.streetName, item.town].filter(Boolean).join(', ') || '';
-
               return {
                   type: 'ACCOUNT' as const,
                   data: {
-                      accountNo: item.accountNumber || item.oldAccountCode || `ID-${item.id}`,
+                      accountNo: item.accountNumber || item.oldAccountCode || `${item.accountID}`,
                       name: item.name || 'Unknown',
-                      idNo: item.idNumber || '-',
-                      address: addressDisplay,
-                      outstandingAmount: item.outStandingAmt || 0,
-                      status: item.statusDesc || 'Active',
+                      idNo: '-',
+                      address: item.address || item.locationAddress || '',
+                      outstandingAmount: item.outStandingAmount || 0,
+                      status: item.accountStatus || 'Active',
                       email: '',
-                      mobile: '',
-                      accountType: item.accountDesc || 'Consumer',
+                      mobile: item.contactDetails || '',
+                      accountType: item.accountType || 'Consumer',
                       sgNo: item.sgNumber || '',
                       oldCode: item.oldAccountCode || '',
-                      prepaidMeterNo: item.physicalMeterNumber || '',
-                      unitId: item.unitId,
-                      nameId: item.nameId,
-                      apiId: item.id,
+                      prepaidMeterNo: '',
+                      unitId: item.unitID,
+                      apiId: item.accountID,
                   } as Account,
-                  label: `${item.accountNumber || item.oldAccountCode || item.id} - ${item.name || 'Unknown'}`
+                  label: `${item.accountNumber || item.oldAccountCode || item.accountID} - ${item.name || 'Unknown'}`
               };
           });
           setExternalResults(mapped);
