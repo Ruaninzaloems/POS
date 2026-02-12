@@ -12,20 +12,29 @@ export default function CashierSetup() {
     const cashOffices = referenceData.cashOffices;
     const cashiers = referenceData.cashiers;
     
-    // Float is pulled from user table and cannot be edited
-    const floatAmount = currentUser.float ? currentUser.float.toFixed(2) : '0.00';
+    // Local state for form inputs
+    const [floatInput, setFloatInput] = useState<string>('0.00');
     const [selectedOfficeId, setSelectedOfficeId] = useState<string>('');
     const [error, setError] = useState<string>('');
 
     const selectedOffice = cashOffices.find(o => o.id === selectedOfficeId);
 
-    // Apply receipting configuration if available
-    const receiptingConfig = referenceData.billingConfig?.receiptingOptions || {};
+    // Sync local state when user changes (either initially or via dropdown)
+    React.useEffect(() => {
+        setFloatInput(currentUser.float ? currentUser.float.toFixed(2) : '0.00');
+        
+        // Auto-select office if the user is already assigned to one and it exists in our list
+        if (currentUser.cashOffice && currentUser.cashOffice !== 'Unassigned') {
+            const officeExists = cashOffices.find(o => o.id === currentUser.cashOffice);
+            if (officeExists) {
+                setSelectedOfficeId(currentUser.cashOffice);
+            }
+        }
+    }, [currentUser, cashOffices]);
 
     const handleUserChange = (cashierId: string) => {
         switchUser(cashierId);
-        // Clear office selection when user changes as they might belong to a different office
-        setSelectedOfficeId(''); 
+        // Note: The useEffect above will handle updating float and office based on the new user
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -35,10 +44,9 @@ export default function CashierSetup() {
             return;
         }
         
-        const float = parseFloat(floatAmount);
-        // Float validation might not be needed if it's read-only, but keeping safety check
+        const float = parseFloat(floatInput);
         if (isNaN(float) || float < 0) {
-            setError('Invalid float amount configured for this user.');
+            setError('Invalid float amount. Please enter a valid positive number.');
             return;
         }
 
@@ -72,10 +80,9 @@ export default function CashierSetup() {
                             <Input 
                                 type="number"
                                 step="0.01"
-                                value={floatAmount}
-                                readOnly
-                                disabled
-                                className="bg-slate-100 border-slate-300 text-right text-slate-600 cursor-not-allowed"
+                                value={floatInput}
+                                onChange={(e) => setFloatInput(e.target.value)}
+                                className="bg-slate-100 border-slate-300 text-right text-slate-600"
                             />
                         </div>
 
