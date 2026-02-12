@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Account } from '@/lib/mock-data';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Account, AgingItem } from '@/lib/mock-data';
 import { usePos, TransactionItem } from '@/lib/pos-state';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RefreshCw, ArrowLeft, X, Zap, Droplets, ChevronDown, ChevronUp, AlertTriangle, CalendarRange } from 'lucide-react';
+import { RefreshCw, ArrowLeft, X, Zap, Droplets, ChevronDown, ChevronUp, AlertTriangle, CalendarRange, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -104,6 +104,52 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
     
     return () => { cancelled = true; };
   }, [baseAccount.apiId]);
+
+  const [balanceLoading, setBalanceLoading] = useState(false);
+  const [balanceError, setBalanceError] = useState<string | null>(null);
+
+  const fetchBalanceData = useCallback(async () => {
+    if (!baseAccount.apiId) return;
+    setBalanceLoading(true);
+    setBalanceError(null);
+    try {
+      const res = await fetch(`/api/platinum/billing-enquiry/total-balance-debt?accountId=${baseAccount.apiId}`);
+      if (!res.ok) {
+        setBalanceError('Failed to load balance data');
+        return;
+      }
+      const data = await res.json();
+      const rows = Array.isArray(data) ? data : (data ? [data] : []);
+      if (rows.length > 0) {
+        const agingBreakdown: AgingItem[] = rows.map((row: any) => ({
+          serviceDescription: row.serviceDescription || 'Unknown',
+          totalOutstanding: row.totalOutStanding || 0,
+          newCharge: row.newCharge || 0,
+          currentAccount: typeof row.currentAccount === 'string' ? parseFloat(row.currentAccount) || row.current || 0 : (row.currentAccount || row.current || 0),
+          days30: row.days30 || 0,
+          days60: row.days60 || 0,
+          days90: row.days90 || 0,
+          days120: row.days120 || 0,
+          days150: row.days150 || 0,
+          days180Plus: row.untill360 || 0,
+        }));
+        const totalOutstanding = agingBreakdown.reduce((sum, item) => sum + item.totalOutstanding, 0);
+        setAccount(prev => ({
+          ...prev,
+          agingBreakdown,
+          outstandingAmount: totalOutstanding
+        }));
+      }
+    } catch (e: any) {
+      setBalanceError(e.message || 'Failed to load balance data');
+    } finally {
+      setBalanceLoading(false);
+    }
+  }, [baseAccount.apiId]);
+
+  useEffect(() => {
+    fetchBalanceData();
+  }, [fetchBalanceData]);
 
   const handleBuyPrepaid = () => {
     if (!account.prepaidMeterNo) return;
@@ -322,7 +368,15 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
        </Collapsible>
 
        <div className="flex justify-end mt-4">
-          <Button variant="secondary" size="sm" className="bg-orange-200 text-orange-900 border-orange-300 hover:bg-orange-300 font-semibold text-xs shadow-sm">
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            className="bg-orange-200 text-orange-900 border-orange-300 hover:bg-orange-300 font-semibold text-xs shadow-sm gap-1"
+            onClick={fetchBalanceData}
+            disabled={balanceLoading}
+            data-testid="button-refresh-account-transactions"
+          >
+             {balanceLoading && <Loader2 className="w-3 h-3 animate-spin" />}
              Refresh Account Transactions
           </Button>
        </div>
@@ -347,10 +401,29 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                </tr>
              </thead>
              <tbody>
-               {account.agingBreakdown ? (
+               {balanceLoading ? (
+                    <tr>
+                        <td colSpan={10} className="p-4 text-center text-gray-500">
+                            <div className="flex items-center justify-center gap-2">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Loading balance data...
+                            </div>
+                        </td>
+                    </tr>
+               ) : balanceError ? (
+                    <tr>
+                        <td colSpan={10} className="p-4 text-center text-red-500">
+                            <div className="flex items-center justify-center gap-2">
+                                <AlertTriangle className="w-4 h-4" />
+                                {balanceError}
+                                <Button variant="link" size="sm" className="text-blue-600 p-0 h-auto" onClick={fetchBalanceData}>Retry</Button>
+                            </div>
+                        </td>
+                    </tr>
+               ) : account.agingBreakdown && account.agingBreakdown.length > 0 ? (
                    <>
                        {account.agingBreakdown.map((row, index) => (
-                           <tr key={index} className="border-b last:border-0 hover:bg-blue-50">
+                           <tr key={index} className="border-b last:border-0 hover:bg-blue-50" data-testid={`row-aging-${index}`}>
                                <td className="p-2 border-r border-gray-200">{row.serviceDescription}</td>
                                <td className="p-2 border-r border-gray-200 text-right">{row.totalOutstanding.toFixed(2)}</td>
                                <td className="p-2 border-r border-gray-200 text-right">{row.newCharge.toFixed(2)}</td>
@@ -364,9 +437,9 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                            </tr>
                        ))}
                        <tr className="bg-gray-100 font-bold border-t border-gray-300">
-                           <td className="p-2 border-r border-gray-300"></td>
-                           <td className="p-2 border-r border-gray-300 text-right">{account.outstandingAmount.toFixed(2)}</td>
-                           <td className="p-2 border-r border-gray-300 text-right">0.00</td>
+                           <td className="p-2 border-r border-gray-300">Total</td>
+                           <td className="p-2 border-r border-gray-300 text-right">{account.agingBreakdown.reduce((sum, item) => sum + item.totalOutstanding, 0).toFixed(2)}</td>
+                           <td className="p-2 border-r border-gray-300 text-right">{account.agingBreakdown.reduce((sum, item) => sum + item.newCharge, 0).toFixed(2)}</td>
                            <td className="p-2 border-r border-gray-300 text-right">
                                {account.agingBreakdown.reduce((sum, item) => sum + item.currentAccount, 0).toFixed(2)}
                            </td>
@@ -379,15 +452,18 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                            <td className="p-2 border-r border-gray-300 text-right">
                                {account.agingBreakdown.reduce((sum, item) => sum + item.days90, 0).toFixed(2)}
                            </td>
-                           <td className="p-2 border-r border-gray-300 text-right">0.00</td>
-                           <td className="p-2 border-r border-gray-300 text-right">0.00</td>
+                           <td className="p-2 border-r border-gray-300 text-right">
+                               {account.agingBreakdown.reduce((sum, item) => sum + item.days120, 0).toFixed(2)}
+                           </td>
+                           <td className="p-2 border-r border-gray-300 text-right">
+                               {account.agingBreakdown.reduce((sum, item) => sum + item.days150, 0).toFixed(2)}
+                           </td>
                            <td className="p-2 text-right">
                                {account.agingBreakdown.reduce((sum, item) => sum + item.days180Plus, 0).toFixed(2)}
                            </td>
                        </tr>
                    </>
                ) : (
-                    // Fallback if no aging data (simplified row)
                     <tr className="border-b last:border-0 hover:bg-blue-50">
                         <td className="p-2 border-r border-gray-200">Balance B/F</td>
                         <td className="p-2 border-r border-gray-200 text-right">{account.outstandingAmount.toFixed(2)}</td>
