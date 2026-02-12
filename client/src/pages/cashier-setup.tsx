@@ -6,11 +6,14 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { CASHIERS, CASH_OFFICES } from '@/lib/mock-data';
 
 export default function CashierSetup() {
-    const { currentUser, startSession, referenceData, switchUser } = usePos();
-    const cashOffices = referenceData.cashOffices;
-    const cashiers = referenceData.cashiers;
+    const { currentUser, startSession, switchUser } = usePos();
+    
+    // Use mock data directly as requested
+    const cashOffices = CASH_OFFICES;
+    const cashiers = CASHIERS;
     
     // Local state for form inputs
     const [floatInput, setFloatInput] = useState<string>('0.00');
@@ -25,12 +28,12 @@ export default function CashierSetup() {
         
         // Auto-select office if the user is already assigned to one and it exists in our list
         if (currentUser.cashOffice && currentUser.cashOffice !== 'Unassigned') {
-            const officeExists = cashOffices.find(o => o.id === currentUser.cashOffice);
+            const officeExists = cashOffices.find(o => o.name === currentUser.cashOffice || o.id === currentUser.cashOffice);
             if (officeExists) {
-                setSelectedOfficeId(currentUser.cashOffice);
+                setSelectedOfficeId(officeExists.id);
             }
         }
-    }, [currentUser, cashOffices]);
+    }, [currentUser]);
 
     const handleUserChange = (cashierId: string) => {
         switchUser(cashierId);
