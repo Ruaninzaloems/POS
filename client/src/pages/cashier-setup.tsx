@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePos } from '@/lib/pos-state';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -6,60 +6,143 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { CASHIERS, CASH_OFFICES } from '@/lib/mock-data';
 import { useLocation } from 'wouter';
+import { Loader2 } from 'lucide-react';
+
+interface PlatinumCashier {
+    id: number;
+    name: string;
+}
+
+interface PlatinumCashierDetail {
+    id: number;
+    cashFloat: number | null;
+    officeId: number | null;
+    isActive: boolean | null;
+    user_Id: number | null;
+    const_CashOffice: {
+        cashOffice_ID: number;
+        cashOfficeDesc: string;
+        enabled: boolean;
+        cashOnHandLimit: number;
+        scoaConfigurationID: number | null;
+        allowDelayedDayEndRecon: boolean;
+    } | null;
+}
 
 export default function CashierSetup() {
-    const { currentUser, startSession, switchUser } = usePos();
+    const { startSession, switchUser } = usePos();
     const [, setLocation] = useLocation();
-    
-    // Use mock data directly as requested
-    const cashOffices = CASH_OFFICES;
-    const cashiers = CASHIERS;
-    
-    // Local state for form inputs
+
+    const [cashiers, setCashiers] = useState<PlatinumCashier[]>([]);
+    const [selectedCashierId, setSelectedCashierId] = useState<string>('');
+    const [cashierDetail, setCashierDetail] = useState<PlatinumCashierDetail | null>(null);
+    const [loadingCashiers, setLoadingCashiers] = useState(true);
+    const [loadingDetails, setLoadingDetails] = useState(false);
     const [floatInput, setFloatInput] = useState<string>('0.00');
-    const [selectedOfficeId, setSelectedOfficeId] = useState<string>('');
     const [error, setError] = useState<string>('');
 
-    const selectedOffice = cashOffices.find(o => o.id === selectedOfficeId);
-
-    // Sync local state when user changes (either initially or via dropdown)
-    React.useEffect(() => {
-        setFloatInput(currentUser.float ? currentUser.float.toFixed(2) : '0.00');
-        
-        // Auto-select office if the user is already assigned to one and it exists in our list
-        if (currentUser.cashOffice && currentUser.cashOffice !== 'Unassigned') {
-            const officeExists = cashOffices.find(o => o.name === currentUser.cashOffice || o.id === currentUser.cashOffice);
-            if (officeExists) {
-                setSelectedOfficeId(officeExists.id);
+    useEffect(() => {
+        const loadCashiers = async () => {
+            try {
+                setLoadingCashiers(true);
+                const res = await fetch('/api/platinum/auth-day-end/cashier-list');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data) && data.length > 0) {
+                        setCashiers(data);
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to fetch cashier list from Platinum API', e);
+            } finally {
+                setLoadingCashiers(false);
             }
-        }
-    }, [currentUser]);
+        };
+        loadCashiers();
+    }, []);
 
-    const handleUserChange = (cashierId: string) => {
-        switchUser(cashierId);
-        // Note: The useEffect above will handle updating float and office based on the new user
-    };
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!selectedOfficeId) {
-            setError('Please select a cashier office.');
+    useEffect(() => {
+        if (!selectedCashierId) {
+            setCashierDetail(null);
             return;
         }
-        
+
+        const loadCashierDetails = async () => {
+            try {
+                setLoadingDetails(true);
+                setError('');
+                const res = await fetch(`/api/platinum/receipt-prepaid/cashier-details-by-id?cashierId=${selectedCashierId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setCashierDetail(data);
+                    if (data.cashFloat != null) {
+                        setFloatInput(data.cashFloat.toFixed(2));
+                    } else {
+                        setFloatInput('0.00');
+                    }
+                } else {
+                    setError('Could not load cashier details.');
+                }
+            } catch (e) {
+                console.warn('Failed to fetch cashier details', e);
+                setError('Could not connect to the server.');
+            } finally {
+                setLoadingDetails(false);
+            }
+        };
+        loadCashierDetails();
+    }, [selectedCashierId]);
+
+    const selectedCashierName = cashiers.find(c => c.id.toString() === selectedCashierId)?.name || '';
+    const cashOffice = cashierDetail?.const_CashOffice;
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+
+        if (!selectedCashierId) {
+            setError('Please select a cashier.');
+            return;
+        }
+
+        if (!cashOffice) {
+            setError('No cash office assigned to this cashier.');
+            return;
+        }
+
         const float = parseFloat(floatInput);
         if (isNaN(float) || float < 0) {
             setError('Invalid float amount. Please enter a valid positive number.');
             return;
         }
 
-        startSession(selectedOfficeId, float);
+        const officeId = cashOffice.cashOffice_ID.toString();
+        const officeName = cashOffice.cashOfficeDesc;
+
+        switchUser(selectedCashierId, selectedCashierName, officeName);
+
+        try {
+            await fetch('/api/platinum/receipt-prepaid/submit-cashier-setup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: parseInt(selectedCashierId),
+                    cashFloat: float,
+                    officeId: cashOffice.cashOffice_ID,
+                    isActive: true,
+                    user_Id: parseInt(selectedCashierId),
+                }),
+            });
+        } catch (e) {
+            console.warn('Failed to submit cashier setup to Platinum API', e);
+        }
+
+        startSession(officeId, float, officeName);
     };
 
     return (
-        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4" data-testid="cashier-setup-page">
             <Card className="w-full max-w-2xl shadow-lg">
                 <CardHeader className="border-b bg-white">
                     <CardTitle className="text-xl text-slate-800">Cashier Setup</CardTitle>
@@ -68,55 +151,68 @@ export default function CashierSetup() {
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="grid grid-cols-[200px_1fr] items-center gap-4">
                             <Label className="text-right text-slate-600">Name <span className="text-red-500">*</span></Label>
-                            <Select value={currentUser.id} onValueChange={handleUserChange}>
-                                <SelectTrigger className="bg-slate-100 border-slate-300 text-slate-600">
-                                    <SelectValue placeholder="Select Cashier" />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-[300px]">
-                                    {cashiers.map(cashier => (
-                                        <SelectItem key={cashier.id} value={cashier.id}>{cashier.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            {loadingCashiers ? (
+                                <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                                    <Loader2 className="h-4 w-4 animate-spin" /> Loading cashiers...
+                                </div>
+                            ) : (
+                                <Select value={selectedCashierId} onValueChange={setSelectedCashierId} data-testid="select-cashier">
+                                    <SelectTrigger className="bg-slate-100 border-slate-300 text-slate-600" data-testid="select-cashier-trigger">
+                                        <SelectValue placeholder="-- Select Cashier --" />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-[300px]">
+                                        {cashiers.map(cashier => (
+                                            <SelectItem key={cashier.id} value={cashier.id.toString()} data-testid={`cashier-option-${cashier.id}`}>
+                                                {cashier.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-[200px_1fr] items-center gap-4">
                             <Label className="text-right text-slate-600">Cash Float (Starting Amount Cash On Hand) <span className="text-red-500">*</span></Label>
-                            <Input 
+                            <Input
                                 type="number"
                                 step="0.01"
                                 value={floatInput}
                                 onChange={(e) => setFloatInput(e.target.value)}
                                 className="bg-slate-100 border-slate-300 text-right text-slate-600"
+                                data-testid="input-float"
                             />
                         </div>
 
                         <div className="grid grid-cols-[200px_1fr] items-center gap-4">
                             <Label className="text-right text-slate-600">Cashier Office <span className="text-red-500">*</span></Label>
-                            <Select value={selectedOfficeId} onValueChange={setSelectedOfficeId}>
-                                <SelectTrigger className="bg-slate-100 border-slate-300">
-                                    <SelectValue placeholder="-- Select --" />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-[300px]">
-                                    {cashOffices.map(office => (
-                                        <SelectItem key={office.id} value={office.id}>{office.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            {loadingDetails ? (
+                                <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                                    <Loader2 className="h-4 w-4 animate-spin" /> Loading office...
+                                </div>
+                            ) : (
+                                <Input
+                                    value={cashOffice ? cashOffice.cashOfficeDesc : ''}
+                                    disabled
+                                    className={`bg-slate-100 border-slate-300 ${cashOffice ? 'text-slate-800 font-medium' : 'text-slate-400'}`}
+                                    placeholder={selectedCashierId ? 'No office assigned' : 'Select a cashier first'}
+                                    data-testid="input-cash-office"
+                                />
+                            )}
                         </div>
 
                         <div className="grid grid-cols-[200px_1fr] items-center gap-4">
                             <Label className="text-right text-slate-600">Ledger Vote <span className="text-red-500">*</span></Label>
-                            <Input 
-                                value={selectedOffice ? selectedOffice.ledgerVote : ''} 
-                                disabled 
-                                className={`bg-slate-100 border-slate-300 ${selectedOffice ? 'text-slate-800 font-medium' : 'text-slate-400'}`}
-                                placeholder="Select an office to view ledger vote"
+                            <Input
+                                value={cashOffice?.scoaConfigurationID ? `Vote ${cashOffice.scoaConfigurationID}` : ''}
+                                disabled
+                                className={`bg-slate-100 border-slate-300 ${cashOffice?.scoaConfigurationID ? 'text-slate-800 font-medium' : 'text-slate-400'}`}
+                                placeholder="Select a cashier to view ledger vote"
+                                data-testid="input-ledger-vote"
                             />
                         </div>
 
                         {error && (
-                            <div className="text-red-500 text-sm text-center bg-red-50 p-2 rounded">
+                            <div className="text-red-500 text-sm text-center bg-red-50 p-2 rounded" data-testid="text-error">
                                 {error}
                             </div>
                         )}
@@ -124,10 +220,21 @@ export default function CashierSetup() {
                         <Separator className="my-6" />
 
                         <div className="flex justify-center gap-4">
-                            <Button type="submit" className="w-32 bg-slate-800 hover:bg-slate-900">
+                            <Button
+                                type="submit"
+                                className="w-32 bg-slate-800 hover:bg-slate-900"
+                                disabled={!selectedCashierId || loadingDetails || !cashOffice}
+                                data-testid="button-submit"
+                            >
                                 Submit
                             </Button>
-                            <Button type="button" variant="outline" className="w-32 bg-slate-700 hover:bg-slate-800 text-white hover:text-white border-slate-700" onClick={() => setLocation('/')}>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="w-32 bg-slate-700 hover:bg-slate-800 text-white hover:text-white border-slate-700"
+                                onClick={() => setLocation('/')}
+                                data-testid="button-cancel"
+                            >
                                 Cancel
                             </Button>
                         </div>

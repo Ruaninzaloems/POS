@@ -77,7 +77,7 @@ interface PosState {
   dayEndStatus: DayEndStatus;
   dayEndReturnReason?: string;
   activeSession: boolean;
-  startSession: (officeId: string, floatAmount: number) => void;
+  startSession: (officeId: string, floatAmount: number, officeName?: string) => void;
   endSession: () => void;
   sessionDetails?: {
       startTime: number;
@@ -102,7 +102,7 @@ interface PosState {
 }
 
 interface PosActions {
-  switchUser: (cashierId: string) => void;
+  switchUser: (cashierId: string, name?: string, cashOffice?: string) => void;
   toggleViewMode: () => void;
   updateOfficeLimit: (officeId: string, limit: number) => void;
   updateSystemSettings: (settings: Partial<PosState['systemSettings']>) => void;
@@ -250,16 +250,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Determine active transaction type (Logic extracted to pos-logic.ts)
   const activeTransactionType = determineTransactionType(items, viewingItemId);
 
-  const switchUser = (cashierId: string) => {
+  const switchUser = (cashierId: string, name?: string, cashOffice?: string) => {
       // Try to find in API cashiers first
       const apiCashier = referenceData.cashiers.find(c => c.id === cashierId);
       
       if (apiCashier) {
           setCurrentUser({
               id: apiCashier.id,
-              name: apiCashier.name,
+              name: name || apiCashier.name,
               role: 'CASHIER',
-              cashOffice: apiCashier.cashOfficeId || 'Unknown',
+              cashOffice: cashOffice || apiCashier.cashOfficeId || 'Unknown',
               float: apiCashier.float
           });
           resetSession();
@@ -269,9 +269,24 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Fallback to mock cashiers
       const cashier = CASHIERS.find(c => c.id === cashierId);
       if (cashier) {
-          setCurrentUser(cashier);
+          setCurrentUser({
+              ...cashier,
+              name: name || cashier.name,
+              cashOffice: cashOffice || cashier.cashOffice,
+          });
           resetSession();
+          return;
       }
+
+      // Accept direct Platinum cashier ID with name
+      setCurrentUser(prev => ({
+          ...prev,
+          id: cashierId,
+          name: name || prev.name,
+          cashOffice: cashOffice || prev.cashOffice,
+          role: 'CASHIER',
+      }));
+      resetSession();
   };
 
   const resetSession = () => {
@@ -297,7 +312,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [dbSessionId, setDbSessionId] = useState<string | null>(null);
 
-  const startSession = async (officeId: string, floatAmount: number) => {
+  const startSession = async (officeId: string, floatAmount: number, officeName?: string) => {
       setActiveSession(true);
       setSessionDetails({
           startTime: Date.now(),
@@ -311,7 +326,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               cashierId: currentUser.id,
               cashierName: currentUser.name,
               cashOfficeId: officeId,
-              cashOfficeName: office?.name,
+              cashOfficeName: officeName || office?.name,
               floatAmount,
           });
           setDbSessionId(session.id);
