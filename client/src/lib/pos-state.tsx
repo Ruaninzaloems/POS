@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from '
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, ACCOUNTS, DIRECT_INCOME_ITEMS, ACCOUNT_GROUPS, CLEARANCES, AccountGroup, CASHIERS, MOCK_TRANSACTIONS, CASH_OFFICES, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices } from './external-api';
 
 export type TransactionType = 
   | 'CONSUMER_SERVICES' 
@@ -95,6 +95,7 @@ interface PosState {
       groups: any[];
       institutions: any[];
       settings: any[];
+      cashOffices: CashOffice[];
   };
 }
 
@@ -162,11 +163,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       groups: any[];
       institutions: any[];
       settings: any[];
+      cashOffices: CashOffice[];
   }>({
       banks: [],
       groups: [],
       institutions: [],
-      settings: []
+      settings: [],
+      cashOffices: []
   });
 
   // Fetch reference data on mount
@@ -174,21 +177,23 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const loadData = async () => {
           try {
               console.log("Fetching reference data...");
-              const [banks, groups, institutions, settings] = await Promise.all([
+              const [banks, groups, institutions, settings, cashOffices] = await Promise.all([
                   fetchBanks(),
                   fetchGroups(),
                   fetchInstitutions(),
-                  fetchConfigSettings()
+                  fetchConfigSettings(),
+                  fetchCashOffices()
               ]);
               
               setReferenceData({
                   banks: banks || [],
                   groups: groups || [],
                   institutions: institutions || [],
-                  settings: settings || []
+                  settings: settings || [],
+                  cashOffices: cashOffices || []
               });
               
-              console.log("Reference Data Loaded:", { banks, groups, institutions, settings });
+              console.log("Reference Data Loaded:", { banks, groups, institutions, settings, cashOffices });
           } catch (error) {
               console.error("Failed to load reference data", error);
               // Don't show toast on mount to avoid annoyance, just log

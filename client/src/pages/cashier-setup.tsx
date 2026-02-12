@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { usePos } from '@/lib/pos-state';
-import { CASH_OFFICES } from '@/lib/mock-data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,13 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 
 export default function CashierSetup() {
-    const { currentUser, startSession } = usePos();
+    const { currentUser, startSession, referenceData } = usePos();
+    const cashOffices = referenceData.cashOffices;
     // Float is pulled from user table and cannot be edited
     const floatAmount = currentUser.float ? currentUser.float.toFixed(2) : '0.00';
     const [selectedOfficeId, setSelectedOfficeId] = useState<string>('');
     const [error, setError] = useState<string>('');
 
-    const selectedOffice = CASH_OFFICES.find(o => o.id === selectedOfficeId);
+    const selectedOffice = cashOffices.find(o => o.id === selectedOfficeId);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -70,7 +70,7 @@ export default function CashierSetup() {
                                     <SelectValue placeholder="-- Select --" />
                                 </SelectTrigger>
                                 <SelectContent className="max-h-[300px]">
-                                    {CASH_OFFICES.map(office => (
+                                    {cashOffices.map(office => (
                                         <SelectItem key={office.id} value={office.id}>{office.name}</SelectItem>
                                     ))}
                                 </SelectContent>

@@ -1,4 +1,4 @@
-import { AccountGroup } from "./mock-data";
+import { AccountGroup, CASH_OFFICES, CashOffice } from "./mock-data";
 
 const API_BASE = "https://george-uat-ems-billing-api.azurewebsites.net";
 
@@ -17,6 +17,24 @@ export interface GroupCode {
 export interface Institution {
     institutionId: number;
     institutionName: string;
+}
+
+export async function fetchCashOffices(): Promise<CashOffice[]> {
+    try {
+        // Attempt to fetch from API first
+        const res = await fetch(`${API_BASE}/odata/ConstCashOffices`, {
+            headers: { 'Accept': 'application/json' }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            return data.value || [];
+        }
+    } catch (e) {
+        console.warn("Failed to fetch cash offices from API, using mock data", e);
+    }
+    
+    // Fallback to mock data if API fails or doesn't exist yet
+    return CASH_OFFICES;
 }
 
 export async function fetchBanks(): Promise<Bank[]> {
