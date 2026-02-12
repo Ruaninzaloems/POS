@@ -58,18 +58,45 @@ export interface ApiCashier {
 
 export async function fetchCashiers(): Promise<ApiCashier[]> {
     try {
-        const res = await fetch(`${API_BASE}/odata/ConstCashiers`, {
-            headers: { 'Accept': 'application/json' }
-        });
-        if (res.ok) {
-            const data = await res.json();
+        const [cashiersRes, userDetailsRes] = await Promise.all([
+            fetch(`${API_BASE}/odata/ConstCashiers`, {
+                headers: { 'Accept': 'application/json' }
+            }),
+            // Fetch User_UserDetail as requested to get float information
+            fetch(`${API_BASE}/odata/UserUserDetails`, {
+                headers: { 'Accept': 'application/json' }
+            }).catch(e => {
+                console.warn("Failed to fetch user details for float", e);
+                return null;
+            })
+        ]);
+
+        let userDetails: any[] = [];
+        if (userDetailsRes && userDetailsRes.ok) {
+            const data = await userDetailsRes.json();
+            userDetails = data.value || [];
+        }
+
+        if (cashiersRes.ok) {
+            const data = await cashiersRes.json();
             // Map API response to our expected format if needed
-            return data.value.map((c: any) => ({
-                id: c.id || c.cashierId, // specific field mapping might be needed
-                name: c.name || c.cashierName,
-                cashOfficeId: c.cashOfficeId,
-                float: c.float || 0
-            })) || [];
+            return data.value.map((c: any) => {
+                // Link cashier to user detail to get the float
+                // Trying common join keys: id, cashierId, userId
+                const detail = userDetails.find((u: any) => 
+                    u.id === c.id || 
+                    u.userId === c.id || 
+                    u.userName === c.name
+                );
+
+                return {
+                    id: c.id || c.cashierId, // specific field mapping might be needed
+                    name: c.name || c.cashierName,
+                    cashOfficeId: c.cashOfficeId,
+                    // Use float from UserDetail if available, otherwise fall back to 0
+                    float: detail?.cashFloat || detail?.float || c.float || 0
+                };
+            }) || [];
         }
     } catch (e) {
         console.warn("Failed to fetch cashiers from API", e);
