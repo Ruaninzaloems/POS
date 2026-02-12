@@ -15,7 +15,8 @@ export function ConsumerSearchForm({ onSearch, onCancel }: ConsumerSearchFormPro
     idNo: '',
     sgNumber: '',
     oldAccountCode: '',
-    street: ''
+    street: '',
+    physicalMeterNumber: ''
   });
 
   const handleChange = (field: string, value: string) => {
@@ -37,7 +38,8 @@ export function ConsumerSearchForm({ onSearch, onCancel }: ConsumerSearchFormPro
       idNo: '',
       sgNumber: '',
       oldAccountCode: '',
-      street: ''
+      street: '',
+      physicalMeterNumber: ''
     });
   };
 
@@ -94,6 +96,14 @@ export function ConsumerSearchForm({ onSearch, onCancel }: ConsumerSearchFormPro
                         placeholder="Street" 
                         value={criteria.street}
                         onChange={(e) => handleChange('street', e.target.value)}
+                        className="bg-white"
+                    />
+                </div>
+                 <div className="space-y-1">
+                    <Input 
+                        placeholder="Physical Meter Number" 
+                        value={criteria.physicalMeterNumber}
+                        onChange={(e) => handleChange('physicalMeterNumber', e.target.value)}
                         className="bg-white"
                     />
                 </div>

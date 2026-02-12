@@ -276,6 +276,10 @@ export async function fetchAccounts(criteria: any): Promise<any[]> {
         if (criteria.accountNo) params.append('accountNumber', criteria.accountNo);
         if (criteria.name) params.append('name', criteria.name);
         if (criteria.idNo) params.append('idNumber', criteria.idNo);
+        if (criteria.sgNumber) params.append('sgNumber', criteria.sgNumber);
+        if (criteria.street) params.append('streetName', criteria.street);
+        if (criteria.physicalMeterNumber) params.append('physicalMeterNumber', criteria.physicalMeterNumber);
+        if (criteria.oldAccountCode) params.append('oldAccountCode', criteria.oldAccountCode);
         
         // Use the endpoint provided by user
         const res = await fetch(`${API_BASE}/api/cons-accounts/search?${params.toString()}`, {
