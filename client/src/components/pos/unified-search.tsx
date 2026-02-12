@@ -21,10 +21,6 @@ export function UnifiedSearch() {
     // clearTransaction(); // Optional: reset before adding new
     
     // Check configuration constraints
-    if (result.type === 'ACCOUNT' && !allowNormalReceipting) {
-        alert("Normal receipting is currently disabled by system configuration.");
-        return;
-    }
 
     let newItem: TransactionItem;
 
