@@ -189,6 +189,9 @@ export default function ViewReceipts() {
             transactionId: receipt.id,
             status: 'POSTED',
             updatedAt: receipt.receiptDate,
+            method: 'MANUAL',
+            allocatedBy: receipt.cashierName,
+            allocationDate: receipt.receiptDate,
             lines: [{
                 id: '1',
                 accountNo: receipt.accountId,
