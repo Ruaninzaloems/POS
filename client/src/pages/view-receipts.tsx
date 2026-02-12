@@ -18,6 +18,8 @@ import { ReceiptTemplate } from '@/components/pos/receipt-template';
 import { useReactToPrint } from 'react-to-print';
 import { BankTransaction, AllocationDraft } from '@/lib/direct-deposits-data';
 import { cn } from '@/lib/utils';
+import { fetchBillingStageCashierReceiptDetails } from '@/lib/external-api';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ViewReceipts() {
     // Filters
@@ -30,36 +32,85 @@ export default function ViewReceipts() {
     // Data
     const [filteredReceipts, setFilteredReceipts] = useState<Receipt[]>(MOCK_RECEIPTS);
     const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
     const receiptRef = useRef<HTMLDivElement>(null);
+    const { toast } = useToast();
 
     // Filter Logic
-    const handleSearch = () => {
-        let results = MOCK_RECEIPTS;
-
-        if (cashierFilter && cashierFilter !== "ALL") {
-            results = results.filter(r => r.cashierName === cashierFilter);
-        }
-
-        if (fromDate) {
-            results = results.filter(r => new Date(r.receiptDate) >= fromDate);
-        }
-
-        if (toDate) {
-            // Set to end of day
-            const endOfDay = new Date(toDate);
-            endOfDay.setHours(23, 59, 59, 999);
-            results = results.filter(r => new Date(r.receiptDate) <= endOfDay);
-        }
-
-        if (accountFilter) {
-            results = results.filter(r => r.accountId.toLowerCase().includes(accountFilter.toLowerCase()));
-        }
-
+    const handleSearch = async () => {
+        setIsLoading(true);
+        let results = [];
+        
+        // If we have a receipt filter, try fetching from API first
         if (receiptFilter) {
-            results = results.filter(r => r.receiptNo.toLowerCase().includes(receiptFilter.toLowerCase()));
+            try {
+                // The API endpoint takes a reference ID, which seems to map to receipt number or similar
+                const apiReceipts = await fetchBillingStageCashierReceiptDetails(receiptFilter);
+                
+                if (apiReceipts && apiReceipts.length > 0) {
+                    // Map API receipts to local Receipt type
+                    const mappedReceipts: Receipt[] = apiReceipts.map((r: any) => ({
+                        id: r.id?.toString() || crypto.randomUUID(),
+                        receiptNo: r.receiptNumber || r.receiptNo || receiptFilter,
+                        receiptDate: r.transactionDate || new Date().toISOString(),
+                        amount: r.amount || 0,
+                        tenderAmount: r.tenderAmount || r.amount || 0,
+                        changeAmount: r.changeAmount || 0,
+                        paymentType: r.paymentType || 'Cash',
+                        paymentOption: 'Standard', // Default
+                        cashierName: r.cashierName || 'Unknown',
+                        cashierId: r.cashierId || 'Unknown',
+                        accountId: r.accountNumber || r.reference || 'Unknown',
+                        cashBook: r.cashBook || 'Main',
+                        cashierOffice: r.officeName || 'Main Office',
+                        status: r.status || 'COMPLETED',
+                        staged: true, // Assuming API returns staged receipts
+                        cancellationReason: r.cancellationReason
+                    }));
+                    
+                    results = mappedReceipts;
+                }
+            } catch (error) {
+                console.error("Failed to fetch receipts from API", error);
+                toast({
+                     title: "API Error",
+                     description: "Failed to fetch receipt details from server.",
+                     variant: "destructive"
+                });
+            }
+        }
+
+        // If no API results (or no search term), fall back to mock data filtering
+        if (results.length === 0) {
+             let mockResults = MOCK_RECEIPTS;
+
+            if (cashierFilter && cashierFilter !== "ALL") {
+                mockResults = mockResults.filter(r => r.cashierName === cashierFilter);
+            }
+
+            if (fromDate) {
+                mockResults = mockResults.filter(r => new Date(r.receiptDate) >= fromDate);
+            }
+
+            if (toDate) {
+                // Set to end of day
+                const endOfDay = new Date(toDate);
+                endOfDay.setHours(23, 59, 59, 999);
+                mockResults = mockResults.filter(r => new Date(r.receiptDate) <= endOfDay);
+            }
+
+            if (accountFilter) {
+                mockResults = mockResults.filter(r => r.accountId.toLowerCase().includes(accountFilter.toLowerCase()));
+            }
+
+            if (receiptFilter) {
+                mockResults = mockResults.filter(r => r.receiptNo.toLowerCase().includes(receiptFilter.toLowerCase()));
+            }
+            results = mockResults;
         }
 
         setFilteredReceipts(results);
+        setIsLoading(false);
     };
 
     const handleClear = () => {

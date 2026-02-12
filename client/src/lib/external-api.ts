@@ -149,12 +149,18 @@ export async function fetchBillingStageCashierReceiptDetails(reference: string):
         const params = new URLSearchParams();
         params.append('reference', reference);
         
+        // This endpoint might fail with 400 if reference is not found or invalid
+        // Need to be robust
         const res = await fetch(`${API_BASE}/api/billing-stage-cashier-receipt-details/reference?${params.toString()}`, {
             headers: { 'Accept': 'application/json' }
         });
+        
         if (res.ok) {
             const data = await res.json();
             return Array.isArray(data) ? data : (data.value || []);
+        } else if (res.status === 404 || res.status === 400) {
+            // Not found is a valid result (no receipts)
+            return [];
         }
     } catch (e) {
         console.warn(`Failed to fetch receipt details for reference ${reference}`, e);
