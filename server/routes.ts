@@ -576,6 +576,17 @@ export async function registerRoutes(
     }
   });
 
+  // --- Billing Enquiry - Search ---
+
+  app.post("/api/platinum/billing-enquiry/enquiry-results", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/BillingEnquiry/EnquiryResults", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   // --- Billing Enquiry - Rebuild ---
 
   app.get("/api/platinum/billing-enquiry/rebuild-full-account", async (req, res) => {

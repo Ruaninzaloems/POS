@@ -11,6 +11,7 @@ export function UnifiedSearch() {
   const { addItem, clearTransaction, referenceData } = usePos();
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [advancedResults, setAdvancedResults] = useState<any[]>([]);
   
   // Access configuration settings
   const config = referenceData.billingConfig;
@@ -149,29 +150,47 @@ export function UnifiedSearch() {
     addItem(newItem!);
   };
 
+  const mapApiResultToAccount = (acc: any): Account => {
+      const emailMatch = acc.contactDetails?.match(/Email\s*:<\/b>\s*([^<\s]+)/i);
+      return {
+          accountNo: acc.accountNumber || acc.oldAccountCode || `${acc.accountID}`,
+          name: acc.name || 'Unknown',
+          idNo: '-',
+          outstandingAmount: acc.outStandingAmount || 0,
+          address: acc.address || acc.locationAddress || '',
+          sgNo: acc.sgNumber || '',
+          email: emailMatch ? emailMatch[1] : '',
+          mobile: parseMobileFromContactDetails(acc.contactDetails),
+          accountType: acc.accountType || 'Consumer',
+          status: acc.accountStatus || 'Active',
+          oldCode: acc.oldAccountCode || '',
+          prepaidMeterNo: '',
+          unitId: acc.unitID?.toString(),
+          apiId: acc.accountID,
+          deliveryAddress: acc.address || '',
+          locationAddress: acc.locationAddress || '',
+          propertyId: acc.propertyID || '',
+          addName: acc.addName || '',
+          contactDetails: acc.contactDetails || '',
+          unitPartitionId: acc.unitPartitionID,
+      };
+  };
+
   const handleAdvancedSearch = async (criteria: any) => {
       setIsSearching(true);
+      setAdvancedResults([]);
       try {
         const apiResults = await fetchAccounts(criteria);
         
         if (apiResults && apiResults.length > 0) {
-            const acc = apiResults[0];
-            const mappedAccount: Account = {
-                accountNo: acc.accountNumber || acc.oldAccountCode || `${acc.accountID}`,
-                name: acc.name || 'Unknown',
-                idNo: '-',
-                outstandingAmount: acc.outStandingAmount || 0,
-                address: acc.address || acc.locationAddress || '',
-                sgNo: acc.sgNumber || '',
-                email: '',
-                mobile: parseMobileFromContactDetails(acc.contactDetails),
-                accountType: acc.accountType || 'Consumer',
-                status: acc.accountStatus || 'Active',
-                oldCode: acc.oldAccountCode || '',
-            };
-            
-            handleSelect({ type: 'ACCOUNT', data: mappedAccount, label: `${mappedAccount.accountNo} - ${mappedAccount.name}` });
-            setShowAdvanced(false);
+            if (apiResults.length === 1) {
+                const mapped = mapApiResultToAccount(apiResults[0]);
+                handleSelect({ type: 'ACCOUNT', data: mapped, label: `${mapped.accountNo} - ${mapped.name}` });
+                setShowAdvanced(false);
+                setAdvancedResults([]);
+                return;
+            }
+            setAdvancedResults(apiResults);
             return;
         }
 
@@ -184,14 +203,61 @@ export function UnifiedSearch() {
       }
   };
 
+  const handlePickAdvancedResult = (acc: any) => {
+      const mapped = mapApiResultToAccount(acc);
+      handleSelect({ type: 'ACCOUNT', data: mapped, label: `${mapped.accountNo} - ${mapped.name}` });
+      setShowAdvanced(false);
+      setAdvancedResults([]);
+  };
+
   if (showAdvanced) {
       return (
-          <div className="w-full max-w-4xl mx-auto">
+          <div className="w-full max-w-4xl mx-auto space-y-3">
               <ConsumerSearchForm 
                   onSearch={handleAdvancedSearch} 
-                  onCancel={() => setShowAdvanced(false)} 
+                  onCancel={() => { setShowAdvanced(false); setAdvancedResults([]); }} 
                   isLoading={isSearching}
               />
+              {advancedResults.length > 0 && (
+                  <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+                      <div className="bg-gradient-to-b from-gray-700 to-gray-800 text-white px-4 py-2 text-sm font-medium">
+                          Search Results ({advancedResults.length})
+                      </div>
+                      <div className="max-h-80 overflow-y-auto">
+                          <table className="w-full text-sm" data-testid="table-advanced-results">
+                              <thead className="bg-gray-100 sticky top-0">
+                                  <tr>
+                                      <th className="text-left px-3 py-2 font-medium text-xs text-gray-600">Account</th>
+                                      <th className="text-left px-3 py-2 font-medium text-xs text-gray-600">Name</th>
+                                      <th className="text-left px-3 py-2 font-medium text-xs text-gray-600">Address</th>
+                                      <th className="text-right px-3 py-2 font-medium text-xs text-gray-600">Outstanding</th>
+                                      <th className="text-center px-3 py-2 font-medium text-xs text-gray-600">Status</th>
+                                  </tr>
+                              </thead>
+                              <tbody>
+                                  {advancedResults.map((acc: any, idx: number) => (
+                                      <tr 
+                                          key={acc.accountID || idx} 
+                                          className="border-t hover:bg-blue-50 cursor-pointer transition-colors"
+                                          onClick={() => handlePickAdvancedResult(acc)}
+                                          data-testid={`row-result-${acc.accountID || idx}`}
+                                      >
+                                          <td className="px-3 py-2 font-mono text-xs">{acc.accountNumber || acc.oldAccountCode || acc.accountID}</td>
+                                          <td className="px-3 py-2">{acc.name || 'Unknown'}</td>
+                                          <td className="px-3 py-2 text-xs text-gray-500 max-w-[200px] truncate">{acc.address || acc.locationAddress || '-'}</td>
+                                          <td className="px-3 py-2 text-right font-mono">R {(acc.outStandingAmount || 0).toFixed(2)}</td>
+                                          <td className="px-3 py-2 text-center">
+                                              <span className={`text-xs px-2 py-0.5 rounded-full ${acc.accountStatus === 'Active' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                                  {acc.accountStatus || 'Active'}
+                                              </span>
+                                          </td>
+                                      </tr>
+                                  ))}
+                              </tbody>
+                          </table>
+                      </div>
+                  </div>
+              )}
           </div>
       )
   }

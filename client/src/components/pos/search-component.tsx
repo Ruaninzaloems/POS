@@ -128,30 +128,37 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
       if (query.length < 3) return;
       setIsSearchingExternal(true);
       try {
-          const proxyBase = '/api/proxy/billing-enquiry-search';
+          const platinumUrl = '/api/platinum/billing-enquiry/enquiry-results';
           
-          let accountRequests = [];
+          let accountRequests: Promise<Response>[] = [];
 
           if (/^\d+$/.test(query)) {
-              const p1 = new URLSearchParams();
-              p1.append('accountId', query);
-              accountRequests.push(fetch(`${proxyBase}?${p1.toString()}`));
-
-              const p2 = new URLSearchParams();
-              p2.append('oldAccount', query);
-              accountRequests.push(fetch(`${proxyBase}?${p2.toString()}`));
-
-              const p3 = new URLSearchParams();
-              p3.append('physicalMeterNumber', query);
-              accountRequests.push(fetch(`${proxyBase}?${p3.toString()}`));
+              accountRequests.push(fetch(platinumUrl, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ accountID: query }),
+              }));
+              accountRequests.push(fetch(platinumUrl, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ oldAccount: query }),
+              }));
+              accountRequests.push(fetch(platinumUrl, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ physicalMeterNumber: query }),
+              }));
           } else {
-              const p = new URLSearchParams();
-              p.append('companyName', query);
-              accountRequests.push(fetch(`${proxyBase}?${p.toString()}`));
-
-              const p2 = new URLSearchParams();
-              p2.append('deliveryAddress', query);
-              accountRequests.push(fetch(`${proxyBase}?${p2.toString()}`));
+              accountRequests.push(fetch(platinumUrl, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ companyName: query }),
+              }));
+              accountRequests.push(fetch(platinumUrl, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ deliveryAddress: query }),
+              }));
           }
 
           const [accountResponses, institutionResults] = await Promise.all([
@@ -165,8 +172,10 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                   const data = await res.json();
                   if (Array.isArray(data)) {
                       allAccountData = [...allAccountData, ...data];
-                  } else if (data.value && Array.isArray(data.value)) {
+                  } else if (data?.value && Array.isArray(data.value)) {
                       allAccountData = [...allAccountData, ...data.value];
+                  } else if (data?.results && Array.isArray(data.results)) {
+                      allAccountData = [...allAccountData, ...data.results];
                   }
               }
           }
