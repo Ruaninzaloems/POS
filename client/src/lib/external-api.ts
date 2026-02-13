@@ -802,6 +802,10 @@ export async function platinumGetPosItemDetails(posItemId: number): Promise<any>
     return platinumFetch(`/api/platinum/direct-deposit-allocation/get-pos-item-details?posItemId=${posItemId}`);
 }
 
+export async function platinumCheckSelectedItemProcessed(userId: number, finYear: string, posItemId: number): Promise<{ success: boolean; message: string }> {
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/check-selected-item-processed?userId=${userId}&finYear=${encodeURIComponent(finYear)}&posItemId=${posItemId}`);
+}
+
 export async function platinumGetMiscPaymentGroup(): Promise<any[]> {
     return platinumFetch(`/api/platinum/direct-deposit-allocation/get-misc-payment-group`);
 }

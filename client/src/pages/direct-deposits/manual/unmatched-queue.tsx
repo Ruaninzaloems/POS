@@ -14,7 +14,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DatePicker } from '@/components/ui/date-picker';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { platinumGetBankReconPosItemList } from '@/lib/external-api';
+import { platinumGetBankReconPosItemList, platinumCheckSelectedItemProcessed } from '@/lib/external-api';
+import { usePos } from '@/lib/pos-state';
+import { useToast } from '@/hooks/use-toast';
 
 interface BankReconPosItem {
   posItem_ID: number;
@@ -36,9 +38,12 @@ interface BankReconPosItem {
 export default function UnmatchedQueue() {
   const [searchTerm, setSearchTerm] = useState('');
   const [, setLocation] = useLocation();
+  const { currentUser } = usePos();
+  const { toast } = useToast();
   const [items, setItems] = useState<BankReconPosItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [checkingItemId, setCheckingItemId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const pageSize = 25;
@@ -105,6 +110,39 @@ export default function UnmatchedQueue() {
   };
 
   const totalPages = Math.ceil(totalCount / pageSize);
+
+  const handleAllocateClick = async (posItemId: number) => {
+    setCheckingItemId(posItemId);
+    try {
+      let finYear = '2025/2026';
+      try {
+        const res = await fetch('/api/platinum/active-fin-year');
+        if (res.ok) finYear = await res.json();
+      } catch {}
+
+      const result = await platinumCheckSelectedItemProcessed(
+        Number(currentUser.id),
+        finYear,
+        posItemId
+      );
+
+      if (result && result.success === false) {
+        toast({
+          title: 'Item Already Processed',
+          description: result.message || 'This POS item has already been processed and cannot be allocated.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setLocation(`/direct-deposits/manual/allocate/${posItemId}`);
+    } catch (e: any) {
+      console.error("Failed to check item processed status", e);
+      setLocation(`/direct-deposits/manual/allocate/${posItemId}`);
+    } finally {
+      setCheckingItemId(null);
+    }
+  };
 
   const handleDownload = (fmt: 'excel' | 'pdf') => {
     const element = document.createElement("a");
@@ -294,9 +332,13 @@ export default function UnmatchedQueue() {
                           <Button
                               size="sm"
                               className="h-8 bg-blue-600 hover:bg-blue-700"
-                              onClick={() => setLocation(`/direct-deposits/manual/allocate/${tx.posItem_ID}`)}
+                              disabled={checkingItemId === tx.posItem_ID}
+                              onClick={() => handleAllocateClick(tx.posItem_ID)}
                               data-testid={`button-allocate-${tx.posItem_ID}`}
                           >
+                              {checkingItemId === tx.posItem_ID ? (
+                                <Loader2 className="w-3 h-3 animate-spin mr-2" />
+                              ) : null}
                               Allocate <ArrowRight className="ml-2 w-3 h-3" />
                           </Button>
                         )}
