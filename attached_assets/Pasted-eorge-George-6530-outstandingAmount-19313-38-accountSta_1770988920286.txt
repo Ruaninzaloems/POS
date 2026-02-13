@@ -1,0 +1,12 @@
+eorge, George, 6530","outstandingAmount":19313.38,"accountStatus":"Active","accountType":"Owner / Occupier","paymentAmount":0,"accountNumber":"000000023000","receiptID":0}]
+3:20:57 PM [express] GET /api/platinum/billing-payment/get-multiple-account-payment 304 in 268ms :: [{"capturerID":4697,"accountID":23000,"oldAccountCode":"25165040203","name":"Prinsloo","sgNumber":"C027/0002/00016504/00000","address":"Gannabos Avenue 14, George, George, 6530","outstandingAmount":19313.38,"accountStatus":"Active","accountType":"Owner / Occupier","paymentAmount":0,"accountNumber":"000000023000","receiptID":0}]
+[submit-multiple-payment] userId: 4697
+[submit-multiple-payment] requestModel: {"finYear":"2025/2026","receiptDate":"2026-02-13T15:20:52","totalAmount":20000,"tenderAmount":20020,"changeAmount":20,"paymentType":1,"paymentOption":1,"outStandingAmount":19313.38,"cardNumber":"","expiryDate":"","chequeNumber":""}
+[submit-multiple-payment] accounts count: 1
+[submit-multiple-payment] first account: {"capturerID":4697,"accountID":23000,"oldAccountCode":"25165040203","name":"Prinsloo","sgNumber":"C027/0002/00016504/00000","address":"Gannabos Avenue 14, George, George, 6530","outstandingAmount":19313.38,"accountStatus":"Active","accountType":"Owner / Occupier","paymentAmount":20000,"accountNumber":"000000023000","receiptID":0}
+[Receipt Info] Retrieved settings: (no settings found - will use fallback)
+3:20:57 PM [express] GET /api/platinum/receipt-info 304 in 2725ms :: {}
+[submit-multiple-payment] response: {"isSuccess":false,"message":"Error adding receipt: Data is Null. This method or property cannot be called on Null values.","ids":[]}
+3:20:57 PM [express] POST /api/platinum/billing-payment/submit-multiple-payment/4697 200 in 607ms :: {"isSuccess":false,"message":"Error adding receipt: Data is Null. This method or property cannot be called on Null values.","ids":[]}
+3:20:59 PM [express] POST /api/proxy/pos-multiple-account-payments/4697/23000/receipt/0 200 in 1478ms :: {"success":true}
+3:21:02 PM [express] GET /api/platinum/billing-enquiry/rebuild-full-account 304 in 2760ms :: {"success":true,"message":"Transaction Data Refreshed."}

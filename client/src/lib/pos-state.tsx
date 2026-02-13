@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from '
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, MOCK_TRANSACTIONS, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, platinumSubmitCashierSetup } from './external-api';
 
 if (import.meta.hot) {
   import.meta.hot.accept(() => {
@@ -602,6 +602,29 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     console.log(`[Payment Split] Prepaid portion: R${prepaidTotal}`);
     if (isSplitPayment) {
         console.log(`[Payment Split] SPLIT PAYMENT detected: Cash R${record.payment.cash} + Card R${record.payment.card} — will create separate receipts`);
+    }
+
+    try {
+        const cashOfficeId = sessionDetails?.officeId ? Number(sessionDetails.officeId) : 2;
+        const cashOfficeDesc = sessionDetails?.officeDesc || currentUser.cashOffice || 'Uniondale';
+        const cashierSetupPayload = {
+            id: 0,
+            cashFloat: sessionDetails?.floatAmount ?? 0,
+            officeId: cashOfficeId,
+            isActive: true,
+            user_Id: Number(currentUser.id),
+            isVirtual: false,
+            const_CashOffice: {
+                cashOffice_ID: cashOfficeId,
+                cashOfficeDesc: cashOfficeDesc,
+                enabled: true,
+                cashOnHandLimit: 999999,
+            },
+        };
+        await platinumSubmitCashierSetup(cashierSetupPayload);
+        console.log(`[Payment] Cashier session re-submitted to Platinum (user: ${currentUser.id}, office: ${cashOfficeId}/${cashOfficeDesc})`);
+    } catch (e) {
+        console.warn(`[Payment] Failed to re-submit cashier setup (proceeding anyway)`, e);
     }
 
     const extractReceiptIds = (result: any): number[] => {
