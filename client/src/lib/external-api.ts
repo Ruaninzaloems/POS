@@ -1101,3 +1101,116 @@ export async function platinumGetPosCount(): Promise<any> {
 export async function platinumGetPosTabItemDetailsCount(): Promise<any> {
     return platinumFetch(`/api/platinum/billing-dashboard/pos-tab-item-details-count`);
 }
+
+// --- View Receipt ---
+
+export interface ViewReceiptCashier {
+    id: number;
+    name: string;
+    cashierId?: number;
+}
+
+export async function fetchViewReceiptCashiers(): Promise<ViewReceiptCashier[]> {
+    try {
+        const data = await platinumFetch('/api/platinum/view-receipt/get-cashiers');
+        return Array.isArray(data) ? data : [];
+    } catch (e) {
+        console.warn('Failed to fetch view receipt cashiers', e);
+        return [];
+    }
+}
+
+export async function searchAccountNumbers(query: string): Promise<string[]> {
+    try {
+        const data = await platinumFetch(`/api/platinum/view-receipt/search-account-numbers?query=${encodeURIComponent(query)}`);
+        return Array.isArray(data) ? data : [];
+    } catch (e) {
+        console.warn('Failed to search account numbers', e);
+        return [];
+    }
+}
+
+export async function searchReceiptNumbers(query: string): Promise<string[]> {
+    try {
+        const data = await platinumFetch(`/api/platinum/view-receipt/search-receipt-numbers?query=${encodeURIComponent(query)}`);
+        return Array.isArray(data) ? data : [];
+    } catch (e) {
+        console.warn('Failed to search receipt numbers', e);
+        return [];
+    }
+}
+
+export interface ReceiptSearchQuery {
+    accountNumber?: string | null;
+    cashierId?: string | null;
+    fromDate: string;
+    toDate?: string | null;
+    receiptNo?: string | null;
+    page?: number;
+    pageSize?: number;
+    orderby?: string | null;
+    shortDirection?: string | null;
+}
+
+export interface ViewReceiptItem {
+    receiptId: number;
+    receiptNo: string;
+    accountNumber: string;
+    paymentType: string;
+    paymentOption: string;
+    receiptDate: string;
+    isStaged: boolean;
+    amount: number;
+    tenderAmount: number;
+    changeAmount: number;
+    cashierName: string;
+    cashBook: string;
+    cashOffice: string;
+    isCancelled: number;
+    cancellationReason: string;
+    accName: string;
+    accAddress: string;
+    outstandingAmount: number;
+    [key: string]: any;
+}
+
+export interface ReceiptListResponse {
+    items: ViewReceiptItem[];
+    totalCount: number;
+    page: number;
+    pageSize: number;
+}
+
+export async function fetchReceiptList(query: ReceiptSearchQuery): Promise<ReceiptListResponse> {
+    try {
+        const res = await fetch('/api/platinum/view-receipt/get-receipt-list', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(query),
+        });
+        if (res.ok) {
+            const data = await res.json();
+
+            let items: ViewReceiptItem[] = [];
+            if (Array.isArray(data)) {
+                items = data;
+            } else if (data && typeof data === 'object') {
+                items = data.items || data.value || data.results || data.rows || data.data || data.receipts || [];
+                if (!Array.isArray(items)) items = [];
+            }
+
+            const totalCount = data?.totalCount ?? data?.totalRecords ?? data?.count ?? data?.total ?? items.length;
+
+            return {
+                items,
+                totalCount: Number(totalCount) || items.length,
+                page: data?.page ?? query.page ?? 1,
+                pageSize: data?.pageSize ?? query.pageSize ?? 50,
+            };
+        }
+        throw new Error(`HTTP ${res.status}`);
+    } catch (e) {
+        console.warn('Failed to fetch receipt list', e);
+        return { items: [], totalCount: 0, page: 1, pageSize: 50 };
+    }
+}

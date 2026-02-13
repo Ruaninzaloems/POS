@@ -584,6 +584,46 @@ export async function registerRoutes(
     }
   });
 
+  // =====================================================
+  // VIEW RECEIPT ENDPOINTS
+  // =====================================================
+
+  app.get("/api/platinum/view-receipt/get-cashiers", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/ViewReceipt/get-cashiers");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/view-receipt/search-account-numbers", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/ViewReceipt/search-account-numbers", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/view-receipt/search-receipt-numbers", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/ViewReceipt/search-recept-numbers", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/view-receipt/get-receipt-list", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/ViewReceipt/get-receipt-list", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.post("/api/platinum/billing-payment/print-miscellaneous-receipt", async (req, res) => {
     try {
       const data = await platinumPost("/api/billing-payment/print-miscellaneous-receipt", req.body, req.query as Record<string, string>);
