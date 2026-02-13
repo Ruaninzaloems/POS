@@ -505,6 +505,56 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     let finalReceiptNumber = 'PENDING';
 
+    const accountTotal = accountItems.reduce((sum, i) => sum + i.amountToPay, 0);
+    const directIncomeTotal = directIncomeItems.reduce((sum, i) => sum + i.amountToPay, 0);
+    const prepaidTotal = electricityPrepaidItems.reduce((sum, i) => sum + i.amountToPay, 0)
+        + waterPrepaidItems.reduce((sum, i) => sum + i.amountToPay, 0);
+    const grandTotal = record.totalAmount;
+    const totalTender = record.payment.cash + record.payment.card;
+    const totalChange = Math.max(0, totalTender - grandTotal);
+
+    const groupTotals = [
+        { key: 'ACC', total: accountTotal },
+        { key: 'INC', total: directIncomeTotal },
+        { key: 'PREPAID', total: prepaidTotal },
+    ].filter(g => g.total > 0);
+
+    const isMixedBasket = groupTotals.length > 1;
+
+    const groupTenders: Record<string, number> = {};
+    const groupChanges: Record<string, number> = {};
+
+    if (!isMixedBasket) {
+        const key = groupTotals[0]?.key || 'ACC';
+        groupTenders[key] = totalTender;
+        groupChanges[key] = totalChange;
+    } else {
+        let allocatedTender = 0;
+        for (let i = 0; i < groupTotals.length; i++) {
+            const g = groupTotals[i];
+            if (i < groupTotals.length - 1) {
+                const tender = Math.round((g.total / grandTotal) * totalTender * 100) / 100;
+                groupTenders[g.key] = tender;
+                groupChanges[g.key] = Math.max(0, Math.round((tender - g.total) * 100) / 100);
+                allocatedTender += tender;
+            } else {
+                const tender = Math.round((totalTender - allocatedTender) * 100) / 100;
+                groupTenders[g.key] = tender;
+                groupChanges[g.key] = Math.max(0, Math.round((tender - g.total) * 100) / 100);
+            }
+        }
+    }
+
+    const accTender = groupTenders['ACC'] ?? 0;
+    const accChange = groupChanges['ACC'] ?? 0;
+    const incTender = groupTenders['INC'] ?? 0;
+    const incChange = groupChanges['INC'] ?? 0;
+
+    console.log(`[Payment Split] Grand total: R${grandTotal}, Tender: R${totalTender}, Change: R${totalChange}`);
+    console.log(`[Payment Split] ACC portion: R${accountTotal} (tender: R${accTender}, change: R${accChange})`);
+    console.log(`[Payment Split] INC portion: R${directIncomeTotal} (tender: R${incTender}, change: R${incChange})`);
+    console.log(`[Payment Split] Prepaid portion: R${prepaidTotal}`);
+
     try {
     // --- PRIORITY 1: Consumer Services / Account Payments ---
     if (accountItems.length > 0) {
@@ -569,9 +619,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     requestModel: {
                         finYear,
                         receiptDate,
-                        totalAmount: accountItems.reduce((sum, i) => sum + i.amountToPay, 0),
-                        tenderAmount: record.payment.cash + record.payment.card,
-                        changeAmount: Math.max(0, (record.payment.cash + record.payment.card) - record.totalAmount),
+                        totalAmount: accountTotal,
+                        tenderAmount: accTender,
+                        changeAmount: accChange,
                         paymentType: paymentTypeId,
                         paymentOption: paymentTypeId,
                     },
@@ -639,7 +689,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // --- PRIORITY 2: Direct Income / Miscellaneous Payments ---
     if (directIncomeItems.length > 0) {
-        for (const item of directIncomeItems) {
+        const incGroupTender = isMixedBasket ? incTender : totalTender;
+        const incGroupChange = isMixedBasket ? incChange : totalChange;
+        let incAllocatedTender = 0;
+
+        for (let idx = 0; idx < directIncomeItems.length; idx++) {
+            const item = directIncomeItems[idx];
+            const isLastIncItem = idx === directIncomeItems.length - 1;
             const origData = item.originalData;
             const groupId = origData?.groupId;
             const scoaItemId = origData?.scoaItemId || origData?.id;
@@ -654,6 +710,17 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     const paidByParts = paidByName.split(/\s+/);
                     const lastName = paidByParts.length > 1 ? paidByParts.slice(1).join(' ') : paidByParts[0];
                     const initials = paidByParts[0]?.charAt(0) || 'W';
+                    let itemTender: number;
+                    let itemChange: number;
+                    if (isLastIncItem) {
+                        itemTender = Math.round((incGroupTender - incAllocatedTender) * 100) / 100;
+                        itemChange = Math.max(0, Math.round((itemTender - item.amountToPay) * 100) / 100);
+                    } else {
+                        itemTender = item.amountToPay;
+                        itemChange = 0;
+                        incAllocatedTender += itemTender;
+                    }
+
                     const miscResult = await submitMiscPayment({
                         lastName,
                         initials,
@@ -664,8 +731,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         totalAmount: item.amountToPay,
                         vatAmount: Math.round(vatAmount * 100) / 100,
                         amount: Math.round(amountExVat * 100) / 100,
-                        tenderAmount: record.payment.cash + record.payment.card,
-                        changeAmount: Math.max(0, (record.payment.cash + record.payment.card) - record.totalAmount),
+                        tenderAmount: itemTender,
+                        changeAmount: itemChange,
                         paymentType: paymentTypeId,
                         vatPercentage: vatRate,
                         isVatable,

@@ -304,11 +304,21 @@ export function PaymentDrawer() {
             </div>
         </div>
 
+        {!isCompleteEnabled && transactionItems.length > 0 && transactionItems.some(item => 
+            item.type === 'DIRECT_INCOME' && (!item.paidBy || item.paidBy.trim().length === 0 || !item.notes || item.notes.trim().length === 0)
+        ) && (
+            <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                <ShieldAlert className="w-4 h-4 flex-shrink-0" />
+                <span>Fill in <strong>Description/Notes</strong> and <strong>Paid By</strong> for all Direct Income items</span>
+            </div>
+        )}
+
         <Button 
           className="w-full h-16 text-xl font-bold shadow-lg active:scale-[0.98] transition-all" 
           size="lg"
           disabled={!isCompleteEnabled}
           onClick={completeTransaction}
+          data-testid="button-complete-transaction"
         >
           COMPLETE (R {payment.tenderTotal.toFixed(2)})
           <ArrowRight className="ml-2 w-6 h-6" />
