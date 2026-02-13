@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from '
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, MOCK_TRANSACTIONS, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, createSessionApi, endSessionApi, createTransactionApi, updateTransactionReceiptNumberApi, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment } from './external-api';
 
 if (import.meta.hot) {
   import.meta.hot.accept(() => {
@@ -278,22 +278,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (data.cashOnHandLimit) {
             setOfficeLimits(prev => ({ ...prev, [String(data.officeId)]: data.cashOnHandLimit }));
           }
-          try {
-            const existingSessionRes = await fetch(`/api/sessions/active/${platinumUser.user_ID}`);
-            if (existingSessionRes.ok) {
-              const existingSession = await existingSessionRes.json();
-              setDbSessionId(existingSession.id);
-            } else {
-              const session = await createSessionApi({
-                cashierId: String(platinumUser.user_ID),
-                cashierName: `${platinumUser.firstName} ${platinumUser.lastName}`.trim(),
-                cashOfficeId: String(data.officeId),
-                cashOfficeName: data.officeName || '',
-                floatAmount: data.cashFloat || 0,
-              });
-              setDbSessionId(session.id);
-            }
-          } catch {}
           console.log("Active Platinum session restored:", data);
         } else {
           setPlatinumCashierId(data.cashierId || null);
@@ -376,8 +360,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setSystemSettings(prev => ({ ...prev, ...settings }));
   };
 
-  const [dbSessionId, setDbSessionId] = useState<string | null>(null);
-
   const startSession = async (officeId: string, floatAmount: number, officeName?: string) => {
       setActiveSession(true);
       setSessionLoading(false);
@@ -401,26 +383,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               console.warn("Cashier not mapped in Platinum:", ensureData.message);
               toast({
                   title: "Cashier Not Mapped",
-                  description: `User ${currentUser.name} (ID: ${currentUser.id}) is not registered as a cashier in the billing system. Payments will be recorded locally but may not post to Platinum until cashier mapping is completed.`,
+                  description: `User ${currentUser.name} (ID: ${currentUser.id}) is not registered as a cashier in the billing system. Payments cannot be posted until cashier mapping is completed.`,
                   variant: "destructive",
               });
           }
       } catch (e) {
           console.warn("Failed to check cashier setup in Platinum", e);
-      }
-
-      try {
-          const office = referenceData.cashOffices.find((o: any) => o.id === officeId || String(o.id) === String(officeId));
-          const session = await createSessionApi({
-              cashierId: currentUser.id,
-              cashierName: currentUser.name,
-              cashOfficeId: officeId,
-              cashOfficeName: officeName || office?.name,
-              floatAmount,
-          });
-          setDbSessionId(session.id);
-      } catch (e) {
-          console.warn("Failed to persist session to backend", e);
       }
   };
 
@@ -433,16 +401,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           });
           return;
       }
-      if (dbSessionId) {
-          try {
-              await endSessionApi(dbSessionId);
-          } catch (e) {
-              console.warn("Failed to end session in backend", e);
-          }
-      }
       setActiveSession(false);
       setSessionDetails(undefined);
-      setDbSessionId(null);
       setPlatinumCashierId(null);
   };
 
@@ -544,35 +504,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     let finalReceiptNumber = 'PENDING';
-    let dbTransactionId: string | null = null;
-
-    // --- Save to local DB immediately with PENDING receipt number ---
-    try {
-        const dbTx = await createTransactionApi({
-            receiptNumber: 'PENDING',
-            sessionId: dbSessionId,
-            cashierId: currentUser.id,
-            cashierName: currentUser.name,
-            cashOfficeId: sessionDetails?.officeId,
-            totalAmount: record.totalAmount,
-            cashAmount: record.payment.cash,
-            cardAmount: record.payment.card,
-            tenderAmount: record.payment.cash + record.payment.card,
-            changeAmount: Math.max(0, (record.payment.cash + record.payment.card) - record.totalAmount),
-            paymentType: record.payment.card > 0 ? 'Card' : 'Cash',
-            status: record.status,
-            items: record.items,
-        });
-        dbTransactionId = dbTx.id;
-        console.log(`[DB] Transaction saved with PENDING receipt, DB ID: ${dbTx.id}`);
-    } catch (e) {
-        console.warn("Failed to persist transaction to backend", e);
-        toast({
-            title: "Warning",
-            description: "Transaction recorded locally but failed to save to database. Please notify your supervisor.",
-            variant: "destructive",
-        });
-    }
 
     try {
     // --- PRIORITY 1: Consumer Services / Account Payments ---
@@ -790,16 +721,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (waterPrepaidItems.length > 0) {
         for (const item of waterPrepaidItems) {
             console.log(`[Priority 4] Water prepaid recharge for ${item.reference}, amount: R${item.amountToPay}`);
-        }
-    }
-
-    // --- Update local DB with actual receipt number from Platinum ---
-    if (dbTransactionId && finalReceiptNumber !== 'PENDING') {
-        try {
-            await updateTransactionReceiptNumberApi(dbTransactionId, finalReceiptNumber);
-            console.log(`[DB] Receipt number updated to ${finalReceiptNumber} for DB ID: ${dbTransactionId}`);
-        } catch (e) {
-            console.warn("Failed to update receipt number in database", e);
         }
     }
 

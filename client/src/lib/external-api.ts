@@ -338,65 +338,6 @@ export async function fetchConfigSettings(): Promise<any[]> {
     return [];
 }
 
-export async function createSessionApi(data: {
-    cashierId: string;
-    cashierName: string;
-    cashOfficeId: string;
-    cashOfficeName?: string;
-    floatAmount: number;
-}): Promise<any> {
-    const res = await fetch('/api/sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error('Failed to create session');
-    return res.json();
-}
-
-export async function endSessionApi(sessionId: string): Promise<any> {
-    const res = await fetch(`/api/sessions/${sessionId}/end`, { method: 'POST' });
-    if (!res.ok) throw new Error('Failed to end session');
-    return res.json();
-}
-
-export async function createTransactionApi(data: any): Promise<any> {
-    const res = await fetch('/api/transactions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error('Failed to create transaction');
-    return res.json();
-}
-
-export async function updateTransactionReceiptNumberApi(id: string, receiptNumber: string): Promise<any> {
-    const res = await fetch(`/api/transactions/${id}/receipt-number`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ receiptNumber }),
-    });
-    if (!res.ok) throw new Error('Failed to update receipt number');
-    return res.json();
-}
-
-export async function listTransactionsApi(filters?: {
-    cashierId?: string;
-    cashOfficeId?: string;
-    fromDate?: string;
-    toDate?: string;
-    status?: string;
-}): Promise<any[]> {
-    const params = new URLSearchParams();
-    if (filters?.cashierId) params.append('cashierId', filters.cashierId);
-    if (filters?.cashOfficeId) params.append('cashOfficeId', filters.cashOfficeId);
-    if (filters?.fromDate) params.append('fromDate', filters.fromDate);
-    if (filters?.toDate) params.append('toDate', filters.toDate);
-    if (filters?.status) params.append('status', filters.status);
-    const res = await fetch(`/api/transactions?${params.toString()}`);
-    if (!res.ok) throw new Error('Failed to list transactions');
-    return res.json();
-}
 
 export async function postMultipleAccountPaymentReceipt(capturerId: string, accountId: string | number, receiptId: string | number): Promise<any> {
     const res = await fetch(`/api/proxy/pos-multiple-account-payments/${capturerId}/${accountId}/receipt/${receiptId}`, {

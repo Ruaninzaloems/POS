@@ -15,7 +15,7 @@ import { ReceiptTemplate } from '@/components/pos/receipt-template';
 import { useReactToPrint } from 'react-to-print';
 import { BankTransaction, AllocationDraft } from '@/lib/direct-deposits-data';
 import { cn } from '@/lib/utils';
-import { listTransactionsApi, fetchPosMultiReceiptPrint, fetchReceiptsBatch, PosMultiReceiptPrintItem } from '@/lib/external-api';
+import { fetchPosMultiReceiptPrint, fetchReceiptsBatch, PosMultiReceiptPrintItem } from '@/lib/external-api';
 import { useToast } from '@/hooks/use-toast';
 import { usePos } from '@/lib/pos-state';
 
@@ -97,47 +97,6 @@ export default function ViewReceipts() {
                     existing.tenderAmount += item.tenderAmount || 0;
                     existing.changeAmount += item.changeAmount || 0;
                 }
-            }
-
-            try {
-                const filters: any = {};
-                if (fromDate) filters.fromDate = fromDate.toISOString();
-                if (toDate) {
-                    const endOfDay = new Date(toDate);
-                    endOfDay.setHours(23, 59, 59, 999);
-                    filters.toDate = endOfDay.toISOString();
-                }
-                const transactions = await listTransactionsApi(filters);
-                for (const tx of transactions) {
-                    const receiptNo = tx.receiptNumber || '';
-                    if (receiptNo && !rowMap.has(receiptNo)) {
-                        const items = tx.items || [];
-                        const firstItem = items[0];
-                        rowMap.set(receiptNo, {
-                            id: tx.id?.toString() || crypto.randomUUID(),
-                            receiptNo,
-                            accountId: firstItem?.reference || firstItem?.accountNo || '',
-                            paymentType: tx.paymentType || 'Cash',
-                            paymentOption: firstItem?.type === 'CONSUMER_SERVICES' ? 'Consumer Services'
-                                : firstItem?.type === 'PREPAID' ? 'Prepaid Recharge'
-                                : firstItem?.type === 'DIRECT_INCOME' ? 'Direct Income'
-                                : firstItem?.type === 'CLEARANCE' ? 'Clearance'
-                                : firstItem?.description || 'Payment',
-                            receiptDate: tx.createdAt || new Date().toISOString(),
-                            staged: false,
-                            amount: parseFloat(tx.totalAmount) || 0,
-                            tenderAmount: parseFloat(tx.tenderAmount) || 0,
-                            changeAmount: parseFloat(tx.changeAmount) || 0,
-                            cashierName: tx.cashierName || 'Unknown',
-                            cashBook: '',
-                            cashierOffice: tx.cashOfficeId || '',
-                            status: tx.status || 'COMPLETED',
-                            cancellationReason: tx.cancellationReason || undefined,
-                        });
-                    }
-                }
-            } catch (e) {
-                console.warn("Local DB fetch failed, showing API receipts only", e);
             }
 
             let rows = Array.from(rowMap.values());

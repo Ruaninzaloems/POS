@@ -74,7 +74,7 @@ Preferred communication style: Simple, everyday language.
 - **Sebata Billing Microservice** (`george-uat-ems-billing-api.azurewebsites.net`): Legacy OData-based API providing consumer account data, billing config, and receipt staging. Accessed via server-side proxy routes (`/api/proxy/`) for backward compatibility. Swagger spec in `swagger.json`.
   
 ### Database
-- **PostgreSQL**: Required. Connection via `DATABASE_URL` environment variable. Used for users, cashier sessions, and transaction persistence.
+- **No local database**: The application does NOT use a local PostgreSQL database. All data persistence is handled through the Platinum Inzalo EMS API and Sebata Billing API. The `server/storage.ts`, `server/db.ts`, and `shared/schema.ts` files exist as legacy code but are not imported or used by any active code path. Session state is managed in-memory via React Context, and transaction/receipt history is sourced from Platinum API endpoints (e.g., `pos-multi-receipt-print`). This architecture ensures the frontend can be deployed into any environment with only API access to Platinum.
 
 ### Frontend Libraries
 - **shadcn/ui + Radix UI**: Complete component library (dialogs, dropdowns, tabs, tables, tooltips, etc.)
