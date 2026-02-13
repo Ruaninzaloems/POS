@@ -362,6 +362,11 @@ export async function enrichAccountData(account: any): Promise<any> {
         ]);
 
         if (consDetails && !consDetails._error) {
+            Object.keys(consDetails).forEach(key => {
+                if (key !== '_error' && consDetails[key] !== undefined && consDetails[key] !== null) {
+                    enriched[key] = consDetails[key];
+                }
+            });
             enriched.outstandingAmount = consDetails.outStandingAmt ?? enriched.outstandingAmount;
             enriched.oldCode = consDetails.oldAccountCode || enriched.oldCode;
             enriched.oldPropertyCode = consDetails.oldAccountCode || enriched.oldPropertyCode;
