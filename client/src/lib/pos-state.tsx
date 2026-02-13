@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from '
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, MOCK_TRANSACTIONS, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, fetchPosMultiReceiptPrint } from './external-api';
 
 if (import.meta.hot) {
   import.meta.hot.accept(() => {
@@ -650,8 +650,19 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
                 if (receiptIds.length > 0) {
                     finalReceiptNumber = `REC-${receiptIds[0]}`;
+
+                    try {
+                        const receiptData = await fetchPosMultiReceiptPrint(String(receiptIds[0]));
+                        if (receiptData && receiptData.length > 0 && receiptData[0].receiptNo) {
+                            finalReceiptNumber = receiptData[0].receiptNo;
+                            console.log(`[Priority 1] Actual receipt number from billing: ${finalReceiptNumber}`);
+                        }
+                    } catch (e) {
+                        console.warn(`[Priority 1] Could not fetch formatted receipt number, using ID fallback`, e);
+                    }
+
                     updateRecordReceiptNumber(record, finalReceiptNumber);
-                    console.log(`[Priority 1] Receipt number from Platinum: ${finalReceiptNumber}`);
+                    console.log(`[Priority 1] Receipt number: ${finalReceiptNumber}`);
 
                     try {
                         await platinumPrintReceipt(receiptIds);
@@ -757,8 +768,19 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
                     if (miscReceiptId) {
                         finalReceiptNumber = `REC-${miscReceiptId}`;
+
+                        try {
+                            const miscReceiptData = await fetchPosMultiReceiptPrint(String(miscReceiptId));
+                            if (miscReceiptData && miscReceiptData.length > 0 && miscReceiptData[0].receiptNo) {
+                                finalReceiptNumber = miscReceiptData[0].receiptNo;
+                                console.log(`[Priority 2] Actual receipt number from billing: ${finalReceiptNumber}`);
+                            }
+                        } catch (e) {
+                            console.warn(`[Priority 2] Could not fetch formatted receipt number`, e);
+                        }
+
                         updateRecordReceiptNumber(record, finalReceiptNumber);
-                        console.log(`[Priority 2] Receipt number from Platinum: ${finalReceiptNumber}`);
+                        console.log(`[Priority 2] Receipt number: ${finalReceiptNumber}`);
 
                         try {
                             await platinumPrintMiscellaneousReceipt({}, { id: String(miscReceiptId) });
