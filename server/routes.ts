@@ -434,29 +434,45 @@ export async function registerRoutes(
     try {
       const body = { ...req.body };
 
-      if (!body.UserDetail) {
+      if (!body.userDetail && !body.UserDetail) {
         const userData = await getPlatinumUserInfo();
         if (userData) {
-          body.UserDetail = {
+          const now = new Date().toLocaleString('sv-SE', { timeZone: 'Africa/Johannesburg' }).replace(' ', 'T');
+          body.userDetail = {
             userId: userData.user_ID,
             userName: userData.userName || '',
             password: '',
+            company: null,
+            telNo: null,
+            eMail: userData.eMail || '',
             firstName: userData.firstName || '',
             lastName: userData.lastName || '',
-            eMail: userData.eMail || '',
+            empID: null,
+            departmentID: null,
             enabled: userData.enabled ?? true,
+            totalLogin: null,
+            lastLoginDate: null,
+            sendSMS: false,
             superUser: userData.superUser ?? false,
-            dateCaptured: new Date().toLocaleString('sv-SE', { timeZone: 'Africa/Johannesburg' }).replace(' ', 'T'),
+            dateCaptured: now,
             capturerID: userData.user_ID,
             passwordNeverExpire: true,
-            passwordLastChangedDate: new Date().toLocaleString('sv-SE', { timeZone: 'Africa/Johannesburg' }).replace(' ', 'T'),
+            passwordLastChangedDate: now,
+            modifierID: null,
+            dateModified: null,
+            temporaryPassword: false,
             cashFloat: body.cashFloat || 0,
+            startDate: null,
+            endDate: null,
           };
         }
       }
+      if (body.UserDetail && !body.userDetail) {
+        body.userDetail = body.UserDetail;
+        delete body.UserDetail;
+      }
 
-      console.log(`[submit-cashier-setup] Sending payload keys: ${Object.keys(body).join(', ')}`);
-      console.log(`[submit-cashier-setup] UserDetail present: ${!!body.UserDetail}, userId: ${body.UserDetail?.userId}`);
+      console.log(`[submit-cashier-setup] Sending full payload:`, JSON.stringify(body));
       const data = await platinumPost("/api/ReceiptPrepaid/submit-cashier-setup", body);
       console.log(`[submit-cashier-setup] Response:`, JSON.stringify(data));
       handlePlatinumResult(res, data);
