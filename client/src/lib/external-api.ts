@@ -916,11 +916,6 @@ export async function platinumThirdPartyCommit(importId: string, data: any): Pro
 
 // --- Billing Enquiry ---
 
-export async function platinumGetDepositAmount(params: Record<string, string>): Promise<any> {
-    const qs = new URLSearchParams(params).toString();
-    return platinumFetch(`/api/platinum/billing-enquiry/deposit-amount?${qs}`);
-}
-
 export async function platinumGetDepositsByAccountId(params: Record<string, string>): Promise<any[]> {
     const qs = new URLSearchParams(params).toString();
     return platinumFetch(`/api/platinum/billing-enquiry/deposits-by-account-id?${qs}`);
@@ -959,6 +954,42 @@ export async function platinumGetContactDetails(params: Record<string, string>):
 export async function platinumGetPropertyDetails(params: Record<string, string>): Promise<any> {
     const qs = new URLSearchParams(params).toString();
     return platinumFetch(`/api/platinum/billing-account-management/get-property-details?${qs}`);
+}
+
+export async function platinumGetAccountGrouping(accountId: number): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-account-management/get-account-grouping?accountId=${accountId}`);
+}
+
+export async function platinumGetSubAccountGrouping(accountId: number): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-account-management/get-sub-account-grouping?accountId=${accountId}`);
+}
+
+export async function platinumGetPaymentGroupList(): Promise<any[]> {
+    return platinumFetch(`/api/platinum/billing-account-management/get-payment-group-list`);
+}
+
+export async function platinumGetDepositAmount(accountId: number): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-enquiry/deposit-amount?accountId=${accountId}`);
+}
+
+export async function platinumGetPropertyDetailsByAccount(accountId: number): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-enquiry/property-details-by-account?AccountId=${accountId}`);
+}
+
+export async function platinumGetConsUnitByAccount(accountId: number): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-enquiry/cons-unit-by-account?AccountId=${accountId}`);
+}
+
+export async function platinumGetNameInfoByAccount(accountId: number): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-enquiry/name-info-by-account?accountId=${accountId}`);
+}
+
+export async function platinumGetHandoverByAccount(accountId: number): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-enquiry/handover-by-account?accountId=${accountId}`);
+}
+
+export async function platinumGetPaymentIncentiveByAccount(accountId: number): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-enquiry/payment-incentive-by-account?accountId=${accountId}`);
 }
 
 // --- Miscellaneous Payments (Direct Income) ---

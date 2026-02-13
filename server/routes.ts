@@ -1146,6 +1146,51 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/platinum/billing-enquiry/property-details-by-account", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/BillingEnquiry/PropertyDetailsByAccountId", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-enquiry/cons-unit-by-account", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/BillingEnquiry/ConsUnitByAccountId", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-enquiry/name-info-by-account", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/BillingEnquiry/NameInfoByAccountId", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-enquiry/handover-by-account", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/BillingEnquiry/HandoverByAccountId", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-enquiry/payment-incentive-by-account", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/BillingEnquiry/PaymentIncentiveByAccountId", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   // --- Billing Dashboard POS counts ---
 
   app.get("/api/platinum/billing-dashboard/pos-count", async (req, res) => {
@@ -1234,6 +1279,33 @@ export async function registerRoutes(
   app.get("/api/platinum/billing-account-management/get-property-details", async (req, res) => {
     try {
       const data = await platinumGet("/api/billing/account-management/get-property-details", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-account-management/get-account-grouping", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing/account-management/get-account-grouping", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-account-management/get-sub-account-grouping", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing/account-management/get-sub-account-grouping", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-account-management/get-payment-group-list", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing/account-management/get-payment-group-list");
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });

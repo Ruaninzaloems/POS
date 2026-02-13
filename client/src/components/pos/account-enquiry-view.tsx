@@ -7,37 +7,22 @@ import { RefreshCw, ArrowLeft, X, Zap, Droplets, ChevronDown, ChevronUp, AlertTr
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import {
+  platinumGetConsAccountDetails,
+  platinumGetAccountDetails,
+  platinumGetAccountInformation,
+  platinumGetContactDetails,
+  platinumGetPropertyDetails,
+  platinumGetPropertyDetailsByAccount,
+  platinumGetNameInfoByAccount,
+  platinumGetHandoverByAccount,
+  platinumGetPaymentIncentiveByAccount,
+} from '@/lib/external-api';
 
-function parseContactField(html: string | undefined, fieldName: string): string {
-  if (!html) return '';
-  const patterns: Record<string, RegExp> = {
-    'email': /Email\s*:<\/b>\s*([^<\s]+)/i,
-    'tel': /Tel Number\s*:<\/b>\s*([^<\s]+)/i,
-    'telWork': /Tel Number\(Work\)\s*:\s*<\/b>\s*([^<\s]+)/i,
-    'mobile': /Mobile No\.\s*:<\/b>\s*([^<\s]+)/i,
-    'fax': /Fax\s*:<\/b>\s*([^<\s]+)/i,
-  };
-  const regex = patterns[fieldName];
-  if (!regex) return '';
-  const match = html.match(regex);
-  return match ? match[1].trim() : '';
-}
-
-function getContactNumber(html: string | undefined): string {
-  if (!html) return '';
-  const mobile = parseContactField(html, 'mobile');
-  if (mobile) return mobile;
-  const tel = parseContactField(html, 'tel');
-  if (tel) return tel;
-  const telWork = parseContactField(html, 'telWork');
-  if (telWork) return telWork;
-  return '';
-}
-
-function formatPropertyId(propId: string | undefined): string {
+function formatPropertyId(propId: string | number | undefined): string {
   if (!propId) return '';
-  const num = parseInt(propId, 10);
-  return isNaN(num) ? propId : String(num);
+  const num = typeof propId === 'string' ? parseInt(propId, 10) : propId;
+  return isNaN(num) ? String(propId) : String(num);
 }
 
 export function AccountEnquiryView({ item }: { item: TransactionItem }) {
@@ -46,62 +31,176 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
   const [isOpen, setIsOpen] = useState(false);
   const [account, setAccount] = useState<Account>(baseAccount);
   const [detailsLoaded, setDetailsLoaded] = useState(false);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+
+  const [propertyEnquiry, setPropertyEnquiry] = useState<any>(null);
+  const [nameInfo, setNameInfo] = useState<any>(null);
+  const [handoverStatus, setHandoverStatus] = useState<string>('N/A');
+  const [incentiveCode, setIncentiveCode] = useState<string>('-');
 
   useEffect(() => {
     if (!baseAccount.apiId || detailsLoaded) return;
     let cancelled = false;
-    
+    setDetailsLoading(true);
+
     (async () => {
       try {
-        const res = await fetch(`/api/proxy/account-full-details/${baseAccount.apiId}`);
-        if (!res.ok || cancelled) return;
-        const data = await res.json();
-        
+        const accountId = baseAccount.apiId!;
+        const accountIdStr = String(accountId);
+
+        const [consDetails, acctDetails, acctInfo, contactDetails, propEnquiry, nameData, handoverData, incentiveData] = await Promise.all([
+          platinumGetConsAccountDetails(accountId).catch(() => null),
+          platinumGetAccountDetails({ accountId: accountIdStr }).catch(() => null),
+          platinumGetAccountInformation({ accountId: accountIdStr }).catch(() => null),
+          platinumGetContactDetails({ accountId: accountIdStr }).catch(() => null),
+          platinumGetPropertyDetailsByAccount(accountId).catch(() => null),
+          platinumGetNameInfoByAccount(accountId).catch(() => null),
+          platinumGetHandoverByAccount(accountId).catch(() => null),
+          platinumGetPaymentIncentiveByAccount(accountId).catch(() => null),
+        ]);
+
+        if (cancelled) return;
+
         const updated = { ...baseAccount };
-        
-        if (data.name) {
-          const fn = data.name.firstNames || '';
-          const sn = data.name.surnameCompany || '';
-          updated.firstName = fn;
-          updated.surname = sn;
-          updated.name = `${fn} ${sn}`.trim();
-          updated.nameId = data.name.id;
+
+        if (nameData && typeof nameData === 'object' && nameData.surname_Company) {
+          setNameInfo(nameData);
+          updated.firstName = nameData.firstNames || '';
+          updated.surname = nameData.surname_Company || '';
+          updated.name = `${nameData.firstNames || ''} ${nameData.surname_Company || ''}`.trim();
+          updated.email = nameData.email || updated.email;
+          updated.mobile = nameData.tel_Mobile || nameData.tel_Home || nameData.tel_Work || updated.mobile;
+          updated.idNo = nameData.idNo_RegistrationNo || updated.idNo;
         }
-        
-        if (data.account) {
-          updated.oldCode = data.account.oldAccountCode || baseAccount.oldCode;
+
+        if (consDetails && !consDetails._error) {
+          updated.outstandingAmount = consDetails.outStandingAmt ?? baseAccount.outstandingAmount;
+          updated.oldCode = consDetails.oldAccountCode || baseAccount.oldCode;
+          updated.accountType = consDetails.accountDesc || updated.accountType;
+          updated.sgNo = consDetails.erfNumber || updated.sgNo;
+          if (consDetails.deliveryAddress) {
+            updated.deliveryAddress = consDetails.deliveryAddress.replace(/\r\n/g, ', ').replace(/,\s*$/, '');
+          }
+          updated.paidDepositAmount = consDetails.deposit ?? 0;
         }
-        
-        const contactNum = getContactNumber(baseAccount.contactDetails);
-        if (contactNum) {
-          updated.mobile = contactNum;
+
+        if (acctDetails && !acctDetails._error) {
+          updated.unitId = acctDetails.unitID?.toString();
+          updated.unitPartitionId = acctDetails.unitPartitionID;
+          updated.oldCode = acctDetails.oldAccountCode || updated.oldCode;
+
+          const deliveryParts = [
+            acctDetails.nonStandAddLine1,
+            acctDetails.nonStandAddLine2,
+            acctDetails.nonStandAddCityTown,
+            acctDetails.deliveryPostalCode,
+          ].filter(Boolean);
+          if (deliveryParts.length > 0) {
+            updated.deliveryAddress = deliveryParts.join(', ');
+          }
         }
-        
-        const email = parseContactField(baseAccount.contactDetails, 'email');
-        if (email) {
-          updated.email = email;
+
+        if (acctInfo && !acctInfo._error) {
+          updated.status = acctInfo.accountStatus || updated.status;
+          updated.accountType = acctInfo.accountDesc || updated.accountType;
+          if (acctInfo.groupCodeDesc) {
+            updated.accountGroup = acctInfo.groupCodeDesc;
+          }
         }
-        
+
+        if (contactDetails && !contactDetails._error) {
+          updated.email = contactDetails.email || updated.email;
+          const contactMobile = contactDetails.tel_Mobile || contactDetails.tel_Home || contactDetails.tel_Work;
+          if (contactMobile) {
+            updated.mobile = contactMobile;
+          }
+        }
+
+        if (propEnquiry && typeof propEnquiry === 'object' && propEnquiry.propertyId) {
+          setPropertyEnquiry(propEnquiry);
+          updated.propertyId = propEnquiry.propertyId?.toString();
+          updated.sgNo = propEnquiry.sgNumber || updated.sgNo;
+          updated.propertyType = propEnquiry.typeofUse ? undefined : updated.propertyType;
+          updated.propertyTypeOfUse = propEnquiry.typeofUse || updated.propertyTypeOfUse;
+          updated.propertyCategory = propEnquiry.townPlanningZoneType || updated.propertyCategory;
+          updated.marketValue = propEnquiry.marketValue ?? updated.marketValue;
+          updated.farmName = propEnquiry.farmName || updated.farmName;
+          updated.locationAddress = [propEnquiry.streetNumber, propEnquiry.streetName, propEnquiry.suburb, propEnquiry.town].filter(Boolean).join(', ') || updated.locationAddress;
+        }
+
+        const unitId = acctDetails?.unitID;
+        let propMgmtDetails: any = null;
+        if (unitId) {
+          try {
+            propMgmtDetails = await platinumGetPropertyDetails({ unitId: String(unitId) });
+          } catch {}
+        }
+
+        if (cancelled) return;
+
+        if (propMgmtDetails && !propMgmtDetails._error) {
+          updated.sgNo = propMgmtDetails.sgNumber || updated.sgNo;
+          updated.propertyId = propMgmtDetails.id?.toString() || updated.propertyId;
+          updated.propertyStatus = propMgmtDetails.statusDescription || updated.propertyStatus;
+          updated.billingCycle = propMgmtDetails.billingCycleDescription || updated.billingCycle;
+          updated.allotmentArea = propMgmtDetails.allotmentCodeDescription || propMgmtDetails.townName || updated.allotmentArea;
+          updated.sectionalTitleScheme = propMgmtDetails.sectionalTitleName || updated.sectionalTitleScheme;
+          updated.farmName = propMgmtDetails.farmName || updated.farmName;
+          updated.locationAddress = propMgmtDetails.locationAddress || updated.locationAddress;
+          updated.propertyType = propMgmtDetails.propertyTypeDescription || updated.propertyType;
+          updated.magisterialDistrict = propMgmtDetails.magisterialDist || updated.magisterialDistrict;
+          updated.marketValue = propMgmtDetails.marketValue ?? updated.marketValue;
+          updated.propertyTypeOfUse = propMgmtDetails.propertyTypeOfUseDescription || updated.propertyTypeOfUse;
+          updated.propertyCategory = propMgmtDetails.ntPropertyCategoryDescription || updated.propertyCategory;
+          updated.registrationStatus = propMgmtDetails.statusDescription === 'Active' ? 'Registered' : (propMgmtDetails.statusDescription || updated.registrationStatus);
+          updated.oldPropertyCode = propMgmtDetails.oldPropertyCode || updated.oldPropertyCode;
+        }
+
+        if (typeof handoverData === 'string') {
+          setHandoverStatus(handoverData || 'N/A');
+          updated.handoverStatus = handoverData || 'N/A';
+        } else if (handoverData && typeof handoverData === 'object' && !handoverData._error) {
+          const desc = handoverData.statusDescription || handoverData.description || 'N/A';
+          setHandoverStatus(desc);
+          updated.handoverStatus = desc;
+        }
+
+        if (incentiveData && typeof incentiveData === 'object' && !incentiveData._error) {
+          const code = incentiveData.code || incentiveData.description || '-';
+          setIncentiveCode(code);
+          updated.incentiveSchemeCode = code;
+        }
+
         if (baseAccount.addName) {
-          updated.accountableOwnerName = baseAccount.addName
-            .replace(/^([\w]+)\s+/, '')
-            .replace(/\s*\((\d+)\)/, ' $1');
           const addNameMatch = baseAccount.addName.match(/^(\S+)\s+(.*)/);
           if (addNameMatch) {
             const rest = addNameMatch[2].replace(/\s*\(\d+\)\s*$/, '').trim();
             const idMatch = baseAccount.addName.match(/\((\d+)\)/);
             updated.accountableOwnerName = `${rest} ${addNameMatch[1]}${idMatch ? ' ' + idMatch[1] : ''}`.trim();
+          } else {
+            updated.accountableOwnerName = baseAccount.addName;
           }
+        } else if (nameData?.firstNames && nameData?.surname_Company) {
+          const idNo = nameData.idNo_RegistrationNo || '';
+          updated.accountableOwnerName = `${nameData.firstNames} ${nameData.surname_Company}${idNo ? ' ' + idNo : ''}`.trim();
         }
-        
+
+        updated.accountGroup = updated.accountGroup || 'None - Normal';
+
         if (!cancelled) {
           setAccount(updated);
           setDetailsLoaded(true);
+          setDetailsLoading(false);
         }
       } catch (e) {
+        console.error('Failed to load account details:', e);
+        if (!cancelled) {
+          setDetailsLoading(false);
+          setDetailsLoaded(true);
+        }
       }
     })();
-    
+
     return () => { cancelled = true; };
   }, [baseAccount.apiId]);
 
@@ -153,7 +252,6 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
 
   const handleBuyPrepaid = () => {
     if (!account.prepaidMeterNo) return;
-    
     addItem({
         id: crypto.randomUUID(),
         type: 'PREPAID',
@@ -195,7 +293,6 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
 
   return (
     <div className="bg-white p-6 shadow-sm border border-gray-200 text-sm relative">
-       {/* Navigation / Actions */}
        <div className="absolute top-6 right-6 flex gap-2">
           {hasPropertyRates && (
               <Button 
@@ -203,6 +300,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                 size="sm" 
                 onClick={handlePayRatesAdvance}
                 className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                data-testid="button-pay-rates-advance"
               >
                 <CalendarRange className="w-4 h-4" />
                 Pay Rates in Advance
@@ -215,6 +313,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                 size="sm" 
                 onClick={handleBuyPrepaid}
                 className={`gap-2 ${account.prepaidType === 'Water' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-yellow-600 hover:bg-yellow-700 text-white'}`}
+                data-testid="button-buy-prepaid"
               >
                 {account.prepaidType === 'Water' ? <Droplets className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
                 Buy Prepaid {account.prepaidType || 'Electricity'}
@@ -226,19 +325,19 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
             size="sm" 
             onClick={() => {
                 if (viewingItemId) {
-                    setViewingItem(null); // Close just this view if in multi-mode
+                    setViewingItem(null);
                 } else {
-                    removeItem(item.id); // Or remove item if in single mode
+                    removeItem(item.id);
                 }
             }}
             className="gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+            data-testid="button-close-enquiry"
           >
             <X className="w-4 h-4" />
             {viewingItemId ? 'Back to Basket' : 'Close Enquiry'}
           </Button>
        </div>
 
-       {/* Main Header */}
        <div className="bg-gradient-to-b from-gray-200 to-gray-300 px-4 py-2 font-bold text-gray-800 border border-gray-300 mb-4 text-sm shadow-sm flex justify-between items-center">
          <div className="flex items-center gap-3">
              <Button variant="ghost" size="icon" className="h-6 w-6 -ml-1 text-gray-600 hover:bg-gray-300/50 rounded-sm" onClick={() => {
@@ -272,7 +371,6 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
            </Alert>
        )}
 
-       {/* Collapsible Account Details */}
        <Collapsible open={isOpen} onOpenChange={setIsOpen} className="space-y-2 mb-6">
           <div className="flex items-center justify-between px-4 py-2 bg-slate-50 border rounded-md">
               <div className="flex flex-col">
@@ -280,7 +378,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                   <span className="text-xs text-muted-foreground">Acc: {account.accountNo}</span>
               </div>
               <CollapsibleTrigger asChild>
-                  <Button variant="outline" size="sm" className="w-9 p-0 h-8">
+                  <Button variant="outline" size="sm" className="w-9 p-0 h-8" data-testid="button-toggle-details">
                       {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       <span className="sr-only">Toggle details</span>
                   </Button>
@@ -288,16 +386,22 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
           </div>
           
           <CollapsibleContent>
-               {/* Top Grid - Account Info */}
+               {detailsLoading && (
+                 <div className="flex items-center justify-center py-4 text-gray-500 gap-2">
+                   <Loader2 className="w-4 h-4 animate-spin" />
+                   Loading account details from billing system...
+                 </div>
+               )}
+
                <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-0 pt-2">
                  <div>
                     <Field label="Account Number" value={account.accountNo} />
                     <Field label="Account Group" value={account.accountGroup || 'None - Normal'} />
                     <Field label="Payment Group" value={account.paymentGroup || 'Default'} />
                     <Field label="Account Type" value={account.accountType} />
-                    <Field label="Incentive Scheme Code" value={account.incentiveSchemeCode} />
+                    <Field label="Incentive Scheme Code" value={account.incentiveSchemeCode || incentiveCode} />
                     <Field label="Email" value={account.email} />
-                    <Field label="Paid Deposit Amount" value={account.paidDepositAmount != null ? `R${account.paidDepositAmount.toFixed(2)}` : 'R0.00'} />
+                    <Field label="Paid Deposit Amount" value={`R${(account.paidDepositAmount ?? 0).toFixed(2)}`} />
                     
                     <div className="h-4"></div>
                     <div className="border-t border-gray-300 my-2"></div>
@@ -318,23 +422,22 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                     <div className="mt-8 text-xs font-bold underline text-gray-500 mb-2">Additional Account Details</div>
                     
                     <Field label="Rebate Status" value={account.rebateStatus || 'No Rebate on Account'} />
-                    <Field label="Handover Status" value={account.handoverStatus || 'N/A'} />
+                    <Field label="Handover Status" value={account.handoverStatus || handoverStatus} />
                     <Field label="Loan RPP Status" value={account.loanRppStatus || 'N/A'} />
                  </div>
                </div>
 
-               {/* Property & Partition Section */}
                <div className="mt-4 text-center">
                   <span className="font-bold underline text-gray-500 text-xs">Property</span>
                </div>
                <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 mt-1">
                   <div>
                      <Field label="SG Number" value={account.sgNo} />
-                     <Field label="Old Property Code" value={account.oldPropertyCode || account.oldCode} />
+                     <Field label="Old Property Code" value={account.oldCode || account.oldPropertyCode} />
                      <Field label="Billing Cycle" value={account.billingCycle || '1 Consumer Account Cycle'} />
                      <Field label="Sectional Title Scheme" value={account.sectionalTitleScheme} />
                      <Field label="Location Address" value={account.locationAddress || account.address} />
-                     <Field label="Longitude" value={undefined} />
+                     <Field label="Longitude" value={propertyEnquiry?.longitude} />
                      <Field label="Registration Status" value={account.registrationStatus || 'Registered'} />
                   </div>
                   <div>
@@ -343,9 +446,9 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                      <Field label="Allotment Area" value={account.allotmentArea || 'George'} />
                      <Field label="Farm Name" value={account.farmName} />
                      <Field label="Property Type" value={account.propertyType || 'Erf'} />
-                     <Field label="Latitude" value={undefined} />
+                     <Field label="Latitude" value={propertyEnquiry?.latitude} />
                      <Field label="Magisterial District" value={account.magisterialDistrict || 'WC044'} />
-                     <Field label="Property Market Value" value={account.marketValue != null ? `R${account.marketValue.toFixed(2)}` : undefined} />
+                     <Field label="Property Market Value" value={account.marketValue != null ? account.marketValue.toFixed(2) : undefined} />
                   </div>
                </div>
 
@@ -361,7 +464,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                   <div>
                      <Field label="Valuation Category" value={account.valuationCategory || 'Individual Use'} />
                      <Field label="Partition Description" value={account.partitionDescription || 'Individual Use'} />
-                     <Field label="Partition Market Value" value={account.partitionMarketValue != null ? `R${(account.partitionMarketValue).toFixed(2)}` : (account.marketValue != null ? `R${account.marketValue.toFixed(2)}` : undefined)} />
+                     <Field label="Partition Market Value" value={account.partitionMarketValue != null ? account.partitionMarketValue.toFixed(2) : (account.marketValue != null ? account.marketValue.toFixed(2) : undefined)} />
                   </div>
                </div>
           </CollapsibleContent>
@@ -381,23 +484,22 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
           </Button>
        </div>
 
-       {/* Total Balance/Debt Table */}
        <SectionHeader title="Total Balance/Debt" />
        
        <div className="border border-gray-300 overflow-x-auto text-xs">
           <table className="w-full text-left border-collapse min-w-[800px]">
              <thead className="bg-gray-100 text-gray-700 font-semibold border-b border-gray-300">
                <tr>
-                 <th className="p-2 border-r border-gray-300">Service Description ↑</th>
-                 <th className="p-2 border-r border-gray-300 text-right">Total Outstanding Amount ↑</th>
-                 <th className="p-2 border-r border-gray-300 text-right">New Charge ↑</th>
-                 <th className="p-2 border-r border-gray-300 text-right">Current Account ↑</th>
-                 <th className="p-2 border-r border-gray-300 text-right">30 Days ↑</th>
-                 <th className="p-2 border-r border-gray-300 text-right">60 Days ↑</th>
-                 <th className="p-2 border-r border-gray-300 text-right">90 Days ↑</th>
-                 <th className="p-2 border-r border-gray-300 text-right">120 Days ↑</th>
-                 <th className="p-2 border-r border-gray-300 text-right">150 Days ↑</th>
-                 <th className="p-2 text-right">180+ Days ↑</th>
+                 <th className="p-2 border-r border-gray-300">Service Description</th>
+                 <th className="p-2 border-r border-gray-300 text-right">Total Outstanding Amount</th>
+                 <th className="p-2 border-r border-gray-300 text-right">New Charge</th>
+                 <th className="p-2 border-r border-gray-300 text-right">Current Account</th>
+                 <th className="p-2 border-r border-gray-300 text-right">30 Days</th>
+                 <th className="p-2 border-r border-gray-300 text-right">60 Days</th>
+                 <th className="p-2 border-r border-gray-300 text-right">90 Days</th>
+                 <th className="p-2 border-r border-gray-300 text-right">120 Days</th>
+                 <th className="p-2 border-r border-gray-300 text-right">150 Days</th>
+                 <th className="p-2 text-right">180+ Days</th>
                </tr>
              </thead>
              <tbody>
@@ -481,7 +583,6 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
           </table>
        </div>
        
-       {/* Payment Entry Footer - Integrated into the Enquiry View */}
        <div className="mt-8 bg-blue-50 p-4 border border-blue-200 flex justify-between items-center shadow-sm">
            <div className="text-blue-900 font-semibold">
                Total Outstanding Balance: <span className="text-red-600 text-lg">R {account.outstandingAmount.toFixed(2)}</span>
@@ -504,6 +605,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                             if (val.includes('.') && val.split('.')[1].length > 2) return;
                             updateItemAmount(item.id, parseFloat(val) || 0);
                         }}
+                        data-testid="input-payment-allocation"
                     />
                </div>
            </div>
