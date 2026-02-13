@@ -28,6 +28,7 @@ export interface IStorage {
     status?: string;
   }): Promise<Transaction[]>;
   updateTransactionStatus(id: string, status: string, reason?: string): Promise<Transaction | undefined>;
+  updateTransactionReceiptNumber(id: string, receiptNumber: string): Promise<Transaction | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -108,6 +109,14 @@ export class DatabaseStorage implements IStorage {
   async updateTransactionStatus(id: string, status: string, reason?: string): Promise<Transaction | undefined> {
     const [updated] = await db.update(transactions)
       .set({ status, cancellationReason: reason || null })
+      .where(eq(transactions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updateTransactionReceiptNumber(id: string, receiptNumber: string): Promise<Transaction | undefined> {
+    const [updated] = await db.update(transactions)
+      .set({ receiptNumber })
       .where(eq(transactions.id, id))
       .returning();
     return updated;

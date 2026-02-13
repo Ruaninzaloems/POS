@@ -1716,5 +1716,17 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/transactions/:id/receipt-number", async (req, res) => {
+    try {
+      const { receiptNumber } = req.body;
+      if (!receiptNumber) return res.status(400).json({ message: "receiptNumber is required" });
+      const tx = await storage.updateTransactionReceiptNumber(req.params.id, receiptNumber);
+      if (!tx) return res.status(404).json({ message: "Transaction not found" });
+      res.json(tx);
+    } catch (e: any) {
+      res.status(500).json({ message: e.message });
+    }
+  });
+
   return httpServer;
 }

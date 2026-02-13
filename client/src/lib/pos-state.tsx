@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from '
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, MOCK_TRANSACTIONS, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, createSessionApi, endSessionApi, createTransactionApi, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, createSessionApi, endSessionApi, createTransactionApi, updateTransactionReceiptNumberApi, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment } from './external-api';
 
 if (import.meta.hot) {
   import.meta.hot.accept(() => {
@@ -79,6 +79,7 @@ interface PosState {
   };
   searchQuery: string;
   isReceiptModalOpen: boolean;
+  transactionProcessing: boolean;
   viewingItemId: string | null;
   recentTransactions: TransactionRecord[];
   dayEndStatus: DayEndStatus;
@@ -153,6 +154,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [payment, setPayment] = useState({ cash: 0, card: 0 });
   const [searchQuery, setSearchQuery] = useState('');
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [transactionProcessing, setTransactionProcessing] = useState(false);
   const [viewingItemId, setViewingItemId] = useState<string | null>(null);
   const [recentTransactions, setRecentTransactions] = useState<TransactionRecord[]>([]);
   const [dayEndStatus, setDayEndStatus] = useState<DayEndStatus>('OPEN');
@@ -517,31 +519,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const cashierTxs = MOCK_TRANSACTIONS.filter(t => t.cashierId === currentUser.id);
     setRecentTransactions([...cashierTxs].sort((a, b) => b.timestamp - a.timestamp));
     setIsReceiptModalOpen(true);
-
-    try {
-        await createTransactionApi({
-            receiptNumber: record.receiptNumber,
-            sessionId: dbSessionId,
-            cashierId: currentUser.id,
-            cashierName: currentUser.name,
-            cashOfficeId: sessionDetails?.officeId,
-            totalAmount: record.totalAmount,
-            cashAmount: record.payment.cash,
-            cardAmount: record.payment.card,
-            tenderAmount: record.payment.cash + record.payment.card,
-            changeAmount: Math.max(0, (record.payment.cash + record.payment.card) - record.totalAmount),
-            paymentType: record.payment.card > 0 ? 'Card' : 'Cash',
-            status: record.status,
-            items: record.items,
-        });
-    } catch (e) {
-        console.warn("Failed to persist transaction to backend", e);
-        toast({
-            title: "Warning",
-            description: "Transaction recorded locally but failed to save to database. Please notify your supervisor.",
-            variant: "destructive",
-        });
-    }
+    setTransactionProcessing(true);
 
     let finYear = '2025/2026';
     try {
@@ -565,10 +543,40 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         item.type === 'PREPAID' && item.originalData?.prepaidType === 'Water'
     );
 
+    let finalReceiptNumber = 'PENDING';
+    let dbTransactionId: string | null = null;
+
+    // --- Save to local DB immediately with PENDING receipt number ---
+    try {
+        const dbTx = await createTransactionApi({
+            receiptNumber: 'PENDING',
+            sessionId: dbSessionId,
+            cashierId: currentUser.id,
+            cashierName: currentUser.name,
+            cashOfficeId: sessionDetails?.officeId,
+            totalAmount: record.totalAmount,
+            cashAmount: record.payment.cash,
+            cardAmount: record.payment.card,
+            tenderAmount: record.payment.cash + record.payment.card,
+            changeAmount: Math.max(0, (record.payment.cash + record.payment.card) - record.totalAmount),
+            paymentType: record.payment.card > 0 ? 'Card' : 'Cash',
+            status: record.status,
+            items: record.items,
+        });
+        dbTransactionId = dbTx.id;
+        console.log(`[DB] Transaction saved with PENDING receipt, DB ID: ${dbTx.id}`);
+    } catch (e) {
+        console.warn("Failed to persist transaction to backend", e);
+        toast({
+            title: "Warning",
+            description: "Transaction recorded locally but failed to save to database. Please notify your supervisor.",
+            variant: "destructive",
+        });
+    }
+
+    try {
     // --- PRIORITY 1: Consumer Services / Account Payments ---
     if (accountItems.length > 0) {
-        const receiptId = record.receiptNumber.replace(/\D/g, '') || '0';
-
         const saveAccounts = accountItems
             .filter(item => item.originalData?.apiId || item.originalData?.accountID || item.originalData?.accountId || item.originalData?.account_ID)
             .map(item => {
@@ -653,9 +661,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }
 
                 if (receiptIds.length > 0) {
-                    const platinumReceiptNo = `REC-${receiptIds[0]}`;
-                    updateRecordReceiptNumber(record, platinumReceiptNo);
-                    console.log(`[Priority 1] Receipt number updated to ${platinumReceiptNo}`);
+                    finalReceiptNumber = `REC-${receiptIds[0]}`;
+                    updateRecordReceiptNumber(record, finalReceiptNumber);
+                    console.log(`[Priority 1] Receipt number from Platinum: ${finalReceiptNumber}`);
 
                     try {
                         await platinumPrintReceipt(receiptIds);
@@ -743,9 +751,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     }
 
                     if (miscReceiptId) {
-                        const platinumReceiptNo = `REC-${miscReceiptId}`;
-                        updateRecordReceiptNumber(record, platinumReceiptNo);
-                        console.log(`[Priority 2] Receipt number updated to ${platinumReceiptNo} from API`);
+                        finalReceiptNumber = `REC-${miscReceiptId}`;
+                        updateRecordReceiptNumber(record, finalReceiptNumber);
+                        console.log(`[Priority 2] Receipt number from Platinum: ${finalReceiptNumber}`);
 
                         try {
                             await platinumPrintMiscellaneousReceipt({}, { id: String(miscReceiptId) });
@@ -783,6 +791,20 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         for (const item of waterPrepaidItems) {
             console.log(`[Priority 4] Water prepaid recharge for ${item.reference}, amount: R${item.amountToPay}`);
         }
+    }
+
+    // --- Update local DB with actual receipt number from Platinum ---
+    if (dbTransactionId && finalReceiptNumber !== 'PENDING') {
+        try {
+            await updateTransactionReceiptNumberApi(dbTransactionId, finalReceiptNumber);
+            console.log(`[DB] Receipt number updated to ${finalReceiptNumber} for DB ID: ${dbTransactionId}`);
+        } catch (e) {
+            console.warn("Failed to update receipt number in database", e);
+        }
+    }
+
+    } finally {
+        setTransactionProcessing(false);
     }
   };
   
@@ -845,6 +867,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       },
       searchQuery,
       isReceiptModalOpen,
+      transactionProcessing,
       viewingItemId,
       recentTransactions,
       dayEndStatus,

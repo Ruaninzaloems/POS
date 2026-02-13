@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { usePos } from '@/lib/pos-state';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, Printer, Mail, MessageSquare, Check } from 'lucide-react';
+import { CheckCircle2, Printer, Mail, MessageSquare, Check, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -11,7 +11,7 @@ import { PermitTemplate } from './permit-template';
 import { useReactToPrint } from 'react-to-print';
 
 export function ReceiptModal() {
-  const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions } = usePos();
+  const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions, transactionProcessing } = usePos();
   const printRef = useRef<HTMLDivElement>(null);
   
   const currentTransaction = recentTransactions[0];
@@ -82,13 +82,27 @@ export function ReceiptModal() {
     <Dialog open={isReceiptModalOpen} onOpenChange={(open) => !open && closeReceiptModal()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader className="items-center text-center space-y-3 pb-4 border-b">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-600 mb-2">
-            <CheckCircle2 className="w-8 h-8" />
-          </div>
-          <DialogTitle className="text-2xl">Payment Successful</DialogTitle>
-          <DialogDescription className="text-lg font-mono text-foreground font-medium">
-             {currentTransaction.receiptNumber === 'PENDING' ? 'Processing...' : currentTransaction.receiptNumber}
-          </DialogDescription>
+          {transactionProcessing ? (
+            <>
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 mb-2">
+                <Loader2 className="w-8 h-8 animate-spin" />
+              </div>
+              <DialogTitle className="text-2xl">Posting to Billing System...</DialogTitle>
+              <DialogDescription className="text-lg text-muted-foreground font-medium">
+                 Please wait while the payment is being processed
+              </DialogDescription>
+            </>
+          ) : (
+            <>
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-600 mb-2">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              <DialogTitle className="text-2xl" data-testid="text-payment-success">Payment Successful</DialogTitle>
+              <DialogDescription className="text-lg font-mono text-foreground font-medium" data-testid="text-receipt-number">
+                 {currentTransaction.receiptNumber === 'PENDING' ? 'No receipt number returned' : currentTransaction.receiptNumber}
+              </DialogDescription>
+            </>
+          )}
         </DialogHeader>
         
         <div className="py-6 space-y-4">
@@ -166,9 +180,16 @@ export function ReceiptModal() {
         </div>
 
         <DialogFooter className="sm:justify-between gap-2 border-t pt-4">
-          <Button variant="ghost" onClick={closeReceiptModal}>Close</Button>
-          <Button onClick={handleComplete} className="min-w-[140px]">
-              {printSelected ? 'Print & Complete' : 'Complete'}
+          <Button variant="ghost" onClick={closeReceiptModal} disabled={transactionProcessing}>Close</Button>
+          <Button onClick={handleComplete} className="min-w-[140px]" disabled={transactionProcessing}>
+              {transactionProcessing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                printSelected ? 'Print & Complete' : 'Complete'
+              )}
           </Button>
         </DialogFooter>
         

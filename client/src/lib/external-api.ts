@@ -370,6 +370,16 @@ export async function createTransactionApi(data: any): Promise<any> {
     return res.json();
 }
 
+export async function updateTransactionReceiptNumberApi(id: string, receiptNumber: string): Promise<any> {
+    const res = await fetch(`/api/transactions/${id}/receipt-number`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ receiptNumber }),
+    });
+    if (!res.ok) throw new Error('Failed to update receipt number');
+    return res.json();
+}
+
 export async function listTransactionsApi(filters?: {
     cashierId?: string;
     cashOfficeId?: string;
