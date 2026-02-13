@@ -715,13 +715,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
 
         try {
-            await platinumPrintReceipt(receiptIds);
-            console.log(`[Priority 1 ${paymentLabel}] Printed receipt for IDs: ${receiptIds.join(', ')}`);
-        } catch (e) {
-            console.warn(`[Priority 1 ${paymentLabel}] Failed to print receipt`, e);
-        }
-
-        try {
             const allocs = await fetchReceiptAllocations(String(receiptIds[0]));
             if (allocs.length > 0) {
                 splitEntry.allocations = allocs;
@@ -794,29 +787,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         console.log(`[Priority 1] Save payload:`, JSON.stringify(saveAccounts[0], null, 2));
 
-        const buildSubmitAccounts = (paymentAmountOverride?: number) => accountItems
-            .filter(item => item.originalData?.apiId || item.originalData?.accountID || item.originalData?.accountId || item.originalData?.account_ID)
-            .map(item => {
-                const orig = item.originalData || {};
-                const itemPayment = paymentAmountOverride !== undefined
-                    ? Math.round((item.amountToPay / accountTotal) * paymentAmountOverride * 100) / 100
-                    : item.amountToPay;
-                return {
-                    capturerID: Number(currentUser.id),
-                    accountID: Number(orig.account_ID || orig.apiId || orig.accountID || orig.accountId),
-                    oldAccountCode: orig.oldAccountCode || orig.accountNumber || '',
-                    name: orig.name || orig.accountHolder || item.reference || '',
-                    sgNumber: orig.erfNumber || orig.sgNumber || orig.sgNo || '',
-                    address: orig.deliveryAddress || orig.address || '',
-                    outstandingAmount: orig.outStandingAmt ?? orig.outstandingAmount ?? orig.balance ?? 0,
-                    accountStatus: orig.statusDesc || 'Active',
-                    accountType: orig.typeOfUseDesc || '',
-                    paymentAmount: itemPayment,
-                    accountNumber: orig.accountNumber || '',
-                    receiptID: null,
-                };
-            });
-
         const isSingleAccount = accountItems.length === 1;
 
         if (saveAccounts.length > 0) {
@@ -838,7 +808,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 console.warn(`[Priority 1] Failed to fetch server accounts, falling back to local data`, e);
             }
 
-            const submitSingleOrMultiple = async (
+            const submitConsumerPayments = async (
                 paymentAmount: number,
                 tenderAmt: number,
                 changeAmt: number,
@@ -847,36 +817,66 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 label: string,
                 paymentAmountOverride?: number,
             ) => {
-                let submitAccounts: any[];
-                if (serverAccounts) {
-                    submitAccounts = serverAccounts.map((sa: any, idx: number) => {
-                        const localItem = accountItems[idx];
-                        const itemPayment = paymentAmountOverride !== undefined && localItem
-                            ? Math.round((localItem.amountToPay / accountTotal) * paymentAmountOverride * 100) / 100
-                            : (localItem?.amountToPay ?? sa.paymentAmount ?? 0);
-                        return { ...sa, paymentAmount: itemPayment };
-                    });
-                } else {
-                    submitAccounts = buildSubmitAccounts(paymentAmountOverride);
-                }
-                const totalOutstanding = submitAccounts.reduce((sum: number, a: any) => sum + (a.outstandingAmount ?? 0), 0);
-                console.log(`[Priority 1 ${label}] Using submit-multiple-payment (${submitAccounts.length} account(s), source: ${serverAccounts ? 'server' : 'local'}, outstanding: ${totalOutstanding})`);
-                return await submitMultiplePayment(Number(currentUser.id), {
-                    accounts: submitAccounts,
-                    requestModel: {
+                const accountsToSubmit = serverAccounts && serverAccounts.length > 0 ? serverAccounts : saveAccounts;
+                const allReceiptIds: number[] = [];
+
+                for (let i = 0; i < accountsToSubmit.length; i++) {
+                    const acct = accountsToSubmit[i];
+                    const localItem = accountItems.find(
+                        item => String(item.originalData?.account_ID ?? item.originalData?.accountID) === String(acct.account_ID ?? acct.accountID)
+                    ) || accountItems[i];
+                    const itemPayment = paymentAmountOverride !== undefined && localItem
+                        ? Math.round((localItem.amountToPay / accountTotal) * paymentAmountOverride * 100) / 100
+                        : (localItem?.amountToPay ?? acct.outStandingAmt ?? 0);
+                    const acctOutstanding = acct.outStandingAmt ?? acct.outstandingAmount ?? localItem?.originalData?.outStandingAmt ?? 0;
+
+                    const requestModel = {
                         finYear,
                         receiptDate,
-                        totalAmount: paymentAmount,
-                        tenderAmount: tenderAmt,
-                        changeAmount: changeAmt,
+                        totalAmount: itemPayment,
+                        tenderAmount: i === 0 ? tenderAmt : itemPayment,
+                        changeAmount: i === 0 ? changeAmt : 0,
                         paymentType: paymentTypeId,
                         paymentOption: paymentOptionId,
-                        outStandingAmount: totalOutstanding,
+                        outStandingAmount: acctOutstanding,
                         cardNumber: '',
                         expiryDate: '',
                         chequeNumber: '',
-                    },
-                });
+                        chequeDate: null,
+                        processingMonth: null,
+                        accountHolderName: acct.name || '',
+                        bankName: '',
+                        bankBranchCode: '',
+                        cutOffID: acct.cutOffID ?? 0,
+                        debtArrangementId: acct.debtArrangementId ?? 0,
+                    };
+
+                    console.log(`[Priority 1 ${label}] Submitting consumer payment for account ${acct.account_ID} (${acct.name}), amount: R${itemPayment}, outstanding: R${acctOutstanding}`);
+
+                    try {
+                        const result = await submitConsumerPayment(Number(currentUser.id), {
+                            account: acct,
+                            requestModel,
+                        });
+                        console.log(`[Priority 1 ${label}] submit-consumer-payment response for account ${acct.account_ID}:`, result);
+                        const ids = extractReceiptIds(result);
+                        allReceiptIds.push(...ids);
+                    } catch (err: any) {
+                        console.error(`[Priority 1 ${label}] Failed to submit consumer payment for account ${acct.account_ID}:`, err?.message);
+                        throw err;
+                    }
+                }
+
+                if (allReceiptIds.length > 0) {
+                    try {
+                        await platinumPrintReceipt(allReceiptIds);
+                        console.log(`[Priority 1 ${label}] print-receipt called for IDs: ${allReceiptIds.join(', ')}`);
+                    } catch (e) {
+                        console.warn(`[Priority 1 ${label}] print-receipt failed (non-critical)`, e);
+                    }
+                }
+
+                return { isSuccess: true, ids: allReceiptIds };
             };
 
             if (isSplitPayment) {
@@ -892,7 +892,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 console.log(`[Priority 1 SPLIT] ACC total: R${accGroupTotal}, Cash: R${accCashActual} (tender: R${accCashTender}, change: R${accCashChange}), Card: R${accCardActual}`);
 
                 try {
-                    const cashResult = await submitSingleOrMultiple(accCashActual, accCashTender, accCashChange, 1, 1, 'CASH', accCashActual);
+                    const cashResult = await submitConsumerPayments(accCashActual, accCashTender, accCashChange, 1, 1, 'CASH', accCashActual);
                     console.log(`[Priority 1 CASH] Submitted cash payment`, cashResult);
                     const cashReceiptIds = extractReceiptIds(cashResult);
                     await processAccReceiptResult(cashReceiptIds, 'CASH', 'cash', accCashActual);
@@ -904,7 +904,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 if (accCardActual > 0) {
                     try {
                         await platinumSaveMultipleAccountPayment(saveAccounts, { userId: String(currentUser.id) });
-                        const cardResult = await submitSingleOrMultiple(accCardActual, accCardActual, 0, 2, 2, 'CARD', accCardActual);
+                        const cardResult = await submitConsumerPayments(accCardActual, accCardActual, 0, 2, 2, 'CARD', accCardActual);
                         console.log(`[Priority 1 CARD] Submitted card payment`, cardResult);
                         const cardReceiptIds = extractReceiptIds(cardResult);
                         await processAccReceiptResult(cardReceiptIds, 'CARD', 'card', accCardActual);
@@ -916,7 +916,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             } else {
                 const paymentTypeId = record.payment.card > 0 ? 2 : 1;
                 try {
-                    const submitResult = await submitSingleOrMultiple(accountTotal, accTender, accChange, paymentTypeId, paymentTypeId, 'ACC');
+                    const submitResult = await submitConsumerPayments(accountTotal, accTender, accChange, paymentTypeId, paymentTypeId, 'ACC');
                     console.log(`[Priority 1] Submitted payment`, submitResult);
                     const receiptIds = extractReceiptIds(submitResult);
                     await processAccReceiptResult(receiptIds, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash', accountTotal);
