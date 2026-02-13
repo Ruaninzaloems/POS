@@ -1397,14 +1397,14 @@ export interface MunicipalityInfo {
 }
 
 const FALLBACK_MUNICIPALITY: MunicipalityInfo = {
-    name: 'Greater Tzaneen Municipality',
-    address1: 'Agatha St, Tzaneen 567',
-    address2: 'Tzaneen',
+    name: 'George Municipality',
+    address1: '71 York Street',
+    address2: 'George',
     address3: '',
-    postalCode: '0850',
-    tel: '',
+    postalCode: '6530',
+    tel: '044 801 9111',
     fax: '',
-    vatNo: '4130193669',
+    vatNo: '',
     email: '',
     website: '',
     receiptFooter: '',
