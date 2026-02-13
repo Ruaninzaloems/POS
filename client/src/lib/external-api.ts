@@ -638,8 +638,35 @@ export async function platinumGetDayEndReconcileList(params: Record<string, stri
     return platinumFetch(`/api/platinum/billing-payment-day-end/get-cashier-receipt-reconcile-list?${qs}`);
 }
 
-export async function platinumSaveDayEndReconcileData(data: any): Promise<any> {
-    return platinumFetch(`/api/platinum/billing-payment-day-end/save-reconcile-data`, {
+export async function platinumGetDayEndChequeList(cashierId: number, pager?: { page?: number; pageSize?: number }): Promise<any[]> {
+    const body = { page: pager?.page ?? 1, pageSize: pager?.pageSize ?? 100, orderby: null, shortDirection: null };
+    return platinumFetch(`/api/platinum/billing-payment-day-end/get-cashier-receipt-cheque-list?id=${cashierId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+}
+
+export async function platinumGetDayEndCardList(cashierId: number, pager?: { page?: number; pageSize?: number }): Promise<any[]> {
+    const body = { page: pager?.page ?? 1, pageSize: pager?.pageSize ?? 100, orderby: null, shortDirection: null };
+    return platinumFetch(`/api/platinum/billing-payment-day-end/get-cashier-receipt-card-list?id=${cashierId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+}
+
+export async function platinumGetDayEndDropBoxList(cashierId: number, pager?: { page?: number; pageSize?: number }): Promise<any[]> {
+    const body = { page: pager?.page ?? 1, pageSize: pager?.pageSize ?? 100, orderby: null, shortDirection: null };
+    return platinumFetch(`/api/platinum/billing-payment-day-end/get-cashier-receipt-drop-box-list?id=${cashierId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+}
+
+export async function platinumSaveDayEndReconcileData(userId: number, data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-payment-day-end/save-reconcile-data?userId=${userId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),

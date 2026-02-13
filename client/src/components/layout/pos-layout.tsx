@@ -18,7 +18,8 @@ import {
   Settings,
   Monitor,
   Smartphone,
-  Home
+  Home,
+  Calculator
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link, useLocation } from "wouter";
@@ -71,6 +72,7 @@ export function PosLayout({ children }: PosLayoutProps) {
     if (path.startsWith('/utilipay')) return 'Utilipay Distribution';
     if (path.startsWith('/bulk-allocation')) return 'Bulk Allocation Progress';
     if (path.startsWith('/view-receipts')) return 'View Receipts';
+    if (path.startsWith('/cashier-day-end')) return 'Day-End Reconciliation';
     if (path.startsWith('/supervisor')) return 'Supervisor';
     return 'Menu';
   };
@@ -90,6 +92,7 @@ export function PosLayout({ children }: PosLayoutProps) {
     },
     { label: 'Bulk Allocation Progress', href: '/bulk-allocation', icon: FileBarChart },
     { label: 'View Receipts', href: '/view-receipts', icon: FileSearch },
+    { label: 'Day-End Reconciliation', href: '/cashier-day-end', icon: Calculator },
     { label: 'System Settings', href: '/settings', icon: Settings },
     { label: 'Supervisor', href: '/supervisor', icon: ShieldCheck },
   ];

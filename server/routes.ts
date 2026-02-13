@@ -789,7 +789,7 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment-day-end/get-cashier-receipt-cheque-list", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing-payment-day-end-reconcile/get-cashier-receipt-cheque-list", req.body);
+      const data = await platinumPost("/api/billing-payment-day-end-reconcile/get-cashier-receipt-cheque-list", req.body, req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -798,7 +798,7 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment-day-end/get-cashier-receipt-card-list", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing-payment-day-end-reconcile/get-cashier-receipt-card-list", req.body);
+      const data = await platinumPost("/api/billing-payment-day-end-reconcile/get-cashier-receipt-card-list", req.body, req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -807,7 +807,7 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment-day-end/get-cashier-receipt-drop-box-list", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing-payment-day-end-reconcile/get-cashier-receipt-drop-box-list", req.body);
+      const data = await platinumPost("/api/billing-payment-day-end-reconcile/get-cashier-receipt-drop-box-list", req.body, req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -825,7 +825,7 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment-day-end/save-reconcile-data", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing-payment-day-end-reconcile/save-Reconcile-data", req.body);
+      const data = await platinumPost("/api/billing-payment-day-end-reconcile/save-Reconcile-data", req.body, req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
