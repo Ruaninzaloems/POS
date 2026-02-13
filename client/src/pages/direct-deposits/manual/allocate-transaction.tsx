@@ -10,7 +10,7 @@ import { AllocationLine } from '@/lib/direct-deposits-data';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { Account, ClearanceCostSchedule } from '@/lib/mock-data';
-import { platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation } from '@/lib/external-api';
+import { platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, rebuildFullAccount } from '@/lib/external-api';
 
 interface BankReconPosItem {
   posItem_ID: number;
@@ -324,10 +324,44 @@ export default function AllocateTransaction() {
               submittedCount++;
           }
 
-          toast({
-              title: "Allocation Posted Successfully",
-              description: `POS Item #${transaction.posItem_ID} allocated (R ${transaction.amount.toFixed(2)}).`,
-          });
+          const accountLines = lines.filter(l =>
+              (l.allocationType === 'ACCOUNT' || l.allocationType === 'PREPAID' || l.allocationType === 'CLEARANCE')
+              && l.accountNo && l.accountNo !== 'CASHBOOK-RTN'
+          );
+          const uniqueAccountNos = [...new Set(accountLines.map(l => l.accountNo))];
+
+          if (uniqueAccountNos.length > 0) {
+              console.log('[Direct Deposit] Running account rebuilds for:', uniqueAccountNos);
+              const rebuildResults = await Promise.allSettled(
+                  uniqueAccountNos.map(accNo => {
+                      const accId = accountLines.find(l => l.accountNo === accNo)?.accountId;
+                      if (accId) {
+                          return rebuildFullAccount(accId);
+                      }
+                      return rebuildFullAccount(parseInt(accNo.replace(/^0+/, ''), 10));
+                  })
+              );
+              const failures = rebuildResults.filter(r => r.status === 'rejected');
+              if (failures.length > 0) {
+                  console.warn('[Direct Deposit] Some rebuilds failed:', failures);
+                  toast({
+                      title: "Allocation Posted - Rebuild Warning",
+                      description: `Allocation successful. ${failures.length} of ${uniqueAccountNos.length} account rebuild(s) could not complete. These will be retried automatically.`,
+                      variant: "default",
+                  });
+              } else {
+                  toast({
+                      title: "Allocation Posted Successfully",
+                      description: `POS Item #${transaction.posItem_ID} allocated (R ${transaction.amount.toFixed(2)}). ${uniqueAccountNos.length} account(s) rebuilt.`,
+                  });
+              }
+          } else {
+              toast({
+                  title: "Allocation Posted Successfully",
+                  description: `POS Item #${transaction.posItem_ID} allocated (R ${transaction.amount.toFixed(2)}).`,
+              });
+          }
+
           setLocation('/direct-deposits/manual');
       } catch (e: any) {
           console.error("Failed to submit allocation", e);
