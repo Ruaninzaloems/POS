@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from '
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, MOCK_TRANSACTIONS, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment } from './external-api';
 
 if (import.meta.hot) {
   import.meta.hot.accept(() => {
@@ -525,6 +525,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const accountItems = record.items.filter(item =>
         item.type === 'CONSUMER_SERVICES' || item.type === 'MULTI_ACCOUNT' || item.type === 'ACCOUNT_GROUP'
     );
+    const clearanceItems = record.items.filter(item => item.type === 'CLEARANCE');
     const directIncomeItems = record.items.filter(item => item.type === 'DIRECT_INCOME');
     const electricityPrepaidItems = record.items.filter(item =>
         item.type === 'PREPAID' && (item.originalData?.prepaidType === 'Electricity' || !item.originalData?.prepaidType)
@@ -537,6 +538,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     record.splitReceipts = [];
 
     const accountTotal = accountItems.reduce((sum, i) => sum + i.amountToPay, 0);
+    const clearanceTotal = clearanceItems.reduce((sum, i) => sum + i.amountToPay, 0);
     const directIncomeTotal = directIncomeItems.reduce((sum, i) => sum + i.amountToPay, 0);
     const prepaidTotal = electricityPrepaidItems.reduce((sum, i) => sum + i.amountToPay, 0)
         + waterPrepaidItems.reduce((sum, i) => sum + i.amountToPay, 0);
@@ -546,6 +548,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const groupTotals = [
         { key: 'ACC', total: accountTotal },
+        { key: 'CLR', total: clearanceTotal },
         { key: 'INC', total: directIncomeTotal },
         { key: 'PREPAID', total: prepaidTotal },
     ].filter(g => g.total > 0);
@@ -578,11 +581,14 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const accTender = groupTenders['ACC'] ?? 0;
     const accChange = groupChanges['ACC'] ?? 0;
+    const clrTender = groupTenders['CLR'] ?? 0;
+    const clrChange = groupChanges['CLR'] ?? 0;
     const incTender = groupTenders['INC'] ?? 0;
     const incChange = groupChanges['INC'] ?? 0;
 
     console.log(`[Payment Split] Grand total: R${grandTotal}, Tender: R${totalTender}, Change: R${totalChange}`);
     console.log(`[Payment Split] ACC portion: R${accountTotal} (tender: R${accTender}, change: R${accChange})`);
+    console.log(`[Payment Split] CLR portion: R${clearanceTotal} (tender: R${clrTender}, change: R${clrChange})`);
     console.log(`[Payment Split] INC portion: R${directIncomeTotal} (tender: R${incTender}, change: R${incChange})`);
     console.log(`[Payment Split] Prepaid portion: R${prepaidTotal}`);
     if (isSplitPayment) {
@@ -811,6 +817,120 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         console.log(`[Priority 1] Rebuild triggered for account ${accountId}`);
                     } catch (e) {
                         console.warn(`[Priority 1] Failed to rebuild account ${accountId}`, e);
+                    }
+                }
+            }
+        }
+    }
+
+    // --- PRIORITY 1B: Clearance Payments ---
+    if (clearanceItems.length > 0) {
+        const clrGroupTender = isMixedBasket ? clrTender : totalTender;
+        const clrGroupChange = isMixedBasket ? clrChange : totalChange;
+
+        for (const item of clearanceItems) {
+            const origData = item.originalData || {};
+            const clearanceId = origData.clearanceId || origData.scheduleNo || item.reference;
+            const paidItems = origData.paidItems || [];
+            const accountHolderName = item.paidBy || origData.linkedAccounts?.[0]?.name || 'Walk-in';
+
+            const submitOneClearance = async (paymentTypeId: number, amount: number, tender: number, change: number, label: string, splitType: 'cash' | 'card') => {
+                const clrResult = await platinumSubmitClearancePayment({
+                    userId: Number(currentUser.id),
+                    paymentTypeId,
+                    cashierId: Number(currentUser.id),
+                    receiptDate,
+                    tenderAmount: tender,
+                    changeAmount: change,
+                    paidAmount: amount,
+                    outstandingAmount: item.amountDue || amount,
+                    clearance_ID: Number(clearanceId),
+                    accountHolderName,
+                    chequeNo: '',
+                    bankId: 0,
+                    branchId: 0,
+                    cardNo: '',
+                    cardExpiryDate: '',
+                    paySection1181Only: false,
+                    section1181Amount: 0,
+                    paidItems: paidItems.map((pi: any) => ({
+                        ...pi,
+                        paymentAmount: Math.round((pi.paymentAmount || pi.amount || 0) * (amount / (item.amountToPay || 1)) * 100) / 100,
+                    })),
+                });
+                console.log(`[Priority 1B ${label}] Submitted clearance payment for ${clearanceId}`, clrResult);
+
+                const clrReceiptIds = extractReceiptIds(clrResult);
+                if (clrReceiptIds.length > 0) {
+                    let receiptNo = `REC-${clrReceiptIds[0]}`;
+                    try {
+                        const receiptData = await fetchPosMultiReceiptPrint(String(clrReceiptIds[0]));
+                        if (receiptData && receiptData.length > 0 && receiptData[0].receiptNo) {
+                            receiptNo = receiptData[0].receiptNo;
+                        }
+                    } catch (e) {
+                        console.warn(`[Priority 1B ${label}] Could not fetch receipt number`, e);
+                    }
+
+                    if (!finalReceiptNumber || finalReceiptNumber === 'PENDING') {
+                        finalReceiptNumber = receiptNo;
+                        updateRecordReceiptNumber(record, finalReceiptNumber);
+                    }
+
+                    const splitEntry: SplitReceipt = { receiptNumber: receiptNo, receiptId: clrReceiptIds[0], paymentType: splitType, amount };
+
+                    try {
+                        await platinumPrintReceipt(clrReceiptIds);
+                    } catch (e) {
+                        console.warn(`[Priority 1B ${label}] Failed to print clearance receipt`, e);
+                    }
+
+                    try {
+                        const clrAllocs = await fetchReceiptAllocations(String(clrReceiptIds[0]));
+                        if (clrAllocs.length > 0) {
+                            splitEntry.allocations = clrAllocs;
+                            record.allocations = [...(record.allocations || []), ...clrAllocs];
+                        }
+                    } catch (e) {
+                        console.warn(`[Priority 1B ${label}] Could not fetch clearance receipt allocations`, e);
+                    }
+
+                    record.splitReceipts!.push(splitEntry);
+                    console.log(`[Priority 1B ${label}] Receipt ${receiptNo} added`);
+                }
+            };
+
+            try {
+                if (isSplitPayment) {
+                    const cashPaid = Math.max(0, record.payment.cash - totalChange);
+                    const cashPaidRatio = grandTotal > 0 ? cashPaid / grandTotal : 0;
+                    const itemCash = Math.round(item.amountToPay * cashPaidRatio * 100) / 100;
+                    const itemCard = Math.round((item.amountToPay - itemCash) * 100) / 100;
+                    const itemCashTender = isMixedBasket ? itemCash : record.payment.cash;
+                    const itemCashChange = isMixedBasket ? 0 : totalChange;
+
+                    console.log(`[Priority 1B SPLIT] Clearance ${clearanceId}: Cash R${itemCash} (tender R${itemCashTender}), Card R${itemCard}`);
+
+                    await submitOneClearance(1, itemCash, itemCashTender, itemCashChange, 'CASH', 'cash');
+                    if (itemCard > 0) {
+                        await submitOneClearance(2, itemCard, itemCard, 0, 'CARD', 'card');
+                    }
+                } else {
+                    const paymentTypeId = record.payment.card > 0 ? 2 : 1;
+                    await submitOneClearance(paymentTypeId, item.amountToPay, clrGroupTender, clrGroupChange, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash');
+                }
+            } catch (e: any) {
+                console.warn(`[Priority 1B] Failed to submit clearance payment for ${clearanceId}`, e);
+                toast({ title: "Clearance Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
+            }
+
+            for (const pi of paidItems) {
+                if (pi.accountId) {
+                    try {
+                        await rebuildFullAccount(Number(pi.accountId));
+                        console.log(`[Priority 1B] Rebuild triggered for account ${pi.accountId}`);
+                    } catch (e) {
+                        console.warn(`[Priority 1B] Failed to rebuild account ${pi.accountId}`, e);
                     }
                 }
             }

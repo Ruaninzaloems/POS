@@ -573,7 +573,9 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
 
     // CLEARANCE CARD
     if (item.type === 'CLEARANCE') {
-        const clr = item.originalData as ClearanceCostSchedule;
+        const clr = item.originalData || {};
+        const paidItems = clr.paidItems || [];
+        const hasOldFormat = clr.section118_1_Breakdown || clr.section118_3_Breakdown;
         return (
             <Card className="border-l-4 border-l-amber-500 shadow-sm">
                  <CardHeader className="pb-3 bg-amber-500/5">
@@ -584,12 +586,12 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                             </div>
                             <div>
                                 <CardTitle className="text-lg">Clearance Application</CardTitle>
-                                <p className="text-sm text-muted-foreground font-mono mt-1">{clr.scheduleNo}</p>
+                                <p className="text-sm text-muted-foreground font-mono mt-1">{clr.scheduleNo || clr.clearanceId}</p>
                             </div>
                         </div>
                          <div className="text-right">
                             <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Total Cost</div>
-                            <div className="text-xl font-mono font-bold text-foreground">R {clr.totalDue.toFixed(2)}</div>
+                            <div className="text-xl font-mono font-bold text-foreground">R {(clr.totalDue || item.amountToPay || 0).toFixed(2)}</div>
                         </div>
                     </div>
                 </CardHeader>
@@ -599,26 +601,40 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                         <Table>
                             <TableHeader>
                                 <TableRow className="hover:bg-transparent">
-                                    <TableHead>Linked Account</TableHead>
-                                    <TableHead>Allocation Type</TableHead>
+                                    <TableHead>Account</TableHead>
+                                    <TableHead>Name / Type</TableHead>
                                     <TableHead className="text-right">Amount</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {clr.section118_1_Breakdown.map((row, i) => (
+                                {paidItems.length > 0 ? paidItems.map((pi: any, i: number) => (
                                     <TableRow key={i}>
-                                        <TableCell className="font-mono text-xs">{clr.linkedAccounts[0]?.accountNo || 'N/A'}</TableCell>
-                                        <TableCell className="text-muted-foreground">{row.item}</TableCell>
-                                        <TableCell className="text-right font-mono">R {row.amount.toFixed(2)}</TableCell>
+                                        <TableCell className="font-mono text-xs">{pi.accountNumber || pi.accountId || 'N/A'}</TableCell>
+                                        <TableCell className="text-muted-foreground">{pi.name || pi.debtType || '-'}</TableCell>
+                                        <TableCell className="text-right font-mono">R {(pi.paymentAmount || pi.amount || 0).toFixed(2)}</TableCell>
                                     </TableRow>
-                                ))}
-                                {clr.section118_3_Breakdown.map((row, i) => (
-                                    <TableRow key={`hist-${i}`}>
-                                        <TableCell className="font-mono text-xs">{clr.linkedAccounts[0]?.accountNo || 'N/A'}</TableCell>
-                                        <TableCell className="text-muted-foreground">{row.item} (Sec 118(3))</TableCell>
-                                        <TableCell className="text-right font-mono">R {row.amount.toFixed(2)}</TableCell>
+                                )) : hasOldFormat ? (
+                                    <>
+                                        {(clr.section118_1_Breakdown || []).map((row: any, i: number) => (
+                                            <TableRow key={i}>
+                                                <TableCell className="font-mono text-xs">{clr.linkedAccounts?.[0]?.accountNo || 'N/A'}</TableCell>
+                                                <TableCell className="text-muted-foreground">{row.item}</TableCell>
+                                                <TableCell className="text-right font-mono">R {(row.amount || 0).toFixed(2)}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                        {(clr.section118_3_Breakdown || []).map((row: any, i: number) => (
+                                            <TableRow key={`hist-${i}`}>
+                                                <TableCell className="font-mono text-xs">{clr.linkedAccounts?.[0]?.accountNo || 'N/A'}</TableCell>
+                                                <TableCell className="text-muted-foreground">{row.item} (Sec 118(3))</TableCell>
+                                                <TableCell className="text-right font-mono">R {(row.amount || 0).toFixed(2)}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </>
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={3} className="text-center text-muted-foreground text-sm">No account breakdown available</TableCell>
                                     </TableRow>
-                                ))}
+                                )}
                             </TableBody>
                         </Table>
                     </div>

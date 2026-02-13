@@ -5,7 +5,7 @@ import { UnifiedSearch as SearchComponent, SearchResult, parseMobileFromContactD
 import { Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Account } from '@/lib/mock-data';
-import { fetchAccounts, fetchBillingStagePrepaidRecharge, fetchBillingStagePrepaidRecovery, searchInstitutions, fetchAccountsByGroup } from '@/lib/external-api';
+import { fetchAccounts, fetchBillingStagePrepaidRecharge, fetchBillingStagePrepaidRecovery, searchInstitutions, fetchAccountsByGroup, platinumGetAccountsForClearance } from '@/lib/external-api';
 
 export function UnifiedSearch() {
   const { addItem, clearTransaction, referenceData } = usePos();
@@ -134,14 +134,52 @@ export function UnifiedSearch() {
         return;
     } else if (result.type === 'CLEARANCE') {
         const clr = result.data;
-        newItem = {
-            id: crypto.randomUUID(),
-            type: 'CLEARANCE',
-            description: `Clearance ${clr.scheduleNo}`,
-            reference: clr.scheduleNo,
-            amountDue: clr.totalDue,
-            amountToPay: clr.totalDue,
-            originalData: clr
+        const clearanceId = clr.clearanceId || clr.scheduleNo;
+
+        try {
+            const accountsResult = await platinumGetAccountsForClearance({
+                clearanceId: clearanceId,
+                userId: -1,
+            });
+
+            const accounts = accountsResult?.items || accountsResult || [];
+            const totalDue = Array.isArray(accounts)
+                ? accounts.reduce((sum: number, acc: any) => sum + (acc.amount || acc.paymentAmount || 0), 0)
+                : (clr.totalDue || 0);
+
+            newItem = {
+                id: crypto.randomUUID(),
+                type: 'CLEARANCE',
+                description: `Clearance ${clearanceId}`,
+                reference: String(clearanceId),
+                amountDue: totalDue,
+                amountToPay: totalDue,
+                originalData: {
+                    ...clr,
+                    clearanceId: clearanceId,
+                    scheduleNo: String(clearanceId),
+                    totalDue,
+                    paidItems: Array.isArray(accounts) ? accounts.map((acc: any) => ({
+                        accountId: acc.accountId,
+                        accountNumber: acc.accountNumber || acc.accountNo,
+                        name: acc.name || '',
+                        debtType: acc.debtType || '',
+                        amount: acc.amount || 0,
+                        paymentAmount: acc.paymentAmount || acc.amount || 0,
+                    })) : [],
+                }
+            };
+        } catch (e) {
+            console.error("Failed to load clearance accounts", e);
+            newItem = {
+                id: crypto.randomUUID(),
+                type: 'CLEARANCE',
+                description: `Clearance ${clearanceId}`,
+                reference: String(clearanceId),
+                amountDue: clr.totalDue || 0,
+                amountToPay: clr.totalDue || 0,
+                originalData: { ...clr, clearanceId, scheduleNo: String(clearanceId), paidItems: [] }
+            };
         }
     } else {
         return;

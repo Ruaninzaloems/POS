@@ -3,7 +3,7 @@ import { Search, CreditCard, Users, Zap, FileText, Layers, Info, Filter, Loader2
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Account } from '@/lib/mock-data';
-import { searchInstitutions, InstitutionSearchResult, fetchMiscPaymentGroups, fetchMiscPaymentScoaItems, MiscPaymentGroup, MiscPaymentScoaItem } from '@/lib/external-api';
+import { searchInstitutions, InstitutionSearchResult, fetchMiscPaymentGroups, fetchMiscPaymentScoaItems, MiscPaymentGroup, MiscPaymentScoaItem, platinumGetClearanceIds } from '@/lib/external-api';
 
 export function parseMobileFromContactDetails(contactDetails: string | undefined | null): string {
     if (!contactDetails) return '';
@@ -161,9 +161,10 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
               }));
           }
 
-          const [accountResponses, institutionResults] = await Promise.all([
+          const [accountResponses, institutionResults, clearanceResults] = await Promise.all([
               Promise.all(accountRequests),
               searchInstitutions(query),
+              (scope === 'ALL' || scope === 'CLEARANCE') ? platinumGetClearanceIds({ clearanceId: query }).catch(() => []) : Promise.resolve([]),
           ]);
 
           let allAccountData: any[] = [];
@@ -236,7 +237,19 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
               label: `Group: ${group.desc} (${group.members.length} accounts)`
           }));
 
-          setExternalResults([...groupResults, ...accountResults]);
+          const clearanceSearchResults: SearchResult[] = (Array.isArray(clearanceResults) ? clearanceResults : []).slice(0, 5).map((clrId: any) => {
+              const id = typeof clrId === 'string' ? clrId : String(clrId);
+              return {
+                  type: 'CLEARANCE' as const,
+                  data: {
+                      clearanceId: id,
+                      scheduleNo: id,
+                  },
+                  label: `Clearance: ${id}`
+              };
+          });
+
+          setExternalResults([...clearanceSearchResults, ...groupResults, ...accountResults]);
       } catch (error) {
           console.error("Account search failed:", error);
           setExternalResults([]);
