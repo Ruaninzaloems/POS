@@ -126,6 +126,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
           updated.marketValue = propEnquiry.marketValue ?? updated.marketValue;
           updated.farmName = propEnquiry.farmName || updated.farmName;
           updated.locationAddress = [propEnquiry.streetNumber, propEnquiry.streetName, propEnquiry.suburb, propEnquiry.town].filter(Boolean).join(', ') || updated.locationAddress;
+          updated.oldPropertyCode = propEnquiry.oldPropertyCode || updated.oldPropertyCode;
         }
 
         const unitId = acctDetails?.unitID;
@@ -444,7 +445,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 mt-1">
                   <div>
                      <Field label="SG Number" value={account.sgNo} />
-                     <Field label="Old Property Code" value={account.oldCode || account.oldPropertyCode} />
+                     <Field label="Old Property Code" value={account.oldPropertyCode || account.oldCode} />
                      <Field label="Billing Cycle" value={account.billingCycle || '1 Consumer Account Cycle'} />
                      <Field label="Sectional Title Scheme" value={account.sectionalTitleScheme} />
                      <Field label="Location Address" value={account.locationAddress || account.address} />
