@@ -104,39 +104,46 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
       {/* Line Items */}
       <div className="mb-2">
         {sortedItems.map((item, idx) => {
+            const isDirect = item.type === 'DIRECT_INCOME';
+            const directData = isDirect ? (item.originalData as DirectIncomeItem) : null;
+            const displayDescription = isDirect
+                ? (item.notes || directData?.groupName || item.description)
+                : item.description;
+            const displayRef = isDirect
+                ? (item.additionalInfo || item.paidBy || 'CASH')
+                : item.reference;
+
             return (
                 <div key={idx} className="mb-3 border-b border-dotted border-gray-300 pb-2 last:border-0">
                     <div className="flex justify-between font-bold">
-                        <span className="break-words w-[70%]">{item.description}</span>
+                        <span className="break-words w-[70%]">{displayDescription}</span>
                         <span>{item.amountToPay.toFixed(2)}</span>
                     </div>
                     
-                    {/* Item Details */}
                     <div className="pl-2 mt-1 text-[9px] text-gray-600 space-y-0.5">
-                        {item.reference && (
+                        {displayRef && (
                             <div className="flex gap-2">
                                 <span className="w-12 text-gray-400">Ref:</span>
-                                <span>{item.reference}</span>
+                                <span>{displayRef}</span>
                             </div>
                         )}
                         
-                        {/* Direct Income Details */}
-                        {item.type === 'DIRECT_INCOME' && (
+                        {isDirect && (
                             <>
-                                {((item.originalData as DirectIncomeItem)?.scoaItem) && (
+                                {directData?.scoaItem && (
                                     <div className="flex gap-2">
                                         <span className="w-12 text-gray-400">SCOA:</span>
-                                        <span>{(item.originalData as DirectIncomeItem).scoaItem}</span>
+                                        <span>{directData.scoaItem}</span>
                                     </div>
                                 )}
-                                {(item as any).paidBy && (
+                                {item.paidBy && (
                                     <div className="flex gap-2">
                                         <span className="w-12 text-gray-400">Paid By:</span>
-                                        <span>{(item as any).paidBy}</span>
+                                        <span>{item.paidBy}</span>
                                     </div>
                                 )}
-                                {(item as any).notes && (
-                                    <div className="italic text-gray-500 mt-0.5">"{(item as any).notes}"</div>
+                                {item.notes && (
+                                    <div className="italic text-gray-500 mt-0.5">"{item.notes}"</div>
                                 )}
                             </>
                         )}

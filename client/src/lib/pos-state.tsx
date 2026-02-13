@@ -412,6 +412,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setViewingItemId(null);
   };
 
+  const updateRecordReceiptNumber = (record: TransactionRecord, newReceiptNumber: string) => {
+    record.receiptNumber = newReceiptNumber;
+    const idx = MOCK_TRANSACTIONS.findIndex(t => t.id === record.id);
+    if (idx >= 0) MOCK_TRANSACTIONS[idx] = record;
+    setRecentTransactions([...MOCK_TRANSACTIONS].sort((a, b) => b.timestamp - a.timestamp));
+  };
+
   const completeTransaction = async () => {
     const record = createTransactionRecord(items, totalToPay, payment, currentUser.id);
     
@@ -552,6 +559,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }
 
                 if (receiptIds.length > 0) {
+                    const platinumReceiptNo = `REC-${receiptIds[0]}`;
+                    updateRecordReceiptNumber(record, platinumReceiptNo);
+                    console.log(`[Priority 1] Receipt number updated to ${platinumReceiptNo}`);
+
                     try {
                         await platinumPrintReceipt(receiptIds);
                         console.log(`[Priority 1] Created/printed receipt for IDs: ${receiptIds.join(', ')}`);
@@ -629,6 +640,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
                     const miscReceiptId = miscResult?.receiptID || miscResult?.receiptId || miscResult?.id;
                     if (miscReceiptId) {
+                        const platinumReceiptNo = `REC-${miscReceiptId}`;
+                        updateRecordReceiptNumber(record, platinumReceiptNo);
+                        console.log(`[Priority 2] Receipt number updated to ${platinumReceiptNo}`);
+
                         try {
                             await platinumPrintMiscellaneousReceipt({}, { id: String(miscReceiptId) });
                             console.log(`[Priority 2] Created/printed misc receipt ID: ${miscReceiptId}`);
