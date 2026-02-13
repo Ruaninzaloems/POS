@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from '
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, ACCOUNTS, DIRECT_INCOME_ITEMS, ACCOUNT_GROUPS, CLEARANCES, AccountGroup, CASHIERS, MOCK_TRANSACTIONS, CASH_OFFICES, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, ApiCashier, BillingConfig, createSessionApi, endSessionApi, createTransactionApi, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, ApiCashier, BillingConfig, createSessionApi, endSessionApi, createTransactionApi, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment } from './external-api';
 
 if (import.meta.hot) {
   import.meta.hot.accept(() => {
@@ -464,21 +464,118 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // --- PRIORITY 1: Consumer Services / Account Payments ---
     if (accountItems.length > 0) {
         const receiptId = record.receiptNumber.replace(/\D/g, '') || '0';
-        for (const item of accountItems) {
-            const accountId = item.originalData?.apiId || item.originalData?.accountID || item.originalData?.accountId;
-            if (accountId) {
-                try {
-                    await postMultipleAccountPaymentReceipt(currentUser.id, accountId, receiptId);
-                    console.log(`[Priority 1] Posted receipt ${receiptId} for account ${accountId}`);
-                } catch (e) {
-                    console.warn(`[Priority 1] Failed to post receipt for account ${accountId}`, e);
+
+        const saveAccounts = accountItems
+            .filter(item => item.originalData?.apiId || item.originalData?.accountID || item.originalData?.accountId || item.originalData?.account_ID)
+            .map(item => {
+                const orig = item.originalData || {};
+                const acctId = Number(orig.account_ID || orig.apiId || orig.accountID || orig.accountId);
+                return {
+                    isSelected: true,
+                    account_ID: acctId,
+                    accountNumber: orig.accountNumber || '',
+                    statusDesc: orig.statusDesc || 'Active',
+                    accountDesc: orig.accountDesc || '',
+                    name: orig.name || orig.accountHolder || item.reference || '',
+                    deliveryAddress: orig.deliveryAddress || orig.address || '',
+                    erfNumber: orig.erfNumber || '',
+                    town: orig.town || '',
+                    streetName: orig.streetName || '',
+                    activeServices: orig.activeServices ?? null,
+                    closedServices: orig.closedServices ?? null,
+                    typeOfUseDesc: orig.typeOfUseDesc || '',
+                    zoneDesc: orig.zoneDesc || '',
+                    outStandingAmt: orig.outStandingAmt ?? orig.outstandingAmount ?? orig.balance ?? 0,
+                    billId: orig.billId ?? null,
+                    oldAccountCode: orig.oldAccountCode || '',
+                    id: orig.id ?? null,
+                };
+            });
+
+        const submitAccounts = accountItems
+            .filter(item => item.originalData?.apiId || item.originalData?.accountID || item.originalData?.accountId || item.originalData?.account_ID)
+            .map(item => {
+                const orig = item.originalData || {};
+                return {
+                    capturerID: Number(currentUser.id),
+                    accountID: Number(orig.account_ID || orig.apiId || orig.accountID || orig.accountId),
+                    oldAccountCode: orig.oldAccountCode || orig.accountNumber || '',
+                    name: orig.name || orig.accountHolder || item.reference || '',
+                    sgNumber: orig.sgNumber || '',
+                    address: orig.deliveryAddress || orig.address || '',
+                    outstandingAmount: orig.outStandingAmt ?? orig.outstandingAmount ?? orig.balance ?? 0,
+                    accountStatus: orig.statusDesc || 'Active',
+                    accountType: orig.typeOfUseDesc || '',
+                    paymentAmount: item.amountToPay,
+                    accountNumber: orig.accountNumber || '',
+                    receiptID: null,
+                };
+            });
+
+        if (saveAccounts.length > 0) {
+            try {
+                await platinumSaveMultipleAccountPayment(saveAccounts, { userId: String(currentUser.id) });
+                console.log(`[Priority 1] Saved ${saveAccounts.length} account(s) for multiple payment`);
+            } catch (e) {
+                console.warn(`[Priority 1] Failed to save multiple account payment`, e);
+            }
+
+            try {
+                const submitResult = await submitMultiplePayment(Number(currentUser.id), {
+                    accounts: submitAccounts,
+                    requestModel: {
+                        finYear,
+                        receiptDate,
+                        totalAmount: accountItems.reduce((sum, i) => sum + i.amountToPay, 0),
+                        tenderAmount: record.payment.cash + record.payment.card,
+                        changeAmount: Math.max(0, (record.payment.cash + record.payment.card) - record.totalAmount),
+                        paymentType: paymentTypeId,
+                        paymentOption: paymentTypeId,
+                    },
+                });
+                console.log(`[Priority 1] Submitted multiple payment`, submitResult);
+
+                let receiptIds: number[] = [];
+                if (Array.isArray(submitResult)) {
+                    receiptIds = submitResult
+                        .map((r: any) => r.receiptID || r.receiptId || r.id)
+                        .filter((id: any) => id != null)
+                        .map(Number);
+                } else if (submitResult && typeof submitResult === 'object') {
+                    const rid = submitResult.receiptID || submitResult.receiptId || submitResult.id;
+                    if (rid != null) receiptIds = [Number(rid)];
                 }
 
-                try {
-                    await rebuildFullAccount(Number(accountId));
-                    console.log(`[Priority 1] Rebuild triggered for account ${accountId}`);
-                } catch (e) {
-                    console.warn(`[Priority 1] Failed to rebuild account ${accountId}`, e);
+                if (receiptIds.length > 0) {
+                    try {
+                        await platinumPrintReceipt(receiptIds);
+                        console.log(`[Priority 1] Created/printed receipt for IDs: ${receiptIds.join(', ')}`);
+                    } catch (e) {
+                        console.warn(`[Priority 1] Failed to print receipt`, e);
+                    }
+                } else {
+                    console.warn(`[Priority 1] No receipt IDs returned from submit — receipt print skipped`);
+                }
+            } catch (e) {
+                console.warn(`[Priority 1] Failed to submit multiple payment`, e);
+            }
+
+            for (const item of accountItems) {
+                const accountId = item.originalData?.account_ID || item.originalData?.apiId || item.originalData?.accountID || item.originalData?.accountId;
+                if (accountId) {
+                    try {
+                        await postMultipleAccountPaymentReceipt(currentUser.id, accountId, receiptId);
+                        console.log(`[Priority 1] Legacy receipt posted for account ${accountId}`);
+                    } catch (e) {
+                        console.warn(`[Priority 1] Failed to post legacy receipt for account ${accountId}`, e);
+                    }
+
+                    try {
+                        await rebuildFullAccount(Number(accountId));
+                        console.log(`[Priority 1] Rebuild triggered for account ${accountId}`);
+                    } catch (e) {
+                        console.warn(`[Priority 1] Failed to rebuild account ${accountId}`, e);
+                    }
                 }
             }
         }
@@ -501,7 +598,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     const paidByParts = paidByName.split(/\s+/);
                     const lastName = paidByParts.length > 1 ? paidByParts.slice(1).join(' ') : paidByParts[0];
                     const initials = paidByParts[0]?.charAt(0) || 'W';
-                    await submitMiscPayment({
+                    const miscResult = await submitMiscPayment({
                         lastName,
                         initials,
                         miscellaneousPaymentGroup: Number(groupId),
@@ -519,7 +616,17 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         userId: Number(currentUser.id),
                         finYear,
                     });
-                    console.log(`[Priority 2] Submitted misc payment for SCOA item ${scoaItemId}`);
+                    console.log(`[Priority 2] Submitted misc payment for SCOA item ${scoaItemId}`, miscResult);
+
+                    const miscReceiptId = miscResult?.receiptID || miscResult?.receiptId || miscResult?.id;
+                    if (miscReceiptId) {
+                        try {
+                            await platinumPrintMiscellaneousReceipt({}, { id: String(miscReceiptId) });
+                            console.log(`[Priority 2] Created/printed misc receipt ID: ${miscReceiptId}`);
+                        } catch (e) {
+                            console.warn(`[Priority 2] Failed to print misc receipt ${miscReceiptId}`, e);
+                        }
+                    }
                 } catch (e) {
                     console.warn(`[Priority 2] Failed to submit misc payment for ${item.description}`, e);
                 }
