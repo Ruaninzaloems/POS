@@ -1,6 +1,6 @@
 import React from 'react';
 import { format } from 'date-fns';
-import { TransactionRecord, TransactionItem, ReceiptAllocation } from '@/lib/pos-state';
+import { TransactionRecord, TransactionItem, ReceiptAllocation, SplitReceipt } from '@/lib/pos-state';
 import { Account, DirectIncomeItem } from '@/lib/mock-data';
 
 interface PosReceiptTemplateProps {
@@ -26,9 +26,13 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
   });
 
   // Calculate VAT (assuming 15% inclusive for now, or per item if needed)
-  // For prototype, we'll estimate VAT based on total for simplicity or sum up if we had per-item VAT
   const totalAmount = transaction.totalAmount;
   const vatAmount = totalAmount * (15 / 115); // 15% VAT included
+
+  // Split receipt detection
+  const hasSplitReceipts = transaction.splitReceipts && transaction.splitReceipts.length > 1;
+  const cashReceipt = transaction.splitReceipts?.find(r => r.paymentType === 'cash');
+  const cardReceipt = transaction.splitReceipts?.find(r => r.paymentType === 'card');
 
   // Find primary account for header if available (Consumer or Prepaid)
   const primaryItem = sortedItems.find(i => i.type === 'CONSUMER_SERVICES' || i.type === 'PREPAID');
@@ -87,10 +91,23 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
 
       {/* Transaction Info */}
       <div className="flex flex-col gap-1 mb-3 border-b border-dashed border-black pb-2">
-        <div className="flex justify-between">
-            <span>Receipt No:</span>
-            <span>{transaction.receiptNumber}</span>
-        </div>
+        {hasSplitReceipts ? (
+            <>
+                <div className="flex justify-between">
+                    <span>Receipt No (Cash):</span>
+                    <span>{cashReceipt?.receiptNumber || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                    <span>Receipt No (Card):</span>
+                    <span>{cardReceipt?.receiptNumber || '-'}</span>
+                </div>
+            </>
+        ) : (
+            <div className="flex justify-between">
+                <span>Receipt No:</span>
+                <span>{transaction.receiptNumber}</span>
+            </div>
+        )}
         <div className="flex justify-between">
             <span>Date:</span>
             <span>{new Date(transaction.timestamp).toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })}</span>
@@ -205,10 +222,19 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
 
       {/* Payment Methods */}
       <div className="flex flex-col gap-1 mb-4 text-[9px] border-b border-dashed border-black pb-2">
+         {hasSplitReceipts && (
+             <div className="font-bold text-center text-[8px] mb-1 uppercase">Split Payment</div>
+         )}
          {transaction.payment.cash > 0 && (
              <div className="flex justify-between">
                  <span>Cash Tendered:</span>
                  <span>{transaction.payment.cash.toFixed(2)}</span>
+             </div>
+         )}
+         {hasSplitReceipts && cashReceipt && (
+             <div className="flex justify-between text-[8px] text-gray-500 pl-2">
+                 <span>Cash Receipt:</span>
+                 <span>{cashReceipt.receiptNumber} (R{cashReceipt.amount.toFixed(2)})</span>
              </div>
          )}
          {transaction.payment.card > 0 && (
@@ -217,9 +243,15 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
                  <span>{transaction.payment.card.toFixed(2)}</span>
              </div>
          )}
+         {hasSplitReceipts && cardReceipt && (
+             <div className="flex justify-between text-[8px] text-gray-500 pl-2">
+                 <span>Card Receipt:</span>
+                 <span>{cardReceipt.receiptNumber} (R{cardReceipt.amount.toFixed(2)})</span>
+             </div>
+         )}
          <div className="flex justify-between font-bold mt-1">
              <span>Change:</span>
-             <span>{(transaction.payment.cash + transaction.payment.card - totalAmount).toFixed(2)}</span>
+             <span>{Math.max(0, transaction.payment.cash + transaction.payment.card - totalAmount).toFixed(2)}</span>
          </div>
       </div>
 

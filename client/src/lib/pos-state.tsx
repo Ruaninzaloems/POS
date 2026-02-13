@@ -37,6 +37,14 @@ export interface ReceiptAllocation {
   total: number;
 }
 
+export interface SplitReceipt {
+  receiptNumber: string;
+  receiptId: number;
+  paymentType: 'cash' | 'card';
+  amount: number;
+  allocations?: ReceiptAllocation[];
+}
+
 export interface TransactionRecord {
   id: string;
   receiptNumber: string;
@@ -53,6 +61,7 @@ export interface TransactionRecord {
   cancellationReason?: string;
   cancellationRequestTime?: number;
   allocations?: ReceiptAllocation[];
+  splitReceipts?: SplitReceipt[];
 }
 
 export interface DayEndReport {
@@ -504,7 +513,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.warn("Failed to fetch active fin year, using default", e);
     }
 
-    const paymentTypeId = record.payment.card > 0 ? 2 : 1;
+    const isSplitPayment = record.payment.cash > 0 && record.payment.card > 0;
     const saDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Johannesburg' }));
     const receiptDate = saDate.getFullYear() + '-' +
         String(saDate.getMonth() + 1).padStart(2, '0') + '-' +
@@ -525,6 +534,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     let finalReceiptNumber = 'PENDING';
+    record.splitReceipts = [];
 
     const accountTotal = accountItems.reduce((sum, i) => sum + i.amountToPay, 0);
     const directIncomeTotal = directIncomeItems.reduce((sum, i) => sum + i.amountToPay, 0);
@@ -575,6 +585,69 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     console.log(`[Payment Split] ACC portion: R${accountTotal} (tender: R${accTender}, change: R${accChange})`);
     console.log(`[Payment Split] INC portion: R${directIncomeTotal} (tender: R${incTender}, change: R${incChange})`);
     console.log(`[Payment Split] Prepaid portion: R${prepaidTotal}`);
+    if (isSplitPayment) {
+        console.log(`[Payment Split] SPLIT PAYMENT detected: Cash R${record.payment.cash} + Card R${record.payment.card} — will create separate receipts`);
+    }
+
+    const extractReceiptIds = (result: any): number[] => {
+        if (result?.ids && Array.isArray(result.ids) && result.ids.length > 0) {
+            return result.ids.map(Number);
+        } else if (Array.isArray(result)) {
+            return result
+                .map((r: any) => r.receiptID || r.receiptId || r.id)
+                .filter((id: any) => id != null)
+                .map(Number);
+        } else if (result && typeof result === 'object') {
+            const rid = result.receiptID || result.receiptId || result.id;
+            if (rid != null) return [Number(rid)];
+        }
+        return [];
+    };
+
+    const processAccReceiptResult = async (receiptIds: number[], paymentLabel: string, paymentType: 'cash' | 'card', paymentAmount: number) => {
+        if (receiptIds.length === 0) {
+            console.warn(`[Priority 1 ${paymentLabel}] No receipt IDs returned — receipt print skipped`);
+            return;
+        }
+        let receiptNo = `REC-${receiptIds[0]}`;
+        try {
+            const receiptData = await fetchPosMultiReceiptPrint(String(receiptIds[0]));
+            if (receiptData && receiptData.length > 0 && receiptData[0].receiptNo) {
+                receiptNo = receiptData[0].receiptNo;
+                console.log(`[Priority 1 ${paymentLabel}] Actual receipt number: ${receiptNo}`);
+            }
+        } catch (e) {
+            console.warn(`[Priority 1 ${paymentLabel}] Could not fetch formatted receipt number`, e);
+        }
+
+        if (!finalReceiptNumber || finalReceiptNumber === 'PENDING') {
+            finalReceiptNumber = receiptNo;
+            updateRecordReceiptNumber(record, finalReceiptNumber);
+        }
+
+        const splitEntry: SplitReceipt = { receiptNumber: receiptNo, receiptId: receiptIds[0], paymentType, amount: paymentAmount };
+
+        try {
+            await platinumPrintReceipt(receiptIds);
+            console.log(`[Priority 1 ${paymentLabel}] Printed receipt for IDs: ${receiptIds.join(', ')}`);
+        } catch (e) {
+            console.warn(`[Priority 1 ${paymentLabel}] Failed to print receipt`, e);
+        }
+
+        try {
+            const allocs = await fetchReceiptAllocations(String(receiptIds[0]));
+            if (allocs.length > 0) {
+                splitEntry.allocations = allocs;
+                record.allocations = [...(record.allocations || []), ...allocs];
+                console.log(`[Priority 1 ${paymentLabel}] Receipt allocations:`, allocs);
+            }
+        } catch (e) {
+            console.warn(`[Priority 1 ${paymentLabel}] Could not fetch receipt allocations`, e);
+        }
+
+        record.splitReceipts!.push(splitEntry);
+        console.log(`[Priority 1 ${paymentLabel}] Receipt ${receiptNo} added to split receipts`);
+    };
 
     try {
     // --- PRIORITY 1: Consumer Services / Account Payments ---
@@ -606,10 +679,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 };
             });
 
-        const submitAccounts = accountItems
+        const buildSubmitAccounts = (paymentAmountOverride?: number) => accountItems
             .filter(item => item.originalData?.apiId || item.originalData?.accountID || item.originalData?.accountId || item.originalData?.account_ID)
             .map(item => {
                 const orig = item.originalData || {};
+                const itemPayment = paymentAmountOverride !== undefined
+                    ? Math.round((item.amountToPay / accountTotal) * paymentAmountOverride * 100) / 100
+                    : item.amountToPay;
                 return {
                     capturerID: Number(currentUser.id),
                     accountID: Number(orig.account_ID || orig.apiId || orig.accountID || orig.accountId),
@@ -620,7 +696,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     outstandingAmount: orig.outStandingAmt ?? orig.outstandingAmount ?? orig.balance ?? 0,
                     accountStatus: orig.statusDesc || 'Active',
                     accountType: orig.typeOfUseDesc || '',
-                    paymentAmount: item.amountToPay,
+                    paymentAmount: itemPayment,
                     accountNumber: orig.accountNumber || '',
                     receiptID: null,
                 };
@@ -634,85 +710,97 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 console.warn(`[Priority 1] Failed to save multiple account payment`, e);
             }
 
-            try {
-                const submitResult = await submitMultiplePayment(Number(currentUser.id), {
-                    accounts: submitAccounts,
-                    requestModel: {
-                        finYear,
-                        receiptDate,
-                        totalAmount: accountTotal,
-                        tenderAmount: accTender,
-                        changeAmount: accChange,
-                        paymentType: paymentTypeId,
-                        paymentOption: paymentTypeId,
-                    },
-                });
-                console.log(`[Priority 1] Submitted multiple payment`, submitResult);
+            if (isSplitPayment) {
+                const cashPaid = Math.max(0, record.payment.cash - totalChange);
+                const cardPaid = record.payment.card;
+                const cashPaidRatio = grandTotal > 0 ? cashPaid / grandTotal : 0;
+                const accGroupTotal = isMixedBasket ? accountTotal : grandTotal;
+                const accCashActual = Math.round(accGroupTotal * cashPaidRatio * 100) / 100;
+                const accCardActual = Math.round((accGroupTotal - accCashActual) * 100) / 100;
+                const accCashTender = isMixedBasket ? accCashActual : record.payment.cash;
+                const accCashChange = isMixedBasket ? 0 : totalChange;
 
-                let receiptIds: number[] = [];
-                if (submitResult?.ids && Array.isArray(submitResult.ids) && submitResult.ids.length > 0) {
-                    receiptIds = submitResult.ids.map(Number);
-                } else if (Array.isArray(submitResult)) {
-                    receiptIds = submitResult
-                        .map((r: any) => r.receiptID || r.receiptId || r.id)
-                        .filter((id: any) => id != null)
-                        .map(Number);
-                } else if (submitResult && typeof submitResult === 'object') {
-                    const rid = submitResult.receiptID || submitResult.receiptId || submitResult.id;
-                    if (rid != null) receiptIds = [Number(rid)];
+                console.log(`[Priority 1 SPLIT] ACC total: R${accGroupTotal}, Cash: R${accCashActual} (tender: R${accCashTender}, change: R${accCashChange}), Card: R${accCardActual}`);
+
+                try {
+                    const cashSubmitAccounts = buildSubmitAccounts(accCashActual);
+                    const cashResult = await submitMultiplePayment(Number(currentUser.id), {
+                        accounts: cashSubmitAccounts,
+                        requestModel: {
+                            finYear,
+                            receiptDate,
+                            totalAmount: accCashActual,
+                            tenderAmount: accCashTender,
+                            changeAmount: accCashChange,
+                            paymentType: 1,
+                            paymentOption: 1,
+                        },
+                    });
+                    console.log(`[Priority 1 CASH] Submitted cash payment`, cashResult);
+                    const cashReceiptIds = extractReceiptIds(cashResult);
+                    await processAccReceiptResult(cashReceiptIds, 'CASH', 'cash', accCashActual);
+                } catch (e: any) {
+                    console.warn(`[Priority 1 CASH] Failed to submit cash payment`, e);
+                    toast({ title: "Cash Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
                 }
 
-                if (receiptIds.length > 0) {
-                    finalReceiptNumber = `REC-${receiptIds[0]}`;
-
+                if (accCardActual > 0) {
                     try {
-                        const receiptData = await fetchPosMultiReceiptPrint(String(receiptIds[0]));
-                        if (receiptData && receiptData.length > 0 && receiptData[0].receiptNo) {
-                            finalReceiptNumber = receiptData[0].receiptNo;
-                            console.log(`[Priority 1] Actual receipt number from billing: ${finalReceiptNumber}`);
-                        }
-                    } catch (e) {
-                        console.warn(`[Priority 1] Could not fetch formatted receipt number, using ID fallback`, e);
+                        await platinumSaveMultipleAccountPayment(saveAccounts, { userId: String(currentUser.id) });
+                        const cardSubmitAccounts = buildSubmitAccounts(accCardActual);
+                        const cardResult = await submitMultiplePayment(Number(currentUser.id), {
+                            accounts: cardSubmitAccounts,
+                            requestModel: {
+                                finYear,
+                                receiptDate,
+                                totalAmount: accCardActual,
+                                tenderAmount: accCardActual,
+                                changeAmount: 0,
+                                paymentType: 2,
+                                paymentOption: 2,
+                            },
+                        });
+                        console.log(`[Priority 1 CARD] Submitted card payment`, cardResult);
+                        const cardReceiptIds = extractReceiptIds(cardResult);
+                        await processAccReceiptResult(cardReceiptIds, 'CARD', 'card', accCardActual);
+                    } catch (e: any) {
+                        console.warn(`[Priority 1 CARD] Failed to submit card payment`, e);
+                        toast({ title: "Card Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
                     }
-
-                    updateRecordReceiptNumber(record, finalReceiptNumber);
-                    console.log(`[Priority 1] Receipt number: ${finalReceiptNumber}`);
-
-                    try {
-                        await platinumPrintReceipt(receiptIds);
-                        console.log(`[Priority 1] Created/printed receipt for IDs: ${receiptIds.join(', ')}`);
-                    } catch (e) {
-                        console.warn(`[Priority 1] Failed to print receipt`, e);
-                    }
-
-                    try {
-                        const allocs = await fetchReceiptAllocations(String(receiptIds[0]));
-                        if (allocs.length > 0) {
-                            record.allocations = allocs;
-                            console.log(`[Priority 1] Receipt allocations:`, allocs);
-                        }
-                    } catch (e) {
-                        console.warn(`[Priority 1] Could not fetch receipt allocations`, e);
-                    }
-                } else {
-                    console.warn(`[Priority 1] No receipt IDs returned from submit — receipt print skipped`);
                 }
-            } catch (e: any) {
-                console.warn(`[Priority 1] Failed to submit multiple payment`, e);
-                const errorMsg = e?.message || 'Unknown error';
-                toast({
-                    title: "Payment Posting Failed",
-                    description: `Account payment could not be posted to billing system: ${errorMsg}`,
-                    variant: "destructive",
-                });
+            } else {
+                const paymentTypeId = record.payment.card > 0 ? 2 : 1;
+                try {
+                    const submitAccounts = buildSubmitAccounts();
+                    const submitResult = await submitMultiplePayment(Number(currentUser.id), {
+                        accounts: submitAccounts,
+                        requestModel: {
+                            finYear,
+                            receiptDate,
+                            totalAmount: accountTotal,
+                            tenderAmount: accTender,
+                            changeAmount: accChange,
+                            paymentType: paymentTypeId,
+                            paymentOption: paymentTypeId,
+                        },
+                    });
+                    console.log(`[Priority 1] Submitted multiple payment`, submitResult);
+                    const receiptIds = extractReceiptIds(submitResult);
+                    await processAccReceiptResult(receiptIds, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash', accountTotal);
+                } catch (e: any) {
+                    console.warn(`[Priority 1] Failed to submit multiple payment`, e);
+                    toast({ title: "Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
+                }
             }
 
-            const updatedReceiptId = record.receiptNumber.replace(/\D/g, '') || '0';
             for (const item of accountItems) {
                 const accountId = item.originalData?.account_ID || item.originalData?.apiId || item.originalData?.accountID || item.originalData?.accountId;
                 if (accountId) {
+                    const latestReceiptId = record.splitReceipts && record.splitReceipts.length > 0
+                        ? String(record.splitReceipts[record.splitReceipts.length - 1].receiptId)
+                        : record.receiptNumber.replace(/\D/g, '') || '0';
                     try {
-                        await postMultipleAccountPaymentReceipt(currentUser.id, accountId, updatedReceiptId);
+                        await postMultipleAccountPaymentReceipt(currentUser.id, accountId, latestReceiptId);
                         console.log(`[Priority 1] Legacy receipt posted for account ${accountId}`);
                     } catch (e) {
                         console.warn(`[Priority 1] Failed to post legacy receipt for account ${accountId}`, e);
@@ -733,11 +821,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (directIncomeItems.length > 0) {
         const incGroupTender = isMixedBasket ? incTender : totalTender;
         const incGroupChange = isMixedBasket ? incChange : totalChange;
-        let incAllocatedTender = 0;
 
         for (let idx = 0; idx < directIncomeItems.length; idx++) {
             const item = directIncomeItems[idx];
-            const isLastIncItem = idx === directIncomeItems.length - 1;
             const origData = item.originalData;
             const groupId = origData?.groupId;
             const scoaItemId = origData?.scoaItemId || origData?.id;
@@ -746,96 +832,108 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const amountExVat = isVatable ? item.amountToPay / (1 + vatRate / 100) : item.amountToPay;
             const vatAmount = isVatable ? item.amountToPay - amountExVat : 0;
 
-            if (groupId && scoaItemId) {
-                try {
-                    const paidByName = (item.paidBy || 'Walk-in').trim();
-                    const paidByParts = paidByName.split(/\s+/);
-                    const lastName = paidByParts.length > 1 ? paidByParts.slice(1).join(' ') : paidByParts[0];
-                    const initials = paidByParts[0]?.charAt(0) || 'W';
-                    let itemTender: number;
-                    let itemChange: number;
-                    if (isLastIncItem) {
-                        itemTender = Math.round((incGroupTender - incAllocatedTender) * 100) / 100;
-                        itemChange = Math.max(0, Math.round((itemTender - item.amountToPay) * 100) / 100);
-                    } else {
-                        itemTender = item.amountToPay;
-                        itemChange = 0;
-                        incAllocatedTender += itemTender;
-                    }
-
-                    const miscResult = await submitMiscPayment({
-                        lastName,
-                        initials,
-                        miscellaneousPaymentGroup: Number(groupId),
-                        scoaItem: Number(scoaItemId),
-                        description: item.notes || item.description || origData?.description || '',
-                        receiptDate,
-                        totalAmount: item.amountToPay,
-                        vatAmount: Math.round(vatAmount * 100) / 100,
-                        amount: Math.round(amountExVat * 100) / 100,
-                        tenderAmount: itemTender,
-                        changeAmount: itemChange,
-                        paymentType: paymentTypeId,
-                        vatPercentage: vatRate,
-                        isVatable,
-                        userId: Number(currentUser.id),
-                        finYear,
-                    });
-                    console.log(`[Priority 2] Submitted misc payment for SCOA item ${scoaItemId}`, miscResult);
-
-                    let miscReceiptId: number | null = null;
-                    if (miscResult?.ids && Array.isArray(miscResult.ids) && miscResult.ids.length > 0) {
-                        miscReceiptId = miscResult.ids[0];
-                    } else {
-                        miscReceiptId = miscResult?.receiptID || miscResult?.receiptId || miscResult?.id || null;
-                    }
-
-                    if (miscReceiptId) {
-                        finalReceiptNumber = `REC-${miscReceiptId}`;
-
-                        try {
-                            const miscReceiptData = await fetchPosMultiReceiptPrint(String(miscReceiptId));
-                            if (miscReceiptData && miscReceiptData.length > 0 && miscReceiptData[0].receiptNo) {
-                                finalReceiptNumber = miscReceiptData[0].receiptNo;
-                                console.log(`[Priority 2] Actual receipt number from billing: ${finalReceiptNumber}`);
-                            }
-                        } catch (e) {
-                            console.warn(`[Priority 2] Could not fetch formatted receipt number`, e);
-                        }
-
-                        updateRecordReceiptNumber(record, finalReceiptNumber);
-                        console.log(`[Priority 2] Receipt number: ${finalReceiptNumber}`);
-
-                        try {
-                            await platinumPrintMiscellaneousReceipt({}, { id: String(miscReceiptId) });
-                            console.log(`[Priority 2] Created/printed misc receipt ID: ${miscReceiptId}`);
-                        } catch (e) {
-                            console.warn(`[Priority 2] Failed to print misc receipt ${miscReceiptId}`, e);
-                        }
-
-                        try {
-                            const miscAllocs = await fetchReceiptAllocations(String(miscReceiptId));
-                            if (miscAllocs.length > 0) {
-                                record.allocations = [...(record.allocations || []), ...miscAllocs];
-                                console.log(`[Priority 2] Misc receipt allocations:`, miscAllocs);
-                            }
-                        } catch (e) {
-                            console.warn(`[Priority 2] Could not fetch misc receipt allocations`, e);
-                        }
-                    } else {
-                        console.warn(`[Priority 2] No receipt ID returned from misc payment submit`);
-                    }
-                } catch (e: any) {
-                    console.warn(`[Priority 2] Failed to submit misc payment for ${item.description}`, e);
-                    const errorMsg = e?.message || 'Unknown error';
-                    toast({
-                        title: "Direct Income Posting Failed",
-                        description: `Payment for "${item.description}" could not be posted to billing system: ${errorMsg}`,
-                        variant: "destructive",
-                    });
-                }
-            } else {
+            if (!groupId || !scoaItemId) {
                 console.warn(`[Priority 2] Skipping misc payment for "${item.description}" — missing groupId or scoaItemId`);
+                continue;
+            }
+
+            const paidByName = (item.paidBy || 'Walk-in').trim();
+            const paidByParts = paidByName.split(/\s+/);
+            const lastName = paidByParts.length > 1 ? paidByParts.slice(1).join(' ') : paidByParts[0];
+            const initials = paidByParts[0]?.charAt(0) || 'W';
+
+            const submitOneMisc = async (paymentTypeId: number, amount: number, tender: number, change: number, label: string, splitType: 'cash' | 'card') => {
+                const itemAmtExVat = isVatable ? amount / (1 + vatRate / 100) : amount;
+                const itemVat = isVatable ? amount - itemAmtExVat : 0;
+                const miscResult = await submitMiscPayment({
+                    lastName,
+                    initials,
+                    miscellaneousPaymentGroup: Number(groupId),
+                    scoaItem: Number(scoaItemId),
+                    description: item.notes || item.description || origData?.description || '',
+                    receiptDate,
+                    totalAmount: amount,
+                    vatAmount: Math.round(itemVat * 100) / 100,
+                    amount: Math.round(itemAmtExVat * 100) / 100,
+                    tenderAmount: tender,
+                    changeAmount: change,
+                    paymentType: paymentTypeId,
+                    vatPercentage: vatRate,
+                    isVatable,
+                    userId: Number(currentUser.id),
+                    finYear,
+                });
+                console.log(`[Priority 2 ${label}] Submitted misc payment for SCOA item ${scoaItemId}`, miscResult);
+
+                let miscReceiptId: number | null = null;
+                if (miscResult?.ids && Array.isArray(miscResult.ids) && miscResult.ids.length > 0) {
+                    miscReceiptId = miscResult.ids[0];
+                } else {
+                    miscReceiptId = miscResult?.receiptID || miscResult?.receiptId || miscResult?.id || null;
+                }
+
+                if (miscReceiptId) {
+                    let receiptNo = `REC-${miscReceiptId}`;
+                    try {
+                        const miscReceiptData = await fetchPosMultiReceiptPrint(String(miscReceiptId));
+                        if (miscReceiptData && miscReceiptData.length > 0 && miscReceiptData[0].receiptNo) {
+                            receiptNo = miscReceiptData[0].receiptNo;
+                        }
+                    } catch (e) {
+                        console.warn(`[Priority 2 ${label}] Could not fetch receipt number`, e);
+                    }
+
+                    if (!finalReceiptNumber || finalReceiptNumber === 'PENDING') {
+                        finalReceiptNumber = receiptNo;
+                        updateRecordReceiptNumber(record, finalReceiptNumber);
+                    }
+
+                    const splitEntry: SplitReceipt = { receiptNumber: receiptNo, receiptId: miscReceiptId, paymentType: splitType, amount };
+
+                    try {
+                        await platinumPrintMiscellaneousReceipt({}, { id: String(miscReceiptId) });
+                    } catch (e) {
+                        console.warn(`[Priority 2 ${label}] Failed to print misc receipt`, e);
+                    }
+
+                    try {
+                        const miscAllocs = await fetchReceiptAllocations(String(miscReceiptId));
+                        if (miscAllocs.length > 0) {
+                            splitEntry.allocations = miscAllocs;
+                            record.allocations = [...(record.allocations || []), ...miscAllocs];
+                        }
+                    } catch (e) {
+                        console.warn(`[Priority 2 ${label}] Could not fetch misc receipt allocations`, e);
+                    }
+
+                    record.splitReceipts!.push(splitEntry);
+                    console.log(`[Priority 2 ${label}] Receipt ${receiptNo} added`);
+                }
+            };
+
+            try {
+                if (isSplitPayment) {
+                    const cashPaid = Math.max(0, record.payment.cash - totalChange);
+                    const cashPaidRatio = grandTotal > 0 ? cashPaid / grandTotal : 0;
+                    const itemCash = Math.round(item.amountToPay * cashPaidRatio * 100) / 100;
+                    const itemCard = Math.round((item.amountToPay - itemCash) * 100) / 100;
+                    const itemCashTender = isMixedBasket ? itemCash : record.payment.cash;
+                    const itemCashChange = isMixedBasket ? 0 : totalChange;
+
+                    console.log(`[Priority 2 SPLIT] Item "${item.description}": Cash R${itemCash} (tender R${itemCashTender}), Card R${itemCard}`);
+
+                    await submitOneMisc(1, itemCash, itemCashTender, itemCashChange, 'CASH', 'cash');
+
+                    if (itemCard > 0) {
+                        await submitOneMisc(2, itemCard, itemCard, 0, 'CARD', 'card');
+                    }
+                } else {
+                    const paymentTypeId = record.payment.card > 0 ? 2 : 1;
+                    await submitOneMisc(paymentTypeId, item.amountToPay, item.amountToPay, 0, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash');
+                }
+            } catch (e: any) {
+                console.warn(`[Priority 2] Failed to submit misc payment for ${item.description}`, e);
+                toast({ title: "Direct Income Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
             }
         }
     }
