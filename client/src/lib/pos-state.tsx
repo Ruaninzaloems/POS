@@ -580,11 +580,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 });
             }
 
+            const updatedReceiptId = record.receiptNumber.replace(/\D/g, '') || '0';
             for (const item of accountItems) {
                 const accountId = item.originalData?.account_ID || item.originalData?.apiId || item.originalData?.accountID || item.originalData?.accountId;
                 if (accountId) {
                     try {
-                        await postMultipleAccountPaymentReceipt(currentUser.id, accountId, receiptId);
+                        await postMultipleAccountPaymentReceipt(currentUser.id, accountId, updatedReceiptId);
                         console.log(`[Priority 1] Legacy receipt posted for account ${accountId}`);
                     } catch (e) {
                         console.warn(`[Priority 1] Failed to post legacy receipt for account ${accountId}`, e);
