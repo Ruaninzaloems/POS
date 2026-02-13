@@ -348,6 +348,58 @@ export async function fetchAccounts(criteria: any): Promise<any[]> {
     return [];
 }
 
+export async function enrichAccountData(account: any): Promise<any> {
+    const accountId = account.apiId || account.accountID || account.account_ID;
+    if (!accountId) return account;
+
+    const enriched = { ...account };
+
+    try {
+        const [consDetails, nameData, contactDetails] = await Promise.all([
+            platinumGetConsAccountDetails(Number(accountId)).catch(() => null),
+            platinumFetch(`/api/platinum/billing-enquiry/name-info-by-account?accountId=${accountId}`).catch(() => null),
+            platinumFetch(`/api/platinum/billing-account-management/get-contact-details?accountId=${accountId}`).catch(() => null),
+        ]);
+
+        if (consDetails && !consDetails._error) {
+            enriched.outstandingAmount = consDetails.outStandingAmt ?? enriched.outstandingAmount;
+            enriched.oldCode = consDetails.oldAccountCode || enriched.oldCode;
+            enriched.oldPropertyCode = consDetails.oldAccountCode || enriched.oldPropertyCode;
+            if (consDetails.deliveryAddress) {
+                enriched.deliveryAddress = consDetails.deliveryAddress.replace(/\r\n/g, ', ').replace(/,\s*$/, '');
+            }
+            enriched.sgNo = consDetails.erfNumber || enriched.sgNo;
+            enriched.accountType = consDetails.accountDesc || enriched.accountType;
+            enriched.account_ID = consDetails.account_ID || accountId;
+            enriched.accountNumber = consDetails.accountNumber || enriched.accountNo;
+            enriched.oldAccountCode = consDetails.oldAccountCode || enriched.oldCode;
+            enriched.statusDesc = consDetails.statusDesc || enriched.status;
+            enriched.accountDesc = consDetails.accountDesc || enriched.accountType;
+            enriched.accountHolder = consDetails.name || enriched.name;
+            enriched.streetName = consDetails.streetName || '';
+            enriched.town = consDetails.town || '';
+        }
+
+        if (nameData && typeof nameData === 'object' && nameData.surname_Company) {
+            enriched.email = nameData.email || enriched.email;
+            enriched.mobile = nameData.tel_Mobile || nameData.tel_Home || enriched.mobile;
+            enriched.name = `${nameData.firstNames || ''} ${nameData.surname_Company || ''}`.trim() || enriched.name;
+            enriched.idNo = nameData.idNo_RegistrationNo || enriched.idNo;
+        }
+
+        if (contactDetails && !contactDetails._error) {
+            enriched.email = contactDetails.email || enriched.email;
+            if (contactDetails.tel_Mobile) enriched.mobile = contactDetails.tel_Mobile;
+        }
+
+        console.log(`[Enrich] Account ${accountId} enriched: email=${enriched.email}, oldCode=${enriched.oldCode}, outstanding=${enriched.outstandingAmount}`);
+    } catch (e) {
+        console.warn(`[Enrich] Failed to enrich account ${accountId}:`, e);
+    }
+
+    return enriched;
+}
+
 export async function fetchConfigSettings(): Promise<any[]> {
     try {
         const res = await fetch(`/api/proxy/odata/AaaaConfigSettings`);

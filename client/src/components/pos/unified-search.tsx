@@ -5,7 +5,7 @@ import { UnifiedSearch as SearchComponent, SearchResult, parseMobileFromContactD
 import { Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Account } from '@/lib/mock-data';
-import { fetchAccounts, fetchBillingStagePrepaidRecharge, fetchBillingStagePrepaidRecovery, searchInstitutions, fetchAccountsByGroup, platinumGetAccountsForClearance } from '@/lib/external-api';
+import { fetchAccounts, fetchBillingStagePrepaidRecharge, fetchBillingStagePrepaidRecovery, searchInstitutions, fetchAccountsByGroup, platinumGetAccountsForClearance, enrichAccountData } from '@/lib/external-api';
 
 export function UnifiedSearch() {
   const { addItem, clearTransaction, referenceData } = usePos();
@@ -26,18 +26,22 @@ export function UnifiedSearch() {
     let newItem: TransactionItem;
 
     if (result.type === 'ACCOUNT') {
-      const acc = result.data as Account;
+      let acc = result.data as Account;
       
-      // Check for related prepaid info if it's a prepaid account
+      try {
+          const enriched = await enrichAccountData(acc);
+          acc = { ...acc, ...enriched };
+      } catch (e) {
+          console.warn('[Enrich] Failed to enrich account data on select:', e);
+      }
+
       if (acc.accountType === 'Prepaid' || acc.prepaidMeterNo) {
            if (allowPrepaidAndRecovery) {
                console.log("Checking for prepaid recovery/recharge info...");
                try {
-                   // specific logic: check for recovery debt on this meter/account
                    const recovery = await fetchBillingStagePrepaidRecovery(acc.prepaidMeterNo || acc.accountNo, 'reference');
                    if (recovery) {
                        console.log("Found prepaid recovery:", recovery);
-                       // In a real app, we might force this to be paid or show a modal
                    }
                } catch (err) {
                    console.error("Error checking prepaid recovery", err);
@@ -78,14 +82,20 @@ export function UnifiedSearch() {
         }
       };
     } else if (result.type === 'PREPAID') {
-        const acc = result.data as Account;
+        let acc = result.data as Account;
+        try {
+            const enriched = await enrichAccountData(acc);
+            acc = { ...acc, ...enriched };
+        } catch (e) {
+            console.warn('[Enrich] Failed to enrich prepaid account:', e);
+        }
         newItem = {
             id: crypto.randomUUID(),
             type: 'PREPAID',
             description: `${acc.prepaidType || 'Prepaid'} Recharge ${acc.prepaidMeterNo}`,
             reference: acc.prepaidMeterNo!,
             amountDue: 0,
-            amountToPay: 0, // Default to 0, user must enter
+            amountToPay: 0,
             originalData: acc
         }
     } else if (result.type === 'GROUP') {
@@ -241,9 +251,9 @@ export function UnifiedSearch() {
       }
   };
 
-  const handlePickAdvancedResult = (acc: any) => {
+  const handlePickAdvancedResult = async (acc: any) => {
       const mapped = mapApiResultToAccount(acc);
-      handleSelect({ type: 'ACCOUNT', data: mapped, label: `${mapped.accountNo} - ${mapped.name}` });
+      await handleSelect({ type: 'ACCOUNT', data: mapped, label: `${mapped.accountNo} - ${mapped.name}` });
       setShowAdvanced(false);
       setAdvancedResults([]);
   };
