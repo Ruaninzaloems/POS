@@ -33,9 +33,9 @@ async function fetchNewToken(): Promise<{ token: string; userData: any }> {
     throw new Error(`Platinum auth returned no token: ${JSON.stringify(data)}`);
   }
 
-  // Hardcode Francois Naude profile to bypass API issue
+  // Use ID 1 to match the actual cashier session in Platinum
   const hardcodedUser = {
-    user_ID: 10, 
+    user_ID: 1, 
     userName: "FrancoisNaude",
     firstName: "Francois",
     lastName: "Naude",
@@ -46,7 +46,7 @@ async function fetchNewToken(): Promise<{ token: string; userData: any }> {
     finYear: "2026/2027"
   };
 
-  console.log(`[PlatinumAuth] Login successful. Manually overriding user profile to: ${hardcodedUser.firstName} ${hardcodedUser.lastName}`);
+  console.log(`[PlatinumAuth] Login successful. Manually overriding user profile to: ${hardcodedUser.firstName} ${hardcodedUser.lastName} (ID: ${hardcodedUser.user_ID})`);
 
   return { token: data.token, userData: hardcodedUser };
 }
@@ -73,22 +73,22 @@ export async function platinumGet(path: string, params?: Record<string, string>)
   const token = await getPlatinumToken();
   
   // Intercept cashier active session check to force active session for Francois
-  if (path === "/auth/active-cashier-by-userid") {
+  if (path === "/auth/active-cashier-by-userid" || path === "/api/billing/auth-day-end-reconcile/active-cashierid-by-userid") {
     console.log("[PlatinumAuth] Intercepting cashier check for hardcoded profile");
     return {
       active: true,
-      cashierId: 10,
+      cashierId: 1,
       cashFloat: 500,
       officeId: 1,
       officeName: "George - York Street",
       cashOnHandLimit: 999999,
       isActive: true,
       details: {
-        id: 10,
+        id: 1,
         cashFloat: 500,
         officeId: 1,
         isActive: true,
-        user_Id: 10,
+        user_Id: 1,
         const_CashOffice: {
           cashOffice_ID: 1,
           cashOfficeDesc: "George - York Street",
