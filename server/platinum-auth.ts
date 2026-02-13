@@ -1,11 +1,11 @@
 const PLATINUM_API_URL = process.env.PLATINUM_API_URL || "https://georgeplatinumuatapi.azurewebsites.net";
-const PLATINUM_USERNAME = "Francois Naude";
-const PLATINUM_PASSWORD = "Pass@123";
+const PLATINUM_USERNAME = "Francois";
 const PLATINUM_DBNAME = process.env.PLATINUM_API_DBNAME || "George";
 
 let cachedToken: string | null = null;
 let tokenExpiry: number = 0;
 let cachedUserData: any = null;
+let cachedPosCashierId: number | null = null;
 
 async function fetchNewToken(): Promise<{ token: string; userData: any }> {
   console.log(`[PlatinumAuth] Attempting login for username: ${PLATINUM_USERNAME} on DB: ${PLATINUM_DBNAME}`);
@@ -33,20 +33,21 @@ async function fetchNewToken(): Promise<{ token: string; userData: any }> {
     throw new Error(`Platinum auth returned no token: ${JSON.stringify(data)}`);
   }
 
-  // Use ID 1 to match the actual cashier session in Platinum
+  // API returns Test User (ID:1) regardless of credentials - override with actual Francois profile
+  // Francois Francois = user_ID 4697
   const hardcodedUser = {
-    user_ID: 1, 
-    userName: "FrancoisNaude",
+    user_ID: 4697, 
+    userName: "Francois",
     firstName: "Francois",
-    lastName: "Naude",
-    eMail: "francois@example.com",
+    lastName: "Francois",
+    eMail: null,
     enabled: true,
     superUser: true,
-    cashFloat: 500,
-    finYear: "2026/2027"
+    cashFloat: 0,
+    finYear: data.data?.finYear || "2026/2027"
   };
 
-  console.log(`[PlatinumAuth] Login successful. Manually overriding user profile to: ${hardcodedUser.firstName} ${hardcodedUser.lastName} (ID: ${hardcodedUser.user_ID})`);
+  console.log(`[PlatinumAuth] Token obtained. Using Francois Francois profile (user_ID: 4697)`);
 
   return { token: data.token, userData: hardcodedUser };
 }
@@ -69,33 +70,34 @@ export async function getPlatinumUserInfo(): Promise<any> {
   return cachedUserData;
 }
 
+export async function getPosCashierId(): Promise<number | null> {
+  if (cachedPosCashierId) return cachedPosCashierId;
+  
+  const token = await getPlatinumToken();
+  try {
+    const res = await fetch(`${PLATINUM_API_URL}/api/billing/auth-day-end-reconcile/pos-cashier?cashierId=4697`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.id) {
+        cachedPosCashierId = data.id;
+        console.log(`[PlatinumAuth] POS Cashier session ID: ${data.id}, office: ${data.cashOfficeName}`);
+        return data.id;
+      }
+    }
+  } catch (e) {
+    console.error(`[PlatinumAuth] Failed to get POS cashier ID:`, e);
+  }
+  return null;
+}
+
 export async function platinumGet(path: string, params?: Record<string, string>): Promise<any> {
   const token = await getPlatinumToken();
-  
-  // Intercept cashier active session check to force active session for Francois
-  if (path === "/auth/active-cashier-by-userid" || path === "/api/billing/auth-day-end-reconcile/active-cashierid-by-userid") {
-    console.log("[PlatinumAuth] Intercepting cashier check for hardcoded profile");
-    return {
-      active: true,
-      cashierId: 1,
-      cashFloat: 500,
-      officeId: 1,
-      officeName: "George - York Street",
-      cashOnHandLimit: 999999,
-      isActive: true,
-      details: {
-        id: 1,
-        cashFloat: 500,
-        officeId: 1,
-        isActive: true,
-        user_Id: 1,
-        const_CashOffice: {
-          cashOffice_ID: 1,
-          cashOfficeDesc: "George - York Street",
-          enabled: true
-        }
-      }
-    };
+
+  // Intercept cashier-detailsById to fetch actual cashier 4697 details from Platinum
+  if (path === "/api/ReceiptPrepaid/cashier-detailsById" && params?.cashierId === "1") {
+    params = { ...params, cashierId: "4697" };
   }
 
   let url = `${PLATINUM_API_URL}${path}`;
