@@ -790,12 +790,16 @@ export async function platinumAuthDayEndValidateCashbook(data: any): Promise<any
 
 // --- Direct Deposit Allocation ---
 
-export async function platinumGetBankReconPosItemList(data: any): Promise<any[]> {
+export async function platinumGetBankReconPosItemList(data: any): Promise<any> {
     return platinumFetch(`/api/platinum/direct-deposit-allocation/get-bank-recon-positem-list`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
     });
+}
+
+export async function platinumGetPosItemDetails(posItemId: number): Promise<any> {
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/get-pos-item-details?posItemId=${posItemId}`);
 }
 
 export async function platinumGetMiscPaymentGroup(): Promise<any[]> {

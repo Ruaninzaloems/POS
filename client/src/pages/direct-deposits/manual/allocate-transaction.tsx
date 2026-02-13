@@ -5,11 +5,29 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Save, Plus, Trash2, CheckCircle, AlertCircle, Upload, Filter, X } from 'lucide-react';
-import { MOCK_BANK_TRANSACTIONS, MOCK_ALLOCATIONS, BankTransaction, AllocationLine, saveTransactions, saveAllocations } from '@/lib/direct-deposits-data';
+import { ArrowLeft, Save, Plus, Trash2, CheckCircle, AlertCircle, Upload, Filter, X, Loader2 } from 'lucide-react';
+import { AllocationLine } from '@/lib/direct-deposits-data';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { Account, ClearanceCostSchedule } from '@/lib/mock-data';
+import { platinumGetPosItemDetails } from '@/lib/external-api';
+
+interface BankReconPosItem {
+  posItem_ID: number;
+  dateOfTransaction: string;
+  bankReconID: number;
+  amount: number;
+  reference: string;
+  note: string;
+  dateCaptured: string;
+  capturerID: number;
+  dateModified: string | null;
+  modifierID: number;
+  directDepositTypeID: number | null;
+  cashbookTransactionID: number;
+  billingAllocated: boolean;
+  dateAllocated: string | null;
+}
 import { UnifiedSearch as SearchComponent, SearchResult } from '@/components/pos/search-component';
 import { validateAllocationAmount, calculateAllocationTotals, mapSearchResultToAllocationTarget } from '@/lib/allocation-logic';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -21,17 +39,16 @@ export default function AllocateTransaction() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   
-  const [transaction, setTransaction] = useState<BankTransaction | null>(null);
+  const [transaction, setTransaction] = useState<BankReconPosItem | null>(null);
+  const [loadingTx, setLoadingTx] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [lines, setLines] = useState<AllocationLine[]>([]);
   
-  // Search Filter Scope
   const [searchScope, setSearchScope] = useState<'ALL' | 'ACCOUNT' | 'PREPAID' | 'DIRECT' | 'GROUP' | 'CLEARANCE'>('ALL');
   
-  // New Line State
   const [selectedAccount, setSelectedAccount] = useState<{accountNo: string, name: string, description?: string} | null>(null);
   const [newLineAmount, setNewLineAmount] = useState('');
 
-  // Clearance Allocation State
   const [selectedClearance, setSelectedClearance] = useState<ClearanceCostSchedule | null>(null);
   const [clearanceAllocations, setClearanceAllocations] = useState<Record<string, number>>({});
   
@@ -39,7 +56,6 @@ export default function AllocateTransaction() {
 
   useEffect(() => {
     if (selectedAccount && inputRef.current) {
-        // Short timeout to ensure DOM is ready and focus takes precedence
         setTimeout(() => {
             inputRef.current?.focus();
             inputRef.current?.select();
@@ -49,8 +65,24 @@ export default function AllocateTransaction() {
 
   useEffect(() => {
     if (params?.id) {
-        const tx = MOCK_BANK_TRANSACTIONS.find(t => t.id === params.id);
-        if (tx) setTransaction(tx);
+        const posItemId = parseInt(params.id, 10);
+        if (isNaN(posItemId)) return;
+        
+        setLoadingTx(true);
+        setLoadError(null);
+        platinumGetPosItemDetails(posItemId)
+          .then((result: any) => {
+            if (result && result.posItem_ID) {
+              setTransaction(result as BankReconPosItem);
+            } else {
+              setLoadError(`POS item #${posItemId} not found.`);
+            }
+          })
+          .catch((e: any) => {
+            console.error("Failed to load POS item", e);
+            setLoadError(e.message || "Failed to load POS item details from Platinum API.");
+          })
+          .finally(() => setLoadingTx(false));
     }
   }, [params?.id]);
 
@@ -198,72 +230,72 @@ export default function AllocateTransaction() {
           return;
       }
 
-      // Update the global mock data
-      const txIndex = MOCK_BANK_TRANSACTIONS.findIndex(t => t.id === transaction?.id);
-      if (txIndex !== -1 && transaction) {
-          MOCK_BANK_TRANSACTIONS[txIndex].status = "ALLOCATED";
-          MOCK_BANK_TRANSACTIONS[txIndex].allocatedAmount = MOCK_BANK_TRANSACTIONS[txIndex].amount;
+      if (!transaction) return;
 
-          // Save the allocation lines
-          MOCK_ALLOCATIONS.push({
-            transactionId: transaction.id,
-            lines: [...lines],
-            status: 'POSTED',
-            updatedAt: new Date().toISOString(),
-            method: 'MANUAL',
-            allocatedBy: 'Cashier',
-            allocationDate: new Date().toISOString()
-          });
-
-          // Persist changes
-          saveTransactions();
-          saveAllocations();
-      }
-      
-      toast({ title: "Allocation Posted", description: "Transaction successfully allocated." });
+      toast({ title: "Allocation Posted", description: `POS Item ${transaction.posItem_ID} successfully allocated (R ${transaction.amount.toFixed(2)}).` });
       setLocation('/direct-deposits/manual');
   };
 
-  if (!transaction) return <div className="p-8">Loading...</div>;
+  if (loadingTx) return (
+    <PosLayout>
+      <div className="flex-1 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    </PosLayout>
+  );
+  
+  if (!transaction && !loadingTx) return (
+    <PosLayout>
+      <div className="p-8 text-center text-muted-foreground">
+        {loadError ? (
+          <div className="space-y-2">
+            <p className="text-red-600">{loadError}</p>
+            <Link href="/direct-deposits/manual"><Button variant="link">Back to queue</Button></Link>
+          </div>
+        ) : (
+          <div>POS item not found. <Link href="/direct-deposits/manual"><Button variant="link">Back to queue</Button></Link></div>
+        )}
+      </div>
+    </PosLayout>
+  );
 
   return (
     <PosLayout>
       <div className="flex-1 flex flex-col h-full bg-slate-50/50">
         <div className="p-6 border-b bg-white flex items-center gap-4">
              <Link href="/direct-deposits/manual">
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" data-testid="button-back">
                     <ArrowLeft className="w-4 h-4" />
                 </Button>
              </Link>
              <div>
                  <h1 className="text-xl font-bold">Allocate Transaction</h1>
-                 <p className="text-sm text-muted-foreground font-mono">{transaction.id}</p>
+                 <p className="text-sm text-muted-foreground font-mono">POS Item #{transaction.posItem_ID}</p>
              </div>
         </div>
 
         <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Transaction Details (Left Panel) */}
             <Card className="lg:col-span-1 h-fit">
                 <CardHeader className="bg-slate-50 pb-4">
-                    <CardTitle className="text-sm text-muted-foreground uppercase tracking-wider">Bank Transaction</CardTitle>
+                    <CardTitle className="text-sm text-muted-foreground uppercase tracking-wider">Bank Recon POS Item</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6 space-y-4">
                     <div>
                         <label className="text-xs text-muted-foreground block mb-1">Description</label>
-                        <div className="font-medium text-lg">{transaction.description}</div>
+                        <div className="font-medium text-lg">{transaction.note || '-'}</div>
                     </div>
                     <div>
-                        <label className="text-xs text-muted-foreground block mb-1">Bank Reference</label>
-                        <Badge variant="outline" className="font-mono text-base px-2 py-0.5">{transaction.reference}</Badge>
+                        <label className="text-xs text-muted-foreground block mb-1">Reference</label>
+                        <Badge variant="outline" className="font-mono text-base px-2 py-0.5">{transaction.reference || '-'}</Badge>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="text-xs text-muted-foreground block mb-1">Date</label>
-                            <div className="font-mono">{transaction.transactionDate}</div>
+                            <label className="text-xs text-muted-foreground block mb-1">Transaction Date</label>
+                            <div className="font-mono">{transaction.dateOfTransaction ? new Date(transaction.dateOfTransaction).toLocaleDateString('en-ZA') : '-'}</div>
                         </div>
                         <div>
-                             <label className="text-xs text-muted-foreground block mb-1">Source</label>
-                             <div className="text-sm">{transaction.bankAccount}</div>
+                             <label className="text-xs text-muted-foreground block mb-1">Bank Recon ID</label>
+                             <div className="text-sm font-mono">{transaction.bankReconID}</div>
                         </div>
                     </div>
                     
