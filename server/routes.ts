@@ -446,10 +446,10 @@ export async function registerRoutes(
             eMail: userData.eMail || '',
             enabled: userData.enabled ?? true,
             superUser: userData.superUser ?? false,
-            dateCaptured: new Date().toISOString(),
+            dateCaptured: new Date().toLocaleString('sv-SE', { timeZone: 'Africa/Johannesburg' }).replace(' ', 'T'),
             capturerID: userData.user_ID,
             passwordNeverExpire: true,
-            passwordLastChangedDate: new Date().toISOString(),
+            passwordLastChangedDate: new Date().toLocaleString('sv-SE', { timeZone: 'Africa/Johannesburg' }).replace(' ', 'T'),
             cashFloat: body.cashFloat || 0,
           };
         }

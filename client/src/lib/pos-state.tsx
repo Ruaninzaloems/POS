@@ -505,7 +505,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const paymentTypeId = record.payment.card > 0 ? 2 : 1;
-    const receiptDate = new Date().toISOString();
+    const saDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Johannesburg' }));
+    const receiptDate = saDate.getFullYear() + '-' +
+        String(saDate.getMonth() + 1).padStart(2, '0') + '-' +
+        String(saDate.getDate()).padStart(2, '0') + 'T' +
+        String(saDate.getHours()).padStart(2, '0') + ':' +
+        String(saDate.getMinutes()).padStart(2, '0') + ':' +
+        String(saDate.getSeconds()).padStart(2, '0');
 
     const accountItems = record.items.filter(item =>
         item.type === 'CONSUMER_SERVICES' || item.type === 'MULTI_ACCOUNT' || item.type === 'ACCOUNT_GROUP'

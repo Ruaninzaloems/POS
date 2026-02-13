@@ -93,7 +93,7 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
         </div>
         <div className="flex justify-between">
             <span>Date:</span>
-            <span>{format(new Date(transaction.timestamp), 'dd/MM/yyyy HH:mm')}</span>
+            <span>{new Date(transaction.timestamp).toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })}</span>
         </div>
         <div className="flex justify-between">
             <span>Cashier:</span>
