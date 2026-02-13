@@ -12,9 +12,15 @@ export interface BankTransaction {
 
 export interface AllocationLine {
   id: string;
-  accountNo: string; // Account to allocate to
+  accountNo: string;
   amount: number;
   description: string;
+  allocationType?: 'ACCOUNT' | 'PREPAID' | 'DIRECT' | 'GROUP' | 'CLEARANCE' | 'CASHBOOK';
+  accountId?: number;
+  groupId?: number;
+  miscPaymentGroupId?: number;
+  scoaItemId?: number;
+  voteId?: number;
 }
 
 export interface AllocationDraft {

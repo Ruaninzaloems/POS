@@ -53,7 +53,8 @@ export function mapSearchResultToAllocationTarget(result: SearchResult) {
       return { 
           accountNo: acc.accountNo, 
           name: acc.name,
-          description: `Payment to ${acc.name}` 
+          description: `Payment to ${acc.name}`,
+          allocationType: 'ACCOUNT' as const,
       };
   } else if (result.type === 'PREPAID') {
       const acc = result.data as Account;
@@ -61,28 +62,35 @@ export function mapSearchResultToAllocationTarget(result: SearchResult) {
       return { 
           accountNo: acc.accountNo, 
           name: `${prepaidType} Meter: ${acc.prepaidMeterNo}`,
-          description: `Prepaid ${prepaidType}: ${acc.prepaidMeterNo} (${acc.name})`
+          description: `Prepaid ${prepaidType}: ${acc.prepaidMeterNo} (${acc.name})`,
+          allocationType: 'PREPAID' as const,
       }; 
   } else if (result.type === 'DIRECT') {
       const item = result.data;
       return { 
           accountNo: item.scoaItem, 
           name: item.description,
-          description: `Direct Income: ${item.description}`
+          description: `Direct Income: ${item.description}`,
+          allocationType: 'DIRECT' as const,
+          scoaItemId: item.scoaItemId ? Number(item.scoaItemId) : undefined,
+          miscPaymentGroupId: item.miscPaymentGroupId ? Number(item.miscPaymentGroupId) : undefined,
       };
   } else if (result.type === 'GROUP') {
       const group = result.data as any;
       return {
           accountNo: group.id,
           name: group.name,
-          description: `Group Payment: ${group.name}`
+          description: `Group Payment: ${group.name}`,
+          allocationType: 'GROUP' as const,
+          groupId: group.id ? Number(group.id) : undefined,
       };
   } else if (result.type === 'CLEARANCE') {
       const clr = result.data as any;
       return {
           accountNo: clr.scheduleNo,
           name: `Clearance ${clr.scheduleNo}`,
-          description: `Clearance Payment: ${clr.scheduleNo}`
+          description: `Clearance Payment: ${clr.scheduleNo}`,
+          allocationType: 'CLEARANCE' as const,
       };
   }
   

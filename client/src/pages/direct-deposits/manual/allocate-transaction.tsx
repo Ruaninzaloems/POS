@@ -10,7 +10,8 @@ import { AllocationLine } from '@/lib/direct-deposits-data';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { Account, ClearanceCostSchedule } from '@/lib/mock-data';
-import { platinumGetPosItemDetails } from '@/lib/external-api';
+import { platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation } from '@/lib/external-api';
+import { usePos } from '@/lib/pos-state';
 
 interface BankReconPosItem {
   posItem_ID: number;
@@ -38,10 +39,12 @@ export default function AllocateTransaction() {
   const [, params] = useRoute('/direct-deposits/manual/allocate/:id');
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { currentUser } = usePos();
   
   const [transaction, setTransaction] = useState<BankReconPosItem | null>(null);
   const [loadingTx, setLoadingTx] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [posting, setPosting] = useState(false);
   const [lines, setLines] = useState<AllocationLine[]>([]);
   
   const [searchScope, setSearchScope] = useState<'ALL' | 'ACCOUNT' | 'PREPAID' | 'DIRECT' | 'GROUP' | 'CLEARANCE'>('ALL');
@@ -129,7 +132,8 @@ export default function AllocateTransaction() {
           id: Math.random().toString(36).substr(2, 9),
           accountNo: "CASHBOOK-RTN",
           amount: remaining,
-          description: "Returned to Cashbook (Unallocated)"
+          description: "Returned to Cashbook (Unallocated)",
+          allocationType: 'CASHBOOK',
       }]);
   };
 
@@ -155,7 +159,12 @@ export default function AllocateTransaction() {
           id: Math.random().toString(36).substr(2, 9),
           accountNo: selectedAccount.accountNo,
           amount: amount,
-          description: selectedAccount.description || `Payment to ${selectedAccount.name}`
+          description: selectedAccount.description || `Payment to ${selectedAccount.name}`,
+          allocationType: (selectedAccount as any).allocationType || 'ACCOUNT',
+          accountId: (selectedAccount as any).accountId,
+          groupId: (selectedAccount as any).groupId,
+          miscPaymentGroupId: (selectedAccount as any).miscPaymentGroupId,
+          scoaItemId: (selectedAccount as any).scoaItemId,
       }]);
       
       setSelectedAccount(null);
@@ -177,7 +186,8 @@ export default function AllocateTransaction() {
                  id: Math.random().toString(36).substr(2, 9),
                  accountNo: item.accountNo,
                  amount: amount,
-                 description: `Clearance ${selectedClearance.scheduleNo} - 118(1): ${item.item}`
+                 description: `Clearance ${selectedClearance.scheduleNo} - 118(1): ${item.item}`,
+                 allocationType: 'CLEARANCE',
              });
              totalToAdd += amount;
          }
@@ -192,7 +202,8 @@ export default function AllocateTransaction() {
                  id: Math.random().toString(36).substr(2, 9),
                  accountNo: item.accountNo,
                  amount: amount,
-                 description: `Clearance ${selectedClearance.scheduleNo} - 118(3): ${item.item}`
+                 description: `Clearance ${selectedClearance.scheduleNo} - 118(3): ${item.item}`,
+                 allocationType: 'CLEARANCE',
              });
              totalToAdd += amount;
          }
@@ -224,7 +235,7 @@ export default function AllocateTransaction() {
       setLines(prev => prev.filter(l => l.id !== id));
   };
 
-  const handlePost = () => {
+  const handlePost = async () => {
       if (!isFullyAllocated) {
           toast({ title: "Validation Error", description: "Allocated total must equal transaction amount.", variant: "destructive" });
           return;
@@ -232,8 +243,104 @@ export default function AllocateTransaction() {
 
       if (!transaction) return;
 
-      toast({ title: "Allocation Posted", description: `POS Item ${transaction.posItem_ID} successfully allocated (R ${transaction.amount.toFixed(2)}).` });
-      setLocation('/direct-deposits/manual');
+      setPosting(true);
+
+      try {
+          let finYear = '2025/2026';
+          try {
+              const res = await fetch('/api/platinum/active-fin-year');
+              if (res.ok) {
+                  const data = await res.json();
+                  if (typeof data === 'string') finYear = data;
+                  else if (data?.financialYear) finYear = data.financialYear;
+              }
+          } catch {}
+
+          const userId = currentUser?.id ? Number(currentUser.id) : 4697;
+
+          const now = new Date();
+          const saFormatter = new Intl.DateTimeFormat('en-ZA', {
+              timeZone: 'Africa/Johannesburg',
+              year: 'numeric', month: '2-digit', day: '2-digit',
+              hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+          });
+          const saParts = saFormatter.formatToParts(now);
+          const getPart = (type: string) => saParts.find(p => p.type === type)?.value || '';
+          const receiptDate = `${getPart('year')}-${getPart('month')}-${getPart('day')}T${getPart('hour')}:${getPart('minute')}:${getPart('second')}`;
+          const transactionDate = transaction.dateOfTransaction || receiptDate;
+
+          let submittedCount = 0;
+          for (const line of lines) {
+              if (line.accountNo === 'CASHBOOK-RTN' || line.allocationType === 'CASHBOOK') continue;
+
+              const allocType = line.allocationType || 'ACCOUNT';
+              let billType = 'ConsumerServices';
+              if (allocType === 'DIRECT' || allocType === 'GROUP') {
+                  billType = 'MiscPayment';
+              } else if (allocType === 'CLEARANCE') {
+                  billType = 'ClearancePayment';
+              }
+
+              const submitData: any = {
+                  outstandingAmount: transaction.amount,
+                  paidAmount: line.amount,
+                  transactionDate,
+                  reconId: transaction.bankReconID,
+                  posItemId: transaction.posItem_ID,
+                  billType,
+                  userId,
+                  financialYear: finYear,
+                  description: line.description || transaction.note,
+                  amount: line.amount,
+                  totalAmount: line.amount,
+                  vatAmount: 0,
+                  receiptDate,
+                  paymentTypeId: 3,
+              };
+
+              if (allocType === 'ACCOUNT' || allocType === 'PREPAID') {
+                  submitData.accountId = line.accountId || null;
+                  submitData.accountNo = line.accountNo || null;
+              }
+              if (allocType === 'DIRECT') {
+                  submitData.scoaItemId = line.scoaItemId || null;
+                  submitData.miscPaymentGroupId = line.miscPaymentGroupId || null;
+              }
+              if (allocType === 'GROUP') {
+                  submitData.groupId = line.groupId || null;
+              }
+
+              console.log('[Direct Deposit] Submitting allocation line:', submitData);
+              const result = await platinumSubmitDirectDepositAllocation(submitData);
+              console.log('[Direct Deposit] Submit result:', result);
+
+              if (result && result.success === false) {
+                  toast({
+                      title: 'Submission Failed',
+                      description: result.message || `Failed to submit allocation for ${line.accountNo}. ${submittedCount} line(s) were already submitted.`,
+                      variant: 'destructive',
+                  });
+                  setPosting(false);
+                  return;
+              }
+              submittedCount++;
+          }
+
+          toast({
+              title: "Allocation Posted Successfully",
+              description: `POS Item #${transaction.posItem_ID} allocated (R ${transaction.amount.toFixed(2)}).`,
+          });
+          setLocation('/direct-deposits/manual');
+      } catch (e: any) {
+          console.error("Failed to submit allocation", e);
+          toast({
+              title: 'Submission Error',
+              description: e.message || 'An unexpected error occurred while posting the allocation.',
+              variant: 'destructive',
+          });
+      } finally {
+          setPosting(false);
+      }
   };
 
   if (loadingTx) return (
@@ -576,11 +683,17 @@ export default function AllocateTransaction() {
                              )}
                              <Button 
                                 className={`${isFullyAllocated ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-300'}`}
-                                disabled={!isFullyAllocated}
+                                disabled={!isFullyAllocated || posting}
                                 onClick={handlePost}
                              >
-                                {isFullyAllocated ? <CheckCircle className="w-4 h-4 mr-2" /> : <AlertCircle className="w-4 h-4 mr-2" />}
-                                Post Allocation
+                                {posting ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : isFullyAllocated ? (
+                                    <CheckCircle className="w-4 h-4 mr-2" />
+                                ) : (
+                                    <AlertCircle className="w-4 h-4 mr-2" />
+                                )}
+                                {posting ? 'Posting...' : 'Post Allocation'}
                              </Button>
                          </div>
                     </CardFooter>

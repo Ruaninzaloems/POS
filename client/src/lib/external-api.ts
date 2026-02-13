@@ -879,6 +879,14 @@ export async function platinumGetMiscReceiptData(receiptId: number): Promise<any
     return platinumFetch(`/api/platinum/direct-deposit-allocation/get-misc-receipt-data?receiptId=${receiptId}`);
 }
 
+export async function platinumLoadConfirmPaymentDetails(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/load-confirm-payment-details`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
 export async function platinumSubmitDirectDepositAllocation(data: any): Promise<any> {
     return platinumFetch(`/api/platinum/direct-deposit-allocation/submit-details-data`, {
         method: 'POST',
