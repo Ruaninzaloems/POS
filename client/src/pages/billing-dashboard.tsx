@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'wouter';
 import { PosLayout } from '@/components/layout/pos-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -146,7 +147,50 @@ function PaginatedTable({
     );
 }
 
+const detailKeyToTab: Record<string, string> = {
+    directDepositsAllocation: 'allocations',
+    thirdPartyPaymentPending: 'thirdparty',
+    postDatedChequeSearch: 'cheques',
+    debtArrangementNotPaid: 'deposits',
+};
+
+const detailKeyToRoute: Record<string, string> = {
+    cashierReconcile: '/cashier-day-end',
+    pendingCashierReconcile: '/cashier-day-end',
+    returnCashierReconcile: '/cashier-day-end',
+    cashierReconcileSurplus: '/cashier-day-end',
+    cashierReconcileShortage: '/cashier-day-end',
+};
+
+const notificationKeyToRoute: Record<string, string> = {
+    pos: '/pos',
+    account: '/pos',
+    consumption: '/pos',
+    debt: '/pos',
+    billing: '/billing-dashboard',
+    property: '/pos',
+    journal: '/view-receipts',
+};
+
+const alertKeyToRoute: Record<string, string> = {
+    'workflow-alert': '/settings',
+    'configuration-alert': '/settings',
+};
+
+const detailKeyLabels: Record<string, string> = {
+    directDepositsAllocation: 'Direct Deposit Allocations',
+    debtArrangementNotPaid: 'Debt Arrangements Not Paid',
+    postDatedChequeSearch: 'Post-Dated Cheques',
+    cashierReconcile: 'Cashier Reconcile',
+    pendingCashierReconcile: 'Pending Cashier Reconcile',
+    returnCashierReconcile: 'Returned Cashier Reconcile',
+    cashierReconcileSurplus: 'Cashier Reconcile Surplus',
+    cashierReconcileShortage: 'Cashier Reconcile Shortage',
+    thirdPartyPaymentPending: 'Third-Party Payment Pending',
+};
+
 export default function BillingDashboard() {
+    const [, setLocation] = useLocation();
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
     const [posCount, setPosCount] = useState<any>(null);
@@ -155,6 +199,8 @@ export default function BillingDashboard() {
     const [notificationCounts, setNotificationCounts] = useState<any>(null);
     const [paymentByType, setPaymentByType] = useState<any[]>([]);
     const [accountCount, setAccountCount] = useState<any>(null);
+    const [activeTab, setActiveTab] = useState('deposits');
+    const tabsRef = React.useRef<HTMLDivElement>(null);
 
     const loadCounts = useCallback(async () => {
         setLoading(true);
@@ -209,7 +255,7 @@ export default function BillingDashboard() {
 
     return (
         <PosLayout>
-            <div className="p-4 space-y-4" data-testid="page-billing-dashboard">
+            <div className="p-4 space-y-4 overflow-y-auto h-full" data-testid="page-billing-dashboard">
                 <div className="flex items-center justify-between">
                     <h1 className="text-xl font-semibold">Billing Dashboard — POS Overview</h1>
                     <Button variant="outline" size="sm" onClick={loadCounts} disabled={loading} data-testid="button-refresh-dashboard">
@@ -236,12 +282,20 @@ export default function BillingDashboard() {
                                 </CardHeader>
                                 <CardContent>
                                     <div className="space-y-2">
-                                        {alertCounts.filter((a: any) => Number(a.value) > 0).map((item: any, idx: number) => (
-                                            <div key={idx} className="flex items-center justify-between py-1 border-b last:border-0">
-                                                <span className="text-sm capitalize" data-testid={`text-alert-${item.key}`}>{String(item.key || '').replace(/-/g, ' ')}</span>
-                                                <Badge variant="destructive" data-testid={`badge-alert-${item.key}`}>{item.value}</Badge>
-                                            </div>
-                                        ))}
+                                        {alertCounts.filter((a: any) => Number(a.value) > 0).map((item: any, idx: number) => {
+                                            const route = alertKeyToRoute[item.key];
+                                            return (
+                                                <div
+                                                    key={idx}
+                                                    className={`flex items-center justify-between py-1.5 px-2 rounded border-b last:border-0 ${route ? 'cursor-pointer hover:bg-accent transition-colors' : ''}`}
+                                                    onClick={() => route && setLocation(route)}
+                                                    data-testid={`row-alert-${item.key}`}
+                                                >
+                                                    <span className="text-sm capitalize" data-testid={`text-alert-${item.key}`}>{String(item.key || '').replace(/-/g, ' ')}</span>
+                                                    <Badge variant="destructive" data-testid={`badge-alert-${item.key}`}>{item.value}</Badge>
+                                                </div>
+                                            );
+                                        })}
                                         {alertCounts.filter((a: any) => Number(a.value) > 0).length === 0 && (
                                             <p className="text-sm text-muted-foreground">No active alerts</p>
                                         )}
@@ -259,12 +313,20 @@ export default function BillingDashboard() {
                                 </CardHeader>
                                 <CardContent>
                                     <div className="space-y-2">
-                                        {notificationCounts.filter((n: any) => Number(n.value) > 0).map((item: any, idx: number) => (
-                                            <div key={idx} className="flex items-center justify-between py-1 border-b last:border-0">
-                                                <span className="text-sm capitalize" data-testid={`text-notification-${item.key}`}>{String(item.key || '').replace(/-/g, ' ')}</span>
-                                                <Badge variant="secondary" data-testid={`badge-notification-${item.key}`}>{Number(item.value).toLocaleString()}</Badge>
-                                            </div>
-                                        ))}
+                                        {notificationCounts.filter((n: any) => Number(n.value) > 0).map((item: any, idx: number) => {
+                                            const route = notificationKeyToRoute[item.key];
+                                            return (
+                                                <div
+                                                    key={idx}
+                                                    className={`flex items-center justify-between py-1.5 px-2 rounded border-b last:border-0 ${route ? 'cursor-pointer hover:bg-accent transition-colors' : ''}`}
+                                                    onClick={() => route && setLocation(route)}
+                                                    data-testid={`row-notification-${item.key}`}
+                                                >
+                                                    <span className="text-sm capitalize" data-testid={`text-notification-${item.key}`}>{String(item.key || '').replace(/-/g, ' ')}</span>
+                                                    <Badge variant="secondary" data-testid={`badge-notification-${item.key}`}>{Number(item.value).toLocaleString()}</Badge>
+                                                </div>
+                                            );
+                                        })}
                                         {notificationCounts.filter((n: any) => Number(n.value) > 0).length === 0 && (
                                             <p className="text-sm text-muted-foreground">No notifications</p>
                                         )}
@@ -282,12 +344,32 @@ export default function BillingDashboard() {
                         </CardHeader>
                         <CardContent>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                {posDetailKeys.map((key) => (
-                                    <div key={key} className="border rounded-lg p-3">
-                                        <p className="text-xs text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1').replace(/count$/i, '').trim()}</p>
-                                        <p className="text-lg font-semibold" data-testid={`text-pos-detail-${key}`}>{safeNum(posDetailsObj[key])}</p>
-                                    </div>
-                                ))}
+                                {posDetailKeys.map((key) => {
+                                    const tabTarget = detailKeyToTab[key];
+                                    const routeTarget = detailKeyToRoute[key];
+                                    const hasValue = Number(posDetailsObj[key]) > 0;
+                                    const isClickable = hasValue && (!!tabTarget || !!routeTarget);
+                                    return (
+                                        <div
+                                            key={key}
+                                            className={`border rounded-lg p-3 transition-colors ${isClickable ? 'cursor-pointer hover:bg-accent hover:border-primary/40' : ''} ${tabTarget && activeTab === tabTarget ? 'border-primary bg-accent/50' : ''}`}
+                                            onClick={() => {
+                                                if (!isClickable) return;
+                                                if (routeTarget) {
+                                                    setLocation(routeTarget);
+                                                } else if (tabTarget) {
+                                                    setActiveTab(tabTarget);
+                                                    setTimeout(() => tabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+                                                }
+                                            }}
+                                            data-testid={`card-pos-detail-${key}`}
+                                        >
+                                            <p className="text-xs text-muted-foreground">{detailKeyLabels[key] || key.replace(/([A-Z])/g, ' $1').replace(/count$/i, '').trim()}</p>
+                                            <p className="text-lg font-semibold" data-testid={`text-pos-detail-${key}`}>{safeNum(posDetailsObj[key])}</p>
+                                            {isClickable && <p className="text-[10px] text-primary mt-1">{routeTarget ? 'Click to navigate' : 'Click to view details'}</p>}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </CardContent>
                     </Card>
@@ -325,7 +407,8 @@ export default function BillingDashboard() {
                     </Card>
                 )}
 
-                <Tabs defaultValue="deposits" className="w-full">
+                <div ref={tabsRef}>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <TabsList data-testid="tabs-dashboard-tables">
                         <TabsTrigger value="deposits" data-testid="tab-deposits">
                             <Banknote className="h-4 w-4 mr-1" /> Deposits
@@ -425,6 +508,7 @@ export default function BillingDashboard() {
                         />
                     </TabsContent>
                 </Tabs>
+                </div>
             </div>
         </PosLayout>
     );
