@@ -57,14 +57,24 @@ export function UnifiedSearch() {
       };
     } else if (result.type === 'DIRECT') {
       const item = result.data;
+      if (item.isGroup) {
+        return;
+      }
       newItem = {
         id: crypto.randomUUID(),
         type: 'DIRECT_INCOME',
-        description: item.description,
-        reference: item.scoaItem,
-        amountDue: item.price || 0,
-        amountToPay: item.price || 0,
-        originalData: item
+        description: item.description || item.name,
+        reference: item.scoaItem || item.name || '',
+        amountDue: 0,
+        amountToPay: 0,
+        originalData: {
+          ...item,
+          scoaItemId: item.scoaItemId || item.id,
+          groupId: item.groupId,
+          groupName: item.groupName,
+          scoaItem: item.scoaItem || item.name,
+          vatRate: item.vatRate || 15,
+        }
       };
     } else if (result.type === 'PREPAID') {
         const acc = result.data as Account;

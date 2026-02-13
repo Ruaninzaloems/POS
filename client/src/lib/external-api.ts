@@ -943,6 +943,39 @@ export async function platinumGetPropertyDetails(params: Record<string, string>)
     return platinumFetch(`/api/platinum/billing-account-management/get-property-details?${qs}`);
 }
 
+// --- Miscellaneous Payments (Direct Income) ---
+
+export interface MiscPaymentGroup {
+    id: number;
+    name: string;
+}
+
+export interface MiscPaymentScoaItem {
+    id: number;
+    name: string;
+    groupId: number;
+    groupName: string;
+}
+
+export async function fetchMiscPaymentGroups(): Promise<MiscPaymentGroup[]> {
+    const res = await fetch('/api/platinum/billing-payment-miscellaneous/get-groups');
+    if (!res.ok) throw new Error('Failed to fetch misc payment groups');
+    return res.json();
+}
+
+export async function fetchMiscPaymentScoaItems(groupId: number): Promise<MiscPaymentScoaItem[]> {
+    const res = await fetch(`/api/platinum/billing-payment-miscellaneous/get-scoa-items?mISCPayGroupId=${groupId}`);
+    if (!res.ok) throw new Error('Failed to fetch SCOA items');
+    const items = await res.json();
+    return items;
+}
+
+export async function fetchMiscPaymentVatRate(): Promise<number> {
+    const res = await fetch('/api/platinum/billing-payment-miscellaneous/get-vat-rate');
+    if (!res.ok) throw new Error('Failed to fetch VAT rate');
+    return res.json();
+}
+
 // --- Dashboard ---
 
 export async function platinumGetPosCount(): Promise<any> {

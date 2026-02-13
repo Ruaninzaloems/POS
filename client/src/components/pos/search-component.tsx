@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, CreditCard, Users, Zap, FileText, Layers, Info, Filter, Loader2, Building } from 'lucide-react';
+import { Search, CreditCard, Users, Zap, FileText, Layers, Info, Filter, Loader2, Building, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ACCOUNTS, DIRECT_INCOME_ITEMS, ACCOUNT_GROUPS, CLEARANCES, Account } from '@/lib/mock-data';
-import { searchInstitutions, InstitutionSearchResult } from '@/lib/external-api';
+import { ACCOUNTS, ACCOUNT_GROUPS, CLEARANCES, Account } from '@/lib/mock-data';
+import { searchInstitutions, InstitutionSearchResult, fetchMiscPaymentGroups, fetchMiscPaymentScoaItems, MiscPaymentGroup, MiscPaymentScoaItem } from '@/lib/external-api';
 
 export function parseMobileFromContactDetails(contactDetails: string | undefined | null): string {
     if (!contactDetails) return '';
@@ -38,60 +38,69 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  
+  const [miscGroups, setMiscGroups] = useState<MiscPaymentGroup[]>([]);
+  const [miscGroupsLoading, setMiscGroupsLoading] = useState(true);
+  const [miscGroupsError, setMiscGroupsError] = useState(false);
+  const [expandedGroupId, setExpandedGroupId] = useState<number | null>(null);
+  const [scoaItems, setScoaItems] = useState<MiscPaymentScoaItem[]>([]);
+  const [loadingScoaItems, setLoadingScoaItems] = useState(false);
+  const [scoaItemsError, setScoaItemsError] = useState(false);
+
+  useEffect(() => {
+    setMiscGroupsLoading(true);
+    setMiscGroupsError(false);
+    fetchMiscPaymentGroups()
+      .then(groups => {
+        setMiscGroups(groups);
+      })
+      .catch(err => {
+        console.warn('Failed to load misc payment groups:', err);
+        setMiscGroupsError(true);
+      })
+      .finally(() => setMiscGroupsLoading(false));
+  }, []);
+
+  const handleExpandGroup = async (groupId: number) => {
+    if (expandedGroupId === groupId) {
+      setExpandedGroupId(null);
+      setScoaItems([]);
+      setScoaItemsError(false);
+      return;
+    }
+    setExpandedGroupId(groupId);
+    setLoadingScoaItems(true);
+    setScoaItemsError(false);
+    setScoaItems([]);
+    try {
+      const items = await fetchMiscPaymentScoaItems(groupId);
+      const group = miscGroups.find(g => g.id === groupId);
+      setScoaItems(items.map(item => ({ ...item, groupId, groupName: group?.name || '' })));
+    } catch (err) {
+      console.error('Failed to fetch SCOA items:', err);
+      setScoaItems([]);
+      setScoaItemsError(true);
+    } finally {
+      setLoadingScoaItems(false);
+    }
+  };
 
   // Filter logic
   const results = React.useMemo(() => {
     if (!searchQuery || searchQuery.length < 2) return [];
     
-    // User requested to ONLY return from microservices for accounts.
-    // We will disable local account search.
-    // We will keep other types (Direct Income, etc) if they are not part of the account microservice yet, 
-    // but based on "only return from microservices", we might want to hide them or user implies account search.
-    
-    // For safety in this prototype step, I will comment out the local ACCOUNT search 
-    // but keep the others (Direct Income, Clearance) as they likely don't have endpoints yet 
-    // and might be needed for the POS to function (e.g. paying for a fine).
-    
     const q = searchQuery.toLowerCase();
     let combinedResults: SearchResult[] = [];
-    
-    /* 
-    // DISABLED LOCAL ACCOUNT SEARCH - USING EXTERNAL API ONLY
-    if (scope === 'ALL' || scope === 'ACCOUNT') {
-        const accounts = ACCOUNTS.filter(a => 
-          a.accountNo.toLowerCase().includes(q) || 
-          a.name.toLowerCase().includes(q) ||
-          a.idNo.includes(q) ||
-          a.address.toLowerCase().includes(q) ||
-          (a.sgNo && a.sgNo.toLowerCase().includes(q)) ||
-          (a.oldCode && a.oldCode.toLowerCase().includes(q))
-        ).map(a => ({ type: 'ACCOUNT' as const, data: a, label: `${a.accountNo} - ${a.name}` }));
-        combinedResults = [...combinedResults, ...accounts];
-    }
 
-    if (scope === 'ALL' || scope === 'PREPAID') {
-        const prepaid = ACCOUNTS.filter(a => 
-            a.prepaidMeterNo && (
-                a.prepaidMeterNo.includes(q) ||
-                a.name.toLowerCase().includes(q) ||
-                a.accountNo.toLowerCase().includes(q) ||
-                a.address.toLowerCase().includes(q) ||
-                (a.sgNo && a.sgNo.toLowerCase().includes(q)) ||
-                (a.oldCode && a.oldCode.toLowerCase().includes(q)) ||
-                a.idNo.includes(q)
-            )
-        ).map(a => ({ type: 'PREPAID' as const, data: a, label: `${a.prepaidType || 'Meter'}: ${a.prepaidMeterNo} (${a.name})` }));
-        combinedResults = [...combinedResults, ...prepaid];
-    }
-    */
-
-    // Keep these valid for POS functionality until replaced by APIs
     if (scope === 'ALL' || scope === 'DIRECT') {
-        const di = DIRECT_INCOME_ITEMS.filter(d => 
-          d.description.toLowerCase().includes(q) ||
-          d.groupName.toLowerCase().includes(q)
-        ).map(d => ({ type: 'DIRECT' as const, data: d, label: `${d.description} (${d.groupName})` }));
-        combinedResults = [...combinedResults, ...di];
+        const matchedGroups = miscGroups.filter(g => 
+          g.name.toLowerCase().includes(q)
+        ).slice(0, 6).map(g => ({ 
+          type: 'DIRECT' as const, 
+          data: { id: g.id.toString(), groupName: g.name, description: g.name, scoaItem: '', vatRate: 15, isGroup: true, groupId: g.id },
+          label: g.name
+        }));
+        combinedResults = [...combinedResults, ...matchedGroups];
     }
 
     if (scope === 'ALL' || scope === 'GROUP') {
@@ -112,8 +121,8 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
         combinedResults = [...combinedResults, ...clearances];
     }
 
-    return combinedResults.slice(0, 8);
-  }, [searchQuery, scope, institutions]);
+    return combinedResults.slice(0, 10);
+  }, [searchQuery, scope, institutions, miscGroups]);
 
   // External Search Logic
   const [externalResults, setExternalResults] = useState<SearchResult[]>([]);
@@ -252,6 +261,8 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
   useEffect(() => {
     if (searchQuery.length >= 2) setIsOpen(true);
     else setIsOpen(false);
+    setExpandedGroupId(null);
+    setScoaItems([]);
   }, [searchQuery]);
 
   // Click outside to close
@@ -300,12 +311,15 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
         <PopoverContent className="w-80" align="end">
           <div className="space-y-4">
             <h4 className="font-medium leading-none mb-4">Search Tips</h4>
-            <div className="grid grid-cols-[80px_1fr] gap-x-2 gap-y-3 text-sm text-muted-foreground">
+            <div className="grid grid-cols-[100px_1fr] gap-x-2 gap-y-3 text-sm text-muted-foreground">
                 <span className="font-semibold text-foreground text-right">Accounts:</span>
                 <span>Name, Account No, ID No, SG No, Old Code, or Address.</span>
                 
                 <span className="font-semibold text-foreground text-right">Prepaid:</span>
                 <span>Meter No or Owner Details.</span>
+                
+                <span className="font-semibold text-foreground text-right">Direct Pay:</span>
+                <span>e.g. "Building", "Burial", "Fire", "Electricity".</span>
                 
                 <span className="font-semibold text-foreground text-right">Groups:</span>
                 <span>Group Name (e.g. "Sunset").</span>
@@ -317,7 +331,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
         </PopoverContent>
       </Popover>
 
-      {isOpen && (results.length > 0 || externalResults.length > 0 || isSearchingExternal) && (
+      {isOpen && (results.length > 0 || externalResults.length > 0 || isSearchingExternal || (miscGroupsLoading && searchQuery.length >= 2)) && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-popover text-popover-foreground rounded-lg border shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100 z-[100] max-h-[60vh] overflow-y-auto">
           <div className="py-1">
             {isSearchingExternal && (
@@ -327,40 +341,109 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                 </div>
             )}
             
-            {combinedResults.map((result, idx) => (
-              <button
-                key={`${result.type}-${idx}`}
-                className="w-full text-left px-4 py-4 hover:bg-muted/50 focus:bg-muted focus:outline-none flex items-center gap-4 transition-colors group border-b last:border-0"
-                onClick={() => handleSelect(result)}
-              >
-                <div className={`
-                  w-12 h-12 rounded-full flex items-center justify-center shrink-0 shadow-sm
-                  ${result.type === 'ACCOUNT' ? 'bg-blue-100 text-blue-600' : ''}
-                  ${result.type === 'PREPAID' ? 'bg-yellow-100 text-yellow-600' : ''}
-                  ${result.type === 'DIRECT' ? 'bg-green-100 text-green-600' : ''}
-                  ${result.type === 'GROUP' ? 'bg-purple-100 text-purple-600' : ''}
-                  ${result.type === 'CLEARANCE' ? 'bg-amber-100 text-amber-600' : ''}
-                `}>
-                  {result.type === 'ACCOUNT' && <Users className="w-6 h-6" />}
-                  {result.type === 'PREPAID' && <Zap className="w-6 h-6" />}
-                  {result.type === 'DIRECT' && <CreditCard className="w-6 h-6" />}
-                  {result.type === 'GROUP' && <Building className="w-6 h-6" />}
-                  {result.type === 'CLEARANCE' && <FileText className="w-6 h-6" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-lg group-hover:text-primary transition-colors flex items-center gap-2">
-                      {result.label}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {result.type === 'ACCOUNT' && (result.data as any).address}
-                    {result.type === 'DIRECT' && (result.data as any).scoaItem}
-                    {result.type === 'GROUP' && (result.data as any).members && (
-                        <span>Total Outstanding: R {((result.data as any).totalOutstanding || 0).toFixed(2)} | {(result.data as any).memberCount} account(s)</span>
+            {combinedResults.map((result, idx) => {
+              const isDirectGroup = result.type === 'DIRECT' && (result.data as any).isGroup;
+              const groupId = (result.data as any).groupId;
+              const isExpanded = isDirectGroup && expandedGroupId === groupId;
+              
+              return (
+                <div key={`${result.type}-${idx}`}>
+                  <button
+                    className="w-full text-left px-4 py-3 hover:bg-muted/50 focus:bg-muted focus:outline-none flex items-center gap-4 transition-colors group border-b last:border-0"
+                    onClick={() => {
+                      if (isDirectGroup) {
+                        handleExpandGroup(groupId);
+                      } else {
+                        handleSelect(result);
+                      }
+                    }}
+                    data-testid={`search-result-${result.type}-${idx}`}
+                  >
+                    <div className={`
+                      w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm
+                      ${result.type === 'ACCOUNT' ? 'bg-blue-100 text-blue-600' : ''}
+                      ${result.type === 'PREPAID' ? 'bg-yellow-100 text-yellow-600' : ''}
+                      ${result.type === 'DIRECT' ? 'bg-green-100 text-green-600' : ''}
+                      ${result.type === 'GROUP' ? 'bg-purple-100 text-purple-600' : ''}
+                      ${result.type === 'CLEARANCE' ? 'bg-amber-100 text-amber-600' : ''}
+                    `}>
+                      {result.type === 'ACCOUNT' && <Users className="w-5 h-5" />}
+                      {result.type === 'PREPAID' && <Zap className="w-5 h-5" />}
+                      {result.type === 'DIRECT' && <CreditCard className="w-5 h-5" />}
+                      {result.type === 'GROUP' && <Building className="w-5 h-5" />}
+                      {result.type === 'CLEARANCE' && <FileText className="w-5 h-5" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm group-hover:text-primary transition-colors flex items-center gap-2">
+                          {result.label}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {result.type === 'ACCOUNT' && (result.data as any).address}
+                        {result.type === 'DIRECT' && isDirectGroup && 'Direct Payment Group — click to view items'}
+                        {result.type === 'GROUP' && (result.data as any).members && (
+                            <span>Total Outstanding: R {((result.data as any).totalOutstanding || 0).toFixed(2)} | {(result.data as any).memberCount} account(s)</span>
+                        )}
+                      </div>
+                    </div>
+                    {isDirectGroup && (
+                      <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                     )}
-                  </div>
+                  </button>
+                  
+                  {isExpanded && (
+                    <div className="bg-green-50/50 border-b">
+                      {loadingScoaItems ? (
+                        <div className="px-8 py-3 text-xs text-muted-foreground flex items-center gap-2">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          Loading SCOA items...
+                        </div>
+                      ) : scoaItemsError ? (
+                        <div className="px-8 py-3 text-xs text-red-500">
+                          Failed to load items. Click the group again to retry.
+                        </div>
+                      ) : scoaItems.length === 0 ? (
+                        <div className="px-8 py-3 text-xs text-muted-foreground">
+                          No SCOA items found for this group.
+                        </div>
+                      ) : (
+                        scoaItems.map((item, sIdx) => (
+                          <button
+                            key={`scoa-${item.id}`}
+                            className="w-full text-left px-8 py-2.5 hover:bg-green-100/50 flex items-center gap-3 transition-colors border-b last:border-0"
+                            data-testid={`search-result-scoa-${item.id}`}
+                            onClick={() => {
+                              const group = miscGroups.find(g => g.id === groupId);
+                              handleSelect({
+                                type: 'DIRECT',
+                                data: {
+                                  id: item.id.toString(),
+                                  groupName: group?.name || '',
+                                  description: item.name,
+                                  scoaItem: item.name,
+                                  scoaItemId: item.id,
+                                  groupId: groupId,
+                                  vatRate: 15,
+                                  isGroup: false,
+                                },
+                                label: item.name
+                              });
+                            }}
+                          >
+                            <div className="w-6 h-6 rounded-full bg-green-200 text-green-700 flex items-center justify-center shrink-0">
+                              <CreditCard className="w-3 h-3" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium truncate">{item.name}</div>
+                              <div className="text-xs text-muted-foreground">SCOA Item ID: {item.id}</div>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
-              </button>
-            ))}
+              );
+            })}
             
             {combinedResults.length === 0 && !isSearchingExternal && (
                 <div className="p-4 text-center text-muted-foreground text-sm">
