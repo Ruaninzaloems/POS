@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { useLocation } from 'wouter';
 import { Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { fetchPlatinumUserInfo, platinumSubmitCashierSetup } from '@/lib/external-api';
+import { platinumValidateCashier, platinumGetCashOffices, platinumSubmitCashierSetup } from '@/lib/external-api';
 
 interface PlatinumCashOfficeView {
     cashOffice_ID: number;
@@ -38,7 +38,7 @@ interface PlatinumCashierDetail {
 }
 
 export default function CashierSetup() {
-    const { startSession, switchUser, currentUser, activeSession, sessionLoading, sessionDetails } = usePos();
+    const { startSession, switchUser, currentUser, activeSession, sessionLoading, sessionDetails, platinumUser } = usePos();
     const [, setLocation] = useLocation();
 
     const [cashOfficeViews, setCashOfficeViews] = useState<PlatinumCashOfficeView[]>([]);
@@ -48,9 +48,12 @@ export default function CashierSetup() {
     const [floatInput, setFloatInput] = useState<string>('0.00');
     const [selectedOfficeId, setSelectedOfficeId] = useState<string>('');
     const [error, setError] = useState<string>('');
-    const [firstName, setFirstName] = useState<string>('');
-    const [lastName, setLastName] = useState<string>('');
-    const [userId, setUserId] = useState<number | null>(null);
+    const [validationMessage, setValidationMessage] = useState<string>('');
+
+    const userId = platinumUser?.user_ID || Number(currentUser.id) || 0;
+    const firstName = platinumUser?.firstName || currentUser.name?.split(' ')[0] || '';
+    const lastName = platinumUser?.lastName || currentUser.name?.split(' ').slice(1).join(' ') || '';
+    const finYear = platinumUser?.finYear || '';
 
     useEffect(() => {
         if (activeSession && sessionDetails) {
@@ -59,93 +62,80 @@ export default function CashierSetup() {
         }
 
         if (sessionLoading) return;
+        if (!userId || !finYear) {
+            setLoading(false);
+            setError('Could not determine user ID or financial year. Please refresh.');
+            return;
+        }
 
         const loadData = async () => {
             try {
                 setLoading(true);
 
-                const userInfo = await fetchPlatinumUserInfo();
-                if (userInfo) {
-                    setFirstName(userInfo.firstName || '');
-                    setLastName(userInfo.lastName || '');
-                    setUserId(userInfo.user_ID);
-                }
+                console.log(`[CashierSetup] Step 1: validateCashier GET - userId=${userId}, finYear=${finYear}`);
+                const validateResult = await platinumValidateCashier(userId, Number(finYear));
+                console.log(`[CashierSetup] validateCashier response:`, validateResult);
 
-                const cashierCheckRes = await fetch('/api/platinum/auth/ensure-cashier', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ officeId: 1 }),
-                }).catch(() => null);
-
-                let defaultOfficeId: number | null = null;
-
-                if (cashierCheckRes && cashierCheckRes.ok) {
-                    const checkData = await cashierCheckRes.json();
-                    if (checkData.success && checkData.cashierId) {
+                if (validateResult && typeof validateResult === 'object') {
+                    if (validateResult.id && validateResult.id !== 0) {
                         setIsCashierRegistered(true);
-                        defaultOfficeId = checkData.officeId || null;
+                        setCashierDetail(validateResult);
+                        setValidationMessage('Cashier validated successfully.');
 
-                        const [detailRes, activeOfficeRes] = await Promise.all([
-                            fetch(`/api/platinum/receipt-prepaid/cashier-details-by-id?cashierId=${userInfo?.user_ID || currentUser.id}`).catch(() => null),
-                            fetch(`/api/platinum/receipt-prepaid/active-cash-office-details?cashierId=${userInfo?.user_ID || currentUser.id}`).catch(() => null),
-                        ]);
-
-                        if (detailRes && detailRes.ok) {
-                            const detail = await detailRes.json();
-                            setCashierDetail(detail);
-                            if (detail.cashFloat != null && detail.cashFloat > 0) {
-                                setFloatInput(detail.cashFloat.toFixed(2));
-                            }
+                        if (validateResult.cashFloat != null && validateResult.cashFloat > 0) {
+                            setFloatInput(validateResult.cashFloat.toFixed(2));
                         }
 
-                        if (activeOfficeRes && activeOfficeRes.ok) {
-                            const activeOffice = await activeOfficeRes.json();
-                            if (activeOffice && activeOffice.cashOffice_ID) {
-                                defaultOfficeId = activeOffice.cashOffice_ID;
-                                setSelectedOfficeId(String(activeOffice.cashOffice_ID));
-                            }
-                        } else if (defaultOfficeId) {
-                            setSelectedOfficeId(String(defaultOfficeId));
+                        if (validateResult.officeId || validateResult.const_CashOffice?.cashOffice_ID) {
+                            const offId = validateResult.officeId || validateResult.const_CashOffice?.cashOffice_ID;
+                            setSelectedOfficeId(String(offId));
                         }
                     } else {
                         setIsCashierRegistered(false);
+                        setValidationMessage('Cashier is not registered in the billing system.');
                     }
+                } else if (validateResult === true || (typeof validateResult === 'number' && validateResult > 0)) {
+                    setIsCashierRegistered(true);
+                    setValidationMessage('Cashier validated successfully.');
                 } else {
                     setIsCashierRegistered(false);
+                    setValidationMessage('Cashier validation returned no data.');
                 }
 
-                const officesRes = await fetch('/api/platinum/receipt-prepaid/cash-offices').catch(() => null);
-                if (officesRes && officesRes.ok) {
-                    const data = await officesRes.json();
-                    if (Array.isArray(data)) {
-                        setCashOfficeViews(data);
-                    }
+                console.log(`[CashierSetup] Step 2: getCashOffices GET - finYear=${finYear}`);
+                const offices = await platinumGetCashOffices(finYear);
+                console.log(`[CashierSetup] getCashOffices response:`, offices);
+
+                if (Array.isArray(offices) && offices.length > 0) {
+                    setCashOfficeViews(offices);
                 } else {
-                    if (defaultOfficeId) {
-                        const activeOfficeRes = await fetch(`/api/platinum/receipt-prepaid/active-cash-office-details?cashierId=${userInfo?.user_ID || currentUser.id}`).catch(() => null);
-                        if (activeOfficeRes && activeOfficeRes.ok) {
-                            const activeOffice = await activeOfficeRes.json();
-                            if (activeOffice && activeOffice.cashOffice_ID) {
-                                setCashOfficeViews([{
-                                    cashOffice_ID: activeOffice.cashOffice_ID,
-                                    cashOfficeDesc: activeOffice.cashOfficeDesc || '',
-                                    cashOnHandLimit: activeOffice.cashOnHandLimit || 999999,
-                                    scoaConfigurationID: activeOffice.scoaConfigurationID || null,
-                                    vote1: null, vote: null, vote_ID: null, voteDesc: null,
-                                }]);
+                    console.warn('[CashierSetup] No cash offices returned from Platinum API');
+                    const fallbackRes = await fetch(`/api/platinum/receipt-prepaid/active-cash-office-details?cashierId=${userId}`).catch(() => null);
+                    if (fallbackRes && fallbackRes.ok) {
+                        const activeOffice = await fallbackRes.json();
+                        if (activeOffice && activeOffice.cashOffice_ID) {
+                            setCashOfficeViews([{
+                                cashOffice_ID: activeOffice.cashOffice_ID,
+                                cashOfficeDesc: activeOffice.cashOfficeDesc || '',
+                                cashOnHandLimit: activeOffice.cashOnHandLimit || 999999,
+                                scoaConfigurationID: activeOffice.scoaConfigurationID || null,
+                                vote1: null, vote: null, vote_ID: null, voteDesc: null,
+                            }]);
+                            if (!selectedOfficeId) {
+                                setSelectedOfficeId(String(activeOffice.cashOffice_ID));
                             }
                         }
                     }
                 }
-            } catch (e) {
-                console.warn('Failed to load cashier setup data', e);
-                setError('Could not connect to the billing system.');
+            } catch (e: any) {
+                console.error('[CashierSetup] Failed to load cashier data', e);
+                setError(`Could not connect to the billing system: ${e.message || 'Unknown error'}`);
             } finally {
                 setLoading(false);
             }
         };
         loadData();
-    }, [activeSession, sessionLoading, sessionDetails]);
+    }, [activeSession, sessionLoading, sessionDetails, userId, finYear]);
 
     const selectedOffice = cashOfficeViews.find(o => String(o.cashOffice_ID) === selectedOfficeId);
     const effectiveOffice = selectedOffice ? {
@@ -178,20 +168,20 @@ export default function CashierSetup() {
             return;
         }
 
-        const effectiveUserId = userId || Number(currentUser.id) || 0;
-        if (!effectiveUserId) {
+        if (!userId) {
             setError('Could not determine user ID. Please refresh and try again.');
             return;
         }
 
         setSubmitting(true);
         try {
+            console.log(`[CashierSetup] Step 3: submitCashierSetup POST - userId=${userId}, officeId=${effectiveOffice.cashOffice_ID}`);
             const cashierSetupPayload = {
                 id: cashierDetail?.id || 0,
                 cashFloat: float,
                 officeId: effectiveOffice.cashOffice_ID,
                 isActive: true,
-                user_Id: effectiveUserId,
+                user_Id: userId,
                 isVirtual: false,
                 const_CashOffice: {
                     cashOffice_ID: effectiveOffice.cashOffice_ID,
@@ -203,8 +193,8 @@ export default function CashierSetup() {
                 },
             };
 
-            await platinumSubmitCashierSetup(cashierSetupPayload);
-            console.log('Cashier setup submitted to Platinum API successfully');
+            const setupResult = await platinumSubmitCashierSetup(cashierSetupPayload);
+            console.log('[CashierSetup] submitCashierSetup response:', setupResult);
         } catch (err: any) {
             const errorMsg = err?.message || '';
             const isUserDetailError = errorMsg.includes('UserDetail');
@@ -222,7 +212,7 @@ export default function CashierSetup() {
         const officeName = effectiveOffice.cashOfficeDesc || '';
 
         const fullName = `${firstName} ${lastName}`.trim();
-        switchUser(String(effectiveUserId), fullName || currentUser.name, officeName);
+        switchUser(String(userId), fullName || currentUser.name, officeName);
 
         startSession(officeId, float, officeName);
     };
@@ -234,7 +224,7 @@ export default function CashierSetup() {
                     <CardContent className="p-12 flex flex-col items-center gap-4">
                         <Loader2 className="h-8 w-8 animate-spin text-slate-600" />
                         <p className="text-slate-600">
-                            {sessionLoading ? 'Checking for active session...' : 'Loading cashier information...'}
+                            {sessionLoading ? 'Checking for active session...' : 'Validating cashier...'}
                         </p>
                     </CardContent>
                 </Card>
@@ -259,7 +249,7 @@ export default function CashierSetup() {
                             <div>
                                 <p className="font-medium text-amber-800">Cashier Not Registered</p>
                                 <p className="text-sm text-amber-700 mt-1">
-                                    User <strong>{`${firstName} ${lastName}`.trim() || currentUser.name}</strong> (ID: {userId || currentUser.id}) is not yet registered as a cashier in the billing system.
+                                    User <strong>{`${firstName} ${lastName}`.trim() || currentUser.name}</strong> (ID: {userId}) is not yet registered as a cashier in the billing system.
                                     Please contact your system administrator to complete the cashier registration in the Platinum admin portal before processing payments.
                                 </p>
                             </div>
@@ -282,7 +272,7 @@ export default function CashierSetup() {
                         <div className="grid grid-cols-[200px_1fr] items-center gap-4">
                             <Label className="text-right text-slate-600">Name</Label>
                             <Input
-                                value={firstName || currentUser.name}
+                                value={firstName}
                                 disabled
                                 className="bg-slate-100 border-slate-300 text-slate-800 font-medium"
                                 data-testid="input-cashier-name"
@@ -302,7 +292,7 @@ export default function CashierSetup() {
                         <div className="grid grid-cols-[200px_1fr] items-center gap-4">
                             <Label className="text-right text-slate-600">User ID</Label>
                             <Input
-                                value={String(userId || currentUser.id)}
+                                value={String(userId)}
                                 disabled
                                 className="bg-slate-100 border-slate-300 text-slate-800 font-mono"
                                 data-testid="input-cashier-id"

@@ -506,8 +506,9 @@ export async function platinumGetServiceTypePrepaidList(accountId: number): Prom
     return platinumFetch(`/api/platinum/receipt-prepaid/service-type-wise-prepaid-list?accountId=${accountId}`);
 }
 
-export async function platinumGetCashOffices(): Promise<any[]> {
-    return platinumFetch(`/api/platinum/receipt-prepaid/cash-offices`);
+export async function platinumGetCashOffices(finYear?: string): Promise<any[]> {
+    const params = finYear ? `?finYear=${encodeURIComponent(finYear)}` : '';
+    return platinumFetch(`/api/platinum/receipt-prepaid/cash-offices${params}`);
 }
 
 export async function platinumSubmitCashierSetup(data: any): Promise<any> {
@@ -585,13 +586,6 @@ export async function platinumGetMultipleAccountPayment(params: Record<string, s
     return platinumFetch(`/api/platinum/billing-payment/get-multiple-account-payment?${qs}`);
 }
 
-export async function platinumSubmitMultiplePayment(userId: string, data: any): Promise<any> {
-    return platinumFetch(`/api/platinum/billing-payment/submit-multiple-payment/${userId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-    });
-}
 
 export async function platinumSearchAccountsPayment(data: any): Promise<any[]> {
     return platinumFetch(`/api/platinum/billing-payment/search-accounts`, {
@@ -1227,18 +1221,6 @@ export async function submitConsumerPayment(userId: number, data: any): Promise<
     return await res.json();
 }
 
-export async function submitMultiplePayment(userId: number, data: any): Promise<any> {
-    const res = await fetch(`/api/platinum/billing-payment/submit-multiple-payment/${userId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Failed to submit multiple payment: ${text}`);
-    }
-    return await res.json();
-}
 
 export async function submitPrepaidPayment(data: any): Promise<any> {
     const res = await fetch('/api/platinum/receipt-prepaid/submit-prepaid-payment', {

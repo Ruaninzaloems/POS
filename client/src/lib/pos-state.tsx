@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from '
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, MOCK_TRANSACTIONS, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, platinumSubmitCashierSetup } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, platinumSubmitCashierSetup } from './external-api';
 
 if (import.meta.hot) {
   import.meta.hot.accept(() => {
@@ -133,6 +133,7 @@ interface PosState {
       cashiers: ApiCashier[];
       billingConfig: BillingConfig | null;
   };
+  platinumUser: PlatinumUserInfo | null;
 }
 
 interface PosActions {
@@ -399,27 +400,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           officeDesc: officeName || '',
           floatAmount
       });
-
-      try {
-          const ensureRes = await fetch('/api/platinum/auth/ensure-cashier', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ officeId: Number(officeId) }),
-          });
-          const ensureData = await ensureRes.json();
-          if (ensureData.success) {
-              console.log("Platinum cashier setup confirmed:", ensureData.message);
-          } else if (ensureData.needsSetup) {
-              console.warn("Cashier not mapped in Platinum:", ensureData.message);
-              toast({
-                  title: "Cashier Not Mapped",
-                  description: `User ${currentUser.name} (ID: ${currentUser.id}) is not registered as a cashier in the billing system. Payments cannot be posted until cashier mapping is completed.`,
-                  variant: "destructive",
-              });
-          }
-      } catch (e) {
-          console.warn("Failed to check cashier setup in Platinum", e);
-      }
+      console.log(`[startSession] Session started - officeId: ${officeId}, float: ${floatAmount}, office: ${officeName}`);
   };
 
   const endSession = async () => {
@@ -839,8 +820,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     perAccountPayments.push({ acct, localItem, itemPayment, acctOutstanding });
                 }
 
-                let useMultiplePaymentFallback = false;
-
                 for (let i = 0; i < perAccountPayments.length; i++) {
                     const { acct, itemPayment, acctOutstanding } = perAccountPayments[i];
 
@@ -867,68 +846,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
                     console.log(`[Priority 1 ${label}] Submitting consumer payment for account ${acct.account_ID} (${acct.name}), amount: R${itemPayment}, outstanding: R${acctOutstanding}`);
 
-                    try {
-                        const result = await submitConsumerPayment(Number(currentUser.id), {
-                            account: acct,
-                            requestModel,
-                        });
-                        console.log(`[Priority 1 ${label}] submit-consumer-payment response for account ${acct.account_ID}:`, result);
-                        if (result && result.isSuccess === false) {
-                            console.warn(`[Priority 1 ${label}] submit-consumer-payment returned isSuccess=false: ${result.message}. Falling back to submit-multiple-payment`);
-                            useMultiplePaymentFallback = true;
-                            break;
-                        }
-                        const ids = extractReceiptIds(result);
-                        allReceiptIds.push(...ids);
-                    } catch (err: any) {
-                        console.warn(`[Priority 1 ${label}] submit-consumer-payment failed for account ${acct.account_ID}: ${err?.message}. Falling back to submit-multiple-payment`);
-                        useMultiplePaymentFallback = true;
-                        break;
-                    }
-                }
-
-                if (useMultiplePaymentFallback) {
-                    console.log(`[Priority 1 ${label}] Using submit-multiple-payment fallback (partial receipts: ${allReceiptIds.length})`);
-                    const serverAcctList = serverAccounts && serverAccounts.length > 0 ? serverAccounts : [];
-                    const multiAccounts = serverAcctList.map((sa: any) => {
-                        const saId = String(sa.accountID ?? sa.account_ID);
-                        const match = perAccountPayments.find(p => String(p.acct.account_ID) === saId);
-                        return {
-                            ...sa,
-                            paymentAmount: match?.itemPayment ?? 0,
-                        };
+                    const result = await submitConsumerPayment(Number(currentUser.id), {
+                        account: acct,
+                        requestModel,
                     });
-                    const totalPayment = perAccountPayments.reduce((sum, p) => sum + p.itemPayment, 0);
-                    const multiRequestModel = {
-                        finYear,
-                        receiptDate,
-                        totalAmount: totalPayment,
-                        tenderAmount: tenderAmt,
-                        changeAmount: changeAmt,
-                        paymentType: paymentTypeId,
-                        paymentOption: paymentOptionId,
-                        outStandingAmount: perAccountPayments.reduce((sum, p) => sum + p.acctOutstanding, 0),
-                        cardNumber: '',
-                        expiryDate: '',
-                        chequeNumber: '',
-                        chequeDate: null,
-                        processingMonth: null,
-                    };
-                    try {
-                        const multiResult = await submitMultiplePayment(Number(currentUser.id), {
-                            accounts: multiAccounts,
-                            requestModel: multiRequestModel,
-                        });
-                        console.log(`[Priority 1 ${label}] submit-multiple-payment response:`, multiResult);
-                        if (multiResult && multiResult.isSuccess === false) {
-                            throw new Error(multiResult.message || 'Payment submission failed');
-                        }
-                        const ids = extractReceiptIds(multiResult);
-                        allReceiptIds.push(...ids);
-                    } catch (err: any) {
-                        console.error(`[Priority 1 ${label}] submit-multiple-payment also failed:`, err?.message);
-                        throw err;
+                    console.log(`[Priority 1 ${label}] submit-consumer-payment response for account ${acct.account_ID}:`, result);
+                    if (result && result.isSuccess === false) {
+                        throw new Error(result.message || `Payment failed for account ${acct.account_ID}`);
                     }
+                    const ids = extractReceiptIds(result);
+                    allReceiptIds.push(...ids);
                 }
 
                 if (allReceiptIds.length > 0) {
@@ -1360,7 +1287,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       toggleViewMode,
       systemSettings,
       updateSystemSettings,
-      referenceData
+      referenceData,
+      platinumUser
     }}>
       {children}
     </PosContext.Provider>
