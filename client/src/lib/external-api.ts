@@ -1224,11 +1224,7 @@ export async function submitConsumerPayment(userId: number, data: any): Promise<
         const text = await res.text();
         throw new Error(`Failed to submit consumer payment: ${text}`);
     }
-    const result = await res.json();
-    if (result && result.isSuccess === false) {
-        throw new Error(result.message || 'Consumer payment submission failed');
-    }
-    return result;
+    return await res.json();
 }
 
 export async function submitMultiplePayment(userId: number, data: any): Promise<any> {
@@ -1241,11 +1237,7 @@ export async function submitMultiplePayment(userId: number, data: any): Promise<
         const text = await res.text();
         throw new Error(`Failed to submit multiple payment: ${text}`);
     }
-    const result = await res.json();
-    if (result && result.isSuccess === false) {
-        throw new Error(result.message || 'Multiple payment submission failed');
-    }
-    return result;
+    return await res.json();
 }
 
 export async function submitPrepaidPayment(data: any): Promise<any> {

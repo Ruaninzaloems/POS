@@ -514,13 +514,19 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsReceiptModalOpen(true);
     setTransactionProcessing(true);
 
-    let finYear = '2025/2026';
-    try {
-        const res = await fetch('/api/platinum/active-fin-year');
-        if (res.ok) finYear = await res.json();
-    } catch (e) {
-        console.warn("Failed to fetch active fin year, using default", e);
+    let finYear = platinumUser?.finYear || '2025/2026';
+    if (!finYear || finYear === '2025/2026') {
+        try {
+            const res = await fetch('/api/platinum/active-fin-year');
+            if (res.ok) {
+                const apiFinYear = await res.json();
+                if (apiFinYear) finYear = apiFinYear;
+            }
+        } catch (e) {
+            console.warn("Failed to fetch active fin year, using default", e);
+        }
     }
+    console.log(`[Priority 1] Using finYear: ${finYear} (platinumUser: ${platinumUser?.finYear})`);
 
     const isSplitPayment = record.payment.cash > 0 && record.payment.card > 0;
     const saDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Johannesburg' }));
@@ -817,18 +823,26 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 label: string,
                 paymentAmountOverride?: number,
             ) => {
-                const accountsToSubmit = serverAccounts && serverAccounts.length > 0 ? serverAccounts : saveAccounts;
+                const accountsToSubmit = saveAccounts;
                 const allReceiptIds: number[] = [];
 
+                const perAccountPayments: { acct: any; localItem: any; itemPayment: number; acctOutstanding: number }[] = [];
                 for (let i = 0; i < accountsToSubmit.length; i++) {
                     const acct = accountsToSubmit[i];
                     const localItem = accountItems.find(
-                        item => String(item.originalData?.account_ID ?? item.originalData?.accountID) === String(acct.account_ID ?? acct.accountID)
+                        item => String(item.originalData?.account_ID ?? item.originalData?.accountID) === String(acct.account_ID)
                     ) || accountItems[i];
                     const itemPayment = paymentAmountOverride !== undefined && localItem
                         ? Math.round((localItem.amountToPay / accountTotal) * paymentAmountOverride * 100) / 100
                         : (localItem?.amountToPay ?? acct.outStandingAmt ?? 0);
-                    const acctOutstanding = acct.outStandingAmt ?? acct.outstandingAmount ?? localItem?.originalData?.outStandingAmt ?? 0;
+                    const acctOutstanding = acct.outStandingAmt ?? localItem?.originalData?.outStandingAmt ?? 0;
+                    perAccountPayments.push({ acct, localItem, itemPayment, acctOutstanding });
+                }
+
+                let useMultiplePaymentFallback = false;
+
+                for (let i = 0; i < perAccountPayments.length; i++) {
+                    const { acct, itemPayment, acctOutstanding } = perAccountPayments[i];
 
                     const requestModel = {
                         finYear,
@@ -859,10 +873,60 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             requestModel,
                         });
                         console.log(`[Priority 1 ${label}] submit-consumer-payment response for account ${acct.account_ID}:`, result);
+                        if (result && result.isSuccess === false) {
+                            console.warn(`[Priority 1 ${label}] submit-consumer-payment returned isSuccess=false: ${result.message}. Falling back to submit-multiple-payment`);
+                            useMultiplePaymentFallback = true;
+                            break;
+                        }
                         const ids = extractReceiptIds(result);
                         allReceiptIds.push(...ids);
                     } catch (err: any) {
-                        console.error(`[Priority 1 ${label}] Failed to submit consumer payment for account ${acct.account_ID}:`, err?.message);
+                        console.warn(`[Priority 1 ${label}] submit-consumer-payment failed for account ${acct.account_ID}: ${err?.message}. Falling back to submit-multiple-payment`);
+                        useMultiplePaymentFallback = true;
+                        break;
+                    }
+                }
+
+                if (useMultiplePaymentFallback) {
+                    console.log(`[Priority 1 ${label}] Using submit-multiple-payment fallback (partial receipts: ${allReceiptIds.length})`);
+                    const serverAcctList = serverAccounts && serverAccounts.length > 0 ? serverAccounts : [];
+                    const multiAccounts = serverAcctList.map((sa: any) => {
+                        const saId = String(sa.accountID ?? sa.account_ID);
+                        const match = perAccountPayments.find(p => String(p.acct.account_ID) === saId);
+                        return {
+                            ...sa,
+                            paymentAmount: match?.itemPayment ?? 0,
+                        };
+                    });
+                    const totalPayment = perAccountPayments.reduce((sum, p) => sum + p.itemPayment, 0);
+                    const multiRequestModel = {
+                        finYear,
+                        receiptDate,
+                        totalAmount: totalPayment,
+                        tenderAmount: tenderAmt,
+                        changeAmount: changeAmt,
+                        paymentType: paymentTypeId,
+                        paymentOption: paymentOptionId,
+                        outStandingAmount: perAccountPayments.reduce((sum, p) => sum + p.acctOutstanding, 0),
+                        cardNumber: '',
+                        expiryDate: '',
+                        chequeNumber: '',
+                        chequeDate: null,
+                        processingMonth: null,
+                    };
+                    try {
+                        const multiResult = await submitMultiplePayment(Number(currentUser.id), {
+                            accounts: multiAccounts,
+                            requestModel: multiRequestModel,
+                        });
+                        console.log(`[Priority 1 ${label}] submit-multiple-payment response:`, multiResult);
+                        if (multiResult && multiResult.isSuccess === false) {
+                            throw new Error(multiResult.message || 'Payment submission failed');
+                        }
+                        const ids = extractReceiptIds(multiResult);
+                        allReceiptIds.push(...ids);
+                    } catch (err: any) {
+                        console.error(`[Priority 1 ${label}] submit-multiple-payment also failed:`, err?.message);
                         throw err;
                     }
                 }
