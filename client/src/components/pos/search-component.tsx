@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, CreditCard, Users, Zap, FileText, Layers, Info, Filter, Loader2, Building, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ACCOUNTS, ACCOUNT_GROUPS, CLEARANCES, Account } from '@/lib/mock-data';
+import { Account } from '@/lib/mock-data';
 import { searchInstitutions, InstitutionSearchResult, fetchMiscPaymentGroups, fetchMiscPaymentScoaItems, MiscPaymentGroup, MiscPaymentScoaItem } from '@/lib/external-api';
 
 export function parseMobileFromContactDetails(contactDetails: string | undefined | null): string {
@@ -115,10 +115,6 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
     }
 
     if (scope === 'ALL' || scope === 'CLEARANCE') {
-        const clearances = CLEARANCES.filter(c =>
-            c.scheduleNo.toLowerCase().includes(q)
-        ).map(c => ({ type: 'CLEARANCE' as const, data: c, label: `Clearance: ${c.scheduleNo}` }));
-        combinedResults = [...combinedResults, ...clearances];
     }
 
     return combinedResults.slice(0, 10);

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, CreditCard, CheckCircle2, AlertCircle, Building2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { mockEasyPayQuery, EasyPayBill } from "@/lib/mock-data";
+import { EasyPayBill } from "@/lib/mock-data";
 import { useToast } from "@/hooks/use-toast";
 
 interface EasyPayModalProps {
@@ -29,8 +29,9 @@ export function EasyPayModal({ open, onOpenChange, onAddToTransaction }: EasyPay
     setResult(null);
 
     try {
-      // Simulate API call
-      const bill = await mockEasyPayQuery(reference);
+      const response = await fetch(`/api/easypay/query?reference=${encodeURIComponent(reference)}`);
+      if (!response.ok) throw new Error('EasyPay query failed');
+      const bill = await response.json();
       setResult(bill);
     } catch (err) {
       setError("EasyPay reference not found or system offline.");

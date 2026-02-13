@@ -7,11 +7,10 @@ import { usePos } from '@/lib/pos-state';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Save, ShieldAlert, AlertTriangle, Calculator, Check } from 'lucide-react';
-import { CASH_OFFICES } from '@/lib/mock-data';
 import { Switch } from '@/components/ui/switch';
 
 export default function SettingsPage() {
-  const { officeLimits, updateOfficeLimit, systemSettings, updateSystemSettings } = usePos();
+  const { officeLimits, updateOfficeLimit, systemSettings, updateSystemSettings, referenceData } = usePos();
   const { toast } = useToast();
 
   const handleLimitChange = (officeId: string, value: string) => {
@@ -82,7 +81,7 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="space-y-4">
-                    {CASH_OFFICES.map((office) => (
+                    {referenceData.cashOffices.map((office: any) => (
                         <div key={office.id} className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4 items-center p-4 border rounded-lg bg-card hover:bg-muted/20 transition-colors">
                             <div>
                                 <h3 className="font-semibold text-sm">{office.name}</h3>

@@ -4,7 +4,7 @@ import { ConsumerSearchForm } from './consumer-search-form';
 import { UnifiedSearch as SearchComponent, SearchResult, parseMobileFromContactDetails } from './search-component';
 import { Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ACCOUNTS, Account } from '@/lib/mock-data';
+import { Account } from '@/lib/mock-data';
 import { fetchAccounts, fetchBillingStagePrepaidRecharge, fetchBillingStagePrepaidRecovery, searchInstitutions } from '@/lib/external-api';
 
 export function UnifiedSearch() {

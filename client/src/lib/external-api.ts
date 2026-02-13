@@ -1,4 +1,4 @@
-import { CASH_OFFICES, CashOffice, CASHIERS } from "./mock-data";
+import { CashOffice } from "./mock-data";
 
 export interface Bank {
     id: number;
@@ -31,9 +31,9 @@ export async function fetchCashOffices(): Promise<CashOffice[]> {
             }));
         }
     } catch (e) {
-        console.warn("Failed to fetch cash offices from API, using mock data", e);
+        console.warn("Failed to fetch cash offices from API", e);
     }
-    return CASH_OFFICES;
+    return [];
 }
 
 export interface ApiCashier {
@@ -75,12 +75,7 @@ export async function fetchCashiers(): Promise<ApiCashier[]> {
     } catch (e: any) {
         console.warn(`Failed to fetch cashiers from API: ${e.message || e}`, e);
     }
-    return CASHIERS.map(c => ({
-        id: c.id,
-        name: c.name,
-        cashOfficeId: c.cashOffice,
-        float: c.float || 0
-    }));
+    return [];
 }
 
 export interface BillingConfig {

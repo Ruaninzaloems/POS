@@ -1,7 +1,7 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { BankTransaction, AllocationDraft, AllocationLine } from '@/lib/direct-deposits-data';
-import { ACCOUNTS, CURRENT_CASHIER, Account } from '@/lib/mock-data';
+import { Account } from '@/lib/mock-data';
 
 interface ReceiptTemplateProps {
   transaction: BankTransaction;
@@ -14,7 +14,7 @@ interface ReceiptTemplateProps {
 export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptTemplateProps>(({ transaction, allocation, isReprint, isCancelled }, ref) => {
   // Find linked account details if available (use the first line's account number as primary for header)
   const primaryLine = allocation.lines[0];
-  const primaryAccount = ACCOUNTS.find(a => a.accountNo === primaryLine?.accountNo);
+  const primaryAccount = primaryLine ? { accountNo: primaryLine.accountNo, name: primaryLine.description || '', address: '' } as Account : undefined;
 
   // Mock receipt number based on transaction ID
   const receiptNo = transaction.id.replace('TXN-', 'REC');
@@ -128,7 +128,7 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptTemplateP
       {/* Line Items */}
       <div className="border-t border-dashed border-black py-2 mb-2">
         {allocation.lines.map((line, idx) => {
-            const acc = ACCOUNTS.find(a => a.accountNo === line.accountNo);
+            const acc = { accountNo: line.accountNo } as Account;
             
             return (
                 <div key={idx} className="mb-2">
@@ -173,11 +173,11 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptTemplateP
         </div>
         <div className="flex justify-between">
             <span>Cashier:</span>
-            <span>{CURRENT_CASHIER.name}</span>
+            <span>Cashier</span>
         </div>
         <div className="flex justify-between">
             <span>Office:</span>
-            <span>{CURRENT_CASHIER.cashOffice}</span>
+            <span>Cash Office</span>
         </div>
       </div>
 

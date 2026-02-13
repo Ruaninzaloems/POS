@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'wouter';
 import { usePos } from '@/lib/pos-state';
-import { CASHIERS } from '@/lib/mock-data';
 import {
   Layers,
   Banknote,
@@ -41,7 +40,7 @@ const menuItems = [
 
 export default function HomePage() {
   const [, setLocation] = useLocation();
-  const { currentUser, switchUser, activeSession, endSession, viewMode, toggleViewMode } = usePos();
+  const { currentUser, switchUser, activeSession, endSession, viewMode, toggleViewMode, referenceData } = usePos();
 
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden">
@@ -82,14 +81,14 @@ export default function HomePage() {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>Switch User (Prototype)</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {CASHIERS.map(cashier => (
+                  {referenceData.cashiers.map((cashier: any) => (
                     <DropdownMenuItem
                       key={cashier.id}
-                      onClick={() => switchUser(cashier.id)}
+                      onClick={() => switchUser(cashier.id, cashier.name, cashier.cashOfficeId)}
                       className="flex flex-col items-start gap-1 cursor-pointer"
                     >
                       <span className="font-medium">{cashier.name}</span>
-                      <span className="text-xs text-muted-foreground">{cashier.cashOffice}</span>
+                      <span className="text-xs text-muted-foreground">{cashier.cashOfficeId}</span>
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>

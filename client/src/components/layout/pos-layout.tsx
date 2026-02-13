@@ -1,5 +1,4 @@
 import React from 'react';
-import { CURRENT_CASHIER } from '@/lib/mock-data';
 import { 
   LayoutDashboard, 
   LogOut, 
@@ -24,7 +23,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Link, useLocation } from "wouter";
 import { usePos } from '@/lib/pos-state';
-import { CASHIERS } from '@/lib/mock-data';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -46,7 +44,7 @@ interface PosLayoutProps {
 
 export function PosLayout({ children }: PosLayoutProps) {
   const [location, setLocation] = useLocation();
-  const { currentUser, switchUser, activeSession, endSession, viewMode, toggleViewMode } = usePos();
+  const { currentUser, switchUser, activeSession, endSession, viewMode, toggleViewMode, referenceData } = usePos();
 
   const isPosPage = location === '/pos';
 
@@ -178,14 +176,14 @@ export function PosLayout({ children }: PosLayoutProps) {
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuLabel>Switch User (Prototype)</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {CASHIERS.map(cashier => (
+                    {referenceData.cashiers.map((cashier: any) => (
                       <DropdownMenuItem 
                         key={cashier.id} 
-                        onClick={() => switchUser(cashier.id)}
+                        onClick={() => switchUser(cashier.id, cashier.name, cashier.cashOfficeId)}
                         className="flex flex-col items-start gap-1 cursor-pointer"
                       >
                         <span className="font-medium">{cashier.name}</span>
-                        <span className="text-xs text-muted-foreground">{cashier.cashOffice}</span>
+                        <span className="text-xs text-muted-foreground">{cashier.cashOfficeId}</span>
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>

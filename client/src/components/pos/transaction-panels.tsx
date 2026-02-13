@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Account, ClearanceCostSchedule, ACCOUNTS, DirectIncomeItem } from '@/lib/mock-data';
+import { Account, ClearanceCostSchedule, DirectIncomeItem } from '@/lib/mock-data';
 import { User, MapPin, Phone, Mail, FileCheck, Zap, Trash2, Droplets, Upload, Search, Info, Download, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -74,18 +74,17 @@ export function TransactionPanels() {
         
         if (!accNo) return;
         
-        const account = ACCOUNTS.find(a => a.accountNo === accNo);
-        if (account) {
-            const amount = parseFloat(amountStr) || account.outstandingAmount;
+        if (accNo) {
+            const amount = parseFloat(amountStr) || 0;
             
             addItem({
                 id: crypto.randomUUID(),
                 type: 'CONSUMER_SERVICES',
-                description: `${account.name} (Import)`,
-                reference: account.accountNo,
-                amountDue: account.outstandingAmount,
+                description: `Account ${accNo} (Import)`,
+                reference: accNo,
+                amountDue: amount,
                 amountToPay: amount, 
-                originalData: account,
+                originalData: { accountNo: accNo },
                 notes: `CSV Import. Receipt Date: ${receiptDate}`
             }, true); // Allow duplicates
             addedCount++;

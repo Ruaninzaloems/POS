@@ -1,7 +1,7 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { TransactionRecord, TransactionItem } from '@/lib/pos-state';
-import { Account, ACCOUNTS, DirectIncomeItem } from '@/lib/mock-data';
+import { Account, DirectIncomeItem } from '@/lib/mock-data';
 
 interface PosReceiptTemplateProps {
   transaction: TransactionRecord;

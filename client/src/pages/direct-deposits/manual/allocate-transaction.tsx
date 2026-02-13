@@ -9,7 +9,7 @@ import { ArrowLeft, Save, Plus, Trash2, CheckCircle, AlertCircle, Upload, Filter
 import { MOCK_BANK_TRANSACTIONS, MOCK_ALLOCATIONS, BankTransaction, AllocationLine, saveTransactions, saveAllocations } from '@/lib/direct-deposits-data';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
-import { ACCOUNTS, Account, ClearanceCostSchedule } from '@/lib/mock-data';
+import { Account, ClearanceCostSchedule } from '@/lib/mock-data';
 import { UnifiedSearch as SearchComponent, SearchResult } from '@/components/pos/search-component';
 import { validateAllocationAmount, calculateAllocationTotals, mapSearchResultToAllocationTarget } from '@/lib/allocation-logic';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -209,7 +209,10 @@ export default function AllocateTransaction() {
             transactionId: transaction.id,
             lines: [...lines],
             status: 'POSTED',
-            updatedAt: new Date().toISOString()
+            updatedAt: new Date().toISOString(),
+            method: 'MANUAL',
+            allocatedBy: 'Cashier',
+            allocationDate: new Date().toISOString()
           });
 
           // Persist changes

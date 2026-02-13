@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { Account, DirectIncomeItem, ClearanceCostSchedule, ACCOUNTS, DIRECT_INCOME_ITEMS, ACCOUNT_GROUPS, CLEARANCES, AccountGroup, CASHIERS, MOCK_TRANSACTIONS, CASH_OFFICES, CashOffice } from './mock-data';
+import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, MOCK_TRANSACTIONS, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
 import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, ApiCashier, BillingConfig, createSessionApi, endSessionApi, createTransactionApi, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment } from './external-api';
 
@@ -138,7 +138,13 @@ export const usePos = () => {
 
 export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { toast } = useToast();
-  const [currentUser, setCurrentUser] = useState<CashierProfile>(CASHIERS[0]);
+  const [currentUser, setCurrentUser] = useState<CashierProfile>({
+    id: "CSH-00",
+    name: "Loading...",
+    role: "CASHIER",
+    cashOffice: "",
+    float: 0
+  });
   const [items, setItems] = useState<TransactionItem[]>([]);
   const [payment, setPayment] = useState({ cash: 0, card: 0 });
   const [searchQuery, setSearchQuery] = useState('');
@@ -152,14 +158,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeSession, setActiveSession] = useState(false);
   const [sessionDetails, setSessionDetails] = useState<{startTime: number; officeId: string; floatAmount: number} | undefined>(undefined);
   
-  // Initialize limits from mock data
-  const [officeLimits, setOfficeLimits] = useState<Record<string, number>>(() => {
-    const limits: Record<string, number> = {};
-    CASH_OFFICES.forEach(office => {
-        limits[office.id] = office.maxTransactionLimit || 5000;
-    });
-    return limits;
-  });
+  const [officeLimits, setOfficeLimits] = useState<Record<string, number>>({});
 
   const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
   const [systemSettings, setSystemSettings] = useState({
@@ -214,7 +213,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               console.error("Failed to load reference data", error);
               toast({
                   title: "Connection Error",
-                  description: `Failed to load data from API. Using mock data. Error: ${error.message || 'Unknown network error'}`,
+                  description: `Failed to load data from API. Error: ${error.message || 'Unknown network error'}`,
                   variant: "destructive"
               });
           }
@@ -272,18 +271,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return;
       }
 
-      // Fallback to mock cashiers
-      const cashier = CASHIERS.find(c => c.id === cashierId);
-      if (cashier) {
-          setCurrentUser({
-              ...cashier,
-              name: name || cashier.name,
-              cashOffice: cashOffice || cashier.cashOffice,
-          });
-          resetSession();
-          return;
-      }
-
       // Accept direct Platinum cashier ID with name
       setCurrentUser(prev => ({
           ...prev,
@@ -327,7 +314,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
 
       try {
-          const office = CASH_OFFICES.find(o => o.id === officeId);
+          const office = referenceData.cashOffices.find((o: any) => o.id === officeId || String(o.id) === String(officeId));
           const session = await createSessionApi({
               cashierId: currentUser.id,
               cashierName: currentUser.name,

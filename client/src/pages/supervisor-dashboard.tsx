@@ -11,7 +11,6 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CASHIERS, ACCOUNTS } from '@/lib/mock-data';
 import { 
   LayoutDashboard, 
   Users, 
@@ -74,132 +73,17 @@ interface CashierShift {
   transactionCount: number;
 }
 
-// Generate Historical Shifts with Variances
-const generateHistoricalShifts = () => {
-    const shifts: CashierShift[] = [];
-    const today = new Date();
-    
-    // Generate for past 12 months
-    for (let i = 0; i < 365; i++) {
-        const date = subDays(today, i);
-        // Skip weekends roughly
-        if (date.getDay() === 0 || date.getDay() === 6) continue;
-        
-        CASHIERS.forEach(cashier => {
-             // 80% chance cashier worked
-             if (Math.random() > 0.2) {
-                 const hasVariance = Math.random() > 0.7; // 30% chance of variance
-                 const varianceAmount = hasVariance ? (Math.random() * 200 - 100) : 0; // -100 to +100
-                 
-                 const systemTotal = 5000 + Math.random() * 10000;
-                 const declaredTotal = systemTotal + varianceAmount;
-                 
-                 shifts.push({
-                     id: `HIST-SH-${format(date, 'yyyyMMdd')}-${cashier.id}`,
-                     cashierName: cashier.name,
-                     cashOffice: cashier.cashOffice,
-                     startTime: date.toISOString(),
-                     endTime: new Date(date.getTime() + 8 * 60 * 60 * 1000).toISOString(),
-                     status: 'COMPLETED',
-                     systemTotals: { cash: systemTotal * 0.4, card: systemTotal * 0.6, total: systemTotal },
-                     declaredTotals: { cash: (systemTotal * 0.4) + varianceAmount, card: systemTotal * 0.6, total: declaredTotal },
-                     variance: { cash: varianceAmount, card: 0, total: varianceAmount },
-                     transactionCount: Math.floor(20 + Math.random() * 50)
-                 });
-             }
-        });
-    }
-    return shifts;
-};
+const HISTORICAL_SHIFTS: CashierShift[] = [];
 
-const HISTORICAL_SHIFTS = generateHistoricalShifts();
-
-// ... existing MOCK_SHIFTS ...
-const MOCK_SHIFTS: CashierShift[] = [
-  {
-    id: "SH-001",
-    cashierName: "Sarah Jenkins",
-    cashOffice: "Main Civic Center",
-    startTime: "2023-10-27T08:00:00",
-    endTime: "2023-10-27T16:30:00",
-    status: "PENDING_APPROVAL",
-    systemTotals: { cash: 5400.00, card: 12500.00, total: 17900.00 },
-    declaredTotals: { cash: 5400.00, card: 12500.00, total: 17900.00 },
-    variance: { cash: 0, card: 0, total: 0 },
-    transactionCount: 42
-  },
-  {
-    id: "SH-002",
-    cashierName: "John Doe",
-    cashOffice: "Main Civic Center",
-    startTime: "2023-10-27T08:15:00",
-    endTime: "2023-10-27T16:15:00",
-    status: "PENDING_APPROVAL",
-    systemTotals: { cash: 3200.50, card: 8900.00, total: 12100.50 },
-    declaredTotals: { cash: 3200.00, card: 8900.00, total: 12100.00 },
-    variance: { cash: -0.50, card: 0, total: -0.50 },
-    transactionCount: 28
-  },
-  {
-    id: "SH-003",
-    cashierName: "Emily Davis",
-    cashOffice: "Traffic Dept",
-    startTime: "2023-10-27T07:45:00",
-    status: "NOT_SUBMITTED",
-    systemTotals: { cash: 8500.00, card: 4200.00, total: 12700.00 },
-    transactionCount: 56
-  },
-  {
-    id: "SH-004",
-    cashierName: "Michael Brown",
-    cashOffice: "Traffic Dept",
-    startTime: "2023-10-27T08:00:00",
-    endTime: "2023-10-27T15:00:00",
-    status: "RETURNED",
-    systemTotals: { cash: 4100.00, card: 2200.00, total: 6300.00 },
-    declaredTotals: { cash: 4000.00, card: 2200.00, total: 6200.00 },
-    variance: { cash: -100.00, card: 0, total: -100.00 },
-    transactionCount: 15
-  },
-  {
-    id: "SH-005",
-    cashierName: "Jessica Wilson",
-    cashOffice: "Main Civic Center",
-    startTime: "2023-10-26T08:00:00",
-    endTime: "2023-10-26T16:00:00",
-    status: "COMPLETED",
-    systemTotals: { cash: 6000.00, card: 10000.00, total: 16000.00 },
-    declaredTotals: { cash: 6000.00, card: 10000.00, total: 16000.00 },
-    variance: { cash: 0, card: 0, total: 0 },
-    transactionCount: 38
-  }
-];
+const MOCK_SHIFTS: CashierShift[] = [];
 
 // Helper for currency formatting
 const formatCurrency = (amount: number) => {
   return `R ${amount.toFixed(2)}`;
 };
 
-// Add function to generate report data
-function generateReportData(shift: CashierShift) {
-  // Generate mock detailed transactions for the report since we don't have them in the shift object
-  const types = ['Consumer Services', 'Prepaid Electricity', 'Prepaid Water', 'Direct Income', 'Clearance'];
-  const transactions = [];
-  
-  // Create ~20 random transactions
-  for(let i=0; i<20; i++) {
-    const type = types[Math.floor(Math.random() * types.length)];
-    const amount = Math.floor(Math.random() * 500) + 50;
-    transactions.push({
-      receiptNo: `REC-${10000 + i}`,
-      time: format(new Date(), 'HH:mm:ss'),
-      type,
-      description: `${type} Payment`,
-      amount: amount
-    });
-  }
-  
-  return transactions;
+function generateReportData(_shift: CashierShift) {
+  return [] as { receiptNo: string; time: string; type: string; description: string; amount: number }[];
 }
 
 // Add function to download CSV
@@ -261,7 +145,7 @@ const MONTHS = [
 ];
 
 export default function SupervisorDashboard() {
-  const { returnDayEnd, approveCancellation, recentTransactions } = usePos();
+  const { returnDayEnd, approveCancellation, recentTransactions, referenceData } = usePos();
   const [reconMode, setReconMode] = useState<ReconMode>('PER_CASHIER');
   
   // Pending Cancellations
@@ -569,7 +453,7 @@ export default function SupervisorDashboard() {
                             </TableHeader>
                             <TableBody>
                                 {pendingCancellations.map(tx => {
-                                    const cashier = CASHIERS.find(c => c.id === tx.cashierId);
+                                    const cashier = referenceData.cashiers.find(c => c.id === tx.cashierId);
                                     const mainType = tx.items[0]?.type.replace('_', ' ') || 'Unknown';
                                     
                                     return (
@@ -691,7 +575,7 @@ export default function SupervisorDashboard() {
                             </TableHeader>
                             <TableBody>
                                 {processedCancellations.map(tx => {
-                                    const cashier = CASHIERS.find(c => c.id === tx.cashierId);
+                                    const cashier = referenceData.cashiers.find(c => c.id === tx.cashierId);
                                     const mainType = tx.items[0]?.type.replace('_', ' ') || 'Unknown';
                                     const isRejected = tx.status === 'COMPLETED';
                                     
@@ -852,7 +736,7 @@ export default function SupervisorDashboard() {
                   <TableBody>
                       {filteredShifts.map(shift => {
                           // Find cashier ID from name to look up transactions
-                          const cashierProfile = CASHIERS.find(c => c.name === shift.cashierName);
+                          const cashierProfile = referenceData.cashiers.find(c => c.name === shift.cashierName);
                           // Calculate void count from global transactions
                           const voidCount = recentTransactions.filter(t => 
                               t.cashierId === cashierProfile?.id && 
@@ -1034,7 +918,7 @@ export default function SupervisorDashboard() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="All">All Cashiers</SelectItem>
-                                {CASHIERS.map(c => (
+                                {referenceData.cashiers.map(c => (
                                     <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
                                 ))}
                             </SelectContent>
