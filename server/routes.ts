@@ -61,22 +61,26 @@ export async function registerRoutes(
 
       const userId = userData.user_ID;
 
-      const details = await platinumGet(`/api/ReceiptPrepaid/cashier-detailsById`, { cashierId: String(userId) });
-
-      if (details && !details._error && details.const_CashOffice) {
+      const activeCashierId = await platinumGet("/api/billing/auth-day-end-reconcile/active-cashierid-by-userid", { userid: String(userId) });
+      
+      if (activeCashierId && activeCashierId !== 0 && !activeCashierId._error) {
+        const details = await platinumGet(`/api/ReceiptPrepaid/cashier-detailsById`, { cashierId: String(activeCashierId) });
+        const cashOffice = details?.const_CashOffice || null;
+        
         return res.json({
           success: true,
-          cashierId: details.id || userId,
-          officeId: details.const_CashOffice?.cashOffice_ID || details.officeId,
-          message: "Cashier already set up",
+          cashierId: activeCashierId,
+          officeId: cashOffice?.cashOffice_ID || details?.officeId || null,
+          officeName: cashOffice?.cashOfficeDesc || null,
+          message: "Cashier is active and registered",
         });
       }
 
       res.json({
         success: false,
         needsSetup: true,
-        userId: userId,
-        message: "User is not registered as a cashier in Platinum. This user needs to be set up as a cashier through the Platinum admin portal before payments can be posted.",
+        userId,
+        message: "User is not registered as an active cashier in Platinum. This user needs to be set up through the Platinum admin portal.",
       });
     } catch (e: any) {
       res.status(502).json({ success: false, message: "Cashier validation failed", detail: e.message });
