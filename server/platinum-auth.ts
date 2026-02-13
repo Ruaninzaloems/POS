@@ -1,5 +1,6 @@
 const PLATINUM_API_URL = process.env.PLATINUM_API_URL || "https://georgeplatinumuatapi.azurewebsites.net";
-const PLATINUM_USERNAME = "Francois";
+const PLATINUM_USERNAME = process.env.PLATINUM_API_USERNAME || "Francois";
+const PLATINUM_PASSWORD = process.env.PLATINUM_API_PASSWORD || "";
 const PLATINUM_DBNAME = process.env.PLATINUM_API_DBNAME || "George";
 
 let cachedToken: string | null = null;
@@ -9,7 +10,51 @@ let cachedPosCashierId: number | null = null;
 
 async function fetchNewToken(): Promise<{ token: string; userData: any }> {
   console.log(`[PlatinumAuth] Attempting login for username: ${PLATINUM_USERNAME} on DB: ${PLATINUM_DBNAME}`);
-  
+
+  if (PLATINUM_PASSWORD) {
+    try {
+      const res = await fetch(`${PLATINUM_API_URL}/auth/createToken`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userName: PLATINUM_USERNAME,
+          password: PLATINUM_PASSWORD,
+          dbName: PLATINUM_DBNAME,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.token) {
+          const userData = data.data || data.user || data.userData || {};
+          const apiUserId = userData.user_ID ?? userData.userId ?? userData.id;
+
+          if (apiUserId && apiUserId !== 1) {
+            const user = {
+              user_ID: apiUserId,
+              userName: userData.userName ?? PLATINUM_USERNAME,
+              firstName: userData.firstName ?? PLATINUM_USERNAME,
+              lastName: userData.lastName ?? PLATINUM_USERNAME,
+              eMail: userData.eMail ?? null,
+              enabled: userData.enabled ?? true,
+              superUser: userData.superUser ?? false,
+              cashFloat: userData.cashFloat ?? 0,
+              finYear: userData.finYear || data.finYear || "2026/2027"
+            };
+            console.log(`[PlatinumAuth] Token obtained via createToken. User: ${user.firstName} ${user.lastName} (user_ID: ${user.user_ID})`);
+            return { token: data.token, userData: user };
+          }
+          console.log(`[PlatinumAuth] createToken returned generic user (ID:${apiUserId}), will use override`);
+        }
+      } else {
+        const text = await res.text();
+        console.log(`[PlatinumAuth] createToken failed (${res.status}): ${text.substring(0, 200)}`);
+      }
+    } catch (e: any) {
+      console.log(`[PlatinumAuth] createToken error: ${e.message}`);
+    }
+  }
+
   const res = await fetch(`${PLATINUM_API_URL}/auth/createTokenAzure`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -33,9 +78,26 @@ async function fetchNewToken(): Promise<{ token: string; userData: any }> {
     throw new Error(`Platinum auth returned no token: ${JSON.stringify(data)}`);
   }
 
-  // API returns Test User (ID:1) regardless of credentials - override with actual Francois profile
-  // Francois Francois = user_ID 4697
-  const hardcodedUser = {
+  const apiUserData = data.data || data.user || data.userData || {};
+  const apiUserId = apiUserData.user_ID ?? apiUserData.userId ?? apiUserData.id;
+
+  if (apiUserId && apiUserId !== 1) {
+    const user = {
+      user_ID: apiUserId,
+      userName: apiUserData.userName ?? PLATINUM_USERNAME,
+      firstName: apiUserData.firstName ?? PLATINUM_USERNAME,
+      lastName: apiUserData.lastName ?? PLATINUM_USERNAME,
+      eMail: apiUserData.eMail ?? null,
+      enabled: apiUserData.enabled ?? true,
+      superUser: apiUserData.superUser ?? false,
+      cashFloat: apiUserData.cashFloat ?? 0,
+      finYear: apiUserData.finYear || data.finYear || "2026/2027"
+    };
+    console.log(`[PlatinumAuth] Token obtained. User: ${user.firstName} ${user.lastName} (user_ID: ${user.user_ID})`);
+    return { token: data.token, userData: user };
+  }
+
+  const overrideUser = {
     user_ID: 4697, 
     userName: "Francois",
     firstName: "Francois",
@@ -44,12 +106,14 @@ async function fetchNewToken(): Promise<{ token: string; userData: any }> {
     enabled: true,
     superUser: true,
     cashFloat: 0,
-    finYear: data.data?.finYear || "2026/2027"
+    finYear: apiUserData.finYear || data.finYear || "2026/2027"
   };
 
-  console.log(`[PlatinumAuth] Token obtained. Using Francois Francois profile (user_ID: 4697)`);
+  console.log(`[PlatinumAuth] Token obtained. API returned generic user (ID:${apiUserId}) — overriding with Francois Francois (user_ID: 4697)`);
+  console.log(`[PlatinumAuth] NOTE: The JWT token identity is 'System Administration' (ID:1). Platinum enquiries will attribute actions to this token user, not to the userId parameter.`);
+  console.log(`[PlatinumAuth] To fix this, the Platinum admin must configure the Azure SSO mapping to resolve '${PLATINUM_USERNAME}' to the correct user.`);
 
-  return { token: data.token, userData: hardcodedUser };
+  return { token: data.token, userData: overrideUser };
 }
 
 export async function getPlatinumToken(): Promise<string> {
@@ -74,8 +138,13 @@ export async function getPosCashierId(): Promise<number | null> {
   if (cachedPosCashierId) return cachedPosCashierId;
   
   const token = await getPlatinumToken();
+  if (!cachedUserData?.user_ID) {
+    console.error(`[PlatinumAuth] Cannot get POS cashier ID: no authenticated user data available`);
+    return null;
+  }
+  const userId = cachedUserData.user_ID;
   try {
-    const res = await fetch(`${PLATINUM_API_URL}/api/billing/auth-day-end-reconcile/pos-cashier?cashierId=4697`, {
+    const res = await fetch(`${PLATINUM_API_URL}/api/billing/auth-day-end-reconcile/pos-cashier?cashierId=${userId}`, {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
     });
     if (res.ok) {
@@ -95,9 +164,9 @@ export async function getPosCashierId(): Promise<number | null> {
 export async function platinumGet(path: string, params?: Record<string, string>): Promise<any> {
   const token = await getPlatinumToken();
 
-  // Intercept cashier-detailsById to fetch actual cashier 4697 details from Platinum
-  if (path === "/api/ReceiptPrepaid/cashier-detailsById" && params?.cashierId === "1") {
-    params = { ...params, cashierId: "4697" };
+  const actualUserId = String(cachedUserData?.user_ID || 1);
+  if (path === "/api/ReceiptPrepaid/cashier-detailsById" && params?.cashierId && params.cashierId !== actualUserId) {
+    params = { ...params, cashierId: actualUserId };
   }
 
   let url = `${PLATINUM_API_URL}${path}`;
