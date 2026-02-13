@@ -188,8 +188,11 @@ export default function BillingDashboard() {
     const safeNum = (val: any): number | string => {
         if (val === null || val === undefined) return '—';
         if (typeof val === 'number') return val;
+        if (Array.isArray(val)) {
+            return val.reduce((sum: number, item: any) => sum + (Number(item.value) || 0), 0);
+        }
         if (typeof val === 'object') {
-            return val.count ?? val.value ?? val.total ?? JSON.stringify(val);
+            return val.count ?? val.value ?? val.total ?? '—';
         }
         return val;
     };
@@ -220,6 +223,57 @@ export default function BillingDashboard() {
                         <DashboardCountCard key={c.label} card={c} />
                     ))}
                 </div>
+
+                {(Array.isArray(alertCounts) && alertCounts.length > 0) || (Array.isArray(notificationCounts) && notificationCounts.length > 0) ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {Array.isArray(alertCounts) && alertCounts.length > 0 && (
+                            <Card>
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-base flex items-center gap-2">
+                                        <AlertTriangle className="h-4 w-4 text-orange-500" />
+                                        Alerts
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-2">
+                                        {alertCounts.filter((a: any) => Number(a.value) > 0).map((item: any, idx: number) => (
+                                            <div key={idx} className="flex items-center justify-between py-1 border-b last:border-0">
+                                                <span className="text-sm capitalize" data-testid={`text-alert-${item.key}`}>{String(item.key || '').replace(/-/g, ' ')}</span>
+                                                <Badge variant="destructive" data-testid={`badge-alert-${item.key}`}>{item.value}</Badge>
+                                            </div>
+                                        ))}
+                                        {alertCounts.filter((a: any) => Number(a.value) > 0).length === 0 && (
+                                            <p className="text-sm text-muted-foreground">No active alerts</p>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+                        {Array.isArray(notificationCounts) && notificationCounts.length > 0 && (
+                            <Card>
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-base flex items-center gap-2">
+                                        <Bell className="h-4 w-4 text-purple-600" />
+                                        Notifications
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-2">
+                                        {notificationCounts.filter((n: any) => Number(n.value) > 0).map((item: any, idx: number) => (
+                                            <div key={idx} className="flex items-center justify-between py-1 border-b last:border-0">
+                                                <span className="text-sm capitalize" data-testid={`text-notification-${item.key}`}>{String(item.key || '').replace(/-/g, ' ')}</span>
+                                                <Badge variant="secondary" data-testid={`badge-notification-${item.key}`}>{Number(item.value).toLocaleString()}</Badge>
+                                            </div>
+                                        ))}
+                                        {notificationCounts.filter((n: any) => Number(n.value) > 0).length === 0 && (
+                                            <p className="text-sm text-muted-foreground">No notifications</p>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
+                ) : null}
 
                 {posDetailKeys.length > 0 && (
                     <Card>
