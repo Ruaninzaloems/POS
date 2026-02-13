@@ -1129,6 +1129,62 @@ export async function platinumGetPosTabItemDetailsCount(): Promise<any> {
     return platinumFetch(`/api/platinum/billing-dashboard/pos-tab-item-details-count`);
 }
 
+export async function platinumGetAlertCounts(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/get-alert-counts`);
+}
+
+export async function platinumGetNotificationCounts(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/get-notification-counts`);
+}
+
+export async function platinumGetBillingPaymentByTypeOfUse(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/get-billing-payment-by-type-of-use`);
+}
+
+export async function platinumGetAccountCount(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/account-count`);
+}
+
+export async function platinumGetDepositTableData(pager: any): Promise<any> {
+    const res = await fetch('/api/platinum/billing-dashboard/get-deposit-table-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(pager),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
+export async function platinumGetDirectDepositsAllocationTableData(pager: any): Promise<any> {
+    const res = await fetch('/api/platinum/billing-dashboard/get-direct-deposits-allocation-table-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(pager),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
+export async function platinumGetThirdPartyPaymentPendingTableData(pager: any): Promise<any> {
+    const res = await fetch('/api/platinum/billing-dashboard/get-third-party-payment-pending-table-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(pager),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
+export async function platinumGetPostDatedChequeTableData(pager: any): Promise<any> {
+    const res = await fetch('/api/platinum/billing-dashboard/get-post-dated-cheque-search-table-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(pager),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
 // --- View Receipt ---
 
 export interface ViewReceiptCashier {

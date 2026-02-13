@@ -1489,6 +1489,51 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/platinum/billing-dashboard/get-alert-counts", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/BillingDashboard/get-alert-counts");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-dashboard/get-notification-counts", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/BillingDashboard/get-notification-counts");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-dashboard/get-billing-payment-by-type-of-use", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/BillingDashboard/get-billing-payment-by-type-of-use");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-dashboard/account-count", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/BillingDashboard/account-count");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/billing-dashboard/get-post-dated-cheque-search-table-data", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/BillingDashboard/get-post-dated-cheque-search-table-data", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   // --- Billing Account Management (selected endpoints) ---
 
   app.post("/api/platinum/billing-account-management/search-accounts", async (req, res) => {
