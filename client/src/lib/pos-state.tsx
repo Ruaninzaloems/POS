@@ -777,6 +777,17 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 console.warn(`[Priority 1] Failed to save multiple account payment`, e);
             }
 
+            let serverAccounts: any[] | null = null;
+            try {
+                const serverData = await platinumGetMultipleAccountPayment({ userId: String(currentUser.id) });
+                if (Array.isArray(serverData) && serverData.length > 0) {
+                    serverAccounts = serverData;
+                    console.log(`[Priority 1] Fetched ${serverAccounts.length} server-enriched account(s)`);
+                }
+            } catch (e) {
+                console.warn(`[Priority 1] Failed to fetch server accounts, falling back to local data`, e);
+            }
+
             const submitSingleOrMultiple = async (
                 paymentAmount: number,
                 tenderAmt: number,
@@ -786,8 +797,19 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 label: string,
                 paymentAmountOverride?: number,
             ) => {
-                const submitAccounts = buildSubmitAccounts(paymentAmountOverride);
-                console.log(`[Priority 1 ${label}] Using submit-multiple-payment (${accountItems.length} account(s))`);
+                let submitAccounts: any[];
+                if (serverAccounts) {
+                    submitAccounts = serverAccounts.map((sa: any, idx: number) => {
+                        const localItem = accountItems[idx];
+                        const itemPayment = paymentAmountOverride !== undefined && localItem
+                            ? Math.round((localItem.amountToPay / accountTotal) * paymentAmountOverride * 100) / 100
+                            : (localItem?.amountToPay ?? sa.paymentAmount ?? 0);
+                        return { ...sa, paymentAmount: itemPayment };
+                    });
+                } else {
+                    submitAccounts = buildSubmitAccounts(paymentAmountOverride);
+                }
+                console.log(`[Priority 1 ${label}] Using submit-multiple-payment (${submitAccounts.length} account(s), source: ${serverAccounts ? 'server' : 'local'})`);
                 return await submitMultiplePayment(Number(currentUser.id), {
                     accounts: submitAccounts,
                     requestModel: {
