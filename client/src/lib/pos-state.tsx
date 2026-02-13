@@ -610,6 +610,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const cashierSetupPayload = {
             id: 0,
             cashFloat: sessionDetails?.floatAmount ?? 0,
+            stsPort: 1,
+            plesseyPort: 1,
             officeId: cashOfficeId,
             isActive: true,
             user_Id: Number(currentUser.id),
@@ -619,12 +621,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 cashOfficeDesc: cashOfficeDesc,
                 enabled: true,
                 cashOnHandLimit: 999999,
+                scoaConfigurationID: 4,
+                allowDelayedDayEndRecon: true,
+                delayDaysSincePreviousDayEndRecon: 2,
             },
         };
-        await platinumSubmitCashierSetup(cashierSetupPayload);
-        console.log(`[Payment] Cashier session re-submitted to Platinum (user: ${currentUser.id}, office: ${cashOfficeId}/${cashOfficeDesc})`);
-    } catch (e) {
-        console.warn(`[Payment] Failed to re-submit cashier setup (proceeding anyway)`, e);
+        console.log(`[Payment] Submitting cashier setup:`, JSON.stringify(cashierSetupPayload));
+        const setupResult = await platinumSubmitCashierSetup(cashierSetupPayload);
+        console.log(`[Payment] Cashier session setup result:`, JSON.stringify(setupResult));
+    } catch (e: any) {
+        console.warn(`[Payment] Failed to re-submit cashier setup:`, e?.message || e);
     }
 
     const extractReceiptIds = (result: any): number[] => {
