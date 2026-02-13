@@ -328,7 +328,7 @@ export default function AllocateTransaction() {
               (l.allocationType === 'ACCOUNT' || l.allocationType === 'PREPAID' || l.allocationType === 'CLEARANCE')
               && l.accountNo && l.accountNo !== 'CASHBOOK-RTN'
           );
-          const uniqueAccountNos = [...new Set(accountLines.map(l => l.accountNo))];
+          const uniqueAccountNos = Array.from(new Set(accountLines.map(l => l.accountNo)));
 
           if (uniqueAccountNos.length > 0) {
               console.log('[Direct Deposit] Running account rebuilds for:', uniqueAccountNos);
@@ -383,7 +383,7 @@ export default function AllocateTransaction() {
     </PosLayout>
   );
   
-  if (!transaction && !loadingTx) return (
+  if (!transaction) return (
     <PosLayout>
       <div className="p-8 text-center text-muted-foreground">
         {loadError ? (

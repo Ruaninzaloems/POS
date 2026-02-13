@@ -15,6 +15,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { platinumGetBankReconPosItemList, platinumCheckSelectedItemProcessed } from '@/lib/external-api';
+import { usePos } from '@/lib/pos-state';
 
 import { useToast } from '@/hooks/use-toast';
 
@@ -38,6 +39,7 @@ interface BankReconPosItem {
 export default function UnmatchedQueue() {
   const [searchTerm, setSearchTerm] = useState('');
   const [, setLocation] = useLocation();
+  const { currentUser } = usePos();
   const { toast } = useToast();
   const [items, setItems] = useState<BankReconPosItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -119,8 +121,9 @@ export default function UnmatchedQueue() {
         if (res.ok) finYear = await res.json();
       } catch {}
 
+      const checkUserId = currentUser?.id ? Number(currentUser.id) : -1;
       const result = await platinumCheckSelectedItemProcessed(
-        -1,
+        checkUserId,
         finYear,
         posItemId
       );
