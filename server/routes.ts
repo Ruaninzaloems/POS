@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { platinumGet, platinumPost } from "./platinum-auth";
+import { platinumGet, platinumPost, getPlatinumUserInfo } from "./platinum-auth";
 
 const EXTERNAL_API_BASE = "https://george-uat-ems-billing-api.azurewebsites.net";
 
@@ -26,6 +26,58 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+
+  // =====================================================
+  // PLATINUM AUTH / USER INFO
+  // =====================================================
+
+  app.get("/api/platinum/auth/user-info", async (req, res) => {
+    try {
+      const userData = await getPlatinumUserInfo();
+      if (!userData) {
+        return res.status(503).json({ message: "Platinum user data not available" });
+      }
+      res.json({
+        user_ID: userData.user_ID,
+        userName: userData.userName,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        eMail: userData.eMail,
+        enabled: userData.enabled,
+        superUser: userData.superUser,
+        cashFloat: userData.cashFloat,
+        finYear: userData.finYear,
+      });
+    } catch (e: any) {
+      res.status(502).json({ message: "Failed to get Platinum user info", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth/ensure-cashier", async (req, res) => {
+    try {
+      const userData = await getPlatinumUserInfo();
+      if (!userData) {
+        return res.status(503).json({ success: false, message: "Platinum user data not available" });
+      }
+
+      const userId = userData.user_ID;
+
+      const existing = await platinumGet("/api/ReceiptPrepaid/active-cashier-details", { user: String(userId) });
+
+      if (existing && !existing._error && existing.id) {
+        return res.json({ success: true, cashierId: existing.id, officeId: existing.officeId, message: "Cashier already set up" });
+      }
+
+      res.json({
+        success: false,
+        needsSetup: true,
+        userId: userId,
+        message: "User is not registered as a cashier in Platinum. This user needs to be set up as a cashier through the Platinum admin portal before payments can be posted.",
+      });
+    } catch (e: any) {
+      res.status(502).json({ success: false, message: "Cashier validation failed", detail: e.message });
+    }
+  });
 
   // =====================================================
   // PLATINUM API PROXY ROUTES (authenticated)

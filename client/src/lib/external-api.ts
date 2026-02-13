@@ -1,5 +1,28 @@
 import { CashOffice } from "./mock-data";
 
+export interface PlatinumUserInfo {
+    user_ID: number;
+    userName: string;
+    firstName: string;
+    lastName: string;
+    eMail: string;
+    enabled: boolean;
+    superUser: boolean;
+    cashFloat: number;
+    finYear: string;
+}
+
+export async function fetchPlatinumUserInfo(): Promise<PlatinumUserInfo | null> {
+    try {
+        const res = await fetch('/api/platinum/auth/user-info');
+        if (!res.ok) return null;
+        return await res.json();
+    } catch (e) {
+        console.error('Failed to fetch Platinum user info', e);
+        return null;
+    }
+}
+
 export interface Bank {
     id: number;
     bankName: string;
@@ -1004,7 +1027,11 @@ export async function submitMiscPayment(data: {
         const text = await res.text();
         throw new Error(`Failed to submit misc payment: ${text}`);
     }
-    return res.json();
+    const result = await res.json();
+    if (result && result.isSuccess === false) {
+        throw new Error(result.message || 'Miscellaneous payment submission failed');
+    }
+    return result;
 }
 
 export async function rebuildFullAccount(accountId: number): Promise<any> {
@@ -1026,7 +1053,11 @@ export async function submitConsumerPayment(userId: number, data: any): Promise<
         const text = await res.text();
         throw new Error(`Failed to submit consumer payment: ${text}`);
     }
-    return res.json();
+    const result = await res.json();
+    if (result && result.isSuccess === false) {
+        throw new Error(result.message || 'Consumer payment submission failed');
+    }
+    return result;
 }
 
 export async function submitMultiplePayment(userId: number, data: any): Promise<any> {
@@ -1039,7 +1070,11 @@ export async function submitMultiplePayment(userId: number, data: any): Promise<
         const text = await res.text();
         throw new Error(`Failed to submit multiple payment: ${text}`);
     }
-    return res.json();
+    const result = await res.json();
+    if (result && result.isSuccess === false) {
+        throw new Error(result.message || 'Multiple payment submission failed');
+    }
+    return result;
 }
 
 export async function submitPrepaidPayment(data: any): Promise<any> {

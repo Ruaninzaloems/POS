@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from '
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, MOCK_TRANSACTIONS, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, ApiCashier, BillingConfig, createSessionApi, endSessionApi, createTransactionApi, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, createSessionApi, endSessionApi, createTransactionApi, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment } from './external-api';
 
 if (import.meta.hot) {
   import.meta.hot.accept(() => {
@@ -165,6 +165,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       enableDenominationCounting: false
   });
 
+  const [platinumUser, setPlatinumUser] = useState<PlatinumUserInfo | null>(null);
+
   const [referenceData, setReferenceData] = useState<{
       banks: any[];
       groups: any[];
@@ -188,14 +190,15 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const loadData = async () => {
           try {
               console.log("Fetching reference data...");
-              const [banks, groups, institutions, settings, cashOffices, cashiers, billingConfig] = await Promise.all([
+              const [banks, groups, institutions, settings, cashOffices, cashiers, billingConfig, platinumUserInfo] = await Promise.all([
                   fetchBanks(),
                   fetchGroups(),
                   fetchInstitutions(),
                   fetchConfigSettings(),
                   fetchCashOffices(),
                   fetchCashiers(),
-                  fetchBillingConfig()
+                  fetchBillingConfig(),
+                  fetchPlatinumUserInfo()
               ]);
               
               setReferenceData({
@@ -207,6 +210,18 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   cashiers: cashiers || [],
                   billingConfig: billingConfig || null
               });
+
+              if (platinumUserInfo) {
+                  setPlatinumUser(platinumUserInfo);
+                  console.log("Platinum user info loaded:", platinumUserInfo);
+                  setCurrentUser({
+                      id: String(platinumUserInfo.user_ID),
+                      name: `${platinumUserInfo.firstName} ${platinumUserInfo.lastName}`.trim(),
+                      role: platinumUserInfo.superUser ? 'SUPERVISOR' : 'CASHIER',
+                      cashOffice: '',
+                      float: platinumUserInfo.cashFloat || 0,
+                  });
+              }
               
               console.log("Reference Data Loaded:", { banks, groups, institutions, settings, cashOffices, cashiers, billingConfig });
           } catch (error: any) {
@@ -235,19 +250,19 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setRecentTransactions([...MOCK_TRANSACTIONS].sort((a, b) => b.timestamp - a.timestamp));
   }, [currentUser]); // Re-fetch when user switches
 
-  // Update currentUser when cashiers are loaded from API to replace mock data
+  // Update currentUser when cashiers are loaded from API (only if Platinum user info not available)
   useEffect(() => {
-      if (referenceData.cashiers.length > 0) {
+      if (!platinumUser && referenceData.cashiers.length > 0) {
           const apiCashier = referenceData.cashiers[0];
           setCurrentUser({
               id: apiCashier.id,
               name: apiCashier.name,
-              role: 'CASHIER', // Default role since API might not return it
+              role: 'CASHIER',
               cashOffice: apiCashier.cashOfficeId || 'Unknown',
               float: apiCashier.float
           });
       }
-  }, [referenceData.cashiers]);
+  }, [referenceData.cashiers, platinumUser]);
 
   // Derived state (Logic extracted to pos-logic.ts)
   const { totalToPay, tenderTotal, changeDue } = calculateTransactionTotals(items, payment);
@@ -312,6 +327,27 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           officeId,
           floatAmount
       });
+
+      try {
+          const ensureRes = await fetch('/api/platinum/auth/ensure-cashier', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ officeId: Number(officeId) }),
+          });
+          const ensureData = await ensureRes.json();
+          if (ensureData.success) {
+              console.log("Platinum cashier setup confirmed:", ensureData.message);
+          } else if (ensureData.needsSetup) {
+              console.warn("Cashier not mapped in Platinum:", ensureData.message);
+              toast({
+                  title: "Cashier Not Mapped",
+                  description: `User ${currentUser.name} (ID: ${currentUser.id}) is not registered as a cashier in the billing system. Payments will be recorded locally but may not post to Platinum until cashier mapping is completed.`,
+                  variant: "destructive",
+              });
+          }
+      } catch (e) {
+          console.warn("Failed to check cashier setup in Platinum", e);
+      }
 
       try {
           const office = referenceData.cashOffices.find((o: any) => o.id === officeId || String(o.id) === String(officeId));
@@ -535,7 +571,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 console.log(`[Priority 1] Submitted multiple payment`, submitResult);
 
                 let receiptIds: number[] = [];
-                if (Array.isArray(submitResult)) {
+                if (submitResult?.ids && Array.isArray(submitResult.ids) && submitResult.ids.length > 0) {
+                    receiptIds = submitResult.ids.map(Number);
+                } else if (Array.isArray(submitResult)) {
                     receiptIds = submitResult
                         .map((r: any) => r.receiptID || r.receiptId || r.id)
                         .filter((id: any) => id != null)
@@ -559,11 +597,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 } else {
                     console.warn(`[Priority 1] No receipt IDs returned from submit — receipt print skipped`);
                 }
-            } catch (e) {
+            } catch (e: any) {
                 console.warn(`[Priority 1] Failed to submit multiple payment`, e);
+                const errorMsg = e?.message || 'Unknown error';
                 toast({
-                    title: "Payment Posting Warning",
-                    description: "Account payment saved locally but could not be posted to billing system. Please inform your supervisor.",
+                    title: "Payment Posting Failed",
+                    description: `Account payment could not be posted to billing system: ${errorMsg}`,
+                    variant: "destructive",
                 });
             }
 
@@ -626,11 +666,17 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     });
                     console.log(`[Priority 2] Submitted misc payment for SCOA item ${scoaItemId}`, miscResult);
 
-                    const miscReceiptId = miscResult?.receiptID || miscResult?.receiptId || miscResult?.id;
+                    let miscReceiptId: number | null = null;
+                    if (miscResult?.ids && Array.isArray(miscResult.ids) && miscResult.ids.length > 0) {
+                        miscReceiptId = miscResult.ids[0];
+                    } else {
+                        miscReceiptId = miscResult?.receiptID || miscResult?.receiptId || miscResult?.id || null;
+                    }
+
                     if (miscReceiptId) {
                         const platinumReceiptNo = `REC-${miscReceiptId}`;
                         updateRecordReceiptNumber(record, platinumReceiptNo);
-                        console.log(`[Priority 2] Receipt number updated to ${platinumReceiptNo}`);
+                        console.log(`[Priority 2] Receipt number updated to ${platinumReceiptNo} from API`);
 
                         try {
                             await platinumPrintMiscellaneousReceipt({}, { id: String(miscReceiptId) });
@@ -638,12 +684,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         } catch (e) {
                             console.warn(`[Priority 2] Failed to print misc receipt ${miscReceiptId}`, e);
                         }
+                    } else {
+                        console.warn(`[Priority 2] No receipt ID returned from misc payment submit`);
                     }
-                } catch (e) {
+                } catch (e: any) {
                     console.warn(`[Priority 2] Failed to submit misc payment for ${item.description}`, e);
+                    const errorMsg = e?.message || 'Unknown error';
                     toast({
-                        title: "Direct Income Warning",
-                        description: `Payment for "${item.description}" saved locally but could not be posted to billing system. Receipt was still generated.`,
+                        title: "Direct Income Posting Failed",
+                        description: `Payment for "${item.description}" could not be posted to billing system: ${errorMsg}`,
+                        variant: "destructive",
                     });
                 }
             } else {

@@ -87,7 +87,7 @@ export function ReceiptModal() {
           </div>
           <DialogTitle className="text-2xl">Payment Successful</DialogTitle>
           <DialogDescription className="text-lg font-mono text-foreground font-medium">
-             {currentTransaction.receiptNumber}
+             {currentTransaction.receiptNumber === 'PENDING' ? 'Processing...' : currentTransaction.receiptNumber}
           </DialogDescription>
         </DialogHeader>
         

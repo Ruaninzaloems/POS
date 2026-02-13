@@ -5,8 +5,9 @@ const PLATINUM_DBNAME = process.env.PLATINUM_API_DBNAME || "George";
 
 let cachedToken: string | null = null;
 let tokenExpiry: number = 0;
+let cachedUserData: any = null;
 
-async function fetchNewToken(): Promise<string> {
+async function fetchNewToken(): Promise<{ token: string; userData: any }> {
   const res = await fetch(`${PLATINUM_API_URL}/auth/createTokenAzure`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -28,7 +29,7 @@ async function fetchNewToken(): Promise<string> {
     throw new Error(`Platinum auth returned no token: ${JSON.stringify(data)}`);
   }
 
-  return data.token;
+  return { token: data.token, userData: data.data || null };
 }
 
 export async function getPlatinumToken(): Promise<string> {
@@ -37,10 +38,16 @@ export async function getPlatinumToken(): Promise<string> {
     return cachedToken;
   }
 
-  const token = await fetchNewToken();
-  cachedToken = token;
+  const result = await fetchNewToken();
+  cachedToken = result.token;
+  cachedUserData = result.userData;
   tokenExpiry = now + 7 * 60 * 60 * 1000;
-  return token;
+  return result.token;
+}
+
+export async function getPlatinumUserInfo(): Promise<any> {
+  await getPlatinumToken();
+  return cachedUserData;
 }
 
 export async function platinumGet(path: string, params?: Record<string, string>): Promise<any> {
