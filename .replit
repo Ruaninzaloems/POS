@@ -50,6 +50,6 @@ mockupState = "FULLSTACK"
 [userenv]
 
 [userenv.shared]
-PLATINUM_API_URL = "https://georgeplatinumuatapi.azurewebsites.net"
 PLATINUM_API_USERNAME = "Francois"
 PLATINUM_API_DBNAME = "George"
+PLATINUM_API_URL = "https://georgeplatinumuatapi.azurewebsites.net"
