@@ -533,6 +533,19 @@ export async function platinumPrintReceipt(data: any): Promise<any> {
     });
 }
 
+export async function fetchReceiptAllocations(receiptId: string): Promise<{ service: string; amount: number; vat: number; total: number }[]> {
+    try {
+        const res = await fetch(`/api/platinum/billing-payment/receipt-allocations?receiptId=${encodeURIComponent(receiptId)}`);
+        if (res.ok) {
+            const data = await res.json();
+            return data.allocations || [];
+        }
+    } catch (e) {
+        console.warn(`Failed to fetch receipt allocations for receiptId ${receiptId}`, e);
+    }
+    return [];
+}
+
 export async function platinumPrintMiscellaneousReceipt(data: any, params?: Record<string, string>): Promise<any> {
     const qs = params ? `?${new URLSearchParams(params).toString()}` : '';
     return platinumFetch(`/api/platinum/billing-payment/print-miscellaneous-receipt${qs}`, {

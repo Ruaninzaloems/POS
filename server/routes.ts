@@ -1,8 +1,84 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { platinumGet, platinumPost, getPlatinumUserInfo, getPlatinumToken } from "./platinum-auth";
+import { platinumGet, platinumPost, getPlatinumUserInfo, getPlatinumToken, getPlatinumApiUrl } from "./platinum-auth";
+import { execSync } from "child_process";
+import { writeFileSync, unlinkSync, existsSync } from "fs";
 
 const EXTERNAL_API_BASE = "https://george-uat-ems-billing-api.azurewebsites.net";
+
+interface ReceiptAllocation {
+  service: string;
+  amount: number;
+  vat: number;
+  total: number;
+}
+
+function parseReceiptAllocations(pdfText: string): ReceiptAllocation[] {
+  const allocations: ReceiptAllocation[] = [];
+  const lines = pdfText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+  let receiptNo = '';
+  let totalAmount = 0;
+  let vatAmount = 0;
+  let tenderAmount = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    if (line.startsWith('Receipt No') && i + 1 < lines.length) {
+      receiptNo = lines[i + 1];
+    }
+
+    const amountMatch = line.match(/^([\d,]+\.\d{2})$/);
+    if (amountMatch && i > 0) {
+      const prevLine = lines[i - 1];
+      const val = parseFloat(amountMatch[1].replace(/,/g, ''));
+      if (prevLine === 'VAT Amount') vatAmount = val;
+      else if (prevLine === 'Total') totalAmount = val;
+      else if (prevLine === 'Tender Amount') tenderAmount = val;
+    }
+  }
+
+  const serviceKeywords = [
+    'Water', 'Electricity', 'Property Rates', 'Rates', 'Sanitation', 'Sewerage',
+    'Waste', 'Refuse', 'Housing', 'Sundry', 'Advance Payment', 'Interest',
+    'Electricity Basic', 'Electricity Metered', 'Sanitation Basic', 'Waste Disposal',
+    'Water Basic', 'Water Metered', 'Assessment Rates'
+  ];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const matched = serviceKeywords.find(kw => line.toLowerCase().includes(kw.toLowerCase()));
+    if (matched) {
+      for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+        const valMatch = lines[j].match(/^-?([\d,]+\.\d{2})$/);
+        if (valMatch) {
+          const amount = parseFloat(valMatch[0].replace(/,/g, ''));
+          if (amount !== 0) {
+            allocations.push({
+              service: line,
+              amount: amount,
+              vat: 0,
+              total: amount,
+            });
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  if (allocations.length === 0 && tenderAmount > 0) {
+    allocations.push({
+      service: 'Consumer Services',
+      amount: tenderAmount - vatAmount,
+      vat: vatAmount,
+      total: tenderAmount,
+    });
+  }
+
+  return allocations;
+}
 
 async function proxyGet(url: string): Promise<any> {
   const res = await fetch(url, {
@@ -461,6 +537,50 @@ export async function registerRoutes(
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-payment/receipt-allocations", async (req, res) => {
+    try {
+      const receiptId = req.query.receiptId as string;
+      if (!receiptId) {
+        return res.status(400).json({ message: "receiptId is required" });
+      }
+
+      const token = await getPlatinumToken();
+      const apiUrl = getPlatinumApiUrl();
+
+      const pdfRes = await fetch(`${apiUrl}/api/billing-payment/print-receipt`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Accept: "application/pdf",
+        },
+        body: JSON.stringify([Number(receiptId)]),
+      });
+
+      if (!pdfRes.ok) {
+        return res.status(pdfRes.status).json({ message: "Failed to fetch receipt PDF" });
+      }
+
+      const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+      const tmpPath = `/tmp/receipt_alloc_${receiptId}_${Date.now()}.pdf`;
+
+      try {
+        writeFileSync(tmpPath, pdfBuffer);
+        const text = execSync(`pdftotext ${tmpPath} -`, { timeout: 10000 }).toString();
+
+        const allocations = parseReceiptAllocations(text);
+        res.json({ receiptId, allocations });
+      } finally {
+        if (existsSync(tmpPath)) {
+          try { unlinkSync(tmpPath); } catch {}
+        }
+      }
+    } catch (e: any) {
+      console.error("[receipt-allocations] Error:", e.message);
+      res.status(502).json({ message: "Failed to extract receipt allocations", detail: e.message });
     }
   });
 

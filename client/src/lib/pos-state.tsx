@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from '
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, MOCK_TRANSACTIONS, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, fetchPosMultiReceiptPrint } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations } from './external-api';
 
 if (import.meta.hot) {
   import.meta.hot.accept(() => {
@@ -30,6 +30,13 @@ export interface CashierProfile {
     float?: number;
 }
 
+export interface ReceiptAllocation {
+  service: string;
+  amount: number;
+  vat: number;
+  total: number;
+}
+
 export interface TransactionRecord {
   id: string;
   receiptNumber: string;
@@ -45,6 +52,7 @@ export interface TransactionRecord {
   isReconciled: number;
   cancellationReason?: string;
   cancellationRequestTime?: number;
+  allocations?: ReceiptAllocation[];
 }
 
 export interface DayEndReport {
@@ -670,6 +678,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     } catch (e) {
                         console.warn(`[Priority 1] Failed to print receipt`, e);
                     }
+
+                    try {
+                        const allocs = await fetchReceiptAllocations(String(receiptIds[0]));
+                        if (allocs.length > 0) {
+                            record.allocations = allocs;
+                            console.log(`[Priority 1] Receipt allocations:`, allocs);
+                        }
+                    } catch (e) {
+                        console.warn(`[Priority 1] Could not fetch receipt allocations`, e);
+                    }
                 } else {
                     console.warn(`[Priority 1] No receipt IDs returned from submit — receipt print skipped`);
                 }
@@ -787,6 +805,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             console.log(`[Priority 2] Created/printed misc receipt ID: ${miscReceiptId}`);
                         } catch (e) {
                             console.warn(`[Priority 2] Failed to print misc receipt ${miscReceiptId}`, e);
+                        }
+
+                        try {
+                            const miscAllocs = await fetchReceiptAllocations(String(miscReceiptId));
+                            if (miscAllocs.length > 0) {
+                                record.allocations = [...(record.allocations || []), ...miscAllocs];
+                                console.log(`[Priority 2] Misc receipt allocations:`, miscAllocs);
+                            }
+                        } catch (e) {
+                            console.warn(`[Priority 2] Could not fetch misc receipt allocations`, e);
                         }
                     } else {
                         console.warn(`[Priority 2] No receipt ID returned from misc payment submit`);

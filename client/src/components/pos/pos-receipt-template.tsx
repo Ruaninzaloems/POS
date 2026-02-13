@@ -1,6 +1,6 @@
 import React from 'react';
 import { format } from 'date-fns';
-import { TransactionRecord, TransactionItem } from '@/lib/pos-state';
+import { TransactionRecord, TransactionItem, ReceiptAllocation } from '@/lib/pos-state';
 import { Account, DirectIncomeItem } from '@/lib/mock-data';
 
 interface PosReceiptTemplateProps {
@@ -165,14 +165,34 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
             );
         })}
         
-        <div className="flex justify-between mt-2 pt-1 border-t border-dotted border-gray-400">
-            <span>Taxable Amount</span>
-            <span>{(totalAmount - vatAmount).toFixed(2)}</span>
-        </div>
-        <div className="flex justify-between">
-            <span>Vat Amount (15%)</span>
-            <span>{vatAmount.toFixed(2)}</span>
-        </div>
+        {transaction.allocations && transaction.allocations.length > 0 ? (
+            <div className="mt-2 pt-1 border-t border-dotted border-gray-400">
+                <div className="font-bold text-[9px] mb-1 text-center">Transaction Allocation</div>
+                <div className="flex justify-between text-[8px] font-bold border-b border-dotted border-gray-300 pb-0.5 mb-0.5">
+                    <span className="w-[50%]">Service</span>
+                    <span className="w-[25%] text-right">Amount</span>
+                    <span className="w-[25%] text-right">VAT</span>
+                </div>
+                {transaction.allocations.map((alloc, idx) => (
+                    <div key={idx} className="flex justify-between text-[8px]">
+                        <span className="w-[50%] truncate">{alloc.service}</span>
+                        <span className="w-[25%] text-right">{alloc.amount.toFixed(2)}</span>
+                        <span className="w-[25%] text-right">{alloc.vat > 0 ? alloc.vat.toFixed(2) : '-'}</span>
+                    </div>
+                ))}
+            </div>
+        ) : (
+            <div className="mt-2 pt-1 border-t border-dotted border-gray-400">
+                <div className="flex justify-between">
+                    <span>Taxable Amount</span>
+                    <span>{(totalAmount - vatAmount).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                    <span>Vat Amount (15%)</span>
+                    <span>{vatAmount.toFixed(2)}</span>
+                </div>
+            </div>
+        )}
       </div>
 
       {/* Totals */}
