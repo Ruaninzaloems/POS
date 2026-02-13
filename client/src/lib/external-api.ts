@@ -330,11 +330,15 @@ export async function fetchAccounts(criteria: any): Promise<any[]> {
         if (criteria.physicalMeterNumber) body.physicalMeterNumber = criteria.physicalMeterNumber;
         if (criteria.trading) body.trading = criteria.trading;
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 35000);
         const res = await fetch('/api/platinum/billing-enquiry/enquiry-results', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
+            signal: controller.signal,
         });
+        clearTimeout(timeoutId);
         if (res.ok) {
             const data = await res.json();
             if (Array.isArray(data)) return data;

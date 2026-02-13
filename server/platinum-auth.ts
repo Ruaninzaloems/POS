@@ -175,36 +175,56 @@ export async function platinumGet(path: string, params?: Record<string, string>)
     if (qs) url += `?${qs}`;
   }
 
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/json",
-    },
-  });
-
-  if (res.status === 401) {
-    cachedToken = null;
-    tokenExpiry = 0;
-    const retryToken = await getPlatinumToken();
-    const retryRes = await fetch(url, {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  try {
+    const res = await fetch(url, {
       headers: {
-        Authorization: `Bearer ${retryToken}`,
+        Authorization: `Bearer ${token}`,
         Accept: "application/json",
       },
+      signal: controller.signal,
     });
-    if (!retryRes.ok) {
-      return { _error: true, status: retryRes.status, statusText: retryRes.statusText };
+
+    if (res.status === 401) {
+      cachedToken = null;
+      tokenExpiry = 0;
+      const retryToken = await getPlatinumToken();
+      const retryController = new AbortController();
+      const retryTimeout = setTimeout(() => retryController.abort(), 30000);
+      try {
+        const retryRes = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${retryToken}`,
+            Accept: "application/json",
+          },
+          signal: retryController.signal,
+        });
+        if (!retryRes.ok) {
+          return { _error: true, status: retryRes.status, statusText: retryRes.statusText };
+        }
+        const text = await retryRes.text();
+        try { return text ? JSON.parse(text) : null; } catch { return text; }
+      } finally {
+        clearTimeout(retryTimeout);
+      }
     }
-    const text = await retryRes.text();
+
+    if (!res.ok) {
+      return { _error: true, status: res.status, statusText: res.statusText };
+    }
+
+    const text = await res.text();
     try { return text ? JSON.parse(text) : null; } catch { return text; }
+  } catch (e: any) {
+    if (e.name === 'AbortError') {
+      console.error(`[PlatinumGET] ${path} timed out after 30s`);
+      return { _error: true, status: 408, statusText: 'Request Timeout' };
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  if (!res.ok) {
-    return { _error: true, status: res.status, statusText: res.statusText };
-  }
-
-  const text = await res.text();
-  try { return text ? JSON.parse(text) : null; } catch { return text; }
 }
 
 export async function platinumPut(path: string, body: any, params?: Record<string, string>): Promise<any> {
@@ -259,44 +279,64 @@ export async function platinumPost(path: string, body: any, params?: Record<stri
     if (qs) url += `?${qs}`;
   }
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (res.status === 401) {
-    cachedToken = null;
-    tokenExpiry = 0;
-    const retryToken = await getPlatinumToken();
-    const retryRes = await fetch(url, {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  try {
+    const res = await fetch(url, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${retryToken}`,
+        Authorization: `Bearer ${token}`,
         Accept: "application/json",
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
+      signal: controller.signal,
     });
-    if (!retryRes.ok) {
-      return { _error: true, status: retryRes.status, statusText: retryRes.statusText };
+
+    if (res.status === 401) {
+      cachedToken = null;
+      tokenExpiry = 0;
+      const retryToken = await getPlatinumToken();
+      const retryController = new AbortController();
+      const retryTimeout = setTimeout(() => retryController.abort(), 30000);
+      try {
+        const retryRes = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${retryToken}`,
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+          signal: retryController.signal,
+        });
+        if (!retryRes.ok) {
+          return { _error: true, status: retryRes.status, statusText: retryRes.statusText };
+        }
+        const text = await retryRes.text();
+        try { return text ? JSON.parse(text) : null; } catch { return text; }
+      } finally {
+        clearTimeout(retryTimeout);
+      }
     }
-    const text = await retryRes.text();
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      console.error(`[PlatinumPOST] ${path} returned ${res.status}: ${errText}`);
+      return { _error: true, status: res.status, statusText: res.statusText, detail: errText };
+    }
+
+    const text = await res.text();
     try { return text ? JSON.parse(text) : null; } catch { return text; }
+  } catch (e: any) {
+    if (e.name === 'AbortError') {
+      console.error(`[PlatinumPOST] ${path} timed out after 30s`);
+      return { _error: true, status: 408, statusText: 'Request Timeout' };
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  if (!res.ok) {
-    const errText = await res.text().catch(() => '');
-    console.error(`[PlatinumPOST] ${path} returned ${res.status}: ${errText}`);
-    return { _error: true, status: res.status, statusText: res.statusText, detail: errText };
-  }
-
-  const text = await res.text();
-  try { return text ? JSON.parse(text) : null; } catch { return text; }
 }
 
 export function getPlatinumApiUrl(): string {

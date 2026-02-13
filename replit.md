@@ -71,6 +71,12 @@ Preferred communication style: Simple, everyday language.
 ### External APIs
 - **Platinum Inzalo EMS API** (`georgeplatinumuatapi.azurewebsites.net`): Full POS system API authenticated via JWT bearer tokens. Auth module in `server/platinum-auth.ts` handles token management with auto-refresh. Credentials stored as environment secrets (PLATINUM_API_PASSWORD) and env vars (PLATINUM_API_USERNAME, PLATINUM_API_DBNAME). OpenAPI spec in `platinum-openapi.json`.
   - Key endpoint groups: ReceiptPrepaid (cashier/account operations), billing-payment (consumer/clearance/misc payments), auth-day-end-reconcile (supervisor), billing-payment-day-end-reconcile (cashier), billing-direct-deposit-allocation (manual), billing/direct-deposit-bulk-allocation (bulk), third-party-payments v2, BillingEnquiry, BillingDashboard
+  - **API Naming Convention**: Platinum API expects PascalCase input with underscores preserved (e.g., `Const_CashOffice`, `User_Id`, `account_ID`) but returns camelCase output (e.g., `accountID`, `outStandingAmount`)
+  - **Performance**: Account search via `BillingEnquiry/EnquiryResults` is slow (~23 seconds for broad queries). All API calls have 30-35 second timeouts configured with AbortController
+  - **Working Payment Flow**: `save-multiple-account-payment` → `submit-multiple-payment/{userId}` → returns `{isSuccess: true, ids: [receiptId]}`
+  - **Receipt Data**: `pos-multi-receipt-print` (Sebata proxy) returns structured receipt data with `receiptNo`, `cashierName`, `cashOfficeName`, `tenderAmount`, `changeAmount`, `outstandingAmount`, `payMode`, `billType`
+  - **Cashier Session**: User 4697 (Francois Francois), cashierId 31055, Uniondale cash office (cashOffice_ID: 2). Session managed by Platinum, not local DB. `submit-cashier-setup` endpoint is broken in Platinum API
+  - **Auth Note**: JWT token resolves to System Administration (ID:1) due to Azure SSO mapping issue. userId parameter (4697) is passed separately to API calls
 - **Sebata Billing Microservice** (`george-uat-ems-billing-api.azurewebsites.net`): Legacy OData-based API providing consumer account data, billing config, and receipt staging. Accessed via server-side proxy routes (`/api/proxy/`) for backward compatibility. Swagger spec in `swagger.json`.
   
 ### Database

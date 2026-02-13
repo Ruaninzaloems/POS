@@ -152,7 +152,7 @@ export function UnifiedSearch() {
                 userId: -1,
             });
 
-            const accounts = accountsResult?.items || accountsResult || [];
+            const accounts = (accountsResult as any)?.items || accountsResult || [];
             const totalDue = Array.isArray(accounts)
                 ? accounts.reduce((sum: number, acc: any) => sum + (acc.amount || acc.paymentAmount || 0), 0)
                 : (clr.totalDue || 0);

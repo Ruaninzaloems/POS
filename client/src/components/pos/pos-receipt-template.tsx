@@ -121,35 +121,35 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
         )}
         <div className="flex justify-between mb-0.5">
             <span>Receipt Date</span>
-            <span className="text-right">{formatDate(transaction.timestamp)}</span>
+            <span className="text-right">{rd?.receiptDate || rd?.ReceiptDate || formatDate(transaction.timestamp)}</span>
         </div>
 
-        {primaryAccount && (
+        {(primaryAccount || rd?.accountId) && (
             <>
                 <div className="flex justify-between mb-0.5">
                     <span>Account No</span>
-                    <span className="text-right">{primaryAccount.accountNo || primaryAccount.accountNumber || ''}</span>
+                    <span className="text-right">{rd?.accountId || primaryAccount?.accountNo || primaryAccount?.accountNumber || ''}</span>
                 </div>
-                {(primaryAccount.oldCode || primaryAccount.oldPropertyCode || primaryAccount.oldAccountCode) && (
+                {(rd?.oldAccountCode || primaryAccount?.oldCode || primaryAccount?.oldPropertyCode || primaryAccount?.oldAccountCode) && (
                     <div className="flex justify-between mb-0.5">
                         <span>Old Account No</span>
-                        <span className="text-right">{primaryAccount.oldCode || primaryAccount.oldPropertyCode || primaryAccount.oldAccountCode}</span>
+                        <span className="text-right">{rd?.oldAccountCode || primaryAccount?.oldCode || primaryAccount?.oldPropertyCode || primaryAccount?.oldAccountCode}</span>
                     </div>
                 )}
                 <div className="flex justify-between mb-0.5">
                     <span>Account Name</span>
-                    <span className="text-right">{primaryAccount.name || primaryAccount.firstName || ''}</span>
+                    <span className="text-right">{rd?.accName || primaryAccount?.name || primaryAccount?.firstName || ''}</span>
                 </div>
-                {primaryAccount.sgNo && (
+                {(rd?.sgNumber || primaryAccount?.sgNo) && (
                     <div className="flex justify-between mb-0.5">
                         <span>SG Number</span>
-                        <span className="text-right">{primaryAccount.sgNo}</span>
+                        <span className="text-right">{rd?.sgNumber || primaryAccount?.sgNo}</span>
                     </div>
                 )}
-                {(primaryAccount.address || primaryAccount.locationAddress || primaryAccount.deliveryAddress) && (
+                {(rd?.accAddress || primaryAccount?.address || primaryAccount?.locationAddress || primaryAccount?.deliveryAddress) && (
                     <div className="flex justify-between mb-0.5">
                         <span>Address</span>
-                        <span className="text-right max-w-[55%] break-words">{primaryAccount.deliveryAddress || primaryAccount.locationAddress || primaryAccount.address}</span>
+                        <span className="text-right max-w-[55%] break-words">{(rd?.accAddress || primaryAccount?.deliveryAddress || primaryAccount?.locationAddress || primaryAccount?.address || '').replace(/\r\n/g, ', ')}</span>
                     </div>
                 )}
             </>

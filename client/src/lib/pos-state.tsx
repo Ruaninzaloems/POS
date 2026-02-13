@@ -657,28 +657,49 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         let receiptDetail: any = null;
 
         try {
-            receiptDetail = await getReceiptTransactionDetail(receiptIds[0]);
-            if (receiptDetail) {
-                console.log(`[Priority 1 ${paymentLabel}] Receipt transaction detail:`, JSON.stringify(receiptDetail).substring(0, 500));
-                const detailReceiptNo = receiptDetail?.receiptNo || receiptDetail?.ReceiptNo || receiptDetail?.receiptNumber || receiptDetail?.ReceiptNumber;
-                if (detailReceiptNo) {
-                    receiptNo = detailReceiptNo;
-                    console.log(`[Priority 1 ${paymentLabel}] Receipt number from transaction detail: ${receiptNo}`);
+            const receiptData = await fetchPosMultiReceiptPrint(String(receiptIds[0]));
+            if (receiptData && receiptData.length > 0) {
+                const rd = receiptData[0];
+                if (rd.receiptNo) {
+                    receiptNo = rd.receiptNo;
+                    console.log(`[Priority 1 ${paymentLabel}] Receipt number from multi-receipt-print: ${receiptNo}`);
                 }
+                receiptDetail = {
+                    receiptNo: rd.receiptNo,
+                    cashierName: rd.cashierName,
+                    cashOffice: rd.cashOfficeName,
+                    tenderAmount: rd.tenderAmount,
+                    changeAmount: rd.changeAmount,
+                    outstandingAmount: rd.outstandingAmount,
+                    paymentType: rd.billType || (rd.paymentTypeId === 1 ? 'Cash' : rd.paymentTypeId === 2 ? 'Card' : 'Cash'),
+                    paymentOption: rd.payMode || 'Consumer Services',
+                    accountId: rd.accountId,
+                    oldAccountCode: rd.oldAccountCode,
+                    sgNumber: rd.sgNumber,
+                    accAddress: rd.accAddress,
+                    accName: rd.accName,
+                    receiptDate: rd.receiptDate,
+                    paymentDate: rd.paymentDate,
+                    isCancelled: rd.isCancelled,
+                };
+                console.log(`[Priority 1 ${paymentLabel}] Receipt detail from multi-receipt-print:`, JSON.stringify(receiptDetail).substring(0, 500));
             }
         } catch (e) {
-            console.warn(`[Priority 1 ${paymentLabel}] Could not fetch receipt transaction detail`, e);
+            console.warn(`[Priority 1 ${paymentLabel}] Could not fetch multi-receipt-print`, e);
         }
 
         if (receiptNo.startsWith('REC-')) {
             try {
-                const receiptData = await fetchPosMultiReceiptPrint(String(receiptIds[0]));
-                if (receiptData && receiptData.length > 0 && receiptData[0].receiptNo) {
-                    receiptNo = receiptData[0].receiptNo;
-                    console.log(`[Priority 1 ${paymentLabel}] Receipt number from multi-receipt-print: ${receiptNo}`);
+                const htmlDetail = await getReceiptTransactionDetail(receiptIds[0]);
+                if (htmlDetail) {
+                    const detailReceiptNo = htmlDetail?.receiptNo || htmlDetail?.ReceiptNo || htmlDetail?.receiptNumber || htmlDetail?.ReceiptNumber;
+                    if (detailReceiptNo) {
+                        receiptNo = detailReceiptNo;
+                        console.log(`[Priority 1 ${paymentLabel}] Receipt number from transaction detail: ${receiptNo}`);
+                    }
                 }
             } catch (e) {
-                console.warn(`[Priority 1 ${paymentLabel}] Could not fetch formatted receipt number`, e);
+                console.warn(`[Priority 1 ${paymentLabel}] Could not fetch receipt transaction detail`, e);
             }
         }
 

@@ -129,36 +129,29 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
       setIsSearchingExternal(true);
       try {
           const platinumUrl = '/api/platinum/billing-enquiry/enquiry-results';
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 35000);
           
-          let accountRequests: Promise<Response>[] = [];
+          const fetchWithTimeout = (body: Record<string, string>) => 
+              fetch(platinumUrl, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(body),
+                  signal: controller.signal,
+              }).catch(err => {
+                  if (err.name === 'AbortError') return null;
+                  throw err;
+              });
+          
+          let accountRequests: Promise<Response | null>[] = [];
 
           if (/^\d+$/.test(query)) {
-              accountRequests.push(fetch(platinumUrl, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ accountID: query }),
-              }));
-              accountRequests.push(fetch(platinumUrl, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ oldAccount: query }),
-              }));
-              accountRequests.push(fetch(platinumUrl, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ physicalMeterNumber: query }),
-              }));
+              accountRequests.push(fetchWithTimeout({ accountID: query }));
+              accountRequests.push(fetchWithTimeout({ oldAccount: query }));
+              accountRequests.push(fetchWithTimeout({ physicalMeterNumber: query }));
           } else {
-              accountRequests.push(fetch(platinumUrl, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ companyName: query }),
-              }));
-              accountRequests.push(fetch(platinumUrl, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ deliveryAddress: query }),
-              }));
+              accountRequests.push(fetchWithTimeout({ companyName: query }));
+              accountRequests.push(fetchWithTimeout({ deliveryAddress: query }));
           }
 
           const [accountResponses, institutionResults, clearanceResults] = await Promise.all([
@@ -167,9 +160,11 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
               (scope === 'ALL' || scope === 'CLEARANCE') ? platinumGetClearanceIds({ clearanceId: query }).catch(() => []) : Promise.resolve([]),
           ]);
 
+          clearTimeout(timeoutId);
+
           let allAccountData: any[] = [];
           for (const res of accountResponses) {
-              if (res.ok) {
+              if (res && res.ok) {
                   const data = await res.json();
                   if (Array.isArray(data)) {
                       allAccountData = [...allAccountData, ...data];
