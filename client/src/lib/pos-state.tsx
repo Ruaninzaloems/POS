@@ -746,6 +746,50 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 console.warn(`[Priority 1] Failed to save multiple account payment`, e);
             }
 
+            const isSingleAccount = accountItems.length === 1;
+
+            const submitSingleOrMultiple = async (
+                paymentAmount: number,
+                tenderAmt: number,
+                changeAmt: number,
+                paymentTypeId: number,
+                paymentOptionId: number,
+                label: string,
+                paymentAmountOverride?: number,
+            ) => {
+                if (isSingleAccount) {
+                    const singleAccount = saveAccounts[0];
+                    console.log(`[Priority 1 ${label}] Using submit-consumer-payment (single account)`);
+                    return await submitConsumerPayment(Number(currentUser.id), {
+                        account: singleAccount,
+                        requestModel: {
+                            finYear,
+                            receiptDate,
+                            totalAmount: paymentAmount,
+                            tenderAmount: tenderAmt,
+                            changeAmount: changeAmt,
+                            paymentType: paymentTypeId,
+                            paymentOption: paymentOptionId,
+                        },
+                    });
+                } else {
+                    const submitAccounts = buildSubmitAccounts(paymentAmountOverride);
+                    console.log(`[Priority 1 ${label}] Using submit-multiple-payment (${accountItems.length} accounts)`);
+                    return await submitMultiplePayment(Number(currentUser.id), {
+                        accounts: submitAccounts,
+                        requestModel: {
+                            finYear,
+                            receiptDate,
+                            totalAmount: paymentAmount,
+                            tenderAmount: tenderAmt,
+                            changeAmount: changeAmt,
+                            paymentType: paymentTypeId,
+                            paymentOption: paymentOptionId,
+                        },
+                    });
+                }
+            };
+
             if (isSplitPayment) {
                 const cashPaid = Math.max(0, record.payment.cash - totalChange);
                 const cardPaid = record.payment.card;
@@ -759,19 +803,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 console.log(`[Priority 1 SPLIT] ACC total: R${accGroupTotal}, Cash: R${accCashActual} (tender: R${accCashTender}, change: R${accCashChange}), Card: R${accCardActual}`);
 
                 try {
-                    const cashSubmitAccounts = buildSubmitAccounts(accCashActual);
-                    const cashResult = await submitMultiplePayment(Number(currentUser.id), {
-                        accounts: cashSubmitAccounts,
-                        requestModel: {
-                            finYear,
-                            receiptDate,
-                            totalAmount: accCashActual,
-                            tenderAmount: accCashTender,
-                            changeAmount: accCashChange,
-                            paymentType: 1,
-                            paymentOption: 1,
-                        },
-                    });
+                    const cashResult = await submitSingleOrMultiple(accCashActual, accCashTender, accCashChange, 1, 1, 'CASH', accCashActual);
                     console.log(`[Priority 1 CASH] Submitted cash payment`, cashResult);
                     const cashReceiptIds = extractReceiptIds(cashResult);
                     await processAccReceiptResult(cashReceiptIds, 'CASH', 'cash', accCashActual);
@@ -783,19 +815,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 if (accCardActual > 0) {
                     try {
                         await platinumSaveMultipleAccountPayment(saveAccounts, { userId: String(currentUser.id) });
-                        const cardSubmitAccounts = buildSubmitAccounts(accCardActual);
-                        const cardResult = await submitMultiplePayment(Number(currentUser.id), {
-                            accounts: cardSubmitAccounts,
-                            requestModel: {
-                                finYear,
-                                receiptDate,
-                                totalAmount: accCardActual,
-                                tenderAmount: accCardActual,
-                                changeAmount: 0,
-                                paymentType: 2,
-                                paymentOption: 2,
-                            },
-                        });
+                        const cardResult = await submitSingleOrMultiple(accCardActual, accCardActual, 0, 2, 2, 'CARD', accCardActual);
                         console.log(`[Priority 1 CARD] Submitted card payment`, cardResult);
                         const cardReceiptIds = extractReceiptIds(cardResult);
                         await processAccReceiptResult(cardReceiptIds, 'CARD', 'card', accCardActual);
@@ -807,24 +827,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             } else {
                 const paymentTypeId = record.payment.card > 0 ? 2 : 1;
                 try {
-                    const submitAccounts = buildSubmitAccounts();
-                    const submitResult = await submitMultiplePayment(Number(currentUser.id), {
-                        accounts: submitAccounts,
-                        requestModel: {
-                            finYear,
-                            receiptDate,
-                            totalAmount: accountTotal,
-                            tenderAmount: accTender,
-                            changeAmount: accChange,
-                            paymentType: paymentTypeId,
-                            paymentOption: paymentTypeId,
-                        },
-                    });
-                    console.log(`[Priority 1] Submitted multiple payment`, submitResult);
+                    const submitResult = await submitSingleOrMultiple(accountTotal, accTender, accChange, paymentTypeId, paymentTypeId, 'ACC');
+                    console.log(`[Priority 1] Submitted ${isSingleAccount ? 'consumer' : 'multiple'} payment`, submitResult);
                     const receiptIds = extractReceiptIds(submitResult);
                     await processAccReceiptResult(receiptIds, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash', accountTotal);
                 } catch (e: any) {
-                    console.warn(`[Priority 1] Failed to submit multiple payment`, e);
+                    console.warn(`[Priority 1] Failed to submit payment`, e);
                     toast({ title: "Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
                 }
             }
