@@ -62,10 +62,15 @@ export async function registerRoutes(
 
       const userId = userData.user_ID;
 
-      const existing = await platinumGet("/api/ReceiptPrepaid/active-cashier-details", { user: String(userId) });
+      const details = await platinumGet(`/api/ReceiptPrepaid/cashier-detailsById`, { cashierId: String(userId) });
 
-      if (existing && !existing._error && existing.id) {
-        return res.json({ success: true, cashierId: existing.id, officeId: existing.officeId, message: "Cashier already set up" });
+      if (details && !details._error && details.const_CashOffice) {
+        return res.json({
+          success: true,
+          cashierId: details.id || userId,
+          officeId: details.const_CashOffice?.cashOffice_ID || details.officeId,
+          message: "Cashier already set up",
+        });
       }
 
       res.json({
