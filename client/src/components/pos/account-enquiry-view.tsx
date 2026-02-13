@@ -526,7 +526,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                    <>
                        {account.agingBreakdown.map((row, index) => (
                            <tr key={index} className="border-b last:border-0 hover:bg-blue-50" data-testid={`row-aging-${index}`}>
-                               <td className="p-2 border-r border-gray-200">{row.serviceDescription}</td>
+                               <td className="p-2 border-r border-gray-200">{row.totalOutstanding < 0 && row.serviceDescription === 'Balance B/F' ? 'Advance Payment' : row.serviceDescription}</td>
                                <td className="p-2 border-r border-gray-200 text-right">{row.totalOutstanding.toFixed(2)}</td>
                                <td className="p-2 border-r border-gray-200 text-right">{row.newCharge.toFixed(2)}</td>
                                <td className="p-2 border-r border-gray-200 text-right">{row.currentAccount.toFixed(2)}</td>
@@ -567,7 +567,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                    </>
                ) : (
                     <tr className="border-b last:border-0 hover:bg-blue-50">
-                        <td className="p-2 border-r border-gray-200">Balance B/F</td>
+                        <td className="p-2 border-r border-gray-200">{account.outstandingAmount < 0 ? 'Advance Payment' : 'Balance B/F'}</td>
                         <td className="p-2 border-r border-gray-200 text-right">{account.outstandingAmount.toFixed(2)}</td>
                         <td className="p-2 border-r border-gray-200 text-right">0.00</td>
                         <td className="p-2 border-r border-gray-200 text-right">{account.outstandingAmount.toFixed(2)}</td>
