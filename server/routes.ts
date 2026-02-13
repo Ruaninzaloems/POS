@@ -66,13 +66,17 @@ export async function registerRoutes(
       if (activeCashierId && activeCashierId !== 0 && !activeCashierId._error) {
         const details = await platinumGet(`/api/ReceiptPrepaid/cashier-detailsById`, { cashierId: String(activeCashierId) });
         const cashOffice = details?.const_CashOffice || null;
+        const hasPOSCashierRecord = details?.user_Id != null && details?.id !== 0;
         
         return res.json({
           success: true,
           cashierId: activeCashierId,
           officeId: cashOffice?.cashOffice_ID || details?.officeId || null,
           officeName: cashOffice?.cashOfficeDesc || null,
-          message: "Cashier is active and registered",
+          cashierMapped: hasPOSCashierRecord,
+          message: hasPOSCashierRecord 
+            ? "Cashier is active and fully registered" 
+            : "Cashier session is active but POSCashier record is not fully mapped. Consumer account payments will work. Direct income/miscellaneous payments require the cashier to be set up through the Platinum admin portal (Cashier Management screen).",
         });
       }
 
@@ -379,6 +383,25 @@ export async function registerRoutes(
       console.log(`[submit-cashier-setup] UserDetail present: ${!!body.UserDetail}, userId: ${body.UserDetail?.userId}`);
       const data = await platinumPost("/api/ReceiptPrepaid/submit-cashier-setup", body);
       console.log(`[submit-cashier-setup] Response:`, JSON.stringify(data));
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/user/:id", async (req, res) => {
+    try {
+      const data = await platinumGet(`/api/User/${req.params.id}`);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.put("/api/platinum/user/:id", async (req, res) => {
+    try {
+      const { platinumPut } = await import("./platinum-auth");
+      const data = await platinumPut(`/api/User/${req.params.id}`, req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });

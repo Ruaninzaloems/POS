@@ -90,6 +90,50 @@ export async function platinumGet(path: string, params?: Record<string, string>)
   try { return text ? JSON.parse(text) : null; } catch { return text; }
 }
 
+export async function platinumPut(path: string, body: any, params?: Record<string, string>): Promise<any> {
+  const token = await getPlatinumToken();
+  let url = `${PLATINUM_API_URL}${path}`;
+  if (params) {
+    const qs = new URLSearchParams(params).toString();
+    if (qs) url += `?${qs}`;
+  }
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (res.status === 401) {
+    cachedToken = null;
+    tokenExpiry = 0;
+    const retryToken = await getPlatinumToken();
+    const retryRes = await fetch(url, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${retryToken}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    if (!retryRes.ok) {
+      return { _error: true, status: retryRes.status, statusText: retryRes.statusText };
+    }
+    const text = await retryRes.text();
+    try { return text ? JSON.parse(text) : null; } catch { return text; }
+  }
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    console.error(`[PlatinumPUT] ${path} returned ${res.status}: ${errText}`);
+    return { _error: true, status: res.status, statusText: res.statusText, detail: errText };
+  }
+  const text = await res.text();
+  try { return text ? JSON.parse(text) : null; } catch { return text; }
+}
+
 export async function platinumPost(path: string, body: any, params?: Record<string, string>): Promise<any> {
   const token = await getPlatinumToken();
   let url = `${PLATINUM_API_URL}${path}`;
