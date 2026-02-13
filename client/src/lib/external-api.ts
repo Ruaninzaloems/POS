@@ -1397,14 +1397,14 @@ export interface MunicipalityInfo {
 }
 
 const FALLBACK_MUNICIPALITY: MunicipalityInfo = {
-    name: 'George Municipality',
-    address1: '71 York Street',
+    name: 'George UAT Municipality',
+    address1: 'York Street 1 George 6530',
     address2: 'George',
     address3: '',
     postalCode: '6530',
     tel: '044 801 9111',
     fax: '',
-    vatNo: '',
+    vatNo: '4630193664',
     email: '',
     website: '',
     receiptFooter: '',

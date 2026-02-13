@@ -69,7 +69,8 @@ export function createTransactionRecord(
   items: TransactionItem[],
   totalToPay: number,
   payment: PaymentState,
-  cashierId: string
+  cashierId: string,
+  extras?: { cashierName?: string; cashOfficeName?: string }
 ): TransactionRecord {
   // Sort items: Account payments first, Prepaid last
   const sortedItems = [...items].sort((a, b) => {
@@ -86,6 +87,26 @@ export function createTransactionRecord(
       return getPriority(a.type) - getPriority(b.type);
   });
 
+  const paymentTypeName = payment.cash > 0 && payment.card > 0 ? 'Split' : payment.card > 0 ? 'Card' : 'Cash';
+  const uniqueTypes = Array.from(new Set(sortedItems.map(i => i.type)));
+  let paymentOptionName: string;
+  if (uniqueTypes.length > 1) {
+      const labels: string[] = [];
+      if (uniqueTypes.includes('CONSUMER_SERVICES')) labels.push('Consumer Services');
+      if (uniqueTypes.includes('CLEARANCE')) labels.push('Clearance');
+      if (uniqueTypes.includes('DIRECT_INCOME')) labels.push('Direct Income');
+      if (uniqueTypes.includes('PREPAID')) labels.push('Prepaid');
+      if (uniqueTypes.includes('ACCOUNT_GROUP')) labels.push('Account Group');
+      paymentOptionName = labels.join(' / ') || 'Multiple';
+  } else {
+      paymentOptionName = uniqueTypes[0] === 'CONSUMER_SERVICES' ? 'Consumer Services'
+          : uniqueTypes[0] === 'CLEARANCE' ? 'Clearance'
+          : uniqueTypes[0] === 'DIRECT_INCOME' ? 'Direct Income'
+          : uniqueTypes[0] === 'PREPAID' ? 'Prepaid'
+          : uniqueTypes[0] === 'ACCOUNT_GROUP' ? 'Account Group'
+          : 'Consumer Services';
+  }
+
   return {
       id: crypto.randomUUID(),
       receiptNumber: `PENDING`,
@@ -95,6 +116,10 @@ export function createTransactionRecord(
       payment: { ...payment },
       status: 'COMPLETED',
       cashierId: cashierId,
+      cashierName: extras?.cashierName || '',
+      cashOfficeName: extras?.cashOfficeName || '',
+      paymentTypeName,
+      paymentOptionName,
       isReconciled: 0
   };
 }

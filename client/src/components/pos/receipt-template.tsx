@@ -74,11 +74,10 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptTemplateP
 
       {/* Header */}
       <div className="text-center mb-4 relative z-10">
-        <h1 className="font-bold text-xs mb-1">{muniInfo?.name || 'George Municipality'}</h1>
-        <p className="mb-0.5">{muniInfo?.address1 || '71 York Street'}</p>
-        <p className="mb-0.5">{muniInfo?.address2 || 'George'}{muniInfo?.postalCode ? `. ${muniInfo.postalCode}` : '. 6530'}</p>
-        {muniInfo?.vatNo && <p>VAT Reg: {muniInfo.vatNo}</p>}
-        {muniInfo?.tel && <p>Tel: {muniInfo.tel}</p>}
+        <h1 className="font-bold text-sm mb-0.5">{muniInfo?.name || 'George UAT Municipality'}</h1>
+        <p className="mb-0.5">{muniInfo?.address1 || 'York Street 1 George 6530'}</p>
+        <p className="mb-0.5">{muniInfo?.address2 || 'George'}</p>
+        <p>VAT Registration Number: {muniInfo?.vatNo || '4630193664'}</p>
         {isReprint && !isCancelled && <h2 className="font-bold mt-2 text-xs uppercase tracking-widest border-b border-black pb-0.5 inline-block">** REPRINT **</h2>}
         {isCancelled && <h2 className="font-bold mt-2 text-xs uppercase tracking-widest border-b border-red-600 pb-0.5 inline-block text-red-600">** CANCELLED **</h2>}
       </div>
@@ -90,8 +89,8 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptTemplateP
             <span>{receiptNo}</span>
         </div>
         <div className="flex justify-between">
-            <span>Date:</span>
-            <span>{format(new Date(), 'dd/MM/yyyy HH:mm')}</span>
+            <span>Receipt Date</span>
+            <span>{new Date().toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(',', '')}</span>
         </div>
         <div className="flex justify-between">
             <span>Payment Date:</span>

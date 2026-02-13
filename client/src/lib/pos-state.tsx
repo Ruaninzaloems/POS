@@ -57,6 +57,10 @@ export interface TransactionRecord {
   };
   status: TransactionStatus;
   cashierId: string;
+  cashierName?: string;
+  cashOfficeName?: string;
+  paymentTypeName?: string;
+  paymentOptionName?: string;
   isReconciled: number;
   cancellationReason?: string;
   cancellationRequestTime?: number;
@@ -497,7 +501,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const completeTransaction = async () => {
-    const record = createTransactionRecord(items, totalToPay, payment, currentUser.id);
+    const record = createTransactionRecord(items, totalToPay, payment, currentUser.id, {
+        cashierName: currentUser.name,
+        cashOfficeName: sessionDetails?.officeDesc || sessionDetails?.officeId || currentUser.cashOffice,
+    });
     
     MOCK_TRANSACTIONS.push(record);
     const cashierTxs = MOCK_TRANSACTIONS.filter(t => t.cashierId === currentUser.id);
