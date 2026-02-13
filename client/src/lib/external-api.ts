@@ -867,6 +867,14 @@ export async function platinumLoadDetailsClearance(data: any): Promise<any> {
     });
 }
 
+export async function platinumGetClearanceDetailsInfo(data: { costScheduleID: string; accountID: string; transactionAmount: number; posItemID: number }): Promise<any> {
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/get-clearance-details-info`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
 export async function platinumSubmitDirectDepositAllocation(data: any): Promise<any> {
     return platinumFetch(`/api/platinum/direct-deposit-allocation/submit-details-data`, {
         method: 'POST',

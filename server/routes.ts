@@ -1133,6 +1133,15 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/platinum/direct-deposit-allocation/get-clearance-details-info", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing-direct-deposit-allocation/get-clearance-details-info", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.post("/api/platinum/direct-deposit-allocation/get-consumer-details-data", async (req, res) => {
     try {
       const data = await platinumPost("/api/billing-direct-deposit-allocation/get-consumer-details-data", req.body);
