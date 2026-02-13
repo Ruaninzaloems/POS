@@ -824,6 +824,10 @@ export async function platinumGetDDVatRate(): Promise<any> {
     return platinumFetch(`/api/platinum/direct-deposit-allocation/get-vat-rate`);
 }
 
+export async function platinumGetVoteDetails(voteId: number): Promise<any> {
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/vote-details?voteId=${voteId}`);
+}
+
 export async function platinumGetAccountAutocomplete(params: Record<string, string>): Promise<any[]> {
     const qs = new URLSearchParams(params).toString();
     return platinumFetch(`/api/platinum/direct-deposit-allocation/get-account-autocomplete?${qs}`);
