@@ -94,6 +94,7 @@ export function createTransactionRecord(
       totalAmount: totalToPay,
       payment: { ...payment },
       status: 'COMPLETED',
-      cashierId: cashierId
+      cashierId: cashierId,
+      isReconciled: 0
   };
 }

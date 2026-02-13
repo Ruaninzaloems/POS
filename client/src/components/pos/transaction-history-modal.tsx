@@ -155,19 +155,21 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
                                                  Print
                                              </Button>
                                          )}
-                                         {tx.status === 'COMPLETED' && (
+                                         {tx.status === 'COMPLETED' && tx.isReconciled !== 1 && (
                                              <Button 
                                                 variant="ghost" 
                                                 size="sm" 
                                                 className="h-7 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                disabled={dayEndStatus === 'RECONCILED'}
                                                 onClick={() => initiateCancel(tx.id)}
-                                                title={dayEndStatus === 'RECONCILED' ? "Cannot cancel reconciled transactions" : "Cancel Receipt"}
+                                                title="Cancel Receipt"
                                                 data-testid={`button-cancel-${tx.id}`}
                                              >
                                                  <Ban className="w-3.5 h-3.5 mr-1" />
                                                  Cancel
                                              </Button>
+                                         )}
+                                         {tx.status === 'COMPLETED' && tx.isReconciled === 1 && (
+                                             <span className="text-xs text-muted-foreground italic">Reconciled</span>
                                          )}
                                          {tx.status === 'PENDING_CANCELLATION' && <span className="text-xs text-muted-foreground italic">Waiting Approval</span>}
                                          {tx.status === 'CANCELLED' && <span className="text-xs text-muted-foreground italic">Voided</span>}

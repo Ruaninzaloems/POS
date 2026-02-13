@@ -41,7 +41,8 @@ export interface TransactionRecord {
     card: number;
   };
   status: TransactionStatus;
-  cashierId: string; // Add cashierId to track who made it
+  cashierId: string;
+  isReconciled: number;
   cancellationReason?: string;
   cancellationRequestTime?: number;
 }
@@ -242,13 +243,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return officeLimits[sessionDetails.officeId] || 5000;
   }, [sessionDetails?.officeId, officeLimits]);
 
-  // Sync with global mock transactions on mount and updates
   useEffect(() => {
-    // Filter transactions relevant to current view if needed, or show all for prototype
-    // For Supervisor, show all. For Cashier, maybe just theirs? 
-    // For simplicity in prototype, we show all but highlight ownership
-    setRecentTransactions([...MOCK_TRANSACTIONS].sort((a, b) => b.timestamp - a.timestamp));
-  }, [currentUser]); // Re-fetch when user switches
+    const cashierTxs = MOCK_TRANSACTIONS.filter(t => t.cashierId === currentUser.id);
+    setRecentTransactions([...cashierTxs].sort((a, b) => b.timestamp - a.timestamp));
+  }, [currentUser]);
 
   // Update currentUser when cashiers are loaded from API (only if Platinum user info not available)
   useEffect(() => {
@@ -439,14 +437,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     record.receiptNumber = newReceiptNumber;
     const idx = MOCK_TRANSACTIONS.findIndex(t => t.id === record.id);
     if (idx >= 0) MOCK_TRANSACTIONS[idx] = record;
-    setRecentTransactions([...MOCK_TRANSACTIONS].sort((a, b) => b.timestamp - a.timestamp));
+    const cashierTxs = MOCK_TRANSACTIONS.filter(t => t.cashierId === currentUser.id);
+    setRecentTransactions([...cashierTxs].sort((a, b) => b.timestamp - a.timestamp));
   };
 
   const completeTransaction = async () => {
     const record = createTransactionRecord(items, totalToPay, payment, currentUser.id);
     
     MOCK_TRANSACTIONS.push(record);
-    setRecentTransactions([...MOCK_TRANSACTIONS].sort((a, b) => b.timestamp - a.timestamp));
+    const cashierTxs = MOCK_TRANSACTIONS.filter(t => t.cashierId === currentUser.id);
+    setRecentTransactions([...cashierTxs].sort((a, b) => b.timestamp - a.timestamp));
     setIsReceiptModalOpen(true);
 
     try {
@@ -733,12 +733,14 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const cancelTransaction = (id: string, reason: string) => {
-      if (dayEndStatus === 'RECONCILED') return;
+      const tx = MOCK_TRANSACTIONS.find(t => t.id === id);
+      if (!tx) return;
+
+      if (tx.isReconciled === 1) return;
       
       const isSupervisor = currentUser.role === 'SUPERVISOR';
       const newStatus = isSupervisor ? 'CANCELLED' : 'PENDING_CANCELLATION';
       
-      // Update Global Mock
       const idx = MOCK_TRANSACTIONS.findIndex(t => t.id === id);
       if (idx !== -1) {
           MOCK_TRANSACTIONS[idx].status = newStatus;
@@ -746,19 +748,18 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           MOCK_TRANSACTIONS[idx].cancellationRequestTime = Date.now();
       }
 
-      // Update Local State
-      setRecentTransactions([...MOCK_TRANSACTIONS].sort((a, b) => b.timestamp - a.timestamp));
+      const cashierTxs = MOCK_TRANSACTIONS.filter(t => t.cashierId === currentUser.id);
+      setRecentTransactions([...cashierTxs].sort((a, b) => b.timestamp - a.timestamp));
   };
   
   const approveCancellation = (id: string, approved: boolean) => {
-      // Update Global Mock
       const idx = MOCK_TRANSACTIONS.findIndex(t => t.id === id);
       if (idx !== -1) {
           MOCK_TRANSACTIONS[idx].status = approved ? 'CANCELLED' : 'COMPLETED';
       }
       
-      // Update Local State
-      setRecentTransactions([...MOCK_TRANSACTIONS].sort((a, b) => b.timestamp - a.timestamp));
+      const cashierTxs = MOCK_TRANSACTIONS.filter(t => t.cashierId === currentUser.id);
+      setRecentTransactions([...cashierTxs].sort((a, b) => b.timestamp - a.timestamp));
   };
   
   return (

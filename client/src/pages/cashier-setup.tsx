@@ -7,12 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { useLocation } from 'wouter';
-import { Loader2 } from 'lucide-react';
-
-interface PlatinumCashier {
-    id: number;
-    name: string;
-}
+import { Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { fetchPlatinumUserInfo } from '@/lib/external-api';
 
 interface PlatinumCashOfficeView {
     cashOffice_ID: number;
@@ -42,96 +38,98 @@ interface PlatinumCashierDetail {
 }
 
 export default function CashierSetup() {
-    const { startSession, switchUser } = usePos();
+    const { startSession, switchUser, currentUser } = usePos();
     const [, setLocation] = useLocation();
 
-    const [cashiers, setCashiers] = useState<PlatinumCashier[]>([]);
     const [cashOfficeViews, setCashOfficeViews] = useState<PlatinumCashOfficeView[]>([]);
-    const [selectedCashierId, setSelectedCashierId] = useState<string>('');
     const [cashierDetail, setCashierDetail] = useState<PlatinumCashierDetail | null>(null);
-    const [loadingCashiers, setLoadingCashiers] = useState(true);
-    const [loadingDetails, setLoadingDetails] = useState(false);
+    const [isCashierRegistered, setIsCashierRegistered] = useState<boolean | null>(null);
+    const [loading, setLoading] = useState(true);
     const [floatInput, setFloatInput] = useState<string>('0.00');
+    const [selectedOfficeId, setSelectedOfficeId] = useState<string>('');
     const [error, setError] = useState<string>('');
+    const [userName, setUserName] = useState<string>('');
+    const [userId, setUserId] = useState<number | null>(null);
 
     useEffect(() => {
         const loadData = async () => {
             try {
-                setLoadingCashiers(true);
-                const [cashierRes, officesRes] = await Promise.all([
-                    fetch('/api/platinum/auth-day-end/cashier-list'),
-                    fetch('/api/platinum/receipt-prepaid/cash-offices').catch(() => null)
-                ]);
-                if (cashierRes.ok) {
-                    const data = await cashierRes.json();
-                    if (Array.isArray(data) && data.length > 0) {
-                        setCashiers(data);
-                    }
+                setLoading(true);
+
+                const userInfo = await fetchPlatinumUserInfo();
+                if (userInfo) {
+                    setUserName(`${userInfo.firstName} ${userInfo.lastName}`.trim());
+                    setUserId(userInfo.user_ID);
                 }
+
+                const [officesRes, cashierCheckRes] = await Promise.all([
+                    fetch('/api/platinum/receipt-prepaid/cash-offices').catch(() => null),
+                    fetch('/api/platinum/auth/ensure-cashier', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ officeId: 1 }),
+                    }).catch(() => null),
+                ]);
+
                 if (officesRes && officesRes.ok) {
                     const data = await officesRes.json();
                     if (Array.isArray(data)) {
                         setCashOfficeViews(data);
                     }
                 }
+
+                if (cashierCheckRes && cashierCheckRes.ok) {
+                    const checkData = await cashierCheckRes.json();
+                    if (checkData.success && checkData.cashierId) {
+                        setIsCashierRegistered(true);
+                        const detailRes = await fetch(`/api/platinum/receipt-prepaid/cashier-details-by-id?cashierId=${userInfo?.user_ID || currentUser.id}`);
+                        if (detailRes.ok) {
+                            const detail = await detailRes.json();
+                            setCashierDetail(detail);
+                            if (detail.cashFloat != null) {
+                                setFloatInput(detail.cashFloat.toFixed(2));
+                            }
+                            if (detail.const_CashOffice) {
+                                setSelectedOfficeId(String(detail.const_CashOffice.cashOffice_ID));
+                            }
+                        }
+                    } else {
+                        setIsCashierRegistered(false);
+                    }
+                } else {
+                    setIsCashierRegistered(false);
+                }
             } catch (e) {
-                console.warn('Failed to fetch cashier list from Platinum API', e);
+                console.warn('Failed to load cashier setup data', e);
+                setError('Could not connect to the billing system.');
             } finally {
-                setLoadingCashiers(false);
+                setLoading(false);
             }
         };
         loadData();
     }, []);
 
-    useEffect(() => {
-        if (!selectedCashierId) {
-            setCashierDetail(null);
-            return;
-        }
-
-        const loadCashierDetails = async () => {
-            try {
-                setLoadingDetails(true);
-                setError('');
-                const res = await fetch(`/api/platinum/receipt-prepaid/cashier-details-by-id?cashierId=${selectedCashierId}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setCashierDetail(data);
-                    if (data.cashFloat != null) {
-                        setFloatInput(data.cashFloat.toFixed(2));
-                    } else {
-                        setFloatInput('0.00');
-                    }
-                } else {
-                    setError('Could not load cashier details.');
-                }
-            } catch (e) {
-                console.warn('Failed to fetch cashier details', e);
-                setError('Could not connect to the server.');
-            } finally {
-                setLoadingDetails(false);
-            }
-        };
-        loadCashierDetails();
-    }, [selectedCashierId]);
-
-    const selectedCashierName = cashiers.find(c => c.id.toString() === selectedCashierId)?.name || '';
+    const selectedOffice = cashOfficeViews.find(o => String(o.cashOffice_ID) === selectedOfficeId);
     const cashOffice = cashierDetail?.const_CashOffice;
-    const matchedOfficeView = cashOffice ? cashOfficeViews.find(o => o.cashOffice_ID === cashOffice.cashOffice_ID) : null;
+    const effectiveOffice = cashOffice || (selectedOffice ? {
+        cashOffice_ID: selectedOffice.cashOffice_ID,
+        cashOfficeDesc: selectedOffice.cashOfficeDesc || '',
+        enabled: true,
+        cashOnHandLimit: selectedOffice.cashOnHandLimit || 999999,
+        scoaConfigurationID: selectedOffice.scoaConfigurationID,
+        allowDelayedDayEndRecon: false,
+    } : null);
+
+    const matchedOfficeView = effectiveOffice ? cashOfficeViews.find(o => o.cashOffice_ID === effectiveOffice.cashOffice_ID) : null;
     const scoaCode = matchedOfficeView?.vote || matchedOfficeView?.vote1 || matchedOfficeView?.voteDesc || null;
-    const ledgerVoteDisplay = scoaCode || (cashOffice?.scoaConfigurationID != null ? `SCOA Configuration ${cashOffice.scoaConfigurationID}` : '');
+    const ledgerVoteDisplay = scoaCode || (effectiveOffice?.scoaConfigurationID != null ? `SCOA Configuration ${effectiveOffice.scoaConfigurationID}` : '');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
-        if (!selectedCashierId) {
-            setError('Please select a cashier.');
-            return;
-        }
-
-        if (!cashOffice) {
-            setError('No cash office assigned to this cashier.');
+        if (!effectiveOffice) {
+            setError('Please select a cash office.');
             return;
         }
 
@@ -141,29 +139,26 @@ export default function CashierSetup() {
             return;
         }
 
-        const officeId = cashOffice.cashOffice_ID.toString();
-        const officeName = cashOffice.cashOfficeDesc;
+        const officeId = String(effectiveOffice.cashOffice_ID);
+        const officeName = effectiveOffice.cashOfficeDesc || '';
 
-        switchUser(selectedCashierId, selectedCashierName, officeName);
-
-        try {
-            await fetch('/api/platinum/receipt-prepaid/submit-cashier-setup', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    id: parseInt(selectedCashierId),
-                    cashFloat: float,
-                    officeId: cashOffice.cashOffice_ID,
-                    isActive: true,
-                    user_Id: parseInt(selectedCashierId),
-                }),
-            });
-        } catch (e) {
-            console.warn('Failed to submit cashier setup to Platinum API', e);
-        }
+        switchUser(String(userId || currentUser.id), userName || currentUser.name, officeName);
 
         startSession(officeId, float, officeName);
     };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4" data-testid="cashier-setup-loading">
+                <Card className="w-full max-w-2xl shadow-lg">
+                    <CardContent className="p-12 flex flex-col items-center gap-4">
+                        <Loader2 className="h-8 w-8 animate-spin text-slate-600" />
+                        <p className="text-slate-600">Loading cashier information...</p>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4" data-testid="cashier-setup-page">
@@ -172,27 +167,50 @@ export default function CashierSetup() {
                     <CardTitle className="text-xl text-slate-800">Cashier Setup</CardTitle>
                 </CardHeader>
                 <CardContent className="p-8 bg-white">
+                    {isCashierRegistered === false && (
+                        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3" data-testid="cashier-not-registered-warning">
+                            <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+                            <div>
+                                <p className="font-medium text-amber-800">Cashier Not Registered</p>
+                                <p className="text-sm text-amber-700 mt-1">
+                                    User <strong>{userName || currentUser.name}</strong> (ID: {userId || currentUser.id}) is not yet registered as a cashier in the billing system.
+                                    Please contact your system administrator to complete the cashier registration in the Platinum admin portal before processing payments.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {isCashierRegistered === true && (
+                        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3" data-testid="cashier-registered-success">
+                            <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 shrink-0" />
+                            <div>
+                                <p className="font-medium text-green-800">Cashier Registered</p>
+                                <p className="text-sm text-green-700 mt-1">
+                                    User <strong>{userName || currentUser.name}</strong> is registered and ready to process payments.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="grid grid-cols-[200px_1fr] items-center gap-4">
-                            <Label className="text-right text-slate-600">Name <span className="text-red-500">*</span></Label>
-                            {loadingCashiers ? (
-                                <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                                    <Loader2 className="h-4 w-4 animate-spin" /> Loading cashiers...
-                                </div>
-                            ) : (
-                                <Select value={selectedCashierId} onValueChange={setSelectedCashierId} data-testid="select-cashier">
-                                    <SelectTrigger className="bg-slate-100 border-slate-300 text-slate-600" data-testid="select-cashier-trigger">
-                                        <SelectValue placeholder="-- Select Cashier --" />
-                                    </SelectTrigger>
-                                    <SelectContent className="max-h-[300px]">
-                                        {cashiers.map(cashier => (
-                                            <SelectItem key={cashier.id} value={cashier.id.toString()} data-testid={`cashier-option-${cashier.id}`}>
-                                                {cashier.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            )}
+                            <Label className="text-right text-slate-600">Name</Label>
+                            <Input
+                                value={userName || currentUser.name}
+                                disabled
+                                className="bg-slate-100 border-slate-300 text-slate-800 font-medium"
+                                data-testid="input-cashier-name"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+                            <Label className="text-right text-slate-600">User ID</Label>
+                            <Input
+                                value={String(userId || currentUser.id)}
+                                disabled
+                                className="bg-slate-100 border-slate-300 text-slate-800 font-mono"
+                                data-testid="input-cashier-id"
+                            />
                         </div>
 
                         <div className="grid grid-cols-[200px_1fr] items-center gap-4">
@@ -209,28 +227,36 @@ export default function CashierSetup() {
 
                         <div className="grid grid-cols-[200px_1fr] items-center gap-4">
                             <Label className="text-right text-slate-600">Cashier Office <span className="text-red-500">*</span></Label>
-                            {loadingDetails ? (
-                                <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                                    <Loader2 className="h-4 w-4 animate-spin" /> Loading office...
-                                </div>
-                            ) : (
+                            {isCashierRegistered && cashOffice ? (
                                 <Input
-                                    value={cashOffice ? cashOffice.cashOfficeDesc : ''}
+                                    value={cashOffice.cashOfficeDesc}
                                     disabled
-                                    className={`bg-slate-100 border-slate-300 ${cashOffice ? 'text-slate-800 font-medium' : 'text-slate-400'}`}
-                                    placeholder={selectedCashierId ? 'No office assigned' : 'Select a cashier first'}
+                                    className="bg-slate-100 border-slate-300 text-slate-800 font-medium"
                                     data-testid="input-cash-office"
                                 />
+                            ) : (
+                                <Select value={selectedOfficeId} onValueChange={setSelectedOfficeId} data-testid="select-cash-office">
+                                    <SelectTrigger className="bg-slate-100 border-slate-300 text-slate-600" data-testid="select-cash-office-trigger">
+                                        <SelectValue placeholder="-- Select Cash Office --" />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-[300px]">
+                                        {cashOfficeViews.map(office => (
+                                            <SelectItem key={office.cashOffice_ID} value={String(office.cashOffice_ID)} data-testid={`office-option-${office.cashOffice_ID}`}>
+                                                {office.cashOfficeDesc || `Office ${office.cashOffice_ID}`}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             )}
                         </div>
 
                         <div className="grid grid-cols-[200px_1fr] items-center gap-4">
-                            <Label className="text-right text-slate-600">Ledger Vote <span className="text-red-500">*</span></Label>
+                            <Label className="text-right text-slate-600">Ledger Vote</Label>
                             <Input
                                 value={ledgerVoteDisplay}
                                 disabled
                                 className={`bg-slate-100 border-slate-300 ${ledgerVoteDisplay ? 'text-slate-800 font-medium' : 'text-slate-400'}`}
-                                placeholder="Select a cashier to view ledger vote"
+                                placeholder="Select a cash office to view ledger vote"
                                 data-testid="input-ledger-vote"
                             />
                         </div>
@@ -247,7 +273,7 @@ export default function CashierSetup() {
                             <Button
                                 type="submit"
                                 className="w-32 bg-slate-800 hover:bg-slate-900"
-                                disabled={!selectedCashierId || loadingDetails || !cashOffice}
+                                disabled={!effectiveOffice}
                                 data-testid="button-submit"
                             >
                                 Submit
