@@ -747,6 +747,94 @@ export async function registerRoutes(
     }
   });
 
+  // --- Municipality / Institution Info ---
+
+  app.get("/api/platinum/billing-enquiry/get-app-setting", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/BillingEnquiry/GetAppSetting", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-enquiry/get-config-setting", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/BillingEnquiry/GetAAAA_ConfigSetting", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/receipt-info", async (req, res) => {
+    try {
+      const settings: Record<string, string> = {};
+
+      const appSettingKeys = [
+        'InstitutionName', 'InstitutionAddress1', 'InstitutionAddress2',
+        'InstitutionAddress3', 'InstitutionPostalCode', 'InstitutionTel',
+        'InstitutionFax', 'VATRegistrationNo', 'InstitutionEmail',
+        'InstitutionWebsite', 'ReceiptFooter', 'ReceiptHeader',
+        'MunicipalityName', 'MunicipalityAddress', 'MunicipalityVatNo',
+        'CompanyName', 'CompanyAddress', 'CompanyVatNo',
+        'SiteName', 'SiteAddress', 'OrgName',
+      ];
+
+      const results = await Promise.allSettled(
+        appSettingKeys.map(async (key) => {
+          try {
+            const val = await platinumGet("/api/BillingEnquiry/GetAppSetting", { key });
+            return { key, value: val };
+          } catch {
+            return { key, value: null };
+          }
+        })
+      );
+      for (const result of results) {
+        if (result.status === 'fulfilled' && result.value.value !== null && result.value.value !== undefined) {
+          const val = result.value.value;
+          if (typeof val === 'string' && val.trim().length > 0) {
+            settings[result.value.key] = val.trim();
+          } else if (typeof val !== 'string' && val) {
+            settings[result.value.key] = String(val);
+          }
+        }
+      }
+
+      const configKeys = [
+        'InstitutionName', 'MunicipalityName', 'VATRegistrationNo',
+        'InstitutionAddress', 'ReceiptHeader', 'ReceiptFooter',
+      ];
+      if (Object.keys(settings).length === 0) {
+        const configResults = await Promise.allSettled(
+          configKeys.map(async (key) => {
+            try {
+              const val = await platinumGet("/api/BillingEnquiry/GetAAAA_ConfigSetting", { strKeyName: key });
+              return { key, value: val };
+            } catch {
+              return { key, value: null };
+            }
+          })
+        );
+        for (const result of configResults) {
+          if (result.status === 'fulfilled' && result.value.value !== null && result.value.value !== undefined) {
+            const val = result.value.value;
+            if (typeof val === 'string' && val.trim().length > 0) {
+              settings[result.value.key] = val.trim();
+            }
+          }
+        }
+      }
+
+      console.log('[Receipt Info] Retrieved settings:', Object.keys(settings).length > 0 ? settings : '(no settings found - will use fallback)');
+      res.json(settings);
+    } catch (e: any) {
+      console.error('[Receipt Info] Error fetching settings:', e.message);
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   // --- Billing Enquiry - Rebuild ---
 
   app.get("/api/platinum/billing-enquiry/rebuild-full-account", async (req, res) => {

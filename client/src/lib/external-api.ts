@@ -1378,3 +1378,68 @@ export async function fetchReceiptList(query: ReceiptSearchQuery): Promise<Recei
         return { items: [], totalCount: 0, page: 1, pageSize: 50 };
     }
 }
+
+// --- Municipality / Receipt Info ---
+
+export interface MunicipalityInfo {
+    name: string;
+    address1: string;
+    address2: string;
+    address3: string;
+    postalCode: string;
+    tel: string;
+    fax: string;
+    vatNo: string;
+    email: string;
+    website: string;
+    receiptFooter: string;
+    receiptHeader: string;
+}
+
+const FALLBACK_MUNICIPALITY: MunicipalityInfo = {
+    name: 'Greater Tzaneen Municipality',
+    address1: 'Agatha St, Tzaneen 567',
+    address2: 'Tzaneen',
+    address3: '',
+    postalCode: '0850',
+    tel: '',
+    fax: '',
+    vatNo: '4130193669',
+    email: '',
+    website: '',
+    receiptFooter: '',
+    receiptHeader: '',
+};
+
+let cachedMunicipalityInfo: MunicipalityInfo | null = null;
+
+export async function fetchMunicipalityInfo(): Promise<MunicipalityInfo> {
+    if (cachedMunicipalityInfo) return cachedMunicipalityInfo;
+
+    try {
+        const res = await fetch('/api/platinum/receipt-info');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        const info: MunicipalityInfo = {
+            name: data.InstitutionName || data.MunicipalityName || FALLBACK_MUNICIPALITY.name,
+            address1: data.InstitutionAddress1 || data.MunicipalityAddress || FALLBACK_MUNICIPALITY.address1,
+            address2: data.InstitutionAddress2 || FALLBACK_MUNICIPALITY.address2,
+            address3: data.InstitutionAddress3 || FALLBACK_MUNICIPALITY.address3,
+            postalCode: data.InstitutionPostalCode || FALLBACK_MUNICIPALITY.postalCode,
+            tel: data.InstitutionTel || FALLBACK_MUNICIPALITY.tel,
+            fax: data.InstitutionFax || FALLBACK_MUNICIPALITY.fax,
+            vatNo: data.VATRegistrationNo || data.MunicipalityVatNo || FALLBACK_MUNICIPALITY.vatNo,
+            email: data.InstitutionEmail || FALLBACK_MUNICIPALITY.email,
+            website: data.InstitutionWebsite || FALLBACK_MUNICIPALITY.website,
+            receiptFooter: data.ReceiptFooter || FALLBACK_MUNICIPALITY.receiptFooter,
+            receiptHeader: data.ReceiptHeader || FALLBACK_MUNICIPALITY.receiptHeader,
+        };
+
+        cachedMunicipalityInfo = info;
+        return info;
+    } catch (e) {
+        console.warn('Failed to fetch municipality info, using fallback:', e);
+        return FALLBACK_MUNICIPALITY;
+    }
+}

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { BankTransaction, AllocationDraft, AllocationLine } from '@/lib/direct-deposits-data';
 import { Account } from '@/lib/mock-data';
+import { MunicipalityInfo, fetchMunicipalityInfo } from '@/lib/external-api';
 
 interface ReceiptTemplateProps {
   transaction: BankTransaction;
@@ -12,6 +13,11 @@ interface ReceiptTemplateProps {
 }
 
 export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptTemplateProps>(({ transaction, allocation, isReprint, isCancelled }, ref) => {
+  const [muniInfo, setMuniInfo] = useState<MunicipalityInfo | null>(null);
+  useEffect(() => {
+    fetchMunicipalityInfo().then(setMuniInfo);
+  }, []);
+
   // Find linked account details if available (use the first line's account number as primary for header)
   const primaryLine = allocation.lines[0];
   const primaryAccount = primaryLine ? { accountNo: primaryLine.accountNo, name: primaryLine.description || '', address: '' } as Account : undefined;
@@ -68,10 +74,11 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptTemplateP
 
       {/* Header */}
       <div className="text-center mb-4 relative z-10">
-        <h1 className="font-bold text-xs mb-1">Greater Tzaneen Municipality</h1>
-        <p className="mb-0.5">Agatha St, Tzaneen 567</p>
-        <p className="mb-0.5">Tzaneen. 0850</p>
-        <p>VAT Reg: 4130193669</p>
+        <h1 className="font-bold text-xs mb-1">{muniInfo?.name || 'Greater Tzaneen Municipality'}</h1>
+        <p className="mb-0.5">{muniInfo?.address1 || 'Agatha St, Tzaneen 567'}</p>
+        <p className="mb-0.5">{muniInfo?.address2 || 'Tzaneen'}{muniInfo?.postalCode ? `. ${muniInfo.postalCode}` : '. 0850'}</p>
+        <p>VAT Reg: {muniInfo?.vatNo || '4130193669'}</p>
+        {muniInfo?.tel && <p>Tel: {muniInfo.tel}</p>}
         {isReprint && !isCancelled && <h2 className="font-bold mt-2 text-xs uppercase tracking-widest border-b border-black pb-0.5 inline-block">** REPRINT **</h2>}
         {isCancelled && <h2 className="font-bold mt-2 text-xs uppercase tracking-widest border-b border-red-600 pb-0.5 inline-block text-red-600">** CANCELLED **</h2>}
       </div>
@@ -182,7 +189,7 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptTemplateP
       </div>
 
       <div className="text-center mt-6 italic text-[9px]">
-        Thank you.
+        {muniInfo?.receiptFooter ? <div className="mb-1">{muniInfo.receiptFooter}</div> : 'Thank you.'}
         <div className="mt-1 text-[8px] text-gray-400">System Gen: {format(new Date(), 'yyyy-MM-dd HH:mm:ss')}</div>
       </div>
     </div>

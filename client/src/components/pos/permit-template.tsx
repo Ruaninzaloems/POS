@@ -2,6 +2,7 @@ import React from 'react';
 import { TransactionItem } from '@/lib/pos-state';
 import { DirectIncomeItem } from '@/lib/mock-data';
 import { format } from 'date-fns';
+import { MunicipalityInfo, fetchMunicipalityInfo } from '@/lib/external-api';
 
 interface PermitTemplateProps {
   transaction: any;
@@ -9,9 +10,20 @@ interface PermitTemplateProps {
   reprint?: boolean;
 }
 
-export class PermitTemplate extends React.Component<PermitTemplateProps> {
+interface PermitTemplateState {
+  muniInfo: MunicipalityInfo | null;
+}
+
+export class PermitTemplate extends React.Component<PermitTemplateProps, PermitTemplateState> {
+  state: PermitTemplateState = { muniInfo: null };
+
+  componentDidMount() {
+    fetchMunicipalityInfo().then(muniInfo => this.setState({ muniInfo }));
+  }
+
   render() {
     const { transaction, items, reprint } = this.props;
+    const { muniInfo } = this.state;
     const permitItem = items.find(i => i.type === 'DIRECT_INCOME' && 
       (i.description.toLowerCase().includes('permit') || i.description.toLowerCase().includes('certificate')));
     
@@ -31,8 +43,8 @@ export class PermitTemplate extends React.Component<PermitTemplateProps> {
                 <span className="text-2xl font-bold">M</span>
              </div>
              <div>
-                 <h1 className="text-3xl font-bold tracking-widest uppercase">Municipal Authority</h1>
-                 <p className="text-sm uppercase tracking-wider">Official Municipality of Lephalale</p>
+                 <h1 className="text-3xl font-bold tracking-widest uppercase">{muniInfo?.name || 'Greater Tzaneen Municipality'}</h1>
+                 <p className="text-sm uppercase tracking-wider">{muniInfo?.address1 || ''}</p>
              </div>
           </div>
           
