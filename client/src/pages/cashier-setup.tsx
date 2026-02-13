@@ -64,42 +64,71 @@ export default function CashierSetup() {
                     setUserId(userInfo.user_ID);
                 }
 
-                const [officesRes, cashierCheckRes] = await Promise.all([
-                    fetch('/api/platinum/receipt-prepaid/cash-offices').catch(() => null),
-                    fetch('/api/platinum/auth/ensure-cashier', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ officeId: 1 }),
-                    }).catch(() => null),
-                ]);
+                const cashierCheckRes = await fetch('/api/platinum/auth/ensure-cashier', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ officeId: 1 }),
+                }).catch(() => null);
 
-                if (officesRes && officesRes.ok) {
-                    const data = await officesRes.json();
-                    if (Array.isArray(data)) {
-                        setCashOfficeViews(data);
-                    }
-                }
+                let defaultOfficeId: number | null = null;
 
                 if (cashierCheckRes && cashierCheckRes.ok) {
                     const checkData = await cashierCheckRes.json();
                     if (checkData.success && checkData.cashierId) {
                         setIsCashierRegistered(true);
-                        const detailRes = await fetch(`/api/platinum/receipt-prepaid/cashier-details-by-id?cashierId=${userInfo?.user_ID || currentUser.id}`);
-                        if (detailRes.ok) {
+                        defaultOfficeId = checkData.officeId || null;
+
+                        const [detailRes, activeOfficeRes] = await Promise.all([
+                            fetch(`/api/platinum/receipt-prepaid/cashier-details-by-id?cashierId=${userInfo?.user_ID || currentUser.id}`).catch(() => null),
+                            fetch(`/api/platinum/receipt-prepaid/active-cash-office-details?cashierId=${userInfo?.user_ID || currentUser.id}`).catch(() => null),
+                        ]);
+
+                        if (detailRes && detailRes.ok) {
                             const detail = await detailRes.json();
                             setCashierDetail(detail);
-                            if (detail.cashFloat != null) {
+                            if (detail.cashFloat != null && detail.cashFloat > 0) {
                                 setFloatInput(detail.cashFloat.toFixed(2));
                             }
-                            if (detail.const_CashOffice) {
-                                setSelectedOfficeId(String(detail.const_CashOffice.cashOffice_ID));
+                        }
+
+                        if (activeOfficeRes && activeOfficeRes.ok) {
+                            const activeOffice = await activeOfficeRes.json();
+                            if (activeOffice && activeOffice.cashOffice_ID) {
+                                defaultOfficeId = activeOffice.cashOffice_ID;
+                                setSelectedOfficeId(String(activeOffice.cashOffice_ID));
                             }
+                        } else if (defaultOfficeId) {
+                            setSelectedOfficeId(String(defaultOfficeId));
                         }
                     } else {
                         setIsCashierRegistered(false);
                     }
                 } else {
                     setIsCashierRegistered(false);
+                }
+
+                const officesRes = await fetch('/api/platinum/receipt-prepaid/cash-offices').catch(() => null);
+                if (officesRes && officesRes.ok) {
+                    const data = await officesRes.json();
+                    if (Array.isArray(data)) {
+                        setCashOfficeViews(data);
+                    }
+                } else {
+                    if (defaultOfficeId) {
+                        const activeOfficeRes = await fetch(`/api/platinum/receipt-prepaid/active-cash-office-details?cashierId=${userInfo?.user_ID || currentUser.id}`).catch(() => null);
+                        if (activeOfficeRes && activeOfficeRes.ok) {
+                            const activeOffice = await activeOfficeRes.json();
+                            if (activeOffice && activeOffice.cashOffice_ID) {
+                                setCashOfficeViews([{
+                                    cashOffice_ID: activeOffice.cashOffice_ID,
+                                    cashOfficeDesc: activeOffice.cashOfficeDesc || '',
+                                    cashOnHandLimit: activeOffice.cashOnHandLimit || 999999,
+                                    scoaConfigurationID: activeOffice.scoaConfigurationID || null,
+                                    vote1: null, vote: null, vote_ID: null, voteDesc: null,
+                                }]);
+                            }
+                        }
+                    }
                 }
             } catch (e) {
                 console.warn('Failed to load cashier setup data', e);
@@ -112,15 +141,14 @@ export default function CashierSetup() {
     }, []);
 
     const selectedOffice = cashOfficeViews.find(o => String(o.cashOffice_ID) === selectedOfficeId);
-    const cashOffice = cashierDetail?.const_CashOffice;
-    const effectiveOffice = cashOffice || (selectedOffice ? {
+    const effectiveOffice = selectedOffice ? {
         cashOffice_ID: selectedOffice.cashOffice_ID,
         cashOfficeDesc: selectedOffice.cashOfficeDesc || '',
         enabled: true,
         cashOnHandLimit: selectedOffice.cashOnHandLimit || 999999,
         scoaConfigurationID: selectedOffice.scoaConfigurationID,
         allowDelayedDayEndRecon: false,
-    } : null);
+    } : null;
 
     const matchedOfficeView = effectiveOffice ? cashOfficeViews.find(o => o.cashOffice_ID === effectiveOffice.cashOffice_ID) : null;
     const scoaCode = matchedOfficeView?.vote || matchedOfficeView?.vote1 || matchedOfficeView?.voteDesc || null;
@@ -277,27 +305,18 @@ export default function CashierSetup() {
 
                         <div className="grid grid-cols-[200px_1fr] items-center gap-4">
                             <Label className="text-right text-slate-600">Cashier Office <span className="text-red-500">*</span></Label>
-                            {isCashierRegistered && cashOffice ? (
-                                <Input
-                                    value={cashOffice.cashOfficeDesc}
-                                    disabled
-                                    className="bg-slate-100 border-slate-300 text-slate-800 font-medium"
-                                    data-testid="input-cash-office"
-                                />
-                            ) : (
-                                <Select value={selectedOfficeId} onValueChange={setSelectedOfficeId} data-testid="select-cash-office">
-                                    <SelectTrigger className="bg-slate-100 border-slate-300 text-slate-600" data-testid="select-cash-office-trigger">
-                                        <SelectValue placeholder="-- Select Cash Office --" />
-                                    </SelectTrigger>
-                                    <SelectContent className="max-h-[300px]">
-                                        {cashOfficeViews.map(office => (
-                                            <SelectItem key={office.cashOffice_ID} value={String(office.cashOffice_ID)} data-testid={`office-option-${office.cashOffice_ID}`}>
-                                                {office.cashOfficeDesc || `Office ${office.cashOffice_ID}`}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            )}
+                            <Select value={selectedOfficeId} onValueChange={setSelectedOfficeId} data-testid="select-cash-office">
+                                <SelectTrigger className="bg-slate-100 border-slate-300 text-slate-600" data-testid="select-cash-office-trigger">
+                                    <SelectValue placeholder="-- Select Cash Office --" />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-[300px]">
+                                    {cashOfficeViews.map(office => (
+                                        <SelectItem key={office.cashOffice_ID} value={String(office.cashOffice_ID)} data-testid={`office-option-${office.cashOffice_ID}`}>
+                                            {office.cashOfficeDesc || `Office ${office.cashOffice_ID}`}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         <div className="grid grid-cols-[200px_1fr] items-center gap-4">
