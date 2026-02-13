@@ -519,7 +519,15 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment/submit-multiple-payment/:userId", async (req, res) => {
     try {
-      const data = await platinumPost(`/api/billing-payment/submit-multiple-payment/${req.params.userId}`, req.body);
+      const body = req.body;
+      console.log(`[submit-multiple-payment] userId: ${req.params.userId}`);
+      console.log(`[submit-multiple-payment] requestModel:`, JSON.stringify(body?.requestModel));
+      console.log(`[submit-multiple-payment] accounts count: ${body?.accounts?.length}`);
+      if (body?.accounts?.length > 0) {
+        console.log(`[submit-multiple-payment] first account:`, JSON.stringify(body.accounts[0]));
+      }
+      const data = await platinumPost(`/api/billing-payment/submit-multiple-payment/${req.params.userId}`, body);
+      console.log(`[submit-multiple-payment] response:`, JSON.stringify(data));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
