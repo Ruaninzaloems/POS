@@ -38,7 +38,7 @@ interface PlatinumCashierDetail {
 }
 
 export default function CashierSetup() {
-    const { startSession, switchUser, currentUser } = usePos();
+    const { startSession, switchUser, currentUser, activeSession, sessionLoading, sessionDetails } = usePos();
     const [, setLocation] = useLocation();
 
     const [cashOfficeViews, setCashOfficeViews] = useState<PlatinumCashOfficeView[]>([]);
@@ -53,6 +53,13 @@ export default function CashierSetup() {
     const [userId, setUserId] = useState<number | null>(null);
 
     useEffect(() => {
+        if (activeSession && sessionDetails) {
+            setLocation('/pos');
+            return;
+        }
+
+        if (sessionLoading) return;
+
         const loadData = async () => {
             try {
                 setLoading(true);
@@ -138,7 +145,7 @@ export default function CashierSetup() {
             }
         };
         loadData();
-    }, []);
+    }, [activeSession, sessionLoading, sessionDetails]);
 
     const selectedOffice = cashOfficeViews.find(o => String(o.cashOffice_ID) === selectedOfficeId);
     const effectiveOffice = selectedOffice ? {
@@ -220,17 +227,23 @@ export default function CashierSetup() {
         startSession(officeId, float, officeName);
     };
 
-    if (loading) {
+    if (sessionLoading || loading) {
         return (
             <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4" data-testid="cashier-setup-loading">
                 <Card className="w-full max-w-2xl shadow-lg">
                     <CardContent className="p-12 flex flex-col items-center gap-4">
                         <Loader2 className="h-8 w-8 animate-spin text-slate-600" />
-                        <p className="text-slate-600">Loading cashier information...</p>
+                        <p className="text-slate-600">
+                            {sessionLoading ? 'Checking for active session...' : 'Loading cashier information...'}
+                        </p>
                     </CardContent>
                 </Card>
             </div>
         );
+    }
+
+    if (activeSession && sessionDetails) {
+        return null;
     }
 
     return (

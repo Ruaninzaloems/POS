@@ -84,6 +84,40 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/platinum/auth/active-cashier-by-userid", async (req, res) => {
+    try {
+      const userId = req.query.userid as string;
+      if (!userId) {
+        return res.status(400).json({ message: "userid is required" });
+      }
+      const cashierId = await platinumGet("/api/billing/auth-day-end-reconcile/active-cashierid-by-userid", { userid: userId });
+      
+      if (!cashierId && cashierId !== 0) {
+        return res.json({ active: false, cashierId: null });
+      }
+
+      let cashierDetails = null;
+      try {
+        cashierDetails = await platinumGet("/api/ReceiptPrepaid/cashier-detailsById", { cashierId: String(cashierId) });
+      } catch {}
+
+      const cashOffice = cashierDetails?.const_CashOffice || null;
+
+      res.json({
+        active: true,
+        cashierId,
+        cashFloat: cashierDetails?.cashFloat ?? 0,
+        officeId: cashOffice?.cashOffice_ID || null,
+        officeName: cashOffice?.cashOfficeDesc || null,
+        cashOnHandLimit: cashOffice?.cashOnHandLimit || 999999,
+        isActive: cashierDetails?.isActive ?? true,
+        details: cashierDetails,
+      });
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   // =====================================================
   // PLATINUM API PROXY ROUTES (authenticated)
   // =====================================================

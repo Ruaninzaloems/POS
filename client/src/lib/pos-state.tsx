@@ -84,13 +84,16 @@ interface PosState {
   dayEndStatus: DayEndStatus;
   dayEndReturnReason?: string;
   activeSession: boolean;
+  sessionLoading: boolean;
   startSession: (officeId: string, floatAmount: number, officeName?: string) => void;
   endSession: () => void;
   sessionDetails?: {
       startTime: number;
       officeId: string;
+      officeDesc?: string;
       floatAmount: number;
   };
+  platinumCashierId: number | null;
   officeLimits: Record<string, number>;
   currentTransactionLimit: number;
   viewMode: 'desktop' | 'mobile';
@@ -157,7 +160,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   
   // Session State
   const [activeSession, setActiveSession] = useState(false);
-  const [sessionDetails, setSessionDetails] = useState<{startTime: number; officeId: string; floatAmount: number} | undefined>(undefined);
+  const [sessionLoading, setSessionLoading] = useState(true);
+  const [sessionDetails, setSessionDetails] = useState<{startTime: number; officeId: string; officeDesc?: string; floatAmount: number} | undefined>(undefined);
+  const [platinumCashierId, setPlatinumCashierId] = useState<number | null>(null);
   
   const [officeLimits, setOfficeLimits] = useState<Record<string, number>>({});
 
@@ -227,6 +232,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               console.log("Reference Data Loaded:", { banks, groups, institutions, settings, cashOffices, cashiers, billingConfig });
           } catch (error: any) {
               console.error("Failed to load reference data", error);
+              setSessionLoading(false);
               toast({
                   title: "Connection Error",
                   description: `Failed to load data from API. Error: ${error.message || 'Unknown network error'}`,
@@ -239,9 +245,65 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const currentTransactionLimit = useMemo(() => {
-      if (!sessionDetails?.officeId) return 5000; // Default fallback
+      if (!sessionDetails?.officeId) return 5000;
       return officeLimits[sessionDetails.officeId] || 5000;
   }, [sessionDetails?.officeId, officeLimits]);
+
+  useEffect(() => {
+    if (!platinumUser) return;
+    const checkActiveSession = async () => {
+      try {
+        const res = await fetch(`/api/platinum/auth/active-cashier-by-userid?userid=${platinumUser.user_ID}`);
+        if (!res.ok) {
+          setSessionLoading(false);
+          return;
+        }
+        const data = await res.json();
+        if (data.active && data.officeId) {
+          setPlatinumCashierId(data.cashierId);
+          setActiveSession(true);
+          setSessionDetails({
+            startTime: Date.now(),
+            officeId: String(data.officeId),
+            officeDesc: data.officeName || '',
+            floatAmount: data.cashFloat || 0,
+          });
+          setCurrentUser(prev => ({
+            ...prev,
+            cashOffice: data.officeName || prev.cashOffice,
+            float: data.cashFloat || prev.float,
+          }));
+          if (data.cashOnHandLimit) {
+            setOfficeLimits(prev => ({ ...prev, [String(data.officeId)]: data.cashOnHandLimit }));
+          }
+          try {
+            const existingSessionRes = await fetch(`/api/sessions/active/${platinumUser.user_ID}`);
+            if (existingSessionRes.ok) {
+              const existingSession = await existingSessionRes.json();
+              setDbSessionId(existingSession.id);
+            } else {
+              const session = await createSessionApi({
+                cashierId: String(platinumUser.user_ID),
+                cashierName: `${platinumUser.firstName} ${platinumUser.lastName}`.trim(),
+                cashOfficeId: String(data.officeId),
+                cashOfficeName: data.officeName || '',
+                floatAmount: data.cashFloat || 0,
+              });
+              setDbSessionId(session.id);
+            }
+          } catch {}
+          console.log("Active Platinum session restored:", data);
+        } else {
+          setPlatinumCashierId(data.cashierId || null);
+        }
+      } catch (e) {
+        console.warn("Failed to check active Platinum session", e);
+      } finally {
+        setSessionLoading(false);
+      }
+    };
+    checkActiveSession();
+  }, [platinumUser]);
 
   useEffect(() => {
     const cashierTxs = MOCK_TRANSACTIONS.filter(t => t.cashierId === currentUser.id);
@@ -296,16 +358,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const resetSession = () => {
-      // In a real app, we would load that cashier's active session here
-      // For prototype, we'll just reset the session slightly to simulate a switch
       setItems([]);
       setSearchQuery('');
       setDayEndStatus('OPEN');
       setDayEndReturnReason('');
       setRecentTransactions([]);
       setPayment({ cash: 0, card: 0 });
-      setActiveSession(false); // Require new session start on switch
-      setSessionDetails(undefined);
   };
 
   const toggleViewMode = () => {
@@ -320,9 +378,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const startSession = async (officeId: string, floatAmount: number, officeName?: string) => {
       setActiveSession(true);
+      setSessionLoading(false);
       setSessionDetails({
           startTime: Date.now(),
           officeId,
+          officeDesc: officeName || '',
           floatAmount
       });
 
@@ -363,6 +423,14 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const endSession = async () => {
+      if (dayEndStatus !== 'RECONCILED') {
+          toast({
+              title: "Cannot End Session",
+              description: "Your session cannot be ended until day-end reconciliation has been completed and approved. Please complete the day-end process first.",
+              variant: "destructive",
+          });
+          return;
+      }
       if (dbSessionId) {
           try {
               await endSessionApi(dbSessionId);
@@ -373,6 +441,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setActiveSession(false);
       setSessionDetails(undefined);
       setDbSessionId(null);
+      setPlatinumCashierId(null);
   };
 
   const updateOfficeLimit = (officeId: string, limit: number) => {
@@ -796,9 +865,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       cancelTransaction,
       approveCancellation,
       activeSession,
+      sessionLoading,
       startSession,
       endSession,
       sessionDetails,
+      platinumCashierId,
       officeLimits,
       updateOfficeLimit,
       currentTransactionLimit,

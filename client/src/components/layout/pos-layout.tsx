@@ -44,9 +44,20 @@ interface PosLayoutProps {
 
 export function PosLayout({ children }: PosLayoutProps) {
   const [location, setLocation] = useLocation();
-  const { currentUser, activeSession, endSession, viewMode, toggleViewMode } = usePos();
+  const { currentUser, activeSession, sessionLoading, endSession, viewMode, toggleViewMode, sessionDetails, dayEndStatus } = usePos();
 
   const isPosPage = location === '/pos';
+
+  if (sessionLoading && isPosPage) {
+      return (
+        <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-600" />
+            <p className="text-slate-600">Checking session status...</p>
+          </div>
+        </div>
+      );
+  }
 
   if (!activeSession && isPosPage) {
       return <CashierSetup />;
@@ -167,15 +178,24 @@ export function PosLayout({ children }: PosLayoutProps) {
                   </div>
                   <div className="flex flex-col items-start text-sm leading-tight">
                     <span className="font-medium">{currentUser.name}</span>
-                    <span className="text-xs text-muted-foreground">{currentUser.cashOffice}</span>
+                    <span className="text-xs text-muted-foreground">{sessionDetails?.officeDesc || currentUser.cashOffice}</span>
+                  </div>
+                  <div className="ml-1 px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-semibold rounded-full border border-green-200">
+                    SESSION ACTIVE
                   </div>
                </div>
 
                <div className="h-6 w-px bg-border" />
 
-               <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={endSession} title="End Session">
-                 <LogOut className="w-4 h-4" />
-               </Button>
+               {dayEndStatus === 'RECONCILED' ? (
+                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={endSession} title="End Session">
+                   <LogOut className="w-4 h-4" />
+                 </Button>
+               ) : (
+                 <Button variant="ghost" size="icon" className="text-muted-foreground opacity-40 cursor-not-allowed" onClick={endSession} title="Session active until day-end reconciliation is completed">
+                   <LogOut className="w-4 h-4" />
+                 </Button>
+               )}
              </>
            ) : (
              <Button variant="outline" size="sm" onClick={() => setLocation('/pos')} className="gap-2">
