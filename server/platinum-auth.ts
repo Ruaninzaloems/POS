@@ -1,6 +1,6 @@
 const PLATINUM_API_URL = process.env.PLATINUM_API_URL || "https://georgeplatinumuatapi.azurewebsites.net";
-const PLATINUM_USERNAME = process.env.PLATINUM_API_USERNAME || "Francois";
-const PLATINUM_PASSWORD = process.env.PLATINUM_API_PASSWORD || "";
+const PLATINUM_USERNAME = process.env.PLATINUM_API_USERNAME || "Francois Naude";
+const PLATINUM_PASSWORD = process.env.PLATINUM_API_PASSWORD || "Pass@123";
 const PLATINUM_DBNAME = process.env.PLATINUM_API_DBNAME || "George";
 
 let cachedToken: string | null = null;
