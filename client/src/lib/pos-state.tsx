@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from '
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, MOCK_TRANSACTIONS, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList } from './external-api';
 
 if (import.meta.hot) {
   import.meta.hot.accept(() => {
@@ -43,6 +43,7 @@ export interface SplitReceipt {
   paymentType: 'cash' | 'card';
   amount: number;
   allocations?: ReceiptAllocation[];
+  receiptDetail?: any;
 }
 
 export interface TransactionRecord {
@@ -66,6 +67,7 @@ export interface TransactionRecord {
   cancellationRequestTime?: number;
   allocations?: ReceiptAllocation[];
   splitReceipts?: SplitReceipt[];
+  receiptDetail?: any;
 }
 
 export interface DayEndReport {
@@ -623,14 +625,32 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             return;
         }
         let receiptNo = `REC-${receiptIds[0]}`;
+        let receiptDetail: any = null;
+
         try {
-            const receiptData = await fetchPosMultiReceiptPrint(String(receiptIds[0]));
-            if (receiptData && receiptData.length > 0 && receiptData[0].receiptNo) {
-                receiptNo = receiptData[0].receiptNo;
-                console.log(`[Priority 1 ${paymentLabel}] Actual receipt number: ${receiptNo}`);
+            receiptDetail = await getReceiptTransactionDetail(receiptIds[0]);
+            if (receiptDetail) {
+                console.log(`[Priority 1 ${paymentLabel}] Receipt transaction detail:`, JSON.stringify(receiptDetail).substring(0, 500));
+                const detailReceiptNo = receiptDetail?.receiptNo || receiptDetail?.ReceiptNo || receiptDetail?.receiptNumber || receiptDetail?.ReceiptNumber;
+                if (detailReceiptNo) {
+                    receiptNo = detailReceiptNo;
+                    console.log(`[Priority 1 ${paymentLabel}] Receipt number from transaction detail: ${receiptNo}`);
+                }
             }
         } catch (e) {
-            console.warn(`[Priority 1 ${paymentLabel}] Could not fetch formatted receipt number`, e);
+            console.warn(`[Priority 1 ${paymentLabel}] Could not fetch receipt transaction detail`, e);
+        }
+
+        if (receiptNo.startsWith('REC-')) {
+            try {
+                const receiptData = await fetchPosMultiReceiptPrint(String(receiptIds[0]));
+                if (receiptData && receiptData.length > 0 && receiptData[0].receiptNo) {
+                    receiptNo = receiptData[0].receiptNo;
+                    console.log(`[Priority 1 ${paymentLabel}] Receipt number from multi-receipt-print: ${receiptNo}`);
+                }
+            } catch (e) {
+                console.warn(`[Priority 1 ${paymentLabel}] Could not fetch formatted receipt number`, e);
+            }
         }
 
         if (!finalReceiptNumber || finalReceiptNumber === 'PENDING') {
@@ -639,6 +659,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
 
         const splitEntry: SplitReceipt = { receiptNumber: receiptNo, receiptId: receiptIds[0], paymentType, amount: paymentAmount };
+
+        if (receiptDetail) {
+            splitEntry.receiptDetail = receiptDetail;
+        }
 
         try {
             await platinumPrintReceipt(receiptIds);
@@ -659,6 +683,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
 
         record.splitReceipts!.push(splitEntry);
+
+        if (receiptDetail && !record.receiptDetail) {
+            record.receiptDetail = receiptDetail;
+        }
+
         console.log(`[Priority 1 ${paymentLabel}] Receipt ${receiptNo} added to split receipts`);
     };
 
@@ -738,27 +767,14 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 };
             });
 
+        const isSingleAccount = accountItems.length === 1;
+
         if (saveAccounts.length > 0) {
             try {
                 await platinumSaveMultipleAccountPayment(saveAccounts, { userId: String(currentUser.id) });
-                console.log(`[Priority 1] Saved ${saveAccounts.length} account(s) for multiple payment`);
+                console.log(`[Priority 1] Saved ${saveAccounts.length} account(s) for ${isSingleAccount ? 'consumer' : 'multiple'} payment`);
             } catch (e) {
                 console.warn(`[Priority 1] Failed to save multiple account payment`, e);
-            }
-
-            const isSingleAccount = accountItems.length === 1;
-
-            let serverSavedAccounts: any[] | null = null;
-            try {
-                const savedData = await platinumGetMultipleAccountPayment({ userId: String(currentUser.id) });
-                if (Array.isArray(savedData) && savedData.length > 0) {
-                    serverSavedAccounts = savedData;
-                    console.log(`[Priority 1] Retrieved ${savedData.length} server-saved account(s):`, JSON.stringify(savedData[0], null, 2));
-                } else {
-                    console.warn(`[Priority 1] get-multiple-account-payment returned empty or non-array:`, savedData);
-                }
-            } catch (e) {
-                console.warn(`[Priority 1] Failed to retrieve saved account data, falling back to local data`, e);
             }
 
             const submitSingleOrMultiple = async (
@@ -771,8 +787,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 paymentAmountOverride?: number,
             ) => {
                 if (isSingleAccount) {
-                    const singleAccount = serverSavedAccounts?.[0] || saveAccounts[0];
-                    console.log(`[Priority 1 ${label}] Using submit-consumer-payment (single account), account_ID=${singleAccount.account_ID}`);
+                    const singleAccount = saveAccounts[0];
+                    console.log(`[Priority 1 ${label}] Using submit-consumer-payment (single account), account_ID=${singleAccount.account_ID}, outStandingAmt=${singleAccount.outStandingAmt}`);
                     return await submitConsumerPayment(Number(currentUser.id), {
                         account: singleAccount,
                         requestModel: {
@@ -783,6 +799,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             changeAmount: changeAmt,
                             paymentType: paymentTypeId,
                             paymentOption: paymentOptionId,
+                            outStandingAmount: singleAccount.outStandingAmt ?? 0,
                         },
                     });
                 } else {

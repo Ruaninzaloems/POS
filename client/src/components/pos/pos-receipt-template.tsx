@@ -15,6 +15,8 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
     fetchMunicipalityInfo().then(setMuniInfo);
   }, []);
 
+  const rd = transaction.receiptDetail;
+
   const sortedItems = [...transaction.items].sort((a, b) => {
       const getPriority = (type: string) => {
           switch (type) {
@@ -38,8 +40,8 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
   const primaryItem = sortedItems.find(i => i.type === 'CONSUMER_SERVICES' || i.type === 'PREPAID' || i.type === 'CLEARANCE');
   const primaryAccount = primaryItem?.originalData as (Account & Record<string, any>) | null;
 
-  const tenderAmount = transaction.payment.cash + transaction.payment.card;
-  const changeAmount = Math.max(0, tenderAmount - totalAmount);
+  const tenderAmount = rd?.tenderAmount ?? rd?.TenderAmount ?? (transaction.payment.cash + transaction.payment.card);
+  const changeAmount = rd?.changeAmount ?? rd?.ChangeAmount ?? Math.max(0, tenderAmount - totalAmount);
 
   const formatDate = (ts: number) => {
     return new Date(ts).toLocaleString('en-ZA', {
@@ -265,11 +267,11 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
           </div>
       )}
 
-      {primaryAccount && primaryAccount.outstandingAmount != null && (
+      {(rd?.outstandingAmount != null || rd?.OutstandingAmount != null || rd?.outstandingBalance != null || rd?.OutstandingBalance != null || primaryAccount?.outstandingAmount != null || primaryAccount?.outStandingAmt != null) && (
           <div className="border-t border-gray-300 pt-2 mb-2">
               <div className="flex justify-between">
                   <span>Outstanding<br/>Balance</span>
-                  <span className="text-right">{(primaryAccount.outstandingAmount - totalAmount + changeAmount).toFixed(2)}</span>
+                  <span className="text-right">{(rd?.outstandingAmount ?? rd?.OutstandingAmount ?? rd?.outstandingBalance ?? rd?.OutstandingBalance ?? ((primaryAccount?.outstandingAmount ?? primaryAccount?.outStandingAmt ?? 0) - totalAmount + changeAmount)).toFixed(2)}</span>
               </div>
           </div>
       )}
@@ -277,19 +279,19 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
       <div className="border-t border-gray-300 pt-2 mb-3">
         <div className="flex justify-between mb-0.5">
             <span>Payment Type</span>
-            <span className="text-right">{transaction.paymentTypeName || (transaction.payment.card > 0 ? 'Card' : 'Cash')}</span>
+            <span className="text-right">{rd?.paymentType || rd?.PaymentType || transaction.paymentTypeName || (transaction.payment.card > 0 ? 'Card' : 'Cash')}</span>
         </div>
         <div className="flex justify-between mb-0.5">
             <span>Payment Option</span>
-            <span className="text-right">{transaction.paymentOptionName || 'Consumer Services'}</span>
+            <span className="text-right">{rd?.paymentOption || rd?.PaymentOption || transaction.paymentOptionName || 'Consumer Services'}</span>
         </div>
         <div className="flex justify-between mb-0.5">
             <span>Cashier</span>
-            <span className="text-right">{transaction.cashierName || transaction.cashierId}</span>
+            <span className="text-right">{rd?.cashierName || rd?.CashierName || transaction.cashierName || transaction.cashierId}</span>
         </div>
         <div className="flex justify-between mb-0.5">
             <span>Cash Office</span>
-            <span className="text-right">{transaction.cashOfficeName || ''}</span>
+            <span className="text-right">{rd?.cashOffice || rd?.CashOffice || transaction.cashOfficeName || ''}</span>
         </div>
       </div>
 

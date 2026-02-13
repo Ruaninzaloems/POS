@@ -1438,6 +1438,17 @@ export async function fetchReceiptList(query: ReceiptSearchQuery): Promise<Recei
 
 // --- Municipality / Receipt Info ---
 
+export async function getReceiptTransactionDetail(primaryId: number): Promise<any> {
+    try {
+        const data = await platinumFetch(`/api/platinum/billing-enquiry/receipt-transaction-detail?primaryId=${primaryId}`);
+        console.log(`[getReceiptTransactionDetail] primaryId=${primaryId}, response:`, data);
+        return data;
+    } catch (e) {
+        console.warn(`Failed to fetch receipt transaction detail for primaryId=${primaryId}`, e);
+        return null;
+    }
+}
+
 export interface MunicipalityInfo {
     name: string;
     address1: string;
