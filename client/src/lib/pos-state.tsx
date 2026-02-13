@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from '
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, MOCK_TRANSACTIONS, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment } from './external-api';
 
 if (import.meta.hot) {
   import.meta.hot.accept(() => {
@@ -748,6 +748,19 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
             const isSingleAccount = accountItems.length === 1;
 
+            let serverSavedAccounts: any[] | null = null;
+            try {
+                const savedData = await platinumGetMultipleAccountPayment({ userId: String(currentUser.id) });
+                if (Array.isArray(savedData) && savedData.length > 0) {
+                    serverSavedAccounts = savedData;
+                    console.log(`[Priority 1] Retrieved ${savedData.length} server-saved account(s):`, JSON.stringify(savedData[0], null, 2));
+                } else {
+                    console.warn(`[Priority 1] get-multiple-account-payment returned empty or non-array:`, savedData);
+                }
+            } catch (e) {
+                console.warn(`[Priority 1] Failed to retrieve saved account data, falling back to local data`, e);
+            }
+
             const submitSingleOrMultiple = async (
                 paymentAmount: number,
                 tenderAmt: number,
@@ -758,8 +771,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 paymentAmountOverride?: number,
             ) => {
                 if (isSingleAccount) {
-                    const singleAccount = saveAccounts[0];
-                    console.log(`[Priority 1 ${label}] Using submit-consumer-payment (single account)`);
+                    const singleAccount = serverSavedAccounts?.[0] || saveAccounts[0];
+                    console.log(`[Priority 1 ${label}] Using submit-consumer-payment (single account), account_ID=${singleAccount.account_ID}`);
                     return await submitConsumerPayment(Number(currentUser.id), {
                         account: singleAccount,
                         requestModel: {
