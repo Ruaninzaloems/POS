@@ -843,16 +843,27 @@ export async function platinumGetOldAccountAutocomplete(params: Record<string, s
     return platinumFetch(`/api/platinum/direct-deposit-allocation/get-old-account-autocomplete?${qs}`);
 }
 
-export async function platinumLoadDetailsPaymentGrouping(data: any): Promise<any> {
-    return platinumFetch(`/api/platinum/direct-deposit-allocation/load-details-payment-grouping`, {
+export async function platinumLoadDetailsPaymentGrouping(data: any, queryParams?: Record<string, string>): Promise<any> {
+    const qs = queryParams ? `?${new URLSearchParams(queryParams).toString()}` : '';
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/load-details-payment-grouping${qs}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
     });
 }
 
-export async function platinumLoadDetailsConsumerServices(data: any): Promise<any> {
-    return platinumFetch(`/api/platinum/direct-deposit-allocation/load-details-consumer-services`, {
+export async function platinumLoadDetailsPaymentGroupingInstitutionData(data: any, queryParams?: Record<string, string>): Promise<any> {
+    const qs = queryParams ? `?${new URLSearchParams(queryParams).toString()}` : '';
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/load-details-payment-grouping-institution-data${qs}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumLoadDetailsConsumerServices(data: any, queryParams?: Record<string, string>): Promise<any> {
+    const qs = queryParams ? `?${new URLSearchParams(queryParams).toString()}` : '';
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/load-details-consumer-services${qs}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -875,12 +886,21 @@ export async function platinumGetClearanceDetailsInfo(data: { costScheduleID: st
     });
 }
 
+export async function platinumGetConsumerDetailsData(data: { costScheduleID?: string; accountID: string; posItemID: number; transactionAmount: number }): Promise<any> {
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/get-consumer-details-data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
 export async function platinumGetMiscReceiptData(receiptId: number): Promise<any> {
     return platinumFetch(`/api/platinum/direct-deposit-allocation/get-misc-receipt-data?receiptId=${receiptId}`);
 }
 
-export async function platinumLoadConfirmPaymentDetails(data: any): Promise<any> {
-    return platinumFetch(`/api/platinum/direct-deposit-allocation/load-confirm-payment-details`, {
+export async function platinumLoadConfirmPaymentDetails(data: any, queryParams?: Record<string, string>): Promise<any> {
+    const qs = queryParams ? `?${new URLSearchParams(queryParams).toString()}` : '';
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/load-confirm-payment-details${qs}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),

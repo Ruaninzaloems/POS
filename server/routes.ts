@@ -1108,7 +1108,16 @@ export async function registerRoutes(
 
   app.post("/api/platinum/direct-deposit-allocation/load-details-payment-grouping", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-details-payment-grouping", req.body);
+      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-details-payment-grouping", req.body, req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/direct-deposit-allocation/load-details-payment-grouping-institution-data", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-details-payment-grouping-institution-data", req.body, req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1117,7 +1126,7 @@ export async function registerRoutes(
 
   app.post("/api/platinum/direct-deposit-allocation/load-details-consumer-services", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-details-consumer-services", req.body);
+      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-details-consumer-services", req.body, req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1153,7 +1162,7 @@ export async function registerRoutes(
 
   app.post("/api/platinum/direct-deposit-allocation/load-confirm-payment-details", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-confirm-payment-details", req.body);
+      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-confirm-payment-details", req.body, req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });

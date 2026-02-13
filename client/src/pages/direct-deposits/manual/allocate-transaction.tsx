@@ -10,7 +10,7 @@ import { AllocationLine } from '@/lib/direct-deposits-data';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { Account, ClearanceCostSchedule } from '@/lib/mock-data';
-import { platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, rebuildFullAccount } from '@/lib/external-api';
+import { platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, platinumLoadDetailsConsumerServices, platinumLoadDetailsClearance, platinumLoadDetailsPaymentGrouping, platinumGetConsumerDetailsData, platinumGetClearanceDetailsInfo, platinumLoadConfirmPaymentDetails, rebuildFullAccount } from '@/lib/external-api';
 
 interface BankReconPosItem {
   posItem_ID: number;
@@ -279,6 +279,50 @@ export default function AllocateTransaction() {
                   billType = 'ClearancePayment';
               }
 
+              const pagerBody = { page: 1, pageSize: 100, orderby: null, shortDirection: null };
+              const accountIdStr = line.accountId ? String(line.accountId) : '';
+
+              try {
+                  if (allocType === 'ACCOUNT' || allocType === 'PREPAID') {
+                      console.log(`[Direct Deposit] Step 1: load-details-consumer-services for account ${accountIdStr}`);
+                      await platinumLoadDetailsConsumerServices(pagerBody, { accountId: accountIdStr, OldAccountNumber: line.accountNo || '' });
+
+                      console.log(`[Direct Deposit] Step 2: get-consumer-details-data for account ${accountIdStr}`);
+                      await platinumGetConsumerDetailsData({
+                          accountID: accountIdStr,
+                          posItemID: transaction.posItem_ID,
+                          transactionAmount: line.amount,
+                      });
+                  } else if (allocType === 'CLEARANCE') {
+                      console.log(`[Direct Deposit] Step 1: load-details-clearance for ${line.accountNo}`);
+                      await platinumLoadDetailsClearance(pagerBody);
+
+                      console.log(`[Direct Deposit] Step 2: get-clearance-details-info for ${line.accountNo}`);
+                      await platinumGetClearanceDetailsInfo({
+                          costScheduleID: line.accountNo || '',
+                          accountID: accountIdStr,
+                          posItemID: transaction.posItem_ID,
+                          transactionAmount: line.amount,
+                      });
+                  } else if (allocType === 'DIRECT' || allocType === 'GROUP') {
+                      console.log(`[Direct Deposit] Step 1: load-details-payment-grouping`);
+                      await platinumLoadDetailsPaymentGrouping(pagerBody);
+                  }
+              } catch (prepErr) {
+                  console.warn(`[Direct Deposit] Preparation step warning (non-blocking):`, prepErr);
+              }
+
+              try {
+                  console.log(`[Direct Deposit] Step 3: load-confirm-payment-details for ${billType}, account ${accountIdStr}`);
+                  await platinumLoadConfirmPaymentDetails({}, {
+                      billType,
+                      accountID: accountIdStr,
+                      posItem: String(transaction.posItem_ID),
+                  });
+              } catch (confirmErr) {
+                  console.warn(`[Direct Deposit] Confirm step warning (non-blocking):`, confirmErr);
+              }
+
               const submitData: any = {
                   outstandingAmount: transaction.amount,
                   paidAmount: line.amount,
@@ -308,7 +352,7 @@ export default function AllocateTransaction() {
                   submitData.groupId = line.groupId || null;
               }
 
-              console.log('[Direct Deposit] Submitting allocation line:', submitData);
+              console.log('[Direct Deposit] Step 4: submit-details-data:', submitData);
               const result = await platinumSubmitDirectDepositAllocation(submitData);
               console.log('[Direct Deposit] Submit result:', result);
 
