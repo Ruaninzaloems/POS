@@ -122,7 +122,9 @@ export async function platinumPost(path: string, body: any, params?: Record<stri
   }
 
   if (!res.ok) {
-    return { _error: true, status: res.status, statusText: res.statusText };
+    const errText = await res.text().catch(() => '');
+    console.error(`[PlatinumPOST] ${path} returned ${res.status}: ${errText}`);
+    return { _error: true, status: res.status, statusText: res.statusText, detail: errText };
   }
 
   const text = await res.text();

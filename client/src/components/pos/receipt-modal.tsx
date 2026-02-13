@@ -13,17 +13,13 @@ import { useReactToPrint } from 'react-to-print';
 export function ReceiptModal() {
   const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions } = usePos();
   const printRef = useRef<HTMLDivElement>(null);
-  const permitRef = useRef<any>(null); // Separate ref for permit
   
-  // Get the latest transaction that was just completed
   const currentTransaction = recentTransactions[0];
   
-  // Check if this transaction contains a permit item
   const permitItem = transactionItems.find(i => i.type === 'DIRECT_INCOME' && 
       (i.description.toLowerCase().includes('permit') || i.description.toLowerCase().includes('certificate')));
   const isPermit = !!permitItem;
 
-  // State for receipt options
   const [printSelected, setPrintSelected] = useState(true);
   const [emailSelected, setEmailSelected] = useState(false);
   const [smsSelected, setSmsSelected] = useState(false);
@@ -32,8 +28,7 @@ export function ReceiptModal() {
   const [mobileNumber, setMobileNumber] = useState('');
 
   const handlePrint = useReactToPrint({
-    // @ts-ignore - react-to-print types can be inconsistent
-    content: () => isPermit ? permitRef.current : printRef.current,
+    contentRef: printRef,
     documentTitle: `${isPermit ? 'Permit' : 'Receipt'}-${currentTransaction?.receiptNumber || 'New'}`,
     onAfterPrint: () => {
         closeReceiptModal();
@@ -177,13 +172,14 @@ export function ReceiptModal() {
           </Button>
         </DialogFooter>
         
-        {/* Hidden Print Template - using off-screen positioning instead of display:none for better print support */}
         <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
-            {isPermit ? (
-                 <PermitTemplate ref={permitRef} transaction={currentTransaction} items={transactionItems} />
-            ) : (
-                 <PosReceiptTemplate ref={printRef} transaction={currentTransaction} />
-            )}
+            <div ref={printRef}>
+                {isPermit ? (
+                     <PermitTemplate transaction={currentTransaction} items={transactionItems} />
+                ) : (
+                     <PosReceiptTemplate transaction={currentTransaction} />
+                )}
+            </div>
         </div>
       </DialogContent>
     </Dialog>

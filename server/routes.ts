@@ -17,7 +17,7 @@ async function proxyGet(url: string): Promise<any> {
 
 function handlePlatinumResult(res: any, data: any) {
   if (data && data._error) {
-    return res.status(data.status || 502).json({ message: data.statusText || "Platinum API error" });
+    return res.status(data.status || 502).json({ message: data.statusText || "Platinum API error", detail: data.detail || null });
   }
   res.json(data);
 }

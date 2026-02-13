@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
-import { usePos } from '@/lib/pos-state';
+import React, { useState, useRef, useEffect } from 'react';
+import { usePos, TransactionRecord } from '@/lib/pos-state';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AlertCircle, Ban, Receipt, CheckCircle2, Clock } from 'lucide-react';
+import { AlertCircle, Ban, Receipt, CheckCircle2, Clock, Printer } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { PosReceiptTemplate } from './pos-receipt-template';
+import { useReactToPrint } from 'react-to-print';
 
 interface TransactionHistoryModalProps {
   isOpen: boolean;
@@ -21,6 +23,26 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
   
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancellationReason, setCancellationReason] = useState('');
+  const [reprintTx, setReprintTx] = useState<TransactionRecord | null>(null);
+  const [pendingPrint, setPendingPrint] = useState(false);
+  const reprintRef = useRef<HTMLDivElement>(null);
+
+  const handleReprint = useReactToPrint({
+    contentRef: reprintRef,
+    documentTitle: `Receipt-${reprintTx?.receiptNumber || 'Reprint'}`,
+  });
+
+  useEffect(() => {
+    if (pendingPrint && reprintTx && reprintRef.current) {
+      setPendingPrint(false);
+      handleReprint();
+    }
+  }, [pendingPrint, reprintTx]);
+
+  const triggerReprint = (tx: TransactionRecord) => {
+    setReprintTx(tx);
+    setPendingPrint(true);
+  };
 
   const initiateCancel = (id: string) => {
       setCancellingId(id);
@@ -119,21 +141,37 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
                                      {tx.status === 'RECONCILED' && <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200 shadow-none"><CheckCircle2 className="w-3 h-3 mr-1" /> Reconciled</Badge>}
                                  </TableCell>
                                  <TableCell className="text-right">
-                                     {tx.status === 'COMPLETED' && (
-                                         <Button 
-                                            variant="ghost" 
-                                            size="sm" 
-                                            className="h-7 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                            disabled={dayEndStatus === 'RECONCILED'}
-                                            onClick={() => initiateCancel(tx.id)}
-                                            title={dayEndStatus === 'RECONCILED' ? "Cannot cancel reconciled transactions" : "Cancel Receipt"}
-                                         >
-                                             <Ban className="w-3.5 h-3.5 mr-1" />
-                                             Cancel
-                                         </Button>
-                                     )}
-                                     {tx.status === 'PENDING_CANCELLATION' && <span className="text-xs text-muted-foreground italic">Waiting Approval</span>}
-                                     {tx.status === 'CANCELLED' && <span className="text-xs text-muted-foreground italic">Voided</span>}
+                                     <div className="flex items-center justify-end gap-1">
+                                         {(tx.status === 'COMPLETED' || tx.status === 'RECONCILED') && (
+                                             <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                className="h-7 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                                onClick={() => triggerReprint(tx)}
+                                                title="Reprint Receipt"
+                                                data-testid={`button-reprint-${tx.id}`}
+                                             >
+                                                 <Printer className="w-3.5 h-3.5 mr-1" />
+                                                 Print
+                                             </Button>
+                                         )}
+                                         {tx.status === 'COMPLETED' && (
+                                             <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                className="h-7 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                disabled={dayEndStatus === 'RECONCILED'}
+                                                onClick={() => initiateCancel(tx.id)}
+                                                title={dayEndStatus === 'RECONCILED' ? "Cannot cancel reconciled transactions" : "Cancel Receipt"}
+                                                data-testid={`button-cancel-${tx.id}`}
+                                             >
+                                                 <Ban className="w-3.5 h-3.5 mr-1" />
+                                                 Cancel
+                                             </Button>
+                                         )}
+                                         {tx.status === 'PENDING_CANCELLATION' && <span className="text-xs text-muted-foreground italic">Waiting Approval</span>}
+                                         {tx.status === 'CANCELLED' && <span className="text-xs text-muted-foreground italic">Voided</span>}
+                                     </div>
                                  </TableCell>
                              </TableRow>
                          ))}
@@ -146,6 +184,14 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
           <Button variant="outline" onClick={onClose}>Close History</Button>
         </DialogFooter>
       </DialogContent>
+
+      <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
+        <div ref={reprintRef}>
+          {reprintTx && (
+            <PosReceiptTemplate transaction={reprintTx} isReprint={true} isCancelled={reprintTx.status === 'CANCELLED'} />
+          )}
+        </div>
+      </div>
 
       {/* Reason Dialog */}
       <Dialog open={!!cancellingId} onOpenChange={(o) => !o && setCancellingId(null)}>

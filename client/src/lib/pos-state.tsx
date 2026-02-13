@@ -437,6 +437,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
     } catch (e) {
         console.warn("Failed to persist transaction to backend", e);
+        toast({
+            title: "Warning",
+            description: "Transaction recorded locally but failed to save to database. Please notify your supervisor.",
+            variant: "destructive",
+        });
     }
 
     let finYear = '2025/2026';
@@ -558,6 +563,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }
             } catch (e) {
                 console.warn(`[Priority 1] Failed to submit multiple payment`, e);
+                toast({
+                    title: "Payment Posting Warning",
+                    description: "Account payment saved locally but could not be posted to billing system. Please inform your supervisor.",
+                });
             }
 
             for (const item of accountItems) {
@@ -629,6 +638,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     }
                 } catch (e) {
                     console.warn(`[Priority 2] Failed to submit misc payment for ${item.description}`, e);
+                    toast({
+                        title: "Direct Income Warning",
+                        description: `Payment for "${item.description}" saved locally but could not be posted to billing system. Receipt was still generated.`,
+                    });
                 }
             } else {
                 console.warn(`[Priority 2] Skipping misc payment for "${item.description}" — missing groupId or scoaItemId`);
