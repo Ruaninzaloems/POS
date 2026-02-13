@@ -976,6 +976,90 @@ export async function fetchMiscPaymentVatRate(): Promise<number> {
     return res.json();
 }
 
+export async function submitMiscPayment(data: {
+    lastName: string;
+    initials: string;
+    miscellaneousPaymentGroup: number;
+    scoaItem: number;
+    description: string;
+    receiptDate: string;
+    totalAmount: number;
+    vatAmount: number;
+    amount: number;
+    tenderAmount: number;
+    changeAmount: number;
+    paymentType: number;
+    vatPercentage: number;
+    isVatable: boolean;
+    userId: number;
+    finYear: string;
+    cardNo?: string;
+    expiryDate?: string;
+    chequeNo?: string;
+    bankBranch?: string;
+    bankBranchCode?: string;
+    accHolderName?: string;
+}): Promise<any> {
+    const res = await fetch('/api/platinum/billing-payment-miscellaneous/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Failed to submit misc payment: ${text}`);
+    }
+    return res.json();
+}
+
+export async function rebuildFullAccount(accountId: number): Promise<any> {
+    const res = await fetch(`/api/platinum/billing-enquiry/rebuild-full-account?accountId=${accountId}`);
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Failed to rebuild account ${accountId}: ${text}`);
+    }
+    return res.json();
+}
+
+export async function submitConsumerPayment(userId: number, data: any): Promise<any> {
+    const res = await fetch(`/api/platinum/billing-payment/submit-consumer-payment/${userId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Failed to submit consumer payment: ${text}`);
+    }
+    return res.json();
+}
+
+export async function submitMultiplePayment(userId: number, data: any): Promise<any> {
+    const res = await fetch(`/api/platinum/billing-payment/submit-multiple-payment/${userId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Failed to submit multiple payment: ${text}`);
+    }
+    return res.json();
+}
+
+export async function submitPrepaidPayment(data: any): Promise<any> {
+    const res = await fetch('/api/platinum/receipt-prepaid/submit-prepaid-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Failed to submit prepaid payment: ${text}`);
+    }
+    return res.json();
+}
+
 // --- Dashboard ---
 
 export async function platinumGetPosCount(): Promise<any> {

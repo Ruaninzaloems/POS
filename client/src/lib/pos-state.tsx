@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from '
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, ACCOUNTS, DIRECT_INCOME_ITEMS, ACCOUNT_GROUPS, CLEARANCES, AccountGroup, CASHIERS, MOCK_TRANSACTIONS, CASH_OFFICES, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, ApiCashier, BillingConfig, createSessionApi, endSessionApi, createTransactionApi, postMultipleAccountPaymentReceipt } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, ApiCashier, BillingConfig, createSessionApi, endSessionApi, createTransactionApi, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment } from './external-api';
 
 if (import.meta.hot) {
   import.meta.hot.accept(() => {
@@ -439,9 +439,29 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.warn("Failed to persist transaction to backend", e);
     }
 
+    let finYear = '2025/2026';
+    try {
+        const res = await fetch('/api/platinum/active-fin-year');
+        if (res.ok) finYear = await res.json();
+    } catch (e) {
+        console.warn("Failed to fetch active fin year, using default", e);
+    }
+
+    const paymentTypeId = record.payment.card > 0 ? 2 : 1;
+    const receiptDate = new Date().toISOString();
+
     const accountItems = record.items.filter(item =>
         item.type === 'CONSUMER_SERVICES' || item.type === 'MULTI_ACCOUNT' || item.type === 'ACCOUNT_GROUP'
     );
+    const directIncomeItems = record.items.filter(item => item.type === 'DIRECT_INCOME');
+    const electricityPrepaidItems = record.items.filter(item =>
+        item.type === 'PREPAID' && (item.originalData?.prepaidType === 'Electricity' || !item.originalData?.prepaidType)
+    );
+    const waterPrepaidItems = record.items.filter(item =>
+        item.type === 'PREPAID' && item.originalData?.prepaidType === 'Water'
+    );
+
+    // --- PRIORITY 1: Consumer Services / Account Payments ---
     if (accountItems.length > 0) {
         const receiptId = record.receiptNumber.replace(/\D/g, '') || '0';
         for (const item of accountItems) {
@@ -449,11 +469,77 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (accountId) {
                 try {
                     await postMultipleAccountPaymentReceipt(currentUser.id, accountId, receiptId);
-                    console.log(`Posted receipt ${receiptId} for account ${accountId}`);
+                    console.log(`[Priority 1] Posted receipt ${receiptId} for account ${accountId}`);
                 } catch (e) {
-                    console.warn(`Failed to post receipt for account ${accountId}`, e);
+                    console.warn(`[Priority 1] Failed to post receipt for account ${accountId}`, e);
+                }
+
+                try {
+                    await rebuildFullAccount(Number(accountId));
+                    console.log(`[Priority 1] Rebuild triggered for account ${accountId}`);
+                } catch (e) {
+                    console.warn(`[Priority 1] Failed to rebuild account ${accountId}`, e);
                 }
             }
+        }
+    }
+
+    // --- PRIORITY 2: Direct Income / Miscellaneous Payments ---
+    if (directIncomeItems.length > 0) {
+        for (const item of directIncomeItems) {
+            const origData = item.originalData;
+            const groupId = origData?.groupId;
+            const scoaItemId = origData?.scoaItemId || origData?.id;
+            const vatRate = origData?.vatRate || 15;
+            const isVatable = vatRate > 0;
+            const amountExVat = isVatable ? item.amountToPay / (1 + vatRate / 100) : item.amountToPay;
+            const vatAmount = isVatable ? item.amountToPay - amountExVat : 0;
+
+            if (groupId && scoaItemId) {
+                try {
+                    const paidByName = (item.paidBy || 'Walk-in').trim();
+                    const paidByParts = paidByName.split(/\s+/);
+                    const lastName = paidByParts.length > 1 ? paidByParts.slice(1).join(' ') : paidByParts[0];
+                    const initials = paidByParts[0]?.charAt(0) || 'W';
+                    await submitMiscPayment({
+                        lastName,
+                        initials,
+                        miscellaneousPaymentGroup: Number(groupId),
+                        scoaItem: Number(scoaItemId),
+                        description: item.notes || item.description || origData?.description || '',
+                        receiptDate,
+                        totalAmount: item.amountToPay,
+                        vatAmount: Math.round(vatAmount * 100) / 100,
+                        amount: Math.round(amountExVat * 100) / 100,
+                        tenderAmount: record.payment.cash + record.payment.card,
+                        changeAmount: Math.max(0, (record.payment.cash + record.payment.card) - record.totalAmount),
+                        paymentType: paymentTypeId,
+                        vatPercentage: vatRate,
+                        isVatable,
+                        userId: Number(currentUser.id),
+                        finYear,
+                    });
+                    console.log(`[Priority 2] Submitted misc payment for SCOA item ${scoaItemId}`);
+                } catch (e) {
+                    console.warn(`[Priority 2] Failed to submit misc payment for ${item.description}`, e);
+                }
+            } else {
+                console.warn(`[Priority 2] Skipping misc payment for "${item.description}" — missing groupId or scoaItemId`);
+            }
+        }
+    }
+
+    // --- PRIORITY 3: Electricity Prepaid Recharge ---
+    if (electricityPrepaidItems.length > 0) {
+        for (const item of electricityPrepaidItems) {
+            console.log(`[Priority 3] Electricity prepaid recharge for ${item.reference}, amount: R${item.amountToPay}`);
+        }
+    }
+
+    // --- PRIORITY 4: Water Prepaid Recharge ---
+    if (waterPrepaidItems.length > 0) {
+        for (const item of waterPrepaidItems) {
+            console.log(`[Priority 4] Water prepaid recharge for ${item.reference}, amount: R${item.amountToPay}`);
         }
     }
   };

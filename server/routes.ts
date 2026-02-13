@@ -389,6 +389,26 @@ export async function registerRoutes(
     }
   });
 
+  // --- Billing Enquiry - Rebuild ---
+
+  app.get("/api/platinum/billing-enquiry/rebuild-full-account", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/BillingEnquiry/rebuildFullAccount", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-enquiry/get-rebuild-account-ss-check", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/BillingEnquiry/getRebuildAccountSSCheck", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   // --- Day-End Reconciliation (Cashier) ---
 
   app.get("/api/platinum/billing-payment-day-end/get-cashier-list", async (req, res) => {
