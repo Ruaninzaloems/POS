@@ -11,7 +11,6 @@ import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { Account, ClearanceCostSchedule } from '@/lib/mock-data';
 import { platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation } from '@/lib/external-api';
-import { usePos } from '@/lib/pos-state';
 
 interface BankReconPosItem {
   posItem_ID: number;
@@ -39,7 +38,6 @@ export default function AllocateTransaction() {
   const [, params] = useRoute('/direct-deposits/manual/allocate/:id');
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { currentUser } = usePos();
   
   const [transaction, setTransaction] = useState<BankReconPosItem | null>(null);
   const [loadingTx, setLoadingTx] = useState(false);
@@ -256,7 +254,7 @@ export default function AllocateTransaction() {
               }
           } catch {}
 
-          const userId = currentUser?.id ? Number(currentUser.id) : 4697;
+          const userId = -1;
 
           const now = new Date();
           const saFormatter = new Intl.DateTimeFormat('en-ZA', {
