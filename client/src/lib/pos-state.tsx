@@ -809,7 +809,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 } else {
                     submitAccounts = buildSubmitAccounts(paymentAmountOverride);
                 }
-                console.log(`[Priority 1 ${label}] Using submit-multiple-payment (${submitAccounts.length} account(s), source: ${serverAccounts ? 'server' : 'local'})`);
+                const totalOutstanding = submitAccounts.reduce((sum: number, a: any) => sum + (a.outstandingAmount ?? 0), 0);
+                console.log(`[Priority 1 ${label}] Using submit-multiple-payment (${submitAccounts.length} account(s), source: ${serverAccounts ? 'server' : 'local'}, outstanding: ${totalOutstanding})`);
                 return await submitMultiplePayment(Number(currentUser.id), {
                     accounts: submitAccounts,
                     requestModel: {
@@ -820,6 +821,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         changeAmount: changeAmt,
                         paymentType: paymentTypeId,
                         paymentOption: paymentOptionId,
+                        outStandingAmount: totalOutstanding,
+                        cardNumber: '',
+                        expiryDate: '',
+                        chequeNumber: '',
                     },
                 });
             };
