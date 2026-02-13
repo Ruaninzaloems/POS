@@ -1608,6 +1608,42 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/platinum/receipting-account-group/get-account-groups", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/receipting-account-group/get-account-groups", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/receipting-account-group/get-account-sub-groups", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/receipting-account-group/get-account-sub-groups", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/receipting-account-group/search", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/receipting-account-group/search", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/receipting-account-group-payment/search-accounts-by-group", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/receipting-account-group-payment/search-accounts-by-group", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   // =====================================================
   // LEGACY EXTERNAL API PROXY ROUTES (old billing API, no auth needed)
   // =====================================================

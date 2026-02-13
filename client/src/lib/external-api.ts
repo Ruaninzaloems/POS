@@ -297,6 +297,21 @@ export async function searchInstitutions(query: string): Promise<InstitutionSear
     return [];
 }
 
+export async function fetchAccountsByGroup(institutionId: number): Promise<any[]> {
+    try {
+        const res = await fetch(`/api/proxy/billing-enquiry-search?accountGroup=${institutionId}`);
+        if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data)) return data;
+            if (data?.value && Array.isArray(data.value)) return data.value;
+            return [];
+        }
+    } catch (e) {
+        console.error("Failed to fetch accounts by group", e);
+    }
+    return [];
+}
+
 export async function fetchAccounts(criteria: any): Promise<any[]> {
     try {
         const body: Record<string, any> = {};
@@ -964,6 +979,20 @@ export async function platinumGetSubAccountGrouping(accountId: number): Promise<
 
 export async function platinumGetPaymentGroupList(): Promise<any[]> {
     return platinumFetch(`/api/platinum/billing-account-management/get-payment-group-list`);
+}
+
+export async function platinumGetReceiptingAccountGroups(userId: number, finYear: string): Promise<any[]> {
+    return platinumFetch(`/api/platinum/receipting-account-group/get-account-groups?userId=${userId}&finYear=${encodeURIComponent(finYear)}`);
+}
+
+export async function platinumGetReceiptingSubGroups(institutionId: number): Promise<any[]> {
+    return platinumFetch(`/api/platinum/receipting-account-group/get-account-sub-groups?institutionId=${institutionId}`);
+}
+
+export async function platinumSearchAccountsByGroup(groupId: number, subGroupId?: number): Promise<any[]> {
+    let url = `/api/platinum/receipting-account-group-payment/search-accounts-by-group?groupId=${groupId}`;
+    if (subGroupId !== undefined) url += `&subGroupId=${subGroupId}`;
+    return platinumFetch(url);
 }
 
 export async function platinumGetDepositAmount(accountId: number): Promise<any> {
