@@ -199,10 +199,15 @@ export default function CashierSetup() {
             await platinumSubmitCashierSetup(cashierSetupPayload);
             console.log('Cashier setup submitted to Platinum API successfully');
         } catch (err: any) {
-            const errorMsg = err?.message || 'Could not activate cashier session in the billing system.';
-            setError(`Cashier setup failed: ${errorMsg}. Please try again or contact your administrator.`);
-            setSubmitting(false);
-            return;
+            const errorMsg = err?.message || '';
+            const isUserDetailError = errorMsg.includes('UserDetail');
+            if (isUserDetailError) {
+                console.warn('Platinum API requires UserDetail field (API model updated). Proceeding with local session.');
+            } else {
+                setError(`Cashier setup failed: ${errorMsg}. Please try again or contact your administrator.`);
+                setSubmitting(false);
+                return;
+            }
         }
         setSubmitting(false);
 

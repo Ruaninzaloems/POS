@@ -315,7 +315,33 @@ export async function registerRoutes(
 
   app.post("/api/platinum/receipt-prepaid/submit-cashier-setup", async (req, res) => {
     try {
-      const data = await platinumPost("/api/ReceiptPrepaid/submit-cashier-setup", req.body);
+      const body = { ...req.body };
+
+      if (!body.UserDetail) {
+        const userData = await getPlatinumUserInfo();
+        if (userData) {
+          body.UserDetail = {
+            userId: userData.user_ID,
+            userName: userData.userName || '',
+            password: '',
+            firstName: userData.firstName || '',
+            lastName: userData.lastName || '',
+            eMail: userData.eMail || '',
+            enabled: userData.enabled ?? true,
+            superUser: userData.superUser ?? false,
+            dateCaptured: new Date().toISOString(),
+            capturerID: userData.user_ID,
+            passwordNeverExpire: true,
+            passwordLastChangedDate: new Date().toISOString(),
+            cashFloat: body.cashFloat || 0,
+          };
+        }
+      }
+
+      console.log(`[submit-cashier-setup] Sending payload keys: ${Object.keys(body).join(', ')}`);
+      console.log(`[submit-cashier-setup] UserDetail present: ${!!body.UserDetail}, userId: ${body.UserDetail?.userId}`);
+      const data = await platinumPost("/api/ReceiptPrepaid/submit-cashier-setup", body);
+      console.log(`[submit-cashier-setup] Response:`, JSON.stringify(data));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
