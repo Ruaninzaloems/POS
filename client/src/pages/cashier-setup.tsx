@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { useLocation } from 'wouter';
 import { Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { fetchPlatinumUserInfo } from '@/lib/external-api';
+import { fetchPlatinumUserInfo, platinumSubmitCashierSetup } from '@/lib/external-api';
 
 interface PlatinumCashOfficeView {
     cashOffice_ID: number;
@@ -126,6 +126,8 @@ export default function CashierSetup() {
     const scoaCode = matchedOfficeView?.vote || matchedOfficeView?.vote1 || matchedOfficeView?.voteDesc || null;
     const ledgerVoteDisplay = scoaCode || (effectiveOffice?.scoaConfigurationID != null ? `SCOA Configuration ${effectiveOffice.scoaConfigurationID}` : '');
 
+    const [submitting, setSubmitting] = useState(false);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -141,11 +143,46 @@ export default function CashierSetup() {
             return;
         }
 
+        const effectiveUserId = userId || Number(currentUser.id) || 0;
+        if (!effectiveUserId) {
+            setError('Could not determine user ID. Please refresh and try again.');
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            const cashierSetupPayload = {
+                id: cashierDetail?.id || 0,
+                cashFloat: float,
+                officeId: effectiveOffice.cashOffice_ID,
+                isActive: true,
+                user_Id: effectiveUserId,
+                isVirtual: false,
+                const_CashOffice: {
+                    cashOffice_ID: effectiveOffice.cashOffice_ID,
+                    cashOfficeDesc: effectiveOffice.cashOfficeDesc || '',
+                    enabled: true,
+                    cashOnHandLimit: effectiveOffice.cashOnHandLimit || 999999,
+                    scoaConfigurationID: effectiveOffice.scoaConfigurationID || null,
+                    allowDelayedDayEndRecon: effectiveOffice.allowDelayedDayEndRecon || false,
+                },
+            };
+
+            await platinumSubmitCashierSetup(cashierSetupPayload);
+            console.log('Cashier setup submitted to Platinum API successfully');
+        } catch (err: any) {
+            const errorMsg = err?.message || 'Could not activate cashier session in the billing system.';
+            setError(`Cashier setup failed: ${errorMsg}. Please try again or contact your administrator.`);
+            setSubmitting(false);
+            return;
+        }
+        setSubmitting(false);
+
         const officeId = String(effectiveOffice.cashOffice_ID);
         const officeName = effectiveOffice.cashOfficeDesc || '';
 
         const fullName = `${firstName} ${lastName}`.trim();
-        switchUser(String(userId || currentUser.id), fullName || currentUser.name, officeName);
+        switchUser(String(effectiveUserId), fullName || currentUser.name, officeName);
 
         startSession(officeId, float, officeName);
     };
@@ -286,10 +323,10 @@ export default function CashierSetup() {
                             <Button
                                 type="submit"
                                 className="w-32 bg-slate-800 hover:bg-slate-900"
-                                disabled={!effectiveOffice}
+                                disabled={!effectiveOffice || submitting}
                                 data-testid="button-submit"
                             >
-                                Submit
+                                {submitting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Setting up...</> : 'Submit'}
                             </Button>
                             <Button
                                 type="button"
