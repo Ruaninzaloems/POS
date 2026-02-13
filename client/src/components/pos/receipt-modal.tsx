@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { usePos } from '@/lib/pos-state';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, Printer, Mail, MessageSquare, Check, Loader2 } from 'lucide-react';
+import { CheckCircle2, XCircle, Printer, Mail, MessageSquare, Check, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -78,6 +78,9 @@ export function ReceiptModal() {
 
   if (!currentTransaction) return null;
 
+  const paymentFailed = !transactionProcessing && (!currentTransaction.receiptNumber || currentTransaction.receiptNumber === 'PENDING');
+  const paymentSucceeded = !transactionProcessing && !paymentFailed;
+
   return (
     <Dialog open={isReceiptModalOpen} onOpenChange={(open) => !open && closeReceiptModal()}>
       <DialogContent className="sm:max-w-md">
@@ -92,6 +95,16 @@ export function ReceiptModal() {
                  Please wait while the payment is being processed
               </DialogDescription>
             </>
+          ) : paymentFailed ? (
+            <>
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center text-red-600 mb-2">
+                <XCircle className="w-8 h-8" />
+              </div>
+              <DialogTitle className="text-2xl text-red-600" data-testid="text-payment-failed">Payment Failed</DialogTitle>
+              <DialogDescription className="text-lg text-red-500 font-medium" data-testid="text-receipt-number">
+                 No receipt number was returned from the billing system. The payment was not processed successfully.
+              </DialogDescription>
+            </>
           ) : (
             <>
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-600 mb-2">
@@ -99,7 +112,7 @@ export function ReceiptModal() {
               </div>
               <DialogTitle className="text-2xl" data-testid="text-payment-success">Payment Successful</DialogTitle>
               <DialogDescription className="text-lg font-mono text-foreground font-medium" data-testid="text-receipt-number">
-                 {currentTransaction.receiptNumber === 'PENDING' ? 'No receipt number returned' : currentTransaction.receiptNumber}
+                 {currentTransaction.receiptNumber}
               </DialogDescription>
             </>
           )}
@@ -117,7 +130,7 @@ export function ReceiptModal() {
                 </div>
             )}
             
-            <div className="mt-6 space-y-4">
+            {paymentSucceeded && <div className="mt-6 space-y-4">
                 <p className="text-sm font-medium mb-2">Receipt Options</p>
                 
                 {/* Print Option */}
@@ -176,21 +189,23 @@ export function ReceiptModal() {
                         </div>
                     )}
                 </div>
-            </div>
+            </div>}
         </div>
 
         <DialogFooter className="sm:justify-between gap-2 border-t pt-4">
           <Button variant="ghost" onClick={closeReceiptModal} disabled={transactionProcessing}>Close</Button>
-          <Button onClick={handleComplete} className="min-w-[140px]" disabled={transactionProcessing}>
-              {transactionProcessing ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                printSelected ? 'Print & Complete' : 'Complete'
-              )}
-          </Button>
+          {!paymentFailed && (
+            <Button onClick={handleComplete} className="min-w-[140px]" disabled={transactionProcessing}>
+                {transactionProcessing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  printSelected ? 'Print & Complete' : 'Complete'
+                )}
+            </Button>
+          )}
         </DialogFooter>
         
         <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
