@@ -1192,7 +1192,27 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-enquiry/total-balance-debt", async (req, res) => {
     try {
-      const data = await platinumGet("/api/BillingEnquiry/TotalBalanceDebtInquiry", req.query as Record<string, string>);
+      const accountId = req.query.accountId as string;
+      const data = await platinumGet("/api/BillingEnquiry/TotalBalanceDebtInquiry", { accountId });
+      
+      // If no data or error, fallback to enquiry results which might have some info
+      if (!data || data._error || (Array.isArray(data) && data.length === 0)) {
+         const enquiryData = await platinumPost("/api/BillingEnquiry/EnquiryResults", { accountID: accountId });
+         if (enquiryData && !enquiryData._error) {
+            const results = Array.isArray(enquiryData) ? enquiryData : (enquiryData.results || [enquiryData]);
+            const match = results.find((r: any) => String(r.accountID) === accountId);
+            if (match) {
+               return res.json([{
+                  serviceDescription: "Balance B/F",
+                  totalOutStanding: match.outStandingAmount || 0,
+                  currentAccount: match.outStandingAmount || 0,
+                  newCharge: 0,
+                  days30: 0, days60: 0, days90: 0, days120: 0, days150: 0, untill360: 0
+               }]);
+            }
+         }
+      }
+      
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });

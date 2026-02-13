@@ -218,19 +218,30 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
         return;
       }
       const data = await res.json();
-      const rows = Array.isArray(data) ? data : (data ? [data] : []);
+      console.log('Balance Data Response:', data); // Debug logging
+
+      // Handle both formats: array of rows or single object with results
+      let rows = [];
+      if (Array.isArray(data)) {
+        rows = data;
+      } else if (data && Array.isArray(data.results)) {
+        rows = data.results;
+      } else if (data && typeof data === 'object') {
+        rows = [data];
+      }
+
       if (rows.length > 0) {
         const agingBreakdown: AgingItem[] = rows.map((row: any) => ({
-          serviceDescription: row.serviceDescription || 'Unknown',
-          totalOutstanding: row.totalOutStanding || 0,
+          serviceDescription: row.serviceDescription || row.description || 'Unknown',
+          totalOutstanding: row.totalOutStanding || row.totalOutstanding || 0,
           newCharge: row.newCharge || 0,
           currentAccount: typeof row.currentAccount === 'string' ? parseFloat(row.currentAccount) || row.current || 0 : (row.currentAccount || row.current || 0),
-          days30: row.days30 || 0,
-          days60: row.days60 || 0,
-          days90: row.days90 || 0,
-          days120: row.days120 || 0,
-          days150: row.days150 || 0,
-          days180Plus: row.untill360 || 0,
+          days30: row.days30 || row.aging30 || 0,
+          days60: row.days60 || row.aging60 || 0,
+          days90: row.days90 || row.aging90 || 0,
+          days120: row.days120 || row.aging120 || 0,
+          days150: row.days150 || row.aging150 || 0,
+          days180Plus: row.untill360 || row.days180Plus || row.days180 || 0,
         }));
         const totalOutstanding = agingBreakdown.reduce((sum, item) => sum + item.totalOutstanding, 0);
         setAccount(prev => ({
@@ -527,15 +538,15 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                        {account.agingBreakdown.map((row, index) => (
                            <tr key={index} className="border-b last:border-0 hover:bg-blue-50" data-testid={`row-aging-${index}`}>
                                <td className="p-2 border-r border-gray-200">{row.totalOutstanding < 0 && row.serviceDescription === 'Balance B/F' ? 'Advance Payment' : row.serviceDescription}</td>
-                               <td className="p-2 border-r border-gray-200 text-right">{row.totalOutstanding.toFixed(2)}</td>
-                               <td className="p-2 border-r border-gray-200 text-right">{row.newCharge.toFixed(2)}</td>
-                               <td className="p-2 border-r border-gray-200 text-right">{row.currentAccount.toFixed(2)}</td>
-                               <td className="p-2 border-r border-gray-200 text-right">{row.days30.toFixed(2)}</td>
-                               <td className="p-2 border-r border-gray-200 text-right">{row.days60.toFixed(2)}</td>
-                               <td className="p-2 border-r border-gray-200 text-right">{row.days90.toFixed(2)}</td>
-                               <td className="p-2 border-r border-gray-200 text-right">{row.days120.toFixed(2)}</td>
-                               <td className="p-2 border-r border-gray-200 text-right">{row.days150.toFixed(2)}</td>
-                               <td className="p-2 text-right">{row.days180Plus.toFixed(2)}</td>
+                               <td className="p-2 border-r border-gray-200 text-right">{(row.totalOutstanding || 0).toFixed(2)}</td>
+                               <td className="p-2 border-r border-gray-200 text-right">{(row.newCharge || 0).toFixed(2)}</td>
+                               <td className="p-2 border-r border-gray-200 text-right">{(row.currentAccount || 0).toFixed(2)}</td>
+                               <td className="p-2 border-r border-gray-200 text-right">{(row.days30 || 0).toFixed(2)}</td>
+                               <td className="p-2 border-r border-gray-200 text-right">{(row.days60 || 0).toFixed(2)}</td>
+                               <td className="p-2 border-r border-gray-200 text-right">{(row.days90 || 0).toFixed(2)}</td>
+                               <td className="p-2 border-r border-gray-200 text-right">{(row.days120 || 0).toFixed(2)}</td>
+                               <td className="p-2 border-r border-gray-200 text-right">{(row.days150 || 0).toFixed(2)}</td>
+                               <td className="p-2 text-right">{(row.days180Plus || 0).toFixed(2)}</td>
                            </tr>
                        ))}
                        <tr className="bg-gray-100 font-bold border-t border-gray-300">
