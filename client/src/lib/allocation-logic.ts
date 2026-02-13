@@ -49,21 +49,23 @@ export function calculateAllocationTotals(
  */
 export function mapSearchResultToAllocationTarget(result: SearchResult) {
   if (result.type === 'ACCOUNT') {
-      const acc = result.data as Account;
+      const acc = result.data as any;
       return { 
           accountNo: acc.accountNo, 
           name: acc.name,
           description: `Payment to ${acc.name}`,
           allocationType: 'ACCOUNT' as const,
+          accountId: acc.apiId || acc.accountId || acc.accountID || null,
       };
   } else if (result.type === 'PREPAID') {
-      const acc = result.data as Account;
+      const acc = result.data as any;
       const prepaidType = acc.prepaidType || 'Electricity';
       return { 
           accountNo: acc.accountNo, 
           name: `${prepaidType} Meter: ${acc.prepaidMeterNo}`,
           description: `Prepaid ${prepaidType}: ${acc.prepaidMeterNo} (${acc.name})`,
           allocationType: 'PREPAID' as const,
+          accountId: acc.apiId || acc.accountId || acc.accountID || null,
       }; 
   } else if (result.type === 'DIRECT') {
       const item = result.data;
