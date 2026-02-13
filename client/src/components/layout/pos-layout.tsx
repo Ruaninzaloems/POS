@@ -64,7 +64,7 @@ export function PosLayout({ children }: PosLayoutProps) {
   }
 
   const getPageTitle = (path: string) => {
-    if (path === '/pos') return 'POS Verified';
+    if (path === '/pos') return 'POS';
     if (path.startsWith('/direct-deposits/manual')) return 'Direct Deposits Manual';
     if (path.startsWith('/direct-deposits/auto')) return 'Direct Deposits Auto';
     if (path.startsWith('/third-party')) return 'Third Party Payments';
@@ -77,7 +77,7 @@ export function PosLayout({ children }: PosLayoutProps) {
 
   const navItems = [
     { label: 'Home', href: '/', icon: Home },
-    { label: 'POS Verified', href: '/pos', icon: Layers },
+    { label: 'POS', href: '/pos', icon: Layers },
     { label: 'Direct Deposits Manual', href: '/direct-deposits/manual', icon: Banknote },
     { label: 'Direct Deposits Auto', href: '/direct-deposits/auto', icon: RefreshCw },
     { 
@@ -101,10 +101,8 @@ export function PosLayout({ children }: PosLayoutProps) {
         <div className="flex items-center gap-4">
           <Link href="/">
             <div className="flex items-center gap-2 cursor-pointer hover:opacity-80">
-              <div className="w-8 h-8 rounded bg-primary flex items-center justify-center text-primary-foreground font-bold">
-                M
-              </div>
-              <h1 className="font-semibold text-lg tracking-tight hidden sm:inline-block">Municipal POS <span className="text-muted-foreground text-sm font-normal">v2.0</span></h1>
+              <img src="/images/platinum-logo.png" alt="Platinum" className="w-8 h-8 object-contain" />
+              <h1 className="font-semibold text-lg tracking-tight hidden sm:inline-block">Platinum POS <span className="text-muted-foreground text-sm font-normal">v2.0</span></h1>
             </div>
           </Link>
           <div className="h-6 w-px bg-border mx-2 hidden sm:block" />

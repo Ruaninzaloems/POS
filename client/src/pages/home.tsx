@@ -19,7 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 
 const menuItems = [
-  { label: 'POS Verified', href: '/pos', icon: Layers, description: 'Point of sale receipting and payments' },
+  { label: 'POS', href: '/pos', icon: Layers, description: 'Point of sale receipting and payments' },
   { label: 'Direct Deposits Manual', href: '/direct-deposits/manual', icon: Banknote, description: 'Manual allocation of direct deposits' },
   { label: 'Direct Deposits Auto', href: '/direct-deposits/auto', icon: RefreshCw, description: 'Automatic processing of direct deposits' },
   { label: 'Third Party Payment Processing', href: '/third-party/processing', icon: Users, description: 'Process third party payments' },
@@ -38,10 +38,8 @@ export default function HomePage() {
     <div className="flex flex-col h-screen bg-background overflow-hidden">
       <header className="h-14 border-b bg-card flex items-center px-4 justify-between shrink-0 z-20 shadow-sm">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded bg-primary flex items-center justify-center text-primary-foreground font-bold">
-            M
-          </div>
-          <h1 className="font-semibold text-lg tracking-tight hidden sm:inline-block">Municipal POS <span className="text-muted-foreground text-sm font-normal">v2.0</span></h1>
+          <img src="/images/platinum-logo.png" alt="Platinum" className="w-8 h-8 object-contain" />
+          <h1 className="font-semibold text-lg tracking-tight hidden sm:inline-block">Platinum POS <span className="text-muted-foreground text-sm font-normal">v2.0</span></h1>
         </div>
 
         <div className="flex items-center gap-4">
@@ -107,7 +105,7 @@ export default function HomePage() {
             <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
               <Layers className="w-8 h-8 text-primary" />
             </div>
-            <h2 className="text-2xl font-semibold mb-2">Municipal POS System</h2>
+            <h2 className="text-2xl font-semibold mb-2">Platinum POS System</h2>
             <p className="text-muted-foreground mb-6">
               Select a module from the menu on the left to get started.
             </p>
