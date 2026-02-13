@@ -48,7 +48,8 @@ export default function CashierSetup() {
     const [floatInput, setFloatInput] = useState<string>('0.00');
     const [selectedOfficeId, setSelectedOfficeId] = useState<string>('');
     const [error, setError] = useState<string>('');
-    const [userName, setUserName] = useState<string>('');
+    const [firstName, setFirstName] = useState<string>('');
+    const [lastName, setLastName] = useState<string>('');
     const [userId, setUserId] = useState<number | null>(null);
 
     useEffect(() => {
@@ -58,7 +59,8 @@ export default function CashierSetup() {
 
                 const userInfo = await fetchPlatinumUserInfo();
                 if (userInfo) {
-                    setUserName(`${userInfo.firstName} ${userInfo.lastName}`.trim());
+                    setFirstName(userInfo.firstName || '');
+                    setLastName(userInfo.lastName || '');
                     setUserId(userInfo.user_ID);
                 }
 
@@ -142,7 +144,8 @@ export default function CashierSetup() {
         const officeId = String(effectiveOffice.cashOffice_ID);
         const officeName = effectiveOffice.cashOfficeDesc || '';
 
-        switchUser(String(userId || currentUser.id), userName || currentUser.name, officeName);
+        const fullName = `${firstName} ${lastName}`.trim();
+        switchUser(String(userId || currentUser.id), fullName || currentUser.name, officeName);
 
         startSession(officeId, float, officeName);
     };
@@ -173,7 +176,7 @@ export default function CashierSetup() {
                             <div>
                                 <p className="font-medium text-amber-800">Cashier Not Registered</p>
                                 <p className="text-sm text-amber-700 mt-1">
-                                    User <strong>{userName || currentUser.name}</strong> (ID: {userId || currentUser.id}) is not yet registered as a cashier in the billing system.
+                                    User <strong>{`${firstName} ${lastName}`.trim() || currentUser.name}</strong> (ID: {userId || currentUser.id}) is not yet registered as a cashier in the billing system.
                                     Please contact your system administrator to complete the cashier registration in the Platinum admin portal before processing payments.
                                 </p>
                             </div>
@@ -186,7 +189,7 @@ export default function CashierSetup() {
                             <div>
                                 <p className="font-medium text-green-800">Cashier Registered</p>
                                 <p className="text-sm text-green-700 mt-1">
-                                    User <strong>{userName || currentUser.name}</strong> is registered and ready to process payments.
+                                    User <strong>{`${firstName} ${lastName}`.trim() || currentUser.name}</strong> is registered and ready to process payments.
                                 </p>
                             </div>
                         </div>
@@ -196,10 +199,20 @@ export default function CashierSetup() {
                         <div className="grid grid-cols-[200px_1fr] items-center gap-4">
                             <Label className="text-right text-slate-600">Name</Label>
                             <Input
-                                value={userName || currentUser.name}
+                                value={firstName || currentUser.name}
                                 disabled
                                 className="bg-slate-100 border-slate-300 text-slate-800 font-medium"
                                 data-testid="input-cashier-name"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+                            <Label className="text-right text-slate-600">Surname</Label>
+                            <Input
+                                value={lastName}
+                                disabled
+                                className="bg-slate-100 border-slate-300 text-slate-800 font-medium"
+                                data-testid="input-cashier-surname"
                             />
                         </div>
 
