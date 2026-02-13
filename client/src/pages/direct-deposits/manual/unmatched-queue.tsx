@@ -128,7 +128,9 @@ export default function UnmatchedQueue() {
         posItemId
       );
 
-      if (result && result.success === false) {
+      const msg = (result?.message || '').toLowerCase();
+      const isCashierError = msg.includes('active cashier') || msg.includes('cashier count');
+      if (result && result.success === false && !isCashierError) {
         toast({
           title: 'Item Already Processed',
           description: result.message || 'This POS item has already been processed and cannot be allocated.',
