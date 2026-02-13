@@ -459,7 +459,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                      <Field label="Property Type" value={account.propertyType || 'Erf'} />
                      <Field label="Latitude" value={propertyEnquiry?.latitude} />
                      <Field label="Magisterial District" value={account.magisterialDistrict || 'WC044'} />
-                     <Field label="Property Market Value" value={account.marketValue != null ? account.marketValue.toFixed(2) : undefined} />
+                     <Field label="Property Market Value" value={account.marketValue != null ? `R ${account.marketValue.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : undefined} />
                   </div>
                </div>
 
@@ -470,12 +470,22 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                   <div>
                      <Field label="Property Type of Use" value={account.propertyTypeOfUse || 'RES'} />
                      <Field label="Property Category" value={account.propertyCategory || 'RES'} />
-                     <Field label="Accountable Owner Name" value={account.accountableOwnerName || account.addName || account.name} />
+                     <Field label="Accountable Owner Name" value={(() => {
+                        const ownerName = account.accountableOwnerName || account.addName || account.name;
+                        const idNo = account.idNo || nameInfo?.idNo_RegistrationNo;
+                        if (idNo && ownerName && !ownerName.includes(idNo)) {
+                          return `${ownerName} (${idNo})`;
+                        }
+                        return ownerName;
+                     })()} />
                   </div>
                   <div>
                      <Field label="Valuation Category" value={account.valuationCategory || 'Individual Use'} />
                      <Field label="Partition Description" value={account.partitionDescription || 'Individual Use'} />
-                     <Field label="Partition Market Value" value={account.partitionMarketValue != null ? account.partitionMarketValue.toFixed(2) : (account.marketValue != null ? account.marketValue.toFixed(2) : undefined)} />
+                     <Field label="Partition Market Value" value={(() => {
+                        const val = account.partitionMarketValue ?? account.marketValue;
+                        return val != null ? `R ${val.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : undefined;
+                     })()} />
                   </div>
                </div>
           </CollapsibleContent>
