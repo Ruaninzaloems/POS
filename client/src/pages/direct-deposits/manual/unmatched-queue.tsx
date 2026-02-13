@@ -302,7 +302,12 @@ export default function UnmatchedQueue() {
                     </TableCell>
                   </TableRow>
                 ) : filtered.map(tx => (
-                  <TableRow key={tx.posItem_ID} data-testid={`row-positem-${tx.posItem_ID}`}>
+                  <TableRow
+                    key={tx.posItem_ID}
+                    data-testid={`row-positem-${tx.posItem_ID}`}
+                    className={`${!tx.billingAllocated ? 'cursor-pointer hover:bg-slate-50' : ''}`}
+                    onClick={() => !tx.billingAllocated && checkingItemId === null && handleAllocateClick(tx.posItem_ID)}
+                  >
                     <TableCell className="font-mono text-xs text-muted-foreground">{tx.posItem_ID}</TableCell>
                     <TableCell className="whitespace-nowrap font-mono text-xs">
                         {tx.dateOfTransaction ? format(new Date(tx.dateOfTransaction), 'dd/MM/yyyy') : '-'}
