@@ -198,7 +198,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const loadData = async () => {
           try {
               console.log("Fetching reference data...");
-              const [banks, groups, institutions, settings, cashOffices, cashiers, billingConfig, platinumUserInfo] = await Promise.all([
+              const timeoutPromise = new Promise((_, reject) => 
+                  setTimeout(() => reject(new Error('Reference data loading timed out after 15 seconds')), 15000)
+              );
+              const dataPromise = Promise.all([
                   fetchBanks(),
                   fetchGroups(),
                   fetchInstitutions(),
@@ -208,6 +211,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   fetchBillingConfig(),
                   fetchPlatinumUserInfo()
               ]);
+              const [banks, groups, institutions, settings, cashOffices, cashiers, billingConfig, platinumUserInfo] = await Promise.race([dataPromise, timeoutPromise]) as any;
               
               setReferenceData({
                   banks: banks || [],
@@ -229,6 +233,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                       cashOffice: '',
                       float: platinumUserInfo.cashFloat || 0,
                   });
+              } else {
+                  console.warn("Platinum user info not available - ending session loading");
+                  setSessionLoading(false);
               }
               
               console.log("Reference Data Loaded:", { banks, groups, institutions, settings, cashOffices, cashiers, billingConfig });
