@@ -655,7 +655,7 @@ export async function registerRoutes(
 
   app.get("/api/platinum/view-receipt/get-cashiers", async (req, res) => {
     try {
-      const data = await platinumGet("/api/ViewReceipt/get-cashiers");
+      const data = await platinumGet("/api/billing/auth-day-end-reconcile/cashier-list");
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
