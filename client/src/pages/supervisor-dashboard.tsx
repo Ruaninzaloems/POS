@@ -323,25 +323,33 @@ export default function SupervisorDashboard() {
 
   return (
     <PosLayout>
-    <div className="h-full overflow-y-auto bg-slate-50 p-6 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Supervisor Dashboard</h1>
-            <p className="text-muted-foreground">Reconciliation & Approvals</p>
+    <div className="h-full overflow-y-auto bg-slate-50 p-3 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-3 sm:gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Supervisor Dashboard</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground">Reconciliation & Approvals</p>
+            </div>
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border shadow-sm">
+                <div className="text-xs font-medium text-muted-foreground">Administrator</div>
+                <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs">AD</div>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-2">
               <Button 
                 variant="outline" 
-                className="gap-2 bg-white"
+                className="gap-2 bg-white text-xs sm:text-sm"
+                size="sm"
                 onClick={() => setShowVarianceHistory(true)}
               >
                   <BarChart3 className="w-4 h-4" />
-                  Cashier Statistics
+                  <span className="hidden sm:inline">Cashier </span>Statistics
               </Button>
               <div className="bg-white rounded-lg border p-1 flex items-center shadow-sm">
                   <Button 
                       variant={reconMode === 'PER_CASHIER' ? 'secondary' : 'ghost'} 
                       size="sm"
+                      className="text-xs sm:text-sm px-2 sm:px-3"
                       onClick={() => setReconMode('PER_CASHIER')}
                   >
                       Per Cashier
@@ -349,30 +357,27 @@ export default function SupervisorDashboard() {
                   <Switch 
                     checked={reconMode === 'CASH_OFFICE'} 
                     onCheckedChange={(c) => setReconMode(c ? 'CASH_OFFICE' : 'PER_CASHIER')}
-                    className="mx-2"
+                    className="mx-1 sm:mx-2"
                   />
                   <Button 
                       variant={reconMode === 'CASH_OFFICE' ? 'secondary' : 'ghost'} 
                       size="sm"
+                      className="text-xs sm:text-sm px-2 sm:px-3"
                       onClick={() => setReconMode('CASH_OFFICE')}
                   >
                       Cash Office
                   </Button>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border shadow-sm">
-                  <div className="text-xs font-medium text-muted-foreground">Administrator</div>
-                  <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs">AD</div>
-              </div>
           </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card className="border-l-4 border-l-blue-600">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Approvals</CardTitle>
+          <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Pending Approvals</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-blue-600">{pendingCount + pendingCancellations.length}</div>
+          <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+            <div className="text-2xl sm:text-3xl font-bold text-blue-600">{pendingCount + pendingCancellations.length}</div>
             <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                 <RefreshCcw className="w-3 h-3" /> {pendingCount} shifts, {pendingCancellations.length} voids
             </p>
@@ -380,11 +385,11 @@ export default function SupervisorDashboard() {
         </Card>
         
         <Card className="border-l-4 border-l-red-600">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Variances Detected</CardTitle>
+          <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Variances Detected</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-red-600">{varianceCount}</div>
+          <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+            <div className="text-2xl sm:text-3xl font-bold text-red-600">{varianceCount}</div>
             <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3" /> Requires attention
             </p>
@@ -392,11 +397,11 @@ export default function SupervisorDashboard() {
         </Card>
 
         <Card className="border-l-4 border-l-green-600">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Posted (Today)</CardTitle>
+          <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Total Posted (Today)</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-green-600">R 16,000.00</div>
+          <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+            <div className="text-xl sm:text-3xl font-bold text-green-600">R 16,000.00</div>
             <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3" /> Successfully reconciled
             </p>
@@ -404,11 +409,11 @@ export default function SupervisorDashboard() {
         </Card>
 
         <Card className="border-l-4 border-l-purple-600">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total System Revenue</CardTitle>
+          <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Total System Revenue</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-purple-600">R 49,001.00</div>
+          <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+            <div className="text-xl sm:text-3xl font-bold text-purple-600">R 49,001.00</div>
             <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                 <TrendingUp className="w-3 h-3" /> All active shifts
             </p>
@@ -417,18 +422,18 @@ export default function SupervisorDashboard() {
       </div>
 
       {/* Cancellation Approvals Section */}
-      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+      <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 sm:p-4">
           <Tabs defaultValue="pending" className="w-full">
-            <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-orange-900 flex items-center gap-2">
-                    <AlertCircle className="h-5 w-5" />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 sm:mb-4">
+                <h3 className="font-semibold text-orange-900 flex items-center gap-2 text-sm sm:text-base">
+                    <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5" />
                     Cancellation Requests
                 </h3>
                 <TabsList className="bg-white/50 border border-orange-100">
-                    <TabsTrigger value="pending" className="data-[state=active]:bg-orange-100 data-[state=active]:text-orange-900">
+                    <TabsTrigger value="pending" className="text-xs sm:text-sm data-[state=active]:bg-orange-100 data-[state=active]:text-orange-900">
                         Pending ({pendingCancellations.length})
                     </TabsTrigger>
-                    <TabsTrigger value="history" className="data-[state=active]:bg-orange-100 data-[state=active]:text-orange-900">
+                    <TabsTrigger value="history" className="text-xs sm:text-sm data-[state=active]:bg-orange-100 data-[state=active]:text-orange-900">
                         History
                     </TabsTrigger>
                 </TabsList>
@@ -440,15 +445,15 @@ export default function SupervisorDashboard() {
                         No pending cancellation requests
                     </div>
                 ) : (
-                    <div className="bg-white rounded border overflow-hidden">
+                    <div className="bg-white rounded border overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Receipt Details</TableHead>
-                                    <TableHead>Cashier</TableHead>
-                                    <TableHead>Time</TableHead>
-                                    <TableHead>Amount</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
+                                    <TableHead className="whitespace-nowrap">Receipt Details</TableHead>
+                                    <TableHead className="whitespace-nowrap">Cashier</TableHead>
+                                    <TableHead className="whitespace-nowrap">Time</TableHead>
+                                    <TableHead className="whitespace-nowrap">Amount</TableHead>
+                                    <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -563,14 +568,14 @@ export default function SupervisorDashboard() {
                         No cancellation history found
                     </div>
                 ) : (
-                    <div className="bg-white rounded border overflow-hidden">
+                    <div className="bg-white rounded border overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Receipt Details</TableHead>
-                                    <TableHead>Cashier</TableHead>
-                                    <TableHead>Processed Time</TableHead>
-                                    <TableHead>Status</TableHead>
+                                    <TableHead className="whitespace-nowrap">Receipt Details</TableHead>
+                                    <TableHead className="whitespace-nowrap">Cashier</TableHead>
+                                    <TableHead className="whitespace-nowrap">Processed Time</TableHead>
+                                    <TableHead className="whitespace-nowrap">Status</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -624,7 +629,7 @@ export default function SupervisorDashboard() {
           </Tabs>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 items-center bg-white p-4 rounded-lg border shadow-sm">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-stretch sm:items-center bg-white p-3 sm:p-4 rounded-lg border shadow-sm">
           <div className="relative flex-1 w-full md:w-auto">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input 
@@ -701,36 +706,36 @@ export default function SupervisorDashboard() {
       {/* Quick Status Filters */}
       <Tabs value={filterStatus} onValueChange={setFilterStatus} className="w-full">
         <TabsList className="bg-white border w-full justify-start h-auto p-1 flex-wrap gap-1">
-            <TabsTrigger value="All" className="data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900">
+            <TabsTrigger value="All" className="text-xs sm:text-sm data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900">
                 All Active
             </TabsTrigger>
-            <TabsTrigger value="PENDING_APPROVAL" className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">
-                Pending Approval
-                {pendingCount > 0 && <Badge variant="secondary" className="ml-2 h-4 px-1 text-[10px] bg-blue-100 text-blue-700 hover:bg-blue-100">{pendingCount}</Badge>}
+            <TabsTrigger value="PENDING_APPROVAL" className="text-xs sm:text-sm data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">
+                <span className="hidden sm:inline">Pending </span>Approval
+                {pendingCount > 0 && <Badge variant="secondary" className="ml-1 sm:ml-2 h-4 px-1 text-[10px] bg-blue-100 text-blue-700 hover:bg-blue-100">{pendingCount}</Badge>}
             </TabsTrigger>
-            <TabsTrigger value="NOT_SUBMITTED" className="data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900">Not Submitted</TabsTrigger>
-            <TabsTrigger value="RETURNED" className="data-[state=active]:bg-red-50 data-[state=active]:text-red-700">Returned</TabsTrigger>
-            <TabsTrigger value="COMPLETED" className="data-[state=active]:bg-green-50 data-[state=active]:text-green-700">Completed</TabsTrigger>
+            <TabsTrigger value="NOT_SUBMITTED" className="text-xs sm:text-sm data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900">Not <span className="hidden sm:inline">Submitted</span><span className="sm:hidden">Sub</span></TabsTrigger>
+            <TabsTrigger value="RETURNED" className="text-xs sm:text-sm data-[state=active]:bg-red-50 data-[state=active]:text-red-700">Returned</TabsTrigger>
+            <TabsTrigger value="COMPLETED" className="text-xs sm:text-sm data-[state=active]:bg-green-50 data-[state=active]:text-green-700">Completed</TabsTrigger>
         </TabsList>
       </Tabs>
 
       {reconMode === 'PER_CASHIER' ? (
-          <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-              <div className="p-4 border-b bg-slate-50">
-                  <h3 className="font-semibold">Cashier Shifts</h3>
+          <div className="bg-white rounded-lg shadow-sm border overflow-x-auto">
+              <div className="p-3 sm:p-4 border-b bg-slate-50">
+                  <h3 className="font-semibold text-sm sm:text-base">Cashier Shifts</h3>
               </div>
               <Table>
                   <TableHeader>
                       <TableRow>
-                          <TableHead>Cashier</TableHead>
-                          <TableHead>Office</TableHead>
-                          <TableHead>Shift Start</TableHead>
-                          <TableHead className="text-right">Tx Count</TableHead>
-                          <TableHead className="text-right">Voids</TableHead>
-                          <TableHead className="text-right">System Total</TableHead>
-                          <TableHead className="text-right">Variance</TableHead>
-                          <TableHead className="text-center">Status</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
+                          <TableHead className="whitespace-nowrap">Cashier</TableHead>
+                          <TableHead className="whitespace-nowrap">Office</TableHead>
+                          <TableHead className="whitespace-nowrap">Shift Start</TableHead>
+                          <TableHead className="text-right whitespace-nowrap">Tx Count</TableHead>
+                          <TableHead className="text-right whitespace-nowrap">Voids</TableHead>
+                          <TableHead className="text-right whitespace-nowrap">System Total</TableHead>
+                          <TableHead className="text-right whitespace-nowrap">Variance</TableHead>
+                          <TableHead className="text-center whitespace-nowrap">Status</TableHead>
+                          <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
                       </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -794,10 +799,10 @@ export default function SupervisorDashboard() {
       ) : (
           <div className="grid gap-6">
               {officeGroups && Object.entries(officeGroups).map(([office, data]) => (
-                  <div key={office} className="bg-white rounded-lg shadow-sm border overflow-hidden">
-                      <div className="p-4 border-b bg-slate-50 flex items-center justify-between">
-                          <h3 className="font-semibold text-lg">{office}</h3>
-                          <div className="flex gap-4 text-sm">
+                  <div key={office} className="bg-white rounded-lg shadow-sm border overflow-x-auto">
+                      <div className="p-3 sm:p-4 border-b bg-slate-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                          <h3 className="font-semibold text-base sm:text-lg">{office}</h3>
+                          <div className="flex gap-3 sm:gap-4 text-xs sm:text-sm">
                               <div className="flex gap-2">
                                   <span className="text-muted-foreground">Total System:</span>
                                   <span className="font-mono font-medium">{formatCurrency(data.totalSystem)}</span>
@@ -1034,12 +1039,12 @@ export default function SupervisorDashboard() {
                     <Table>
                         <TableHeader className="bg-slate-50 sticky top-0">
                             <TableRow>
-                                <TableHead>Date</TableHead>
-                                <TableHead>Cashier</TableHead>
-                                <TableHead className="text-right">System Total</TableHead>
-                                <TableHead className="text-right">Declared Total</TableHead>
-                                <TableHead className="text-right">Variance</TableHead>
-                                <TableHead className="text-center">Status</TableHead>
+                                <TableHead className="whitespace-nowrap">Date</TableHead>
+                                <TableHead className="whitespace-nowrap">Cashier</TableHead>
+                                <TableHead className="text-right whitespace-nowrap">System Total</TableHead>
+                                <TableHead className="text-right whitespace-nowrap">Declared Total</TableHead>
+                                <TableHead className="text-right whitespace-nowrap">Variance</TableHead>
+                                <TableHead className="text-center whitespace-nowrap">Status</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1082,9 +1087,9 @@ export default function SupervisorDashboard() {
               {reconMode === 'CASH_OFFICE' ? (
                 /* Cash Office Mode Verification Modal */
                 <DialogContent className="max-w-[95vw] w-full max-h-[95vh] overflow-y-auto p-0 gap-0">
-                    <div className="p-4 border-b flex justify-between items-center bg-gray-50/50">
+                    <div className="p-3 sm:p-4 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-gray-50/50">
                         <div>
-                             <h2 className="text-xl font-bold tracking-tight">Cash Office Day End Reconcile Verification</h2>
+                             <h2 className="text-lg sm:text-xl font-bold tracking-tight">Cash Office Day End Reconcile Verification</h2>
                              <p className="text-xs text-muted-foreground">Authorise Day End Reconcile Per Cash Office</p>
                         </div>
                         <div className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-medium border border-orange-200">
@@ -1092,10 +1097,10 @@ export default function SupervisorDashboard() {
                         </div>
                     </div>
 
-                    <div className="p-6 space-y-8 bg-white min-h-[600px]">
+                    <div className="p-3 sm:p-6 space-y-6 sm:space-y-8 bg-white min-h-[400px] sm:min-h-[600px]">
                         {/* Top Filters / Status */}
-                        <div className="flex justify-between items-start">
-                            <div className="space-y-4 w-1/3">
+                        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                            <div className="space-y-4 w-full sm:w-1/3">
                                 <div className="grid grid-cols-3 items-center gap-4">
                                     <Label className="text-right text-xs uppercase tracking-wider text-muted-foreground">Cash Office*</Label>
                                     <Select defaultValue={selectedShift.cashOffice}>
@@ -1119,9 +1124,9 @@ export default function SupervisorDashboard() {
                                     </Select>
                                 </div>
                             </div>
-                            <div className="text-right space-y-1">
+                            <div className="text-left sm:text-right space-y-1">
                                 <div className="text-red-600 font-bold text-sm">0 Out of 1 Completed</div>
-                                <div className="text-sm text-muted-foreground">Reconcile Date: {format(new Date(), 'dd/MM/yyyy')}</div>
+                                <div className="text-xs sm:text-sm text-muted-foreground">Reconcile Date: {format(new Date(), 'dd/MM/yyyy')}</div>
                             </div>
                         </div>
 
@@ -1130,7 +1135,7 @@ export default function SupervisorDashboard() {
                              <div className="bg-gradient-to-r from-gray-200 to-gray-300 px-2 py-1 text-xs font-bold text-gray-700 flex items-center border rounded-t-sm">
                                 <span className="mr-2">▼</span> Cashier Information
                              </div>
-                             <div className="border rounded-sm overflow-hidden">
+                             <div className="border rounded-sm overflow-x-auto">
                                  <Table>
                                      <TableHeader className="bg-gray-100">
                                          <TableRow className="h-8">
@@ -1211,17 +1216,17 @@ export default function SupervisorDashboard() {
                 </DialogContent>
               ) : (
                 /* Per Cashier Mode Verification Modal (Existing Logic) */
-                <DialogContent className="max-w-3xl">
+                <DialogContent className="max-w-[95vw] sm:max-w-3xl">
                   <DialogHeader>
-                      <DialogTitle className="flex items-center gap-2">
+                      <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
                           Reconciliation Review: <span className="text-blue-600">{selectedShift.cashierName}</span>
                       </DialogTitle>
-                      <DialogDescription>
+                      <DialogDescription className="text-xs sm:text-sm">
                           Shift ID: {selectedShift.id} | Office: {selectedShift.cashOffice}
                       </DialogDescription>
                   </DialogHeader>
 
-                  <div className="grid grid-cols-2 gap-8 py-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 py-4">
                       {/* Left: System Totals */}
                       <div className="space-y-4">
                           <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground border-b pb-2">System Totals</h3>
@@ -1284,7 +1289,7 @@ export default function SupervisorDashboard() {
                   </div>
 
                   {/* Transaction List Preview */}
-                  <div className="border rounded-lg overflow-hidden mt-2">
+                  <div className="border rounded-lg overflow-x-auto mt-2">
                        <div className="bg-gray-50 px-4 py-2 border-b text-xs font-semibold text-muted-foreground flex justify-between items-center">
                            <span>TRANSACTION SUMMARY</span>
                            <Button 

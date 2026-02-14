@@ -47,13 +47,13 @@ interface CountCard {
 function DashboardCountCard({ card }: { card: CountCard }) {
     return (
         <Card data-testid={`card-count-${card.label.toLowerCase().replace(/\s+/g, '-')}`}>
-            <CardContent className="p-4 flex items-center gap-4">
-                <div className={`p-3 rounded-lg ${card.color}`}>
+            <CardContent className="p-3 sm:p-4 flex items-center gap-3 sm:gap-4">
+                <div className={`p-2 sm:p-3 rounded-lg ${card.color}`}>
                     {card.icon}
                 </div>
-                <div>
-                    <p className="text-sm text-muted-foreground">{card.label}</p>
-                    <p className="text-2xl font-bold" data-testid={`text-count-${card.label.toLowerCase().replace(/\s+/g, '-')}`}>{card.value}</p>
+                <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">{card.label}</p>
+                    <p className="text-lg sm:text-2xl font-bold" data-testid={`text-count-${card.label.toLowerCase().replace(/\s+/g, '-')}`}>{card.value}</p>
                 </div>
             </CardContent>
         </Card>
@@ -99,19 +99,53 @@ function PaginatedTable({
 
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
+    const renderMobileCard = (item: any, idx: number) => {
+        const acct = item.accountNumber ?? item.accountNo ?? item.account ?? '';
+        const name = item.name ?? item.accountName ?? item.accName ?? '';
+        const amount = item.amount ?? item.depositAmount ?? item.allocationAmount ?? item.paymentAmount ?? item.chequeAmount ?? 0;
+        const status = item.status ?? item.allocationStatus ?? 'Pending';
+        const date = item.date ?? item.depositDate ?? item.allocationDate ?? item.paymentDate ?? item.transactionDate ?? item.dueDate ?? item.chequeDate ?? '';
+        return (
+            <div key={idx} className="p-3 border rounded-lg bg-white" data-testid={`card-mobile-${testIdPrefix}-${idx}`}>
+                <div className="flex justify-between items-start gap-2 mb-1">
+                    <div className="min-w-0">
+                        <div className="text-sm font-medium truncate">{name || '-'}</div>
+                        <div className="text-xs text-muted-foreground font-mono">{acct || '-'}</div>
+                    </div>
+                    <div className="text-right shrink-0">
+                        <div className="font-mono font-bold text-sm">R {Number(amount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
+                        <Badge variant={status === 'Allocated' || status === 'Cleared' ? 'default' : 'secondary'} className="text-[10px]">{status}</Badge>
+                    </div>
+                </div>
+                {date && <div className="text-[10px] text-muted-foreground">{date}</div>}
+            </div>
+        );
+    };
+
     return (
         <Card data-testid={`card-table-${testIdPrefix}`}>
             <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                <CardTitle className="text-base">{title}</CardTitle>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CardTitle className="text-sm sm:text-base">{title}</CardTitle>
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
                     <span>{totalCount} record{totalCount !== 1 ? 's' : ''}</span>
-                    <Button variant="ghost" size="icon" onClick={() => load(page)} disabled={loading} data-testid={`button-refresh-${testIdPrefix}`}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => load(page)} disabled={loading} data-testid={`button-refresh-${testIdPrefix}`}>
                         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                     </Button>
                 </div>
             </CardHeader>
             <CardContent className="p-0">
-                <div className="overflow-auto max-h-[400px]">
+                {/* Mobile card view */}
+                <div className="sm:hidden p-3 space-y-2 max-h-[400px] overflow-auto">
+                    {loading && items.length === 0 ? (
+                        <div className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin mx-auto" /></div>
+                    ) : items.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground text-sm">No records found</div>
+                    ) : (
+                        items.map((item, idx) => renderMobileCard(item, idx))
+                    )}
+                </div>
+                {/* Desktop table view */}
+                <div className="hidden sm:block overflow-auto max-h-[400px]">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -132,13 +166,13 @@ function PaginatedTable({
                     </Table>
                 </div>
                 {totalPages > 1 && (
-                    <div className="flex items-center justify-between px-4 py-2 border-t">
-                        <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)} data-testid={`button-prev-${testIdPrefix}`}>
-                            <ChevronLeft className="h-4 w-4 mr-1" /> Prev
+                    <div className="flex items-center justify-between px-3 sm:px-4 py-2 border-t">
+                        <Button variant="outline" size="sm" className="h-7 sm:h-8 text-xs" disabled={page <= 1} onClick={() => setPage(p => p - 1)} data-testid={`button-prev-${testIdPrefix}`}>
+                            <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Prev
                         </Button>
-                        <span className="text-sm text-muted-foreground">Page {page} of {totalPages}</span>
-                        <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} data-testid={`button-next-${testIdPrefix}`}>
-                            Next <ChevronRight className="h-4 w-4 ml-1" />
+                        <span className="text-xs sm:text-sm text-muted-foreground">{page}/{totalPages}</span>
+                        <Button variant="outline" size="sm" className="h-7 sm:h-8 text-xs" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} data-testid={`button-next-${testIdPrefix}`}>
+                            Next <ChevronRight className="h-3.5 w-3.5 ml-1" />
                         </Button>
                     </div>
                 )}
@@ -255,9 +289,9 @@ export default function BillingDashboard() {
 
     return (
         <PosLayout>
-            <div className="p-4 space-y-4 overflow-y-auto h-full" data-testid="page-billing-dashboard">
-                <div className="flex items-center justify-between">
-                    <h1 className="text-xl font-semibold">Billing Dashboard — POS Overview</h1>
+            <div className="p-3 sm:p-4 space-y-3 sm:space-y-4 overflow-y-auto h-full" data-testid="page-billing-dashboard">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <h1 className="text-lg sm:text-xl font-semibold">Billing Dashboard — POS Overview</h1>
                     <Button variant="outline" size="sm" onClick={loadCounts} disabled={loading} data-testid="button-refresh-dashboard">
                         {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
                         Refresh
@@ -409,18 +443,18 @@ export default function BillingDashboard() {
 
                 <div ref={tabsRef}>
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList data-testid="tabs-dashboard-tables">
-                        <TabsTrigger value="deposits" data-testid="tab-deposits">
-                            <Banknote className="h-4 w-4 mr-1" /> Deposits
+                    <TabsList className="flex flex-wrap h-auto gap-1" data-testid="tabs-dashboard-tables">
+                        <TabsTrigger value="deposits" className="text-xs sm:text-sm px-2 sm:px-3" data-testid="tab-deposits">
+                            <Banknote className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" /> Deposits
                         </TabsTrigger>
-                        <TabsTrigger value="allocations" data-testid="tab-allocations">
-                            <ArrowUpDown className="h-4 w-4 mr-1" /> Direct Deposit Allocations
+                        <TabsTrigger value="allocations" className="text-xs sm:text-sm px-2 sm:px-3" data-testid="tab-allocations">
+                            <ArrowUpDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" /> <span className="hidden sm:inline">Direct Deposit </span>Allocations
                         </TabsTrigger>
-                        <TabsTrigger value="thirdparty" data-testid="tab-thirdparty">
-                            <CreditCard className="h-4 w-4 mr-1" /> Third-Party Pending
+                        <TabsTrigger value="thirdparty" className="text-xs sm:text-sm px-2 sm:px-3" data-testid="tab-thirdparty">
+                            <CreditCard className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" /> <span className="hidden sm:inline">Third-Party </span>Pending
                         </TabsTrigger>
-                        <TabsTrigger value="cheques" data-testid="tab-cheques">
-                            <DollarSign className="h-4 w-4 mr-1" /> Post-Dated Cheques
+                        <TabsTrigger value="cheques" className="text-xs sm:text-sm px-2 sm:px-3" data-testid="tab-cheques">
+                            <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" /> <span className="hidden sm:inline">Post-Dated </span>Cheques
                         </TabsTrigger>
                     </TabsList>
 

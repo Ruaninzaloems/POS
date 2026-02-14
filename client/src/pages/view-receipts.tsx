@@ -217,20 +217,20 @@ export default function ViewReceipts() {
         <PosLayout>
             <div className="flex-1 flex flex-col h-full bg-slate-100 overflow-hidden">
                 <div className="bg-white border-b shadow-sm">
-                    <div className="px-6 py-4 border-b">
-                        <h1 className="text-xl font-bold text-slate-800" data-testid="text-page-title">View Receipts</h1>
+                    <div className="px-3 sm:px-6 py-3 sm:py-4 border-b">
+                        <h1 className="text-lg sm:text-xl font-bold text-slate-800" data-testid="text-page-title">View Receipts</h1>
                     </div>
 
-                    <div className="p-6 bg-slate-50/50">
-                        <div className="bg-white p-4 rounded-lg border shadow-sm">
-                            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 border-l-2 border-blue-500 pl-2">
+                    <div className="p-3 sm:p-6 bg-slate-50/50">
+                        <div className="bg-white p-3 sm:p-4 rounded-lg border shadow-sm">
+                            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 sm:mb-4 border-l-2 border-blue-500 pl-2">
                                 View Receipt Information
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-[120px_1fr] items-center gap-4">
-                                        <label className="text-sm font-medium text-right text-slate-600">Cashier Name <span className="text-red-500">*</span></label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4 sm:gap-y-6">
+                                <div className="space-y-3 sm:space-y-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] items-start sm:items-center gap-1 sm:gap-4">
+                                        <label className="text-sm font-medium text-left sm:text-right text-slate-600">Cashier Name <span className="text-red-500">*</span></label>
                                         <Select value={cashierFilter} onValueChange={setCashierFilter}>
                                             <SelectTrigger className="h-9" data-testid="select-cashier-filter">
                                                 <SelectValue placeholder={loadingCashiers ? "Loading..." : "-- All --"} />
@@ -246,8 +246,8 @@ export default function ViewReceipts() {
                                         </Select>
                                     </div>
 
-                                    <div className="grid grid-cols-[120px_1fr] items-center gap-4">
-                                        <label className="text-sm font-medium text-right text-slate-600">From Date <span className="text-red-500">*</span></label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] items-start sm:items-center gap-1 sm:gap-4">
+                                        <label className="text-sm font-medium text-left sm:text-right text-slate-600">From Date <span className="text-red-500">*</span></label>
                                         <DatePicker
                                             date={fromDate}
                                             setDate={setFromDate}
@@ -255,8 +255,8 @@ export default function ViewReceipts() {
                                         />
                                     </div>
 
-                                    <div className="grid grid-cols-[120px_1fr] items-center gap-4">
-                                        <label className="text-sm font-medium text-right text-slate-600">Account Number</label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] items-start sm:items-center gap-1 sm:gap-4">
+                                        <label className="text-sm font-medium text-left sm:text-right text-slate-600">Account Number</label>
                                         <div className="relative">
                                             <Input
                                                 ref={accountInputRef}
@@ -298,11 +298,11 @@ export default function ViewReceipts() {
                                     </div>
                                 </div>
 
-                                <div className="space-y-4">
+                                <div className="space-y-3 sm:space-y-4">
                                     <div className="hidden md:block h-9"></div>
 
-                                    <div className="grid grid-cols-[120px_1fr] items-center gap-4">
-                                        <label className="text-sm font-medium text-right text-slate-600">To Date <span className="text-red-500">*</span></label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] items-start sm:items-center gap-1 sm:gap-4">
+                                        <label className="text-sm font-medium text-left sm:text-right text-slate-600">To Date <span className="text-red-500">*</span></label>
                                         <DatePicker
                                             date={toDate}
                                             setDate={setToDate}
@@ -310,8 +310,8 @@ export default function ViewReceipts() {
                                         />
                                     </div>
 
-                                    <div className="grid grid-cols-[120px_1fr] items-center gap-4">
-                                        <label className="text-sm font-medium text-right text-slate-600">Receipt Number</label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] items-start sm:items-center gap-1 sm:gap-4">
+                                        <label className="text-sm font-medium text-left sm:text-right text-slate-600">Receipt Number</label>
                                         <div className="relative">
                                             <Input
                                                 ref={receiptInputRef}
@@ -354,11 +354,11 @@ export default function ViewReceipts() {
                                 </div>
                             </div>
 
-                            <div className="flex justify-center gap-3 mt-8">
-                                <Button className="bg-slate-800 hover:bg-slate-900 w-32" onClick={() => handleSearch(1)} disabled={isLoading} data-testid="button-load">
+                            <div className="flex justify-center gap-3 mt-6 sm:mt-8">
+                                <Button className="bg-slate-800 hover:bg-slate-900 w-28 sm:w-32 text-sm" onClick={() => handleSearch(1)} disabled={isLoading} data-testid="button-load">
                                     {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />} Load
                                 </Button>
-                                <Button variant="outline" className="w-32 bg-slate-100 hover:bg-slate-200 border-slate-300" onClick={handleClear} data-testid="button-cancel">
+                                <Button variant="outline" className="w-28 sm:w-32 bg-slate-100 hover:bg-slate-200 border-slate-300 text-sm" onClick={handleClear} data-testid="button-cancel">
                                     <RefreshCw className="w-4 h-4 mr-2" /> Cancel
                                 </Button>
                             </div>
@@ -366,30 +366,30 @@ export default function ViewReceipts() {
                     </div>
                 </div>
 
-                <div className="flex-1 p-6 overflow-hidden flex flex-col">
-                    <div className="flex justify-between items-center mb-4">
+                <div className="flex-1 p-3 sm:p-6 overflow-hidden flex flex-col">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3 sm:mb-4">
                         <div className="text-xs font-bold text-slate-500 uppercase tracking-wider border-l-2 border-slate-500 pl-2">
                             Receipt Information {totalCount > 0 && <span className="text-blue-600 ml-2">({totalCount} records)</span>}
                         </div>
                         <div className="flex gap-2 items-center">
                             {totalPages > 1 && (
-                                <div className="flex items-center gap-1 mr-3">
+                                <div className="flex items-center gap-1">
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        className="h-8 w-8 p-0"
+                                        className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                                         disabled={currentPage <= 1 || isLoading}
                                         onClick={() => handleSearch(currentPage - 1)}
                                     >
                                         <ChevronLeft className="w-4 h-4" />
                                     </Button>
                                     <span className="text-xs text-slate-600 px-2">
-                                        Page {currentPage} of {totalPages}
+                                        {currentPage}/{totalPages}
                                     </span>
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        className="h-8 w-8 p-0"
+                                        className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                                         disabled={currentPage >= totalPages || isLoading}
                                         onClick={() => handleSearch(currentPage + 1)}
                                     >
@@ -400,7 +400,60 @@ export default function ViewReceipts() {
                         </div>
                     </div>
 
-                    <div className="flex-1 border rounded-md bg-white shadow-sm overflow-auto">
+                    {/* Mobile card view for receipts */}
+                    <div className="sm:hidden flex-1 overflow-auto space-y-2">
+                        {isLoading ? (
+                            <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
+                                <Loader2 className="w-5 h-5 animate-spin" /> Loading receipts...
+                            </div>
+                        ) : receipts.length === 0 ? (
+                            <div className="text-center py-12 text-muted-foreground text-sm">
+                                No receipts found. Use the filters above and click Load.
+                            </div>
+                        ) : receipts.map((receipt, idx) => {
+                            const isCancelled = receipt.isCancelled === 1 || (receipt as any).is_cancelled === 1 || (receipt as any).isCancelled === true;
+                            const acctNo = receipt.accountNumber || (receipt as any).accountNo || '';
+                            const receiptNo = receipt.receiptNo || (receipt as any).receipt_no || '';
+                            const payType = receipt.paymentType || (receipt as any).payment_type || '';
+                            const dateStr = receipt.receiptDate || (receipt as any).receipt_date || '';
+                            const amount = receipt.amount ?? 0;
+                            const cashier = receipt.cashierName || (receipt as any).cashier_name || '';
+                            return (
+                                <Card key={receipt.receiptId || idx} className={cn("p-3", isCancelled && "border-red-200 bg-red-50/30")} data-testid={`card-receipt-${idx}`}>
+                                    <div className="flex justify-between items-start gap-2 mb-1.5">
+                                        <div className="min-w-0">
+                                            <div className="font-mono text-sm font-medium text-blue-700">{receiptNo || '-'}</div>
+                                            <div className="text-xs text-muted-foreground font-mono">{acctNo || '-'}</div>
+                                        </div>
+                                        <div className="text-right shrink-0">
+                                            <div className="font-mono font-bold text-sm">R {Number(amount).toFixed(2)}</div>
+                                            {isCancelled ? (
+                                                <Badge variant="destructive" className="text-[10px] px-1 py-0">Cancelled</Badge>
+                                            ) : (
+                                                <Badge variant="outline" className="text-[10px] px-1 py-0 text-green-700 border-green-300 bg-green-50">Completed</Badge>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs text-muted-foreground">
+                                        <span>{payType} | {formatReceiptDate(dateStr)}</span>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-6 text-[10px] px-2"
+                                            onClick={() => handlePrintReceipt(receipt)}
+                                            disabled={isPrinting}
+                                        >
+                                            <Printer className="w-3 h-3 mr-1" /> Print
+                                        </Button>
+                                    </div>
+                                    {cashier && <div className="text-[10px] text-muted-foreground mt-1">Cashier: {cashier}</div>}
+                                </Card>
+                            );
+                        })}
+                    </div>
+
+                    {/* Desktop table view */}
+                    <div className="hidden sm:block flex-1 border rounded-md bg-white shadow-sm overflow-auto">
                         <Table>
                             <TableHeader className="bg-slate-100 sticky top-0 z-10">
                                 <TableRow>
@@ -528,7 +581,7 @@ export default function ViewReceipts() {
                     </div>
 
                     {totalCount > 0 && (
-                        <div className="flex justify-between items-center mt-3 text-xs text-slate-500">
+                        <div className="hidden sm:flex justify-between items-center mt-3 text-xs text-slate-500">
                             <span>
                                 Showing {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, totalCount)} of {totalCount} receipts
                             </span>

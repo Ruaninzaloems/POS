@@ -22,11 +22,11 @@ export default function SettingsPage() {
 
   return (
     <PosLayout>
-      <div className="flex-1 bg-gray-50/50 p-6 md:p-8 overflow-y-auto">
-        <div className="max-w-4xl mx-auto space-y-8">
+      <div className="flex-1 bg-gray-50/50 p-3 sm:p-6 md:p-8 overflow-y-auto">
+        <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">System Settings</h1>
-            <p className="text-muted-foreground mt-2">Manage POS configuration and security limits.</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">System Settings</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">Manage POS configuration and security limits.</p>
           </div>
 
           <div className="grid gap-6">
@@ -82,7 +82,7 @@ export default function SettingsPage() {
 
                 <div className="space-y-4">
                     {referenceData.cashOffices.map((office: any) => (
-                        <div key={office.id} className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4 items-center p-4 border rounded-lg bg-card hover:bg-muted/20 transition-colors">
+                        <div key={office.id} className="grid grid-cols-1 sm:grid-cols-[2fr_1fr] gap-3 sm:gap-4 items-center p-3 sm:p-4 border rounded-lg bg-card hover:bg-muted/20 transition-colors">
                             <div>
                                 <h3 className="font-semibold text-sm">{office.name}</h3>
                                 <p className="text-xs text-muted-foreground font-mono mt-1">{office.ledgerVote}</p>

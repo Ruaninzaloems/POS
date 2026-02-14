@@ -60,11 +60,11 @@ export default function ThirdPartyPaymentProcessing() {
 
   return (
     <PosLayout>
-      <div className="flex-1 overflow-auto bg-slate-50 p-6">
-        <div className="max-w-4xl mx-auto space-y-6">
+      <div className="flex-1 overflow-auto bg-slate-50 p-3 sm:p-6">
+        <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
           
           <div className="flex justify-between items-center">
-             <h1 className="text-2xl font-bold tracking-tight text-slate-900">Third Party Payment Processing</h1>
+             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">Third Party Payment Processing</h1>
           </div>
 
           <Card className="border-t-4 border-t-blue-600 shadow-sm">
@@ -175,11 +175,11 @@ export default function ThirdPartyPaymentProcessing() {
                 </div>
               )}
 
-              <div className="flex items-center justify-between pt-4 border-t">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t">
                 <Button 
                   variant="outline" 
                   onClick={handleDownloadTemplate}
-                  className="gap-2 text-slate-600"
+                  className="gap-2 text-slate-600 w-full sm:w-auto"
                 >
                   <Download className="h-4 w-4" />
                   Download Template
@@ -188,7 +188,7 @@ export default function ThirdPartyPaymentProcessing() {
                 <Button 
                   onClick={handleProcess} 
                   disabled={isProcessing || !thirdParty || !file}
-                  className="bg-blue-600 hover:bg-blue-700 gap-2 min-w-[150px]"
+                  className="bg-blue-600 hover:bg-blue-700 gap-2 min-w-[150px] w-full sm:w-auto"
                 >
                   {isProcessing ? (
                     <>Processing...</>
