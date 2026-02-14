@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { RefreshCw, Loader2, DollarSign, CreditCard, Receipt, Users, Banknote, ArrowUpDown, AlertTriangle, Bell, ChevronLeft, ChevronRight } from 'lucide-react';
+import { RefreshCw, Loader2, CreditCard, Receipt, Users, Banknote, ArrowUpDown, AlertTriangle, Bell, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
     platinumGetPosCount,
@@ -18,7 +18,6 @@ import {
     platinumGetDepositTableData,
     platinumGetDirectDepositsAllocationTableData,
     platinumGetThirdPartyPaymentPendingTableData,
-    platinumGetPostDatedChequeTableData,
 } from '@/lib/external-api';
 
 function extractItems(data: any): any[] {
@@ -102,9 +101,9 @@ function PaginatedTable({
     const renderMobileCard = (item: any, idx: number) => {
         const acct = item.accountNumber ?? item.accountNo ?? item.account ?? '';
         const name = item.name ?? item.accountName ?? item.accName ?? '';
-        const amount = item.amount ?? item.depositAmount ?? item.allocationAmount ?? item.paymentAmount ?? item.chequeAmount ?? 0;
+        const amount = item.amount ?? item.depositAmount ?? item.allocationAmount ?? item.paymentAmount ?? 0;
         const status = item.status ?? item.allocationStatus ?? 'Pending';
-        const date = item.date ?? item.depositDate ?? item.allocationDate ?? item.paymentDate ?? item.transactionDate ?? item.dueDate ?? item.chequeDate ?? '';
+        const date = item.date ?? item.depositDate ?? item.allocationDate ?? item.paymentDate ?? item.transactionDate ?? item.dueDate ?? '';
         return (
             <div key={idx} className="p-3 border rounded-lg bg-white" data-testid={`card-mobile-${testIdPrefix}-${idx}`}>
                 <div className="flex justify-between items-start gap-2 mb-1">
@@ -184,7 +183,6 @@ function PaginatedTable({
 const detailKeyToTab: Record<string, string> = {
     directDepositsAllocation: 'allocations',
     thirdPartyPaymentPending: 'thirdparty',
-    postDatedChequeSearch: 'cheques',
     debtArrangementNotPaid: 'deposits',
 };
 
@@ -214,7 +212,6 @@ const alertKeyToRoute: Record<string, string> = {
 const detailKeyLabels: Record<string, string> = {
     directDepositsAllocation: 'Direct Deposit Allocations',
     debtArrangementNotPaid: 'Debt Arrangements Not Paid',
-    postDatedChequeSearch: 'Post-Dated Cheques',
     cashierReconcile: 'Cashier Reconcile',
     pendingCashierReconcile: 'Pending Cashier Reconcile',
     returnCashierReconcile: 'Returned Cashier Reconcile',
@@ -453,9 +450,6 @@ export default function BillingDashboard() {
                         <TabsTrigger value="thirdparty" className="text-xs sm:text-sm px-2 sm:px-3" data-testid="tab-thirdparty">
                             <CreditCard className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" /> <span className="hidden sm:inline">Third-Party </span>Pending
                         </TabsTrigger>
-                        <TabsTrigger value="cheques" className="text-xs sm:text-sm px-2 sm:px-3" data-testid="tab-cheques">
-                            <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" /> <span className="hidden sm:inline">Post-Dated </span>Cheques
-                        </TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="deposits" className="mt-3">
@@ -521,26 +515,6 @@ export default function BillingDashboard() {
                         />
                     </TabsContent>
 
-                    <TabsContent value="cheques" className="mt-3">
-                        <PaginatedTable
-                            title="Post-Dated Cheques"
-                            fetchFn={platinumGetPostDatedChequeTableData}
-                            testIdPrefix="cheques"
-                            columns={['Account No', 'Name', 'Amount', 'Cheque No', 'Due Date', 'Status']}
-                            renderRow={(item, idx) => (
-                                <TableRow key={idx}>
-                                    <TableCell className="text-xs">{item.accountNumber ?? item.accountNo ?? '—'}</TableCell>
-                                    <TableCell className="text-xs">{item.name ?? item.accountName ?? item.accName ?? '—'}</TableCell>
-                                    <TableCell className="text-xs font-medium">R {(item.amount ?? item.chequeAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</TableCell>
-                                    <TableCell className="text-xs">{item.chequeNo ?? item.chequeNumber ?? '—'}</TableCell>
-                                    <TableCell className="text-xs">{item.dueDate ?? item.chequeDate ?? item.date ?? '—'}</TableCell>
-                                    <TableCell className="text-xs">
-                                        <Badge variant={item.status === 'Cleared' ? 'default' : 'secondary'}>{item.status ?? 'Pending'}</Badge>
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        />
-                    </TabsContent>
                 </Tabs>
                 </div>
             </div>
