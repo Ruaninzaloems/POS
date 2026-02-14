@@ -180,23 +180,51 @@ export async function registerRoutes(
         return res.json({ active: false, cashierId: null, cashierRegistered: false });
       }
 
-      let cashierDetails = null;
-      try {
-        cashierDetails = await platinumGet("/api/ReceiptPrepaid/cashier-detailsById", { cashierId: String(cashierId) });
-      } catch {}
+      let cashierDetails: any = null;
+      let activeOfficeId: number | null = null;
+      let activeOfficeName: string | null = null;
 
-      const cashOffice = cashierDetails?.const_CashOffice || null;
+      const detailEndpoints = [
+        { path: "/api/ReceiptPrepaid/ActiveCashierDetails", params: { userId } },
+        { path: "/api/ReceiptPrepaid/active-cashier-details", params: { user: userId } },
+        { path: "/api/ReceiptPrepaid/cashier-detailsById", params: { cashierId: String(cashierId) } },
+      ];
+
+      for (const ep of detailEndpoints) {
+        try {
+          const result = await platinumGet(ep.path, ep.params);
+          if (result && !result._error) {
+            const hasValidData = result.id > 0 || result.isActive === true || result.officeId > 0;
+            if (hasValidData) {
+              cashierDetails = result;
+              console.log(`[active-cashier] Got valid details from ${ep.path}:`, JSON.stringify({ id: result.id, officeId: result.officeId, isActive: result.isActive, office: result.const_CashOffice?.cashOfficeDesc }));
+              break;
+            } else if (!cashierDetails && result.const_CashOffice) {
+              cashierDetails = result;
+              console.log(`[active-cashier] Got fallback details from ${ep.path} (id:${result.id}, inactive):`, JSON.stringify({ office: result.const_CashOffice?.cashOfficeDesc }));
+            }
+          }
+        } catch {}
+      }
+
       const isSessionActive = cashierDetails?.isActive === true;
-      const hasOffice = !!(cashOffice?.cashOffice_ID || cashierDetails?.officeId);
+
+      if (isSessionActive) {
+        const cashOffice = cashierDetails?.const_CashOffice || null;
+        activeOfficeId = cashOffice?.cashOffice_ID || cashierDetails?.officeId || null;
+        activeOfficeName = cashOffice?.cashOfficeDesc || null;
+      }
+
+      const hasOffice = !!activeOfficeId;
 
       res.json({
         active: isSessionActive && hasOffice,
         cashierId,
         cashierRegistered: true,
         cashFloat: cashierDetails?.cashFloat ?? 0,
-        officeId: cashOffice?.cashOffice_ID || cashierDetails?.officeId || null,
-        officeName: cashOffice?.cashOfficeDesc || null,
-        cashOnHandLimit: cashOffice?.cashOnHandLimit || 999999,
+        officeId: activeOfficeId,
+        officeName: activeOfficeName,
+        cashOnHandLimit: isSessionActive ? (cashierDetails?.const_CashOffice?.cashOnHandLimit || 999999) : 999999,
         isActive: isSessionActive,
         details: cashierDetails,
       });

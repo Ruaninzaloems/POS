@@ -138,18 +138,8 @@ export default function CashierSetup() {
                             if (sessionData.cashierRegistered === true || sessionData.cashierId) {
                                 setIsCashierRegistered(true);
                                 setValidationMessage('Cashier validated successfully.');
-                                if (sessionData.officeId) {
+                                if (sessionData.isActive && sessionData.officeId) {
                                     setSelectedOfficeId(String(sessionData.officeId));
-                                }
-                                if (sessionData.details?.const_CashOffice) {
-                                    const co = sessionData.details.const_CashOffice;
-                                    setCashOfficeViews([{
-                                        cashOffice_ID: co.cashOffice_ID,
-                                        cashOfficeDesc: co.cashOfficeDesc || '',
-                                        cashOnHandLimit: co.cashOnHandLimit || 999999,
-                                        scoaConfigurationID: co.scoaConfigurationID || null,
-                                        vote1: null, vote: null, vote_ID: null, voteDesc: null,
-                                    }]);
                                 }
                                 const offices = await platinumGetCashOffices(finYear).catch(() => []);
                                 if (Array.isArray(offices) && offices.length > 0) {
