@@ -189,7 +189,11 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
         updated.accountGroup = updated.accountGroup || 'None - Normal';
 
         if (!cancelled) {
-          setAccount(updated);
+          setAccount(prev => ({
+            ...updated,
+            agingBreakdown: prev.agingBreakdown || updated.agingBreakdown,
+            outstandingAmount: prev.outstandingAmount ?? updated.outstandingAmount,
+          }));
           setDetailsLoaded(true);
           setDetailsLoading(false);
         }
