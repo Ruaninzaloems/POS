@@ -35,6 +35,7 @@ export default function CashierSetup() {
     const [cashOffices, setCashOffices] = useState<CashOfficeViewModel[]>([]);
     const [isCashierRegistered, setIsCashierRegistered] = useState<boolean | null>(null);
     const [cashierId, setCashierId] = useState<number | null>(null);
+    const [cashierDetails, setCashierDetails] = useState<any>(null);
 
     const [floatInput, setFloatInput] = useState<string>('0.00');
     const [selectedOfficeId, setSelectedOfficeId] = useState<string>('');
@@ -88,6 +89,7 @@ export default function CashierSetup() {
                 if (data.cashierRegistered === true || data.cashierId) {
                     setIsCashierRegistered(true);
                     setCashierId(data.cashierId || userId);
+                    setCashierDetails(data.details || null);
                     setStep1Status('success');
                 } else {
                     setIsCashierRegistered(false);
@@ -155,7 +157,48 @@ export default function CashierSetup() {
         setStep3Status('loading');
 
         try {
-            console.log(`[CashierSetup] Step 3: Starting session — userId=${userId}, officeId=${selectedOffice.cashOffice_ID}, float=${float}`);
+            const payload = {
+                id: cashierDetails?.id ?? 0,
+                cashFloat: float,
+                stsPort: cashierDetails?.stsPort ?? 1,
+                plesseyPort: cashierDetails?.plesseyPort ?? 1,
+                officeId: selectedOffice.cashOffice_ID,
+                isActive: true,
+                dateCaptured: cashierDetails?.dateCaptured ?? null,
+                capturerId: cashierDetails?.capturerId ?? null,
+                dateModified: cashierDetails?.dateModified ?? null,
+                modifiredId: cashierDetails?.modifiredId ?? null,
+                user_Id: userId,
+                sourceReferenceID: cashierDetails?.sourceReferenceID ?? null,
+                offlineReconciled: cashierDetails?.offlineReconciled ?? null,
+                offlineRelations: cashierDetails?.offlineRelations ?? null,
+                isVirtual: false,
+                const_CashOffice: {
+                    cashOffice_ID: selectedOffice.cashOffice_ID,
+                    cashOfficeDesc: selectedOffice.cashOfficeDesc || '',
+                    enabled: true,
+                    cashOnHandLimit: selectedOffice.cashOnHandLimit ?? 999999,
+                    scoaConfigurationID: selectedOffice.scoaConfigurationID ?? 4,
+                    allowDelayedDayEndRecon: true,
+                    delayDaysSincePreviousDayEndRecon: 2,
+                },
+            };
+
+            console.log(`[CashierSetup] Step 3: submit-cashier-setup POST — userId=${userId}, officeId=${selectedOffice.cashOffice_ID}`);
+            console.log(`[CashierSetup] Step 3 payload:`, JSON.stringify(payload));
+
+            const res = await fetch('/api/platinum/receipt-prepaid/submit-cashier-setup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+
+            const responseData = await res.json().catch(() => null);
+            console.log(`[CashierSetup] Step 3 response:`, JSON.stringify(responseData));
+
+            if (!res.ok) {
+                throw new Error(responseData?.message || responseData?.detail || `HTTP ${res.status}`);
+            }
 
             const officeId = String(selectedOffice.cashOffice_ID);
             const officeName = selectedOffice.cashOfficeDesc || '';
@@ -165,7 +208,7 @@ export default function CashierSetup() {
             startSession(officeId, float, officeName);
 
             setStep3Status('success');
-            console.log('[CashierSetup] Session started successfully');
+            console.log('[CashierSetup] Session started successfully via Platinum API');
         } catch (err: any) {
             console.error('[CashierSetup] Step 3 failed:', err);
             setError(`Failed to start session: ${err?.message || 'Unknown error'}. Please try again.`);

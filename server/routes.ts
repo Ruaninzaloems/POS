@@ -464,72 +464,74 @@ export async function registerRoutes(
   app.post("/api/platinum/receipt-prepaid/submit-cashier-setup", async (req, res) => {
     try {
       const body = { ...req.body };
-      const userId = body.user_Id || body.userId || body.User_Id;
+      const officeId = body.officeId ?? body.OfficeId ?? null;
+      const cashOffice = body.const_CashOffice || body.Const_CashOffice || {};
+      const userId = body.user_Id ?? body.userId ?? body.User_Id;
 
-      const realUserData = await platinumGet(`/api/User/${userId}`);
       let userDetailObj: any = null;
-      if (realUserData && !realUserData._error) {
-        userDetailObj = {
-          userId: realUserData.userId,
-          userName: realUserData.userName,
-          password: realUserData.password || '',
-          company: realUserData.company,
-          telNo: realUserData.telNo,
-          eMail: realUserData.eMail,
-          firstName: realUserData.firstName,
-          lastName: realUserData.lastName,
-          empID: realUserData.empID,
-          departmentID: realUserData.departmentID,
-          enabled: realUserData.enabled ?? true,
-          totalLogin: realUserData.totalLogin,
-          lastLoginDate: realUserData.lastLoginDate,
-          sendSMS: realUserData.sendSMS,
-          superUser: realUserData.superUser ?? false,
-          dateCaptured: realUserData.dateCaptured,
-          capturerID: realUserData.capturerID,
-          passwordNeverExpire: realUserData.passwordNeverExpire ?? true,
-          passwordLastChangedDate: realUserData.passwordLastChangedDate,
-          modifierID: realUserData.modifierID,
-          dateModified: realUserData.dateModified,
-          temporaryPassword: realUserData.temporaryPassword,
-          cashFloat: realUserData.cashFloat ?? 0,
-          startDate: realUserData.startDate,
-          endDate: realUserData.endDate,
-          historicUser: realUserData.historicUser,
-          transactionPassword: realUserData.transactionPassword,
-        };
-        console.log(`[submit-cashier-setup] Fetched real user record: userName=${realUserData.userName}`);
+      if (userId) {
+        try {
+          const realUserData = await platinumGet(`/api/User/${userId}`);
+          if (realUserData && !realUserData._error) {
+            userDetailObj = {} as any;
+            for (const [key, val] of Object.entries(realUserData)) {
+              if (key === '_error') continue;
+              if (val === null || val === undefined) continue;
+              userDetailObj[key] = val;
+            }
+            console.log(`[submit-cashier-setup] Fetched UserDetail for userId=${userId}: userName=${realUserData.userName}`);
+          }
+        } catch (e: any) {
+          console.warn(`[submit-cashier-setup] Failed to fetch user data for userId=${userId}:`, e.message);
+        }
       }
 
-      const officeId = body.officeId || body.OfficeId || 2;
-      const cashOffice = body.const_CashOffice || body.Const_CashOffice || {};
-
-      const apiBody = {
-        id: body.id || body.Id || 0,
+      const cashierObj: any = {
+        id: body.id ?? body.Id ?? 0,
         cashFloat: body.cashFloat ?? body.CashFloat ?? 0,
         stsPort: body.stsPort ?? body.StsPort ?? 1,
         plesseyPort: body.plesseyPort ?? body.PlesseyPort ?? 1,
         officeId: officeId,
-        isActive: true,
-        user_Id: Number(userId),
-        isVirtual: body.isVirtual ?? body.IsVirtual ?? false,
+        isActive: body.isActive ?? true,
+        user_Id: body.user_Id ?? body.userId ?? null,
+        isVirtual: false,
         const_CashOffice: {
-          cashOffice_ID: cashOffice.cashOffice_ID || cashOffice.CashOffice_ID || officeId,
-          cashOfficeDesc: cashOffice.cashOfficeDesc || cashOffice.CashOfficeDesc || '',
+          cashOffice_ID: cashOffice.cashOffice_ID ?? cashOffice.CashOffice_ID ?? officeId,
+          cashOfficeDesc: cashOffice.cashOfficeDesc ?? cashOffice.CashOfficeDesc ?? '',
           enabled: cashOffice.enabled ?? cashOffice.Enabled ?? true,
-          cashOnHandLimit: cashOffice.cashOnHandLimit || cashOffice.CashOnHandLimit || 999999,
-          scoaConfigurationID: cashOffice.scoaConfigurationID || cashOffice.ScoaConfigurationID || 4,
+          groupCashiers: cashOffice.groupCashiers ?? false,
+          cashOnHandLimit: cashOffice.cashOnHandLimit ?? cashOffice.CashOnHandLimit ?? 999999,
+          scoaConfigurationID: cashOffice.scoaConfigurationID ?? cashOffice.ScoaConfigurationID ?? 4,
           allowDelayedDayEndRecon: cashOffice.allowDelayedDayEndRecon ?? cashOffice.AllowDelayedDayEndRecon ?? true,
-          delayDaysSincePreviousDayEndRecon: cashOffice.delayDaysSincePreviousDayEndRecon || cashOffice.DelayDaysSincePreviousDayEndRecon || 2,
+          delayDaysSincePreviousDayEndRecon: cashOffice.delayDaysSincePreviousDayEndRecon ?? cashOffice.DelayDaysSincePreviousDayEndRecon ?? 2,
         },
-        userDetail: userDetailObj || body.userDetail || body.UserDetail || null,
       };
 
-      console.log(`[submit-cashier-setup] camelCase payload:`, JSON.stringify(apiBody));
-      const data = await platinumPost("/api/ReceiptPrepaid/submit-cashier-setup", apiBody);
+      if (body.dateCaptured) cashierObj.dateCaptured = body.dateCaptured;
+      if (body.capturerId) cashierObj.capturerId = body.capturerId;
+      if (body.dateModified) cashierObj.dateModified = body.dateModified;
+      if (body.modifiredId) cashierObj.modifiredId = body.modifiredId;
+      if (body.sourceReferenceID) cashierObj.sourceReferenceID = body.sourceReferenceID;
+      if (body.offlineReconciled != null) cashierObj.offlineReconciled = body.offlineReconciled;
+      if (body.offlineRelations) cashierObj.offlineRelations = body.offlineRelations;
+
+      if (cashOffice.dateCaptured) cashierObj.const_CashOffice.dateCaptured = cashOffice.dateCaptured;
+      if (cashOffice.capturerID) cashierObj.const_CashOffice.capturerID = cashOffice.capturerID;
+      if (cashOffice.dateModified) cashierObj.const_CashOffice.dateModified = cashOffice.dateModified;
+      if (cashOffice.modifierID) cashierObj.const_CashOffice.modifierID = cashOffice.modifierID;
+      if (cashOffice.classificationID) cashierObj.const_CashOffice.classificationID = cashOffice.classificationID;
+      if (cashOffice.cashOfficeScoaItemID) cashierObj.const_CashOffice.cashOfficeScoaItemID = cashOffice.cashOfficeScoaItemID;
+
+      if (userDetailObj) {
+        cashierObj.userDetail = userDetailObj;
+      }
+
+      console.log(`[submit-cashier-setup] POSCashier payload:`, JSON.stringify(cashierObj));
+      const data = await platinumPost("/api/ReceiptPrepaid/submit-cashier-setup", cashierObj);
       console.log(`[submit-cashier-setup] Response:`, JSON.stringify(data));
       handlePlatinumResult(res, data);
     } catch (e: any) {
+      console.error(`[submit-cashier-setup] Error:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
