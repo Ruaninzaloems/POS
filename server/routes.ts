@@ -470,33 +470,33 @@ export async function registerRoutes(
       let userDetailObj: any = null;
       if (realUserData && !realUserData._error) {
         userDetailObj = {
-          UserId: realUserData.userId,
-          UserName: realUserData.userName,
-          Password: realUserData.password || '',
-          Company: realUserData.company,
-          TelNo: realUserData.telNo,
-          EMail: realUserData.eMail,
-          FirstName: realUserData.firstName,
-          LastName: realUserData.lastName,
-          EmpID: realUserData.empID,
-          DepartmentID: realUserData.departmentID,
-          Enabled: realUserData.enabled ?? true,
-          TotalLogin: realUserData.totalLogin,
-          LastLoginDate: realUserData.lastLoginDate,
-          SendSMS: realUserData.sendSMS,
-          SuperUser: realUserData.superUser ?? false,
-          DateCaptured: realUserData.dateCaptured,
-          CapturerID: realUserData.capturerID,
-          PasswordNeverExpire: realUserData.passwordNeverExpire ?? true,
-          PasswordLastChangedDate: realUserData.passwordLastChangedDate,
-          ModifierID: realUserData.modifierID,
-          DateModified: realUserData.dateModified,
-          TemporaryPassword: realUserData.temporaryPassword,
-          CashFloat: realUserData.cashFloat ?? 0,
-          StartDate: realUserData.startDate,
-          EndDate: realUserData.endDate,
-          HistoricUser: realUserData.historicUser,
-          TransactionPassword: realUserData.transactionPassword,
+          userId: realUserData.userId,
+          userName: realUserData.userName,
+          password: realUserData.password || '',
+          company: realUserData.company,
+          telNo: realUserData.telNo,
+          eMail: realUserData.eMail,
+          firstName: realUserData.firstName,
+          lastName: realUserData.lastName,
+          empID: realUserData.empID,
+          departmentID: realUserData.departmentID,
+          enabled: realUserData.enabled ?? true,
+          totalLogin: realUserData.totalLogin,
+          lastLoginDate: realUserData.lastLoginDate,
+          sendSMS: realUserData.sendSMS,
+          superUser: realUserData.superUser ?? false,
+          dateCaptured: realUserData.dateCaptured,
+          capturerID: realUserData.capturerID,
+          passwordNeverExpire: realUserData.passwordNeverExpire ?? true,
+          passwordLastChangedDate: realUserData.passwordLastChangedDate,
+          modifierID: realUserData.modifierID,
+          dateModified: realUserData.dateModified,
+          temporaryPassword: realUserData.temporaryPassword,
+          cashFloat: realUserData.cashFloat ?? 0,
+          startDate: realUserData.startDate,
+          endDate: realUserData.endDate,
+          historicUser: realUserData.historicUser,
+          transactionPassword: realUserData.transactionPassword,
         };
         console.log(`[submit-cashier-setup] Fetched real user record: userName=${realUserData.userName}`);
       }
@@ -504,29 +504,29 @@ export async function registerRoutes(
       const officeId = body.officeId || body.OfficeId || 2;
       const cashOffice = body.const_CashOffice || body.Const_CashOffice || {};
 
-      const pascalBody = {
-        Id: body.id || body.Id || 0,
-        CashFloat: body.cashFloat ?? body.CashFloat ?? 0,
-        StsPort: body.stsPort ?? body.StsPort ?? 1,
-        PlesseyPort: body.plesseyPort ?? body.PlesseyPort ?? 1,
-        OfficeId: officeId,
-        IsActive: true,
-        User_Id: Number(userId),
-        IsVirtual: body.isVirtual ?? body.IsVirtual ?? false,
-        Const_CashOffice: {
-          CashOffice_ID: cashOffice.cashOffice_ID || cashOffice.CashOffice_ID || officeId,
-          CashOfficeDesc: cashOffice.cashOfficeDesc || cashOffice.CashOfficeDesc || '',
-          Enabled: cashOffice.enabled ?? cashOffice.Enabled ?? true,
-          CashOnHandLimit: cashOffice.cashOnHandLimit || cashOffice.CashOnHandLimit || 999999,
-          ScoaConfigurationID: cashOffice.scoaConfigurationID || cashOffice.ScoaConfigurationID || 4,
-          AllowDelayedDayEndRecon: cashOffice.allowDelayedDayEndRecon ?? cashOffice.AllowDelayedDayEndRecon ?? true,
-          DelayDaysSincePreviousDayEndRecon: cashOffice.delayDaysSincePreviousDayEndRecon || cashOffice.DelayDaysSincePreviousDayEndRecon || 2,
+      const apiBody = {
+        id: body.id || body.Id || 0,
+        cashFloat: body.cashFloat ?? body.CashFloat ?? 0,
+        stsPort: body.stsPort ?? body.StsPort ?? 1,
+        plesseyPort: body.plesseyPort ?? body.PlesseyPort ?? 1,
+        officeId: officeId,
+        isActive: true,
+        user_Id: Number(userId),
+        isVirtual: body.isVirtual ?? body.IsVirtual ?? false,
+        const_CashOffice: {
+          cashOffice_ID: cashOffice.cashOffice_ID || cashOffice.CashOffice_ID || officeId,
+          cashOfficeDesc: cashOffice.cashOfficeDesc || cashOffice.CashOfficeDesc || '',
+          enabled: cashOffice.enabled ?? cashOffice.Enabled ?? true,
+          cashOnHandLimit: cashOffice.cashOnHandLimit || cashOffice.CashOnHandLimit || 999999,
+          scoaConfigurationID: cashOffice.scoaConfigurationID || cashOffice.ScoaConfigurationID || 4,
+          allowDelayedDayEndRecon: cashOffice.allowDelayedDayEndRecon ?? cashOffice.AllowDelayedDayEndRecon ?? true,
+          delayDaysSincePreviousDayEndRecon: cashOffice.delayDaysSincePreviousDayEndRecon || cashOffice.DelayDaysSincePreviousDayEndRecon || 2,
         },
-        UserDetail: userDetailObj || body.UserDetail || body.userDetail || null,
+        userDetail: userDetailObj || body.userDetail || body.UserDetail || null,
       };
 
-      console.log(`[submit-cashier-setup] PascalCase payload:`, JSON.stringify(pascalBody));
-      const data = await platinumPost("/api/ReceiptPrepaid/submit-cashier-setup", pascalBody);
+      console.log(`[submit-cashier-setup] camelCase payload:`, JSON.stringify(apiBody));
+      const data = await platinumPost("/api/ReceiptPrepaid/submit-cashier-setup", apiBody);
       console.log(`[submit-cashier-setup] Response:`, JSON.stringify(data));
       handlePlatinumResult(res, data);
     } catch (e: any) {

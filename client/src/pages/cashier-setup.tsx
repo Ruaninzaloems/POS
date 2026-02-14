@@ -228,22 +228,26 @@ export default function CashierSetup() {
             console.log('[CashierSetup] Step 3 response:', JSON.stringify(setupResult));
 
             if (setupResult && setupResult._error) {
-                throw new Error(setupResult.message || setupResult._error || 'Setup failed');
+                throw new Error(setupResult.message || setupResult.detail || 'Setup failed');
+            }
+
+            console.log('[CashierSetup] Step 3: Verifying session is active...');
+            const verifyRes = await fetch(`/api/platinum/auth/active-cashier-by-userid?userid=${userId}`);
+            if (verifyRes.ok) {
+                const verifyData = await verifyRes.json();
+                console.log('[CashierSetup] Session verification:', JSON.stringify(verifyData));
+                if (verifyData.active && verifyData.isActive === true) {
+                    console.log('[CashierSetup] Session confirmed active on Platinum');
+                }
             }
 
             setStep3Status('success');
         } catch (err: any) {
-            const errorMsg = err?.message || '';
-            const isUserDetailError = errorMsg.includes('UserDetail');
-            if (isUserDetailError) {
-                console.warn('[CashierSetup] UserDetail warning — proceeding with local session');
-                setStep3Status('success');
-            } else {
-                setError(`Cashier setup failed: ${errorMsg}`);
-                setStep3Status('error');
-                setSubmitting(false);
-                return;
-            }
+            console.error('[CashierSetup] Step 3 failed:', err);
+            setError(`Cashier setup failed: ${err?.message || 'Unknown error'}. Please try again.`);
+            setStep3Status('error');
+            setSubmitting(false);
+            return;
         }
 
         setSubmitting(false);
