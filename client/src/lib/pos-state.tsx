@@ -727,7 +727,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const saveAccounts = accountItems
             .filter(item => item.originalData?.apiId || item.originalData?.accountID || item.originalData?.accountId || item.originalData?.account_ID)
             .map(item => {
-                const orig = item.originalData || {};
+                const raw = item.originalData?._rawSearchResult;
+                const orig = raw ? { ...item.originalData, ...raw } : (item.originalData || {});
                 const acctId = Number(orig.account_ID || orig.apiId || orig.accountID || orig.accountId);
                 return {
                     isSelected: true,

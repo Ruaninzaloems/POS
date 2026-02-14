@@ -8,7 +8,7 @@ import { Account } from '@/lib/mock-data';
 import { fetchAccounts, fetchBillingStagePrepaidRecharge, fetchBillingStagePrepaidRecovery, searchInstitutions, fetchAccountsByGroup, platinumGetAccountsForClearance, enrichAccountData } from '@/lib/external-api';
 
 export function UnifiedSearch() {
-  const { addItem, clearTransaction, referenceData } = usePos();
+  const { addItem, clearTransaction, referenceData, platinumUser } = usePos();
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [advancedResults, setAdvancedResults] = useState<any[]>([]);
@@ -312,7 +312,7 @@ export function UnifiedSearch() {
 
   return (
       <div className="flex gap-2 w-full max-w-2xl">
-          <SearchComponent onSelect={handleSelect} className="flex-1" institutions={referenceData.institutions} />
+          <SearchComponent onSelect={handleSelect} className="flex-1" institutions={referenceData.institutions} userId={platinumUser?.user_ID} finYear={platinumUser?.finYear} />
           <Button 
             variant="outline" 
             size="icon" 

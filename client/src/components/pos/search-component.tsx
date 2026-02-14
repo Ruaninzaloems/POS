@@ -32,9 +32,11 @@ interface UnifiedSearchProps {
     className?: string;
     scope?: 'ALL' | 'ACCOUNT' | 'PREPAID' | 'DIRECT' | 'GROUP' | 'CLEARANCE';
     institutions?: any[];
+    userId?: number;
+    finYear?: string;
 }
 
-export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, scope = 'ALL', institutions = [] }: UnifiedSearchProps) {
+export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, scope = 'ALL', institutions = [], userId, finYear }: UnifiedSearchProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -128,34 +130,31 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
       if (query.length < 3) return;
       setIsSearchingExternal(true);
       try {
-          const platinumUrl = '/api/platinum/billing-enquiry/enquiry-results';
+          const searchUrl = '/api/platinum/billing-payment/search-accounts';
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 35000);
-          
-          const fetchWithTimeout = (body: Record<string, string>) => 
-              fetch(platinumUrl, {
+
+          const searchBody: Record<string, any> = {
+              userId: userId || null,
+              finYear: finYear || null,
+          };
+
+          if (/^\d+$/.test(query)) {
+              searchBody.accountNo = query;
+          } else {
+              searchBody.name = query;
+          }
+
+          const [searchRes, institutionResults, clearanceResults] = await Promise.all([
+              fetch(searchUrl, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(body),
+                  body: JSON.stringify(searchBody),
                   signal: controller.signal,
               }).catch(err => {
                   if (err.name === 'AbortError') return null;
                   throw err;
-              });
-          
-          let accountRequests: Promise<Response | null>[] = [];
-
-          if (/^\d+$/.test(query)) {
-              accountRequests.push(fetchWithTimeout({ accountID: query }));
-              accountRequests.push(fetchWithTimeout({ oldAccount: query }));
-              accountRequests.push(fetchWithTimeout({ physicalMeterNumber: query }));
-          } else {
-              accountRequests.push(fetchWithTimeout({ companyName: query }));
-              accountRequests.push(fetchWithTimeout({ deliveryAddress: query }));
-          }
-
-          const [accountResponses, institutionResults, clearanceResults] = await Promise.all([
-              Promise.all(accountRequests),
+              }),
               searchInstitutions(query),
               (scope === 'ALL' || scope === 'CLEARANCE') ? platinumGetClearanceIds({ clearanceId: query }).catch(() => []) : Promise.resolve([]),
           ]);
@@ -163,50 +162,74 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
           clearTimeout(timeoutId);
 
           let allAccountData: any[] = [];
-          for (const res of accountResponses) {
-              if (res && res.ok) {
-                  const data = await res.json();
-                  if (Array.isArray(data)) {
-                      allAccountData = [...allAccountData, ...data];
-                  } else if (data?.value && Array.isArray(data.value)) {
-                      allAccountData = [...allAccountData, ...data.value];
-                  } else if (data?.results && Array.isArray(data.results)) {
-                      allAccountData = [...allAccountData, ...data.results];
-                  }
+          if (searchRes && searchRes.ok) {
+              const data = await searchRes.json();
+              if (Array.isArray(data)) {
+                  allAccountData = data;
+              } else if (data?.value && Array.isArray(data.value)) {
+                  allAccountData = data.value;
               }
           }
 
-          const uniqueAccounts = Array.from(new Map(allAccountData.map(item => [item.accountID, item])).values());
+          if (allAccountData.length === 0 && /^\d+$/.test(query)) {
+              const altSearches = [
+                  { userId: userId || null, finYear: finYear || null, oldAccountCode: query },
+                  { userId: userId || null, finYear: finYear || null, physicalMeterNo: query },
+              ];
+              for (const altBody of altSearches) {
+                  if (allAccountData.length > 0) break;
+                  try {
+                      const altRes = await fetch(searchUrl, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(altBody),
+                          signal: controller.signal,
+                      });
+                      if (altRes.ok) {
+                          const altData = await altRes.json();
+                          if (Array.isArray(altData) && altData.length > 0) {
+                              allAccountData = altData;
+                          }
+                      }
+                  } catch {}
+              }
+          }
+
+          const uniqueAccounts = Array.from(new Map(allAccountData.map(item => [item.account_ID, item])).values());
 
           const accountResults: SearchResult[] = uniqueAccounts.slice(0, 10).map((item: any) => {
-              const parsed = parseMobileFromContactDetails(item.contactDetails);
-              const emailMatch = item.contactDetails?.match(/Email\s*:<\/b>\s*([^<\s]+)/i);
-              const extractedEmail = emailMatch ? emailMatch[1] : '';
               return {
                   type: 'ACCOUNT' as const,
                   data: {
-                      accountNo: item.accountNumber || item.oldAccountCode || `${item.accountID}`,
+                      accountNo: item.accountNumber || item.oldAccountCode || `${item.account_ID}`,
                       name: item.name || 'Unknown',
                       idNo: '-',
-                      address: item.address || item.locationAddress || '',
-                      outstandingAmount: item.outStandingAmount || 0,
-                      status: item.accountStatus || 'Active',
-                      email: extractedEmail,
-                      mobile: parsed,
-                      accountType: item.accountType || 'Consumer',
-                      sgNo: item.sgNumber || '',
+                      address: item.deliveryAddress || item.streetName || '',
+                      outstandingAmount: item.outStandingAmt || 0,
+                      status: item.statusDesc || 'Active',
+                      email: '',
+                      mobile: '',
+                      accountType: item.typeOfUseDesc || 'Consumer',
+                      sgNo: item.erfNumber || '',
                       oldCode: item.oldAccountCode || '',
-                      prepaidMeterNo: '',
-                      unitId: item.unitID?.toString(),
-                      apiId: item.accountID,
-                      deliveryAddress: item.address || '',
-                      locationAddress: item.locationAddress || '',
-                      propertyId: item.propertyID || '',
-                      addName: item.addNAME || '',
-                      contactDetails: item.contactDetails || '',
-                      unitPartitionId: item.unitPartitionID,
+                      prepaidMeterNo: item.physicalMeterNo || '',
+                      unitId: '',
+                      apiId: item.account_ID,
+                      deliveryAddress: item.deliveryAddress || '',
+                      locationAddress: item.streetName || '',
+                      town: item.town || '',
+                      account_ID: item.account_ID,
+                      accountNumber: item.accountNumber,
+                      outStandingAmt: item.outStandingAmt,
+                      billId: item.billId,
+                      cutOffID: item.cutOffID,
+                      debtArrangementId: item.debtArrangementId,
+                      clearance_ID: item.clearance_ID,
+                      clearanceAmount: item.clearanceAmount,
+                      billingCycleId: item.billingCycleId,
+                      _rawSearchResult: item,
                   } as Account,
-                  label: `${item.accountNumber || item.oldAccountCode || item.accountID} - ${item.name || 'Unknown'}`
+                  label: `${item.accountNumber || item.oldAccountCode || item.account_ID} - ${item.name || 'Unknown'}`
               };
           });
 
