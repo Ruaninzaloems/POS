@@ -463,93 +463,11 @@ export async function registerRoutes(
 
   app.post("/api/platinum/receipt-prepaid/submit-cashier-setup", async (req, res) => {
     try {
-      const body = req.body;
-      const now = new Date().toISOString();
-      const userId = body.user_Id ?? body.userId ?? 0;
-      const cashOffice = body.const_CashOffice || {};
+      const body = { ...req.body };
+      body.isActive = true;
 
-      let userDetailObj: any = null;
-      if (userId) {
-        try {
-          const realUserData = await platinumGet(`/api/User/${userId}`);
-          if (realUserData && !realUserData._error) {
-            const u = realUserData;
-            userDetailObj = {
-              userId: u.userId ?? userId,
-              userName: u.userName ?? "",
-              password: u.password ?? "",
-              company: u.company ?? "",
-              telNo: u.telNo ?? "",
-              eMail: u.eMail ?? "",
-              firstName: u.firstName ?? "",
-              lastName: u.lastName ?? "",
-              empID: u.empID ?? 0,
-              departmentID: u.departmentID ?? 0,
-              enabled: u.enabled ?? true,
-              totalLogin: u.totalLogin ?? 0,
-              lastLoginDate: u.lastLoginDate || now,
-              sendSMS: u.sendSMS ?? false,
-              superUser: u.superUser ?? false,
-              dateCaptured: u.dateCaptured || now,
-              capturerID: u.capturerID ?? 0,
-              passwordNeverExpire: u.passwordNeverExpire ?? false,
-              passwordLastChangedDate: u.passwordLastChangedDate || now,
-              modifierID: u.modifierID ?? 0,
-              dateModified: u.dateModified || now,
-              temporaryPassword: u.temporaryPassword ?? false,
-              cashFloat: u.cashFloat ?? 0,
-              startDate: u.startDate || now,
-              endDate: u.endDate || "2028-12-31T23:59:59.000Z",
-              historicUser: u.historicUser ?? false,
-              transactionPassword: u.transactionPassword ?? "",
-            };
-            console.log(`[submit-cashier-setup] Fetched UserDetail for userId=${userId}: userName=${u.userName}`);
-          }
-        } catch (e: any) {
-          console.warn(`[submit-cashier-setup] Failed to fetch user data for userId=${userId}:`, e.message);
-        }
-      }
-
-      const cashierObj: any = {
-        id: body.id ?? 0,
-        cashFloat: body.cashFloat ?? 0,
-        stsPort: body.stsPort ?? 0,
-        plesseyPort: body.plesseyPort ?? 0,
-        officeId: body.officeId ?? cashOffice.cashOffice_ID ?? 0,
-        isActive: true,
-        dateCaptured: body.dateCaptured || now,
-        capturerId: body.capturerId ?? userId,
-        dateModified: body.dateModified || now,
-        modifiredId: body.modifiredId ?? userId,
-        user_Id: userId,
-        sourceReferenceID: body.sourceReferenceID || "00000000-0000-0000-0000-000000000000",
-        offlineReconciled: body.offlineReconciled ?? 0,
-        offlineRelations: body.offlineRelations ?? "",
-        isVirtual: false,
-        const_CashOffice: {
-          cashOffice_ID: cashOffice.cashOffice_ID ?? 0,
-          cashOfficeDesc: cashOffice.cashOfficeDesc ?? "",
-          enabled: cashOffice.enabled ?? true,
-          dateCaptured: cashOffice.dateCaptured || now,
-          capturerID: cashOffice.capturerID ?? 0,
-          dateModified: cashOffice.dateModified || now,
-          modifierID: cashOffice.modifierID ?? 0,
-          groupCashiers: cashOffice.groupCashiers ?? false,
-          cashOnHandLimit: cashOffice.cashOnHandLimit ?? 999999,
-          scoaConfigurationID: cashOffice.scoaConfigurationID ?? 4,
-          classificationID: cashOffice.classificationID ?? 0,
-          allowDelayedDayEndRecon: cashOffice.allowDelayedDayEndRecon ?? true,
-          delayDaysSincePreviousDayEndRecon: cashOffice.delayDaysSincePreviousDayEndRecon ?? 2,
-          cashOfficeScoaItemID: cashOffice.cashOfficeScoaItemID ?? 0,
-        },
-      };
-
-      if (userDetailObj) {
-        cashierObj.UserDetail = userDetailObj;
-      }
-
-      console.log(`[submit-cashier-setup] POSCashier payload:`, JSON.stringify(cashierObj));
-      const data = await platinumPost("/api/ReceiptPrepaid/submit-cashier-setup", cashierObj);
+      console.log(`[submit-cashier-setup] Payload:`, JSON.stringify(body));
+      const data = await platinumPost("/api/ReceiptPrepaid/submit-cashier-setup", body);
       console.log(`[submit-cashier-setup] Response:`, JSON.stringify(data));
       handlePlatinumResult(res, data);
     } catch (e: any) {

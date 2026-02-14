@@ -157,41 +157,13 @@ export default function CashierSetup() {
         setStep3Status('loading');
 
         try {
-            const now = new Date().toISOString();
-            const prevOffice = cashierDetails?.const_CashOffice || {};
-
             const payload = {
-                id: cashierDetails?.id ?? 0,
+                user_Id: userId,
                 cashFloat: float,
                 stsPort: cashierDetails?.stsPort ?? 0,
                 plesseyPort: cashierDetails?.plesseyPort ?? 0,
                 officeId: selectedOffice.cashOffice_ID,
                 isActive: true,
-                dateCaptured: cashierDetails?.dateCaptured || now,
-                capturerId: cashierDetails?.capturerId ?? userId,
-                dateModified: now,
-                modifiredId: userId,
-                user_Id: userId,
-                sourceReferenceID: cashierDetails?.sourceReferenceID || "00000000-0000-0000-0000-000000000000",
-                offlineReconciled: cashierDetails?.offlineReconciled ?? 0,
-                offlineRelations: cashierDetails?.offlineRelations || "",
-                isVirtual: false,
-                const_CashOffice: {
-                    cashOffice_ID: selectedOffice.cashOffice_ID,
-                    cashOfficeDesc: selectedOffice.cashOfficeDesc || '',
-                    enabled: true,
-                    dateCaptured: prevOffice.dateCaptured || now,
-                    capturerID: prevOffice.capturerID ?? 0,
-                    dateModified: prevOffice.dateModified || now,
-                    modifierID: prevOffice.modifierID ?? 0,
-                    groupCashiers: prevOffice.groupCashiers ?? false,
-                    cashOnHandLimit: selectedOffice.cashOnHandLimit ?? prevOffice.cashOnHandLimit ?? 999999,
-                    scoaConfigurationID: selectedOffice.scoaConfigurationID ?? prevOffice.scoaConfigurationID ?? 4,
-                    classificationID: prevOffice.classificationID ?? 0,
-                    allowDelayedDayEndRecon: prevOffice.allowDelayedDayEndRecon ?? true,
-                    delayDaysSincePreviousDayEndRecon: prevOffice.delayDaysSincePreviousDayEndRecon ?? 2,
-                    cashOfficeScoaItemID: prevOffice.cashOfficeScoaItemID ?? 0,
-                },
             };
 
             console.log(`[CashierSetup] Step 3: submit-cashier-setup POST — userId=${userId}, officeId=${selectedOffice.cashOffice_ID}`);
