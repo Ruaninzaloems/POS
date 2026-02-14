@@ -10,6 +10,7 @@ export interface PlatinumUserInfo {
     superUser: boolean;
     cashFloat: number;
     finYear: string;
+    authMode?: 'direct' | 'azure' | 'override';
 }
 
 export async function fetchPlatinumUserInfo(): Promise<PlatinumUserInfo | null> {

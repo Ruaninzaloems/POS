@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { platinumGet, platinumPost, getPlatinumUserInfo, getPlatinumToken, getPlatinumApiUrl } from "./platinum-auth";
+import { platinumGet, platinumPost, getPlatinumUserInfo, getPlatinumToken, getPlatinumApiUrl, getPlatinumAuthMode } from "./platinum-auth";
 import { execSync } from "child_process";
 import { writeFileSync, unlinkSync, existsSync } from "fs";
 
@@ -122,6 +122,7 @@ export async function registerRoutes(
         superUser: userData.superUser,
         cashFloat: userData.cashFloat,
         finYear: userData.finYear,
+        authMode: getPlatinumAuthMode(),
       });
     } catch (e: any) {
       res.status(502).json({ message: "Failed to get Platinum user info", detail: e.message });

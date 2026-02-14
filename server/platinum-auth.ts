@@ -7,8 +7,9 @@ let cachedToken: string | null = null;
 let tokenExpiry: number = 0;
 let cachedUserData: any = null;
 let cachedPosCashierId: number | null = null;
+let cachedAuthMode: 'direct' | 'azure' | 'override' = 'override';
 
-async function fetchNewToken(): Promise<{ token: string; userData: any }> {
+async function fetchNewToken(): Promise<{ token: string; userData: any; authMode: 'direct' | 'azure' | 'override' }> {
   console.log(`[PlatinumAuth] Attempting login for username: ${PLATINUM_USERNAME} on DB: ${PLATINUM_DBNAME}`);
 
   if (PLATINUM_PASSWORD) {
@@ -42,7 +43,7 @@ async function fetchNewToken(): Promise<{ token: string; userData: any }> {
               finYear: userData.finYear || data.finYear || "2026/2027"
             };
             console.log(`[PlatinumAuth] Token obtained via createToken. User: ${user.firstName} ${user.lastName} (user_ID: ${user.user_ID})`);
-            return { token: data.token, userData: user };
+            return { token: data.token, userData: user, authMode: 'direct' as const };
           }
           console.log(`[PlatinumAuth] createToken returned generic user (ID:${apiUserId}), will use override`);
         }
@@ -94,7 +95,7 @@ async function fetchNewToken(): Promise<{ token: string; userData: any }> {
       finYear: apiUserData.finYear || data.finYear || "2026/2027"
     };
     console.log(`[PlatinumAuth] Token obtained. User: ${user.firstName} ${user.lastName} (user_ID: ${user.user_ID})`);
-    return { token: data.token, userData: user };
+    return { token: data.token, userData: user, authMode: 'azure' as const };
   }
 
   const overrideUser = {
@@ -113,7 +114,7 @@ async function fetchNewToken(): Promise<{ token: string; userData: any }> {
   console.log(`[PlatinumAuth] NOTE: The JWT token identity is 'System Administration' (ID:1). Platinum enquiries will attribute actions to this token user, not to the userId parameter.`);
   console.log(`[PlatinumAuth] To fix this, the Platinum admin must configure the Azure SSO mapping to resolve '${PLATINUM_USERNAME}' to the correct user.`);
 
-  return { token: data.token, userData: overrideUser };
+  return { token: data.token, userData: overrideUser, authMode: 'override' as const };
 }
 
 export async function getPlatinumToken(): Promise<string> {
@@ -125,6 +126,7 @@ export async function getPlatinumToken(): Promise<string> {
   const result = await fetchNewToken();
   cachedToken = result.token;
   cachedUserData = result.userData;
+  cachedAuthMode = result.authMode;
   tokenExpiry = now + 7 * 60 * 60 * 1000;
   return result.token;
 }
@@ -132,6 +134,10 @@ export async function getPlatinumToken(): Promise<string> {
 export async function getPlatinumUserInfo(): Promise<any> {
   await getPlatinumToken();
   return cachedUserData;
+}
+
+export function getPlatinumAuthMode(): 'direct' | 'azure' | 'override' {
+  return cachedAuthMode;
 }
 
 export async function getPosCashierId(): Promise<number | null> {

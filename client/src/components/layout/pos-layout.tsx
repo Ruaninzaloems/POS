@@ -20,7 +20,8 @@ import {
   Smartphone,
   Home,
   Calculator,
-  BarChart3
+  BarChart3,
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link, useLocation } from "wouter";
@@ -42,7 +43,7 @@ interface PosLayoutProps {
 
 export function PosLayout({ children }: PosLayoutProps) {
   const [location, setLocation] = useLocation();
-  const { currentUser, activeSession, sessionLoading, endSession, viewMode, toggleViewMode, sessionDetails, dayEndStatus } = usePos();
+  const { currentUser, activeSession, sessionLoading, endSession, viewMode, toggleViewMode, sessionDetails, dayEndStatus, platinumUser } = usePos();
 
   const isPosPage = location === '/pos';
 
@@ -52,6 +53,48 @@ export function PosLayout({ children }: PosLayoutProps) {
           <div className="flex flex-col items-center gap-3">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-600" />
             <p className="text-slate-600">Checking session status...</p>
+          </div>
+        </div>
+      );
+  }
+
+  const isReceiptingPage = isPosPage || location.startsWith('/view-receipts');
+
+  if (isReceiptingPage && platinumUser?.authMode === 'override') {
+      return (
+        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-lg border border-amber-200 max-w-lg w-full p-6 sm:p-8 text-center space-y-4">
+            <div className="mx-auto w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">
+              <AlertTriangle className="h-8 w-8 text-amber-600" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-800">Authentication Not Verified</h2>
+            <p className="text-slate-600 text-sm leading-relaxed">
+              This user could not be properly authenticated through the Platinum API. 
+              The system was unable to verify the identity via direct login or Azure SSO — 
+              a hardcoded override was used instead.
+            </p>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-left space-y-2">
+              <p className="text-sm font-semibold text-amber-800">To resolve this, the Platinum administrator needs to:</p>
+              <ul className="text-sm text-amber-700 list-disc list-inside space-y-1">
+                <li>Set up the correct password for the user's direct login, <strong>or</strong></li>
+                <li>Configure the Azure SSO mapping to properly resolve this user</li>
+              </ul>
+            </div>
+            <p className="text-xs text-slate-400">
+              Receipting is disabled until proper authentication is configured. 
+              Contact your system administrator for assistance.
+            </p>
+          </div>
+        </div>
+      );
+  }
+
+  if (isReceiptingPage && !platinumUser) {
+      return (
+        <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-600" />
+            <p className="text-slate-600">Verifying authentication...</p>
           </div>
         </div>
       );
