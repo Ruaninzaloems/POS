@@ -167,14 +167,49 @@ export default function ViewReceipts() {
     };
 
     const handlePrintReceipt = async (receipt: ViewReceiptItem) => {
+        const serialNo = (receipt as any).serialNo || receipt.receiptId || (receipt as any).id;
+        if (!serialNo) {
+            toast({
+                title: "Print Failed",
+                description: "No receipt identifier found.",
+                variant: "destructive",
+            });
+            return;
+        }
         setIsPrinting(true);
         try {
-            const receiptId = receipt.receiptId || (receipt as any).id;
-            if (receiptId) {
-                await platinumPrintReceipt([receiptId]);
+            const res = await fetch('/api/platinum/billing-payment/print-receipt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify([Number(serialNo)]),
+            });
+
+            if (!res.ok) {
+                const errText = await res.text().catch(() => '');
+                let errMsg = `HTTP ${res.status}`;
+                try {
+                    const errJson = JSON.parse(errText);
+                    errMsg = errJson.message || errJson.detail || errMsg;
+                } catch {
+                    if (errText) errMsg = errText.substring(0, 200);
+                }
+                throw new Error(errMsg);
+            }
+
+            const contentType = res.headers.get('content-type') || '';
+            if (contentType.includes('application/pdf')) {
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                window.open(url, '_blank');
+                setTimeout(() => URL.revokeObjectURL(url), 60000);
                 toast({
-                    title: "Receipt Printed",
-                    description: `Receipt ${receipt.receiptNo || receiptId} sent to print.`,
+                    title: "Receipt Ready",
+                    description: `Receipt ${receipt.receiptNo || serialNo} opened for printing.`,
+                });
+            } else {
+                toast({
+                    title: "Print Sent",
+                    description: `Receipt ${receipt.receiptNo || serialNo} sent to print.`,
                 });
             }
         } catch (e: any) {

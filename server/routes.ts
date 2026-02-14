@@ -598,9 +598,43 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment/print-receipt", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing-payment/print-receipt", req.body);
-      handlePlatinumResult(res, data);
+      const receiptIds = req.body;
+      if (!Array.isArray(receiptIds) || receiptIds.length === 0) {
+        return res.status(400).json({ message: "Request body must be an array of receipt serial numbers" });
+      }
+
+      const token = await getPlatinumToken();
+      const apiUrl = getPlatinumApiUrl();
+
+      const pdfRes = await fetch(`${apiUrl}/api/billing-payment/print-receipt`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Accept: "application/pdf,application/octet-stream,*/*",
+        },
+        body: JSON.stringify(receiptIds.map(Number)),
+      });
+
+      if (!pdfRes.ok) {
+        const errorText = await pdfRes.text().catch(() => "");
+        console.error(`[print-receipt] Platinum returned ${pdfRes.status}: ${errorText}`);
+        return res.status(pdfRes.status).json({ message: "Failed to fetch receipt PDF from Platinum", detail: errorText });
+      }
+
+      const contentType = pdfRes.headers.get("content-type") || "";
+      const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+
+      if (contentType.includes("application/pdf") || pdfBuffer.length > 100) {
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `inline; filename="receipt_${receiptIds.join("_")}.pdf"`);
+        res.setHeader("Content-Length", pdfBuffer.length);
+        return res.send(pdfBuffer);
+      }
+
+      res.json({ message: "Receipt generated", size: pdfBuffer.length });
     } catch (e: any) {
+      console.error("[print-receipt] Error:", e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
