@@ -384,40 +384,83 @@ export async function registerRoutes(
         headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       }).catch(() => null);
 
+      const officeMap = new Map<number, any>();
+
+      const addOffice = (office: any) => {
+        if (office && office.cashOffice_ID && !officeMap.has(office.cashOffice_ID)) {
+          officeMap.set(office.cashOffice_ID, {
+            cashOffice_ID: office.cashOffice_ID,
+            cashOfficeDesc: office.cashOfficeDesc || '',
+            cashOnHandLimit: office.cashOnHandLimit || 999999,
+            scoaConfigurationID: office.scoaConfigurationID || null,
+            vote1: office.vote1 || null,
+            vote: office.vote || null,
+            vote_ID: office.vote_ID || null,
+            voteDesc: office.voteDesc || null,
+          });
+        }
+      };
+
       if (directRes && directRes.ok) {
-        const data = await directRes.json();
-        if (Array.isArray(data) && data.length > 0) {
-          return res.json(data);
+        try {
+          const primaryData = await directRes.json();
+          if (Array.isArray(primaryData)) {
+            primaryData.forEach(addOffice);
+            console.log(`[cash-offices] Primary endpoint returned ${primaryData.length} offices`);
+          }
+        } catch {}
+      }
+
+      console.log(`[cash-offices] Augmenting with additional sources (currently have ${officeMap.size} offices)...`);
+
+      const cashierList = await platinumGet("/api/billing/auth-day-end-reconcile/cashier-list", {}).catch(() => null);
+      if (cashierList && !cashierList._error && Array.isArray(cashierList)) {
+        const cashierIds = cashierList.map((c: any) => c.id);
+
+        const batchSize = 10;
+        for (let i = 0; i < cashierIds.length; i += batchSize) {
+          const batch = cashierIds.slice(i, i + batchSize);
+          const officePromises = batch.map(async (cId: number) => {
+            try {
+              const details = await platinumGet("/api/ReceiptPrepaid/cashier-detailsById", { cashierId: String(cId) });
+              if (details && details.const_CashOffice) {
+                addOffice(details.const_CashOffice);
+              }
+            } catch {}
+            try {
+              const office = await platinumGet("/api/ReceiptPrepaid/active-cashOffice-details", { cashierId: String(cId) });
+              if (office && !office._error && office.cashOffice_ID) {
+                addOffice(office);
+              }
+            } catch {}
+          });
+          await Promise.all(officePromises);
         }
       }
 
-      console.log(`[cash-offices] Primary endpoint failed, building list from cashier data...`);
-      const cashierList = await platinumGet("/api/billing/auth-day-end-reconcile/cashier-list", {});
-      if (cashierList && !cashierList._error && Array.isArray(cashierList)) {
-        const officeMap = new Map<number, any>();
-        const cashierIds = cashierList.map((c: any) => c.id).slice(0, 20);
+      console.log(`[cash-offices] After cashier scan: ${officeMap.size} offices found`);
 
-        const officePromises = cashierIds.map(async (cId: number) => {
+      if (officeMap.size < 10) {
+        console.log(`[cash-offices] Probing office IDs 1-20 directly...`);
+        const probeIds = Array.from({ length: 20 }, (_, i) => i + 1)
+          .filter(id => !officeMap.has(id));
+        
+        const probeBatch = probeIds.map(async (officeId: number) => {
           try {
-            const office = await platinumGet("/api/ReceiptPrepaid/active-cashOffice-details", { cashierId: String(cId) });
-            if (office && !office._error && office.cashOffice_ID && !officeMap.has(office.cashOffice_ID)) {
-              officeMap.set(office.cashOffice_ID, {
-                cashOffice_ID: office.cashOffice_ID,
-                cashOfficeDesc: office.cashOfficeDesc || '',
-                cashOnHandLimit: office.cashOnHandLimit || 999999,
-                scoaConfigurationID: office.scoaConfigurationID || null,
-                vote1: null, vote: null, vote_ID: null, voteDesc: null,
-              });
+            const office = await platinumGet("/api/ReceiptPrepaid/active-cashOffice-details", { cashierId: String(officeId) });
+            if (office && !office._error && office.cashOffice_ID) {
+              addOffice(office);
             }
           } catch {}
         });
-        await Promise.all(officePromises);
+        await Promise.all(probeBatch);
+        console.log(`[cash-offices] After probe: ${officeMap.size} offices found`);
+      }
 
-        if (officeMap.size > 0) {
-          const offices = Array.from(officeMap.values()).sort((a: any, b: any) => a.cashOffice_ID - b.cashOffice_ID);
-          console.log(`[cash-offices] Built list of ${offices.length} offices from cashier data`);
-          return res.json(offices);
-        }
+      if (officeMap.size > 0) {
+        const offices = Array.from(officeMap.values()).sort((a: any, b: any) => a.cashOffice_ID - b.cashOffice_ID);
+        console.log(`[cash-offices] Returning ${offices.length} offices`);
+        return res.json(offices);
       }
 
       res.json([]);
