@@ -73,7 +73,7 @@ export default function CashierSetup() {
                 setLoading(true);
 
                 console.log(`[CashierSetup] Step 1: validateCashier GET - userId=${userId}, finYear=${finYear}`);
-                const validateResult = await platinumValidateCashier(userId, Number(finYear));
+                const validateResult = await platinumValidateCashier(userId, finYear);
                 console.log(`[CashierSetup] validateCashier response:`, validateResult);
 
                 if (validateResult && typeof validateResult === 'object') {
@@ -131,6 +131,34 @@ export default function CashierSetup() {
                 console.error('[CashierSetup] Failed to load cashier data', e);
                 const msg = e.message || '';
                 if (msg.includes('404') || msg.includes('Not Found')) {
+                    try {
+                        const sessionCheckRes = await fetch(`/api/platinum/auth/active-cashier-by-userid?userid=${userId}`);
+                        if (sessionCheckRes.ok) {
+                            const sessionData = await sessionCheckRes.json();
+                            if (sessionData.cashierRegistered === true || sessionData.cashierId) {
+                                setIsCashierRegistered(true);
+                                setValidationMessage('Cashier validated successfully.');
+                                if (sessionData.officeId) {
+                                    setSelectedOfficeId(String(sessionData.officeId));
+                                }
+                                if (sessionData.details?.const_CashOffice) {
+                                    const co = sessionData.details.const_CashOffice;
+                                    setCashOfficeViews([{
+                                        cashOffice_ID: co.cashOffice_ID,
+                                        cashOfficeDesc: co.cashOfficeDesc || '',
+                                        cashOnHandLimit: co.cashOnHandLimit || 999999,
+                                        scoaConfigurationID: co.scoaConfigurationID || null,
+                                        vote1: null, vote: null, vote_ID: null, voteDesc: null,
+                                    }]);
+                                }
+                                const offices = await platinumGetCashOffices(finYear).catch(() => []);
+                                if (Array.isArray(offices) && offices.length > 0) {
+                                    setCashOfficeViews(offices);
+                                }
+                                return;
+                            }
+                        }
+                    } catch {}
                     setIsCashierRegistered(false);
                     setValidationMessage('You are not registered as a cashier in the billing system. Please contact your system administrator to set up your cashier profile before you can process transactions.');
                 } else {

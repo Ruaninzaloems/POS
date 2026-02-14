@@ -466,8 +466,8 @@ async function platinumFetch(url: string, options?: RequestInit): Promise<any> {
     return res.json();
 }
 
-export async function platinumValidateCashier(userId: number, finYear: number): Promise<any> {
-    return platinumFetch(`/api/platinum/receipt-prepaid/validate-cashier?userId=${userId}&finYear=${finYear}`);
+export async function platinumValidateCashier(userId: number, finYear: string): Promise<any> {
+    return platinumFetch(`/api/platinum/receipt-prepaid/validate-cashier?userId=${userId}&finYear=${encodeURIComponent(finYear)}`);
 }
 
 export async function platinumGetConsAccounts(params: Record<string, string>): Promise<any[]> {
