@@ -6,11 +6,12 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { useLocation } from 'wouter';
-import { Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Loader2, AlertTriangle, CheckCircle2, Circle } from 'lucide-react';
 import { platinumValidateCashier, platinumGetCashOffices, platinumSubmitCashierSetup } from '@/lib/external-api';
 
-interface PlatinumCashOfficeView {
+interface CashOfficeViewModel {
     cashOffice_ID: number;
     cashOfficeDesc: string | null;
     cashOnHandLimit: number | null;
@@ -21,34 +22,32 @@ interface PlatinumCashOfficeView {
     voteDesc: string | null;
 }
 
-interface PlatinumCashierDetail {
-    id: number;
-    cashFloat: number | null;
-    officeId: number | null;
-    isActive: boolean | null;
-    user_Id: number | null;
-    const_CashOffice: {
-        cashOffice_ID: number;
-        cashOfficeDesc: string;
-        enabled: boolean;
-        cashOnHandLimit: number;
-        scoaConfigurationID: number | null;
-        allowDelayedDayEndRecon: boolean;
-    } | null;
+interface POS_CashierReconcile {
+    cashierReconcile_Id: number;
+    cashierId: number | null;
+    totalCashAmt: number | null;
+    totalChequeAmt: number | null;
+    totalAmt: number | null;
 }
+
+type StepStatus = 'pending' | 'loading' | 'success' | 'error';
 
 export default function CashierSetup() {
     const { startSession, switchUser, currentUser, activeSession, sessionLoading, sessionDetails, platinumUser } = usePos();
     const [, setLocation] = useLocation();
 
-    const [cashOfficeViews, setCashOfficeViews] = useState<PlatinumCashOfficeView[]>([]);
-    const [cashierDetail, setCashierDetail] = useState<PlatinumCashierDetail | null>(null);
+    const [step1Status, setStep1Status] = useState<StepStatus>('pending');
+    const [step2Status, setStep2Status] = useState<StepStatus>('pending');
+    const [step3Status, setStep3Status] = useState<StepStatus>('pending');
+
+    const [validateResult, setValidateResult] = useState<POS_CashierReconcile | null>(null);
+    const [cashOffices, setCashOffices] = useState<CashOfficeViewModel[]>([]);
     const [isCashierRegistered, setIsCashierRegistered] = useState<boolean | null>(null);
-    const [loading, setLoading] = useState(true);
+
     const [floatInput, setFloatInput] = useState<string>('0.00');
     const [selectedOfficeId, setSelectedOfficeId] = useState<string>('');
     const [error, setError] = useState<string>('');
-    const [validationMessage, setValidationMessage] = useState<string>('');
+    const [submitting, setSubmitting] = useState(false);
 
     const userId = platinumUser?.user_ID || Number(currentUser.id) || 0;
     const firstName = platinumUser?.firstName || currentUser.name?.split(' ')[0] || '';
@@ -63,125 +62,126 @@ export default function CashierSetup() {
 
         if (sessionLoading) return;
         if (!userId || !finYear) {
-            setLoading(false);
             setError('Could not determine user ID or financial year. Please refresh.');
             return;
         }
 
-        const loadData = async () => {
+        const runSetupFlow = async () => {
+            setStep1Status('loading');
+            setStep2Status('pending');
+            setError('');
+
             try {
-                setLoading(true);
+                console.log(`[CashierSetup] Step 1: validateCashier GET — userId=${userId}, finYear=${finYear}`);
+                const result = await platinumValidateCashier(userId, finYear);
+                console.log(`[CashierSetup] Step 1 response:`, JSON.stringify(result));
 
-                console.log(`[CashierSetup] Step 1: validateCashier GET - userId=${userId}, finYear=${finYear}`);
-                const validateResult = await platinumValidateCashier(userId, finYear);
-                console.log(`[CashierSetup] validateCashier response:`, validateResult);
+                let registered = false;
 
-                if (validateResult && typeof validateResult === 'object') {
-                    if (validateResult.id && validateResult.id !== 0) {
-                        setIsCashierRegistered(true);
-                        setCashierDetail(validateResult);
-                        setValidationMessage('Cashier validated successfully.');
-
-                        if (validateResult.cashFloat != null && validateResult.cashFloat > 0) {
-                            setFloatInput(validateResult.cashFloat.toFixed(2));
-                        }
-
-                        if (validateResult.officeId || validateResult.const_CashOffice?.cashOffice_ID) {
-                            const offId = validateResult.officeId || validateResult.const_CashOffice?.cashOffice_ID;
-                            setSelectedOfficeId(String(offId));
-                        }
-                    } else {
-                        setIsCashierRegistered(false);
-                        setValidationMessage('You are not registered as a cashier in the billing system. Please contact your system administrator to set up your cashier profile before you can process transactions.');
-                    }
-                } else if (validateResult === true || (typeof validateResult === 'number' && validateResult > 0)) {
-                    setIsCashierRegistered(true);
-                    setValidationMessage('Cashier validated successfully.');
-                } else {
-                    setIsCashierRegistered(false);
-                    setValidationMessage('You are not registered as a cashier in the billing system. Please contact your system administrator to set up your cashier profile before you can process transactions.');
-                }
-
-                console.log(`[CashierSetup] Step 2: getCashOffices GET - finYear=${finYear}`);
-                const offices = await platinumGetCashOffices(finYear);
-                console.log(`[CashierSetup] getCashOffices response:`, offices);
-
-                if (Array.isArray(offices) && offices.length > 0) {
-                    setCashOfficeViews(offices);
-                } else {
-                    console.warn('[CashierSetup] No cash offices returned from Platinum API');
-                    const fallbackRes = await fetch(`/api/platinum/receipt-prepaid/active-cash-office-details?cashierId=${userId}`).catch(() => null);
-                    if (fallbackRes && fallbackRes.ok) {
-                        const activeOffice = await fallbackRes.json();
-                        if (activeOffice && activeOffice.cashOffice_ID) {
-                            setCashOfficeViews([{
-                                cashOffice_ID: activeOffice.cashOffice_ID,
-                                cashOfficeDesc: activeOffice.cashOfficeDesc || '',
-                                cashOnHandLimit: activeOffice.cashOnHandLimit || 999999,
-                                scoaConfigurationID: activeOffice.scoaConfigurationID || null,
-                                vote1: null, vote: null, vote_ID: null, voteDesc: null,
-                            }]);
-                            if (!selectedOfficeId) {
-                                setSelectedOfficeId(String(activeOffice.cashOffice_ID));
-                            }
-                        }
+                if (result && typeof result === 'object' && !result._error) {
+                    const cashierId = result.cashierId ?? result.cashierReconcile_Id ?? result.id ?? null;
+                    if (cashierId !== null && cashierId !== 0) {
+                        registered = true;
+                        setValidateResult(result);
+                    } else if (result.cashierId === null && result.cashierReconcile_Id != null && result.cashierReconcile_Id !== 0) {
+                        registered = true;
+                        setValidateResult(result);
                     }
                 }
-            } catch (e: any) {
-                console.error('[CashierSetup] Failed to load cashier data', e);
-                const msg = e.message || '';
-                if (msg.includes('404') || msg.includes('Not Found')) {
+
+                if (!registered) {
                     try {
-                        const sessionCheckRes = await fetch(`/api/platinum/auth/active-cashier-by-userid?userid=${userId}`);
-                        if (sessionCheckRes.ok) {
-                            const sessionData = await sessionCheckRes.json();
-                            if (sessionData.cashierRegistered === true || sessionData.cashierId) {
-                                setIsCashierRegistered(true);
-                                setValidationMessage('Cashier validated successfully.');
-                                if (sessionData.isActive && sessionData.officeId) {
-                                    setSelectedOfficeId(String(sessionData.officeId));
-                                }
-                                const offices = await platinumGetCashOffices(finYear).catch(() => []);
-                                if (Array.isArray(offices) && offices.length > 0) {
-                                    setCashOfficeViews(offices);
-                                }
-                                return;
+                        const fallbackRes = await fetch(`/api/platinum/auth/active-cashier-by-userid?userid=${userId}`);
+                        if (fallbackRes.ok) {
+                            const fallbackData = await fallbackRes.json();
+                            console.log(`[CashierSetup] Step 1 fallback (active-cashier-by-userid):`, JSON.stringify(fallbackData));
+                            if (fallbackData.cashierRegistered === true || fallbackData.cashierId) {
+                                registered = true;
+                                setValidateResult({
+                                    cashierReconcile_Id: 0,
+                                    cashierId: fallbackData.cashierId || userId,
+                                    totalCashAmt: null,
+                                    totalChequeAmt: null,
+                                    totalAmt: null,
+                                });
                             }
                         }
                     } catch {}
-                    setIsCashierRegistered(false);
-                    setValidationMessage('You are not registered as a cashier in the billing system. Please contact your system administrator to set up your cashier profile before you can process transactions.');
-                } else {
-                    setError('Unable to connect to the billing system at this time. Please try again later or contact your system administrator if the problem persists.');
                 }
-            } finally {
-                setLoading(false);
+
+                setIsCashierRegistered(registered);
+                setStep1Status(registered ? 'success' : 'error');
+
+                if (!registered) {
+                    return;
+                }
+            } catch (e: any) {
+                console.error('[CashierSetup] Step 1 failed:', e);
+                try {
+                    const fallbackRes = await fetch(`/api/platinum/auth/active-cashier-by-userid?userid=${userId}`);
+                    if (fallbackRes.ok) {
+                        const fallbackData = await fallbackRes.json();
+                        if (fallbackData.cashierRegistered === true || fallbackData.cashierId) {
+                            setIsCashierRegistered(true);
+                            setValidateResult({
+                                cashierReconcile_Id: 0,
+                                cashierId: fallbackData.cashierId || userId,
+                                totalCashAmt: null,
+                                totalChequeAmt: null,
+                                totalAmt: null,
+                            });
+                            setStep1Status('success');
+                        } else {
+                            setIsCashierRegistered(false);
+                            setStep1Status('error');
+                            return;
+                        }
+                    } else {
+                        setIsCashierRegistered(false);
+                        setStep1Status('error');
+                        return;
+                    }
+                } catch {
+                    setError('Unable to connect to the billing system. Please try again later.');
+                    setStep1Status('error');
+                    return;
+                }
+            }
+
+            setStep2Status('loading');
+            try {
+                console.log(`[CashierSetup] Step 2: getCashOffices GET — finYear=${finYear}`);
+                const offices = await platinumGetCashOffices(finYear);
+                console.log(`[CashierSetup] Step 2 response: ${Array.isArray(offices) ? offices.length : 0} offices`);
+
+                if (Array.isArray(offices) && offices.length > 0) {
+                    setCashOffices(offices);
+                    setStep2Status('success');
+                } else {
+                    console.warn('[CashierSetup] No offices returned');
+                    setCashOffices([]);
+                    setStep2Status('error');
+                    setError('No cash offices found. Please contact your administrator.');
+                }
+            } catch (e: any) {
+                console.error('[CashierSetup] Step 2 failed:', e);
+                setStep2Status('error');
+                setError('Failed to load cash offices. Please try again.');
             }
         };
-        loadData();
+
+        runSetupFlow();
     }, [activeSession, sessionLoading, sessionDetails, userId, finYear]);
 
-    const selectedOffice = cashOfficeViews.find(o => String(o.cashOffice_ID) === selectedOfficeId);
-    const effectiveOffice = selectedOffice ? {
-        cashOffice_ID: selectedOffice.cashOffice_ID,
-        cashOfficeDesc: selectedOffice.cashOfficeDesc || '',
-        enabled: true,
-        cashOnHandLimit: selectedOffice.cashOnHandLimit || 999999,
-        scoaConfigurationID: selectedOffice.scoaConfigurationID,
-        allowDelayedDayEndRecon: false,
-    } : null;
-
-    const matchedOfficeView = effectiveOffice ? cashOfficeViews.find(o => o.cashOffice_ID === effectiveOffice.cashOffice_ID) : null;
-    const scoaCode = matchedOfficeView?.vote || matchedOfficeView?.vote1 || matchedOfficeView?.voteDesc || null;
-    const ledgerVoteDisplay = scoaCode || (effectiveOffice?.scoaConfigurationID != null ? `SCOA Configuration ${effectiveOffice.scoaConfigurationID}` : '');
-
-    const [submitting, setSubmitting] = useState(false);
+    const selectedOffice = cashOffices.find(o => String(o.cashOffice_ID) === selectedOfficeId);
+    const scoaCode = selectedOffice?.vote || selectedOffice?.vote1 || selectedOffice?.voteDesc || null;
+    const ledgerVoteDisplay = scoaCode || (selectedOffice?.scoaConfigurationID != null ? `SCOA Config ${selectedOffice.scoaConfigurationID}` : '');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
-        if (!effectiveOffice) {
+        if (!selectedOffice) {
             setError('Please select a cash office.');
             return;
         }
@@ -198,57 +198,86 @@ export default function CashierSetup() {
         }
 
         setSubmitting(true);
+        setStep3Status('loading');
+
         try {
-            console.log(`[CashierSetup] Step 3: submitCashierSetup POST - userId=${userId}, officeId=${effectiveOffice.cashOffice_ID}`);
+            console.log(`[CashierSetup] Step 3: submitCashierSetup POST — userId=${userId}, officeId=${selectedOffice.cashOffice_ID}`);
+
             const cashierSetupPayload = {
-                id: cashierDetail?.id || 0,
+                id: validateResult?.cashierId || 0,
                 cashFloat: float,
-                officeId: effectiveOffice.cashOffice_ID,
+                stsPort: 1,
+                plesseyPort: 1,
+                officeId: selectedOffice.cashOffice_ID,
                 isActive: true,
                 user_Id: userId,
                 isVirtual: false,
                 const_CashOffice: {
-                    cashOffice_ID: effectiveOffice.cashOffice_ID,
-                    cashOfficeDesc: effectiveOffice.cashOfficeDesc || '',
+                    cashOffice_ID: selectedOffice.cashOffice_ID,
+                    cashOfficeDesc: selectedOffice.cashOfficeDesc || '',
                     enabled: true,
-                    cashOnHandLimit: effectiveOffice.cashOnHandLimit || 999999,
-                    scoaConfigurationID: effectiveOffice.scoaConfigurationID || null,
-                    allowDelayedDayEndRecon: effectiveOffice.allowDelayedDayEndRecon || false,
+                    cashOnHandLimit: selectedOffice.cashOnHandLimit || 999999,
+                    scoaConfigurationID: selectedOffice.scoaConfigurationID || null,
+                    allowDelayedDayEndRecon: true,
+                    delayDaysSincePreviousDayEndRecon: 2,
                 },
             };
 
+            console.log('[CashierSetup] Step 3 payload:', JSON.stringify(cashierSetupPayload));
             const setupResult = await platinumSubmitCashierSetup(cashierSetupPayload);
-            console.log('[CashierSetup] submitCashierSetup response:', setupResult);
+            console.log('[CashierSetup] Step 3 response:', JSON.stringify(setupResult));
+
+            if (setupResult && setupResult._error) {
+                throw new Error(setupResult.message || setupResult._error || 'Setup failed');
+            }
+
+            setStep3Status('success');
         } catch (err: any) {
             const errorMsg = err?.message || '';
             const isUserDetailError = errorMsg.includes('UserDetail');
             if (isUserDetailError) {
-                console.warn('Platinum API requires UserDetail field (API model updated). Proceeding with local session.');
+                console.warn('[CashierSetup] UserDetail warning — proceeding with local session');
+                setStep3Status('success');
             } else {
-                setError(`Cashier setup failed: ${errorMsg}. Please try again or contact your administrator.`);
+                setError(`Cashier setup failed: ${errorMsg}`);
+                setStep3Status('error');
                 setSubmitting(false);
                 return;
             }
         }
+
         setSubmitting(false);
 
-        const officeId = String(effectiveOffice.cashOffice_ID);
-        const officeName = effectiveOffice.cashOfficeDesc || '';
-
+        const officeId = String(selectedOffice.cashOffice_ID);
+        const officeName = selectedOffice.cashOfficeDesc || '';
         const fullName = `${firstName} ${lastName}`.trim();
         switchUser(String(userId), fullName || currentUser.name, officeName);
-
         startSession(officeId, float, officeName);
     };
 
-    if (sessionLoading || loading) {
+    const StepIndicator = ({ step, label, status }: { step: number; label: string; status: StepStatus }) => (
+        <div className="flex items-center gap-2 text-sm" data-testid={`step-${step}-indicator`}>
+            {status === 'loading' && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
+            {status === 'success' && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+            {status === 'error' && <AlertTriangle className="h-4 w-4 text-red-500" />}
+            {status === 'pending' && <Circle className="h-4 w-4 text-slate-300" />}
+            <span className={status === 'loading' ? 'text-blue-600' : status === 'success' ? 'text-green-700' : status === 'error' ? 'text-red-600' : 'text-slate-400'}>
+                Step {step}: {label}
+            </span>
+            {status === 'loading' && <Badge variant="outline" className="text-xs text-blue-500 border-blue-200">In Progress</Badge>}
+            {status === 'success' && <Badge variant="outline" className="text-xs text-green-500 border-green-200">Done</Badge>}
+            {status === 'error' && <Badge variant="outline" className="text-xs text-red-500 border-red-200">Failed</Badge>}
+        </div>
+    );
+
+    if (sessionLoading || (step1Status === 'loading' && step2Status === 'pending')) {
         return (
             <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4" data-testid="cashier-setup-loading">
                 <Card className="w-full max-w-2xl shadow-lg">
                     <CardContent className="p-12 flex flex-col items-center gap-4">
                         <Loader2 className="h-8 w-8 animate-spin text-slate-600" />
                         <p className="text-slate-600">
-                            {sessionLoading ? 'Checking for active session...' : 'Validating cashier...'}
+                            {sessionLoading ? 'Checking for active session...' : 'Validating cashier registration...'}
                         </p>
                     </CardContent>
                 </Card>
@@ -267,6 +296,12 @@ export default function CashierSetup() {
                     <CardTitle className="text-xl text-slate-800">Cashier Setup</CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-8 bg-white">
+                    <div className="mb-6 p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5" data-testid="step-indicators">
+                        <StepIndicator step={1} label="Validate Cashier" status={step1Status} />
+                        <StepIndicator step={2} label="Load Cash Offices" status={step2Status} />
+                        <StepIndicator step={3} label="Submit Setup" status={step3Status} />
+                    </div>
+
                     {isCashierRegistered === false && (
                         <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3" data-testid="cashier-not-registered-warning">
                             <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
@@ -284,9 +319,11 @@ export default function CashierSetup() {
                         <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3" data-testid="cashier-registered-success">
                             <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 shrink-0" />
                             <div>
-                                <p className="font-medium text-green-800">Cashier Registered</p>
+                                <p className="font-medium text-green-800">Cashier Validated</p>
                                 <p className="text-sm text-green-700 mt-1">
-                                    User <strong>{`${firstName} ${lastName}`.trim() || currentUser.name}</strong> is registered and ready to process payments.
+                                    User <strong>{`${firstName} ${lastName}`.trim() || currentUser.name}</strong> is registered.
+                                    {validateResult?.cashierId ? ` Cashier ID: ${validateResult.cashierId}` : ''}
+                                    {' '}Select your cash office and float amount below.
                                 </p>
                             </div>
                         </div>
@@ -331,18 +368,19 @@ export default function CashierSetup() {
                                 value={floatInput}
                                 onChange={(e) => setFloatInput(e.target.value)}
                                 className="bg-slate-100 border-slate-300 text-right text-slate-600"
+                                disabled={isCashierRegistered !== true}
                                 data-testid="input-float"
                             />
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] items-start sm:items-center gap-1 sm:gap-4">
                             <Label className="text-left sm:text-right text-slate-600 text-sm">Cashier Office <span className="text-red-500">*</span></Label>
-                            <Select value={selectedOfficeId} onValueChange={setSelectedOfficeId} data-testid="select-cash-office">
+                            <Select value={selectedOfficeId} onValueChange={setSelectedOfficeId} disabled={isCashierRegistered !== true || cashOffices.length === 0} data-testid="select-cash-office">
                                 <SelectTrigger className="bg-slate-100 border-slate-300 text-slate-600" data-testid="select-cash-office-trigger">
-                                    <SelectValue placeholder="-- Select Cash Office --" />
+                                    <SelectValue placeholder={step2Status === 'loading' ? 'Loading offices...' : '-- Select Cash Office --'} />
                                 </SelectTrigger>
                                 <SelectContent className="max-h-[300px]">
-                                    {cashOfficeViews.map(office => (
+                                    {cashOffices.map(office => (
                                         <SelectItem key={office.cashOffice_ID} value={String(office.cashOffice_ID)} data-testid={`office-option-${office.cashOffice_ID}`}>
                                             {office.cashOfficeDesc || `Office ${office.cashOffice_ID}`}
                                         </SelectItem>
@@ -374,7 +412,7 @@ export default function CashierSetup() {
                             <Button
                                 type="submit"
                                 className="w-32 bg-slate-800 hover:bg-slate-900"
-                                disabled={!effectiveOffice || submitting}
+                                disabled={!selectedOffice || submitting || isCashierRegistered !== true}
                                 data-testid="button-submit"
                             >
                                 {submitting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Setting up...</> : 'Submit'}

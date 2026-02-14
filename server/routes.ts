@@ -377,21 +377,16 @@ export async function registerRoutes(
         }
       }
 
-      const token = await getPlatinumToken();
-      const baseUrl = process.env.PLATINUM_API_URL || "https://georgeplatinumuatapi.azurewebsites.net";
-      const finYearParam = query.finYear ? `?finYear=${encodeURIComponent(query.finYear)}` : '';
-      const directRes = await fetch(`${baseUrl}/api/ReceiptPrepaid/cash-offices${finYearParam}`, {
-        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
-      }).catch(() => null);
+      console.log(`[cash-offices] Calling Platinum cash-offices with finYear=${query.finYear}`);
+      const primaryData = await platinumGet("/api/ReceiptPrepaid/cash-offices", query);
 
       const officeMap = new Map<number, any>();
-
       const addOffice = (office: any) => {
         if (office && office.cashOffice_ID && !officeMap.has(office.cashOffice_ID)) {
           officeMap.set(office.cashOffice_ID, {
             cashOffice_ID: office.cashOffice_ID,
             cashOfficeDesc: office.cashOfficeDesc || '',
-            cashOnHandLimit: office.cashOnHandLimit || 999999,
+            cashOnHandLimit: office.cashOnHandLimit || null,
             scoaConfigurationID: office.scoaConfigurationID || null,
             vote1: office.vote1 || null,
             vote: office.vote || null,
@@ -401,69 +396,30 @@ export async function registerRoutes(
         }
       };
 
-      if (directRes && directRes.ok) {
-        try {
-          const primaryData = await directRes.json();
-          if (Array.isArray(primaryData)) {
-            primaryData.forEach(addOffice);
-            console.log(`[cash-offices] Primary endpoint returned ${primaryData.length} offices`);
-          }
-        } catch {}
+      if (primaryData && !primaryData._error && Array.isArray(primaryData)) {
+        primaryData.forEach(addOffice);
+        console.log(`[cash-offices] Primary endpoint returned ${primaryData.length} offices`);
       }
 
-      console.log(`[cash-offices] Augmenting with additional sources (currently have ${officeMap.size} offices)...`);
-
-      const cashierList = await platinumGet("/api/billing/auth-day-end-reconcile/cashier-list", {}).catch(() => null);
-      if (cashierList && !cashierList._error && Array.isArray(cashierList)) {
-        const cashierIds = cashierList.map((c: any) => c.id);
-
-        const batchSize = 10;
-        for (let i = 0; i < cashierIds.length; i += batchSize) {
-          const batch = cashierIds.slice(i, i + batchSize);
-          const officePromises = batch.map(async (cId: number) => {
+      if (officeMap.size < 5) {
+        console.log(`[cash-offices] Few offices from primary, probing IDs 1-20...`);
+        const probeIds = Array.from({ length: 20 }, (_, i) => i + 1).filter(id => !officeMap.has(id));
+        const probeResults = await Promise.all(
+          probeIds.map(async (id) => {
             try {
-              const details = await platinumGet("/api/ReceiptPrepaid/cashier-detailsById", { cashierId: String(cId) });
-              if (details && details.const_CashOffice) {
-                addOffice(details.const_CashOffice);
-              }
+              const office = await platinumGet("/api/ReceiptPrepaid/active-cashOffice-details", { cashierId: String(id) });
+              if (office && !office._error && office.cashOffice_ID) return office;
             } catch {}
-            try {
-              const office = await platinumGet("/api/ReceiptPrepaid/active-cashOffice-details", { cashierId: String(cId) });
-              if (office && !office._error && office.cashOffice_ID) {
-                addOffice(office);
-              }
-            } catch {}
-          });
-          await Promise.all(officePromises);
-        }
-      }
-
-      console.log(`[cash-offices] After cashier scan: ${officeMap.size} offices found`);
-
-      if (officeMap.size < 10) {
-        console.log(`[cash-offices] Probing office IDs 1-20 directly...`);
-        const probeIds = Array.from({ length: 20 }, (_, i) => i + 1)
-          .filter(id => !officeMap.has(id));
-        
-        const probeBatch = probeIds.map(async (officeId: number) => {
-          try {
-            const office = await platinumGet("/api/ReceiptPrepaid/active-cashOffice-details", { cashierId: String(officeId) });
-            if (office && !office._error && office.cashOffice_ID) {
-              addOffice(office);
-            }
-          } catch {}
-        });
-        await Promise.all(probeBatch);
+            return null;
+          })
+        );
+        probeResults.filter(Boolean).forEach(addOffice);
         console.log(`[cash-offices] After probe: ${officeMap.size} offices found`);
       }
 
-      if (officeMap.size > 0) {
-        const offices = Array.from(officeMap.values()).sort((a: any, b: any) => a.cashOffice_ID - b.cashOffice_ID);
-        console.log(`[cash-offices] Returning ${offices.length} offices`);
-        return res.json(offices);
-      }
-
-      res.json([]);
+      const offices = Array.from(officeMap.values()).sort((a: any, b: any) => a.cashOffice_ID - b.cashOffice_ID);
+      console.log(`[cash-offices] Returning ${offices.length} offices`);
+      res.json(offices);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
