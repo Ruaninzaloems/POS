@@ -92,14 +92,14 @@ export default function CashierSetup() {
                         }
                     } else {
                         setIsCashierRegistered(false);
-                        setValidationMessage('Cashier is not registered in the billing system.');
+                        setValidationMessage('You are not registered as a cashier in the billing system. Please contact your system administrator to set up your cashier profile before you can process transactions.');
                     }
                 } else if (validateResult === true || (typeof validateResult === 'number' && validateResult > 0)) {
                     setIsCashierRegistered(true);
                     setValidationMessage('Cashier validated successfully.');
                 } else {
                     setIsCashierRegistered(false);
-                    setValidationMessage('Cashier validation returned no data.');
+                    setValidationMessage('You are not registered as a cashier in the billing system. Please contact your system administrator to set up your cashier profile before you can process transactions.');
                 }
 
                 console.log(`[CashierSetup] Step 2: getCashOffices GET - finYear=${finYear}`);
@@ -129,7 +129,13 @@ export default function CashierSetup() {
                 }
             } catch (e: any) {
                 console.error('[CashierSetup] Failed to load cashier data', e);
-                setError(`Could not connect to the billing system: ${e.message || 'Unknown error'}`);
+                const msg = e.message || '';
+                if (msg.includes('404') || msg.includes('Not Found')) {
+                    setIsCashierRegistered(false);
+                    setValidationMessage('You are not registered as a cashier in the billing system. Please contact your system administrator to set up your cashier profile before you can process transactions.');
+                } else {
+                    setError('Unable to connect to the billing system at this time. Please try again later or contact your system administrator if the problem persists.');
+                }
             } finally {
                 setLoading(false);
             }
