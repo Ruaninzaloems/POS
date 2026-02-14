@@ -186,33 +186,33 @@ export default function AllocationHistory() {
   return (
     <PosLayout>
        <div className="flex-1 flex flex-col h-full bg-slate-50/50">
-        <div className="p-6 border-b bg-white flex flex-col gap-4">
+        <div className="p-3 sm:p-6 border-b bg-white flex flex-col gap-3 sm:gap-4">
              {/* Header Row */}
-             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                 <div className="flex items-center gap-4">
+             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                 <div className="flex items-center gap-3 sm:gap-4">
                      <Link href="/direct-deposits/manual">
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10">
                             <ArrowLeft className="w-4 h-4" />
                         </Button>
                      </Link>
                      <div>
-                         <h1 className="text-xl font-bold">Allocation History</h1>
-                         <p className="text-sm text-muted-foreground">View processed allocations (Manual & Bulk)</p>
+                         <h1 className="text-base sm:text-xl font-bold">Allocation History</h1>
+                         <p className="text-xs sm:text-sm text-muted-foreground">Processed allocations (Manual & Bulk)</p>
                      </div>
                  </div>
 
-                 <div className="flex gap-2">
-                    <Button variant="outline" size="icon" onClick={() => handleDownload('excel')} title="Download Excel">
+                 <div className="flex gap-2 ml-11 sm:ml-0">
+                    <Button variant="outline" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={() => handleDownload('excel')} title="Download Excel">
                         <FileSpreadsheet className="w-4 h-4 text-green-600" />
                     </Button>
-                    <Button variant="outline" size="icon" onClick={() => handleDownload('pdf')} title="Download PDF">
+                    <Button variant="outline" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={() => handleDownload('pdf')} title="Download PDF">
                         <FileIcon className="w-4 h-4 text-red-600" />
                     </Button>
                  </div>
              </div>
 
              {/* Filters Row */}
-             <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+             <div className="bg-slate-50 p-3 sm:p-4 rounded-lg border border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 items-end">
                 
                 {/* Standard Search */}
                 <div className="space-y-2">
@@ -338,8 +338,53 @@ export default function AllocationHistory() {
              </div>
         </div>
 
-        <div className="p-6">
-            <Card>
+        <div className="p-3 sm:p-6">
+            {/* Mobile card view */}
+            <div className="sm:hidden space-y-2">
+              {filteredHistory.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground text-sm">No allocation history found.</div>
+              ) : filteredHistory.map(tx => (
+                <Card key={tx.id} className="p-3">
+                  <div className="flex justify-between items-start gap-2 mb-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{tx.description}</div>
+                      <div className="text-xs text-muted-foreground font-mono mt-0.5">
+                        {format(new Date(tx.transactionDate), 'dd/MM/yyyy')} | Ref: {tx.reference}
+                      </div>
+                    </div>
+                    <span className="font-mono font-bold text-sm shrink-0">R {tx.amount.toFixed(2)}</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                    <Badge variant="secondary" className={`border text-xs ${getAllocationTypeBadgeColor(tx.details?.allocationType)} shadow-none font-normal`}>
+                      {getAllocationTypeLabel(tx.details?.allocationType)}
+                    </Badge>
+                    {tx.details?.method === 'BULK' ? (
+                      <Badge variant="secondary" className="bg-purple-100 text-purple-700 border-purple-200 text-xs">Bulk</Badge>
+                    ) : (
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200 text-xs">Manual</Badge>
+                    )}
+                    {tx.details?.bulkJobStatus ? (
+                      <Badge className={`shadow-none border text-xs ${
+                        tx.details.bulkJobStatus === 'Bulk allocations complete' ? 'bg-green-100 text-green-700 border-green-200' :
+                        tx.details.bulkJobStatus === 'Error' ? 'bg-red-100 text-red-700 border-red-200' :
+                        'bg-blue-100 text-blue-700 border-blue-200'
+                      }`}>{tx.details.bulkJobStatus}</Badge>
+                    ) : (
+                      <Badge className="bg-green-100 text-green-700 border-green-200 shadow-none text-xs">Allocated</Badge>
+                    )}
+                  </div>
+                  <div className="flex justify-between items-center text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1"><User className="w-3 h-3" /> {tx.details?.allocatedBy || 'Unknown'}</span>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => setSelectedTx(tx)}>
+                      <FileText className="w-3 h-3 mr-1" /> Report
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+
+            {/* Desktop table view */}
+            <Card className="hidden sm:block">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -471,19 +516,19 @@ export default function AllocationHistory() {
        </div>
 
        <Dialog open={!!selectedTx} onOpenChange={(open) => !open && setSelectedTx(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-            <DialogHeader className="border-b pb-4">
-                <div className="flex items-center justify-between">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col w-[95vw] sm:w-auto">
+            <DialogHeader className="border-b pb-3 sm:pb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div>
-                        <DialogTitle>Allocation Report</DialogTitle>
-                        <DialogDescription>Transaction ID: {selectedTx?.id}</DialogDescription>
+                        <DialogTitle className="text-base sm:text-lg">Allocation Report</DialogTitle>
+                        <DialogDescription className="text-xs sm:text-sm">Transaction ID: {selectedTx?.id}</DialogDescription>
                     </div>
                     <div className="flex gap-2">
-                         <Button size="sm" variant="outline" onClick={handlePrint}>
-                            <Printer className="w-4 h-4 mr-2" /> Print Report
+                         <Button size="sm" variant="outline" className="text-xs sm:text-sm" onClick={handlePrint}>
+                            <Printer className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Print Report</span>
                          </Button>
-                         <Button size="sm" variant="outline" onClick={() => handleDownload('pdf')}>
-                            <FileIcon className="w-4 h-4 mr-2" /> Export PDF
+                         <Button size="sm" variant="outline" className="text-xs sm:text-sm" onClick={() => handleDownload('pdf')}>
+                            <FileIcon className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Export PDF</span>
                          </Button>
                     </div>
                 </div>
@@ -509,7 +554,7 @@ export default function AllocationHistory() {
                     </div>
 
                     {/* Allocation Info Grid */}
-                    <div className="grid grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8">
                         <div>
                              <h3 className="font-bold text-sm text-slate-900 uppercase tracking-wider mb-4 border-b pb-2">Transaction Details</h3>
                              <dl className="space-y-2 text-sm">

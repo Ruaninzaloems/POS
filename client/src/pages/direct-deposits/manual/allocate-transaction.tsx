@@ -445,19 +445,19 @@ export default function AllocateTransaction() {
   return (
     <PosLayout>
       <div className="flex-1 flex flex-col h-full bg-slate-50/50">
-        <div className="p-6 border-b bg-white flex items-center gap-4">
+        <div className="p-3 sm:p-6 border-b bg-white flex items-center gap-3 sm:gap-4">
              <Link href="/direct-deposits/manual">
-                <Button variant="ghost" size="icon" data-testid="button-back">
+                <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" data-testid="button-back">
                     <ArrowLeft className="w-4 h-4" />
                 </Button>
              </Link>
              <div>
-                 <h1 className="text-xl font-bold">Allocate Transaction</h1>
-                 <p className="text-sm text-muted-foreground font-mono">POS Item #{transaction.posItem_ID}</p>
+                 <h1 className="text-base sm:text-xl font-bold">Allocate Transaction</h1>
+                 <p className="text-xs sm:text-sm text-muted-foreground font-mono">POS Item #{transaction.posItem_ID}</p>
              </div>
         </div>
 
-        <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="p-3 sm:p-6 grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             <Card className="lg:col-span-1 h-fit">
                 <CardHeader className="bg-slate-50 pb-4">
                     <CardTitle className="text-sm text-muted-foreground uppercase tracking-wider">Bank Recon POS Item</CardTitle>
@@ -482,9 +482,9 @@ export default function AllocateTransaction() {
                         </div>
                     </div>
                     
-                    <div className="pt-6 border-t mt-4">
+                    <div className="pt-4 sm:pt-6 border-t mt-4">
                          <label className="text-xs text-muted-foreground block mb-1">Total Amount</label>
-                         <div className="text-3xl font-bold text-slate-900">R {transaction.amount.toFixed(2)}</div>
+                         <div className="text-2xl sm:text-3xl font-bold text-slate-900">R {transaction.amount.toFixed(2)}</div>
                     </div>
                 </CardContent>
             </Card>
@@ -497,13 +497,13 @@ export default function AllocateTransaction() {
                     </CardHeader>
                     
                     {/* Unified Search Bar Area */}
-                    <div className="px-6 pb-6 border-b">
+                    <div className="px-3 sm:px-6 pb-4 sm:pb-6 border-b">
                         <div className="flex gap-2">
-                            <div className="flex-1">
+                            <div className="flex-1 min-w-0">
                                 <SearchComponent 
                                     onSelect={handleSearchResult} 
                                     placeholder={
-                                        searchScope === 'ALL' ? "Search Account / Meter / Group / Clearance..." : 
+                                        searchScope === 'ALL' ? "Search Account / Group..." : 
                                         `Search ${searchScope.charAt(0) + searchScope.slice(1).toLowerCase()}...`
                                     }
                                     className="max-w-full"
@@ -513,9 +513,9 @@ export default function AllocateTransaction() {
                             
                             <Popover>
                                 <PopoverTrigger asChild>
-                                    <Button variant="outline" className={`h-12 border-slate-200 ${searchScope !== 'ALL' ? 'bg-slate-100 border-slate-300' : ''}`}>
-                                        <Filter className="w-4 h-4 mr-2" /> 
-                                        {searchScope === 'ALL' ? 'Filter' : searchScope.charAt(0) + searchScope.slice(1).toLowerCase()}
+                                    <Button variant="outline" className={`h-10 sm:h-12 border-slate-200 shrink-0 ${searchScope !== 'ALL' ? 'bg-slate-100 border-slate-300' : ''}`}>
+                                        <Filter className="w-4 h-4 sm:mr-2" /> 
+                                        <span className="hidden sm:inline">{searchScope === 'ALL' ? 'Filter' : searchScope.charAt(0) + searchScope.slice(1).toLowerCase()}</span>
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-64 p-4" align="end">
@@ -563,20 +563,20 @@ export default function AllocateTransaction() {
                                 </PopoverContent>
                             </Popover>
 
-                            <Button variant="outline" className="h-12 border-slate-200">
-                                <Upload className="w-4 h-4 mr-2" /> Import CSV
+                            <Button variant="outline" className="h-10 sm:h-12 border-slate-200 shrink-0">
+                                <Upload className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Import CSV</span>
                             </Button>
                         </div>
                         
                         {/* Selected Account Preview / Amount Entry */}
                         {selectedAccount && (
-                            <div className="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-lg flex items-end gap-4 animate-in fade-in slide-in-from-top-2">
-                                <div className="flex-1">
+                            <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-blue-50 border border-blue-100 rounded-lg flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-4 animate-in fade-in slide-in-from-top-2">
+                                <div className="flex-1 min-w-0">
                                     <div className="text-xs text-blue-600 font-bold uppercase tracking-wider mb-1">Selected Allocation Target</div>
-                                    <div className="font-medium text-lg text-slate-900">{selectedAccount.accountNo}</div>
-                                    <div className="text-sm text-slate-500">{selectedAccount.name}</div>
+                                    <div className="font-medium text-base sm:text-lg text-slate-900 truncate">{selectedAccount.accountNo}</div>
+                                    <div className="text-sm text-slate-500 truncate">{selectedAccount.name}</div>
                                 </div>
-                                <div>
+                                <div className="w-full sm:w-auto">
                                     <label className="text-xs text-slate-500 block mb-1">Amount to Allocate</label>
                                     <div className="flex gap-2">
                                         <Input 
@@ -584,7 +584,7 @@ export default function AllocateTransaction() {
                                             type="number" 
                                             min="0"
                                             step="0.01"
-                                            className="h-10 w-32 font-bold text-right" 
+                                            className="h-10 flex-1 sm:w-32 font-bold text-right" 
                                             value={newLineAmount}
                                             onChange={e => {
                                                 const val = e.target.value;
@@ -697,8 +697,37 @@ export default function AllocateTransaction() {
                         )}
                     </div>
 
-                    <CardContent className="pt-0 min-h-[300px]">
-                        <Table>
+                    <CardContent className="pt-0 min-h-[200px] sm:min-h-[300px]">
+                        {/* Mobile allocation lines */}
+                        <div className="sm:hidden">
+                          {lines.length === 0 ? (
+                            <div className="py-10 text-center text-muted-foreground text-sm">
+                              <p>No allocations yet. Search above to find accounts.</p>
+                              {remaining > 0 && (
+                                <Button variant="outline" size="sm" onClick={handleReturnToCashbook} className="mt-3 text-orange-600 border-orange-200 hover:bg-orange-50 text-xs">
+                                  Return Remaining (R {remaining.toFixed(2)}) to Cashbook
+                                </Button>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="divide-y">
+                              {lines.map(line => (
+                                <div key={line.id} className="py-2.5 flex items-center gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-mono text-xs font-medium truncate">{line.accountNo}</div>
+                                    <div className="text-xs text-muted-foreground truncate">{line.description}</div>
+                                  </div>
+                                  <span className="font-mono text-sm font-medium shrink-0">R {line.amount.toFixed(2)}</span>
+                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-red-500 shrink-0" onClick={() => handleRemoveLine(line.id)}>
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {/* Desktop allocation lines table */}
+                        <Table className="hidden sm:table">
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Account No</TableHead>
@@ -738,27 +767,28 @@ export default function AllocateTransaction() {
                             </TableBody>
                         </Table>
                     </CardContent>
-                    <CardFooter className="bg-slate-50 border-t p-4 flex justify-between items-center">
-                         <div className="flex gap-6 text-sm">
+                    <CardFooter className="bg-slate-50 border-t p-3 sm:p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                         <div className="flex gap-4 sm:gap-6 text-xs sm:text-sm">
                              <div>
-                                 <span className="text-muted-foreground mr-2">Allocated:</span>
+                                 <span className="text-muted-foreground mr-1">Allocated:</span>
                                  <span className="font-bold">R {allocatedTotal.toFixed(2)}</span>
                              </div>
                              <div>
-                                 <span className="text-muted-foreground mr-2">Remaining:</span>
+                                 <span className="text-muted-foreground mr-1">Remaining:</span>
                                  <span className={`font-bold ${Math.abs(remaining) < 0.01 ? 'text-green-600' : 'text-red-600'}`}>
                                      R {remaining.toFixed(2)}
                                  </span>
                              </div>
                          </div>
-                         <div className="flex gap-2">
+                         <div className="flex gap-2 w-full sm:w-auto">
                              {remaining > 0 && (
-                                <Button variant="outline" onClick={handleReturnToCashbook} className="text-orange-700 border-orange-200 hover:bg-orange-50">
-                                    Return Balance to Cashbook
+                                <Button variant="outline" size="sm" onClick={handleReturnToCashbook} className="text-orange-700 border-orange-200 hover:bg-orange-50 text-xs sm:text-sm flex-1 sm:flex-initial">
+                                    <span className="hidden sm:inline">Return Balance to </span>Cashbook
                                 </Button>
                              )}
                              <Button 
-                                className={`${isFullyAllocated ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-300'}`}
+                                size="sm"
+                                className={`flex-1 sm:flex-initial text-xs sm:text-sm ${isFullyAllocated ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-300'}`}
                                 disabled={!isFullyAllocated || posting}
                                 onClick={handlePost}
                              >

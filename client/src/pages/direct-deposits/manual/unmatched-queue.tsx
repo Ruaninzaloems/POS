@@ -163,17 +163,17 @@ export default function UnmatchedQueue() {
   return (
     <PosLayout>
       <div className="flex-1 flex flex-col h-full bg-slate-50/50">
-        <div className="p-6 border-b bg-white space-y-4">
-          <div className="flex justify-between items-center">
+        <div className="p-3 sm:p-6 border-b bg-white space-y-3 sm:space-y-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900" data-testid="text-page-title">Direct Deposits: Manual Allocation</h1>
-              <p className="text-muted-foreground">Bank Reconciliation POS Items ({totalCount.toLocaleString()} total)</p>
+              <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-slate-900" data-testid="text-page-title">Direct Deposits: Manual Allocation</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground">Bank Recon POS Items ({totalCount.toLocaleString()} total)</p>
             </div>
             <div className="flex gap-2">
                 <Link href="/direct-deposits/manual/history">
-                    <Button variant="outline" className="gap-2" data-testid="button-allocation-history">
+                    <Button variant="outline" size="sm" className="gap-2 text-xs sm:text-sm" data-testid="button-allocation-history">
                         <HistoryIcon className="w-4 h-4" />
-                        Allocation History
+                        <span className="hidden sm:inline">Allocation </span>History
                     </Button>
                 </Link>
             </div>
@@ -215,12 +215,12 @@ export default function UnmatchedQueue() {
             </AccordionItem>
           </Accordion>
 
-          <div className="flex gap-4">
-             <div className="relative flex-1 max-w-md">
+          <div className="flex flex-wrap gap-2 sm:gap-4">
+             <div className="relative flex-1 min-w-[180px] max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by description, reference or amount..."
-                  className="pl-9"
+                  placeholder="Search description, ref, amount..."
+                  className="pl-9 h-9 sm:h-10 text-sm"
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                   data-testid="input-search"
@@ -229,12 +229,12 @@ export default function UnmatchedQueue() {
 
              <Popover>
                 <PopoverTrigger asChild>
-                    <Button variant="outline" className={`gap-2 ${activeFiltersCount > 0 ? 'bg-slate-100 border-slate-300' : ''}`} data-testid="button-filter">
+                    <Button variant="outline" size="sm" className={`gap-1 sm:gap-2 h-9 sm:h-10 ${activeFiltersCount > 0 ? 'bg-slate-100 border-slate-300' : ''}`} data-testid="button-filter">
                         <Filter className="w-4 h-4" />
-                        {activeFiltersCount > 0 ? `${activeFiltersCount} Filters` : 'Filter'}
+                        <span className="hidden sm:inline">{activeFiltersCount > 0 ? `${activeFiltersCount} Filters` : 'Filter'}</span>
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-96 p-4" align="start">
+                <PopoverContent className="w-80 sm:w-96 p-4" align="start">
                     <div className="space-y-4">
                         <div className="flex justify-between items-center border-b pb-2">
                             <h4 className="font-medium text-sm">Filter Options</h4>
@@ -257,21 +257,21 @@ export default function UnmatchedQueue() {
                 </PopoverContent>
              </Popover>
 
-             <Button variant="outline" size="sm" onClick={() => loadData(page)} disabled={loading} data-testid="button-refresh">
+             <Button variant="outline" size="sm" className="h-9 sm:h-10" onClick={() => loadData(page)} disabled={loading} data-testid="button-refresh">
                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Refresh'}
              </Button>
 
-             <div className="h-10 w-px bg-slate-200 mx-2" />
-             <Button variant="outline" size="icon" title="Export Excel" onClick={() => handleDownload('excel')} data-testid="button-export-excel">
+             <div className="hidden sm:block h-10 w-px bg-slate-200 mx-2" />
+             <Button variant="outline" size="icon" className="h-9 w-9 sm:h-10 sm:w-10" title="Export Excel" onClick={() => handleDownload('excel')} data-testid="button-export-excel">
                 <FileSpreadsheet className="w-4 h-4 text-green-600" />
              </Button>
-             <Button variant="outline" size="icon" title="Export PDF" onClick={() => handleDownload('pdf')} data-testid="button-export-pdf">
+             <Button variant="outline" size="icon" className="h-9 w-9 sm:h-10 sm:w-10" title="Export PDF" onClick={() => handleDownload('pdf')} data-testid="button-export-pdf">
                 <FileText className="w-4 h-4 text-red-600" />
              </Button>
           </div>
         </div>
 
-        <div className="flex-1 p-6 overflow-auto">
+        <div className="flex-1 p-3 sm:p-6 overflow-auto">
           {error && (
             <Alert variant="destructive" className="mb-4">
               <AlertTitle>Error loading data</AlertTitle>
@@ -279,7 +279,46 @@ export default function UnmatchedQueue() {
             </Alert>
           )}
 
-          <Card>
+          {/* Mobile card view */}
+          <div className="sm:hidden space-y-2">
+            {loading ? (
+              <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground text-sm" data-testid="text-empty-state-mobile">
+                {items.length === 0 ? 'No bank reconciliation POS items found.' : 'No items matching your search.'}
+              </div>
+            ) : filtered.map(tx => (
+              <Card key={tx.posItem_ID} data-testid={`card-positem-${tx.posItem_ID}`} className={`p-3 ${!tx.billingAllocated ? 'cursor-pointer active:bg-slate-50' : ''}`} onClick={() => !tx.billingAllocated && checkingItemId === null && handleAllocateClick(tx.posItem_ID)}>
+                <div className="flex justify-between items-start gap-2 mb-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">{tx.note || '-'}</div>
+                    <div className="text-xs text-muted-foreground font-mono mt-0.5">
+                      #{tx.posItem_ID} | {tx.dateOfTransaction ? format(new Date(tx.dateOfTransaction), 'dd/MM/yyyy') : '-'}
+                    </div>
+                  </div>
+                  {tx.billingAllocated ? (
+                    <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200 text-xs shrink-0">Allocated</Badge>
+                  ) : (
+                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-200 text-xs shrink-0">Unmatched</Badge>
+                  )}
+                </div>
+                <div className="flex justify-between items-center">
+                  <Badge variant="outline" className="font-mono text-xs">{tx.reference || '-'}</Badge>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-sm">R {(tx.amount || 0).toFixed(2)}</span>
+                    {!tx.billingAllocated && (
+                      <Button size="sm" className="h-7 text-xs bg-blue-600 hover:bg-blue-700 px-2" disabled={checkingItemId === tx.posItem_ID} onClick={(e) => { e.stopPropagation(); handleAllocateClick(tx.posItem_ID); }} data-testid={`button-allocate-mobile-${tx.posItem_ID}`}>
+                        {checkingItemId === tx.posItem_ID ? <Loader2 className="w-3 h-3 animate-spin" /> : <>Allocate <ArrowRight className="ml-1 w-3 h-3" /></>}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Desktop table view */}
+          <Card className="hidden sm:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -385,6 +424,23 @@ export default function UnmatchedQueue() {
               </div>
             )}
           </Card>
+
+          {/* Mobile pagination */}
+          {totalPages > 1 && (
+            <div className="sm:hidden flex items-center justify-between mt-3">
+              <p className="text-xs text-muted-foreground">
+                Page {page}/{totalPages}
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="h-8 text-xs" disabled={page <= 1 || loading} onClick={() => setPage(p => p - 1)} data-testid="button-prev-page-mobile">
+                  <ChevronLeft className="w-3 h-3 mr-1" /> Prev
+                </Button>
+                <Button variant="outline" size="sm" className="h-8 text-xs" disabled={page >= totalPages || loading} onClick={() => setPage(p => p + 1)} data-testid="button-next-page-mobile">
+                  Next <ChevronRight className="w-3 h-3 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </PosLayout>
