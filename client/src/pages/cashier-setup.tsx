@@ -157,30 +157,40 @@ export default function CashierSetup() {
         setStep3Status('loading');
 
         try {
+            const now = new Date().toISOString();
+            const prevOffice = cashierDetails?.const_CashOffice || {};
+
             const payload = {
                 id: cashierDetails?.id ?? 0,
                 cashFloat: float,
-                stsPort: cashierDetails?.stsPort ?? 1,
-                plesseyPort: cashierDetails?.plesseyPort ?? 1,
+                stsPort: cashierDetails?.stsPort ?? 0,
+                plesseyPort: cashierDetails?.plesseyPort ?? 0,
                 officeId: selectedOffice.cashOffice_ID,
                 isActive: true,
-                dateCaptured: cashierDetails?.dateCaptured ?? null,
-                capturerId: cashierDetails?.capturerId ?? null,
-                dateModified: cashierDetails?.dateModified ?? null,
-                modifiredId: cashierDetails?.modifiredId ?? null,
+                dateCaptured: cashierDetails?.dateCaptured || now,
+                capturerId: cashierDetails?.capturerId ?? userId,
+                dateModified: now,
+                modifiredId: userId,
                 user_Id: userId,
-                sourceReferenceID: cashierDetails?.sourceReferenceID ?? null,
-                offlineReconciled: cashierDetails?.offlineReconciled ?? null,
-                offlineRelations: cashierDetails?.offlineRelations ?? null,
+                sourceReferenceID: cashierDetails?.sourceReferenceID || "00000000-0000-0000-0000-000000000000",
+                offlineReconciled: cashierDetails?.offlineReconciled ?? 0,
+                offlineRelations: cashierDetails?.offlineRelations || "",
                 isVirtual: false,
                 const_CashOffice: {
                     cashOffice_ID: selectedOffice.cashOffice_ID,
                     cashOfficeDesc: selectedOffice.cashOfficeDesc || '',
                     enabled: true,
-                    cashOnHandLimit: selectedOffice.cashOnHandLimit ?? 999999,
-                    scoaConfigurationID: selectedOffice.scoaConfigurationID ?? 4,
-                    allowDelayedDayEndRecon: true,
-                    delayDaysSincePreviousDayEndRecon: 2,
+                    dateCaptured: prevOffice.dateCaptured || now,
+                    capturerID: prevOffice.capturerID ?? 0,
+                    dateModified: prevOffice.dateModified || now,
+                    modifierID: prevOffice.modifierID ?? 0,
+                    groupCashiers: prevOffice.groupCashiers ?? false,
+                    cashOnHandLimit: selectedOffice.cashOnHandLimit ?? prevOffice.cashOnHandLimit ?? 999999,
+                    scoaConfigurationID: selectedOffice.scoaConfigurationID ?? prevOffice.scoaConfigurationID ?? 4,
+                    classificationID: prevOffice.classificationID ?? 0,
+                    allowDelayedDayEndRecon: prevOffice.allowDelayedDayEndRecon ?? true,
+                    delayDaysSincePreviousDayEndRecon: prevOffice.delayDaysSincePreviousDayEndRecon ?? 2,
+                    cashOfficeScoaItemID: prevOffice.cashOfficeScoaItemID ?? 0,
                 },
             };
 

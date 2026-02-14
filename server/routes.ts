@@ -463,23 +463,47 @@ export async function registerRoutes(
 
   app.post("/api/platinum/receipt-prepaid/submit-cashier-setup", async (req, res) => {
     try {
-      const body = { ...req.body };
-      const officeId = body.officeId ?? body.OfficeId ?? null;
-      const cashOffice = body.const_CashOffice || body.Const_CashOffice || {};
-      const userId = body.user_Id ?? body.userId ?? body.User_Id;
+      const body = req.body;
+      const now = new Date().toISOString();
+      const userId = body.user_Id ?? body.userId ?? 0;
+      const cashOffice = body.const_CashOffice || {};
 
       let userDetailObj: any = null;
       if (userId) {
         try {
           const realUserData = await platinumGet(`/api/User/${userId}`);
           if (realUserData && !realUserData._error) {
-            userDetailObj = {} as any;
-            for (const [key, val] of Object.entries(realUserData)) {
-              if (key === '_error') continue;
-              if (val === null || val === undefined) continue;
-              userDetailObj[key] = val;
-            }
-            console.log(`[submit-cashier-setup] Fetched UserDetail for userId=${userId}: userName=${realUserData.userName}`);
+            const u = realUserData;
+            userDetailObj = {
+              userId: u.userId ?? userId,
+              userName: u.userName ?? "",
+              password: u.password ?? "",
+              company: u.company ?? "",
+              telNo: u.telNo ?? "",
+              eMail: u.eMail ?? "",
+              firstName: u.firstName ?? "",
+              lastName: u.lastName ?? "",
+              empID: u.empID ?? 0,
+              departmentID: u.departmentID ?? 0,
+              enabled: u.enabled ?? true,
+              totalLogin: u.totalLogin ?? 0,
+              lastLoginDate: u.lastLoginDate || now,
+              sendSMS: u.sendSMS ?? false,
+              superUser: u.superUser ?? false,
+              dateCaptured: u.dateCaptured || now,
+              capturerID: u.capturerID ?? 0,
+              passwordNeverExpire: u.passwordNeverExpire ?? false,
+              passwordLastChangedDate: u.passwordLastChangedDate || now,
+              modifierID: u.modifierID ?? 0,
+              dateModified: u.dateModified || now,
+              temporaryPassword: u.temporaryPassword ?? false,
+              cashFloat: u.cashFloat ?? 0,
+              startDate: u.startDate || now,
+              endDate: u.endDate || "2028-12-31T23:59:59.000Z",
+              historicUser: u.historicUser ?? false,
+              transactionPassword: u.transactionPassword ?? "",
+            };
+            console.log(`[submit-cashier-setup] Fetched UserDetail for userId=${userId}: userName=${u.userName}`);
           }
         } catch (e: any) {
           console.warn(`[submit-cashier-setup] Failed to fetch user data for userId=${userId}:`, e.message);
@@ -487,43 +511,41 @@ export async function registerRoutes(
       }
 
       const cashierObj: any = {
-        id: body.id ?? body.Id ?? 0,
-        cashFloat: body.cashFloat ?? body.CashFloat ?? 0,
-        stsPort: body.stsPort ?? body.StsPort ?? 1,
-        plesseyPort: body.plesseyPort ?? body.PlesseyPort ?? 1,
-        officeId: officeId,
-        isActive: body.isActive ?? true,
-        user_Id: body.user_Id ?? body.userId ?? null,
+        id: body.id ?? 0,
+        cashFloat: body.cashFloat ?? 0,
+        stsPort: body.stsPort ?? 0,
+        plesseyPort: body.plesseyPort ?? 0,
+        officeId: body.officeId ?? cashOffice.cashOffice_ID ?? 0,
+        isActive: true,
+        dateCaptured: body.dateCaptured || now,
+        capturerId: body.capturerId ?? userId,
+        dateModified: body.dateModified || now,
+        modifiredId: body.modifiredId ?? userId,
+        user_Id: userId,
+        sourceReferenceID: body.sourceReferenceID || "00000000-0000-0000-0000-000000000000",
+        offlineReconciled: body.offlineReconciled ?? 0,
+        offlineRelations: body.offlineRelations ?? "",
         isVirtual: false,
         const_CashOffice: {
-          cashOffice_ID: cashOffice.cashOffice_ID ?? cashOffice.CashOffice_ID ?? officeId,
-          cashOfficeDesc: cashOffice.cashOfficeDesc ?? cashOffice.CashOfficeDesc ?? '',
-          enabled: cashOffice.enabled ?? cashOffice.Enabled ?? true,
+          cashOffice_ID: cashOffice.cashOffice_ID ?? 0,
+          cashOfficeDesc: cashOffice.cashOfficeDesc ?? "",
+          enabled: cashOffice.enabled ?? true,
+          dateCaptured: cashOffice.dateCaptured || now,
+          capturerID: cashOffice.capturerID ?? 0,
+          dateModified: cashOffice.dateModified || now,
+          modifierID: cashOffice.modifierID ?? 0,
           groupCashiers: cashOffice.groupCashiers ?? false,
-          cashOnHandLimit: cashOffice.cashOnHandLimit ?? cashOffice.CashOnHandLimit ?? 999999,
-          scoaConfigurationID: cashOffice.scoaConfigurationID ?? cashOffice.ScoaConfigurationID ?? 4,
-          allowDelayedDayEndRecon: cashOffice.allowDelayedDayEndRecon ?? cashOffice.AllowDelayedDayEndRecon ?? true,
-          delayDaysSincePreviousDayEndRecon: cashOffice.delayDaysSincePreviousDayEndRecon ?? cashOffice.DelayDaysSincePreviousDayEndRecon ?? 2,
+          cashOnHandLimit: cashOffice.cashOnHandLimit ?? 999999,
+          scoaConfigurationID: cashOffice.scoaConfigurationID ?? 4,
+          classificationID: cashOffice.classificationID ?? 0,
+          allowDelayedDayEndRecon: cashOffice.allowDelayedDayEndRecon ?? true,
+          delayDaysSincePreviousDayEndRecon: cashOffice.delayDaysSincePreviousDayEndRecon ?? 2,
+          cashOfficeScoaItemID: cashOffice.cashOfficeScoaItemID ?? 0,
         },
       };
 
-      if (body.dateCaptured) cashierObj.dateCaptured = body.dateCaptured;
-      if (body.capturerId) cashierObj.capturerId = body.capturerId;
-      if (body.dateModified) cashierObj.dateModified = body.dateModified;
-      if (body.modifiredId) cashierObj.modifiredId = body.modifiredId;
-      if (body.sourceReferenceID) cashierObj.sourceReferenceID = body.sourceReferenceID;
-      if (body.offlineReconciled != null) cashierObj.offlineReconciled = body.offlineReconciled;
-      if (body.offlineRelations) cashierObj.offlineRelations = body.offlineRelations;
-
-      if (cashOffice.dateCaptured) cashierObj.const_CashOffice.dateCaptured = cashOffice.dateCaptured;
-      if (cashOffice.capturerID) cashierObj.const_CashOffice.capturerID = cashOffice.capturerID;
-      if (cashOffice.dateModified) cashierObj.const_CashOffice.dateModified = cashOffice.dateModified;
-      if (cashOffice.modifierID) cashierObj.const_CashOffice.modifierID = cashOffice.modifierID;
-      if (cashOffice.classificationID) cashierObj.const_CashOffice.classificationID = cashOffice.classificationID;
-      if (cashOffice.cashOfficeScoaItemID) cashierObj.const_CashOffice.cashOfficeScoaItemID = cashOffice.cashOfficeScoaItemID;
-
       if (userDetailObj) {
-        cashierObj.userDetail = userDetailObj;
+        cashierObj.UserDetail = userDetailObj;
       }
 
       console.log(`[submit-cashier-setup] POSCashier payload:`, JSON.stringify(cashierObj));
