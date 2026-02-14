@@ -1,17 +1,28 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { usePos, TransactionItem } from '@/lib/pos-state';
 import { ConsumerSearchForm } from './consumer-search-form';
 import { UnifiedSearch as SearchComponent, SearchResult, parseMobileFromContactDetails } from './search-component';
-import { Filter } from 'lucide-react';
+import { Filter, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Account } from '@/lib/mock-data';
 import { fetchAccounts, fetchBillingStagePrepaidRecharge, fetchBillingStagePrepaidRecovery, searchInstitutions, fetchAccountsByGroup, platinumGetAccountsForClearance, enrichAccountData } from '@/lib/external-api';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export function UnifiedSearch() {
   const { addItem, clearTransaction, referenceData, platinumUser } = usePos();
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [advancedResults, setAdvancedResults] = useState<any[]>([]);
+  const [inactiveConfirm, setInactiveConfirm] = useState<{ account: Account; item: TransactionItem } | null>(null);
   
   // Access configuration settings
   const config = referenceData.billingConfig;
@@ -51,7 +62,7 @@ export function UnifiedSearch() {
            }
       }
 
-      newItem = {
+      const consumerItem: TransactionItem = {
         id: crypto.randomUUID(),
         type: 'CONSUMER_SERVICES',
         description: `${acc.name} (${acc.accountNo})`,
@@ -60,6 +71,14 @@ export function UnifiedSearch() {
         amountToPay: acc.outstandingAmount,
         originalData: acc
       };
+
+      const accStatus = (acc.status || (acc as any).accountStatus || '').toLowerCase();
+      if (accStatus === 'inactive') {
+        setInactiveConfirm({ account: acc, item: consumerItem });
+        return;
+      }
+
+      newItem = consumerItem;
     } else if (result.type === 'DIRECT') {
       const item = result.data;
       if (item.isGroup) {
@@ -311,6 +330,7 @@ export function UnifiedSearch() {
   }
 
   return (
+      <>
       <div className="flex gap-2 w-full max-w-2xl">
           <SearchComponent onSelect={handleSelect} className="flex-1" institutions={referenceData.institutions} userId={platinumUser?.user_ID} finYear={platinumUser?.finYear} />
           <Button 
@@ -323,5 +343,36 @@ export function UnifiedSearch() {
             <Filter className="h-5 w-5 text-muted-foreground" />
           </Button>
       </div>
+      <AlertDialog open={!!inactiveConfirm} onOpenChange={(open) => { if (!open) setInactiveConfirm(null); }}>
+        <AlertDialogContent className="max-w-[95vw] sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Inactive Account
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="text-left space-y-2">
+                <span className="block">Account <strong>{inactiveConfirm?.account.accountNo}</strong> ({inactiveConfirm?.account.name}) is currently <strong>Inactive</strong>.</span>
+                <span className="block">Do you want to continue with this transaction?</span>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setInactiveConfirm(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-amber-600 hover:bg-amber-700"
+              onClick={() => {
+                if (inactiveConfirm) {
+                  addItem(inactiveConfirm.item);
+                  setInactiveConfirm(null);
+                }
+              }}
+            >
+              Yes, Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      </>
   );
 }
