@@ -327,11 +327,11 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
         <Input 
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={placeholder || "Search Account / Meter / Group / Clearance..."}
-          className="pl-10 h-12 text-lg shadow-sm border-primary/20 focus-visible:ring-primary/30"
+          placeholder={placeholder || "Search Account / Meter / Group..."}
+          className="pl-10 h-10 sm:h-12 text-sm sm:text-lg shadow-sm border-primary/20 focus-visible:ring-primary/30"
           autoFocus={autoFocus}
         />
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1">
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex gap-1">
              <kbd className="pointer-events-none inline-flex h-6 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
               <span className="text-xs">Esc</span>
             </kbd>
@@ -340,8 +340,8 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
 
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="icon" className="h-12 w-12 shrink-0 border-primary/20 bg-background">
-            <Info className="h-5 w-5 text-muted-foreground" />
+          <Button variant="outline" size="icon" className="h-10 w-10 sm:h-12 sm:w-12 shrink-0 border-primary/20 bg-background">
+            <Info className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-80" align="end">

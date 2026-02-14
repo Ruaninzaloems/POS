@@ -316,7 +316,7 @@ export function UnifiedSearch() {
           <Button 
             variant="outline" 
             size="icon" 
-            className="h-12 w-12 shrink-0 border-primary/20 bg-background"
+            className="h-10 w-10 sm:h-12 sm:w-12 shrink-0 border-primary/20 bg-background"
             onClick={() => setShowAdvanced(true)}
             title="Advanced Search"
           >

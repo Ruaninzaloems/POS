@@ -104,7 +104,7 @@ export function PaymentDrawer() {
           <div className="w-12 h-1.5 bg-muted rounded-full" />
       </div>
 
-      <div className="p-4 lg:p-6 border-b bg-muted/30 flex justify-between items-center">
+      <div className="p-3 sm:p-4 lg:p-6 border-b bg-muted/30 flex justify-between items-center">
         <div>
            <h2 className="text-lg lg:text-xl font-bold tracking-tight">Payment Drawer</h2>
            <div className="flex items-center gap-2">
@@ -288,7 +288,7 @@ export function PaymentDrawer() {
       </div>
 
       {/* Footer Actions */}
-      <div className="p-6 bg-card border-t space-y-4 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] z-30 relative pb-8 lg:pb-6">
+      <div className="p-4 sm:p-6 bg-card border-t space-y-3 sm:space-y-4 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] z-30 relative pb-8 lg:pb-6">
         <div className="flex justify-between items-baseline">
             <span className="text-muted-foreground font-medium">Change Due</span>
             <div className="flex flex-col items-end">

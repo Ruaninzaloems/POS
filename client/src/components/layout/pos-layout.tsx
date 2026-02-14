@@ -103,25 +103,25 @@ export function PosLayout({ children }: PosLayoutProps) {
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden">
       {/* Top Bar */}
-      <header className="h-14 border-b bg-card flex items-center px-4 justify-between shrink-0 z-20 shadow-sm relative">
-        <div className="flex items-center gap-4">
+      <header className="h-auto min-h-[3.5rem] border-b bg-card flex flex-wrap items-center px-3 sm:px-4 py-2 justify-between shrink-0 z-20 shadow-sm relative gap-2">
+        <div className="flex items-center gap-2 sm:gap-4">
           <Link href="/">
             <div className="flex items-center gap-2 cursor-pointer hover:opacity-80">
-              <img src="/images/platinum-logo.png" alt="Platinum" className="w-8 h-8 object-contain" />
-              <h1 className="font-semibold text-lg tracking-tight hidden sm:inline-block">Platinum POS <span className="text-muted-foreground text-sm font-normal">v2.0</span></h1>
+              <img src="/images/platinum-logo.png" alt="Platinum" className="w-7 h-7 sm:w-8 sm:h-8 object-contain" />
+              <h1 className="font-semibold text-base sm:text-lg tracking-tight hidden sm:inline-block">Platinum POS <span className="text-muted-foreground text-sm font-normal">v2.0</span></h1>
             </div>
           </Link>
-          <div className="h-6 w-px bg-border mx-2 hidden sm:block" />
+          <div className="h-6 w-px bg-border mx-1 hidden sm:block" />
           
           <nav className="flex items-center">
              <DropdownMenu>
                <DropdownMenuTrigger asChild>
-                 <Button variant="outline" size="sm" className="gap-2 min-w-[140px] justify-between">
-                   <span className="flex items-center gap-2">
+                 <Button variant="outline" size="sm" className="gap-1 sm:gap-2 min-w-0 sm:min-w-[140px] justify-between text-xs sm:text-sm px-2 sm:px-3">
+                   <span className="flex items-center gap-1 sm:gap-2">
                      <Menu className="w-4 h-4" />
-                     <span className="truncate max-w-[150px]">{getPageTitle(location)}</span>
+                     <span className="truncate max-w-[80px] sm:max-w-[150px]">{getPageTitle(location)}</span>
                    </span>
-                   <ChevronDown className="w-4 h-4 opacity-50" />
+                   <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4 opacity-50" />
                  </Button>
                </DropdownMenuTrigger>
                <DropdownMenuContent align="start" className="w-72">
@@ -161,7 +161,7 @@ export function PosLayout({ children }: PosLayoutProps) {
           </nav>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
            <Button 
              variant="ghost" 
              size="icon" 
@@ -176,35 +176,36 @@ export function PosLayout({ children }: PosLayoutProps) {
 
            {activeSession ? (
              <>
-               <div className="flex items-center gap-3 px-2">
-                  <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground text-xs font-mono border">
+               <div className="flex items-center gap-2 sm:gap-3 px-1 sm:px-2">
+                  <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground text-xs font-mono border shrink-0">
                     {currentUser.name?.charAt(0) || 'C'}
                   </div>
-                  <div className="flex flex-col items-start text-sm leading-tight">
+                  <div className="hidden sm:flex flex-col items-start text-sm leading-tight">
                     <span className="font-medium">{currentUser.name}</span>
                     <span className="text-xs text-muted-foreground">{sessionDetails?.officeDesc || currentUser.cashOffice}</span>
                   </div>
-                  <div className="ml-1 px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-semibold rounded-full border border-green-200">
+                  <div className="hidden md:block ml-1 px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-semibold rounded-full border border-green-200 whitespace-nowrap">
                     SESSION ACTIVE
                   </div>
                </div>
 
-               <div className="h-6 w-px bg-border" />
+               <div className="h-6 w-px bg-border hidden sm:block" />
 
                {dayEndStatus === 'RECONCILED' ? (
-                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={endSession} title="End Session">
+                 <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={endSession} title="End Session">
                    <LogOut className="w-4 h-4" />
                  </Button>
                ) : (
-                 <Button variant="ghost" size="icon" className="text-muted-foreground opacity-40 cursor-not-allowed" onClick={endSession} title="Session active until day-end reconciliation is completed">
+                 <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground opacity-40 cursor-not-allowed" onClick={endSession} title="Session active until day-end reconciliation is completed">
                    <LogOut className="w-4 h-4" />
                  </Button>
                )}
              </>
            ) : (
-             <Button variant="outline" size="sm" onClick={() => setLocation('/pos')} className="gap-2">
+             <Button variant="outline" size="sm" onClick={() => setLocation('/pos')} className="gap-1 sm:gap-2 text-xs sm:text-sm">
                <Layers className="w-4 h-4" />
-               Start POS Session
+               <span className="hidden sm:inline">Start POS Session</span>
+               <span className="sm:hidden">Start</span>
              </Button>
            )}
         </div>

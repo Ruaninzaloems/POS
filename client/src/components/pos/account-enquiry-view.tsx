@@ -291,9 +291,9 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
   };
 
   const Field = ({ label, value }: { label: string, value: string | number | undefined }) => (
-    <div className="grid grid-cols-[200px_1fr] border-b border-gray-100 last:border-0 py-1 text-sm">
-      <div className="font-semibold text-gray-800 px-2">{label}</div>
-      <div className="text-gray-600 px-2">{value || '-'}</div>
+    <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] lg:grid-cols-[200px_1fr] border-b border-gray-100 last:border-0 py-1 text-sm">
+      <div className="font-semibold text-gray-800 px-2 text-xs sm:text-sm">{label}</div>
+      <div className="text-gray-600 px-2 break-words">{value || '-'}</div>
     </div>
   );
 
@@ -304,18 +304,19 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
   );
 
   return (
-    <div className="bg-white p-6 shadow-sm border border-gray-200 text-sm relative">
-       <div className="absolute top-6 right-6 flex gap-2">
+    <div className="bg-white p-3 sm:p-6 shadow-sm border border-gray-200 text-sm relative">
+       <div className="flex flex-wrap gap-2 justify-end mb-3 sm:mb-0 sm:absolute sm:top-6 sm:right-6">
           {hasPropertyRates && (
               <Button 
                 variant="default" 
                 size="sm" 
                 onClick={handlePayRatesAdvance}
-                className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="gap-1 sm:gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm"
                 data-testid="button-pay-rates-advance"
               >
-                <CalendarRange className="w-4 h-4" />
-                Pay Rates in Advance
+                <CalendarRange className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Pay Rates in Advance</span>
+                <span className="sm:hidden">Rates</span>
               </Button>
           )}
 
@@ -324,11 +325,12 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                 variant="default" 
                 size="sm" 
                 onClick={handleBuyPrepaid}
-                className={`gap-2 ${account.prepaidType === 'Water' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-yellow-600 hover:bg-yellow-700 text-white'}`}
+                className={`gap-1 sm:gap-2 text-xs sm:text-sm ${account.prepaidType === 'Water' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-yellow-600 hover:bg-yellow-700 text-white'}`}
                 data-testid="button-buy-prepaid"
               >
-                {account.prepaidType === 'Water' ? <Droplets className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
-                Buy Prepaid {account.prepaidType || 'Electricity'}
+                {account.prepaidType === 'Water' ? <Droplets className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                <span className="hidden sm:inline">Buy Prepaid {account.prepaidType || 'Electricity'}</span>
+                <span className="sm:hidden">Prepaid</span>
               </Button>
           )}
 
@@ -342,11 +344,11 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                     removeItem(item.id);
                 }
             }}
-            className="gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+            className="gap-1 sm:gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 text-xs sm:text-sm"
             data-testid="button-close-enquiry"
           >
-            <X className="w-4 h-4" />
-            {viewingItemId ? 'Back to Basket' : 'Close Enquiry'}
+            <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            {viewingItemId ? 'Back' : 'Close'}
           </Button>
        </div>
 
@@ -605,21 +607,21 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
           </table>
        </div>
        
-       <div className="mt-8 bg-blue-50 p-4 border border-blue-200 flex justify-between items-center shadow-sm">
-           <div className="text-blue-900 font-semibold">
-               Total Outstanding Balance: <span className="text-red-600 text-lg">R {account.outstandingAmount.toFixed(2)}</span>
+       <div className="mt-6 sm:mt-8 bg-blue-50 p-3 sm:p-4 border border-blue-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-sm">
+           <div className="text-blue-900 font-semibold text-sm sm:text-base">
+               Total Outstanding: <span className="text-red-600 text-base sm:text-lg">R {account.outstandingAmount.toFixed(2)}</span>
            </div>
            
-           <div className="flex items-center gap-3">
-               <Label htmlFor={`pay-${item.id}`} className="font-bold text-gray-700">Payment Allocation:</Label>
-               <div className="relative">
+           <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+               <Label htmlFor={`pay-${item.id}`} className="font-bold text-gray-700 text-xs sm:text-sm whitespace-nowrap">Payment:</Label>
+               <div className="relative flex-1 sm:flex-none">
                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-mono">R</span>
                    <Input 
                         id={`pay-${item.id}`}
                         type="number" 
                         min="0"
                         step="0.01"
-                        className="pl-8 w-40 font-mono font-bold border-gray-400 focus:ring-blue-500 bg-white"
+                        className="pl-8 w-full sm:w-40 font-mono font-bold border-gray-400 focus:ring-blue-500 bg-white"
                         value={item.amountToPay} 
                         onChange={(e) => {
                             const val = e.target.value;

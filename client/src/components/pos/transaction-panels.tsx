@@ -119,8 +119,8 @@ export function TransactionPanels() {
       if (item) {
           // Wrap in a container to maintain layout
           return (
-              <div className="flex-1 p-6 overflow-y-auto bg-gray-100/50">
-                  <div className="max-w-[1200px] mx-auto space-y-6">
+              <div className="flex-1 p-3 sm:p-6 overflow-y-auto bg-gray-100/50">
+                  <div className="max-w-[1200px] mx-auto space-y-4 sm:space-y-6">
                       <AccountEnquiryView item={item} />
                   </div>
               </div>
@@ -130,7 +130,7 @@ export function TransactionPanels() {
 
   if (activeTransactionType === 'NONE') {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8">
+      <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-4 sm:p-8">
         <div className="w-24 h-24 bg-muted/50 rounded-full flex items-center justify-center mb-6">
            <svg className="w-10 h-10 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
         </div>
@@ -197,12 +197,12 @@ export function TransactionPanels() {
   // Multi-Account / Basket View
   if (activeTransactionType === 'MULTI_ACCOUNT') {
       return (
-          <div className="flex-1 p-6 overflow-y-auto bg-muted/10">
-              <div className="max-w-5xl mx-auto space-y-6">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                        <h2 className="text-2xl font-bold tracking-tight text-foreground">Multi-Account Basket</h2>
-                        <Badge variant="outline" className="text-sm px-3 py-1 font-mono uppercase bg-primary/10 text-primary border-primary/20">
+          <div className="flex-1 p-3 sm:p-6 overflow-y-auto bg-muted/10">
+              <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                        <h2 className="text-lg sm:text-2xl font-bold tracking-tight text-foreground">Multi-Account Basket</h2>
+                        <Badge variant="outline" className="text-xs sm:text-sm px-2 sm:px-3 py-0.5 sm:py-1 font-mono uppercase bg-primary/10 text-primary border-primary/20">
                             Mixed Transaction
                         </Badge>
                     </div>
@@ -263,13 +263,16 @@ export function TransactionPanels() {
                   </div>
 
                   <Card>
-                      <CardHeader className="py-4 border-b bg-muted/20">
-                          <div className="grid grid-cols-[1fr_2fr_1fr_1fr_auto] gap-4 font-medium text-sm text-muted-foreground uppercase tracking-wider px-2">
+                      <CardHeader className="py-3 sm:py-4 border-b bg-muted/20">
+                          <div className="hidden sm:grid grid-cols-[1fr_2fr_1fr_1fr_auto] gap-4 font-medium text-sm text-muted-foreground uppercase tracking-wider px-2">
                               <div>Type</div>
                               <div>Description / Ref</div>
                               <div className="text-right">Amount Due</div>
                               <div className="text-right">Pay Amount</div>
                               <div className="w-8"></div>
+                          </div>
+                          <div className="sm:hidden font-medium text-sm text-muted-foreground uppercase tracking-wider px-2">
+                              Items in Basket
                           </div>
                       </CardHeader>
                       <CardContent className="p-0">
@@ -281,38 +284,43 @@ export function TransactionPanels() {
                                         case 'CLEARANCE': return 2;
                                         case 'DIRECT_INCOME': return 3;
                                         case 'ACCOUNT_GROUP': return 4;
-                                        case 'PREPAID': return 10; // Prepaid always last
+                                        case 'PREPAID': return 10;
                                         default: return 5;
                                     }
                                 };
                                 return getPriority(a.type) - getPriority(b.type);
                             })
                             .map((item) => (
-                              <div key={item.id} className="grid grid-cols-[1fr_2fr_1fr_1fr_auto] gap-4 items-center p-4 border-b last:border-0 hover:bg-muted/5 transition-colors">
-                                  <div className="flex items-center gap-2">
-                                      {item.type === 'CONSUMER_SERVICES' && <Badge variant="secondary" className="font-mono text-xs">ACC</Badge>}
-                                      {item.type === 'PREPAID' && (
-                                         <Badge variant="outline" className={`font-mono text-xs ${
-                                             (item.originalData as Account).prepaidType === 'Water' 
-                                             ? 'border-blue-500 text-blue-600 bg-blue-50'
-                                             : 'border-yellow-500 text-yellow-600 bg-yellow-50'
-                                         }`}>
-                                             {(item.originalData as Account).prepaidType === 'Water' ? 'H2O' : 'ELEC'}
-                                         </Badge>
-                                      )}
-                                      {item.type === 'CLEARANCE' && <Badge variant="outline" className="font-mono text-xs border-amber-500 text-amber-600 bg-amber-50">CLR</Badge>}
-                                      {item.type === 'DIRECT_INCOME' && <Badge variant="outline" className="font-mono text-xs border-green-500 text-green-600 bg-green-50">INC</Badge>}
-                                      {item.type === 'ACCOUNT_GROUP' && <Badge variant="outline" className="font-mono text-xs border-purple-500 text-purple-600 bg-purple-50">GRP</Badge>}
+                              <div key={item.id} className="sm:grid sm:grid-cols-[1fr_2fr_1fr_1fr_auto] sm:gap-4 sm:items-center p-3 sm:p-4 border-b last:border-0 hover:bg-muted/5 transition-colors">
+                                  <div className="flex items-center justify-between sm:justify-start gap-2 mb-2 sm:mb-0">
+                                      <div className="flex items-center gap-2">
+                                          {item.type === 'CONSUMER_SERVICES' && <Badge variant="secondary" className="font-mono text-xs">ACC</Badge>}
+                                          {item.type === 'PREPAID' && (
+                                             <Badge variant="outline" className={`font-mono text-xs ${
+                                                 (item.originalData as Account).prepaidType === 'Water' 
+                                                 ? 'border-blue-500 text-blue-600 bg-blue-50'
+                                                 : 'border-yellow-500 text-yellow-600 bg-yellow-50'
+                                             }`}>
+                                                 {(item.originalData as Account).prepaidType === 'Water' ? 'H2O' : 'ELEC'}
+                                             </Badge>
+                                          )}
+                                          {item.type === 'CLEARANCE' && <Badge variant="outline" className="font-mono text-xs border-amber-500 text-amber-600 bg-amber-50">CLR</Badge>}
+                                          {item.type === 'DIRECT_INCOME' && <Badge variant="outline" className="font-mono text-xs border-green-500 text-green-600 bg-green-50">INC</Badge>}
+                                          {item.type === 'ACCOUNT_GROUP' && <Badge variant="outline" className="font-mono text-xs border-purple-500 text-purple-600 bg-purple-50">GRP</Badge>}
+                                      </div>
+                                      <Button variant="ghost" size="icon" className="h-7 w-7 sm:hidden text-muted-foreground hover:text-destructive" onClick={() => removeItem(item.id)}>
+                                          <Trash2 className="w-4 h-4" />
+                                      </Button>
                                   </div>
                                   
-                                  <div className="min-w-0 flex flex-col">
-                                      <div className="font-medium truncate flex items-center gap-2">
+                                  <div className="min-w-0 flex flex-col mb-2 sm:mb-0">
+                                      <div className="font-medium truncate flex items-center gap-2 text-sm sm:text-base">
                                           {item.description}
                                           {item.type === 'CONSUMER_SERVICES' && (
                                               <Button 
                                                 variant="ghost" 
                                                 size="icon" 
-                                                className="h-6 w-6 text-blue-600 hover:text-blue-800 hover:bg-blue-50 ml-2"
+                                                className="h-6 w-6 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
                                                 title="View Account Enquiry"
                                                 onClick={() => setViewingItem(item.id)}
                                               >
@@ -323,30 +331,38 @@ export function TransactionPanels() {
                                       <div className="text-xs text-muted-foreground font-mono">{item.reference}</div>
                                   </div>
 
-                                  <div className="text-right font-mono text-muted-foreground">
-                                      {item.amountDue > 0 ? `R ${item.amountDue.toFixed(2)}` : '-'}
+                                  <div className="flex items-center justify-between sm:block sm:text-right gap-2 mb-2 sm:mb-0">
+                                      <span className="text-xs text-muted-foreground sm:hidden">Due:</span>
+                                      <span className="font-mono text-muted-foreground text-sm">
+                                          {item.amountDue > 0 ? `R ${item.amountDue.toFixed(2)}` : '-'}
+                                      </span>
                                   </div>
 
-                                  <div className="relative">
-                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-xs">R</span>
-                                     <Input 
-                                        type="number" 
-                                        min="0"
-                                        step="0.01"
-                                        className="h-9 pl-6 text-right font-mono"
-                                        value={item.amountToPay}
-                                        onChange={(e) => {
-                                            const val = e.target.value;
-                                            if (val && parseFloat(val) < 0) return;
-                                            if (val.includes('.') && val.split('.')[1].length > 2) return;
-                                            updateItemAmount(item.id, parseFloat(val) || 0);
-                                        }}
-                                     />
+                                  <div className="flex items-center gap-2 sm:block">
+                                      <span className="text-xs text-muted-foreground sm:hidden shrink-0">Pay:</span>
+                                      <div className="relative flex-1 sm:flex-none">
+                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-xs">R</span>
+                                         <Input 
+                                            type="number" 
+                                            min="0"
+                                            step="0.01"
+                                            className="h-9 pl-6 text-right font-mono"
+                                            value={item.amountToPay}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (val && parseFloat(val) < 0) return;
+                                                if (val.includes('.') && val.split('.')[1].length > 2) return;
+                                                updateItemAmount(item.id, parseFloat(val) || 0);
+                                            }}
+                                         />
+                                      </div>
                                   </div>
 
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => removeItem(item.id)}>
-                                      <Trash2 className="w-4 h-4" />
-                                  </Button>
+                                  <div className="hidden sm:block">
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => removeItem(item.id)}>
+                                          <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                  </div>
                               </div>
                           ))}
                       </CardContent>
@@ -358,12 +374,12 @@ export function TransactionPanels() {
 
   // Single Item Views
   return (
-    <div className="flex-1 p-6 overflow-y-auto bg-gray-100/50"> 
-      <div className="max-w-[1200px] mx-auto space-y-6"> 
+    <div className="flex-1 p-3 sm:p-6 overflow-y-auto bg-gray-100/50"> 
+      <div className="max-w-[1200px] mx-auto space-y-4 sm:space-y-6"> 
         
         {/* Header Badge */}
         <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold tracking-tight text-foreground">
+            <h2 className="text-lg sm:text-2xl font-bold tracking-tight text-foreground">
               {activeTransactionType === 'CONSUMER_SERVICES' && 'Consumer Account'}
               {activeTransactionType === 'DIRECT_INCOME' && 'Direct Income'}
               {activeTransactionType === 'CLEARANCE' && 'Clearance Certificate'}

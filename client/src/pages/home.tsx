@@ -36,13 +36,13 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden">
-      <header className="h-14 border-b bg-card flex items-center px-4 justify-between shrink-0 z-20 shadow-sm">
+      <header className="h-14 border-b bg-card flex items-center px-3 sm:px-4 justify-between shrink-0 z-20 shadow-sm">
         <div className="flex items-center gap-2">
-          <img src="/images/platinum-logo.png" alt="Platinum" className="w-8 h-8 object-contain" />
-          <h1 className="font-semibold text-lg tracking-tight hidden sm:inline-block">Platinum POS <span className="text-muted-foreground text-sm font-normal">v2.0</span></h1>
+          <img src="/images/platinum-logo.png" alt="Platinum" className="w-7 h-7 sm:w-8 sm:h-8 object-contain" />
+          <h1 className="font-semibold text-base sm:text-lg tracking-tight">Platinum POS <span className="text-muted-foreground text-xs sm:text-sm font-normal">v2.0</span></h1>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <Button
             variant="ghost"
             size="icon"
@@ -56,17 +56,17 @@ export default function HomePage() {
           {activeSession && (
             <>
               <div className="h-6 w-px bg-border hidden sm:block" />
-              <div className="flex items-center gap-3 px-2">
-                <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground text-xs font-mono border">
+              <div className="flex items-center gap-2 sm:gap-3 px-1 sm:px-2">
+                <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground text-xs font-mono border shrink-0">
                   {currentUser.name?.charAt(0) || 'C'}
                 </div>
-                <div className="flex flex-col items-start text-sm leading-tight">
+                <div className="hidden sm:flex flex-col items-start text-sm leading-tight">
                   <span className="font-medium">{currentUser.name}</span>
                   <span className="text-xs text-muted-foreground">{currentUser.cashOffice}</span>
                 </div>
               </div>
-              <div className="h-6 w-px bg-border" />
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={endSession} title="End Session">
+              <div className="h-6 w-px bg-border hidden sm:block" />
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={endSession} title="End Session">
                 <LogOut className="w-4 h-4" />
               </Button>
             </>
@@ -74,8 +74,27 @@ export default function HomePage() {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
-        <aside className="w-80 border-r bg-card overflow-y-auto shrink-0" data-testid="sidebar-menu">
+      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+        <div className="md:hidden p-4 bg-card border-b">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Modules</h2>
+          <div className="grid grid-cols-3 gap-2">
+            {menuItems.map((item, idx) => (
+              <Link key={idx} href={item.href}>
+                <button
+                  className="w-full flex flex-col items-center gap-1.5 p-3 rounded-lg text-center hover:bg-accent transition-colors group border bg-background"
+                  data-testid={`menu-item-${item.href.replace(/\//g, '-').slice(1) || 'home'}`}
+                >
+                  <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover:bg-primary/10">
+                    <item.icon className="w-5 h-5 text-muted-foreground group-hover:text-primary" />
+                  </div>
+                  <div className="text-[11px] font-medium text-foreground leading-tight">{item.label}</div>
+                </button>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <aside className="hidden md:block w-80 border-r bg-card overflow-y-auto shrink-0" data-testid="sidebar-menu">
           <div className="p-4 border-b">
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Modules</h2>
           </div>
@@ -84,7 +103,7 @@ export default function HomePage() {
               <Link key={idx} href={item.href}>
                 <button
                   className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors group"
-                  data-testid={`menu-item-${item.href.replace(/\//g, '-').slice(1) || 'home'}`}
+                  data-testid={`menu-item-desktop-${item.href.replace(/\//g, '-').slice(1) || 'home'}`}
                 >
                   <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover:bg-primary/10">
                     <item.icon className="w-5 h-5 text-muted-foreground group-hover:text-primary" />
@@ -100,14 +119,14 @@ export default function HomePage() {
           </nav>
         </aside>
 
-        <main className="flex-1 flex items-center justify-center bg-muted/30 overflow-auto">
+        <main className="hidden md:flex flex-1 items-center justify-center bg-muted/30 overflow-auto">
           <div className="text-center max-w-md px-6">
             <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
               <Layers className="w-8 h-8 text-primary" />
             </div>
             <h2 className="text-2xl font-semibold mb-2">Platinum POS System</h2>
             <p className="text-muted-foreground mb-6">
-              Select a module from the menu on the left to get started.
+              Select a module from the menu to get started.
             </p>
           </div>
         </main>
