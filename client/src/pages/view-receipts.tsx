@@ -235,7 +235,7 @@ export default function ViewReceipts() {
                                             <SelectTrigger className="h-9" data-testid="select-cashier-filter">
                                                 <SelectValue placeholder={loadingCashiers ? "Loading..." : "-- All --"} />
                                             </SelectTrigger>
-                                            <SelectContent>
+                                            <SelectContent className="max-h-[250px]">
                                                 <SelectItem value="ALL">-- All --</SelectItem>
                                                 {cashiers.map(c => (
                                                     <SelectItem key={c.id} value={String(c.cashierId || c.id)}>
