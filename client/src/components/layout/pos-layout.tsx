@@ -32,10 +32,6 @@ import {
   DropdownMenuLabel, 
   DropdownMenuSeparator, 
   DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 
 import CashierSetup from '@/pages/cashier-setup';
@@ -129,24 +125,20 @@ export function PosLayout({ children }: PosLayoutProps) {
                  <DropdownMenuSeparator />
                  {navItems.map((item, idx) => (
                    item.children ? (
-                     <DropdownMenuSub key={idx}>
-                       <DropdownMenuSubTrigger className="gap-2 cursor-pointer">
-                         <item.icon className="w-4 h-4 text-muted-foreground" />
+                     <React.Fragment key={idx}>
+                       <DropdownMenuLabel className="gap-2 flex items-center text-xs text-muted-foreground font-normal pt-2 pb-1">
+                         <item.icon className="w-4 h-4" />
                          <span>{item.label}</span>
-                       </DropdownMenuSubTrigger>
-                       <DropdownMenuPortal>
-                         <DropdownMenuSubContent className="w-72">
-                           {item.children.map((child, childIdx) => (
-                             <Link key={childIdx} href={child.href}>
-                               <DropdownMenuItem className="gap-2 cursor-pointer">
-                                 {child.icon && <child.icon className="w-4 h-4 text-muted-foreground" />}
-                                 <span>{child.label}</span>
-                               </DropdownMenuItem>
-                             </Link>
-                           ))}
-                         </DropdownMenuSubContent>
-                       </DropdownMenuPortal>
-                     </DropdownMenuSub>
+                       </DropdownMenuLabel>
+                       {item.children.map((child, childIdx) => (
+                         <Link key={childIdx} href={child.href}>
+                           <DropdownMenuItem className="gap-2 cursor-pointer pl-8">
+                             {child.icon && <child.icon className="w-4 h-4 text-muted-foreground" />}
+                             <span className="text-sm">{child.label}</span>
+                           </DropdownMenuItem>
+                         </Link>
+                       ))}
+                     </React.Fragment>
                    ) : (
                      <Link key={idx} href={item.href}>
                        <DropdownMenuItem className="gap-2 cursor-pointer">
