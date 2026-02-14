@@ -177,7 +177,7 @@ export async function registerRoutes(
       const cashierId = await platinumGet("/api/billing/auth-day-end-reconcile/active-cashierid-by-userid", { userid: userId });
       
       if (!cashierId && cashierId !== 0) {
-        return res.json({ active: false, cashierId: null });
+        return res.json({ active: false, cashierId: null, cashierRegistered: false });
       }
 
       let cashierDetails = null;
@@ -186,15 +186,18 @@ export async function registerRoutes(
       } catch {}
 
       const cashOffice = cashierDetails?.const_CashOffice || null;
+      const isSessionActive = cashierDetails?.isActive === true;
+      const hasOffice = !!(cashOffice?.cashOffice_ID || cashierDetails?.officeId);
 
       res.json({
-        active: true,
+        active: isSessionActive && hasOffice,
         cashierId,
+        cashierRegistered: true,
         cashFloat: cashierDetails?.cashFloat ?? 0,
-        officeId: cashOffice?.cashOffice_ID || null,
+        officeId: cashOffice?.cashOffice_ID || cashierDetails?.officeId || null,
         officeName: cashOffice?.cashOfficeDesc || null,
         cashOnHandLimit: cashOffice?.cashOnHandLimit || 999999,
-        isActive: cashierDetails?.isActive ?? true,
+        isActive: isSessionActive,
         details: cashierDetails,
       });
     } catch (e: any) {

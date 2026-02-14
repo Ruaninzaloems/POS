@@ -134,6 +134,7 @@ interface PosState {
       billingConfig: BillingConfig | null;
   };
   platinumUser: PlatinumUserInfo | null;
+  cashierRegistered: boolean | null;
 }
 
 interface PosActions {
@@ -189,6 +190,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [sessionLoading, setSessionLoading] = useState(true);
   const [sessionDetails, setSessionDetails] = useState<{startTime: number; officeId: string; officeDesc?: string; floatAmount: number} | undefined>(undefined);
   const [platinumCashierId, setPlatinumCashierId] = useState<number | null>(null);
+  const [cashierRegistered, setCashierRegistered] = useState<boolean | null>(null);
   
   const [officeLimits, setOfficeLimits] = useState<Record<string, number>>({});
 
@@ -288,11 +290,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try {
         const res = await fetch(`/api/platinum/auth/active-cashier-by-userid?userid=${platinumUser.user_ID}`);
         if (!res.ok) {
+          setCashierRegistered(false);
           setSessionLoading(false);
           return;
         }
         const data = await res.json();
-        if (data.active && data.officeId) {
+        setCashierRegistered(data.cashierRegistered === true);
+        if (data.active && data.officeId && data.isActive === true) {
           setPlatinumCashierId(data.cashierId);
           setActiveSession(true);
           setSessionDetails({
@@ -312,9 +316,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           console.log("Active Platinum session restored:", data);
         } else {
           setPlatinumCashierId(data.cashierId || null);
+          console.log("No active Platinum session found. Cashier registered:", data.cashierRegistered, "isActive:", data.isActive);
         }
       } catch (e) {
         console.warn("Failed to check active Platinum session", e);
+        setCashierRegistered(false);
       } finally {
         setSessionLoading(false);
       }
@@ -1289,7 +1295,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       systemSettings,
       updateSystemSettings,
       referenceData,
-      platinumUser
+      platinumUser,
+      cashierRegistered
     }}>
       {children}
     </PosContext.Provider>
