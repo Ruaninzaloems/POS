@@ -14,6 +14,7 @@ export function PaymentDrawer() {
   const { 
     payment, 
     setPaymentAmount, 
+    setCardReference,
     completeTransaction, 
     transactionItems, 
     removeItem,
@@ -256,6 +257,20 @@ export function PaymentDrawer() {
                             />
                         </div>
                     </div>
+
+                    {payment.cardAmount > 0 && (
+                        <div className="px-1">
+                            <Label className="text-xs text-muted-foreground mb-1 block">Card Machine Reference / Receipt No</Label>
+                            <Input
+                                type="text"
+                                placeholder="e.g. last 4 digits or slip number"
+                                value={payment.cardReference}
+                                onChange={(e) => setCardReference(e.target.value)}
+                                className="h-10 font-mono"
+                                data-testid="input-card-reference"
+                            />
+                        </div>
+                    )}
                     
                     {/* Quick Cash */}
                     <div className={`grid grid-cols-3 gap-2 ${viewMode === 'desktop' ? 'lg:hidden' : ''}`}>

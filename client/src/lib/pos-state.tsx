@@ -55,6 +55,7 @@ export interface TransactionRecord {
   payment: {
     cash: number;
     card: number;
+    cardReference: string;
   };
   status: TransactionStatus;
   cashierId: string;
@@ -97,6 +98,7 @@ interface PosState {
   payment: {
     cashAmount: number;
     cardAmount: number;
+    cardReference: string;
     tenderTotal: number;
     changeDue: number;
   };
@@ -149,6 +151,7 @@ interface PosActions {
   updateItemAmount: (id: string, amount: number) => void;
   updateItemDetails: (id: string, details: Partial<TransactionItem>) => void;
   setPaymentAmount: (type: 'cash' | 'card', amount: number) => void;
+  setCardReference: (ref: string) => void;
   clearTransaction: () => void;
   completeTransaction: () => void;
   closeReceiptModal: () => void;
@@ -178,7 +181,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     float: 0
   });
   const [items, setItems] = useState<TransactionItem[]>([]);
-  const [payment, setPayment] = useState({ cash: 0, card: 0 });
+  const [payment, setPayment] = useState({ cash: 0, card: 0, cardReference: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [transactionProcessing, setTransactionProcessing] = useState(false);
@@ -375,6 +378,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             payment: {
               cash: isCash ? paymentAmount : 0,
               card: isCard ? paymentAmount : 0,
+              cardReference: '',
             },
             status: r.isCancelled === 1 ? 'CANCELLED' as TransactionStatus : 'COMPLETED' as TransactionStatus,
             cashierId: currentUser.id,
@@ -463,6 +467,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             payment: {
               cash: isCash ? paymentAmount : 0,
               card: isCard ? paymentAmount : 0,
+              cardReference: '',
             },
             status: rd.isCancelled ? 'CANCELLED' as TransactionStatus : 'COMPLETED' as TransactionStatus,
             cashierId: currentUser.id,
@@ -645,9 +650,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setPayment(prev => ({ ...prev, [type]: amount }));
   };
 
+  const setCardReference = (ref: string) => {
+    setPayment(prev => ({ ...prev, cardReference: ref }));
+  };
+
   const clearTransaction = () => {
     setItems([]);
-    setPayment({ cash: 0, card: 0 });
+    setPayment({ cash: 0, card: 0, cardReference: '' });
     setSearchQuery('');
     setViewingItemId(null);
   };
@@ -1033,7 +1042,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         paymentType: 1,
                         paymentOption: paymentOptionId,
                         outStandingAmount: acctOutstanding,
-                        cardNumber: '',
+                        cardNumber: record.payment.cardReference || '',
                         expiryDate: '',
                         chequeNumber: '',
                         chequeDate: null,
@@ -1167,7 +1176,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     chequeNo: '',
                     bankId: 0,
                     branchId: 0,
-                    cardNo: '',
+                    cardNo: record.payment.cardReference || '',
                     cardExpiryDate: '',
                     paySection1181Only: false,
                     section1181Amount: 0,
@@ -1299,6 +1308,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     isVatable,
                     userId: sessionUserId,
                     finYear,
+                    cardNo: record.payment.cardReference || '',
+                    expiryDate: '',
+                    chequeNo: '',
                 });
                 console.log(`[Priority 2 ${label}] Submitted misc payment for SCOA item ${scoaItemId}`, miscResult);
 
@@ -1478,6 +1490,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       payment: {
         cashAmount: payment.cash,
         cardAmount: payment.card,
+        cardReference: payment.cardReference,
         tenderTotal,
         changeDue
       },
@@ -1497,6 +1510,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updateItemDetails,
       setViewingItem,
       setPaymentAmount,
+      setCardReference,
       clearTransaction,
       completeTransaction,
       closeReceiptModal,

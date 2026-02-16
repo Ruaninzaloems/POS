@@ -3,6 +3,7 @@ import { TransactionItem, TransactionType, TransactionRecord, TransactionStatus 
 export interface PaymentState {
   cash: number;
   card: number;
+  cardReference: string;
 }
 
 export interface TransactionTotals {
