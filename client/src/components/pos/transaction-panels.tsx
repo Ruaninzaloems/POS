@@ -22,6 +22,57 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
+function BasketPayAmountInput({ value, onChange, className = '' }: { value: number; onChange: (val: number) => void; className?: string }) {
+    const [text, setText] = useState(value ? String(value) : '');
+    const lastExternalValue = useRef(value);
+
+    React.useEffect(() => {
+        if (value !== lastExternalValue.current) {
+            lastExternalValue.current = value;
+            const currentNum = parseFloat(text);
+            if (isNaN(currentNum) || Math.abs(currentNum - value) > 0.001) {
+                setText(value ? String(value) : '');
+            }
+        }
+    }, [value]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const raw = e.target.value;
+        if (raw === '' || raw === '.' || /^\d*\.?\d{0,2}$/.test(raw)) {
+            setText(raw);
+            const num = parseFloat(raw);
+            if (!isNaN(num) && num >= 0) {
+                lastExternalValue.current = num;
+                onChange(num);
+            } else if (raw === '' || raw === '.') {
+                lastExternalValue.current = 0;
+                onChange(0);
+            }
+        }
+    };
+
+    const handleBlur = () => {
+        const num = parseFloat(text);
+        if (!isNaN(num) && num >= 0) {
+            setText(num.toString());
+        } else {
+            setText('');
+        }
+    };
+
+    return (
+        <Input
+            type="text"
+            inputMode="decimal"
+            className={`h-9 pl-6 text-right font-mono ${className}`}
+            value={text}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            data-testid="input-basket-pay-amount"
+        />
+    );
+}
+
 function ClearanceBasketExpander({ item, updateItemDetails, updateItemAmount }: {
     item: TransactionItem;
     updateItemDetails: (id: string, details: Partial<TransactionItem>) => void;
@@ -504,18 +555,9 @@ export function TransactionPanels() {
                                           <span className="text-xs text-muted-foreground sm:hidden shrink-0">Pay:</span>
                                           <div className="relative flex-1 sm:flex-none">
                                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-xs">R</span>
-                                             <Input 
-                                                type="number" 
-                                                min="0"
-                                                step="0.01"
-                                                className="h-9 pl-6 text-right font-mono"
+                                             <BasketPayAmountInput
                                                 value={item.amountToPay}
-                                                onChange={(e) => {
-                                                    const val = e.target.value;
-                                                    if (val && parseFloat(val) < 0) return;
-                                                    if (val.includes('.') && val.split('.')[1].length > 2) return;
-                                                    updateItemAmount(item.id, parseFloat(val) || 0);
-                                                }}
+                                                onChange={(val) => updateItemAmount(item.id, val)}
                                              />
                                           </div>
                                       </div>
