@@ -602,31 +602,102 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                             </div>
                             <div>
                                 <CardTitle className="text-lg">Clearance Application</CardTitle>
-                                <p className="text-sm text-muted-foreground font-mono mt-1">{clr.scheduleNo || clr.clearanceId}</p>
+                                <p className="text-sm text-muted-foreground font-mono mt-1">Schedule No: {clr.scheduleNo || clr.clearanceId}</p>
                             </div>
                         </div>
                          <div className="text-right">
-                            <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Total Cost</div>
+                            {clr.status && (
+                                <Badge variant="outline" className={`mb-1 font-mono text-xs ${clr.status === 'Approved' ? 'border-green-500 text-green-600 bg-green-50' : 'border-gray-400 text-gray-600'}`}>
+                                    {clr.status}
+                                </Badge>
+                            )}
+                            <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Amount Due</div>
                             <div className="text-xl font-mono font-bold text-foreground">R {(clr.totalDue || item.amountToPay || 0).toFixed(2)}</div>
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent className="pt-6 space-y-6">
+                    {(clr.ownerName || clr.propertyAddress || clr.sgNumber || clr.expiryDate) && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            {clr.ownerName && (
+                                <div>
+                                    <div className="text-xs text-muted-foreground uppercase tracking-wider">Owner</div>
+                                    <div className="text-sm font-medium">{clr.ownerName}</div>
+                                </div>
+                            )}
+                            {clr.accountID && (
+                                <div>
+                                    <div className="text-xs text-muted-foreground uppercase tracking-wider">Account</div>
+                                    <div className="text-sm font-mono">{clr.accountID}</div>
+                                </div>
+                            )}
+                            {clr.propertyAddress && (
+                                <div className="sm:col-span-2">
+                                    <div className="text-xs text-muted-foreground uppercase tracking-wider">Property Address</div>
+                                    <div className="text-sm">{clr.propertyAddress}</div>
+                                </div>
+                            )}
+                            {clr.sgNumber && (
+                                <div>
+                                    <div className="text-xs text-muted-foreground uppercase tracking-wider">SG Number</div>
+                                    <div className="text-sm font-mono">{clr.sgNumber}</div>
+                                </div>
+                            )}
+                            {clr.expiryDate && (
+                                <div>
+                                    <div className="text-xs text-muted-foreground uppercase tracking-wider">Expiry Date</div>
+                                    <div className="text-sm">{clr.expiryDate}</div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {(clr.clearanceTotal != null || clr.totalPaid != null) && (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            {clr.clearanceTotal != null && (
+                                <div className="text-center p-2 bg-blue-50 rounded border border-blue-100">
+                                    <div className="text-xs text-blue-600 uppercase tracking-wider">Total</div>
+                                    <div className="text-sm font-mono font-bold">R {clr.clearanceTotal.toFixed(2)}</div>
+                                </div>
+                            )}
+                            {clr.total1181 != null && (
+                                <div className="text-center p-2 bg-blue-50 rounded border border-blue-100">
+                                    <div className="text-xs text-blue-600 uppercase tracking-wider">Sec 118(1)</div>
+                                    <div className="text-sm font-mono font-bold">R {clr.total1181.toFixed(2)}</div>
+                                </div>
+                            )}
+                            {clr.totalPaid != null && (
+                                <div className="text-center p-2 bg-green-50 rounded border border-green-100">
+                                    <div className="text-xs text-green-600 uppercase tracking-wider">Paid</div>
+                                    <div className="text-sm font-mono font-bold">R {clr.totalPaid.toFixed(2)}</div>
+                                </div>
+                            )}
+                            {clr.totalRemaining != null && (
+                                <div className="text-center p-2 bg-red-50 rounded border border-red-100">
+                                    <div className="text-xs text-red-600 uppercase tracking-wider">Remaining</div>
+                                    <div className="text-sm font-mono font-bold">R {clr.totalRemaining.toFixed(2)}</div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     <div>
                         <h4 className="font-medium mb-3 text-sm">Linked Accounts Breakdown</h4>
                         <Table>
                             <TableHeader>
                                 <TableRow className="hover:bg-transparent">
                                     <TableHead>Account</TableHead>
-                                    <TableHead>Name / Type</TableHead>
+                                    <TableHead>Name</TableHead>
+                                    <TableHead>Debt Type</TableHead>
                                     <TableHead className="text-right">Amount</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {paidItems.length > 0 ? paidItems.map((pi: any, i: number) => (
                                     <TableRow key={i}>
-                                        <TableCell className="font-mono text-xs">{pi.accountNumber || pi.accountId || 'N/A'}</TableCell>
-                                        <TableCell className="text-muted-foreground">{pi.name || pi.debtType || '-'}</TableCell>
+                                        <TableCell className="font-mono text-xs">{pi.accountNumber || pi.account_ID || pi.accountId || 'N/A'}</TableCell>
+                                        <TableCell>{pi.name || '-'}</TableCell>
+                                        <TableCell className="text-muted-foreground text-sm">{pi.debT_TYPE || pi.debtType || '-'}</TableCell>
                                         <TableCell className="text-right font-mono">R {(pi.paymentAmount || pi.amount || 0).toFixed(2)}</TableCell>
                                     </TableRow>
                                 )) : hasOldFormat ? (
@@ -634,21 +705,23 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                                         {(clr.section118_1_Breakdown || []).map((row: any, i: number) => (
                                             <TableRow key={i}>
                                                 <TableCell className="font-mono text-xs">{clr.linkedAccounts?.[0]?.accountNo || 'N/A'}</TableCell>
-                                                <TableCell className="text-muted-foreground">{row.item}</TableCell>
+                                                <TableCell>-</TableCell>
+                                                <TableCell className="text-muted-foreground text-sm">{row.item}</TableCell>
                                                 <TableCell className="text-right font-mono">R {(row.amount || 0).toFixed(2)}</TableCell>
                                             </TableRow>
                                         ))}
                                         {(clr.section118_3_Breakdown || []).map((row: any, i: number) => (
                                             <TableRow key={`hist-${i}`}>
                                                 <TableCell className="font-mono text-xs">{clr.linkedAccounts?.[0]?.accountNo || 'N/A'}</TableCell>
-                                                <TableCell className="text-muted-foreground">{row.item} (Sec 118(3))</TableCell>
+                                                <TableCell>-</TableCell>
+                                                <TableCell className="text-muted-foreground text-sm">{row.item} (Sec 118(3))</TableCell>
                                                 <TableCell className="text-right font-mono">R {(row.amount || 0).toFixed(2)}</TableCell>
                                             </TableRow>
                                         ))}
                                     </>
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={3} className="text-center text-muted-foreground text-sm">No account breakdown available</TableCell>
+                                        <TableCell colSpan={4} className="text-center text-muted-foreground text-sm">No account breakdown available</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>

@@ -1266,7 +1266,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const origData = item.originalData || {};
             const clearanceId = origData.clearanceId || origData.scheduleNo || item.reference;
             const paidItems = origData.paidItems || [];
-            const accountHolderName = item.paidBy || origData.linkedAccounts?.[0]?.name || 'Walk-in';
+            const accountHolderName = item.paidBy || origData.ownerName || origData.linkedAccounts?.[0]?.name || 'Walk-in';
 
             const submitOneClearance = async (paymentTypeId: number, amount: number, tender: number, change: number, label: string, splitType: 'cash' | 'card') => {
                 const clrResult = await platinumSubmitClearancePayment({
@@ -1278,7 +1278,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     changeAmount: change,
                     paidAmount: amount,
                     outstandingAmount: item.amountDue || amount,
-                    clearance_ID: Number(clearanceId),
+                    clearance_ID: String(clearanceId),
+                    finYear,
                     accountHolderName,
                     chequeNo: '',
                     bankId: 0,
@@ -1288,8 +1289,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     paySection1181Only: false,
                     section1181Amount: 0,
                     paidItems: paidItems.map((pi: any) => ({
-                        ...pi,
-                        paymentAmount: Math.round((pi.paymentAmount || pi.amount || 0) * (amount / (item.amountToPay || 1)) * 100) / 100,
+                        account_ID: pi.account_ID ?? pi.accountID ?? pi.accountId ?? null,
+                        accountNumber: pi.accountNumber || pi.accountNo || null,
+                        name: pi.name || null,
+                        debT_TYPE: pi.debT_TYPE || pi.debtType || null,
+                        amount: Math.round((pi.amount || pi.paymentAmount || 0) * (amount / (item.amountToPay || 1)) * 100) / 100,
                     })),
                 });
                 console.log(`[Priority 1B ${label}] Submitted clearance payment for ${clearanceId}`, clrResult);
@@ -1347,10 +1351,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
                     await submitOneClearance(1, itemCash, itemCashTender, itemCashChange, 'CASH', 'cash');
                     if (itemCard > 0) {
-                        await submitOneClearance(1, itemCard, itemCard, 0, 'CARD', 'card');
+                        await submitOneClearance(3, itemCard, itemCard, 0, 'CARD', 'card');
                     }
                 } else {
-                    await submitOneClearance(1, item.amountToPay, clrGroupTender, clrGroupChange, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash');
+                    await submitOneClearance(record.payment.card > 0 ? 1 : 1, item.amountToPay, clrGroupTender, clrGroupChange, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash');
                 }
             } catch (e: any) {
                 console.warn(`[Priority 1B] Failed to submit clearance payment for ${clearanceId}`, e);
@@ -1358,12 +1362,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
 
             for (const pi of paidItems) {
-                if (pi.accountId) {
+                const acctId = pi.account_ID || pi.accountId;
+                if (acctId) {
                     try {
-                        await rebuildFullAccount(Number(pi.accountId));
-                        console.log(`[Priority 1B] Rebuild triggered for account ${pi.accountId}`);
+                        await rebuildFullAccount(Number(acctId));
+                        console.log(`[Priority 1B] Rebuild triggered for account ${acctId}`);
                     } catch (e) {
-                        console.warn(`[Priority 1B] Failed to rebuild account ${pi.accountId}`, e);
+                        console.warn(`[Priority 1B] Failed to rebuild account ${acctId}`, e);
                     }
                 }
             }

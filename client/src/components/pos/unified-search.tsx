@@ -5,7 +5,7 @@ import { UnifiedSearch as SearchComponent, SearchResult, parseMobileFromContactD
 import { Filter, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Account } from '@/lib/mock-data';
-import { fetchAccounts, fetchBillingStagePrepaidRecharge, fetchBillingStagePrepaidRecovery, searchInstitutions, fetchAccountsByGroup, platinumGetAccountsForClearance, enrichAccountData } from '@/lib/external-api';
+import { fetchAccounts, fetchBillingStagePrepaidRecharge, fetchBillingStagePrepaidRecovery, searchInstitutions, fetchAccountsByGroup, platinumGetAccountsForClearance, platinumGetClearanceData, enrichAccountData } from '@/lib/external-api';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -166,20 +166,41 @@ export function UnifiedSearch() {
         const clearanceId = clr.clearanceId || clr.scheduleNo;
 
         try {
-            const accountsResult = await platinumGetAccountsForClearance({
-                clearanceId: clearanceId,
-                userId: -1,
-            });
+            const [accountsResult, clearanceDataResult] = await Promise.all([
+                platinumGetAccountsForClearance({
+                    clearanceId: String(clearanceId),
+                    userId: -1,
+                }),
+                platinumGetClearanceData({
+                    clearanceId: String(clearanceId),
+                }).catch(() => null),
+            ]);
 
             const accounts = (accountsResult as any)?.items || accountsResult || [];
+            const clearanceInfo = Array.isArray((clearanceDataResult as any)?.items)
+                ? (clearanceDataResult as any).items[0]
+                : (Array.isArray(clearanceDataResult) ? (clearanceDataResult as any)[0] : clearanceDataResult);
+
             const totalDue = Array.isArray(accounts)
                 ? accounts.reduce((sum: number, acc: any) => sum + (acc.amount || acc.paymentAmount || 0), 0)
                 : (clr.totalDue || 0);
 
+            const ownerName = clearanceInfo?.name || '';
+            const propertyAddress = clearanceInfo?.locationAddress || '';
+            const sgNumber = clearanceInfo?.sgNumber || '';
+            const status = clearanceInfo?.status || '';
+            const expiryDate = clearanceInfo?.clearanceExpiryDateStr || clearanceInfo?.clearanceExpiryDate || '';
+            const accountID = clearanceInfo?.accountID || '';
+            const total1181 = clearanceInfo?.total1181 ?? null;
+            const total1183 = clearanceInfo?.total1183 ?? null;
+            const totalPaid = clearanceInfo?.paid ?? null;
+            const totalRemaining = clearanceInfo?.remaining ?? null;
+            const clearanceTotal = clearanceInfo?.total ?? null;
+
             newItem = {
                 id: crypto.randomUUID(),
                 type: 'CLEARANCE',
-                description: `Clearance ${clearanceId}`,
+                description: `Clearance ${clearanceId} - ${ownerName || accountID}`,
                 reference: String(clearanceId),
                 amountDue: totalDue,
                 amountToPay: totalDue,
@@ -188,11 +209,23 @@ export function UnifiedSearch() {
                     clearanceId: clearanceId,
                     scheduleNo: String(clearanceId),
                     totalDue,
+                    ownerName,
+                    propertyAddress,
+                    sgNumber,
+                    status,
+                    expiryDate,
+                    accountID,
+                    total1181,
+                    total1183,
+                    totalPaid,
+                    totalRemaining,
+                    clearanceTotal,
+                    clearanceInfo,
                     paidItems: Array.isArray(accounts) ? accounts.map((acc: any) => ({
-                        accountId: acc.accountId,
-                        accountNumber: acc.accountNumber || acc.accountNo,
+                        account_ID: acc.account_ID ?? acc.accountID ?? acc.accountId ?? null,
+                        accountNumber: acc.accountNumber || acc.accountNo || '',
                         name: acc.name || '',
-                        debtType: acc.debtType || '',
+                        debT_TYPE: acc.debT_TYPE || acc.debtType || '',
                         amount: acc.amount || 0,
                         paymentAmount: acc.paymentAmount || acc.amount || 0,
                     })) : [],
