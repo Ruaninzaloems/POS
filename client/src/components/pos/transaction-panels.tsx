@@ -11,6 +11,7 @@ import { User, MapPin, Phone, Mail, FileCheck, Zap, Trash2, Droplets, Upload, Se
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { AccountEnquiryView } from '@/components/pos/account-enquiry-view';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -591,9 +592,40 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
     if (item.type === 'CLEARANCE') {
         const clr = item.originalData || {};
         const paidItems = clr.paidItems || [];
-        const hasOldFormat = clr.section118_1_Breakdown || clr.section118_3_Breakdown;
+        const paySection1181Only = clr.paySection1181Only || false;
+        const section1181Amount = clr.total1181 ?? 0;
+        const section1183Amount = clr.total1183 ?? 0;
+
+        const handlePaySection1181Toggle = (checked: boolean) => {
+            const newOrigData = { ...clr, paySection1181Only: checked };
+            if (checked) {
+                const sec1181Abs = Math.abs(section1181Amount || 0);
+                updateItemDetails(item.id, {
+                    amountToPay: sec1181Abs,
+                    originalData: newOrigData,
+                });
+            } else {
+                updateItemDetails(item.id, {
+                    amountToPay: clr.totalDue || item.amountDue,
+                    originalData: newOrigData,
+                });
+            }
+        };
+
+        const handlePaidItemAmountChange = (index: number, newAmount: number) => {
+            const updatedPaidItems = [...paidItems];
+            updatedPaidItems[index] = { ...updatedPaidItems[index], paymentAmount: newAmount };
+            const newTotal = updatedPaidItems.reduce((sum: number, pi: any) => sum + (pi.paymentAmount ?? pi.amount ?? 0), 0);
+            updateItemDetails(item.id, {
+                amountToPay: newTotal,
+                originalData: { ...clr, paidItems: updatedPaidItems },
+            });
+        };
+
+        const today = new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: '2-digit', day: '2-digit' });
+
         return (
-            <Card className="border-l-4 border-l-amber-500 shadow-sm">
+            <Card className="border-l-4 border-l-amber-500 shadow-sm" data-testid={`card-clearance-${item.id}`}>
                  <CardHeader className="pb-3 bg-amber-500/5">
                     <div className="flex justify-between items-start">
                         <div className="flex gap-4">
@@ -602,7 +634,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                             </div>
                             <div>
                                 <CardTitle className="text-lg">Clearance Application</CardTitle>
-                                <p className="text-sm text-muted-foreground font-mono mt-1">Schedule No: {clr.scheduleNo || clr.clearanceId}</p>
+                                <p className="text-sm text-muted-foreground font-mono mt-1">Clearance ID: {clr.scheduleNo || clr.clearanceId}</p>
                             </div>
                         </div>
                          <div className="text-right">
@@ -612,28 +644,28 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                                 </Badge>
                             )}
                             <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Amount Due</div>
-                            <div className="text-xl font-mono font-bold text-foreground">R {(clr.totalDue || item.amountToPay || 0).toFixed(2)}</div>
+                            <div className="text-xl font-mono font-bold text-foreground">R {(clr.totalDue || item.amountDue || 0).toFixed(2)}</div>
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent className="pt-6 space-y-6">
                     {(clr.ownerName || clr.propertyAddress || clr.sgNumber || clr.expiryDate) && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
                             {clr.ownerName && (
                                 <div>
-                                    <div className="text-xs text-muted-foreground uppercase tracking-wider">Owner</div>
+                                    <div className="text-xs text-muted-foreground uppercase tracking-wider">Name</div>
                                     <div className="text-sm font-medium">{clr.ownerName}</div>
                                 </div>
                             )}
-                            {clr.accountID && (
+                            {(clr.accountID || paidItems[0]?.accountNumber) && (
                                 <div>
-                                    <div className="text-xs text-muted-foreground uppercase tracking-wider">Account</div>
-                                    <div className="text-sm font-mono">{clr.accountID}</div>
+                                    <div className="text-xs text-muted-foreground uppercase tracking-wider">Account Number</div>
+                                    <div className="text-sm font-mono">{paidItems[0]?.accountNumber || clr.accountID}</div>
                                 </div>
                             )}
                             {clr.propertyAddress && (
                                 <div className="sm:col-span-2">
-                                    <div className="text-xs text-muted-foreground uppercase tracking-wider">Property Address</div>
+                                    <div className="text-xs text-muted-foreground uppercase tracking-wider">Address</div>
                                     <div className="text-sm">{clr.propertyAddress}</div>
                                 </div>
                             )}
@@ -645,95 +677,130 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                             )}
                             {clr.expiryDate && (
                                 <div>
-                                    <div className="text-xs text-muted-foreground uppercase tracking-wider">Expiry Date</div>
+                                    <div className="text-xs text-muted-foreground uppercase tracking-wider">Clearance Valid Date</div>
                                     <div className="text-sm">{clr.expiryDate}</div>
                                 </div>
                             )}
-                        </div>
-                    )}
-
-                    {(clr.clearanceTotal != null || clr.totalPaid != null) && (
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                             {clr.clearanceTotal != null && (
-                                <div className="text-center p-2 bg-blue-50 rounded border border-blue-100">
-                                    <div className="text-xs text-blue-600 uppercase tracking-wider">Total</div>
-                                    <div className="text-sm font-mono font-bold">R {clr.clearanceTotal.toFixed(2)}</div>
-                                </div>
-                            )}
-                            {clr.total1181 != null && (
-                                <div className="text-center p-2 bg-blue-50 rounded border border-blue-100">
-                                    <div className="text-xs text-blue-600 uppercase tracking-wider">Sec 118(1)</div>
-                                    <div className="text-sm font-mono font-bold">R {clr.total1181.toFixed(2)}</div>
+                                <div>
+                                    <div className="text-xs text-muted-foreground uppercase tracking-wider">Total Cost</div>
+                                    <div className="text-sm font-mono font-bold">R {Number(clr.clearanceTotal).toFixed(2)}</div>
                                 </div>
                             )}
                             {clr.totalPaid != null && (
-                                <div className="text-center p-2 bg-green-50 rounded border border-green-100">
-                                    <div className="text-xs text-green-600 uppercase tracking-wider">Paid</div>
-                                    <div className="text-sm font-mono font-bold">R {clr.totalPaid.toFixed(2)}</div>
+                                <div>
+                                    <div className="text-xs text-muted-foreground uppercase tracking-wider">Paid Amount</div>
+                                    <div className="text-sm font-mono font-bold text-green-700">R {Number(clr.totalPaid).toFixed(2)}</div>
                                 </div>
                             )}
                             {clr.totalRemaining != null && (
-                                <div className="text-center p-2 bg-red-50 rounded border border-red-100">
-                                    <div className="text-xs text-red-600 uppercase tracking-wider">Remaining</div>
-                                    <div className="text-sm font-mono font-bold">R {clr.totalRemaining.toFixed(2)}</div>
+                                <div>
+                                    <div className="text-xs text-muted-foreground uppercase tracking-wider">Remaining Amount</div>
+                                    <div className="text-sm font-mono font-bold text-red-600">R {Number(clr.totalRemaining).toFixed(2)}</div>
+                                </div>
+                            )}
+                            {clr.status && (
+                                <div>
+                                    <div className="text-xs text-muted-foreground uppercase tracking-wider">Clearance Status</div>
+                                    <div className="text-sm font-medium">{clr.status}</div>
                                 </div>
                             )}
                         </div>
                     )}
 
                     <div>
-                        <h4 className="font-medium mb-3 text-sm">Linked Accounts Breakdown</h4>
+                        <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-medium text-sm">Payment</h4>
+                            <p className="text-xs text-amber-600 italic">Any account with a payment amount of zero (0) will be ignored</p>
+                        </div>
                         <Table>
                             <TableHeader>
-                                <TableRow className="hover:bg-transparent">
-                                    <TableHead>Account</TableHead>
+                                <TableRow className="hover:bg-transparent bg-slate-50">
+                                    <TableHead>Account Number</TableHead>
                                     <TableHead>Name</TableHead>
-                                    <TableHead>Debt Type</TableHead>
-                                    <TableHead className="text-right">Amount</TableHead>
+                                    <TableHead>Clearance Type</TableHead>
+                                    <TableHead className="text-right">Cost Schedule Amount</TableHead>
+                                    <TableHead className="text-right">Payment Amount</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {paidItems.length > 0 ? paidItems.map((pi: any, i: number) => (
-                                    <TableRow key={i}>
-                                        <TableCell className="font-mono text-xs">{pi.accountNumber || pi.account_ID || pi.accountId || 'N/A'}</TableCell>
-                                        <TableCell>{pi.name || '-'}</TableCell>
-                                        <TableCell className="text-muted-foreground text-sm">{pi.debT_TYPE || pi.debtType || '-'}</TableCell>
-                                        <TableCell className="text-right font-mono">R {(pi.paymentAmount || pi.amount || 0).toFixed(2)}</TableCell>
-                                    </TableRow>
-                                )) : hasOldFormat ? (
-                                    <>
-                                        {(clr.section118_1_Breakdown || []).map((row: any, i: number) => (
-                                            <TableRow key={i}>
-                                                <TableCell className="font-mono text-xs">{clr.linkedAccounts?.[0]?.accountNo || 'N/A'}</TableCell>
-                                                <TableCell>-</TableCell>
-                                                <TableCell className="text-muted-foreground text-sm">{row.item}</TableCell>
-                                                <TableCell className="text-right font-mono">R {(row.amount || 0).toFixed(2)}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                        {(clr.section118_3_Breakdown || []).map((row: any, i: number) => (
-                                            <TableRow key={`hist-${i}`}>
-                                                <TableCell className="font-mono text-xs">{clr.linkedAccounts?.[0]?.accountNo || 'N/A'}</TableCell>
-                                                <TableCell>-</TableCell>
-                                                <TableCell className="text-muted-foreground text-sm">{row.item} (Sec 118(3))</TableCell>
-                                                <TableCell className="text-right font-mono">R {(row.amount || 0).toFixed(2)}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </>
-                                ) : (
+                                {paidItems.length > 0 ? paidItems.map((pi: any, i: number) => {
+                                    const costAmount = pi.amount || 0;
+                                    const payAmount = pi.paymentAmount ?? pi.amount ?? 0;
+                                    return (
+                                        <TableRow key={i}>
+                                            <TableCell className="font-mono text-xs">{pi.accountNumber || pi.account_ID || pi.accountId || 'N/A'}</TableCell>
+                                            <TableCell>{pi.name || '-'}</TableCell>
+                                            <TableCell className="text-muted-foreground text-sm">{pi.debT_TYPE || pi.debtType || '-'}</TableCell>
+                                            <TableCell className="text-right font-mono">R {costAmount.toFixed(2)}</TableCell>
+                                            <TableCell className="text-right">
+                                                <Input
+                                                    type="number"
+                                                    step="0.01"
+                                                    min={costAmount}
+                                                    value={payAmount}
+                                                    disabled={paySection1181Only}
+                                                    onChange={(e) => {
+                                                        const val = parseFloat(e.target.value);
+                                                        if (!isNaN(val) && val >= costAmount) {
+                                                            handlePaidItemAmountChange(i, val);
+                                                        } else if (!isNaN(val) && val < costAmount) {
+                                                            handlePaidItemAmountChange(i, costAmount);
+                                                        }
+                                                    }}
+                                                    className="w-28 h-8 text-right font-mono ml-auto"
+                                                    data-testid={`input-clearance-payment-${i}`}
+                                                />
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                }) : (
                                     <TableRow>
-                                        <TableCell colSpan={4} className="text-center text-muted-foreground text-sm">No account breakdown available</TableCell>
+                                        <TableCell colSpan={5} className="text-center text-muted-foreground text-sm">No account breakdown available</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
                         </Table>
                     </div>
 
-                    <div className="bg-amber-50 p-4 rounded-lg border border-amber-100">
-                         <div className="flex items-center justify-between">
-                             <Label className="text-amber-900 font-medium">Clearance Payment Total</Label>
-                             <div className="font-mono text-xl font-bold text-amber-900">R {item.amountToPay.toFixed(2)}</div>
-                         </div>
-                         <p className="text-xs text-amber-700/80 mt-1">Full payment required for clearance figures issuance.</p>
+                    <div className="border rounded-lg p-4 bg-slate-50/50 space-y-4">
+                        <h4 className="font-medium text-sm border-b pb-2">Information</h4>
+                        <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+                            <div className="flex items-center gap-3">
+                                <Label className="text-sm text-muted-foreground w-28 shrink-0">Receipt Date</Label>
+                                <div className="text-sm font-mono bg-white border rounded px-3 py-1.5 flex-1">{today}</div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
+                                    <Checkbox
+                                        id={`pay1181-${item.id}`}
+                                        checked={paySection1181Only}
+                                        onCheckedChange={(checked) => handlePaySection1181Toggle(checked === true)}
+                                        data-testid={`checkbox-pay-section-1181-${item.id}`}
+                                    />
+                                    <Label htmlFor={`pay1181-${item.id}`} className="text-sm cursor-pointer">Pay Section 118(1) Only</Label>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Label className="text-sm text-muted-foreground w-28 shrink-0">Total Amount</Label>
+                                <div className="text-sm font-mono font-bold bg-amber-50 border border-amber-200 rounded px-3 py-1.5 flex-1">
+                                    R {item.amountToPay.toFixed(2)}
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Label className="text-sm text-muted-foreground w-36 shrink-0">Section 118(1) Amount</Label>
+                                <div className={`text-sm font-mono font-bold rounded px-3 py-1.5 flex-1 ${section1181Amount < 0 ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-blue-50 border border-blue-200'}`}>
+                                    R {Number(section1181Amount).toFixed(2)}
+                                </div>
+                            </div>
+                            <div />
+                            <div className="flex items-center gap-3">
+                                <Label className="text-sm text-muted-foreground w-36 shrink-0">Section 118(3) Amount</Label>
+                                <div className="text-sm font-mono font-bold bg-blue-50 border border-blue-200 rounded px-3 py-1.5 flex-1">
+                                    R {Number(section1183Amount).toFixed(2)}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </CardContent>
             </Card>

@@ -1286,8 +1286,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     branchId: 0,
                     cardNo: record.payment.cardReference || '',
                     cardExpiryDate: '',
-                    paySection1181Only: false,
-                    section1181Amount: 0,
+                    paySection1181Only: origData.paySection1181Only || false,
+                    section1181Amount: origData.paySection1181Only ? Math.abs(origData.total1181 || 0) : 0,
                     paidItems: paidItems.map((pi: any) => ({
                         account_ID: pi.account_ID ?? pi.accountID ?? pi.accountId ?? null,
                         accountNumber: pi.accountNumber || pi.accountNo || null,
@@ -1354,7 +1354,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         await submitOneClearance(3, itemCard, itemCard, 0, 'CARD', 'card');
                     }
                 } else {
-                    await submitOneClearance(record.payment.card > 0 ? 1 : 1, item.amountToPay, clrGroupTender, clrGroupChange, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash');
+                    await submitOneClearance(record.payment.card > 0 ? 3 : 1, item.amountToPay, clrGroupTender, clrGroupChange, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash');
                 }
             } catch (e: any) {
                 console.warn(`[Priority 1B] Failed to submit clearance payment for ${clearanceId}`, e);
