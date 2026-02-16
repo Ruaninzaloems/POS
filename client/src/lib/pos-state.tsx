@@ -1281,6 +1281,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     } finally {
         setTransactionProcessing(false);
+        setIsReceiptModalOpen(false);
+        clearTransaction();
+        console.log('[Payment] Transaction complete — screen reset to new transaction state');
         setTimeout(() => {
             loadTransactionsFromApi(currentUser.id).catch(e => 
                 console.warn('[Transactions] Background refresh after payment failed:', e)
