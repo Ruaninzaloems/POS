@@ -24,7 +24,7 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancellationReason, setCancellationReason] = useState('');
   const [reprintTx, setReprintTx] = useState<TransactionRecord | null>(null);
-  const [pendingPrint, setPendingPrint] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const reprintRef = useRef<HTMLDivElement>(null);
 
   const handleReprint = useReactToPrint({
@@ -32,16 +32,15 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
     documentTitle: `Receipt-${reprintTx?.receiptNumber || 'Reprint'}`,
   });
 
-  useEffect(() => {
-    if (pendingPrint && reprintTx && reprintRef.current) {
-      setPendingPrint(false);
-      handleReprint();
-    }
-  }, [pendingPrint, reprintTx]);
-
   const triggerReprint = (tx: TransactionRecord) => {
     setReprintTx(tx);
-    setPendingPrint(true);
+    setShowPreview(true);
+  };
+
+  const handlePrintFromPreview = () => {
+    if (reprintRef.current) {
+      handleReprint();
+    }
   };
 
   const initiateCancel = (id: string) => {
@@ -207,13 +206,33 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
         </DialogFooter>
       </DialogContent>
 
-      <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
-        <div ref={reprintRef}>
-          {reprintTx && (
-            <PosReceiptTemplate transaction={reprintTx} isReprint={true} isCancelled={reprintTx.status === 'CANCELLED'} />
-          )}
-        </div>
-      </div>
+      <Dialog open={showPreview && !!reprintTx} onOpenChange={(o) => { if (!o) { setShowPreview(false); setReprintTx(null); } }}>
+        <DialogContent className="sm:max-w-[420px] max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Receipt className="w-5 h-5" />
+              Receipt Preview
+            </DialogTitle>
+            <DialogDescription>
+              Receipt {reprintTx?.receiptNumber || ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto border rounded-md bg-white">
+            <div ref={reprintRef}>
+              {reprintTx && (
+                <PosReceiptTemplate transaction={reprintTx} isReprint={true} isCancelled={reprintTx.status === 'CANCELLED'} />
+              )}
+            </div>
+          </div>
+          <DialogFooter className="flex gap-2 sm:justify-between">
+            <Button variant="outline" onClick={() => { setShowPreview(false); setReprintTx(null); }}>Close</Button>
+            <Button onClick={handlePrintFromPreview} className="gap-2" data-testid="button-print-receipt">
+              <Printer className="w-4 h-4" />
+              Print Receipt
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Reason Dialog */}
       <Dialog open={!!cancellingId} onOpenChange={(o) => !o && setCancellingId(null)}>
