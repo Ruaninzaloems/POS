@@ -1191,6 +1191,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     console.log(`[Priority 1 ${label}] Submitting consumer payment for account ${acct.account_ID} (${acct.name}), PAYMENT amount: R${itemPayment}, full outstanding: R${acctOutstanding}, requestModel.totalAmount: R${requestModel.totalAmount}, requestModel.outStandingAmount: R${requestModel.outStandingAmount}`);
 
                     const { _userAmountToPay: _, ...submitAccount } = acct;
+                    submitAccount.outStandingAmt = itemPayment;
+                    console.log(`[Priority 1 ${label}] submitAccount.outStandingAmt overridden to user payment: R${submitAccount.outStandingAmt} (was full outstanding: R${acctOutstanding})`);
                     const result = await submitConsumerPayment(sessionUserId, {
                         account: submitAccount,
                         requestModel,
