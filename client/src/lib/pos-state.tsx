@@ -412,7 +412,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (results.length > 0) {
         const mapped: TransactionRecord[] = results.map(({ receiptId: rid, data: rd }) => {
           const isCash = rd.billType?.toLowerCase().includes('cash') || rd.paymentTypeId === 1;
-          const isCard = rd.billType?.toLowerCase().includes('card') || rd.paymentTypeId === 2;
+          const isCard = rd.billType?.toLowerCase().includes('card') || rd.paymentTypeId === 3;
           const paymentAmount = rd.tenderAmount || rd.amount || 0;
 
           let txType: TransactionType = 'CONSUMER_SERVICES';
@@ -833,7 +833,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     tenderAmount: rd.tenderAmount,
                     changeAmount: rd.changeAmount,
                     outstandingAmount: rd.outstandingAmount,
-                    paymentType: rd.billType || (rd.paymentTypeId === 1 ? 'Cash' : rd.paymentTypeId === 2 ? 'Card' : 'Cash'),
+                    paymentType: rd.billType || (rd.paymentTypeId === 1 ? 'Cash' : rd.paymentTypeId === 3 ? 'Credit Card' : rd.paymentTypeId === 2 ? 'Cheque' : rd.paymentTypeId === 4 ? 'Postal Order' : 'Cash'),
                     paymentOption: rd.payMode || 'Consumer Services',
                     accountId: rd.accountId,
                     oldAccountCode: rd.oldAccountCode,
@@ -1071,7 +1071,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 if (accCardActual > 0) {
                     try {
                         await platinumSaveMultipleAccountPayment(saveAccounts, { userId: String(sessionUserId) });
-                        const cardResult = await submitConsumerPayments(accCardActual, accCardActual, 0, 2, 1, 'CARD', accCardActual);
+                        const cardResult = await submitConsumerPayments(accCardActual, accCardActual, 0, 3, 1, 'CARD', accCardActual);
                         console.log(`[Priority 1 CARD] Submitted card payment`, cardResult);
                         const cardReceiptIds = extractReceiptIds(cardResult);
                         await processAccReceiptResult(cardReceiptIds, 'CARD', 'card', accCardActual);
@@ -1081,7 +1081,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     }
                 }
             } else {
-                const paymentTypeId = record.payment.card > 0 ? 2 : 1;
+                const paymentTypeId = record.payment.card > 0 ? 3 : 1;
                 try {
                     const submitResult = await submitConsumerPayments(accountTotal, accTender, accChange, paymentTypeId, 1, 'ACC');
                     console.log(`[Priority 1] Submitted payment`, submitResult);
@@ -1207,10 +1207,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
                     await submitOneClearance(1, itemCash, itemCashTender, itemCashChange, 'CASH', 'cash');
                     if (itemCard > 0) {
-                        await submitOneClearance(2, itemCard, itemCard, 0, 'CARD', 'card');
+                        await submitOneClearance(3, itemCard, itemCard, 0, 'CARD', 'card');
                     }
                 } else {
-                    const paymentTypeId = record.payment.card > 0 ? 2 : 1;
+                    const paymentTypeId = record.payment.card > 0 ? 3 : 1;
                     await submitOneClearance(paymentTypeId, item.amountToPay, clrGroupTender, clrGroupChange, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash');
                 }
             } catch (e: any) {
@@ -1339,10 +1339,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     await submitOneMisc(1, itemCash, itemCashTender, itemCashChange, 'CASH', 'cash');
 
                     if (itemCard > 0) {
-                        await submitOneMisc(2, itemCard, itemCard, 0, 'CARD', 'card');
+                        await submitOneMisc(3, itemCard, itemCard, 0, 'CARD', 'card');
                     }
                 } else {
-                    const paymentTypeId = record.payment.card > 0 ? 2 : 1;
+                    const paymentTypeId = record.payment.card > 0 ? 3 : 1;
                     await submitOneMisc(paymentTypeId, item.amountToPay, item.amountToPay, 0, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash');
                 }
             } catch (e: any) {
