@@ -56,7 +56,7 @@ export class PermitTemplate extends React.Component<PermitTemplateProps, PermitT
         <div className="space-y-6 text-lg">
             <div className="flex justify-between border-b border-gray-300 pb-2">
                 <span className="font-bold uppercase text-gray-600">Permit Number:</span>
-                <span className="font-mono font-bold text-xl">{transaction?.receiptNumber || 'PENDING'}</span>
+                <span className="font-mono font-bold text-xl">{transaction?.receiptNumber || '—'}</span>
             </div>
 
             <div className="flex justify-between border-b border-gray-300 pb-2">

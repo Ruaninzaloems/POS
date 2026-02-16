@@ -756,7 +756,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         item.type === 'PREPAID' && item.originalData?.prepaidType === 'Water'
     );
 
-    let finalReceiptNumber = 'PENDING';
+    let finalReceiptNumber = '';
     record.splitReceipts = [];
 
     const accountTotal = accountItems.reduce((sum, i) => sum + i.amountToPay, 0);
@@ -929,7 +929,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 console.log(`[Priority 1 ${paymentLabel}] Receipt ${receiptNo} for account ${acctId} (${acctName})`);
             }
 
-            if (!finalReceiptNumber || finalReceiptNumber === 'PENDING') {
+            if (!finalReceiptNumber) {
                 finalReceiptNumber = receiptNo;
                 updateRecordReceiptNumber(record, finalReceiptNumber);
             }
@@ -1230,7 +1230,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         console.warn(`[Priority 1B ${label}] Could not fetch receipt number`, e);
                     }
 
-                    if (!finalReceiptNumber || finalReceiptNumber === 'PENDING') {
+                    if (!finalReceiptNumber) {
                         finalReceiptNumber = receiptNo;
                         updateRecordReceiptNumber(record, finalReceiptNumber);
                     }
@@ -1363,7 +1363,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         console.warn(`[Priority 2 ${label}] Could not fetch receipt number`, e);
                     }
 
-                    if (!finalReceiptNumber || finalReceiptNumber === 'PENDING') {
+                    if (!finalReceiptNumber) {
                         finalReceiptNumber = receiptNo;
                         updateRecordReceiptNumber(record, finalReceiptNumber);
                     }

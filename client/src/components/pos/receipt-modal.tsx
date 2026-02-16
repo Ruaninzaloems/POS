@@ -147,7 +147,7 @@ export function ReceiptModal() {
 
   if (!currentTransaction) return null;
 
-  const paymentFailed = !transactionProcessing && (!currentTransaction.receiptNumber || currentTransaction.receiptNumber === 'PENDING');
+  const paymentFailed = !transactionProcessing && !currentTransaction.receiptNumber;
   const paymentSucceeded = !transactionProcessing && !paymentFailed;
 
   return (

@@ -110,7 +110,7 @@ export function createTransactionRecord(
 
   return {
       id: crypto.randomUUID(),
-      receiptNumber: `PENDING`,
+      receiptNumber: '',
       timestamp: Date.now(),
       items: sortedItems,
       totalAmount: totalToPay,
