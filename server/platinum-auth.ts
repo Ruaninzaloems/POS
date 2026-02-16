@@ -217,7 +217,9 @@ export async function platinumGet(path: string, params?: Record<string, string>)
     }
 
     if (!res.ok) {
-      return { _error: true, status: res.status, statusText: res.statusText };
+      const errBody = await res.text().catch(() => '');
+      console.error(`[PlatinumGET] ${path} returned ${res.status}: ${errBody.substring(0, 500)}`);
+      return { _error: true, status: res.status, statusText: res.statusText, detail: errBody.substring(0, 500) };
     }
 
     const text = await res.text();
