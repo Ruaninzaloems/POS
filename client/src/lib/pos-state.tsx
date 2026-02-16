@@ -103,6 +103,7 @@ interface PosState {
   searchQuery: string;
   isReceiptModalOpen: boolean;
   transactionProcessing: boolean;
+  currentTransactionId: string | null;
   viewingItemId: string | null;
   recentTransactions: TransactionRecord[];
   dayEndStatus: DayEndStatus;
@@ -181,6 +182,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [searchQuery, setSearchQuery] = useState('');
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [transactionProcessing, setTransactionProcessing] = useState(false);
+  const [currentTransactionId, setCurrentTransactionId] = useState<string | null>(null);
+  const currentTransactionIdRef = React.useRef<string | null>(null);
+  React.useEffect(() => { currentTransactionIdRef.current = currentTransactionId; }, [currentTransactionId]);
   const [viewingItemId, setViewingItemId] = useState<string | null>(null);
   const [recentTransactions, setRecentTransactions] = useState<TransactionRecord[]>([]);
   const [dayEndStatus, setDayEndStatus] = useState<DayEndStatus>('OPEN');
@@ -383,7 +387,15 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           };
         });
 
-        setRecentTransactions(mapped);
+        setRecentTransactions(prev => {
+            const activeId = currentTransactionIdRef.current;
+            const activeTx = activeId ? prev.find(t => t.id === activeId) : null;
+            if (activeTx) {
+                const filtered = mapped.filter(t => t.id !== activeTx.id);
+                return [activeTx, ...filtered];
+            }
+            return mapped;
+        });
         console.log(`[Transactions] Loaded ${mapped.length} transactions from Platinum ViewReceipt API`);
         return;
       }
@@ -463,10 +475,22 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
 
         mapped.sort((a, b) => b.timestamp - a.timestamp);
-        setRecentTransactions(mapped);
+        setRecentTransactions(prev => {
+            const activeId = currentTransactionIdRef.current;
+            const activeTx = activeId ? prev.find(t => t.id === activeId) : null;
+            if (activeTx) {
+                const filtered = mapped.filter(t => t.id !== activeTx.id);
+                return [activeTx, ...filtered];
+            }
+            return mapped;
+        });
         console.log(`[Transactions] Loaded ${mapped.length} transactions from stored receipt IDs via pos-multi-receipt-print`);
       } else {
-        setRecentTransactions([]);
+        setRecentTransactions(prev => {
+            const activeId = currentTransactionIdRef.current;
+            const activeTx = activeId ? prev.find(t => t.id === activeId) : null;
+            return activeTx ? [activeTx] : [];
+        });
         console.log(`[Transactions] No receipt data found from stored IDs`);
       }
     } catch (e) {
@@ -672,6 +696,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
     
     setRecentTransactions(prev => [record, ...prev]);
+    setCurrentTransactionId(record.id);
     setIsReceiptModalOpen(true);
     setTransactionProcessing(true);
 
@@ -1005,7 +1030,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         totalAmount: itemPayment,
                         tenderAmount: i === 0 ? tenderAmt : itemPayment,
                         changeAmount: i === 0 ? changeAmt : 0,
-                        paymentType: paymentTypeId,
+                        paymentType: 1,
                         paymentOption: paymentOptionId,
                         outStandingAmount: acctOutstanding,
                         cardNumber: '',
@@ -1071,7 +1096,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 if (accCardActual > 0) {
                     try {
                         await platinumSaveMultipleAccountPayment(saveAccounts, { userId: String(sessionUserId) });
-                        const cardResult = await submitConsumerPayments(accCardActual, accCardActual, 0, 3, 1, 'CARD', accCardActual);
+                        const cardResult = await submitConsumerPayments(accCardActual, accCardActual, 0, 1, 1, 'CARD', accCardActual);
                         console.log(`[Priority 1 CARD] Submitted card payment`, cardResult);
                         const cardReceiptIds = extractReceiptIds(cardResult);
                         await processAccReceiptResult(cardReceiptIds, 'CARD', 'card', accCardActual);
@@ -1081,9 +1106,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     }
                 }
             } else {
-                const paymentTypeId = record.payment.card > 0 ? 3 : 1;
                 try {
-                    const submitResult = await submitConsumerPayments(accountTotal, accTender, accChange, paymentTypeId, 1, 'ACC');
+                    const submitResult = await submitConsumerPayments(accountTotal, accTender, accChange, 1, 1, 'ACC');
                     console.log(`[Priority 1] Submitted payment`, submitResult);
                     const receiptIds = extractReceiptIds(submitResult);
                     await processAccReceiptResult(receiptIds, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash', accountTotal);
@@ -1207,11 +1231,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
                     await submitOneClearance(1, itemCash, itemCashTender, itemCashChange, 'CASH', 'cash');
                     if (itemCard > 0) {
-                        await submitOneClearance(3, itemCard, itemCard, 0, 'CARD', 'card');
+                        await submitOneClearance(1, itemCard, itemCard, 0, 'CARD', 'card');
                     }
                 } else {
-                    const paymentTypeId = record.payment.card > 0 ? 3 : 1;
-                    await submitOneClearance(paymentTypeId, item.amountToPay, clrGroupTender, clrGroupChange, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash');
+                    await submitOneClearance(1, item.amountToPay, clrGroupTender, clrGroupChange, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash');
                 }
             } catch (e: any) {
                 console.warn(`[Priority 1B] Failed to submit clearance payment for ${clearanceId}`, e);
@@ -1339,11 +1362,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     await submitOneMisc(1, itemCash, itemCashTender, itemCashChange, 'CASH', 'cash');
 
                     if (itemCard > 0) {
-                        await submitOneMisc(3, itemCard, itemCard, 0, 'CARD', 'card');
+                        await submitOneMisc(1, itemCard, itemCard, 0, 'CARD', 'card');
                     }
                 } else {
-                    const paymentTypeId = record.payment.card > 0 ? 3 : 1;
-                    await submitOneMisc(paymentTypeId, item.amountToPay, item.amountToPay, 0, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash');
+                    await submitOneMisc(1, item.amountToPay, item.amountToPay, 0, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash');
                 }
             } catch (e: any) {
                 console.warn(`[Priority 2] Failed to submit misc payment for ${item.description}`, e);
@@ -1380,7 +1402,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   
   const closeReceiptModal = () => {
     setIsReceiptModalOpen(false);
+    setCurrentTransactionId(null);
     clearTransaction();
+    loadTransactionsFromApi().catch(() => {});
   };
 
   const submitDayEnd = (report: { cashOnHand: number, cardTotal: number }) => {
@@ -1460,6 +1484,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       searchQuery,
       isReceiptModalOpen,
       transactionProcessing,
+      currentTransactionId,
       viewingItemId,
       recentTransactions,
       dayEndStatus,

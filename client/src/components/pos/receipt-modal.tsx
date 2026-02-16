@@ -11,10 +11,12 @@ import { PermitTemplate } from './permit-template';
 import { useReactToPrint } from 'react-to-print';
 
 export function ReceiptModal() {
-  const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions, transactionProcessing } = usePos();
+  const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions, transactionProcessing, currentTransactionId } = usePos();
   const printRef = useRef<HTMLDivElement>(null);
   
-  const currentTransaction = recentTransactions[0];
+  const currentTransaction = currentTransactionId 
+    ? recentTransactions.find(t => t.id === currentTransactionId) || recentTransactions[0]
+    : recentTransactions[0];
   
   const permitItem = transactionItems.find(i => i.type === 'DIRECT_INCOME' && 
       (i.description.toLowerCase().includes('permit') || i.description.toLowerCase().includes('certificate')));
