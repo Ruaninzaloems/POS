@@ -614,30 +614,39 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
           </table>
        </div>
        
-       <div className="mt-6 sm:mt-8 bg-blue-50 p-3 sm:p-4 border border-blue-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-sm">
-           <div className="text-blue-900 font-semibold text-sm sm:text-base">
-               Total Outstanding: <span className="text-red-600 text-base sm:text-lg">R {account.outstandingAmount.toFixed(2)}</span>
-           </div>
-           
-           <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
-               <Label htmlFor={`pay-${item.id}`} className="font-bold text-gray-700 text-xs sm:text-sm whitespace-nowrap">Payment:</Label>
-               <div className="relative flex-1 sm:flex-none">
-                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-mono">R</span>
-                   <Input 
-                        id={`pay-${item.id}`}
-                        type="number" 
-                        min="0"
-                        step="0.01"
-                        className="pl-8 w-full sm:w-40 font-mono font-bold border-gray-400 focus:ring-blue-500 bg-white"
-                        value={item.amountToPay} 
-                        onChange={(e) => {
-                            const val = e.target.value;
-                            if (val && parseFloat(val) < 0) return;
-                            if (val.includes('.') && val.split('.')[1].length > 2) return;
-                            updateItemAmount(item.id, parseFloat(val) || 0);
-                        }}
-                        data-testid="input-payment-allocation"
-                    />
+       <div className="mt-6 sm:mt-8 rounded-lg border-2 border-blue-300 bg-gradient-to-r from-blue-50 to-white p-4 sm:p-6 shadow-md">
+           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+               <div>
+                   <div className="text-xs uppercase tracking-wider text-blue-600 font-semibold mb-1">Total Outstanding</div>
+                   <div className="text-2xl sm:text-3xl font-bold text-red-600 font-mono">R {account.outstandingAmount.toFixed(2)}</div>
+               </div>
+               
+               <div className="w-full sm:w-auto">
+                   <Label htmlFor={`pay-${item.id}`} className="text-xs uppercase tracking-wider text-blue-600 font-semibold mb-1 block">Payment Amount</Label>
+                   <div className="relative">
+                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-mono text-xl font-bold">R</span>
+                       <Input 
+                            id={`pay-${item.id}`}
+                            type="text"
+                            inputMode="decimal"
+                            className="pl-12 w-full sm:w-56 h-14 text-2xl font-mono font-bold border-2 border-blue-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 bg-white rounded-lg"
+                            value={item.amountToPay === 0 ? '' : item.amountToPay}
+                            placeholder="0.00"
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === '' || val === '.') {
+                                    updateItemAmount(item.id, 0);
+                                    return;
+                                }
+                                if (!/^\d*\.?\d{0,2}$/.test(val)) return;
+                                const num = parseFloat(val);
+                                if (isNaN(num) || num < 0) return;
+                                updateItemAmount(item.id, num);
+                            }}
+                            data-testid="input-payment-allocation"
+                        />
+                   </div>
                </div>
            </div>
        </div>
