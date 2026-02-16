@@ -604,6 +604,22 @@ export async function platinumPrintReceipt(data: any): Promise<any> {
     });
 }
 
+export async function fetchServiceTypeBalance(accountId: string): Promise<{ serviceDescription: string; amount: number; vat: number; totalAmount: number; currentCharge: number; openingBalance: number }[]> {
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch(`/api/platinum/billing-enquiry/service-type-balance?accountId=${encodeURIComponent(accountId)}`, { signal: controller.signal });
+        clearTimeout(timeout);
+        if (res.ok) {
+            const data = await res.json();
+            return Array.isArray(data) ? data : [];
+        }
+    } catch (e) {
+        console.warn(`Failed to fetch service type balance for accountId ${accountId}`, e);
+    }
+    return [];
+}
+
 export async function fetchReceiptAllocations(receiptId: string): Promise<{ service: string; amount: number; vat: number; total: number }[]> {
     try {
         const res = await fetch(`/api/platinum/billing-payment/receipt-allocations?receiptId=${encodeURIComponent(receiptId)}`);

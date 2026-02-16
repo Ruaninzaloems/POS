@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TransactionRecord, TransactionItem, ReceiptAllocation, SplitReceipt } from '@/lib/pos-state';
+import { TransactionRecord, TransactionItem, ReceiptAllocation, SplitReceipt, ServiceBalance } from '@/lib/pos-state';
 import { Account, DirectIncomeItem } from '@/lib/mock-data';
 import { MunicipalityInfo, fetchMunicipalityInfo } from '@/lib/external-api';
 
@@ -242,30 +242,70 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
         })}
       </div>
 
-      {transaction.allocations && transaction.allocations.length > 0 ? (
-          <div className="border-t border-gray-300 pt-2 mb-2">
-              <div className="font-bold text-center text-[10px] uppercase mb-1">Service Allocation</div>
-              {transaction.allocations.map((alloc, idx) => (
-                  <div key={idx} className="mb-1">
-                      <div className="flex justify-between">
-                          <span className="w-[65%] truncate">{alloc.service}</span>
-                          <span className="text-right">{alloc.amount.toFixed(2)}</span>
+      {(() => {
+          const allServiceBalances: ServiceBalance[] = [];
+          for (const sr of splitReceipts) {
+              if (sr.serviceBalances && sr.serviceBalances.length > 0) {
+                  for (const sb of sr.serviceBalances) {
+                      if (!allServiceBalances.find(x => x.serviceDescription === sb.serviceDescription)) {
+                          allServiceBalances.push(sb);
+                      }
+                  }
+              }
+          }
+
+          if (allServiceBalances.length > 0) {
+              const totalOwed = allServiceBalances.reduce((s, b) => s + (b.totalAmount || 0), 0);
+              return (
+                  <div className="border-t border-gray-300 pt-2 mb-2">
+                      <div className="font-bold text-center text-[10px] uppercase mb-1">Service Allocation</div>
+                      {allServiceBalances.filter(b => Math.abs(b.totalAmount || 0) >= 0.01).map((bal, idx) => {
+                          const proportion = totalOwed > 0 ? (bal.totalAmount || 0) / totalOwed : 0;
+                          const allocated = Math.round(totalAmount * proportion * 100) / 100;
+                          return (
+                              <div key={idx} className="mb-0.5">
+                                  <div className="flex justify-between">
+                                      <span className="w-[60%] truncate">{bal.serviceDescription}</span>
+                                      <span className="text-right">{allocated.toFixed(2)}</span>
+                                  </div>
+                              </div>
+                          );
+                      })}
+                      <div className="flex justify-between mt-1 border-t border-dashed border-gray-300 pt-1">
+                          <span>Vat Amount</span>
+                          <span className="text-right">{(totalAmount * 15 / 115).toFixed(2)}</span>
                       </div>
                   </div>
-              ))}
-              <div className="flex justify-between mt-1">
-                  <span>Vat Amount</span>
-                  <span className="text-right">{transaction.allocations.reduce((sum, a) => sum + a.vat, 0).toFixed(2)}</span>
-              </div>
-          </div>
-      ) : (
-          <div className="border-t border-gray-300 pt-2 mb-2">
-              <div className="flex justify-between mt-1">
-                  <span>Vat Amount</span>
-                  <span className="text-right">{(totalAmount * 15 / 115).toFixed(2)}</span>
-              </div>
-          </div>
-      )}
+              );
+          } else if (transaction.allocations && transaction.allocations.length > 0) {
+              return (
+                  <div className="border-t border-gray-300 pt-2 mb-2">
+                      <div className="font-bold text-center text-[10px] uppercase mb-1">Service Allocation</div>
+                      {transaction.allocations.map((alloc, idx) => (
+                          <div key={idx} className="mb-1">
+                              <div className="flex justify-between">
+                                  <span className="w-[65%] truncate">{alloc.service}</span>
+                                  <span className="text-right">{alloc.amount.toFixed(2)}</span>
+                              </div>
+                          </div>
+                      ))}
+                      <div className="flex justify-between mt-1">
+                          <span>Vat Amount</span>
+                          <span className="text-right">{transaction.allocations.reduce((sum, a) => sum + a.vat, 0).toFixed(2)}</span>
+                      </div>
+                  </div>
+              );
+          } else {
+              return (
+                  <div className="border-t border-gray-300 pt-2 mb-2">
+                      <div className="flex justify-between mt-1">
+                          <span>Vat Amount</span>
+                          <span className="text-right">{(totalAmount * 15 / 115).toFixed(2)}</span>
+                      </div>
+                  </div>
+              );
+          }
+      })()}
 
       <div className="border-t border-gray-300 pt-2 mb-2">
         <div className="flex justify-between font-bold text-sm">
