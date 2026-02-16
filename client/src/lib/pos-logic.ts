@@ -22,9 +22,10 @@ export function calculateTransactionTotals(
 ): TransactionTotals {
   const rawTotal = items.reduce((sum, item) => sum + item.amountToPay, 0);
   
-  // Round UP to nearest 10c (0.10) to ensure no outstanding balance
-  // Logic: 12.31 -> 12.40, 12.30 -> 12.30
-  const totalToPay = Math.ceil(rawTotal * 10) / 10;
+  const hasCard = payment.card > 0;
+  const totalToPay = hasCard
+    ? Math.round(rawTotal * 100) / 100
+    : Math.ceil(rawTotal * 10) / 10;
   
   const tenderTotal = payment.cash + payment.card;
   const changeDue = Math.max(0, payment.cash - (totalToPay - payment.card));

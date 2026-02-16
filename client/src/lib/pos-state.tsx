@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from '
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, fetchServiceTypeBalance } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList } from './external-api';
 
 if (import.meta.hot) {
   import.meta.hot.accept(() => {
@@ -883,17 +883,26 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
 
         const serviceBalanceMap = new Map<string, ServiceBalance[]>();
-        const balancePromises = Array.from(uniqueAccountIds).map(async (acctId) => {
-            try {
-                const balances = await fetchServiceTypeBalance(acctId);
+        for (const item of accountItems) {
+            const acct = item.originalData as any;
+            const acctId = acct?.apiId || acct?.account_ID || acct?.accountID || acct?.accountId || '';
+            if (acctId && acct?.agingBreakdown && Array.isArray(acct.agingBreakdown) && acct.agingBreakdown.length > 0) {
+                const balances: ServiceBalance[] = acct.agingBreakdown
+                    .filter((row: any) => Math.abs(row.totalOutstanding || 0) >= 0.01)
+                    .map((row: any) => ({
+                        serviceDescription: row.totalOutstanding < 0 && row.serviceDescription === 'Balance B/F' ? 'Advance Payment' : (row.serviceDescription || 'Unknown'),
+                        amount: row.totalOutstanding || 0,
+                        vat: 0,
+                        totalAmount: row.totalOutstanding || 0,
+                        currentCharge: row.newCharge || 0,
+                        openingBalance: 0,
+                    }));
                 if (balances.length > 0) {
-                    serviceBalanceMap.set(acctId, balances);
+                    serviceBalanceMap.set(String(acctId), balances);
+                    console.log(`[Priority 1 ${paymentLabel}] Service balances from agingBreakdown for ${acctId}:`, balances.map(b => `${b.serviceDescription}: ${b.totalAmount}`));
                 }
-            } catch (e) {
-                console.warn(`[Priority 1 ${paymentLabel}] Could not fetch service balances for ${acctId}`, e);
             }
-        });
-        await Promise.all(balancePromises);
+        }
 
         for (let rIdx = 0; rIdx < receiptIds.length; rIdx++) {
             const rid = receiptIds[rIdx];
