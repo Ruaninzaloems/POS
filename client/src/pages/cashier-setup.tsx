@@ -88,13 +88,10 @@ export default function CashierSetup() {
                         setStep2Status('success');
                         setStep3Status('success');
 
-                        const savedOfficeId = localStorage.getItem(`cashier_office_${userId}`);
-                        const officeId = savedOfficeId || String(data.officeId);
+                        const officeId = String(data.officeId);
                         const officeName = data.officeName || data.details?.const_CashOffice?.cashOfficeDesc || '';
                         const cashFloat = data.cashFloat || data.details?.cashFloat || 0;
                         const fullName = `${firstName} ${lastName}`.trim();
-
-                        localStorage.setItem(`cashier_office_${userId}`, officeId);
                         switchUser(String(userId), fullName || currentUser.name, officeName);
                         startSession(officeId, cashFloat, officeName);
 
@@ -102,12 +99,10 @@ export default function CashierSetup() {
                         return;
                     }
 
-                    const savedOfficeId = localStorage.getItem(`cashier_office_${userId}`);
-                    const currentOfficeId = savedOfficeId || data.officeId || data.details?.officeId;
+                    const currentOfficeId = data.officeId || data.details?.officeId;
                     if (currentOfficeId) {
                         setSelectedOfficeId(String(currentOfficeId));
-                        const source = savedOfficeId ? 'saved preference' : 'Platinum record';
-                        console.log(`[CashierSetup] Pre-selected office ID ${currentOfficeId} from ${source}`);
+                        console.log(`[CashierSetup] Pre-selected office ID ${currentOfficeId} from Platinum record`);
                     }
 
                     if (data.cashFloat > 0) {
@@ -241,7 +236,6 @@ export default function CashierSetup() {
             const officeName = selectedOffice.cashOfficeDesc || '';
             const fullName = `${firstName} ${lastName}`.trim();
 
-            localStorage.setItem(`cashier_office_${userId}`, officeId);
             switchUser(String(userId), fullName || currentUser.name, officeName);
             startSession(officeId, float, officeName);
 

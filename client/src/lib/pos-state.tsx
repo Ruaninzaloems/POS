@@ -314,28 +314,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     checkActiveSession();
   }, [platinumUser]);
 
-  const RECEIPT_IDS_KEY = `pos_receipt_ids_${currentUser.id}`;
-
-  const getStoredReceiptIds = (): number[] => {
-    try {
-      const stored = localStorage.getItem(RECEIPT_IDS_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return Array.isArray(parsed) ? parsed : [];
-      }
-    } catch {}
-    return [];
-  };
-
-  const storeReceiptId = (receiptId: number) => {
-    const existing = getStoredReceiptIds();
-    if (!existing.includes(receiptId)) {
-      const updated = [receiptId, ...existing].slice(0, 500);
-      localStorage.setItem(RECEIPT_IDS_KEY, JSON.stringify(updated));
-      console.log(`[Transactions] Stored receipt ID ${receiptId}, total stored: ${updated.length}`);
-    }
-  };
-
   const loadTransactionsFromApi = async () => {
     const pCashierId = platinumCashierId;
     if (!pCashierId) {
@@ -410,39 +388,20 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return;
       }
 
-      console.log(`[Transactions] ViewReceipt returned empty, falling back to stored receipt IDs + discovery`);
-      const storedIds = getStoredReceiptIds();
-
+      console.log(`[Transactions] ViewReceipt returned empty, trying API discovery scan`);
       let results: { receiptId: number; data: any }[] = [];
 
-      if (storedIds.length > 0) {
-        console.log(`[Transactions] Loading ${storedIds.length} stored receipt(s) from pos-multi-receipt-print`);
-        const fetchPromises = storedIds.slice(0, 50).map(async (rid) => {
-          try {
-            const data = await fetchPosMultiReceiptPrint(String(rid));
-            if (data && data.length > 0) {
-              return { receiptId: rid, data: data[0] };
-            }
-          } catch {}
-          return null;
-        });
-        results = (await Promise.all(fetchPromises)).filter(Boolean) as { receiptId: number; data: any }[];
-      }
-
-      if (results.length === 0 && platinumUser) {
-        console.log(`[Transactions] No stored receipts, trying discovery scan for cashier: ${platinumUser.firstName} ${platinumUser.lastName}`);
+      if (platinumUser) {
+        console.log(`[Transactions] Running discovery scan for cashier: ${platinumUser.firstName} ${platinumUser.lastName}`);
         try {
           const cashierName = `${platinumUser.firstName} ${platinumUser.lastName}`;
-          const params = new URLSearchParams({ cashierName, scanCount: '50' });
+          const params = new URLSearchParams({ cashierName, scanCount: '100' });
           const discoverRes = await fetch(`/api/proxy/pos-multi-receipt-print/by-cashier?${params}`);
           if (discoverRes.ok) {
             const discovered = await discoverRes.json();
             if (Array.isArray(discovered) && discovered.length > 0) {
               results = discovered.map((d: any) => ({ receiptId: d._receiptId, data: d }));
-              discovered.forEach((d: any) => {
-                if (d._receiptId) storeReceiptId(d._receiptId);
-              });
-              console.log(`[Transactions] Discovered ${results.length} receipts via scan, stored IDs for future`);
+              console.log(`[Transactions] Discovered ${results.length} receipts via API scan`);
             }
           }
         } catch (e) {
@@ -856,7 +815,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             console.warn(`[Priority 1 ${paymentLabel}] No receipt IDs returned — receipt print skipped`);
             return;
         }
-        receiptIds.forEach(rid => storeReceiptId(rid));
         let receiptNo = `REC-${receiptIds[0]}`;
         let receiptDetail: any = null;
 
@@ -1197,7 +1155,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 console.log(`[Priority 1B ${label}] Submitted clearance payment for ${clearanceId}`, clrResult);
 
                 const clrReceiptIds = extractReceiptIds(clrResult);
-                clrReceiptIds.forEach(rid => storeReceiptId(rid));
                 if (clrReceiptIds.length > 0) {
                     let receiptNo = `REC-${clrReceiptIds[0]}`;
                     try {
@@ -1330,7 +1287,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }
 
                 if (miscReceiptId) {
-                    storeReceiptId(miscReceiptId);
                     let receiptNo = `REC-${miscReceiptId}`;
                     try {
                         const miscReceiptData = await fetchPosMultiReceiptPrint(String(miscReceiptId));

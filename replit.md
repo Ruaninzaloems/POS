@@ -33,7 +33,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Key Frontend Patterns
 - **Business Logic Separation**: Pure calculation functions live in `client/src/lib/pos-logic.ts` and `client/src/lib/allocation-logic.ts`, separate from UI components
-- **Mock Data Layer**: `client/src/lib/mock-data.ts` contains TypeScript interfaces and seed data. Some mock data uses `localStorage` for persistence (e.g., `client/src/lib/direct-deposits-data.ts`)
+- **No localStorage**: The application does NOT use localStorage or any browser-side persistence. All data comes from APIs (Platinum and Sebata). Transaction history uses a server-side discovery scan endpoint (`/api/proxy/pos-multi-receipt-print/by-cashier`) that finds receipts by cashier name via the Sebata API.
 - **Layout System**: `PosLayout` component wraps all pages, providing the navigation sidebar and cashier session gate (blocks access until session is started)
 - **Page Structure**: Main pages in `client/src/pages/` — the POS screen (`pos.tsx`), supervisor dashboard, settings, view receipts, and direct deposit allocation pages
 
