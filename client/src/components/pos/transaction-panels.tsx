@@ -73,6 +73,61 @@ function BasketPayAmountInput({ value, onChange, className = '' }: { value: numb
     );
 }
 
+function ClearancePaymentInput({ value, minValue, disabled, onChange, className = '', 'data-testid': testId }: { value: number; minValue: number; disabled?: boolean; onChange: (val: number) => void; className?: string; 'data-testid'?: string }) {
+    const [text, setText] = useState(String(value));
+    const lastExternalValue = useRef(value);
+
+    React.useEffect(() => {
+        if (value !== lastExternalValue.current) {
+            lastExternalValue.current = value;
+            const currentNum = parseFloat(text);
+            if (isNaN(currentNum) || Math.abs(currentNum - value) > 0.001) {
+                setText(String(value));
+            }
+        }
+    }, [value]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const raw = e.target.value;
+        if (raw === '' || raw === '.' || /^\d*\.?\d{0,2}$/.test(raw)) {
+            setText(raw);
+            const num = parseFloat(raw);
+            if (!isNaN(num)) {
+                const clamped = Math.max(num, minValue);
+                lastExternalValue.current = clamped;
+                onChange(clamped);
+            }
+        }
+    };
+
+    const handleBlur = () => {
+        const num = parseFloat(text);
+        if (!isNaN(num)) {
+            const clamped = Math.max(num, minValue);
+            setText(String(clamped));
+            lastExternalValue.current = clamped;
+            onChange(clamped);
+        } else {
+            setText(String(minValue));
+            lastExternalValue.current = minValue;
+            onChange(minValue);
+        }
+    };
+
+    return (
+        <Input
+            type="text"
+            inputMode="decimal"
+            className={className}
+            value={text}
+            disabled={disabled}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            data-testid={testId}
+        />
+    );
+}
+
 function ClearanceBasketExpander({ item, updateItemDetails, updateItemAmount }: {
     item: TransactionItem;
     updateItemDetails: (id: string, details: Partial<TransactionItem>) => void;
@@ -179,20 +234,11 @@ function ClearanceBasketExpander({ item, updateItemDetails, updateItemAmount }: 
                                                     <td className="py-1.5 px-2 text-muted-foreground">{pi.debT_TYPE || pi.debtType || '-'}</td>
                                                     <td className="py-1.5 px-2 text-right font-mono">R {costAmount.toFixed(2)}</td>
                                                     <td className="py-1.5 px-2 text-right">
-                                                        <Input
-                                                            type="number"
-                                                            step="0.01"
-                                                            min={costAmount}
+                                                        <ClearancePaymentInput
                                                             value={payAmount}
+                                                            minValue={costAmount}
                                                             disabled={paySection1181Only}
-                                                            onChange={(e) => {
-                                                                const val = parseFloat(e.target.value);
-                                                                if (!isNaN(val) && val >= costAmount) {
-                                                                    handlePaidItemAmountChange(i, val);
-                                                                } else if (!isNaN(val) && val < costAmount) {
-                                                                    handlePaidItemAmountChange(i, costAmount);
-                                                                }
-                                                            }}
+                                                            onChange={(val) => handlePaidItemAmountChange(i, val)}
                                                             className="w-24 h-7 text-right font-mono text-xs ml-auto bg-white"
                                                             data-testid={`input-basket-clr-payment-${item.id}-${i}`}
                                                         />
@@ -774,21 +820,19 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                                 <span className={`absolute left-4 top-1/2 -translate-y-1/2 font-mono text-xl ${isWater ? 'text-blue-700' : 'text-yellow-700'}`}>R</span>
                                 <Input 
                                     id={`amount-${item.id}`}
-                                    type="number" 
-                                    min="0"
-                                    step="0.01"
+                                    type="text"
+                                    inputMode="decimal"
                                     className={`pl-10 text-2xl font-mono font-bold h-14 bg-white focus-visible:ring-2 ${isWater ? 'border-blue-200 focus-visible:ring-blue-400' : 'border-yellow-200 focus-visible:ring-yellow-400'}`}
                                     value={stagedAmount || ''} 
                                     placeholder="0.00"
                                     onChange={(e) => {
-                                        const val = e.target.value;
-                                        if (val && parseFloat(val) < 0) return;
-                                        if (val.includes('.') && val.split('.')[1].length > 2) return;
-                                        const numVal = parseFloat(val) || 0;
-                                        setStagedAmount(numVal);
-                                        // Auto-update item if already staged
-                                        if (showBreakdown) {
-                                            updateItemAmount(item.id, numVal);
+                                        const raw = e.target.value;
+                                        if (raw === '' || raw === '.' || /^\d*\.?\d{0,2}$/.test(raw)) {
+                                            const numVal = parseFloat(raw) || 0;
+                                            setStagedAmount(numVal);
+                                            if (showBreakdown) {
+                                                updateItemAmount(item.id, numVal);
+                                            }
                                         }
                                     }}
                                     autoFocus
@@ -971,20 +1015,11 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                                             <TableCell className="text-muted-foreground text-sm">{pi.debT_TYPE || pi.debtType || '-'}</TableCell>
                                             <TableCell className="text-right font-mono">R {costAmount.toFixed(2)}</TableCell>
                                             <TableCell className="text-right">
-                                                <Input
-                                                    type="number"
-                                                    step="0.01"
-                                                    min={costAmount}
+                                                <ClearancePaymentInput
                                                     value={payAmount}
+                                                    minValue={costAmount}
                                                     disabled={paySection1181Only}
-                                                    onChange={(e) => {
-                                                        const val = parseFloat(e.target.value);
-                                                        if (!isNaN(val) && val >= costAmount) {
-                                                            handlePaidItemAmountChange(i, val);
-                                                        } else if (!isNaN(val) && val < costAmount) {
-                                                            handlePaidItemAmountChange(i, costAmount);
-                                                        }
-                                                    }}
+                                                    onChange={(val) => handlePaidItemAmountChange(i, val)}
                                                     className="w-28 h-8 text-right font-mono ml-auto"
                                                     data-testid={`input-clearance-payment-${i}`}
                                                 />
@@ -1140,16 +1175,15 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-sm text-green-700">R</span>
                                 <Input 
                                     id={`amount-${item.id}`}
-                                    type="number" 
-                                    min="0"
-                                    step="0.01"
+                                    type="text"
+                                    inputMode="decimal"
                                     className="pl-8 text-lg font-mono font-bold h-12 bg-white border-green-200 focus-visible:ring-green-400"
                                     value={item.amountToPay || ''} 
                                     onChange={(e) => {
-                                        const val = e.target.value;
-                                        if (val && parseFloat(val) < 0) return;
-                                        if (val.includes('.') && val.split('.')[1].length > 2) return;
-                                        updateItemAmount(item.id, parseFloat(val) || 0);
+                                        const raw = e.target.value;
+                                        if (raw === '' || raw === '.' || /^\d*\.?\d{0,2}$/.test(raw)) {
+                                            updateItemAmount(item.id, parseFloat(raw) || 0);
+                                        }
                                     }}
                                     data-testid={`input-amount-${item.id}`}
                                 />
@@ -1198,15 +1232,14 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                  <div className="flex gap-4 items-center">
                     <Label>Amount:</Label>
                     <Input 
-                        type="number" 
-                        min="0"
-                        step="0.01"
-                        value={item.amountToPay} 
+                        type="text"
+                        inputMode="decimal"
+                        value={item.amountToPay || ''} 
                         onChange={(e) => {
-                            const val = e.target.value;
-                            if (val && parseFloat(val) < 0) return;
-                            if (val.includes('.') && val.split('.')[1].length > 2) return;
-                            updateItemAmount(item.id, parseFloat(val) || 0);
+                            const raw = e.target.value;
+                            if (raw === '' || raw === '.' || /^\d*\.?\d{0,2}$/.test(raw)) {
+                                updateItemAmount(item.id, parseFloat(raw) || 0);
+                            }
                         }}
                         className="max-w-[200px]"
                     />
