@@ -17,6 +17,7 @@ import {
     searchAccountNumbers,
     searchReceiptNumbers,
     fetchReceiptList,
+    searchSebataReceipts,
     ViewReceiptCashier,
     ViewReceiptItem,
     ReceiptSearchQuery,
@@ -129,17 +130,33 @@ export default function ViewReceipts() {
 
             console.log('[ViewReceipts] Searching with query:', query);
             const result = await fetchReceiptList(query);
-            console.log('[ViewReceipts] Result:', result);
+            console.log('[ViewReceipts] Platinum result:', result);
 
-            setReceipts(result.items);
-            setTotalCount(result.totalCount);
-            setCurrentPage(page);
+            if (result.items.length > 0) {
+                setReceipts(result.items);
+                setTotalCount(result.totalCount);
+                setCurrentPage(page);
+            } else {
+                console.log('[ViewReceipts] Platinum returned 0 results, trying Sebata fallback...');
+                const cashierObj = cashiers.find(c => String(c.id) === cashierFilter);
+                const sebataFilters: { receiptNo?: string; cashierName?: string; accountNumber?: string } = {};
+                if (receiptFilter) sebataFilters.receiptNo = receiptFilter;
+                if (cashierObj) sebataFilters.cashierName = cashierObj.name;
+                if (accountFilter) sebataFilters.accountNumber = accountFilter;
 
-            if (result.items.length === 0) {
-                toast({
-                    title: "No Results",
-                    description: "No receipts found matching your criteria.",
-                });
+                const sebataItems = await searchSebataReceipts(sebataFilters);
+                console.log('[ViewReceipts] Sebata fallback result:', sebataItems.length, 'items');
+
+                setReceipts(sebataItems);
+                setTotalCount(sebataItems.length);
+                setCurrentPage(1);
+
+                if (sebataItems.length === 0) {
+                    toast({
+                        title: "No Results",
+                        description: "No receipts found matching your criteria.",
+                    });
+                }
             }
         } catch (error) {
             console.error("Failed to load receipts", error);

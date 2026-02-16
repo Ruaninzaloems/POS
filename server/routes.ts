@@ -2171,6 +2171,107 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/proxy/pos-multi-receipt-print/search", async (req, res) => {
+    try {
+      const receiptNo = (req.query.receiptNo as string) || '';
+      const cashierName = (req.query.cashierName as string) || '';
+      const accountNumber = (req.query.accountNumber as string) || '';
+      const scanCount = Math.min(parseInt(req.query.scanCount as string) || 200, 500);
+
+      let highestKnownId = 0;
+      try {
+        const probeIds = [1041500, 1041450, 1041400, 1041350, 1041300, 1041280];
+        for (const probeId of probeIds) {
+          const url = `${EXTERNAL_API_BASE}/api/pos-multi-receipt-print?receiptId=${probeId}`;
+          const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+          if (resp.ok) {
+            const data = await resp.json();
+            if (Array.isArray(data) && data.length > 0) {
+              highestKnownId = probeId;
+              break;
+            }
+          }
+        }
+        if (!highestKnownId) {
+          let probeId = 1041300;
+          while (probeId > 1041200) {
+            const url = `${EXTERNAL_API_BASE}/api/pos-multi-receipt-print?receiptId=${probeId}`;
+            const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            if (resp.ok) {
+              const data = await resp.json();
+              if (Array.isArray(data) && data.length > 0) {
+                highestKnownId = probeId;
+                break;
+              }
+            }
+            probeId -= 5;
+          }
+        }
+      } catch {}
+      if (!highestKnownId) highestKnownId = 1041280;
+
+      const scanStartId = highestKnownId + 30;
+      console.log(`[receipt-search] Scanning from ${scanStartId} backwards, count=${scanCount}, receiptNo=${receiptNo}, cashier=${cashierName}, account=${accountNumber}`);
+
+      const ids: number[] = [];
+      for (let i = 0; i < scanCount; i++) {
+        ids.push(scanStartId - i);
+      }
+
+      const batchSize = 25;
+      const allMatching: any[] = [];
+
+      for (let batch = 0; batch < ids.length; batch += batchSize) {
+        const batchIds = ids.slice(batch, batch + batchSize);
+        const fetchOne = async (id: number) => {
+          try {
+            const url = `${EXTERNAL_API_BASE}/api/pos-multi-receipt-print?receiptId=${id}`;
+            const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            if (response.ok) {
+              const data = await response.json();
+              if (Array.isArray(data) && data.length > 0) {
+                const item = data[0];
+                let matches = true;
+                if (receiptNo && item.receiptNo) {
+                  matches = matches && item.receiptNo.toLowerCase().includes(receiptNo.toLowerCase());
+                } else if (receiptNo) {
+                  matches = false;
+                }
+                if (cashierName && item.cashierName) {
+                  matches = matches && item.cashierName.toLowerCase().includes(cashierName.toLowerCase());
+                } else if (cashierName) {
+                  matches = false;
+                }
+                if (accountNumber) {
+                  const hasAccount = data.some((d: any) =>
+                    d.accountNo && d.accountNo.toLowerCase().includes(accountNumber.toLowerCase())
+                  );
+                  matches = matches && hasAccount;
+                }
+                if (matches) {
+                  return data.map((d: any) => ({ ...d, _receiptId: id }));
+                }
+              }
+            }
+          } catch {}
+          return null;
+        };
+
+        const results = await Promise.all(batchIds.map(fetchOne));
+        for (const r of results) {
+          if (r) allMatching.push(...r);
+        }
+
+        if (allMatching.length >= 100) break;
+      }
+
+      console.log(`[receipt-search] Found ${allMatching.length} matching receipts`);
+      res.json(allMatching);
+    } catch (e: any) {
+      res.status(502).json({ message: "Receipt search failed", detail: e.message });
+    }
+  });
+
   app.get("/api/proxy/pos-multi-receipt-print/batch", async (req, res) => {
     try {
       const startId = parseInt(req.query.startId as string) || 312979;

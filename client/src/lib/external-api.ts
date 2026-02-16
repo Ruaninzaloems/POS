@@ -1494,6 +1494,62 @@ export async function fetchReceiptList(query: ReceiptSearchQuery): Promise<Recei
     }
 }
 
+export async function searchSebataReceipts(filters: {
+    receiptNo?: string;
+    cashierName?: string;
+    accountNumber?: string;
+}): Promise<ViewReceiptItem[]> {
+    try {
+        const params = new URLSearchParams();
+        if (filters.receiptNo) params.append('receiptNo', filters.receiptNo);
+        if (filters.cashierName) params.append('cashierName', filters.cashierName);
+        if (filters.accountNumber) params.append('accountNumber', filters.accountNumber);
+
+        const res = await fetch(`/api/proxy/pos-multi-receipt-print/search?${params.toString()}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!Array.isArray(data)) return [];
+
+        const grouped = new Map<number, any[]>();
+        for (const item of data) {
+            const id = item._receiptId || 0;
+            if (!grouped.has(id)) grouped.set(id, []);
+            grouped.get(id)!.push(item);
+        }
+
+        const items: ViewReceiptItem[] = [];
+        for (const [receiptId, group] of grouped) {
+            const first = group[0];
+            const totalAmount = group.reduce((sum: number, g: any) => sum + (parseFloat(g.tenderAmount) || 0), 0);
+            items.push({
+                receiptId,
+                receiptNo: first.receiptNo || '',
+                accountNumber: first.accountNo || '',
+                paymentType: first.payMode || '',
+                paymentOption: first.billType || '',
+                receiptDate: first.receiptDate || first.transactionDate || '',
+                isStaged: false,
+                amount: totalAmount,
+                tenderAmount: parseFloat(first.tenderAmount) || 0,
+                changeAmount: parseFloat(first.changeAmount) || 0,
+                cashierName: first.cashierName || '',
+                cashBook: '',
+                cashOffice: first.cashOfficeName || '',
+                isCancelled: 0,
+                cancellationReason: '',
+                accName: first.consumerName || '',
+                accAddress: '',
+                outstandingAmount: parseFloat(first.outstandingAmount) || 0,
+                _source: 'sebata',
+            });
+        }
+        return items;
+    } catch (e) {
+        console.warn('Failed to search Sebata receipts', e);
+        return [];
+    }
+}
+
 // --- Municipality / Receipt Info ---
 
 export async function getReceiptTransactionDetail(primaryId: number): Promise<any> {
