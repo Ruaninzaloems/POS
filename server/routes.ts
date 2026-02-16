@@ -818,7 +818,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment-clearance/submit-payment", async (req, res) => {
     try {
+      console.log(`[clearance-submit] Request payload:`, JSON.stringify(req.body));
       const data = await platinumPost("/api/billing-payment-clearance/submit-payment", req.body);
+      console.log(`[clearance-submit] Response:`, JSON.stringify(data));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });

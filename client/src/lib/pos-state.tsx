@@ -1269,10 +1269,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const accountHolderName = item.paidBy || origData.ownerName || origData.linkedAccounts?.[0]?.name || 'Walk-in';
 
             const submitOneClearance = async (paymentTypeId: number, amount: number, tender: number, change: number, label: string, splitType: 'cash' | 'card') => {
-                const clrResult = await platinumSubmitClearancePayment({
+                const clrPayload = {
                     userId: sessionUserId,
                     paymentTypeId,
-                    cashierId: sessionUserId,
+                    cashierId: platinumCashierId || sessionUserId,
                     receiptDate,
                     tenderAmount: tender,
                     changeAmount: change,
@@ -1295,7 +1295,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         debT_TYPE: pi.debT_TYPE || pi.debtType || null,
                         amount: Math.round((pi.amount || pi.paymentAmount || 0) * (amount / (item.amountToPay || 1)) * 100) / 100,
                     })),
-                });
+                };
+                console.log(`[Priority 1B ${label}] Clearance payload for ${clearanceId}:`, JSON.stringify(clrPayload));
+                const clrResult = await platinumSubmitClearancePayment(clrPayload);
                 console.log(`[Priority 1B ${label}] Submitted clearance payment for ${clearanceId}`, clrResult);
 
                 const clrReceiptIds = extractReceiptIds(clrResult);
