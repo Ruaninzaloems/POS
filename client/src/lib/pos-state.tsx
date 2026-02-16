@@ -1071,7 +1071,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 if (accCardActual > 0) {
                     try {
                         await platinumSaveMultipleAccountPayment(saveAccounts, { userId: String(sessionUserId) });
-                        const cardResult = await submitConsumerPayments(accCardActual, accCardActual, 0, 2, 2, 'CARD', accCardActual);
+                        const cardResult = await submitConsumerPayments(accCardActual, accCardActual, 0, 2, 1, 'CARD', accCardActual);
                         console.log(`[Priority 1 CARD] Submitted card payment`, cardResult);
                         const cardReceiptIds = extractReceiptIds(cardResult);
                         await processAccReceiptResult(cardReceiptIds, 'CARD', 'card', accCardActual);
@@ -1083,7 +1083,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             } else {
                 const paymentTypeId = record.payment.card > 0 ? 2 : 1;
                 try {
-                    const submitResult = await submitConsumerPayments(accountTotal, accTender, accChange, paymentTypeId, paymentTypeId, 'ACC');
+                    const submitResult = await submitConsumerPayments(accountTotal, accTender, accChange, paymentTypeId, 1, 'ACC');
                     console.log(`[Priority 1] Submitted payment`, submitResult);
                     const receiptIds = extractReceiptIds(submitResult);
                     await processAccReceiptResult(receiptIds, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash', accountTotal);
@@ -1368,9 +1368,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     } finally {
         setTransactionProcessing(false);
-        setIsReceiptModalOpen(false);
         clearTransaction();
-        console.log('[Payment] Transaction complete — screen reset to new transaction state');
+        console.log('[Payment] Transaction complete — receipt modal stays open for user to print/review');
         setTimeout(() => {
             loadTransactionsFromApi().catch(e => 
                 console.warn('[Transactions] Background refresh after payment failed:', e)
