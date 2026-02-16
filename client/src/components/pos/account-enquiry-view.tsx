@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Account, AgingItem } from '@/lib/mock-data';
 import { usePos, TransactionItem } from '@/lib/pos-state';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,56 @@ function formatPropertyId(propId: string | number | undefined): string {
   if (!propId) return '';
   const num = typeof propId === 'string' ? parseInt(propId, 10) : propId;
   return isNaN(num) ? String(propId) : String(num);
+}
+
+function PaymentInput({ id, value, onChange }: { id: string; value: number; onChange: (val: number) => void }) {
+  const [rawText, setRawText] = useState(value === 0 ? '' : String(value));
+  const lastExternalValue = useRef(value);
+
+  useEffect(() => {
+    if (value !== lastExternalValue.current) {
+      lastExternalValue.current = value;
+      setRawText(value === 0 ? '' : String(value));
+    }
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/[^0-9.]/g, '');
+    const dotCount = (val.match(/\./g) || []).length;
+    if (dotCount > 1) return;
+    if (val.includes('.') && val.split('.')[1]?.length > 2) return;
+
+    setRawText(val);
+
+    if (val === '' || val === '.') {
+      lastExternalValue.current = 0;
+      onChange(0);
+      return;
+    }
+
+    const num = parseFloat(val);
+    if (!isNaN(num) && num >= 0) {
+      lastExternalValue.current = num;
+      onChange(num);
+    }
+  };
+
+  return (
+    <div className="relative">
+      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-mono text-xl font-bold">R</span>
+      <Input
+        id={id}
+        type="text"
+        inputMode="decimal"
+        className="pl-12 w-full sm:w-56 h-14 text-2xl font-mono font-bold border-2 border-blue-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 bg-white rounded-lg"
+        value={rawText}
+        placeholder="0.00"
+        onFocus={(e) => e.target.select()}
+        onChange={handleChange}
+        data-testid="input-payment-allocation"
+      />
+    </div>
+  );
 }
 
 export function AccountEnquiryView({ item }: { item: TransactionItem }) {
@@ -623,30 +673,11 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                
                <div className="w-full sm:w-auto">
                    <Label htmlFor={`pay-${item.id}`} className="text-xs uppercase tracking-wider text-blue-600 font-semibold mb-1 block">Payment Amount</Label>
-                   <div className="relative">
-                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-mono text-xl font-bold">R</span>
-                       <Input 
-                            id={`pay-${item.id}`}
-                            type="text"
-                            inputMode="decimal"
-                            className="pl-12 w-full sm:w-56 h-14 text-2xl font-mono font-bold border-2 border-blue-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 bg-white rounded-lg"
-                            value={item.amountToPay === 0 ? '' : item.amountToPay}
-                            placeholder="0.00"
-                            onFocus={(e) => e.target.select()}
-                            onChange={(e) => {
-                                const val = e.target.value;
-                                if (val === '' || val === '.') {
-                                    updateItemAmount(item.id, 0);
-                                    return;
-                                }
-                                if (!/^\d*\.?\d{0,2}$/.test(val)) return;
-                                const num = parseFloat(val);
-                                if (isNaN(num) || num < 0) return;
-                                updateItemAmount(item.id, num);
-                            }}
-                            data-testid="input-payment-allocation"
-                        />
-                   </div>
+                   <PaymentInput
+                       id={`pay-${item.id}`}
+                       value={item.amountToPay}
+                       onChange={(val) => updateItemAmount(item.id, val)}
+                   />
                </div>
            </div>
        </div>
