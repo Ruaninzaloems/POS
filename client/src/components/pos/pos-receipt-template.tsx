@@ -33,15 +33,21 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
 
   const totalAmount = transaction.totalAmount;
 
-  const hasSplitReceipts = transaction.splitReceipts && transaction.splitReceipts.length > 1;
-  const cashReceipt = transaction.splitReceipts?.find(r => r.paymentType === 'cash');
-  const cardReceipt = transaction.splitReceipts?.find(r => r.paymentType === 'card');
+  const splitReceipts = transaction.splitReceipts || [];
+  const hasSplitReceipts = splitReceipts.length > 1;
+  const cashReceipts = splitReceipts.filter(r => r.paymentType === 'cash');
+  const cardReceipts = splitReceipts.filter(r => r.paymentType === 'card');
+  const isSplitPayment = cashReceipts.length > 0 && cardReceipts.length > 0;
 
   const primaryItem = sortedItems.find(i => i.type === 'CONSUMER_SERVICES' || i.type === 'PREPAID' || i.type === 'CLEARANCE');
   const primaryAccount = primaryItem?.originalData as (Account & Record<string, any>) | null;
 
-  const tenderAmount = rd?.tenderAmount ?? rd?.TenderAmount ?? (transaction.payment.cash + transaction.payment.card);
-  const changeAmount = rd?.changeAmount ?? rd?.ChangeAmount ?? Math.max(0, tenderAmount - totalAmount);
+  const tenderAmount = isSplitPayment
+    ? (transaction.payment.cash + transaction.payment.card)
+    : (rd?.tenderAmount ?? rd?.TenderAmount ?? (transaction.payment.cash + transaction.payment.card));
+  const changeAmount = isSplitPayment
+    ? Math.max(0, (transaction.payment.cash + transaction.payment.card) - totalAmount)
+    : (rd?.changeAmount ?? rd?.ChangeAmount ?? Math.max(0, tenderAmount - totalAmount));
 
   const formatDate = (ts: number) => {
     return new Date(ts).toLocaleString('en-ZA', {
@@ -51,6 +57,19 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
       hour12: false
     }).replace(',', '');
   };
+
+  const uniqueAccounts = new Map<string, { accountId: string; accountName: string; cashReceipt?: SplitReceipt; cardReceipt?: SplitReceipt }>();
+  if (isSplitPayment) {
+    for (const sr of splitReceipts) {
+      const key = sr.accountId || sr.receiptId.toString();
+      if (!uniqueAccounts.has(key)) {
+        uniqueAccounts.set(key, { accountId: sr.accountId || '', accountName: sr.accountName || '' });
+      }
+      const entry = uniqueAccounts.get(key)!;
+      if (sr.paymentType === 'cash') entry.cashReceipt = sr;
+      if (sr.paymentType === 'card') entry.cardReceipt = sr;
+    }
+  }
 
   return (
     <div ref={ref} className="bg-white p-4 mx-auto text-[11px] font-mono leading-relaxed receipt-print relative w-[340px]">
@@ -102,17 +121,29 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
       </div>
 
       <div className="border-t border-gray-300 pt-2 mb-3">
-        {hasSplitReceipts ? (
+        {isSplitPayment ? (
             <>
-                <div className="flex justify-between mb-0.5">
-                    <span>Receipt No (Cash)</span>
-                    <span className="text-right">{cashReceipt?.receiptNumber || '-'}</span>
-                </div>
-                <div className="flex justify-between mb-0.5">
-                    <span>Receipt No (Card)</span>
-                    <span className="text-right">{cardReceipt?.receiptNumber || '-'}</span>
-                </div>
+                <div className="font-bold text-center text-[10px] uppercase mb-1">Split Payment Receipt</div>
+                {cashReceipts.map((cr, idx) => (
+                    <div key={`cash-${idx}`} className="flex justify-between mb-0.5">
+                        <span>Cash Receipt {cashReceipts.length > 1 ? `#${idx + 1}` : ''}</span>
+                        <span className="text-right text-[10px]">{cr.receiptNumber || '-'}</span>
+                    </div>
+                ))}
+                {cardReceipts.map((cr, idx) => (
+                    <div key={`card-${idx}`} className="flex justify-between mb-0.5">
+                        <span>Card Receipt {cardReceipts.length > 1 ? `#${idx + 1}` : ''}</span>
+                        <span className="text-right text-[10px]">{cr.receiptNumber || '-'}</span>
+                    </div>
+                ))}
             </>
+        ) : hasSplitReceipts ? (
+            splitReceipts.map((sr, idx) => (
+                <div key={idx} className="flex justify-between mb-0.5">
+                    <span>Receipt No {splitReceipts.length > 1 ? `#${idx + 1}` : ''}</span>
+                    <span className="text-right">{sr.receiptNumber || '-'}</span>
+                </div>
+            ))
         ) : (
             <div className="flex justify-between mb-0.5">
                 <span>Receipt No</span>
@@ -124,7 +155,7 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
             <span className="text-right">{rd?.receiptDate || rd?.ReceiptDate || formatDate(transaction.timestamp)}</span>
         </div>
 
-        {(primaryAccount || rd?.accountId) && (
+        {(primaryAccount || rd?.accountId) && sortedItems.length <= 1 && (
             <>
                 <div className="flex justify-between mb-0.5">
                     <span>Account No</span>
@@ -174,6 +205,7 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
       </div>
 
       <div className="border-t border-gray-300 pt-2 mb-2">
+        <div className="font-bold text-center text-[10px] uppercase mb-1">Line Items</div>
         {sortedItems.map((item, idx) => {
             const isDirect = item.type === 'DIRECT_INCOME';
             const directData = isDirect ? (item.originalData as DirectIncomeItem) : null;
@@ -181,8 +213,17 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
                 ? (item.notes || directData?.groupName || item.description)
                 : item.description;
 
+            const acctData = item.originalData as any;
+            const showAccountDetail = sortedItems.length > 1 && (item.type === 'CONSUMER_SERVICES' || item.type === 'MULTI_ACCOUNT' || item.type === 'ACCOUNT_GROUP');
+
             return (
                 <div key={idx} className="mb-2">
+                    {showAccountDetail && (
+                        <div className="text-[9px] text-gray-600 mb-0.5">
+                            Acc: {acctData?.accountNo || acctData?.accountNumber || item.reference}
+                            {acctData?.name ? ` - ${acctData.name}` : ''}
+                        </div>
+                    )}
                     <div className="flex justify-between">
                         <span className="break-words w-[65%]">{displayDescription}</span>
                         <span className="text-right">{item.amountToPay.toFixed(2)}</span>
@@ -203,6 +244,7 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
 
       {transaction.allocations && transaction.allocations.length > 0 ? (
           <div className="border-t border-gray-300 pt-2 mb-2">
+              <div className="font-bold text-center text-[10px] uppercase mb-1">Service Allocation</div>
               {transaction.allocations.map((alloc, idx) => (
                   <div key={idx} className="mb-1">
                       <div className="flex justify-between">
@@ -218,15 +260,6 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
           </div>
       ) : (
           <div className="border-t border-gray-300 pt-2 mb-2">
-              {sortedItems.map((item, idx) => {
-                  const itemVat = item.amountToPay * (15 / 115);
-                  return (
-                      <div key={idx} className="flex justify-between">
-                          <span>{item.description}</span>
-                          <span className="text-right">{item.amountToPay.toFixed(2)}</span>
-                      </div>
-                  );
-              })}
               <div className="flex justify-between mt-1">
                   <span>Vat Amount</span>
                   <span className="text-right">{(totalAmount * 15 / 115).toFixed(2)}</span>
@@ -249,25 +282,68 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
         </div>
       </div>
 
-      {hasSplitReceipts && (
-          <div className="border-t border-gray-300 pt-2 mb-2 text-[9px]">
-              <div className="font-bold text-center mb-1 uppercase">Split Payment Details</div>
-              {cashReceipt && (
-                  <div className="flex justify-between">
-                      <span>Cash Receipt: {cashReceipt.receiptNumber}</span>
-                      <span>{cashReceipt.amount.toFixed(2)}</span>
+      {isSplitPayment && (
+          <div className="border-t border-gray-300 pt-2 mb-2">
+              <div className="font-bold text-center text-[10px] uppercase mb-1">Payment Breakdown</div>
+              <div className="flex justify-between mb-0.5">
+                  <span>Cash Tendered</span>
+                  <span>{transaction.payment.cash.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between mb-0.5">
+                  <span>Card Payment</span>
+                  <span>{transaction.payment.card.toFixed(2)}</span>
+              </div>
+              {transaction.payment.cardReference && (
+                  <div className="flex justify-between mb-0.5 text-[9px]">
+                      <span>Card Ref</span>
+                      <span>{transaction.payment.cardReference}</span>
                   </div>
               )}
-              {cardReceipt && (
-                  <div className="flex justify-between">
-                      <span>Card Receipt: {cardReceipt.receiptNumber}</span>
-                      <span>{cardReceipt.amount.toFixed(2)}</span>
+              {changeAmount > 0 && (
+                  <div className="flex justify-between mb-0.5">
+                      <span>Change (Cash)</span>
+                      <span>{changeAmount.toFixed(2)}</span>
+                  </div>
+              )}
+
+              {uniqueAccounts.size > 0 && sortedItems.length > 1 && (
+                  <div className="mt-2 pt-1 border-t border-dashed border-gray-300">
+                      <div className="font-bold text-center text-[9px] uppercase mb-1">Per-Account Receipt Detail</div>
+                      {Array.from(uniqueAccounts.entries()).map(([key, acct], idx) => (
+                          <div key={key} className="mb-1.5">
+                              <div className="text-[9px] font-bold">{acct.accountName || `Account ${acct.accountId}`}</div>
+                              {acct.cashReceipt && (
+                                  <div className="flex justify-between text-[9px]">
+                                      <span>Cash: {acct.cashReceipt.receiptNumber}</span>
+                                      <span>{acct.cashReceipt.amount.toFixed(2)}</span>
+                                  </div>
+                              )}
+                              {acct.cardReceipt && (
+                                  <div className="flex justify-between text-[9px]">
+                                      <span>Card: {acct.cardReceipt.receiptNumber}</span>
+                                      <span>{acct.cardReceipt.amount.toFixed(2)}</span>
+                                  </div>
+                              )}
+                          </div>
+                      ))}
                   </div>
               )}
           </div>
       )}
 
-      {(rd?.outstandingAmount != null || rd?.OutstandingAmount != null || rd?.outstandingBalance != null || rd?.OutstandingBalance != null || primaryAccount?.outstandingAmount != null || primaryAccount?.outStandingAmt != null) && (
+      {!isSplitPayment && hasSplitReceipts && (
+          <div className="border-t border-gray-300 pt-2 mb-2 text-[9px]">
+              <div className="font-bold text-center mb-1 uppercase">Receipt Details</div>
+              {splitReceipts.map((sr, idx) => (
+                  <div key={idx} className="flex justify-between">
+                      <span>{sr.receiptNumber} ({sr.paymentType})</span>
+                      <span>{sr.amount.toFixed(2)}</span>
+                  </div>
+              ))}
+          </div>
+      )}
+
+      {!isSplitPayment && (rd?.outstandingAmount != null || rd?.OutstandingAmount != null || rd?.outstandingBalance != null || rd?.OutstandingBalance != null || primaryAccount?.outstandingAmount != null || primaryAccount?.outStandingAmt != null) && (
           <div className="border-t border-gray-300 pt-2 mb-2">
               <div className="flex justify-between">
                   <span>Outstanding<br/>Balance</span>
@@ -276,10 +352,26 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
           </div>
       )}
 
+      {isSplitPayment && uniqueAccounts.size > 0 && (
+          <div className="border-t border-gray-300 pt-2 mb-2">
+              {Array.from(uniqueAccounts.entries()).map(([key, acct]) => {
+                  const lastReceipt = acct.cardReceipt || acct.cashReceipt;
+                  const outstanding = lastReceipt?.receiptDetail?.outstandingAmount;
+                  if (outstanding == null) return null;
+                  return (
+                      <div key={key} className="flex justify-between text-[10px]">
+                          <span>{acct.accountName || acct.accountId} Balance</span>
+                          <span className="text-right">{Number(outstanding).toFixed(2)}</span>
+                      </div>
+                  );
+              })}
+          </div>
+      )}
+
       <div className="border-t border-gray-300 pt-2 mb-3">
         <div className="flex justify-between mb-0.5">
             <span>Payment Type</span>
-            <span className="text-right">{rd?.paymentType || rd?.PaymentType || transaction.paymentTypeName || (transaction.payment.card > 0 ? 'Card' : 'Cash')}</span>
+            <span className="text-right">{isSplitPayment ? 'Split (Cash + Card)' : (rd?.paymentType || rd?.PaymentType || transaction.paymentTypeName || (transaction.payment.card > 0 ? 'Card' : 'Cash'))}</span>
         </div>
         <div className="flex justify-between mb-0.5">
             <span>Payment Option</span>

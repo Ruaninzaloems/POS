@@ -42,6 +42,8 @@ export interface SplitReceipt {
   receiptId: number;
   paymentType: 'cash' | 'card';
   amount: number;
+  accountId?: string;
+  accountName?: string;
   allocations?: ReceiptAllocation[];
   receiptDetail?: any;
 }
@@ -562,7 +564,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setDayEndStatus('OPEN');
       setDayEndReturnReason('');
       setRecentTransactions([]);
-      setPayment({ cash: 0, card: 0 });
+      setPayment({ cash: 0, card: 0, cardReference: '' });
   };
 
   const toggleViewMode = () => {
@@ -844,90 +846,106 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return [];
     };
 
-    const processAccReceiptResult = async (receiptIds: number[], paymentLabel: string, paymentType: 'cash' | 'card', paymentAmount: number) => {
+    const processAccReceiptResult = async (receiptIds: number[], paymentLabel: string, paymentType: 'cash' | 'card', paymentAmount: number, perAccountAmounts?: { accountId: string; accountName: string; amount: number }[]) => {
         if (receiptIds.length === 0) {
             console.warn(`[Priority 1 ${paymentLabel}] No receipt IDs returned — receipt print skipped`);
             return;
         }
-        let receiptNo = `REC-${receiptIds[0]}`;
-        let receiptDetail: any = null;
 
-        try {
-            const receiptData = await fetchPosMultiReceiptPrint(String(receiptIds[0]));
-            if (receiptData && receiptData.length > 0) {
-                const rd = receiptData[0];
-                if (rd.receiptNo) {
-                    receiptNo = rd.receiptNo;
-                    console.log(`[Priority 1 ${paymentLabel}] Receipt number from multi-receipt-print: ${receiptNo}`);
-                }
-                receiptDetail = {
-                    receiptNo: rd.receiptNo,
-                    cashierName: rd.cashierName,
-                    cashOffice: rd.cashOfficeName,
-                    tenderAmount: rd.tenderAmount,
-                    changeAmount: rd.changeAmount,
-                    outstandingAmount: rd.outstandingAmount,
-                    paymentType: rd.billType || (rd.paymentTypeId === 1 ? 'Cash' : rd.paymentTypeId === 3 ? 'Credit Card' : rd.paymentTypeId === 2 ? 'Cheque' : rd.paymentTypeId === 4 ? 'Postal Order' : 'Cash'),
-                    paymentOption: rd.payMode || 'Consumer Services',
-                    accountId: rd.accountId,
-                    oldAccountCode: rd.oldAccountCode,
-                    sgNumber: rd.sgNumber,
-                    accAddress: rd.accAddress,
-                    accName: rd.accName,
-                    receiptDate: rd.receiptDate,
-                    paymentDate: rd.paymentDate,
-                    isCancelled: rd.isCancelled,
-                };
-                console.log(`[Priority 1 ${paymentLabel}] Receipt detail from multi-receipt-print:`, JSON.stringify(receiptDetail).substring(0, 500));
-            }
-        } catch (e) {
-            console.warn(`[Priority 1 ${paymentLabel}] Could not fetch multi-receipt-print`, e);
-        }
+        for (let rIdx = 0; rIdx < receiptIds.length; rIdx++) {
+            const rid = receiptIds[rIdx];
+            let receiptNo = `REC-${rid}`;
+            let receiptDetail: any = null;
+            let acctId = '';
+            let acctName = '';
 
-        if (receiptNo.startsWith('REC-')) {
             try {
-                const htmlDetail = await getReceiptTransactionDetail(receiptIds[0]);
-                if (htmlDetail) {
-                    const detailReceiptNo = htmlDetail?.receiptNo || htmlDetail?.ReceiptNo || htmlDetail?.receiptNumber || htmlDetail?.ReceiptNumber;
-                    if (detailReceiptNo) {
-                        receiptNo = detailReceiptNo;
-                        console.log(`[Priority 1 ${paymentLabel}] Receipt number from transaction detail: ${receiptNo}`);
+                const receiptData = await fetchPosMultiReceiptPrint(String(rid));
+                if (receiptData && receiptData.length > 0) {
+                    const rd = receiptData[0];
+                    if (rd.receiptNo) {
+                        receiptNo = rd.receiptNo;
                     }
+                    acctId = rd.accountId || '';
+                    acctName = rd.accName || '';
+                    receiptDetail = {
+                        receiptNo: rd.receiptNo,
+                        cashierName: rd.cashierName,
+                        cashOffice: rd.cashOfficeName,
+                        tenderAmount: rd.tenderAmount,
+                        changeAmount: rd.changeAmount,
+                        outstandingAmount: rd.outstandingAmount,
+                        paymentType: rd.billType || (rd.paymentTypeId === 1 ? 'Cash' : rd.paymentTypeId === 3 ? 'Credit Card' : rd.paymentTypeId === 2 ? 'Cheque' : rd.paymentTypeId === 4 ? 'Postal Order' : 'Cash'),
+                        paymentOption: rd.payMode || 'Consumer Services',
+                        accountId: rd.accountId,
+                        oldAccountCode: rd.oldAccountCode,
+                        sgNumber: rd.sgNumber,
+                        accAddress: rd.accAddress,
+                        accName: rd.accName,
+                        receiptDate: rd.receiptDate,
+                        paymentDate: rd.paymentDate,
+                        isCancelled: rd.isCancelled,
+                    };
+                    console.log(`[Priority 1 ${paymentLabel}] Receipt ${receiptNo} for account ${acctId} (${acctName})`);
                 }
             } catch (e) {
-                console.warn(`[Priority 1 ${paymentLabel}] Could not fetch receipt transaction detail`, e);
+                console.warn(`[Priority 1 ${paymentLabel}] Could not fetch multi-receipt-print for ${rid}`, e);
             }
-        }
 
-        if (!finalReceiptNumber || finalReceiptNumber === 'PENDING') {
-            finalReceiptNumber = receiptNo;
-            updateRecordReceiptNumber(record, finalReceiptNumber);
-        }
-
-        const splitEntry: SplitReceipt = { receiptNumber: receiptNo, receiptId: receiptIds[0], paymentType, amount: paymentAmount };
-
-        if (receiptDetail) {
-            splitEntry.receiptDetail = receiptDetail;
-        }
-
-        try {
-            const allocs = await fetchReceiptAllocations(String(receiptIds[0]));
-            if (allocs.length > 0) {
-                splitEntry.allocations = allocs;
-                record.allocations = [...(record.allocations || []), ...allocs];
-                console.log(`[Priority 1 ${paymentLabel}] Receipt allocations:`, allocs);
+            if (receiptNo.startsWith('REC-')) {
+                try {
+                    const htmlDetail = await getReceiptTransactionDetail(rid);
+                    if (htmlDetail) {
+                        const detailReceiptNo = htmlDetail?.receiptNo || htmlDetail?.ReceiptNo || htmlDetail?.receiptNumber || htmlDetail?.ReceiptNumber;
+                        if (detailReceiptNo) {
+                            receiptNo = detailReceiptNo;
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`[Priority 1 ${paymentLabel}] Could not fetch receipt transaction detail for ${rid}`, e);
+                }
             }
-        } catch (e) {
-            console.warn(`[Priority 1 ${paymentLabel}] Could not fetch receipt allocations`, e);
+
+            if (!finalReceiptNumber || finalReceiptNumber === 'PENDING') {
+                finalReceiptNumber = receiptNo;
+                updateRecordReceiptNumber(record, finalReceiptNumber);
+            }
+
+            const matchedPerAcct = perAccountAmounts?.[rIdx];
+            const perAccountAmount = matchedPerAcct?.amount ?? (receiptIds.length > 1
+                ? Math.round((paymentAmount / receiptIds.length) * 100) / 100
+                : paymentAmount);
+            const splitEntry: SplitReceipt = {
+                receiptNumber: receiptNo,
+                receiptId: rid,
+                paymentType,
+                amount: receiptDetail?.tenderAmount ?? perAccountAmount,
+                accountId: acctId || matchedPerAcct?.accountId || '',
+                accountName: acctName || matchedPerAcct?.accountName || '',
+            };
+
+            if (receiptDetail) {
+                splitEntry.receiptDetail = receiptDetail;
+            }
+
+            try {
+                const allocs = await fetchReceiptAllocations(String(rid));
+                if (allocs.length > 0) {
+                    splitEntry.allocations = allocs;
+                    record.allocations = [...(record.allocations || []), ...allocs];
+                }
+            } catch (e) {
+                console.warn(`[Priority 1 ${paymentLabel}] Could not fetch receipt allocations for ${rid}`, e);
+            }
+
+            record.splitReceipts!.push(splitEntry);
+
+            if (receiptDetail && !record.receiptDetail) {
+                record.receiptDetail = receiptDetail;
+            }
+
+            console.log(`[Priority 1 ${paymentLabel}] Receipt ${receiptNo} added to split receipts (account: ${acctId})`);
         }
-
-        record.splitReceipts!.push(splitEntry);
-
-        if (receiptDetail && !record.receiptDetail) {
-            record.receiptDetail = receiptDetail;
-        }
-
-        console.log(`[Priority 1 ${paymentLabel}] Receipt ${receiptNo} added to split receipts`);
     };
 
     try {
@@ -1077,7 +1095,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     }
                 }
 
-                return { isSuccess: true, ids: allReceiptIds };
+                return { isSuccess: true, ids: allReceiptIds, perAccountAmounts: perAccountPayments.map(p => ({ accountId: String(p.acct.account_ID), accountName: p.acct.name || '', amount: p.itemPayment })) };
             };
 
             if (isSplitPayment) {
@@ -1096,7 +1114,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     const cashResult = await submitConsumerPayments(accCashActual, accCashTender, accCashChange, 1, 1, 'CASH', accCashActual);
                     console.log(`[Priority 1 CASH] Submitted cash payment`, cashResult);
                     const cashReceiptIds = extractReceiptIds(cashResult);
-                    await processAccReceiptResult(cashReceiptIds, 'CASH', 'cash', accCashActual);
+                    await processAccReceiptResult(cashReceiptIds, 'CASH', 'cash', accCashActual, cashResult.perAccountAmounts);
                 } catch (e: any) {
                     console.warn(`[Priority 1 CASH] Failed to submit cash payment`, e);
                     toast({ title: "Cash Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
@@ -1108,7 +1126,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         const cardResult = await submitConsumerPayments(accCardActual, accCardActual, 0, 1, 1, 'CARD', accCardActual);
                         console.log(`[Priority 1 CARD] Submitted card payment`, cardResult);
                         const cardReceiptIds = extractReceiptIds(cardResult);
-                        await processAccReceiptResult(cardReceiptIds, 'CARD', 'card', accCardActual);
+                        await processAccReceiptResult(cardReceiptIds, 'CARD', 'card', accCardActual, cardResult.perAccountAmounts);
                     } catch (e: any) {
                         console.warn(`[Priority 1 CARD] Failed to submit card payment`, e);
                         toast({ title: "Card Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });

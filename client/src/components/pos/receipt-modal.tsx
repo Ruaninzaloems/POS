@@ -125,10 +125,33 @@ export function ReceiptModal() {
                 <span className="text-muted-foreground">Total Paid</span>
                 <span className="font-bold font-mono">R {payment.tenderTotal.toFixed(2)}</span>
             </div>
+            {payment.cashAmount > 0 && payment.cardAmount > 0 && (
+                <div className="space-y-1">
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Cash</span>
+                        <span className="font-mono">R {payment.cashAmount.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Card</span>
+                        <span className="font-mono">R {payment.cardAmount.toFixed(2)}</span>
+                    </div>
+                </div>
+            )}
             {payment.changeDue > 0 && (
                 <div className="flex justify-between text-sm text-green-600">
                     <span>Change Given</span>
                     <span className="font-bold font-mono">R {payment.changeDue.toFixed(2)}</span>
+                </div>
+            )}
+            {currentTransaction?.splitReceipts && currentTransaction.splitReceipts.length > 1 && !transactionProcessing && (
+                <div className="text-xs text-muted-foreground border-t pt-2 mt-2">
+                    <p className="font-medium mb-1">{currentTransaction.splitReceipts.length} receipts generated</p>
+                    {currentTransaction.splitReceipts.map((sr, i) => (
+                        <div key={i} className="flex justify-between">
+                            <span>{sr.receiptNumber} ({sr.paymentType})</span>
+                            <span className="font-mono">R {sr.amount.toFixed(2)}</span>
+                        </div>
+                    ))}
                 </div>
             )}
             
