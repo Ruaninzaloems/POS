@@ -296,28 +296,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         const data = await res.json();
         setCashierRegistered(data.cashierRegistered === true);
-        if (data.active && data.officeId && data.isActive === true) {
-          setPlatinumCashierId(data.cashierId);
-          setActiveSession(true);
-          setSessionDetails({
-            startTime: Date.now(),
-            officeId: String(data.officeId),
-            officeDesc: data.officeName || '',
-            floatAmount: data.cashFloat || 0,
-          });
-          setCurrentUser(prev => ({
-            ...prev,
-            cashOffice: data.officeName || prev.cashOffice,
-            float: data.cashFloat || prev.float,
-          }));
-          if (data.cashOnHandLimit) {
-            setOfficeLimits(prev => ({ ...prev, [String(data.officeId)]: data.cashOnHandLimit }));
-          }
-          console.log("Active Platinum session restored:", data);
-        } else {
-          setPlatinumCashierId(data.cashierId || null);
-          console.log("No active Platinum session found. Cashier registered:", data.cashierRegistered, "isActive:", data.isActive);
+        setPlatinumCashierId(data.cashierId || null);
+        if (data.cashOnHandLimit && data.officeId) {
+          setOfficeLimits(prev => ({ ...prev, [String(data.officeId)]: data.cashOnHandLimit }));
         }
+        console.log("Platinum cashier status:", { registered: data.cashierRegistered, isActive: data.isActive, officeId: data.officeId, officeName: data.officeName });
       } catch (e) {
         console.warn("Failed to check active Platinum session", e);
         setCashierRegistered(false);

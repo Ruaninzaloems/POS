@@ -81,9 +81,12 @@ export default function CashierSetup() {
                     setCashierDetails(data.details || null);
                     setStep1Status('success');
 
-                    if (data.details?.officeId) {
-                        setSelectedOfficeId(String(data.details.officeId));
-                        console.log(`[CashierSetup] Pre-selected office from Platinum: ID ${data.details.officeId} (${data.details.const_CashOffice?.cashOfficeDesc || 'unknown'})`);
+                    const savedOfficeId = localStorage.getItem(`cashier_office_${userId}`);
+                    const currentOfficeId = savedOfficeId || data.officeId || data.details?.officeId;
+                    if (currentOfficeId) {
+                        setSelectedOfficeId(String(currentOfficeId));
+                        const source = savedOfficeId ? 'saved preference' : 'Platinum record';
+                        console.log(`[CashierSetup] Pre-selected office ID ${currentOfficeId} from ${source}`);
                     }
 
                     if (data.cashFloat > 0) {
@@ -217,6 +220,7 @@ export default function CashierSetup() {
             const officeName = selectedOffice.cashOfficeDesc || '';
             const fullName = `${firstName} ${lastName}`.trim();
 
+            localStorage.setItem(`cashier_office_${userId}`, officeId);
             switchUser(String(userId), fullName || currentUser.name, officeName);
             startSession(officeId, float, officeName);
 
