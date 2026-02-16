@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, MOCK_TRANSACTIONS, CashOffice } from './mock-data';
+import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
 import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList } from './external-api';
 
@@ -156,6 +156,7 @@ interface PosActions {
   returnDayEnd: (reason: string) => void;
   cancelTransaction: (id: string, reason: string) => void;
   approveCancellation: (id: string, approved: boolean) => void;
+  refreshTransactions: () => Promise<void>;
 }
 
 const PosContext = createContext<(PosState & PosActions) | null>(null);
@@ -311,10 +312,86 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     checkActiveSession();
   }, [platinumUser]);
 
+  const loadTransactionsFromApi = async (cashierId?: string) => {
+    const userId = cashierId || currentUser.id;
+    if (!userId || userId === 'CSH-00') return;
+
+    try {
+      const today = new Date();
+      const fromDate = today.getFullYear() + '-' +
+          String(today.getMonth() + 1).padStart(2, '0') + '-' +
+          String(today.getDate()).padStart(2, '0') + 'T00:00:00';
+
+      const result = await fetchReceiptList({
+        cashierId: userId,
+        fromDate,
+        page: 1,
+        pageSize: 200,
+        orderby: 'receiptDate',
+        shortDirection: 'desc',
+      });
+
+      if (result.items && result.items.length > 0) {
+        const mapped: TransactionRecord[] = result.items.map((r) => {
+          const isCash = (r.paymentType || '').toLowerCase().includes('cash');
+          const isCard = (r.paymentType || '').toLowerCase().includes('card');
+          const paymentAmount = r.amount || 0;
+
+          let txType: TransactionType = 'CONSUMER_SERVICES';
+          const opt = (r.paymentOption || '').toLowerCase();
+          if (opt.includes('misc') || opt.includes('direct') || opt.includes('income')) {
+            txType = 'DIRECT_INCOME';
+          } else if (opt.includes('clearance')) {
+            txType = 'CLEARANCE';
+          } else if (opt.includes('prepaid')) {
+            txType = 'PREPAID';
+          }
+
+          return {
+            id: `plt-${r.receiptId}`,
+            receiptNumber: r.receiptNo || `REC-${r.receiptId}`,
+            timestamp: new Date(r.receiptDate).getTime() || Date.now(),
+            items: [{
+              id: `item-${r.receiptId}`,
+              type: txType,
+              description: r.accName || r.paymentOption || 'Payment',
+              reference: r.accountNumber || '',
+              amountDue: r.outstandingAmount || paymentAmount,
+              amountToPay: paymentAmount,
+              originalData: r,
+            }],
+            totalAmount: paymentAmount,
+            payment: {
+              cash: isCash ? paymentAmount : 0,
+              card: isCard ? paymentAmount : 0,
+            },
+            status: r.isCancelled === 1 ? 'CANCELLED' as TransactionStatus : 'COMPLETED' as TransactionStatus,
+            cashierId: userId,
+            cashierName: r.cashierName || '',
+            cashOfficeName: r.cashOffice || '',
+            paymentTypeName: r.paymentType || '',
+            paymentOptionName: r.paymentOption || '',
+            isReconciled: 0,
+            cancellationReason: r.cancellationReason || undefined,
+          };
+        });
+
+        setRecentTransactions(mapped);
+        console.log(`[Transactions] Loaded ${mapped.length} transactions from Platinum API for cashier ${userId}`);
+      } else {
+        setRecentTransactions([]);
+        console.log(`[Transactions] No transactions found for cashier ${userId} on ${fromDate}`);
+      }
+    } catch (e) {
+      console.warn('[Transactions] Failed to load transactions from API:', e);
+    }
+  };
+
   useEffect(() => {
-    const cashierTxs = MOCK_TRANSACTIONS.filter(t => t.cashierId === currentUser.id);
-    setRecentTransactions([...cashierTxs].sort((a, b) => b.timestamp - a.timestamp));
-  }, [currentUser]);
+    if (activeSession && currentUser.id && currentUser.id !== 'CSH-00') {
+      loadTransactionsFromApi(currentUser.id);
+    }
+  }, [activeSession, currentUser.id]);
 
   // Update currentUser when cashiers are loaded from API (only if Platinum user info not available)
   useEffect(() => {
@@ -466,10 +543,15 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateRecordReceiptNumber = (record: TransactionRecord, newReceiptNumber: string) => {
     record.receiptNumber = newReceiptNumber;
-    const idx = MOCK_TRANSACTIONS.findIndex(t => t.id === record.id);
-    if (idx >= 0) MOCK_TRANSACTIONS[idx] = record;
-    const cashierTxs = MOCK_TRANSACTIONS.filter(t => t.cashierId === currentUser.id);
-    setRecentTransactions([...cashierTxs].sort((a, b) => b.timestamp - a.timestamp));
+    setRecentTransactions(prev => {
+      const idx = prev.findIndex(t => t.id === record.id);
+      if (idx >= 0) {
+        const updated = [...prev];
+        updated[idx] = { ...record };
+        return updated;
+      }
+      return prev;
+    });
   };
 
   const completeTransaction = async () => {
@@ -478,9 +560,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         cashOfficeName: sessionDetails?.officeDesc || sessionDetails?.officeId || currentUser.cashOffice,
     });
     
-    MOCK_TRANSACTIONS.push(record);
-    const cashierTxs = MOCK_TRANSACTIONS.filter(t => t.cashierId === currentUser.id);
-    setRecentTransactions([...cashierTxs].sort((a, b) => b.timestamp - a.timestamp));
+    setRecentTransactions(prev => [record, ...prev]);
     setIsReceiptModalOpen(true);
     setTransactionProcessing(true);
 
@@ -1182,6 +1262,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     } finally {
         setTransactionProcessing(false);
+        setTimeout(() => {
+            loadTransactionsFromApi(currentUser.id).catch(e => 
+                console.warn('[Transactions] Background refresh after payment failed:', e)
+            );
+        }, 2000);
     }
   };
   
@@ -1200,34 +1285,56 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setDayEndReturnReason(reason);
   };
 
-  const cancelTransaction = (id: string, reason: string) => {
-      const tx = MOCK_TRANSACTIONS.find(t => t.id === id);
+  const cancelTransaction = async (id: string, reason: string) => {
+      const tx = recentTransactions.find(t => t.id === id);
       if (!tx) return;
-
       if (tx.isReconciled === 1) return;
-      
-      const isSupervisor = currentUser.role === 'SUPERVISOR';
-      const newStatus = isSupervisor ? 'CANCELLED' : 'PENDING_CANCELLATION';
-      
-      const idx = MOCK_TRANSACTIONS.findIndex(t => t.id === id);
-      if (idx !== -1) {
-          MOCK_TRANSACTIONS[idx].status = newStatus;
-          MOCK_TRANSACTIONS[idx].cancellationReason = reason;
-          MOCK_TRANSACTIONS[idx].cancellationRequestTime = Date.now();
+
+      const receiptId = id.startsWith('plt-') ? id.replace('plt-', '') : null;
+
+      if (receiptId) {
+          try {
+              const res = await fetch('/api/platinum/auth-day-end/cancel-receipt', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ receiptId: Number(receiptId), reason }),
+              });
+              if (!res.ok) {
+                  const errData = await res.json().catch(() => null);
+                  throw new Error(errData?.message || `HTTP ${res.status}`);
+              }
+              console.log(`[CancelTransaction] Receipt ${receiptId} cancelled via Platinum API`);
+          } catch (e: any) {
+              console.error('[CancelTransaction] API cancel failed:', e);
+              toast({
+                  title: "Cancellation Failed",
+                  description: e?.message || 'Failed to cancel receipt via API',
+                  variant: "destructive",
+              });
+              return;
+          }
       }
 
-      const cashierTxs = MOCK_TRANSACTIONS.filter(t => t.cashierId === currentUser.id);
-      setRecentTransactions([...cashierTxs].sort((a, b) => b.timestamp - a.timestamp));
+      const isSupervisor = currentUser.role === 'SUPERVISOR';
+      const newStatus: TransactionStatus = isSupervisor ? 'CANCELLED' : 'PENDING_CANCELLATION';
+
+      setRecentTransactions(prev => prev.map(t =>
+          t.id === id ? { ...t, status: newStatus, cancellationReason: reason, cancellationRequestTime: Date.now() } : t
+      ));
+
+      setTimeout(() => {
+          loadTransactionsFromApi(currentUser.id).catch(() => {});
+      }, 1500);
   };
   
   const approveCancellation = (id: string, approved: boolean) => {
-      const idx = MOCK_TRANSACTIONS.findIndex(t => t.id === id);
-      if (idx !== -1) {
-          MOCK_TRANSACTIONS[idx].status = approved ? 'CANCELLED' : 'COMPLETED';
-      }
-      
-      const cashierTxs = MOCK_TRANSACTIONS.filter(t => t.cashierId === currentUser.id);
-      setRecentTransactions([...cashierTxs].sort((a, b) => b.timestamp - a.timestamp));
+      setRecentTransactions(prev => prev.map(t =>
+          t.id === id ? { ...t, status: approved ? 'CANCELLED' as TransactionStatus : 'COMPLETED' as TransactionStatus } : t
+      ));
+
+      setTimeout(() => {
+          loadTransactionsFromApi(currentUser.id).catch(() => {});
+      }, 1500);
   };
   
   return (
@@ -1264,6 +1371,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       returnDayEnd,
       cancelTransaction,
       approveCancellation,
+      refreshTransactions: () => loadTransactionsFromApi(currentUser.id),
       activeSession,
       sessionLoading,
       startSession,

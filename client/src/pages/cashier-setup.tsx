@@ -48,6 +48,7 @@ export default function CashierSetup() {
     const finYear = platinumUser?.finYear || '';
 
     const [setupComplete, setSetupComplete] = useState(false);
+    const [resumingSession, setResumingSession] = useState(false);
 
     useEffect(() => {
         if (setupComplete && activeSession && sessionDetails) {
@@ -80,6 +81,26 @@ export default function CashierSetup() {
                     setCashierId(data.cashierId || userId);
                     setCashierDetails(data.details || null);
                     setStep1Status('success');
+
+                    if (data.isActive === true && data.officeId) {
+                        console.log(`[CashierSetup] Active session detected — auto-resuming session for office ${data.officeName} (ID: ${data.officeId})`);
+                        setResumingSession(true);
+                        setStep2Status('success');
+                        setStep3Status('success');
+
+                        const savedOfficeId = localStorage.getItem(`cashier_office_${userId}`);
+                        const officeId = savedOfficeId || String(data.officeId);
+                        const officeName = data.officeName || data.details?.const_CashOffice?.cashOfficeDesc || '';
+                        const cashFloat = data.cashFloat || data.details?.cashFloat || 0;
+                        const fullName = `${firstName} ${lastName}`.trim();
+
+                        localStorage.setItem(`cashier_office_${userId}`, officeId);
+                        switchUser(String(userId), fullName || currentUser.name, officeName);
+                        startSession(officeId, cashFloat, officeName);
+
+                        setSetupComplete(true);
+                        return;
+                    }
 
                     const savedOfficeId = localStorage.getItem(`cashier_office_${userId}`);
                     const currentOfficeId = savedOfficeId || data.officeId || data.details?.officeId;
@@ -253,15 +274,18 @@ export default function CashierSetup() {
         </div>
     );
 
-    if (sessionLoading || (step1Status === 'loading' && step2Status === 'pending')) {
+    if (sessionLoading || (step1Status === 'loading' && step2Status === 'pending') || resumingSession) {
         return (
             <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4" data-testid="cashier-setup-loading">
                 <Card className="w-full max-w-2xl shadow-lg">
                     <CardContent className="p-12 flex flex-col items-center gap-4">
                         <Loader2 className="h-8 w-8 animate-spin text-slate-600" />
                         <p className="text-slate-600">
-                            {sessionLoading ? 'Checking for active session...' : 'Validating cashier registration...'}
+                            {resumingSession ? 'Resuming your active session...' : sessionLoading ? 'Checking for active session...' : 'Validating cashier registration...'}
                         </p>
+                        {resumingSession && (
+                            <p className="text-sm text-slate-500">You have an active cashier session. Redirecting to POS...</p>
+                        )}
                     </CardContent>
                 </Card>
             </div>
