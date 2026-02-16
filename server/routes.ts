@@ -680,7 +680,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/view-receipt/get-receipt-list", async (req, res) => {
     try {
+      console.log(`[get-receipt-list] Request payload:`, JSON.stringify(req.body));
       const data = await platinumPost("/api/ViewReceipt/get-receipt-list", req.body);
+      console.log(`[get-receipt-list] Response item count:`, Array.isArray(data) ? data.length : (data?.items?.length ?? 'unknown'), `full:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });

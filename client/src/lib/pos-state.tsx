@@ -312,9 +312,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     checkActiveSession();
   }, [platinumUser]);
 
-  const loadTransactionsFromApi = async (cashierId?: string) => {
-    const userId = cashierId || currentUser.id;
-    if (!userId || userId === 'CSH-00') return;
+  const loadTransactionsFromApi = async () => {
+    const pCashierId = platinumCashierId;
+    if (!pCashierId) {
+      console.log('[Transactions] No platinumCashierId available yet, skipping receipt load');
+      return;
+    }
 
     try {
       const today = new Date();
@@ -322,8 +325,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           String(today.getMonth() + 1).padStart(2, '0') + '-' +
           String(today.getDate()).padStart(2, '0') + 'T00:00:00';
 
+      console.log(`[Transactions] Fetching receipts for platinumCashierId: ${pCashierId}, fromDate: ${fromDate}`);
+
       const result = await fetchReceiptList({
-        cashierId: userId,
+        cashierId: String(pCashierId),
         fromDate,
         page: 1,
         pageSize: 200,
@@ -366,7 +371,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               card: isCard ? paymentAmount : 0,
             },
             status: r.isCancelled === 1 ? 'CANCELLED' as TransactionStatus : 'COMPLETED' as TransactionStatus,
-            cashierId: userId,
+            cashierId: currentUser.id,
             cashierName: r.cashierName || '',
             cashOfficeName: r.cashOffice || '',
             paymentTypeName: r.paymentType || '',
@@ -377,10 +382,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
 
         setRecentTransactions(mapped);
-        console.log(`[Transactions] Loaded ${mapped.length} transactions from Platinum API for cashier ${userId}`);
+        console.log(`[Transactions] Loaded ${mapped.length} transactions from Platinum API for platinumCashierId ${pCashierId}`);
       } else {
         setRecentTransactions([]);
-        console.log(`[Transactions] No transactions found for cashier ${userId} on ${fromDate}`);
+        console.log(`[Transactions] No transactions found for platinumCashierId ${pCashierId} on ${fromDate}`);
       }
     } catch (e) {
       console.warn('[Transactions] Failed to load transactions from API:', e);
@@ -388,10 +393,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   useEffect(() => {
-    if (activeSession && currentUser.id && currentUser.id !== 'CSH-00') {
-      loadTransactionsFromApi(currentUser.id);
+    if (activeSession && platinumCashierId) {
+      loadTransactionsFromApi();
     }
-  }, [activeSession, currentUser.id]);
+  }, [activeSession, platinumCashierId]);
 
   // Update currentUser when cashiers are loaded from API (only if Platinum user info not available)
   useEffect(() => {
@@ -1285,7 +1290,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearTransaction();
         console.log('[Payment] Transaction complete — screen reset to new transaction state');
         setTimeout(() => {
-            loadTransactionsFromApi(currentUser.id).catch(e => 
+            loadTransactionsFromApi().catch(e => 
                 console.warn('[Transactions] Background refresh after payment failed:', e)
             );
         }, 2000);
@@ -1345,7 +1350,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ));
 
       setTimeout(() => {
-          loadTransactionsFromApi(currentUser.id).catch(() => {});
+          loadTransactionsFromApi().catch(() => {});
       }, 1500);
   };
   
@@ -1355,7 +1360,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ));
 
       setTimeout(() => {
-          loadTransactionsFromApi(currentUser.id).catch(() => {});
+          loadTransactionsFromApi().catch(() => {});
       }, 1500);
   };
   
@@ -1393,7 +1398,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       returnDayEnd,
       cancelTransaction,
       approveCancellation,
-      refreshTransactions: () => loadTransactionsFromApi(currentUser.id),
+      refreshTransactions: () => loadTransactionsFromApi(),
       activeSession,
       sessionLoading,
       startSession,
