@@ -129,6 +129,69 @@ export async function fetchBillingConfig(): Promise<BillingConfig | null> {
     return null;
 }
 
+// === CASHIER PAYMENT OPTIONS & TYPES ===
+// These functions fetch per-cashier allowed payment options (what functions they can use)
+// and payment types (what tender methods they can accept).
+// Currently using placeholder/global data until the Platinum developer exposes
+// the POS_CashierPOSPaymentOption and POS_CashierPOSPaymentType tables via API.
+
+export interface CashierPaymentOption {
+    posPaymentOption_ID: number;
+    posPaymentOptionDesc: string;
+    isTicked: boolean;
+    enabled: boolean;
+}
+
+export interface CashierPaymentType {
+    posPaymentType_ID: number;
+    posPaymentTypeDesc: string;
+    isTicked: boolean;
+    enabled: boolean;
+}
+
+export async function fetchCashierPaymentOptions(cashierId: number): Promise<{ source: string; data: CashierPaymentOption[] }> {
+    try {
+        const res = await fetch(`/api/platinum/receipt-prepaid/cashier-payment-options?cashierId=${cashierId}`);
+        if (res.ok) {
+            const result = await res.json();
+            console.log(`[PaymentOptions] Loaded for cashier ${cashierId} (source: ${result.source}):`, result.data?.length, 'options');
+            return result;
+        }
+    } catch (e) {
+        console.warn("Failed to fetch cashier payment options", e);
+    }
+    return { source: "error-fallback", data: [] };
+}
+
+export async function fetchCashierPaymentTypes(cashierId: number): Promise<{ source: string; data: CashierPaymentType[] }> {
+    try {
+        const res = await fetch(`/api/platinum/receipt-prepaid/cashier-payment-types?cashierId=${cashierId}`);
+        if (res.ok) {
+            const result = await res.json();
+            console.log(`[PaymentTypes] Loaded for cashier ${cashierId} (source: ${result.source}):`, result.data?.length, 'types');
+            return result;
+        }
+    } catch (e) {
+        console.warn("Failed to fetch cashier payment types", e);
+    }
+    return { source: "error-fallback", data: [] };
+}
+
+// Maps our internal TransactionType to the Platinum payment option IDs
+// This mapping should be verified against the actual Const_POSPaymentOption_sys table
+// once the developer confirms the exact IDs
+export function mapTransactionTypeToPaymentOptionId(type: string): number | null {
+    const mapping: Record<string, number> = {
+        'CONSUMER_SERVICES': 1,
+        'MULTI_ACCOUNT': 1,
+        'ACCOUNT_GROUP': 3,
+        'DIRECT_INCOME': 2,
+        'CLEARANCE': 4,
+        'PREPAID': 5,
+    };
+    return mapping[type] ?? null;
+}
+
 export async function fetchBillingStageCashierReceiptDetails(referenceId: string): Promise<any[]> {
     try {
         const params = new URLSearchParams();

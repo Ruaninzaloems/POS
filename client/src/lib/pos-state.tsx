@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from '
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId } from './external-api';
 
 if (import.meta.hot) {
   import.meta.hot.accept(() => {
@@ -135,6 +135,11 @@ interface PosState {
   platinumCashierId: number | null;
   officeLimits: Record<string, number>;
   currentTransactionLimit: number;
+  allowedPaymentOptions: CashierPaymentOption[];
+  allowedPaymentTypes: CashierPaymentType[];
+  paymentOptionsSource: string;
+  isPaymentOptionAllowed: (transactionType: TransactionType) => boolean;
+  isPaymentTypeAllowed: (typeId: number) => boolean;
   viewMode: 'desktop' | 'mobile';
   systemSettings: {
       enableDenominationCounting: boolean;
@@ -213,6 +218,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [cashierRegistered, setCashierRegistered] = useState<boolean | null>(null);
   
   const [officeLimits, setOfficeLimits] = useState<Record<string, number>>({});
+  const [allowedPaymentOptions, setAllowedPaymentOptions] = useState<CashierPaymentOption[]>([]);
+  const [allowedPaymentTypes, setAllowedPaymentTypes] = useState<CashierPaymentType[]>([]);
+  const [paymentOptionsSource, setPaymentOptionsSource] = useState<string>('not-loaded');
 
   const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
   const [systemSettings, setSystemSettings] = useState({
@@ -518,6 +526,27 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     if (activeSession && platinumCashierId) {
       loadTransactionsFromApi();
+
+      const loadPaymentConfig = async () => {
+        try {
+          const [optionsResult, typesResult] = await Promise.all([
+            fetchCashierPaymentOptions(platinumCashierId),
+            fetchCashierPaymentTypes(platinumCashierId),
+          ]);
+          if (optionsResult.data?.length > 0) {
+            setAllowedPaymentOptions(optionsResult.data);
+            setPaymentOptionsSource(optionsResult.source);
+            console.log(`[PaymentConfig] Loaded ${optionsResult.data.length} payment options (source: ${optionsResult.source})`);
+          }
+          if (typesResult.data?.length > 0) {
+            setAllowedPaymentTypes(typesResult.data);
+            console.log(`[PaymentConfig] Loaded ${typesResult.data.length} payment types (source: ${typesResult.source})`);
+          }
+        } catch (e) {
+          console.warn('[PaymentConfig] Failed to load payment options/types:', e);
+        }
+      };
+      loadPaymentConfig();
     }
   }, [activeSession, platinumCashierId]);
 
@@ -540,6 +569,26 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   
   // Determine active transaction type (Logic extracted to pos-logic.ts)
   const activeTransactionType = determineTransactionType(items, viewingItemId);
+
+  const isPaymentOptionAllowed = useMemo(() => {
+    return (transactionType: TransactionType): boolean => {
+      if (allowedPaymentOptions.length === 0) return true;
+      const optionId = mapTransactionTypeToPaymentOptionId(transactionType);
+      if (optionId === null) return true;
+      const option = allowedPaymentOptions.find(o => o.posPaymentOption_ID === optionId);
+      if (!option) return true;
+      return option.isTicked && option.enabled;
+    };
+  }, [allowedPaymentOptions]);
+
+  const isPaymentTypeAllowed = useMemo(() => {
+    return (typeId: number): boolean => {
+      if (allowedPaymentTypes.length === 0) return true;
+      const pt = allowedPaymentTypes.find(t => t.posPaymentType_ID === typeId);
+      if (!pt) return false;
+      return pt.isTicked && pt.enabled;
+    };
+  }, [allowedPaymentTypes]);
 
   const switchUser = (cashierId: string, name?: string, cashOffice?: string) => {
       // Try to find in API cashiers first
@@ -616,11 +665,20 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addItem = (item: TransactionItem, allowDuplicates: boolean = false) => {
+     if (!isPaymentOptionAllowed(item.type)) {
+        const optionId = mapTransactionTypeToPaymentOptionId(item.type);
+        const optionName = allowedPaymentOptions.find(o => o.posPaymentOption_ID === optionId)?.posPaymentOptionDesc || item.type;
+        toast({
+            title: "Function Not Allowed",
+            description: `${optionName} is not enabled for your cashier profile. Contact your supervisor to update your payment options.`,
+            variant: "destructive"
+        });
+        return;
+     }
+
      setItems(prev => {
-        // Prevent duplicates for Accounts/Meters to avoid confusion in prototype
         if (prev.find(i => i.id === item.id)) return prev;
         
-        // Prevent duplicate accounts/meters by reference UNLESS allowDuplicates is true
         if (!allowDuplicates && (item.type === 'CONSUMER_SERVICES' || item.type === 'PREPAID')) {
             const existing = prev.find(i => 
                 (i.type === 'CONSUMER_SERVICES' || i.type === 'PREPAID') && 
@@ -710,6 +768,15 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     console.log(`[Payment] Active session context — userId: ${sessionUserId}, officeId: ${sessionOfficeId}, office: ${sessionOfficeDesc}, platinumCashierId: ${platinumCashierId}, float: ${sessionDetails.floatAmount}`);
+
+    if (payment.cash > 0 && !isPaymentTypeAllowed(1)) {
+        toast({ title: "Payment Method Not Allowed", description: "Cash payments are not enabled for your profile. Contact your supervisor.", variant: "destructive" });
+        return;
+    }
+    if (payment.card > 0 && !isPaymentTypeAllowed(3)) {
+        toast({ title: "Payment Method Not Allowed", description: "Credit Card payments are not enabled for your profile. Contact your supervisor.", variant: "destructive" });
+        return;
+    }
 
     const record = createTransactionRecord(items, totalToPay, payment, currentUser.id, {
         cashierName: currentUser.name,
@@ -1568,6 +1635,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       officeLimits,
       updateOfficeLimit,
       currentTransactionLimit,
+      allowedPaymentOptions,
+      allowedPaymentTypes,
+      paymentOptionsSource,
+      isPaymentOptionAllowed,
+      isPaymentTypeAllowed,
       viewMode,
       toggleViewMode,
       systemSettings,

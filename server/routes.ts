@@ -722,6 +722,64 @@ export async function registerRoutes(
     }
   });
 
+  // === CASHIER PAYMENT OPTIONS (per-cashier allowed functions) ===
+  // PLACEHOLDER: Currently returns all options as enabled because the Platinum API
+  // does not yet expose the POS_CashierPOSPaymentOption / Const_POSPaymentOption_sys tables.
+  // When the developer adds an endpoint like:
+  //   GET /api/ReceiptPrepaid/cashier-payment-options?cashierId={id}
+  // Replace the fallback below with the real API call.
+  app.get("/api/platinum/receipt-prepaid/cashier-payment-options", async (req, res) => {
+    try {
+      const cashierId = req.query.cashierId as string;
+      if (!cashierId) {
+        return res.status(400).json({ message: "cashierId is required" });
+      }
+
+      // TODO: Replace this fallback with real Platinum API call once endpoint exists:
+      // const data = await platinumGet("/api/ReceiptPrepaid/cashier-payment-options", { cashierId });
+      // if (data && !data._error) { return res.json(data); }
+
+      console.log(`[cashier-payment-options] No Platinum endpoint available yet — returning all options enabled for cashier ${cashierId}`);
+      const allOptionsEnabled = [
+        { posPaymentOption_ID: 1, posPaymentOptionDesc: "Consumer Services", isTicked: true, enabled: true },
+        { posPaymentOption_ID: 2, posPaymentOptionDesc: "Miscellaneous", isTicked: true, enabled: true },
+        { posPaymentOption_ID: 3, posPaymentOptionDesc: "Account Group", isTicked: true, enabled: true },
+        { posPaymentOption_ID: 4, posPaymentOptionDesc: "Clearance", isTicked: true, enabled: true },
+        { posPaymentOption_ID: 5, posPaymentOptionDesc: "Prepaid", isTicked: true, enabled: true },
+        { posPaymentOption_ID: 6, posPaymentOptionDesc: "Direct Deposit Allocation", isTicked: true, enabled: true },
+      ];
+      res.json({ source: "fallback", data: allOptionsEnabled });
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  // === CASHIER PAYMENT TYPES (per-cashier allowed tender methods) ===
+  // PLACEHOLDER: Currently returns global payment types from billing-payment-clearance.
+  // When the developer adds a per-cashier endpoint using POS_CashierPOSPaymentType table,
+  // replace this with the real call filtered by cashierId.
+  app.get("/api/platinum/receipt-prepaid/cashier-payment-types", async (req, res) => {
+    try {
+      const cashierId = req.query.cashierId as string;
+      if (!cashierId) {
+        return res.status(400).json({ message: "cashierId is required" });
+      }
+
+      // TODO: Replace with per-cashier endpoint once available:
+      // const data = await platinumGet("/api/ReceiptPrepaid/cashier-payment-types", { cashierId });
+      // if (data && !data._error) { return res.json(data); }
+
+      const globalTypes = await platinumGet("/api/billing-payment-clearance/pos-payment-type");
+      if (globalTypes && !globalTypes._error) {
+        console.log(`[cashier-payment-types] Using global payment types for cashier ${cashierId} (per-cashier endpoint not yet available)`);
+        return res.json({ source: "global", data: globalTypes });
+      }
+      handlePlatinumResult(res, globalTypes);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.get("/api/platinum/billing-payment-clearance/get-banks", async (req, res) => {
     try {
       const data = await platinumGet("/api/billing-payment-clearance/get-banks");
