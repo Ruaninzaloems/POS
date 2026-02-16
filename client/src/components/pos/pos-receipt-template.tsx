@@ -197,20 +197,38 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
 
       {hasLineItems ? (
           <div className="border-t border-gray-300 pt-2 mb-2">
-              {apiLineItems.filter(li => li.description).map((li, idx) => (
-                  <div key={idx} className="flex justify-between mb-0.5">
-                      <span className="break-words w-[65%]">{li.description}</span>
-                      <span className="text-right">{Number(li.amount || 0).toFixed(2)}</span>
-                  </div>
-              ))}
               {(() => {
-                  const totalVat = apiLineItems.reduce((sum, li) => sum + (li.vatAmount || 0), 0);
-                  return totalVat > 0 ? (
-                      <div className="flex justify-between mt-1 border-t border-dashed border-gray-300 pt-1 mb-1">
-                          <span>Vat Amount</span>
-                          <span className="text-right">{totalVat.toFixed(2)}</span>
-                      </div>
-                  ) : null;
+                  const filteredItems = apiLineItems.filter(li => li.description);
+                  const rawLineTotal = filteredItems.reduce((sum, li) => sum + (Number(li.amount) || 0), 0);
+                  const rawVatTotal = filteredItems.reduce((sum, li) => sum + (Number(li.vatAmount) || 0), 0);
+                  const rawGrossTotal = rawLineTotal + rawVatTotal;
+                  const needsScaling = totalAmount > 0 && rawGrossTotal > 0 && rawGrossTotal > totalAmount + 0.02;
+                  const scaleFactor = needsScaling ? totalAmount / rawGrossTotal : 1;
+
+                  const scaledItems = filteredItems.map(li => ({
+                      description: li.description,
+                      amount: Math.round((Number(li.amount) || 0) * scaleFactor * 100) / 100,
+                      vatAmount: Math.round((Number(li.vatAmount) || 0) * scaleFactor * 100) / 100,
+                  }));
+
+                  const scaledVatTotal = scaledItems.reduce((sum, li) => sum + li.vatAmount, 0);
+
+                  return (
+                      <>
+                          {scaledItems.map((li, idx) => (
+                              <div key={idx} className="flex justify-between mb-0.5">
+                                  <span className="break-words w-[65%]">{li.description}</span>
+                                  <span className="text-right">{li.amount.toFixed(2)}</span>
+                              </div>
+                          ))}
+                          {scaledVatTotal > 0 ? (
+                              <div className="flex justify-between mt-1 border-t border-dashed border-gray-300 pt-1 mb-1">
+                                  <span>Vat Amount</span>
+                                  <span className="text-right">{scaledVatTotal.toFixed(2)}</span>
+                              </div>
+                          ) : null}
+                      </>
+                  );
               })()}
           </div>
       ) : (
