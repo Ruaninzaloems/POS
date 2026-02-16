@@ -143,8 +143,8 @@ export default function CashierSetup() {
         }
 
         const float = parseFloat(floatInput);
-        if (isNaN(float) || float < 0) {
-            setError('Invalid float amount. Please enter a valid positive number.');
+        if (isNaN(float) || float <= 0) {
+            setError('Cash float is required. Please enter an amount greater than 0.');
             return;
         }
 
@@ -207,27 +207,23 @@ export default function CashierSetup() {
             console.log(`[CashierSetup] Step 3 response:`, JSON.stringify(responseData));
 
             if (!res.ok) {
-                if (responseData?.apiValidated === false) {
-                    throw new Error(responseData?.detail || responseData?.message || `HTTP ${res.status}`);
-                }
-                throw new Error(responseData?.message || responseData?.detail || `HTTP ${res.status}`);
+                throw new Error(responseData?.detail || responseData?.message || `HTTP ${res.status}`);
             }
 
-            if (responseData?.apiValidated === true && responseData?.user) {
-                console.log(`[CashierSetup] Cashier validated by Platinum API: ${responseData.user.firstName} ${responseData.user.lastName} (user ${responseData.user.userId})`);
-            }
+            const cashier = responseData?.cashier;
+            const cashierSetupId = cashier?.id || 0;
+            const isActive = cashier?.isActive === true;
+            console.log(`[CashierSetup] Platinum API response: "${responseData?.message}", cashier ID: ${cashierSetupId}, isActive: ${isActive}`);
 
             const officeId = String(selectedOffice.cashOffice_ID);
             const officeName = selectedOffice.cashOfficeDesc || '';
-            const apiUserName = responseData?.user
-                ? `${responseData.user.firstName} ${responseData.user.lastName}`.trim()
-                : `${firstName} ${lastName}`.trim();
+            const fullName = `${firstName} ${lastName}`.trim();
 
-            switchUser(String(userId), apiUserName || currentUser.name, officeName);
+            switchUser(String(userId), fullName || currentUser.name, officeName);
             startSession(officeId, float, officeName);
 
             setStep3Status('success');
-            console.log(`[CashierSetup] Session started — API validated: ${responseData?.apiValidated ?? true}, registered: ${responseData?.submitRegistered ?? true}`);
+            console.log(`[CashierSetup] Session started via Platinum API — cashier record ID: ${cashierSetupId}`);
         } catch (err: any) {
             console.error('[CashierSetup] Step 3 failed:', err);
             setError(`Failed to start session: ${err?.message || 'Unknown error'}. Please try again.`);

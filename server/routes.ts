@@ -467,71 +467,28 @@ export async function registerRoutes(
       body.isActive = true;
       const userId = body.user_Id;
 
-      console.log(`[submit-cashier-setup] Payload:`, JSON.stringify(body));
+      if (!userId) {
+        return res.status(400).json({ message: "user_Id is required" });
+      }
+
+      const userDetail = await platinumGet(`/api/User/${userId}`);
+      if (!userDetail || userDetail._error || !userDetail.enabled) {
+        return res.status(400).json({
+          message: "User not valid",
+          detail: `User ${userId} is not found or not enabled in Platinum.`,
+        });
+      }
+
+      body.userDetail = userDetail;
+
+      console.log(`[submit-cashier-setup] Submitting for user ${userDetail.firstName} ${userDetail.lastName} (ID: ${userId}), office: ${body.officeId}`);
       const data = await platinumPost("/api/ReceiptPrepaid/submit-cashier-setup", body);
       console.log(`[submit-cashier-setup] Response:`, JSON.stringify(data));
 
       if (data && data._error) {
         const detail = data.detail || data.statusText || JSON.stringify(data);
-        const isUserDetailBug = detail.includes('UserDetail') && detail.includes('required');
-
-        if (isUserDetailBug && userId) {
-          console.warn(`[submit-cashier-setup] Known Platinum API bug: UserDetail [Required] + [JsonIgnore] conflict. Validating cashier via alternative endpoints.`);
-
-          const [cashierId, userInfo, cashierRecord] = await Promise.all([
-            platinumGet("/api/billing/auth-day-end-reconcile/active-cashierid-by-userid", { userid: String(userId) }),
-            platinumGet(`/api/User/${userId}`),
-            platinumGet("/api/ReceiptPrepaid/cashier-detailsById", { cashierId: String(userId) }),
-          ]);
-
-          if (!cashierId && cashierId !== 0) {
-            return res.status(400).json({
-              message: "Cashier not registered",
-              detail: `User ${userId} is not registered as a cashier in Platinum. Contact your administrator.`,
-              apiValidated: false,
-            });
-          }
-
-          if (!userInfo || userInfo._error || !userInfo.enabled) {
-            return res.status(400).json({
-              message: "User not valid",
-              detail: `User ${userId} is not found or not enabled in Platinum.`,
-              apiValidated: false,
-            });
-          }
-
-          const requestedOfficeId = body.officeId || body.const_CashOffice?.cashOffice_ID;
-          const assignedOfficeId = cashierRecord?.const_CashOffice?.cashOffice_ID;
-          if (requestedOfficeId && assignedOfficeId && requestedOfficeId !== assignedOfficeId) {
-            return res.status(400).json({
-              message: "Office mismatch",
-              detail: `Cashier is assigned to office ${cashierRecord.const_CashOffice.cashOfficeDesc} (ID: ${assignedOfficeId}), but office ${requestedOfficeId} was requested.`,
-              apiValidated: false,
-            });
-          }
-
-          const cashOfficeValidated = cashierRecord?.const_CashOffice || null;
-          console.log(`[submit-cashier-setup] Cashier ${cashierId} validated via API. User: ${userInfo.firstName} ${userInfo.lastName} (ID: ${userInfo.userId}), Office: ${cashOfficeValidated?.cashOfficeDesc || 'N/A'}`);
-
-          return res.json({
-            success: true,
-            apiValidated: true,
-            submitRegistered: false,
-            note: "Cashier validated via Platinum API. Session registration skipped due to known API issue (UserDetail validation bug).",
-            cashierId,
-            user: {
-              userId: userInfo.userId,
-              userName: userInfo.userName,
-              firstName: userInfo.firstName,
-              lastName: userInfo.lastName,
-              enabled: userInfo.enabled,
-              superUser: userInfo.superUser,
-            },
-            cashOffice: cashOfficeValidated,
-          });
-        }
-
-        return res.status(400).json({ message: "Bad Request", detail });
+        console.error(`[submit-cashier-setup] API error:`, detail);
+        return res.status(data.status || 400).json({ message: "Cashier setup failed", detail });
       }
 
       handlePlatinumResult(res, data);
