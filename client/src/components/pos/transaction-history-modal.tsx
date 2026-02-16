@@ -139,9 +139,19 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
                                      R {tx.totalAmount.toFixed(2)}
                                  </TableCell>
                                  <TableCell>
-                                     <div className="flex gap-1">
-                                         {tx.payment.cash > 0 && <Badge variant="outline" className="text-[10px] px-1 h-5">Cash</Badge>}
-                                         {tx.payment.card > 0 && <Badge variant="outline" className="text-[10px] px-1 h-5">Card</Badge>}
+                                     <div className="flex gap-1 flex-wrap">
+                                         {(() => {
+                                             const billType = tx.paymentTypeName || tx.items[0]?.originalData?.billType || '';
+                                             if (billType) {
+                                                 return <Badge variant="outline" className="text-[10px] px-1.5 h-5 whitespace-nowrap">{billType}</Badge>;
+                                             }
+                                             return (
+                                                 <>
+                                                     {tx.payment.cash > 0 && <Badge variant="outline" className="text-[10px] px-1.5 h-5">Cash</Badge>}
+                                                     {tx.payment.card > 0 && <Badge variant="outline" className="text-[10px] px-1.5 h-5">Card</Badge>}
+                                                 </>
+                                             );
+                                         })()}
                                      </div>
                                  </TableCell>
                                  <TableCell>
