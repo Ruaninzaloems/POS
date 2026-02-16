@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { usePos } from '@/lib/pos-state';
@@ -21,8 +20,8 @@ import {
     platinumSaveDayEndReconcileData,
 } from '@/lib/external-api';
 import {
-    Loader2, RefreshCw, DollarSign, CreditCard, FileText,
-    Banknote, Coins, Save, CheckCircle2, AlertCircle, Box
+    Loader2, RefreshCw, CreditCard, FileText,
+    Banknote, Coins, Save, CheckCircle2, AlertCircle, Box, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 interface DenominationState {
@@ -66,7 +65,7 @@ function extractItems(data: any): any[] {
 
 export default function CashierDayEnd() {
     const { toast } = useToast();
-    const { currentUser, systemSettings } = usePos();
+    const { currentUser, systemSettings, recentTransactions } = usePos();
 
     const [cashierList, setCashierList] = useState<any[]>([]);
     const [selectedCashierId, setSelectedCashierId] = useState<string>('');
@@ -74,7 +73,6 @@ export default function CashierDayEnd() {
     const [isLoadingCashiers, setIsLoadingCashiers] = useState(false);
     const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
-    const [chequeList, setChequeList] = useState<any[]>([]);
     const [cardList, setCardList] = useState<any[]>([]);
     const [dropBoxList, setDropBoxList] = useState<any[]>([]);
     const [reconcileList, setReconcileList] = useState<any[]>([]);
@@ -82,11 +80,11 @@ export default function CashierDayEnd() {
 
     const [denominations, setDenominations] = useState<DenominationState>(INITIAL_DENOMINATIONS);
     const [totalCashAmt, setTotalCashAmt] = useState(0);
-    const [totalChequeAmt, setTotalChequeAmt] = useState(0);
     const [totalCreditAmt, setTotalCreditAmt] = useState(0);
     const [reason, setReason] = useState('');
     const [isSaving, setIsSaving] = useState(false);
-    const [activeTab, setActiveTab] = useState('cash');
+
+    const [showTransactionHistory, setShowTransactionHistory] = useState(false);
 
     useEffect(() => {
         loadCashierList();
@@ -127,20 +125,16 @@ export default function CashierDayEnd() {
         setIsLoadingReceipts(true);
         const id = Number(cashierId);
         try {
-            const [cheques, cards, dropBoxes, reconciles] = await Promise.all([
-                platinumGetDayEndChequeList(id).catch(() => []),
+            const [cards, dropBoxes, reconciles] = await Promise.all([
                 platinumGetDayEndCardList(id).catch(() => []),
                 platinumGetDayEndDropBoxList(id).catch(() => []),
                 platinumGetDayEndReconcileList({ id: cashierId }).catch(() => []),
             ]);
-            setChequeList(extractItems(cheques));
             setCardList(extractItems(cards));
             setDropBoxList(extractItems(dropBoxes));
             setReconcileList(extractItems(reconciles));
 
-            const chequeTotal = extractItems(cheques).reduce((s: number, r: any) => s + (Number(r.amount) || 0), 0);
             const cardTotal = extractItems(cards).reduce((s: number, r: any) => s + (Number(r.amount) || 0), 0);
-            setTotalChequeAmt(chequeTotal);
             setTotalCreditAmt(cardTotal);
         } catch (e) {
             console.error('Failed to load receipt data', e);
@@ -170,33 +164,9 @@ export default function CashierDayEnd() {
         }
     }, [calculatedCashTotal, systemSettings.enableDenominationCounting]);
 
-    const systemCashTotal = reconcileList.reduce((s, r) => {
-        const payType = (r.paymentType || r.payMode || '').toLowerCase();
-        if (payType.includes('cash') || r.paymentTypeId === 1) {
-            return s + (Number(r.amount) || 0);
-        }
-        return s;
-    }, 0);
-
-    const systemCardTotal = reconcileList.reduce((s, r) => {
-        const payType = (r.paymentType || r.payMode || '').toLowerCase();
-        if (payType.includes('card') || payType.includes('credit') || r.paymentTypeId === 2) {
-            return s + (Number(r.amount) || 0);
-        }
-        return s;
-    }, 0);
-
-    const systemChequeTotal = reconcileList.reduce((s, r) => {
-        const payType = (r.paymentType || r.payMode || '').toLowerCase();
-        if (payType.includes('cheque') || payType.includes('check') || r.paymentTypeId === 3) {
-            return s + (Number(r.amount) || 0);
-        }
-        return s;
-    }, 0);
-
-    const systemTotal = reconcileList.reduce((s, r) => s + (Number(r.amount) || 0), 0);
-    const cashierTotal = totalCashAmt + totalChequeAmt + totalCreditAmt;
-    const variance = cashierTotal - systemTotal;
+    const dropBoxTotal = dropBoxList.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const totalCashOnHandPlusDropBox = (systemSettings.enableDenominationCounting ? calculatedCashTotal : totalCashAmt) + dropBoxTotal;
+    const grandTotal = totalCashOnHandPlusDropBox + totalCreditAmt;
 
     const handleSaveReconcile = async () => {
         if (!selectedCashierId) {
@@ -209,11 +179,11 @@ export default function CashierDayEnd() {
             const payload = {
                 cashierId: Number(selectedCashierId),
                 reason: reason || null,
-                totalCashAmt,
-                totalChequeAmt,
+                totalCashAmt: systemSettings.enableDenominationCounting ? calculatedCashTotal : totalCashAmt,
+                totalChequeAmt: 0,
                 totalCoins,
                 totalCreditAmt,
-                totalAmt: cashierTotal,
+                totalAmt: grandTotal,
                 ...denominations,
                 finyear: (currentUser as any)?.finYear || null,
             };
@@ -228,34 +198,23 @@ export default function CashierDayEnd() {
     };
 
     const getCashierName = (c: any) => c.name || c.cashierName || c.userName || `Cashier ${c.id || c.cashierId}`;
+    const today = new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: '2-digit', day: '2-digit' });
 
     return (
         <PosLayout>
             <div className="flex-1 flex flex-col h-full bg-slate-100 overflow-y-auto">
-                <div className="bg-white border-b shadow-sm px-3 sm:px-6 py-3 sm:py-4">
-                    <h1 className="text-lg sm:text-xl font-bold text-slate-800" data-testid="text-page-title">Cashier Day-End Reconciliation</h1>
-                    <p className="text-xs sm:text-sm text-muted-foreground mt-1">Submit your cash-on-hand totals for day-end reconciliation</p>
+                <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white px-4 sm:px-6 py-3">
+                    <h1 className="text-base sm:text-lg font-bold" data-testid="text-page-title">Cashier Day End Reconcile</h1>
                 </div>
 
-                <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <div className="flex items-center justify-between">
-                                <CardTitle className="text-base flex items-center gap-2">
-                                    <DollarSign className="w-5 h-5 text-blue-600" />
-                                    Select Cashier
-                                </CardTitle>
-                                <Button variant="outline" size="sm" onClick={loadCashierList} disabled={isLoadingCashiers}>
-                                    <RefreshCw className={`w-4 h-4 mr-1 ${isLoadingCashiers ? 'animate-spin' : ''}`} /> Refresh
-                                </Button>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-3 sm:p-6 space-y-4">
+                    <Card className="shadow-sm">
+                        <CardContent className="py-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <div>
-                                    <Label className="text-xs text-slate-500">Cashier</Label>
+                                    <Label className="text-xs text-slate-500 font-semibold">Cashier Name *</Label>
                                     <Select value={selectedCashierId} onValueChange={setSelectedCashierId}>
-                                        <SelectTrigger data-testid="select-cashier">
+                                        <SelectTrigger data-testid="select-cashier" className="mt-1">
                                             <SelectValue placeholder={isLoadingCashiers ? "Loading..." : "Select cashier"} />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -267,22 +226,26 @@ export default function CashierDayEnd() {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                {cashierDetails && (
-                                    <>
-                                        <div>
-                                            <Label className="text-xs text-slate-500">Cash Office</Label>
-                                            <div className="text-sm font-medium mt-1">
-                                                {cashierDetails.cashOfficeName || cashierDetails.cash_office || cashierDetails.cashOffice || '-'}
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <Label className="text-xs text-slate-500">Float Amount</Label>
-                                            <div className="text-sm font-medium mt-1">
-                                                R {Number(cashierDetails.floatAmount || cashierDetails.float_amount || cashierDetails.cashFloat || 0).toFixed(2)}
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
+                                <div>
+                                    <Label className="text-xs text-slate-500 font-semibold">Cashier Office *</Label>
+                                    <div className="mt-1 text-sm font-medium bg-slate-50 border rounded px-3 py-2">
+                                        {cashierDetails?.cashOfficeName || cashierDetails?.cash_office || cashierDetails?.cashOffice || '-'}
+                                    </div>
+                                </div>
+                                <div>
+                                    <Label className="text-xs text-slate-500 font-semibold">Reconcile Date</Label>
+                                    <div className="mt-1 text-sm font-mono bg-slate-50 border rounded px-3 py-2">{today}</div>
+                                </div>
+                                <div>
+                                    <Label className="text-xs text-slate-500 font-semibold">Reason</Label>
+                                    <Input
+                                        className="mt-1"
+                                        value={reason}
+                                        onChange={e => setReason(e.target.value)}
+                                        placeholder="Enter reason..."
+                                        data-testid="input-reason"
+                                    />
+                                </div>
                             </div>
                             {isLoadingDetails && (
                                 <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
@@ -294,267 +257,276 @@ export default function CashierDayEnd() {
 
                     {selectedCashierId && (
                         <>
-                            <Tabs value={activeTab} onValueChange={setActiveTab}>
-                                <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 h-auto">
-                                    <TabsTrigger value="cash" className="text-[10px] sm:text-xs gap-1 px-1 sm:px-3" data-testid="tab-cash">
-                                        <Banknote className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Cash
-                                    </TabsTrigger>
-                                    <TabsTrigger value="cheque" className="text-[10px] sm:text-xs gap-1 px-1 sm:px-3" data-testid="tab-cheque">
-                                        <FileText className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> <span className="hidden sm:inline">Cheques</span><span className="sm:hidden">Chq</span> ({chequeList.length})
-                                    </TabsTrigger>
-                                    <TabsTrigger value="card" className="text-[10px] sm:text-xs gap-1 px-1 sm:px-3" data-testid="tab-card">
-                                        <CreditCard className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> <span className="hidden sm:inline">Cards</span><span className="sm:hidden">Card</span> ({cardList.length})
-                                    </TabsTrigger>
-                                    <TabsTrigger value="dropbox" className="text-[10px] sm:text-xs gap-1 px-1 sm:px-3" data-testid="tab-dropbox">
-                                        <Box className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> <span className="hidden sm:inline">Drop Box</span><span className="sm:hidden">Drop</span> ({dropBoxList.length})
-                                    </TabsTrigger>
-                                    <TabsTrigger value="reconcile" className="text-[10px] sm:text-xs gap-1 px-1 sm:px-3 col-span-3 sm:col-span-1" data-testid="tab-reconcile">
-                                        <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> <span className="hidden sm:inline">Reconcile</span><span className="sm:hidden">Recon</span> ({reconcileList.length})
-                                    </TabsTrigger>
-                                </TabsList>
+                            <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white px-4 py-2 text-sm font-semibold rounded-t-md flex items-center gap-2">
+                                <FileText className="w-4 h-4" /> Receipt Information
+                            </div>
 
-                                <TabsContent value="cash" className="mt-4">
-                                    <Card>
-                                        <CardHeader className="pb-3">
-                                            <CardTitle className="text-base">Cash Count</CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            {systemSettings.enableDenominationCounting ? (
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <div>
-                                                        <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-                                                            <Banknote className="w-4 h-4" /> Notes
-                                                        </h4>
-                                                        <div className="space-y-2">
-                                                            {NOTE_DENOMINATIONS.map(d => (
-                                                                <div key={d.key} className="grid grid-cols-[60px_80px_1fr] sm:grid-cols-[80px_100px_1fr] items-center gap-2 sm:gap-3">
-                                                                    <span className="text-xs sm:text-sm font-medium text-slate-600">{d.label}</span>
-                                                                    <Input
-                                                                        type="number"
-                                                                        min={0}
-                                                                        className="h-7 sm:h-8 text-center text-sm"
-                                                                        value={denominations[d.key as keyof DenominationState] || ''}
-                                                                        onChange={e => updateDenomination(d.key, parseInt(e.target.value) || 0)}
-                                                                        data-testid={`input-${d.key}`}
-                                                                    />
-                                                                    <span className="text-xs sm:text-sm text-slate-500 font-mono">
-                                                                        = R {(denominations[d.key as keyof DenominationState] * d.value).toFixed(2)}
-                                                                    </span>
-                                                                </div>
-                                                            ))}
-                                                            <div className="pt-2 border-t flex justify-between">
-                                                                <span className="text-xs sm:text-sm font-semibold">Total Notes</span>
-                                                                <span className="text-xs sm:text-sm font-bold font-mono">R {totalNotes.toFixed(2)}</span>
-                                                            </div>
+                            <Card className="shadow-sm rounded-t-none -mt-4">
+                                <CardContent className="py-4 space-y-6">
+                                    <div>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                                                <CreditCard className="w-4 h-4" /> Credit Card
+                                            </h4>
+                                            <Badge variant="secondary" className="text-xs">{cardList.length} record{cardList.length !== 1 ? 's' : ''}</Badge>
+                                        </div>
+                                        <div className="border rounded-md overflow-auto max-h-[250px]">
+                                            <Table>
+                                                <TableHeader className="bg-gradient-to-b from-slate-600 to-slate-700 sticky top-0">
+                                                    <TableRow className="hover:bg-transparent">
+                                                        <TableHead className="text-white font-bold text-xs py-2">No</TableHead>
+                                                        <TableHead className="text-white font-bold text-xs py-2">Account/Invoice Number</TableHead>
+                                                        <TableHead className="text-white font-bold text-xs py-2">Receipt No</TableHead>
+                                                        <TableHead className="text-white font-bold text-xs py-2">Receipt Date and Time</TableHead>
+                                                        <TableHead className="text-white font-bold text-xs py-2">Cancelled</TableHead>
+                                                        <TableHead className="text-white font-bold text-xs py-2">Card No</TableHead>
+                                                        <TableHead className="text-white font-bold text-xs py-2">Expiry Date</TableHead>
+                                                        <TableHead className="text-white font-bold text-xs py-2 text-right">Amount</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {cardList.length === 0 ? (
+                                                        <TableRow>
+                                                            <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-4">No records to display</TableCell>
+                                                        </TableRow>
+                                                    ) : cardList.map((item, idx) => (
+                                                        <TableRow key={idx} className="hover:bg-slate-50">
+                                                            <TableCell className="text-xs py-1.5">{idx + 1}</TableCell>
+                                                            <TableCell className="text-xs font-mono py-1.5">{item.accountNumber || item.accountId || item.invoiceNumber || '-'}</TableCell>
+                                                            <TableCell className="text-xs font-mono py-1.5">{item.receiptNo || item.receipt_no || '-'}</TableCell>
+                                                            <TableCell className="text-xs py-1.5">{item.receiptDate || item.receiptDateTime || item.date || '-'}</TableCell>
+                                                            <TableCell className="text-xs py-1.5">
+                                                                {item.isCancelled === 1 || item.isCancelled === true ? (
+                                                                    <Badge variant="destructive" className="text-[9px]">Yes</Badge>
+                                                                ) : (
+                                                                    <span className="text-muted-foreground">No</span>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className="text-xs font-mono py-1.5">{item.cardNo || item.cardNumber || '-'}</TableCell>
+                                                            <TableCell className="text-xs py-1.5">{item.expiryDate || item.cardExpiryDate || '-'}</TableCell>
+                                                            <TableCell className="text-xs text-right font-mono font-medium py-1.5">R {Number(item.amount || 0).toFixed(2)}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                        <div className="flex justify-end mt-1 px-2">
+                                            <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white px-4 py-1 rounded text-xs font-bold">
+                                                Total: R {totalCreditAmt.toFixed(2)}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                                                <Box className="w-4 h-4" /> Dropbox Payment
+                                            </h4>
+                                            <Badge variant="secondary" className="text-xs">{dropBoxList.length} record{dropBoxList.length !== 1 ? 's' : ''}</Badge>
+                                        </div>
+                                        <div className="border rounded-md overflow-auto max-h-[200px]">
+                                            <Table>
+                                                <TableHeader className="bg-gradient-to-b from-slate-600 to-slate-700 sticky top-0">
+                                                    <TableRow className="hover:bg-transparent">
+                                                        <TableHead className="text-white font-bold text-xs py-2">No</TableHead>
+                                                        <TableHead className="text-white font-bold text-xs py-2">Description</TableHead>
+                                                        <TableHead className="text-white font-bold text-xs py-2">Reference Number</TableHead>
+                                                        <TableHead className="text-white font-bold text-xs py-2">Comment</TableHead>
+                                                        <TableHead className="text-white font-bold text-xs py-2">Status</TableHead>
+                                                        <TableHead className="text-white font-bold text-xs py-2 text-right">Total Amount</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {dropBoxList.length === 0 ? (
+                                                        <TableRow>
+                                                            <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-4">No records to display</TableCell>
+                                                        </TableRow>
+                                                    ) : dropBoxList.map((item, idx) => (
+                                                        <TableRow key={idx} className="hover:bg-slate-50">
+                                                            <TableCell className="text-xs py-1.5">{idx + 1}</TableCell>
+                                                            <TableCell className="text-xs py-1.5">{item.description || item.accountNumber || '-'}</TableCell>
+                                                            <TableCell className="text-xs font-mono py-1.5">{item.referenceNumber || item.receiptNo || item.receipt_no || '-'}</TableCell>
+                                                            <TableCell className="text-xs py-1.5">{item.comment || '-'}</TableCell>
+                                                            <TableCell className="text-xs py-1.5">{item.status || '-'}</TableCell>
+                                                            <TableCell className="text-xs text-right font-mono font-medium py-1.5">R {Number(item.amount || 0).toFixed(2)}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                        <div className="flex justify-end mt-1 px-2">
+                                            <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white px-4 py-1 rounded text-xs font-bold">
+                                                Total: R {dropBoxTotal.toFixed(2)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white px-4 py-2 text-sm font-semibold rounded-t-md flex items-center gap-2">
+                                <Banknote className="w-4 h-4" /> Cash Information
+                            </div>
+
+                            <Card className="shadow-sm rounded-t-none -mt-4">
+                                <CardContent className="py-6">
+                                    {systemSettings.enableDenominationCounting ? (
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                            <div>
+                                                <h4 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2 border-b pb-2">
+                                                    <Banknote className="w-4 h-4" /> Notes
+                                                </h4>
+                                                <div className="space-y-2">
+                                                    {NOTE_DENOMINATIONS.map(d => (
+                                                        <div key={d.key} className="grid grid-cols-[70px_100px_1fr] items-center gap-3">
+                                                            <span className="text-sm font-semibold text-slate-700 text-right">{d.label}</span>
+                                                            <Input
+                                                                type="number"
+                                                                min={0}
+                                                                className="h-9 text-center text-sm font-mono bg-white"
+                                                                value={denominations[d.key as keyof DenominationState] || ''}
+                                                                onChange={e => updateDenomination(d.key, parseInt(e.target.value) || 0)}
+                                                                data-testid={`input-${d.key}`}
+                                                            />
+                                                            <span className="text-sm text-slate-500 font-mono">
+                                                                = R {(denominations[d.key as keyof DenominationState] * d.value).toFixed(2)}
+                                                            </span>
                                                         </div>
-                                                    </div>
+                                                    ))}
+                                                </div>
+                                            </div>
 
-                                                    <div>
-                                                        <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-                                                            <Coins className="w-4 h-4" /> Coins
-                                                        </h4>
-                                                        <div className="space-y-2">
-                                                            {COIN_DENOMINATIONS.map(d => (
-                                                                <div key={d.key} className="grid grid-cols-[60px_80px_1fr] sm:grid-cols-[80px_100px_1fr] items-center gap-2 sm:gap-3">
-                                                                    <span className="text-xs sm:text-sm font-medium text-slate-600">{d.label}</span>
-                                                                    <Input
-                                                                        type="number"
-                                                                        min={0}
-                                                                        className="h-7 sm:h-8 text-center text-sm"
-                                                                        value={denominations[d.key as keyof DenominationState] || ''}
-                                                                        onChange={e => updateDenomination(d.key, parseInt(e.target.value) || 0)}
-                                                                        data-testid={`input-${d.key}`}
-                                                                    />
-                                                                    <span className="text-xs sm:text-sm text-slate-500 font-mono">
-                                                                        = R {(denominations[d.key as keyof DenominationState] * d.value).toFixed(2)}
-                                                                    </span>
-                                                                </div>
-                                                            ))}
-                                                            <div className="pt-2 border-t flex justify-between">
-                                                                <span className="text-sm font-semibold">Total Coins</span>
-                                                                <span className="text-sm font-bold font-mono">R {totalCoins.toFixed(2)}</span>
-                                                            </div>
+                                            <div>
+                                                <h4 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2 border-b pb-2">
+                                                    <Coins className="w-4 h-4" /> Coins
+                                                </h4>
+                                                <div className="space-y-2">
+                                                    {COIN_DENOMINATIONS.map(d => (
+                                                        <div key={d.key} className="grid grid-cols-[70px_100px_1fr] items-center gap-3">
+                                                            <span className="text-sm font-semibold text-slate-700 text-right">{d.label}</span>
+                                                            <Input
+                                                                type="number"
+                                                                min={0}
+                                                                className="h-9 text-center text-sm font-mono bg-white"
+                                                                value={denominations[d.key as keyof DenominationState] || ''}
+                                                                onChange={e => updateDenomination(d.key, parseInt(e.target.value) || 0)}
+                                                                data-testid={`input-${d.key}`}
+                                                            />
+                                                            <span className="text-sm text-slate-500 font-mono">
+                                                                = R {(denominations[d.key as keyof DenominationState] * d.value).toFixed(2)}
+                                                            </span>
                                                         </div>
+                                                    ))}
+                                                    <div className="pt-2 border-t flex justify-between items-center">
+                                                        <span className="text-sm font-bold text-amber-700">Total Coins Amount</span>
+                                                        <span className="text-sm font-bold font-mono bg-amber-50 border border-amber-200 px-3 py-1 rounded">R {totalCoins.toFixed(2)}</span>
                                                     </div>
                                                 </div>
-                                            ) : (
-                                                <div className="max-w-md">
-                                                    <Label className="text-sm">Total Cash Amount</Label>
-                                                    <Input
-                                                        type="number"
-                                                        step="0.01"
-                                                        min={0}
-                                                        className="mt-1"
-                                                        value={totalCashAmt || ''}
-                                                        onChange={e => setTotalCashAmt(parseFloat(e.target.value) || 0)}
-                                                        placeholder="Enter total cash on hand"
-                                                        data-testid="input-total-cash"
-                                                    />
-                                                </div>
-                                            )}
-
-                                            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-sm font-semibold text-blue-800">Total Cash Counted</span>
-                                                    <span className="text-lg font-bold text-blue-900 font-mono">
-                                                        R {(systemSettings.enableDenominationCounting ? calculatedCashTotal : totalCashAmt).toFixed(2)}
-                                                    </span>
-                                                </div>
                                             </div>
-                                        </CardContent>
-                                    </Card>
-                                </TabsContent>
+                                        </div>
+                                    ) : (
+                                        <div className="max-w-md">
+                                            <Label className="text-sm font-semibold">Total Cash Amount</Label>
+                                            <Input
+                                                type="number"
+                                                step="0.01"
+                                                min={0}
+                                                className="mt-1"
+                                                value={totalCashAmt || ''}
+                                                onChange={e => setTotalCashAmt(parseFloat(e.target.value) || 0)}
+                                                placeholder="Enter total cash on hand"
+                                                data-testid="input-total-cash"
+                                            />
+                                        </div>
+                                    )}
 
-                                <TabsContent value="cheque" className="mt-4">
-                                    <Card>
-                                        <CardHeader className="pb-3">
-                                            <CardTitle className="text-base">Cheque Receipts</CardTitle>
+                                    <div className="flex justify-end mt-4">
+                                        <div className="bg-slate-100 border-2 border-slate-300 rounded-lg px-6 py-3 text-right">
+                                            <span className="text-sm text-slate-600 mr-4">Total Cash</span>
+                                            <span className="text-lg font-bold font-mono text-slate-800">
+                                                R {(systemSettings.enableDenominationCounting ? calculatedCashTotal : totalCashAmt).toFixed(2)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="shadow-sm border-2 border-slate-300">
+                                <CardContent className="py-5">
+                                    <div className="max-w-lg mx-auto space-y-3">
+                                        <div className="flex justify-between items-center py-2 border-b">
+                                            <span className="text-sm font-semibold text-slate-700">Total Cash on Hand + Drop Box (R)</span>
+                                            <span className="font-mono font-bold text-sm bg-slate-50 border px-4 py-1.5 rounded min-w-[120px] text-right">
+                                                {totalCashOnHandPlusDropBox.toFixed(2)}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center py-2 border-b">
+                                            <span className="text-sm font-semibold text-slate-700">Total Debit/ Credit Card Receipts (R)</span>
+                                            <span className="font-mono font-bold text-sm bg-slate-50 border px-4 py-1.5 rounded min-w-[120px] text-right">
+                                                {totalCreditAmt.toFixed(2)}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center py-2 border-b-2 border-slate-400">
+                                            <span className="text-sm font-bold text-slate-800">Grand Total (R)</span>
+                                            <span className="font-mono font-bold text-base bg-blue-50 border-2 border-blue-300 px-4 py-1.5 rounded min-w-[120px] text-right text-blue-900">
+                                                {grandTotal.toFixed(2)}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-center gap-3 mt-6">
+                                        <Button
+                                            className="bg-slate-700 hover:bg-slate-800 px-8 font-bold"
+                                            onClick={handleSaveReconcile}
+                                            disabled={isSaving || !selectedCashierId}
+                                            data-testid="button-save-reconcile"
+                                        >
+                                            {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                                            Submit
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            className="px-8 font-bold"
+                                            onClick={() => {
+                                                setDenominations(INITIAL_DENOMINATIONS);
+                                                setTotalCashAmt(0);
+                                                setReason('');
+                                            }}
+                                            data-testid="button-reset"
+                                        >
+                                            Cancel
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <div className="mt-2">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-xs text-slate-500 gap-1"
+                                    onClick={() => setShowTransactionHistory(!showTransactionHistory)}
+                                    data-testid="button-toggle-history"
+                                >
+                                    {showTransactionHistory ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                    {showTransactionHistory ? 'Hide' : 'Show'} Transaction History (Testing)
+                                </Button>
+
+                                {showTransactionHistory && (
+                                    <Card className="mt-2 shadow-sm">
+                                        <CardHeader className="pb-2">
+                                            <CardTitle className="text-sm text-slate-600">Reconcile List (System Receipts)</CardTitle>
                                         </CardHeader>
                                         <CardContent>
                                             {isLoadingReceipts ? (
                                                 <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
-                                                    <Loader2 className="w-5 h-5 animate-spin" /> Loading cheque receipts...
-                                                </div>
-                                            ) : chequeList.length === 0 ? (
-                                                <div className="text-center py-8 text-muted-foreground">No cheque receipts found.</div>
-                                            ) : (
-                                                <div className="border rounded-md overflow-auto max-h-[400px]">
-                                                    <Table>
-                                                        <TableHeader className="bg-slate-50 sticky top-0">
-                                                            <TableRow>
-                                                                <TableHead className="font-bold text-xs">#</TableHead>
-                                                                <TableHead className="font-bold text-xs">Receipt No</TableHead>
-                                                                <TableHead className="font-bold text-xs">Account</TableHead>
-                                                                <TableHead className="font-bold text-xs">Date</TableHead>
-                                                                <TableHead className="font-bold text-xs text-right">Amount</TableHead>
-                                                            </TableRow>
-                                                        </TableHeader>
-                                                        <TableBody>
-                                                            {chequeList.map((item, idx) => (
-                                                                <TableRow key={idx}>
-                                                                    <TableCell className="text-xs">{idx + 1}</TableCell>
-                                                                    <TableCell className="text-xs font-mono">{item.receiptNo || item.receipt_no || '-'}</TableCell>
-                                                                    <TableCell className="text-xs font-mono">{item.accountNumber || item.accountId || '-'}</TableCell>
-                                                                    <TableCell className="text-xs">{item.receiptDate || item.date || '-'}</TableCell>
-                                                                    <TableCell className="text-xs text-right font-mono font-medium">R {Number(item.amount || 0).toFixed(2)}</TableCell>
-                                                                </TableRow>
-                                                            ))}
-                                                        </TableBody>
-                                                    </Table>
-                                                </div>
-                                            )}
-                                            <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-200 flex justify-between">
-                                                <span className="text-sm font-semibold text-amber-800">Total Cheques</span>
-                                                <span className="text-sm font-bold text-amber-900 font-mono">R {totalChequeAmt.toFixed(2)}</span>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                </TabsContent>
-
-                                <TabsContent value="card" className="mt-4">
-                                    <Card>
-                                        <CardHeader className="pb-3">
-                                            <CardTitle className="text-base">Card Receipts</CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            {isLoadingReceipts ? (
-                                                <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
-                                                    <Loader2 className="w-5 h-5 animate-spin" /> Loading card receipts...
-                                                </div>
-                                            ) : cardList.length === 0 ? (
-                                                <div className="text-center py-8 text-muted-foreground">No card receipts found.</div>
-                                            ) : (
-                                                <div className="border rounded-md overflow-auto max-h-[400px]">
-                                                    <Table>
-                                                        <TableHeader className="bg-slate-50 sticky top-0">
-                                                            <TableRow>
-                                                                <TableHead className="font-bold text-xs">#</TableHead>
-                                                                <TableHead className="font-bold text-xs">Receipt No</TableHead>
-                                                                <TableHead className="font-bold text-xs">Account</TableHead>
-                                                                <TableHead className="font-bold text-xs">Date</TableHead>
-                                                                <TableHead className="font-bold text-xs text-right">Amount</TableHead>
-                                                            </TableRow>
-                                                        </TableHeader>
-                                                        <TableBody>
-                                                            {cardList.map((item, idx) => (
-                                                                <TableRow key={idx}>
-                                                                    <TableCell className="text-xs">{idx + 1}</TableCell>
-                                                                    <TableCell className="text-xs font-mono">{item.receiptNo || item.receipt_no || '-'}</TableCell>
-                                                                    <TableCell className="text-xs font-mono">{item.accountNumber || item.accountId || '-'}</TableCell>
-                                                                    <TableCell className="text-xs">{item.receiptDate || item.date || '-'}</TableCell>
-                                                                    <TableCell className="text-xs text-right font-mono font-medium">R {Number(item.amount || 0).toFixed(2)}</TableCell>
-                                                                </TableRow>
-                                                            ))}
-                                                        </TableBody>
-                                                    </Table>
-                                                </div>
-                                            )}
-                                            <div className="mt-3 p-3 bg-purple-50 rounded-lg border border-purple-200 flex justify-between">
-                                                <span className="text-sm font-semibold text-purple-800">Total Card Payments</span>
-                                                <span className="text-sm font-bold text-purple-900 font-mono">R {totalCreditAmt.toFixed(2)}</span>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                </TabsContent>
-
-                                <TabsContent value="dropbox" className="mt-4">
-                                    <Card>
-                                        <CardHeader className="pb-3">
-                                            <CardTitle className="text-base">Drop Box Receipts</CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            {isLoadingReceipts ? (
-                                                <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
-                                                    <Loader2 className="w-5 h-5 animate-spin" /> Loading drop box receipts...
-                                                </div>
-                                            ) : dropBoxList.length === 0 ? (
-                                                <div className="text-center py-8 text-muted-foreground">No drop box receipts found.</div>
-                                            ) : (
-                                                <div className="border rounded-md overflow-auto max-h-[400px]">
-                                                    <Table>
-                                                        <TableHeader className="bg-slate-50 sticky top-0">
-                                                            <TableRow>
-                                                                <TableHead className="font-bold text-xs">#</TableHead>
-                                                                <TableHead className="font-bold text-xs">Receipt No</TableHead>
-                                                                <TableHead className="font-bold text-xs">Account</TableHead>
-                                                                <TableHead className="font-bold text-xs">Date</TableHead>
-                                                                <TableHead className="font-bold text-xs text-right">Amount</TableHead>
-                                                            </TableRow>
-                                                        </TableHeader>
-                                                        <TableBody>
-                                                            {dropBoxList.map((item, idx) => (
-                                                                <TableRow key={idx}>
-                                                                    <TableCell className="text-xs">{idx + 1}</TableCell>
-                                                                    <TableCell className="text-xs font-mono">{item.receiptNo || item.receipt_no || '-'}</TableCell>
-                                                                    <TableCell className="text-xs font-mono">{item.accountNumber || item.accountId || '-'}</TableCell>
-                                                                    <TableCell className="text-xs">{item.receiptDate || item.date || '-'}</TableCell>
-                                                                    <TableCell className="text-xs text-right font-mono font-medium">R {Number(item.amount || 0).toFixed(2)}</TableCell>
-                                                                </TableRow>
-                                                            ))}
-                                                        </TableBody>
-                                                    </Table>
-                                                </div>
-                                            )}
-                                        </CardContent>
-                                    </Card>
-                                </TabsContent>
-
-                                <TabsContent value="reconcile" className="mt-4">
-                                    <Card>
-                                        <CardHeader className="pb-3">
-                                            <CardTitle className="text-base">Reconcile List (System Receipts)</CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            {isLoadingReceipts ? (
-                                                <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
-                                                    <Loader2 className="w-5 h-5 animate-spin" /> Loading reconcile data...
+                                                    <Loader2 className="w-5 h-5 animate-spin" /> Loading...
                                                 </div>
                                             ) : reconcileList.length === 0 ? (
-                                                <div className="text-center py-8 text-muted-foreground">No reconcile data found.</div>
+                                                <div className="text-center py-6 text-muted-foreground text-sm">No reconcile data found.</div>
                                             ) : (
                                                 <div className="border rounded-md overflow-auto max-h-[400px]">
                                                     <Table>
-                                                        <TableHeader className="bg-slate-50 sticky top-0">
+                                                        <TableHeader className="bg-slate-100 sticky top-0">
                                                             <TableRow>
                                                                 <TableHead className="font-bold text-xs">#</TableHead>
                                                                 <TableHead className="font-bold text-xs">Receipt No</TableHead>
@@ -587,138 +559,10 @@ export default function CashierDayEnd() {
                                                     </Table>
                                                 </div>
                                             )}
-                                            <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-                                                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                                    <div className="text-xs text-blue-700">System Cash</div>
-                                                    <div className="text-sm font-bold text-blue-900 font-mono">R {systemCashTotal.toFixed(2)}</div>
-                                                </div>
-                                                <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-                                                    <div className="text-xs text-purple-700">System Card</div>
-                                                    <div className="text-sm font-bold text-purple-900 font-mono">R {systemCardTotal.toFixed(2)}</div>
-                                                </div>
-                                                <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
-                                                    <div className="text-xs text-amber-700">System Cheque</div>
-                                                    <div className="text-sm font-bold text-amber-900 font-mono">R {systemChequeTotal.toFixed(2)}</div>
-                                                </div>
-                                            </div>
                                         </CardContent>
                                     </Card>
-                                </TabsContent>
-                            </Tabs>
-
-                            <Card>
-                                <CardHeader className="pb-3">
-                                    <CardTitle className="text-base flex items-center gap-2">
-                                        <CheckCircle2 className="w-5 h-5 text-green-600" />
-                                        Reconciliation Summary
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-3">
-                                            <h4 className="text-sm font-semibold text-slate-700 border-b pb-1">Cashier Totals</h4>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-slate-600">Cash</span>
-                                                <span className="font-mono font-medium">R {(systemSettings.enableDenominationCounting ? calculatedCashTotal : totalCashAmt).toFixed(2)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-slate-600">Cheques</span>
-                                                <span className="font-mono font-medium">R {totalChequeAmt.toFixed(2)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-slate-600">Card</span>
-                                                <span className="font-mono font-medium">R {totalCreditAmt.toFixed(2)}</span>
-                                            </div>
-                                            <Separator />
-                                            <div className="flex justify-between text-sm font-bold">
-                                                <span>Cashier Grand Total</span>
-                                                <span className="font-mono text-blue-700">R {cashierTotal.toFixed(2)}</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-3">
-                                            <h4 className="text-sm font-semibold text-slate-700 border-b pb-1">System Totals</h4>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-slate-600">Cash</span>
-                                                <span className="font-mono font-medium">R {systemCashTotal.toFixed(2)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-slate-600">Cheques</span>
-                                                <span className="font-mono font-medium">R {systemChequeTotal.toFixed(2)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-slate-600">Card</span>
-                                                <span className="font-mono font-medium">R {systemCardTotal.toFixed(2)}</span>
-                                            </div>
-                                            <Separator />
-                                            <div className="flex justify-between text-sm font-bold">
-                                                <span>System Grand Total</span>
-                                                <span className="font-mono text-slate-700">R {systemTotal.toFixed(2)}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className={`mt-4 p-4 rounded-lg border-2 flex items-center justify-between ${
-                                        Math.abs(variance) < 0.01 ? 'bg-green-50 border-green-300' :
-                                        Math.abs(variance) < 10 ? 'bg-amber-50 border-amber-300' :
-                                        'bg-red-50 border-red-300'
-                                    }`}>
-                                        <div className="flex items-center gap-2">
-                                            {Math.abs(variance) < 0.01 ? (
-                                                <CheckCircle2 className="w-5 h-5 text-green-600" />
-                                            ) : (
-                                                <AlertCircle className="w-5 h-5 text-amber-600" />
-                                            )}
-                                            <span className="text-sm font-semibold">
-                                                {Math.abs(variance) < 0.01 ? 'Balanced' : 'Variance'}
-                                            </span>
-                                        </div>
-                                        <span className={`text-lg font-bold font-mono ${
-                                            Math.abs(variance) < 0.01 ? 'text-green-700' :
-                                            variance > 0 ? 'text-amber-700' : 'text-red-700'
-                                        }`}>
-                                            {variance > 0 ? '+' : ''}R {variance.toFixed(2)}
-                                        </span>
-                                    </div>
-
-                                    {Math.abs(variance) >= 0.01 && (
-                                        <div className="mt-4">
-                                            <Label className="text-sm">Reason for Variance</Label>
-                                            <Input
-                                                className="mt-1"
-                                                value={reason}
-                                                onChange={e => setReason(e.target.value)}
-                                                placeholder="Provide a reason for the variance..."
-                                                data-testid="input-reason"
-                                            />
-                                        </div>
-                                    )}
-
-                                    <div className="flex flex-col sm:flex-row justify-end mt-4 sm:mt-6 gap-2 sm:gap-3">
-                                        <Button
-                                            variant="outline"
-                                            className="w-full sm:w-auto"
-                                            onClick={() => {
-                                                setDenominations(INITIAL_DENOMINATIONS);
-                                                setTotalCashAmt(0);
-                                                setReason('');
-                                            }}
-                                            data-testid="button-reset"
-                                        >
-                                            <RefreshCw className="w-4 h-4 mr-2" /> Reset
-                                        </Button>
-                                        <Button
-                                            className="bg-green-700 hover:bg-green-800 w-full sm:w-auto"
-                                            onClick={handleSaveReconcile}
-                                            disabled={isSaving || !selectedCashierId}
-                                            data-testid="button-save-reconcile"
-                                        >
-                                            {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                                            Submit Reconciliation
-                                        </Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                                )}
+                            </div>
                         </>
                     )}
                 </div>

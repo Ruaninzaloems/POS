@@ -317,7 +317,7 @@ export function TransactionPanels() {
                                   <div className="min-w-0 flex flex-col mb-2 sm:mb-0">
                                       <div className="font-medium truncate flex items-center gap-2 text-sm sm:text-base">
                                           {item.description}
-                                          {item.type === 'CONSUMER_SERVICES' && (
+                                          {(item.type === 'CONSUMER_SERVICES' || item.type === 'ACCOUNT_GROUP') && (
                                               <Button 
                                                 variant="ghost" 
                                                 size="icon" 
@@ -404,7 +404,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
     const { updateItemAmount, updateItemDetails, removeItem } = usePos();
     
     // CONSUMER ACCOUNT CARD -> USE NEW VIEW
-    if (item.type === 'CONSUMER_SERVICES') {
+    if (item.type === 'CONSUMER_SERVICES' || item.type === 'ACCOUNT_GROUP') {
         return <AccountEnquiryView item={item} />;
     }
     
@@ -842,66 +842,71 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                     </div>
                 </CardHeader>
                 <CardContent className="pt-6 space-y-6">
-                     <div className="flex flex-col md:flex-row gap-6">
-                        <div className="flex-1 space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor={`desc-${item.id}`} className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description / Notes <span className="text-red-500">*</span></Label>
-                                <Textarea 
-                                    id={`desc-${item.id}`}
-                                    placeholder="Enter additional details about this payment..."
-                                    className={`resize-none h-20 bg-slate-50 border-slate-200 ${(item as any).notesError ? 'border-red-500 ring-1 ring-red-500' : ''}`}
-                                    value={item.notes || ''}
-                                    onChange={(e) => updateItemDetails(item.id, { notes: e.target.value })}
-                                />
-                                {(item as any).notesError && (
-                                    <span className="text-[10px] text-red-500 font-medium">This field is required</span>
-                                )}
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor={`paidBy-${item.id}`} className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Paid By (Name/Company) <span className="text-red-500">*</span></Label>
-                                    <Input 
-                                        id={`paidBy-${item.id}`}
-                                        placeholder="e.g. John Doe Construction"
-                                        className={`bg-slate-50 border-slate-200 ${(item as any).paidByError ? 'border-red-500 ring-1 ring-red-500' : ''}`}
-                                        value={item.paidBy || ''}
-                                        onChange={(e) => {
-                                            updateItemDetails(item.id, { paidBy: e.target.value });
-                                            // Clear error if present
-                                            if ((item as any).paidByError) {
-                                                // We can't clear error directly via updateItemDetails unless we add error field to type
-                                                // So we just update the value for now, validation happens on Complete
-                                            }
-                                        }}
-                                    />
-                                    {(item as any).paidByError && (
-                                        <span className="text-[10px] text-red-500 font-medium">This field is required</span>
-                                    )}
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor={`info-${item.id}`} className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Additional Information</Label>
-                                    <Input 
-                                        id={`info-${item.id}`}
-                                        placeholder="Reference / Permit No."
-                                        className="bg-slate-50 border-slate-200"
-                                        value={item.additionalInfo || ''}
-                                        onChange={(e) => updateItemDetails(item.id, { additionalInfo: e.target.value })}
-                                    />
-                                </div>
-                            </div>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor={`lastName-${item.id}`} className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Last Name <span className="text-red-500">*</span></Label>
+                            <Input 
+                                id={`lastName-${item.id}`}
+                                placeholder="Surname / Company name"
+                                className={`bg-slate-50 border-slate-200 ${(item as any).paidByError ? 'border-red-500 ring-1 ring-red-500' : ''}`}
+                                value={item.paidBy || ''}
+                                onChange={(e) => updateItemDetails(item.id, { paidBy: e.target.value })}
+                                data-testid={`input-lastname-${item.id}`}
+                            />
+                            {(item as any).paidByError && (
+                                <span className="text-[10px] text-red-500 font-medium">This field is required</span>
+                            )}
                         </div>
+                        <div className="space-y-2">
+                            <Label htmlFor={`initials-${item.id}`} className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Initials</Label>
+                            <Input 
+                                id={`initials-${item.id}`}
+                                placeholder="e.g. JD"
+                                className="bg-slate-50 border-slate-200"
+                                value={item.additionalInfo || ''}
+                                onChange={(e) => updateItemDetails(item.id, { additionalInfo: e.target.value })}
+                                data-testid={`input-initials-${item.id}`}
+                            />
+                        </div>
+                     </div>
 
-                        <div className="w-full md:w-[280px] p-6 rounded-lg bg-green-50 border border-green-100 flex flex-col justify-center space-y-4">
-                            <Label htmlFor={`amount-${item.id}`} className="font-medium text-lg text-green-900">Payment Amount</Label>
+                     <div className="space-y-2">
+                        <Label htmlFor={`desc-${item.id}`} className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description <span className="text-red-500">*</span></Label>
+                        <Textarea 
+                            id={`desc-${item.id}`}
+                            placeholder="Enter description of this payment..."
+                            className={`resize-none h-20 bg-slate-50 border-slate-200 ${(item as any).notesError ? 'border-red-500 ring-1 ring-red-500' : ''}`}
+                            value={item.notes || ''}
+                            onChange={(e) => updateItemDetails(item.id, { notes: e.target.value })}
+                            data-testid={`input-desc-${item.id}`}
+                        />
+                        {(item as any).notesError && (
+                            <span className="text-[10px] text-red-500 font-medium">This field is required</span>
+                        )}
+                     </div>
+
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">SCOA Item</Label>
+                            <div className="text-sm font-mono bg-slate-50 border rounded px-3 py-2">{incomeItem.scoaItem || '-'}</div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Group</Label>
+                            <div className="text-sm bg-slate-50 border rounded px-3 py-2">{incomeItem.groupName || '-'}</div>
+                        </div>
+                     </div>
+
+                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-lg bg-green-50 border border-green-100">
+                        <div className="space-y-2">
+                            <Label htmlFor={`amount-${item.id}`} className="text-xs font-semibold text-green-700 uppercase tracking-wider">Amount (excl VAT)</Label>
                             <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 font-mono text-xl text-green-700">R</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-sm text-green-700">R</span>
                                 <Input 
                                     id={`amount-${item.id}`}
                                     type="number" 
                                     min="0"
                                     step="0.01"
-                                    className="pl-10 text-2xl font-mono font-bold h-14 bg-white border-green-200 focus-visible:ring-green-400 focus-visible:ring-2"
+                                    className="pl-8 text-lg font-mono font-bold h-12 bg-white border-green-200 focus-visible:ring-green-400"
                                     value={item.amountToPay || ''} 
                                     onChange={(e) => {
                                         const val = e.target.value;
@@ -909,22 +914,37 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                                         if (val.includes('.') && val.split('.')[1].length > 2) return;
                                         updateItemAmount(item.id, parseFloat(val) || 0);
                                     }}
+                                    data-testid={`input-amount-${item.id}`}
                                 />
                             </div>
-                            <div className="flex gap-2">
-                                {[50, 100, 200, 500].map(amt => (
-                                    <Button 
-                                        key={amt} 
-                                        variant="outline" 
-                                        size="sm" 
-                                        className="flex-1 bg-white hover:bg-green-100 border-green-200 text-green-800 transition-colors"
-                                        onClick={() => updateItemAmount(item.id, amt)}
-                                    >
-                                        R{amt}
-                                    </Button>
-                                ))}
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-green-700 uppercase tracking-wider">VAT Amount ({((incomeItem.vatRate || 0) * 100).toFixed(0)}%)</Label>
+                            <div className="text-lg font-mono font-bold h-12 bg-white border border-green-200 rounded flex items-center px-3 text-green-800">
+                                R {((item.amountToPay || 0) * (incomeItem.vatRate || 0)).toFixed(2)}
                             </div>
                         </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-green-700 uppercase tracking-wider">Total Amount (incl VAT)</Label>
+                            <div className="text-lg font-mono font-bold h-12 bg-green-100 border-2 border-green-300 rounded flex items-center px-3 text-green-900">
+                                R {((item.amountToPay || 0) * (1 + (incomeItem.vatRate || 0))).toFixed(2)}
+                            </div>
+                        </div>
+                     </div>
+
+                     <div className="flex flex-wrap gap-2">
+                        {[50, 100, 200, 500].map(amt => (
+                            <Button 
+                                key={amt} 
+                                variant="outline" 
+                                size="sm" 
+                                className="bg-white hover:bg-green-100 border-green-200 text-green-800"
+                                onClick={() => updateItemAmount(item.id, amt)}
+                                data-testid={`button-quick-${amt}-${item.id}`}
+                            >
+                                R{amt}
+                            </Button>
+                        ))}
                      </div>
                 </CardContent>
             </Card>
