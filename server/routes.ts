@@ -304,9 +304,9 @@ export async function registerRoutes(
 
   app.get("/api/platinum/receipt-prepaid/pos-payment-type", async (req, res) => {
     try {
-      const data = await platinumGet("/api/ReceiptPrepaid/pos-payment-type", req.query as Record<string, string>);
+      const data = await platinumGet("/api/billing-payment-clearance/pos-payment-type", req.query as Record<string, string>);
       if (data && data._error) {
-        console.error(`[pos-payment-type] Platinum API returned error: status=${data.status}, statusText=${data.statusText}, detail=${JSON.stringify(data.detail)}`);
+        console.error(`[pos-payment-type] Fallback billing-payment-clearance also failed: status=${data.status}, detail=${JSON.stringify(data.detail)}`);
       }
       handlePlatinumResult(res, data);
     } catch (e: any) {
