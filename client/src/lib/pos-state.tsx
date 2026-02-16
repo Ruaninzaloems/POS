@@ -1173,7 +1173,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         totalAmount: itemPayment,
                         tenderAmount: i === 0 ? tenderAmt : itemPayment,
                         changeAmount: i === 0 ? changeAmt : 0,
-                        paymentType: 1,
+                        paymentType: paymentTypeId,
                         paymentOption: paymentOptionId,
                         outStandingAmount: acctOutstanding,
                         cardNumber: record.payment.cardReference || '',
@@ -1242,7 +1242,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 if (accCardActual > 0) {
                     try {
                         await platinumSaveMultipleAccountPayment(saveAccounts, { userId: String(sessionUserId) });
-                        const cardResult = await submitConsumerPayments(accCardActual, accCardActual, 0, 1, 1, 'CARD', accCardActual);
+                        const cardResult = await submitConsumerPayments(accCardActual, accCardActual, 0, 3, 1, 'CARD', accCardActual);
                         console.log(`[Priority 1 CARD] Submitted card payment`, cardResult);
                         const cardReceiptIds = extractReceiptIds(cardResult);
                         await processAccReceiptResult(cardReceiptIds, 'CARD', 'card', accCardActual, cardResult.perAccountAmounts);
@@ -1253,8 +1253,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }
             } else {
                 try {
-                    const submitResult = await submitConsumerPayments(accountTotal, accTender, accChange, 1, 1, 'ACC');
-                    console.log(`[Priority 1] Submitted payment`, submitResult);
+                    const singlePaymentTypeId = record.payment.card > 0 && record.payment.cash === 0 ? 3 : 1;
+                    const submitResult = await submitConsumerPayments(accountTotal, accTender, accChange, singlePaymentTypeId, 1, 'ACC');
+                    console.log(`[Priority 1] Submitted payment (paymentType=${singlePaymentTypeId})`, submitResult);
                     const receiptIds = extractReceiptIds(submitResult);
                     await processAccReceiptResult(receiptIds, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash', accountTotal);
                 } catch (e: any) {
@@ -1296,7 +1297,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const submitOneClearance = async (paymentTypeId: number, amount: number, tender: number, change: number, label: string, splitType: 'cash' | 'card') => {
                 const clrPayload = {
                     userId: sessionUserId,
-                    paymentTypeId: 1,
+                    paymentTypeId,
                     cashierId: platinumCashierId || null,
                     receiptDate,
                     tenderAmount: tender,
@@ -1368,7 +1369,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             try {
                 const clrTenderForItem = isMixedBasket ? item.amountToPay : clrGroupTender;
                 const clrChangeForItem = isMixedBasket ? 0 : clrGroupChange;
-                await submitOneClearance(1, item.amountToPay, clrTenderForItem, clrChangeForItem, 'FULL', record.payment.card > 0 ? 'card' : 'cash');
+                const clrPaymentTypeId = record.payment.card > 0 && record.payment.cash === 0 ? 3 : 1;
+                await submitOneClearance(clrPaymentTypeId, item.amountToPay, clrTenderForItem, clrChangeForItem, 'FULL', record.payment.card > 0 ? 'card' : 'cash');
             } catch (e: any) {
                 console.warn(`[Priority 1B] Failed to submit clearance payment for ${clearanceStagingId}`, e);
                 toast({ title: "Clearance Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
@@ -1499,10 +1501,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     await submitOneMisc(1, itemCash, itemCashTender, itemCashChange, 'CASH', 'cash');
 
                     if (itemCard > 0) {
-                        await submitOneMisc(1, itemCard, itemCard, 0, 'CARD', 'card');
+                        await submitOneMisc(3, itemCard, itemCard, 0, 'CARD', 'card');
                     }
                 } else {
-                    await submitOneMisc(1, item.amountToPay, item.amountToPay, 0, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash');
+                    const miscPaymentTypeId = record.payment.card > 0 && record.payment.cash === 0 ? 3 : 1;
+                    await submitOneMisc(miscPaymentTypeId, item.amountToPay, item.amountToPay, 0, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash');
                 }
             } catch (e: any) {
                 console.warn(`[Priority 2] Failed to submit misc payment for ${item.description}`, e);
