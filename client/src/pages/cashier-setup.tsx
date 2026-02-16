@@ -47,8 +47,10 @@ export default function CashierSetup() {
     const lastName = platinumUser?.lastName || currentUser.name?.split(' ').slice(1).join(' ') || '';
     const finYear = platinumUser?.finYear || '';
 
+    const [setupComplete, setSetupComplete] = useState(false);
+
     useEffect(() => {
-        if (activeSession && sessionDetails) {
+        if (setupComplete && activeSession && sessionDetails) {
             setLocation('/pos');
             return;
         }
@@ -73,24 +75,20 @@ export default function CashierSetup() {
                 const data = await res.json();
                 console.log(`[CashierSetup] Step 1 response:`, JSON.stringify(data));
 
-                if (data.active && data.officeId && data.isActive === true) {
-                    console.log('[CashierSetup] Active session found on Platinum — redirecting to POS');
-                    setIsCashierRegistered(true);
-                    setCashierId(data.cashierId);
-                    setStep1Status('success');
-                    const officeName = data.officeName || '';
-                    const fullName = `${firstName} ${lastName}`.trim();
-                    switchUser(String(userId), fullName || currentUser.name, officeName);
-                    startSession(String(data.officeId), data.cashFloat || 0, officeName);
-                    setLocation('/pos');
-                    return;
-                }
-
                 if (data.cashierRegistered === true || data.cashierId) {
                     setIsCashierRegistered(true);
                     setCashierId(data.cashierId || userId);
                     setCashierDetails(data.details || null);
                     setStep1Status('success');
+
+                    if (data.details?.officeId) {
+                        setSelectedOfficeId(String(data.details.officeId));
+                        console.log(`[CashierSetup] Pre-selected office from Platinum: ID ${data.details.officeId} (${data.details.const_CashOffice?.cashOfficeDesc || 'unknown'})`);
+                    }
+
+                    if (data.cashFloat > 0) {
+                        setFloatInput(String(data.cashFloat));
+                    }
                 } else {
                     setIsCashierRegistered(false);
                     setStep1Status('error');
@@ -223,6 +221,7 @@ export default function CashierSetup() {
             startSession(officeId, float, officeName);
 
             setStep3Status('success');
+            setSetupComplete(true);
             console.log(`[CashierSetup] Session started via Platinum API — cashier record ID: ${cashierSetupId}`);
         } catch (err: any) {
             console.error('[CashierSetup] Step 3 failed:', err);
@@ -265,7 +264,7 @@ export default function CashierSetup() {
         );
     }
 
-    if (activeSession && sessionDetails) {
+    if (setupComplete && activeSession && sessionDetails) {
         return null;
     }
 

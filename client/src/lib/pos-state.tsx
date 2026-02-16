@@ -598,8 +598,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     try {
-        const cashOfficeId = sessionDetails?.officeId ? Number(sessionDetails.officeId) : 2;
-        const cashOfficeDesc = sessionDetails?.officeDesc || currentUser.cashOffice || 'Uniondale';
+        const cashOfficeId = sessionDetails?.officeId ? Number(sessionDetails.officeId) : 0;
+        const cashOfficeDesc = sessionDetails?.officeDesc || currentUser.cashOffice || '';
         const cashierSetupPayload = {
             id: 0,
             cashFloat: sessionDetails?.floatAmount ?? 0,
