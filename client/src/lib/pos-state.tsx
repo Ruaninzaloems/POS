@@ -555,9 +555,33 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const completeTransaction = async () => {
+    if (!activeSession || !sessionDetails) {
+        toast({
+            title: "No Active Session",
+            description: "You must have an active cashier session before processing payments. Please set up your session first.",
+            variant: "destructive",
+        });
+        return;
+    }
+
+    const sessionUserId = Number(currentUser.id);
+    const sessionOfficeId = sessionDetails.officeId ? Number(sessionDetails.officeId) : 0;
+    const sessionOfficeDesc = sessionDetails.officeDesc || currentUser.cashOffice || '';
+
+    if (!sessionUserId || sessionUserId === 0) {
+        toast({
+            title: "Invalid Session",
+            description: "Could not determine the cashier user ID from the active session.",
+            variant: "destructive",
+        });
+        return;
+    }
+
+    console.log(`[Payment] Active session context — userId: ${sessionUserId}, officeId: ${sessionOfficeId}, office: ${sessionOfficeDesc}, platinumCashierId: ${platinumCashierId}, float: ${sessionDetails.floatAmount}`);
+
     const record = createTransactionRecord(items, totalToPay, payment, currentUser.id, {
         cashierName: currentUser.name,
-        cashOfficeName: sessionDetails?.officeDesc || sessionDetails?.officeId || currentUser.cashOffice,
+        cashOfficeName: sessionOfficeDesc,
     });
     
     setRecentTransactions(prev => [record, ...prev]);
@@ -661,32 +685,27 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     try {
-        const cashOfficeId = sessionDetails?.officeId ? Number(sessionDetails.officeId) : 0;
-        const cashOfficeDesc = sessionDetails?.officeDesc || currentUser.cashOffice || '';
-        const cashierSetupPayload = {
-            id: 0,
-            cashFloat: sessionDetails?.floatAmount ?? 0,
-            stsPort: 1,
-            plesseyPort: 1,
-            officeId: cashOfficeId,
-            isActive: true,
-            user_Id: Number(currentUser.id),
-            isVirtual: false,
-            const_CashOffice: {
-                cashOffice_ID: cashOfficeId,
-                cashOfficeDesc: cashOfficeDesc,
-                enabled: true,
-                cashOnHandLimit: 999999,
-                scoaConfigurationID: 4,
-                allowDelayedDayEndRecon: true,
-                delayDaysSincePreviousDayEndRecon: 2,
-            },
-        };
-        console.log(`[Payment] Submitting cashier setup:`, JSON.stringify(cashierSetupPayload));
-        const setupResult = await platinumSubmitCashierSetup(cashierSetupPayload);
-        console.log(`[Payment] Cashier session setup result:`, JSON.stringify(setupResult));
+        const sessionCheck = await fetch(`/api/platinum/auth/active-cashier-by-userid?userid=${sessionUserId}`);
+        if (sessionCheck.ok) {
+            const sessionData = await sessionCheck.json();
+            console.log(`[Payment] Active session validated — isActive: ${sessionData.isActive}, cashierId: ${sessionData.cashierId}, officeId: ${sessionData.officeId}`);
+            if (!sessionData.isActive) {
+                console.error(`[Payment] Session is NOT active for userId ${sessionUserId}. Payment may fail.`);
+                toast({
+                    title: "Session Expired",
+                    description: "Your cashier session is no longer active. Please restart your session from the setup screen.",
+                    variant: "destructive",
+                });
+                setTransactionProcessing(false);
+                setIsReceiptModalOpen(false);
+                setRecentTransactions(prev => prev.filter(t => t.id !== record.id));
+                return;
+            }
+        } else {
+            console.warn(`[Payment] Could not verify active session (status ${sessionCheck.status}), proceeding with payment`);
+        }
     } catch (e: any) {
-        console.warn(`[Payment] Failed to re-submit cashier setup:`, e?.message || e);
+        console.warn(`[Payment] Failed to verify active session:`, e?.message || e);
     }
 
     const extractReceiptIds = (result: any): number[] => {
@@ -848,15 +867,15 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         if (saveAccounts.length > 0) {
             try {
-                await platinumSaveMultipleAccountPayment(saveAccounts, { userId: String(currentUser.id) });
-                console.log(`[Priority 1] Saved ${saveAccounts.length} account(s) for payment`);
+                await platinumSaveMultipleAccountPayment(saveAccounts, { userId: String(sessionUserId) });
+                console.log(`[Priority 1] Saved ${saveAccounts.length} account(s) for payment (userId: ${sessionUserId})`);
             } catch (e) {
                 console.warn(`[Priority 1] Failed to save multiple account payment`, e);
             }
 
             let serverAccounts: any[] | null = null;
             try {
-                const serverData = await platinumGetMultipleAccountPayment({ userId: String(currentUser.id) });
+                const serverData = await platinumGetMultipleAccountPayment({ userId: String(sessionUserId) });
                 if (Array.isArray(serverData) && serverData.length > 0) {
                     serverAccounts = serverData;
                     console.log(`[Priority 1] Fetched ${serverAccounts.length} server-enriched account(s)`);
@@ -916,7 +935,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
                     console.log(`[Priority 1 ${label}] Submitting consumer payment for account ${acct.account_ID} (${acct.name}), amount: R${itemPayment}, outstanding: R${acctOutstanding}`);
 
-                    const result = await submitConsumerPayment(Number(currentUser.id), {
+                    const result = await submitConsumerPayment(sessionUserId, {
                         account: acct,
                         requestModel,
                     });
@@ -964,7 +983,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
                 if (accCardActual > 0) {
                     try {
-                        await platinumSaveMultipleAccountPayment(saveAccounts, { userId: String(currentUser.id) });
+                        await platinumSaveMultipleAccountPayment(saveAccounts, { userId: String(sessionUserId) });
                         const cardResult = await submitConsumerPayments(accCardActual, accCardActual, 0, 2, 2, 'CARD', accCardActual);
                         console.log(`[Priority 1 CARD] Submitted card payment`, cardResult);
                         const cardReceiptIds = extractReceiptIds(cardResult);
@@ -994,7 +1013,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         ? String(record.splitReceipts[record.splitReceipts.length - 1].receiptId)
                         : record.receiptNumber.replace(/\D/g, '') || '0';
                     try {
-                        await postMultipleAccountPaymentReceipt(currentUser.id, accountId, latestReceiptId);
+                        await postMultipleAccountPaymentReceipt(String(sessionUserId), accountId, latestReceiptId);
                         console.log(`[Priority 1] Legacy receipt posted for account ${accountId}`);
                     } catch (e) {
                         console.warn(`[Priority 1] Failed to post legacy receipt for account ${accountId}`, e);
@@ -1024,9 +1043,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
             const submitOneClearance = async (paymentTypeId: number, amount: number, tender: number, change: number, label: string, splitType: 'cash' | 'card') => {
                 const clrResult = await platinumSubmitClearancePayment({
-                    userId: Number(currentUser.id),
+                    userId: sessionUserId,
                     paymentTypeId,
-                    cashierId: Number(currentUser.id),
+                    cashierId: sessionUserId,
                     receiptDate,
                     tenderAmount: tender,
                     changeAmount: change,
@@ -1168,7 +1187,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     paymentType: paymentTypeId,
                     vatPercentage: vatRate,
                     isVatable,
-                    userId: Number(currentUser.id),
+                    userId: sessionUserId,
                     finYear,
                 });
                 console.log(`[Priority 2 ${label}] Submitted misc payment for SCOA item ${scoaItemId}`, miscResult);
