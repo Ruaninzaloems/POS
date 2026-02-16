@@ -1045,63 +1045,72 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
     // --- PRIORITY 1: Consumer Services / Account Payments ---
     if (accountItems.length > 0) {
+        const buildAccountPayload = (item: typeof accountItems[0]) => {
+            const raw = item.originalData?._rawSearchResult;
+            const orig = raw ? { ...item.originalData, ...raw } : (item.originalData || {});
+            const acctId = Number(orig.account_ID || orig.apiId || orig.accountID || orig.accountId);
+            const fullOutstanding = orig.outStandingAmt ?? orig.outstandingAmount ?? orig.balance ?? 0;
+            return {
+                isSelected: true,
+                account_ID: acctId,
+                accountNumber: orig.accountNumber || '',
+                statusDesc: orig.statusDesc || 'Active',
+                accountDesc: orig.accountDesc || '',
+                name: orig.name || orig.accountHolder || item.reference || '',
+                deliveryAddress: orig.deliveryAddress || orig.address || '',
+                erfNumber: orig.erfNumber || orig.sgNo || '',
+                town: orig.town || '',
+                streetName: orig.streetName || '',
+                activeServices: orig.activeServices ?? 0,
+                closedServices: orig.closedServices ?? 0,
+                typeOfUseDesc: orig.typeOfUseDesc || '',
+                zoneDesc: orig.zoneDesc || '',
+                outStandingAmt: fullOutstanding,
+                billId: orig.billId ?? 0,
+                certificateNo: orig.certificateNo || '',
+                clearance_ID: orig.clearance_ID ?? 0,
+                clearanceAmount: orig.clearanceAmount ?? 0,
+                clearanceSellDate: orig.clearanceSellDate || null,
+                clearanceScheduleCost: orig.clearanceScheduleCost ?? 0,
+                clearanceTotalCost: orig.clearanceTotalCost ?? 0,
+                clearancePaidAmount: orig.clearancePaidAmount ?? 0,
+                miscServiceType: orig.miscServiceType || '',
+                miscDate: orig.miscDate || null,
+                miscDescription: orig.miscDescription || '',
+                miscAmount: orig.miscAmount ?? 0,
+                deposit: orig.deposit ?? 0,
+                cutOffAmount: orig.cutOffAmount ?? 0,
+                cutOffID: orig.cutOffID ?? 0,
+                debtAmount: orig.debtAmount ?? 0,
+                debtArrangementId: orig.debtArrangementId ?? 0,
+                instituationID: orig.instituationID ?? 0,
+                instituationDeptID: orig.instituationDeptID ?? 0,
+                clearance: orig.clearance || '',
+                physicalMeterNo: orig.physicalMeterNo || '',
+                oldAccountCode: orig.oldAccountCode || '',
+                billingCycleId: orig.billingCycleId ?? 1,
+                id: orig.id ?? 1,
+                _userAmountToPay: item.amountToPay,
+            };
+        };
+
         const saveAccounts = accountItems
             .filter(item => item.originalData?.apiId || item.originalData?.accountID || item.originalData?.accountId || item.originalData?.account_ID)
-            .map(item => {
-                const raw = item.originalData?._rawSearchResult;
-                const orig = raw ? { ...item.originalData, ...raw } : (item.originalData || {});
-                const acctId = Number(orig.account_ID || orig.apiId || orig.accountID || orig.accountId);
-                return {
-                    isSelected: true,
-                    account_ID: acctId,
-                    accountNumber: orig.accountNumber || '',
-                    statusDesc: orig.statusDesc || 'Active',
-                    accountDesc: orig.accountDesc || '',
-                    name: orig.name || orig.accountHolder || item.reference || '',
-                    deliveryAddress: orig.deliveryAddress || orig.address || '',
-                    erfNumber: orig.erfNumber || orig.sgNo || '',
-                    town: orig.town || '',
-                    streetName: orig.streetName || '',
-                    activeServices: orig.activeServices ?? 0,
-                    closedServices: orig.closedServices ?? 0,
-                    typeOfUseDesc: orig.typeOfUseDesc || '',
-                    zoneDesc: orig.zoneDesc || '',
-                    outStandingAmt: orig.outStandingAmt ?? orig.outstandingAmount ?? orig.balance ?? 0,
-                    billId: orig.billId ?? 0,
-                    certificateNo: orig.certificateNo || '',
-                    clearance_ID: orig.clearance_ID ?? 0,
-                    clearanceAmount: orig.clearanceAmount ?? 0,
-                    clearanceSellDate: orig.clearanceSellDate || null,
-                    clearanceScheduleCost: orig.clearanceScheduleCost ?? 0,
-                    clearanceTotalCost: orig.clearanceTotalCost ?? 0,
-                    clearancePaidAmount: orig.clearancePaidAmount ?? 0,
-                    miscServiceType: orig.miscServiceType || '',
-                    miscDate: orig.miscDate || null,
-                    miscDescription: orig.miscDescription || '',
-                    miscAmount: orig.miscAmount ?? 0,
-                    deposit: orig.deposit ?? 0,
-                    cutOffAmount: orig.cutOffAmount ?? 0,
-                    cutOffID: orig.cutOffID ?? 0,
-                    debtAmount: orig.debtAmount ?? 0,
-                    debtArrangementId: orig.debtArrangementId ?? 0,
-                    instituationID: orig.instituationID ?? 0,
-                    instituationDeptID: orig.instituationDeptID ?? 0,
-                    clearance: orig.clearance || '',
-                    physicalMeterNo: orig.physicalMeterNo || '',
-                    oldAccountCode: orig.oldAccountCode || '',
-                    billingCycleId: orig.billingCycleId ?? 1,
-                    id: orig.id ?? 1,
-                };
-            });
+            .map(item => buildAccountPayload(item));
 
-        console.log(`[Priority 1] Save payload:`, JSON.stringify(saveAccounts[0], null, 2));
+        const stagingPayload = saveAccounts.map(acct => {
+            const { _userAmountToPay, ...rest } = acct;
+            return { ...rest, outStandingAmt: _userAmountToPay > 0 ? _userAmountToPay : rest.outStandingAmt };
+        });
+
+        console.log(`[Priority 1] Staging payload outStandingAmt (user amount): R${stagingPayload[0]?.outStandingAmt}, full outstanding: R${saveAccounts[0]?.outStandingAmt}, user amountToPay: R${saveAccounts[0]?._userAmountToPay}`);
 
         const isSingleAccount = accountItems.length === 1;
 
         if (saveAccounts.length > 0) {
             try {
-                await platinumSaveMultipleAccountPayment(saveAccounts, { userId: String(sessionUserId) });
-                console.log(`[Priority 1] Saved ${saveAccounts.length} account(s) for payment (userId: ${sessionUserId})`);
+                await platinumSaveMultipleAccountPayment(stagingPayload, { userId: String(sessionUserId) });
+                console.log(`[Priority 1] Saved ${stagingPayload.length} account(s) for payment (userId: ${sessionUserId})`);
             } catch (e) {
                 console.warn(`[Priority 1] Failed to save multiple account payment`, e);
             }
@@ -1133,12 +1142,14 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 for (let i = 0; i < accountsToSubmit.length; i++) {
                     const acct = accountsToSubmit[i];
                     const localItem = accountItems.find(
-                        item => String(item.originalData?.account_ID ?? item.originalData?.accountID) === String(acct.account_ID)
+                        item => String(item.originalData?.account_ID ?? item.originalData?.accountID ?? item.originalData?.apiId) === String(acct.account_ID)
                     ) || accountItems[i];
+                    const userEnteredAmount = acct._userAmountToPay ?? localItem?.amountToPay ?? 0;
                     const itemPayment = paymentAmountOverride !== undefined && localItem
-                        ? Math.round((localItem.amountToPay / accountTotal) * paymentAmountOverride * 100) / 100
-                        : (localItem?.amountToPay ?? acct.outStandingAmt ?? 0);
-                    const acctOutstanding = acct.outStandingAmt ?? localItem?.originalData?.outStandingAmt ?? 0;
+                        ? Math.round((userEnteredAmount / accountTotal) * paymentAmountOverride * 100) / 100
+                        : (userEnteredAmount > 0 ? userEnteredAmount : (acct.outStandingAmt ?? 0));
+                    const acctOutstanding = acct.outStandingAmt ?? localItem?.originalData?.outStandingAmt ?? localItem?.originalData?.outstandingAmount ?? 0;
+                    console.log(`[Priority 1] Account ${acct.account_ID}: userEnteredAmount=${userEnteredAmount}, itemPayment=${itemPayment}, fullOutstanding=${acctOutstanding}`);
                     perAccountPayments.push({ acct, localItem, itemPayment, acctOutstanding });
                 }
 
@@ -1166,10 +1177,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         debtArrangementId: acct.debtArrangementId ?? 0,
                     };
 
-                    console.log(`[Priority 1 ${label}] Submitting consumer payment for account ${acct.account_ID} (${acct.name}), amount: R${itemPayment}, outstanding: R${acctOutstanding}`);
+                    console.log(`[Priority 1 ${label}] Submitting consumer payment for account ${acct.account_ID} (${acct.name}), PAYMENT amount: R${itemPayment}, full outstanding: R${acctOutstanding}, requestModel.totalAmount: R${requestModel.totalAmount}, requestModel.outStandingAmount: R${requestModel.outStandingAmount}`);
 
+                    const { _userAmountToPay: _, ...submitAccount } = acct;
                     const result = await submitConsumerPayment(sessionUserId, {
-                        account: acct,
+                        account: submitAccount,
                         requestModel,
                     });
                     console.log(`[Priority 1 ${label}] submit-consumer-payment response for account ${acct.account_ID}:`, result);
