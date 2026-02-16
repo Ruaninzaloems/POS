@@ -1175,7 +1175,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         changeAmount: i === 0 ? changeAmt : 0,
                         paymentType: paymentTypeId,
                         paymentOption: paymentOptionId,
-                        outStandingAmount: acctOutstanding,
+                        outStandingAmount: itemPayment,
                         cardNumber: record.payment.cardReference || '',
                         expiryDate: '',
                         chequeNumber: '',
@@ -1241,7 +1241,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
                 if (accCardActual > 0) {
                     try {
-                        await platinumSaveMultipleAccountPayment(saveAccounts, { userId: String(sessionUserId) });
+                        await platinumSaveMultipleAccountPayment(stagingPayload, { userId: String(sessionUserId) });
                         const cardResult = await submitConsumerPayments(accCardActual, accCardActual, 0, 3, 1, 'CARD', accCardActual);
                         console.log(`[Priority 1 CARD] Submitted card payment`, cardResult);
                         const cardReceiptIds = extractReceiptIds(cardResult);
