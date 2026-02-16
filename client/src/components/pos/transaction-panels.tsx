@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Account, ClearanceCostSchedule, DirectIncomeItem } from '@/lib/mock-data';
-import { User, MapPin, Phone, Mail, FileCheck, Zap, Trash2, Droplets, Upload, Search, Info, Download, FileText } from 'lucide-react';
+import { User, MapPin, Phone, Mail, FileCheck, Zap, Trash2, Droplets, Upload, Search, Info, Download, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { AccountEnquiryView } from '@/components/pos/account-enquiry-view';
@@ -21,6 +21,166 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
+
+function ClearanceBasketExpander({ item, updateItemDetails, updateItemAmount }: {
+    item: TransactionItem;
+    updateItemDetails: (id: string, details: Partial<TransactionItem>) => void;
+    updateItemAmount: (id: string, amount: number) => void;
+}) {
+    const [expanded, setExpanded] = useState(false);
+    const clr = item.originalData || {};
+    const paidItems = clr.paidItems || [];
+    const paySection1181Only = clr.paySection1181Only || false;
+    const section1181Amount = clr.total1181 ?? 0;
+
+    const handlePaySection1181Toggle = (checked: boolean) => {
+        const newOrigData = { ...clr, paySection1181Only: checked };
+        if (checked) {
+            const sec1181Abs = Math.abs(section1181Amount || 0);
+            updateItemDetails(item.id, {
+                amountToPay: sec1181Abs,
+                originalData: newOrigData,
+            });
+        } else {
+            updateItemDetails(item.id, {
+                amountToPay: clr.totalDue || item.amountDue,
+                originalData: newOrigData,
+            });
+        }
+    };
+
+    const handlePaidItemAmountChange = (index: number, newAmount: number) => {
+        const updatedPaidItems = [...paidItems];
+        updatedPaidItems[index] = { ...updatedPaidItems[index], paymentAmount: newAmount };
+        const newTotal = updatedPaidItems.reduce((sum: number, pi: any) => sum + (pi.paymentAmount ?? pi.amount ?? 0), 0);
+        updateItemDetails(item.id, {
+            amountToPay: newTotal,
+            originalData: { ...clr, paidItems: updatedPaidItems },
+        });
+    };
+
+    return (
+        <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-0">
+            <div className="bg-amber-50 border border-amber-200 rounded-md">
+                <button
+                    className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100/50 transition-colors rounded-md"
+                    onClick={() => setExpanded(!expanded)}
+                    data-testid={`button-expand-clearance-${item.id}`}
+                >
+                    <span className="flex items-center gap-1.5">
+                        <FileCheck className="w-3.5 h-3.5" />
+                        {paidItems.length > 0
+                            ? `${paidItems.length} line item${paidItems.length !== 1 ? 's' : ''} - Click to ${expanded ? 'hide' : 'view'} breakdown`
+                            : `Click to ${expanded ? 'hide' : 'view'} clearance details`}
+                    </span>
+                    {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
+
+                {expanded && (
+                    <div className="px-3 pb-3 space-y-3 border-t border-amber-200">
+                        {(clr.ownerName || clr.propertyAddress || clr.sgNumber) && (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-3">
+                                {clr.ownerName && (
+                                    <div>
+                                        <div className="text-[10px] text-amber-700 uppercase font-semibold">Name</div>
+                                        <div className="text-xs font-medium">{clr.ownerName}</div>
+                                    </div>
+                                )}
+                                {(clr.accountID || paidItems[0]?.accountNumber) && (
+                                    <div>
+                                        <div className="text-[10px] text-amber-700 uppercase font-semibold">Account</div>
+                                        <div className="text-xs font-mono">{paidItems[0]?.accountNumber || clr.accountID}</div>
+                                    </div>
+                                )}
+                                {clr.sgNumber && (
+                                    <div>
+                                        <div className="text-[10px] text-amber-700 uppercase font-semibold">SG Number</div>
+                                        <div className="text-xs font-mono">{clr.sgNumber}</div>
+                                    </div>
+                                )}
+                                {clr.propertyAddress && (
+                                    <div className="col-span-2 sm:col-span-3">
+                                        <div className="text-[10px] text-amber-700 uppercase font-semibold">Property Address</div>
+                                        <div className="text-xs">{clr.propertyAddress}</div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {paidItems.length > 0 && (
+                            <div className="overflow-auto">
+                                <table className="w-full text-xs border-collapse">
+                                    <thead>
+                                        <tr className="bg-amber-100/70 text-amber-900">
+                                            <th className="text-left py-1.5 px-2 font-semibold">Account</th>
+                                            <th className="text-left py-1.5 px-2 font-semibold">Type</th>
+                                            <th className="text-right py-1.5 px-2 font-semibold">Cost Schedule</th>
+                                            <th className="text-right py-1.5 px-2 font-semibold">Payment Amt</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {paidItems.map((pi: any, i: number) => {
+                                            const costAmount = pi.amount || 0;
+                                            const payAmount = pi.paymentAmount ?? pi.amount ?? 0;
+                                            return (
+                                                <tr key={i} className="border-t border-amber-200/60">
+                                                    <td className="py-1.5 px-2 font-mono">{pi.accountNumber || pi.account_ID || 'N/A'}</td>
+                                                    <td className="py-1.5 px-2 text-muted-foreground">{pi.debT_TYPE || pi.debtType || '-'}</td>
+                                                    <td className="py-1.5 px-2 text-right font-mono">R {costAmount.toFixed(2)}</td>
+                                                    <td className="py-1.5 px-2 text-right">
+                                                        <Input
+                                                            type="number"
+                                                            step="0.01"
+                                                            min={costAmount}
+                                                            value={payAmount}
+                                                            disabled={paySection1181Only}
+                                                            onChange={(e) => {
+                                                                const val = parseFloat(e.target.value);
+                                                                if (!isNaN(val) && val >= costAmount) {
+                                                                    handlePaidItemAmountChange(i, val);
+                                                                } else if (!isNaN(val) && val < costAmount) {
+                                                                    handlePaidItemAmountChange(i, costAmount);
+                                                                }
+                                                            }}
+                                                            className="w-24 h-7 text-right font-mono text-xs ml-auto bg-white"
+                                                            data-testid={`input-basket-clr-payment-${item.id}-${i}`}
+                                                        />
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+
+                        <div className="flex items-center justify-between pt-2 border-t border-amber-200">
+                            <div className="flex items-center gap-2">
+                                <Checkbox
+                                    id={`basket-pay1181-${item.id}`}
+                                    checked={paySection1181Only}
+                                    onCheckedChange={(checked) => handlePaySection1181Toggle(checked === true)}
+                                    data-testid={`checkbox-basket-1181-${item.id}`}
+                                />
+                                <Label htmlFor={`basket-pay1181-${item.id}`} className="text-[10px] cursor-pointer font-semibold text-amber-800">
+                                    Pay Section 118(1) Only
+                                </Label>
+                                {section1181Amount !== 0 && (
+                                    <span className="text-[10px] font-mono text-amber-700 ml-1">
+                                        (R {Math.abs(section1181Amount).toFixed(2)})
+                                    </span>
+                                )}
+                            </div>
+                            <div className="text-xs font-bold font-mono text-amber-900 bg-amber-100 px-2 py-1 rounded">
+                                Total: R {(item.amountToPay || 0).toFixed(2)}
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
 
 export function TransactionPanels() {
   const { activeTransactionType, transactionItems, removeItem, updateItemAmount, updateItemDetails, addItem, viewingItemId, setViewingItem } = usePos();
@@ -394,6 +554,10 @@ export function TransactionPanels() {
                                               </div>
                                           </div>
                                       </div>
+                                  )}
+
+                                  {item.type === 'CLEARANCE' && (
+                                      <ClearanceBasketExpander item={item} updateItemDetails={updateItemDetails} updateItemAmount={updateItemAmount} />
                                   )}
                               </div>
                           ))}
