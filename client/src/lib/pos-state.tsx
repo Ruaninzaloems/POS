@@ -297,7 +297,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         const data = await res.json();
         setCashierRegistered(data.cashierRegistered === true);
-        setPlatinumCashierId(data.cashierId || null);
+        const receiptCashierId = data.details?.id || data.cashierId || null;
+        console.log(`[Session] Platinum cashier IDs — top-level cashierId: ${data.cashierId}, details.id: ${data.details?.id}, using for receipts: ${receiptCashierId}`);
+        setPlatinumCashierId(receiptCashierId);
         if (data.cashOnHandLimit && data.officeId) {
           setOfficeLimits(prev => ({ ...prev, [String(data.officeId)]: data.cashOnHandLimit }));
         }
@@ -311,6 +313,28 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     checkActiveSession();
   }, [platinumUser]);
+
+  const RECEIPT_IDS_KEY = `pos_receipt_ids_${currentUser.id}`;
+
+  const getStoredReceiptIds = (): number[] => {
+    try {
+      const stored = localStorage.getItem(RECEIPT_IDS_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return Array.isArray(parsed) ? parsed : [];
+      }
+    } catch {}
+    return [];
+  };
+
+  const storeReceiptId = (receiptId: number) => {
+    const existing = getStoredReceiptIds();
+    if (!existing.includes(receiptId)) {
+      const updated = [receiptId, ...existing].slice(0, 500);
+      localStorage.setItem(RECEIPT_IDS_KEY, JSON.stringify(updated));
+      console.log(`[Transactions] Stored receipt ID ${receiptId}, total stored: ${updated.length}`);
+    }
+  };
 
   const loadTransactionsFromApi = async () => {
     const pCashierId = platinumCashierId;
@@ -382,10 +406,109 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
 
         setRecentTransactions(mapped);
-        console.log(`[Transactions] Loaded ${mapped.length} transactions from Platinum API for platinumCashierId ${pCashierId}`);
+        console.log(`[Transactions] Loaded ${mapped.length} transactions from Platinum ViewReceipt API`);
+        return;
+      }
+
+      console.log(`[Transactions] ViewReceipt returned empty, falling back to stored receipt IDs + discovery`);
+      const storedIds = getStoredReceiptIds();
+
+      let results: { receiptId: number; data: any }[] = [];
+
+      if (storedIds.length > 0) {
+        console.log(`[Transactions] Loading ${storedIds.length} stored receipt(s) from pos-multi-receipt-print`);
+        const fetchPromises = storedIds.slice(0, 50).map(async (rid) => {
+          try {
+            const data = await fetchPosMultiReceiptPrint(String(rid));
+            if (data && data.length > 0) {
+              return { receiptId: rid, data: data[0] };
+            }
+          } catch {}
+          return null;
+        });
+        results = (await Promise.all(fetchPromises)).filter(Boolean) as { receiptId: number; data: any }[];
+      }
+
+      if (results.length === 0 && platinumUser) {
+        console.log(`[Transactions] No stored receipts, trying discovery scan for cashier: ${platinumUser.firstName} ${platinumUser.lastName}`);
+        try {
+          const cashierName = `${platinumUser.firstName} ${platinumUser.lastName}`;
+          const params = new URLSearchParams({ cashierName, scanCount: '50' });
+          const discoverRes = await fetch(`/api/proxy/pos-multi-receipt-print/by-cashier?${params}`);
+          if (discoverRes.ok) {
+            const discovered = await discoverRes.json();
+            if (Array.isArray(discovered) && discovered.length > 0) {
+              results = discovered.map((d: any) => ({ receiptId: d._receiptId, data: d }));
+              discovered.forEach((d: any) => {
+                if (d._receiptId) storeReceiptId(d._receiptId);
+              });
+              console.log(`[Transactions] Discovered ${results.length} receipts via scan, stored IDs for future`);
+            }
+          }
+        } catch (e) {
+          console.warn(`[Transactions] Discovery scan failed:`, e);
+        }
+      }
+
+      if (results.length > 0) {
+        const mapped: TransactionRecord[] = results.map(({ receiptId: rid, data: rd }) => {
+          const isCash = rd.billType?.toLowerCase().includes('cash') || rd.paymentTypeId === 1;
+          const isCard = rd.billType?.toLowerCase().includes('card') || rd.paymentTypeId === 2;
+          const paymentAmount = rd.tenderAmount || rd.amount || 0;
+
+          let txType: TransactionType = 'CONSUMER_SERVICES';
+          const mode = (rd.payMode || '').toLowerCase();
+          if (mode.includes('misc') || mode.includes('direct') || mode.includes('income')) {
+            txType = 'DIRECT_INCOME';
+          } else if (mode.includes('clearance')) {
+            txType = 'CLEARANCE';
+          } else if (mode.includes('prepaid')) {
+            txType = 'PREPAID';
+          }
+
+          const parseDate = (d: string) => {
+            if (!d) return Date.now();
+            const parts = d.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})/);
+            if (parts) {
+              return new Date(`${parts[3]}-${parts[2]}-${parts[1]}T${parts[4]}:${parts[5]}:${parts[6]}`).getTime();
+            }
+            return new Date(d).getTime() || Date.now();
+          };
+
+          return {
+            id: `plt-${rid}`,
+            receiptNumber: rd.receiptNo || `REC-${rid}`,
+            timestamp: parseDate(rd.receiptDate),
+            items: [{
+              id: `item-${rid}`,
+              type: txType,
+              description: rd.accName || rd.payMode || 'Payment',
+              reference: rd.accountId || rd.oldAccountCode || '',
+              amountDue: rd.outstandingAmount || paymentAmount,
+              amountToPay: paymentAmount,
+              originalData: rd,
+            }],
+            totalAmount: paymentAmount,
+            payment: {
+              cash: isCash ? paymentAmount : 0,
+              card: isCard ? paymentAmount : 0,
+            },
+            status: rd.isCancelled ? 'CANCELLED' as TransactionStatus : 'COMPLETED' as TransactionStatus,
+            cashierId: currentUser.id,
+            cashierName: rd.cashierName || '',
+            cashOfficeName: rd.cashOfficeName || '',
+            paymentTypeName: rd.billType || '',
+            paymentOptionName: rd.payMode || '',
+            isReconciled: 0,
+          };
+        });
+
+        mapped.sort((a, b) => b.timestamp - a.timestamp);
+        setRecentTransactions(mapped);
+        console.log(`[Transactions] Loaded ${mapped.length} transactions from stored receipt IDs via pos-multi-receipt-print`);
       } else {
         setRecentTransactions([]);
-        console.log(`[Transactions] No transactions found for platinumCashierId ${pCashierId} on ${fromDate}`);
+        console.log(`[Transactions] No receipt data found from stored IDs`);
       }
     } catch (e) {
       console.warn('[Transactions] Failed to load transactions from API:', e);
@@ -733,6 +856,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             console.warn(`[Priority 1 ${paymentLabel}] No receipt IDs returned — receipt print skipped`);
             return;
         }
+        receiptIds.forEach(rid => storeReceiptId(rid));
         let receiptNo = `REC-${receiptIds[0]}`;
         let receiptDetail: any = null;
 
@@ -1073,6 +1197,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 console.log(`[Priority 1B ${label}] Submitted clearance payment for ${clearanceId}`, clrResult);
 
                 const clrReceiptIds = extractReceiptIds(clrResult);
+                clrReceiptIds.forEach(rid => storeReceiptId(rid));
                 if (clrReceiptIds.length > 0) {
                     let receiptNo = `REC-${clrReceiptIds[0]}`;
                     try {
@@ -1205,6 +1330,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }
 
                 if (miscReceiptId) {
+                    storeReceiptId(miscReceiptId);
                     let receiptNo = `REC-${miscReceiptId}`;
                     try {
                         const miscReceiptData = await fetchPosMultiReceiptPrint(String(miscReceiptId));

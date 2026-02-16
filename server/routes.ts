@@ -2016,6 +2016,97 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/proxy/pos-multi-receipt-print/by-cashier", async (req, res) => {
+    try {
+      const cashierName = req.query.cashierName as string;
+      const startId = parseInt(req.query.startId as string) || 0;
+      const scanCount = Math.min(parseInt(req.query.scanCount as string) || 100, 300);
+
+      if (!cashierName) {
+        return res.status(400).json({ message: "cashierName required" });
+      }
+
+      let highestKnownId = startId;
+      if (!highestKnownId) {
+        try {
+          const probeIds = [1041400, 1041350, 1041300, 1041280, 1041270, 1041260];
+          for (const probeId of probeIds) {
+            const url = `${EXTERNAL_API_BASE}/api/pos-multi-receipt-print?receiptId=${probeId}`;
+            const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            if (resp.ok) {
+              const data = await resp.json();
+              if (Array.isArray(data) && data.length > 0) {
+                highestKnownId = probeId;
+                break;
+              }
+            }
+          }
+          if (!highestKnownId) {
+            let probeId = 1041300;
+            while (probeId > 1041200) {
+              const url = `${EXTERNAL_API_BASE}/api/pos-multi-receipt-print?receiptId=${probeId}`;
+              const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+              if (resp.ok) {
+                const data = await resp.json();
+                if (Array.isArray(data) && data.length > 0) {
+                  highestKnownId = probeId;
+                  break;
+                }
+              }
+              probeId -= 5;
+            }
+          }
+        } catch {}
+        if (!highestKnownId) highestKnownId = 1041280;
+      }
+
+      const scanStartId = highestKnownId + 30;
+      console.log(`[by-cashier] Scanning from ${scanStartId} backwards for cashierName=${cashierName}, count=${scanCount}`);
+
+      const ids: number[] = [];
+      for (let i = 0; i < scanCount; i++) {
+        ids.push(scanStartId - i);
+      }
+
+      const batchSize = 20;
+      const allMatching: any[] = [];
+
+      for (let batch = 0; batch < ids.length; batch += batchSize) {
+        const batchIds = ids.slice(batch, batch + batchSize);
+        const fetchOne = async (id: number) => {
+          try {
+            const url = `${EXTERNAL_API_BASE}/api/pos-multi-receipt-print?receiptId=${id}`;
+            const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            if (response.ok) {
+              const data = await response.json();
+              if (Array.isArray(data) && data.length > 0) {
+                const item = data[0];
+                if (
+                  item.cashierName && item.cashierName.toLowerCase() === cashierName.toLowerCase()
+                ) {
+                  return data.map((d: any) => ({ ...d, _receiptId: id }));
+                }
+              }
+            }
+          } catch {}
+          return null;
+        };
+
+        const results = await Promise.all(batchIds.map(fetchOne));
+        for (const r of results) {
+          if (r) allMatching.push(...r);
+        }
+
+        if (allMatching.length >= 50) break;
+      }
+
+      console.log(`[by-cashier] Found ${allMatching.length} matching receipts`);
+      res.json(allMatching);
+    } catch (e: any) {
+      res.status(502).json({ message: "Scan failed", detail: e.message });
+    }
+  });
+
   app.get("/api/proxy/pos-multi-receipt-print/batch", async (req, res) => {
     try {
       const startId = parseInt(req.query.startId as string) || 312979;
