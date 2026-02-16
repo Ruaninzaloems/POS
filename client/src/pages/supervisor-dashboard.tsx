@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,7 +32,8 @@ import {
   RefreshCcw,
   Info,
   Calendar as CalendarIcon,
-  BarChart3
+  BarChart3,
+  Loader2
 } from 'lucide-react';
 import {
   HoverCard,
@@ -43,8 +44,9 @@ import { format, subDays, startOfMonth, endOfMonth, startOfYear, endOfYear, isWi
 import { usePos } from '@/lib/pos-state';
 import { PosLayout } from '@/components/layout/pos-layout';
 import { cn } from '@/lib/utils';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 
-// Types
 type DayEndStatus = 'NOT_SUBMITTED' | 'PENDING_APPROVAL' | 'RETURNED' | 'COMPLETED';
 type ReconMode = 'PER_CASHIER' | 'CASH_OFFICE';
 
@@ -71,63 +73,60 @@ interface CashierShift {
     total: number;
   };
   transactionCount: number;
+  rawData?: any;
 }
 
-const HISTORICAL_SHIFTS: CashierShift[] = [];
-
-const MOCK_SHIFTS: CashierShift[] = [];
-
-// Helper for currency formatting
 const formatCurrency = (amount: number) => {
   return `R ${amount.toFixed(2)}`;
 };
 
-function generateReportData(_shift: CashierShift) {
-  return [] as { receiptNo: string; time: string; type: string; description: string; amount: number }[];
+function extractItems(data: any): any[] {
+  if (Array.isArray(data)) return data;
+  if (data && typeof data === 'object') {
+    return data.items || data.value || data.results || data.data || data.rows || [];
+  }
+  return [];
 }
 
-// Add function to download CSV
-function downloadReport(shift: CashierShift) {
-  const transactions = generateReportData(shift);
-  
-  // Group by Type
-  const groups: Record<string, typeof transactions> = {};
-  transactions.forEach(tx => {
-    if(!groups[tx.type]) groups[tx.type] = [];
-    groups[tx.type].push(tx);
-  });
-  
-  // Build CSV Content
-  let csvContent = "data:text/csv;charset=utf-8,";
-  csvContent += "Transaction Report\n";
-  csvContent += `Cashier,${shift.cashierName}\n`;
-  csvContent += `Office,${shift.cashOffice}\n`;
-  csvContent += `Date,${new Date(shift.startTime).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' })}\n\n`;
-  
-  Object.entries(groups).forEach(([type, txs]) => {
-    csvContent += `TYPE: ${type}\n`;
-    csvContent += "Receipt No,Time,Description,Amount\n";
-    
-    let groupTotal = 0;
-    txs.forEach(tx => {
-      csvContent += `${tx.receiptNo},${tx.time},${tx.description},${tx.amount.toFixed(2)}\n`;
-      groupTotal += tx.amount;
-    });
-    
-    csvContent += `,,TOTAL ${type.toUpperCase()},${groupTotal.toFixed(2)}\n\n`;
-  });
-  
-  // Trigger Download
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `day_end_report_${shift.cashierName.replace(' ', '_')}_${new Date().toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '')}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+const PAGER_BODY = { pageNumber: 1, pageSize: 100, query: "", orderBy: "" };
+
+function mapCashierToShift(c: any, index: number): CashierShift {
+  const id = String(c.id || c.cashierId || c.cashier_ID || c.cashier_id || index);
+  const name = c.cashierName || c.name || c.userName || c.cashier_name || `Cashier ${id}`;
+  const office = c.cashOfficeName || c.cashOffice || c.cash_office || c.officeName || c.office || '';
+  const totalAmt = Number(c.totalAmount || c.totalAmt || c.total || c.systemTotal || 0);
+  const cashAmt = Number(c.cashAmount || c.cashTotal || c.totalCashAmt || 0);
+  const cardAmt = Number(c.cardAmount || c.cardTotal || c.totalCreditAmt || 0);
+  const declaredTotal = Number(c.declaredTotal || c.declaredAmount || c.cashierTotal || c.totalDeclared || 0);
+  const declaredCash = Number(c.declaredCash || c.cashierCash || 0);
+  const declaredCard = Number(c.declaredCard || c.cashierCard || 0);
+  const varianceTotal = Number(c.variance || c.varianceAmount || c.totalVariance || 0);
+  const txCount = Number(c.transactionCount || c.receiptCount || c.txCount || c.count || 0);
+
+  let status: DayEndStatus = 'PENDING_APPROVAL';
+  const rawStatus = String(c.status || c.reconcileStatus || c.dayEndStatus || '').toLowerCase();
+  if (rawStatus.includes('complet') || rawStatus.includes('post') || rawStatus.includes('finish') || rawStatus.includes('approved')) {
+    status = 'COMPLETED';
+  } else if (rawStatus.includes('return')) {
+    status = 'RETURNED';
+  } else if (rawStatus.includes('not') || rawStatus.includes('open') || rawStatus.includes('submit')) {
+    status = 'NOT_SUBMITTED';
+  }
+
+  return {
+    id,
+    cashierName: name,
+    cashOffice: office,
+    startTime: c.startTime || c.reconcileDate || c.date || c.createdDate || new Date().toISOString(),
+    status,
+    systemTotals: { cash: cashAmt, card: cardAmt, total: totalAmt || (cashAmt + cardAmt) },
+    declaredTotals: declaredTotal > 0 || declaredCash > 0 ? { cash: declaredCash, card: declaredCard, total: declaredTotal || (declaredCash + declaredCard) } : undefined,
+    variance: varianceTotal !== 0 ? { cash: 0, card: 0, total: varianceTotal } : { cash: 0, card: 0, total: 0 },
+    transactionCount: txCount,
+    rawData: c,
+  };
 }
 
-// Helper constants
 const FINANCIAL_YEARS = ['2025/2026', '2024/2025', '2023/2024', '2022/2023'];
 const MONTHS = [
     { value: '0', label: 'January' },
@@ -146,9 +145,9 @@ const MONTHS = [
 
 export default function SupervisorDashboard() {
   const { returnDayEnd, approveCancellation, recentTransactions, referenceData } = usePos();
+  const { toast } = useToast();
   const [reconMode, setReconMode] = useState<ReconMode>('PER_CASHIER');
   
-  // Pending Cancellations
   const pendingCancellations = recentTransactions.filter(tx => tx.status === 'PENDING_CANCELLATION');
   const processedCancellations = recentTransactions.filter(tx => 
       tx.status === 'CANCELLED' || 
@@ -156,12 +155,26 @@ export default function SupervisorDashboard() {
   );
 
   const [selectedShift, setSelectedShift] = useState<CashierShift | null>(null);
-  const [shifts, setShifts] = useState<CashierShift[]>(MOCK_SHIFTS);
+  const [shifts, setShifts] = useState<CashierShift[]>([]);
+  const [isLoadingShifts, setIsLoadingShifts] = useState(false);
   const [filterOffice, setFilterOffice] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [returnReason, setReturnReason] = useState('');
   
-  // Variance History State
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewData, setReviewData] = useState<{
+    details: any;
+    reconcile: any;
+    cashReceipts: any[];
+    cardReceipts: any[];
+    chequeReceipts: any[];
+    postalReceipts: any[];
+    dropboxReceipts: any[];
+    systemVsCashier: any[];
+  } | null>(null);
+  const [reviewTab, setReviewTab] = useState('cash');
+  const [actionLoading, setActionLoading] = useState(false);
+
   const [showVarianceHistory, setShowVarianceHistory] = useState(false);
   const [statsDateRange, setStatsDateRange] = useState<{from: Date, to: Date} | undefined>({
       from: subDays(new Date(), 30),
@@ -171,7 +184,6 @@ export default function SupervisorDashboard() {
   const [statsFinancialYear, setStatsFinancialYear] = useState<string>('All');
   const [statsMonth, setStatsMonth] = useState<string>('All');
 
-  // Handle Financial Period Change
   const updateStatsPeriod = (fy: string, month: string) => {
       setStatsFinancialYear(fy);
       setStatsMonth(month);
@@ -182,26 +194,20 @@ export default function SupervisorDashboard() {
           const endYear = parseInt(endYearStr);
 
           if (month !== 'All') {
-              // Specific Month in FY
               const monthIndex = parseInt(month);
               let targetYear = startYear;
-              
-              // If month is Jan(0) to Jun(5), it belongs to the second year (endYear)
-              // If month is Jul(6) to Dec(11), it belongs to the first year (startYear)
               if (monthIndex < 6) {
                   targetYear = endYear;
               } else {
                   targetYear = startYear;
               }
-
               const fromDate = new Date(targetYear, monthIndex, 1);
               const toDate = endOfMonth(fromDate);
               setStatsDateRange({ from: fromDate, to: toDate });
           } else {
-              // Whole FY
               setStatsDateRange({
-                  from: new Date(startYear, 6, 1), // July 1st
-                  to: new Date(endYear, 5, 30) // June 30th
+                  from: new Date(startYear, 6, 1),
+                  to: new Date(endYear, 5, 30)
               });
           }
       }
@@ -211,12 +217,39 @@ export default function SupervisorDashboard() {
   const [filterStatus, setFilterStatus] = useState<string>('All');
   const [filterDate, setFilterDate] = useState<string>('All');
 
+  const loadCashierList = useCallback(async () => {
+    setIsLoadingShifts(true);
+    try {
+      const res = await fetch('/api/platinum/auth-day-end/cashier-list');
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      const data = await res.json();
+      console.log('[Supervisor] Cashier list raw response:', data);
+      const items = extractItems(data);
+      console.log('[Supervisor] Cashier list items:', items.length, JSON.stringify(items).substring(0, 1000));
+      const mapped = items.map((c: any, i: number) => mapCashierToShift(c, i));
+      setShifts(mapped);
+    } catch (e: any) {
+      console.error('[Supervisor] Failed to load cashier list:', e);
+      toast({ title: 'Error', description: `Failed to load cashier list: ${e.message}`, variant: 'destructive' });
+    } finally {
+      setIsLoadingShifts(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    loadCashierList();
+  }, [loadCashierList]);
+
+  const uniqueOffices = useMemo(() => {
+    const offices = new Set(shifts.map(s => s.cashOffice).filter(Boolean));
+    return Array.from(offices);
+  }, [shifts]);
+
   const filteredShifts = shifts.filter(shift => {
     const matchesOffice = filterOffice === 'All' || shift.cashOffice === filterOffice;
     const matchesSearch = shift.cashierName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesVariance = !filterVariance || (shift.variance?.total || 0) !== 0;
     
-    // Status Logic
     const matchesStatus = filterStatus === 'All' 
         ? (
             shift.status !== 'COMPLETED' || 
@@ -243,22 +276,104 @@ export default function SupervisorDashboard() {
 
   const pendingCount = shifts.filter(s => s.status === 'PENDING_APPROVAL').length;
   const varianceCount = shifts.filter(s => (s.variance?.total || 0) !== 0 && s.status === 'PENDING_APPROVAL').length;
+  const totalPosted = shifts.filter(s => s.status === 'COMPLETED').reduce((sum, s) => sum + s.systemTotals.total, 0);
+  const totalSystemRevenue = shifts.reduce((sum, s) => sum + s.systemTotals.total, 0);
 
-  const handleApprove = (id: string) => {
-    setShifts(prev => prev.map(s => s.id === id ? { ...s, status: 'COMPLETED' } : s));
-    setSelectedShift(null);
-  };
+  const loadReviewData = useCallback(async (cashierId: string) => {
+    setReviewLoading(true);
+    setReviewData(null);
+    setReviewTab('cash');
+    try {
+      const [detailsRes, reconcileRes, cashRes, cardRes, chequeRes, postalRes, dropboxRes, sysVsCashierRes] = await Promise.all([
+        fetch(`/api/platinum/auth-day-end/cashier-details?cashierId=${cashierId}`).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(`/api/platinum/auth-day-end/cashier-reconcile-by-cashierid?cashierId=${cashierId}`).then(r => r.ok ? r.json() : null).catch(() => null),
+        apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-cash-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch(() => []),
+        apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-card-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch(() => []),
+        apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-cheque-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch(() => []),
+        apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-postal-order-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch(() => []),
+        apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-drop-box-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch(() => []),
+        apiRequest('POST', `/api/platinum/auth-day-end/system-vs-cashier-data-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch(() => []),
+      ]);
 
-  const handleReturn = () => { // Changed signature
-    if (selectedShift && returnReason) {
-        setShifts(prev => prev.map(s => s.id === selectedShift.id ? { ...s, status: 'RETURNED' } : s));
-        returnDayEnd(returnReason); 
-        setSelectedShift(null);
-        setReturnReason('');
+      console.log('[Supervisor] Review details:', detailsRes);
+      console.log('[Supervisor] Review reconcile:', reconcileRes);
+      console.log('[Supervisor] Cash receipts:', cashRes);
+      console.log('[Supervisor] Card receipts:', cardRes);
+      console.log('[Supervisor] System vs Cashier:', sysVsCashierRes);
+
+      setReviewData({
+        details: detailsRes,
+        reconcile: reconcileRes,
+        cashReceipts: extractItems(cashRes),
+        cardReceipts: extractItems(cardRes),
+        chequeReceipts: extractItems(chequeRes),
+        postalReceipts: extractItems(postalRes),
+        dropboxReceipts: extractItems(dropboxRes),
+        systemVsCashier: extractItems(sysVsCashierRes),
+      });
+    } catch (e: any) {
+      console.error('[Supervisor] Failed to load review data:', e);
+      toast({ title: 'Error', description: `Failed to load review data: ${e.message}`, variant: 'destructive' });
+    } finally {
+      setReviewLoading(false);
+    }
+  }, [toast]);
+
+  const handleReview = useCallback((shift: CashierShift) => {
+    setSelectedShift(shift);
+    setReturnReason('');
+    loadReviewData(shift.id);
+  }, [loadReviewData]);
+
+  const handleApprove = async (cashierId: string) => {
+    setActionLoading(true);
+    try {
+      await apiRequest('POST', `/api/platinum/auth-day-end/finish-day-end-reconcile?userId=${cashierId}`, {});
+      toast({ title: 'Success', description: 'Day-end reconciliation approved successfully.' });
+      setSelectedShift(null);
+      loadCashierList();
+    } catch (e: any) {
+      console.error('[Supervisor] Approve failed:', e);
+      toast({ title: 'Error', description: `Approve failed: ${e.message}`, variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  // Grouping for Cash Office Mode
+  const handleReturn = async () => {
+    if (!selectedShift || !returnReason) return;
+    setActionLoading(true);
+    try {
+      await apiRequest('POST', '/api/platinum/auth-day-end/return-day-end-reconcile', {
+        id: Number(selectedShift.id),
+        returnReason: returnReason,
+      });
+      toast({ title: 'Returned', description: 'Day-end reconciliation returned to cashier.' });
+      setSelectedShift(null);
+      setReturnReason('');
+      loadCashierList();
+    } catch (e: any) {
+      console.error('[Supervisor] Return failed:', e);
+      toast({ title: 'Error', description: `Return failed: ${e.message}`, variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCancelReceipt = async (receiptId: number, reason: string) => {
+    try {
+      await apiRequest('POST', '/api/platinum/auth-day-end/cancel-receipt', {
+        id: receiptId,
+        returnReason: reason,
+      });
+      toast({ title: 'Receipt Cancelled', description: 'Receipt has been cancelled.' });
+      if (selectedShift) loadReviewData(selectedShift.id);
+    } catch (e: any) {
+      console.error('[Supervisor] Cancel receipt failed:', e);
+      toast({ title: 'Error', description: `Cancel receipt failed: ${e.message}`, variant: 'destructive' });
+    }
+  };
+
   const officeGroups = React.useMemo(() => {
     if (reconMode !== 'CASH_OFFICE') return null;
     
@@ -270,56 +385,82 @@ export default function SupervisorDashboard() {
     }> = {};
 
     filteredShifts.forEach(shift => {
-      if (!groups[shift.cashOffice]) {
-        groups[shift.cashOffice] = { 
+      if (!groups[shift.cashOffice || 'Unknown']) {
+        groups[shift.cashOffice || 'Unknown'] = { 
           totalSystem: 0, 
           totalDeclared: 0, 
           shifts: [],
           status: 'READY'
         };
       }
-      groups[shift.cashOffice].shifts.push(shift);
-      groups[shift.cashOffice].totalSystem += shift.systemTotals.total;
-      groups[shift.cashOffice].totalDeclared += shift.declaredTotals?.total || 0;
+      const key = shift.cashOffice || 'Unknown';
+      groups[key].shifts.push(shift);
+      groups[key].totalSystem += shift.systemTotals.total;
+      groups[key].totalDeclared += shift.declaredTotals?.total || 0;
       
       if (shift.status === 'NOT_SUBMITTED' || shift.status === 'RETURNED') {
-          groups[shift.cashOffice].status = 'MIXED';
+          groups[key].status = 'MIXED';
       }
     });
 
     return groups;
   }, [filteredShifts, reconMode]);
 
-  // Variance History Calculation
   const varianceStats = useMemo(() => {
-      if (!statsDateRange?.from || !statsDateRange?.to) return null;
-
-      const filteredHistory = HISTORICAL_SHIFTS.filter(shift => {
-          const shiftDate = new Date(shift.startTime);
-          const inDateRange = isWithinInterval(shiftDate, { start: statsDateRange.from, end: statsDateRange.to });
-          const matchesCashier = statsCashier === 'All' || shift.cashierName === statsCashier;
-          return inDateRange && matchesCashier;
-      });
-
-      const totalShortage = filteredHistory.reduce((acc, shift) => acc + (shift.variance?.total && shift.variance.total < 0 ? Math.abs(shift.variance.total) : 0), 0);
-      const totalSurplus = filteredHistory.reduce((acc, shift) => acc + (shift.variance?.total && shift.variance.total > 0 ? shift.variance.total : 0), 0);
-      const netVariance = totalSurplus - totalShortage;
-      const shortageCount = filteredHistory.filter(s => s.variance?.total && s.variance.total < 0).length;
-      const surplusCount = filteredHistory.filter(s => s.variance?.total && s.variance.total > 0).length;
-      
-      // Sort by date desc
-      const sortedHistory = [...filteredHistory].sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
-
       return {
-          history: sortedHistory,
-          totalShortage,
-          totalSurplus,
-          netVariance,
-          shortageCount,
-          surplusCount,
-          shiftCount: filteredHistory.length
+          history: [] as CashierShift[],
+          totalShortage: 0,
+          totalSurplus: 0,
+          netVariance: 0,
+          shortageCount: 0,
+          surplusCount: 0,
+          shiftCount: 0
       };
   }, [statsDateRange, statsCashier]);
+
+  const renderReceiptTable = (receipts: any[], type: string) => {
+    if (receipts.length === 0) {
+      return (
+        <div className="text-center py-8 text-muted-foreground text-sm">
+          No {type} receipts found
+        </div>
+      );
+    }
+    return (
+      <div className="border rounded-md overflow-auto max-h-[300px]">
+        <Table>
+          <TableHeader className="bg-slate-50 sticky top-0">
+            <TableRow>
+              <TableHead className="text-xs py-2">#</TableHead>
+              <TableHead className="text-xs py-2">Account/Ref</TableHead>
+              <TableHead className="text-xs py-2">Receipt No</TableHead>
+              <TableHead className="text-xs py-2">Date</TableHead>
+              <TableHead className="text-xs py-2">Cancelled</TableHead>
+              <TableHead className="text-xs py-2 text-right">Amount</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {receipts.map((item, idx) => (
+              <TableRow key={idx} className="hover:bg-slate-50">
+                <TableCell className="text-xs py-1.5">{idx + 1}</TableCell>
+                <TableCell className="text-xs font-mono py-1.5">{item.accountNumber || item.accountId || item.invoiceNumber || item.account || '-'}</TableCell>
+                <TableCell className="text-xs font-mono py-1.5">{item.receiptNo || item.receipt_no || item.receiptNumber || '-'}</TableCell>
+                <TableCell className="text-xs py-1.5">{item.receiptDate || item.receiptDateTime || item.date || '-'}</TableCell>
+                <TableCell className="text-xs py-1.5">
+                  {item.isCancelled === 1 || item.isCancelled === true ? (
+                    <Badge variant="destructive" className="text-[9px]">Yes</Badge>
+                  ) : (
+                    <span className="text-muted-foreground">No</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-xs text-right font-mono font-medium py-1.5">R {Number(item.amount || item.totalAmount || 0).toFixed(2)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  };
 
   return (
     <PosLayout>
@@ -344,6 +485,16 @@ export default function SupervisorDashboard() {
               >
                   <BarChart3 className="w-4 h-4" />
                   <span className="hidden sm:inline">Cashier </span>Statistics
+              </Button>
+              <Button
+                variant="outline"
+                className="gap-2 bg-white text-xs sm:text-sm"
+                size="sm"
+                onClick={loadCashierList}
+                disabled={isLoadingShifts}
+              >
+                  {isLoadingShifts ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCcw className="w-4 h-4" />}
+                  Refresh
               </Button>
               <div className="bg-white rounded-lg border p-1 flex items-center shadow-sm">
                   <Button 
@@ -401,7 +552,7 @@ export default function SupervisorDashboard() {
             <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Total Posted (Today)</CardTitle>
           </CardHeader>
           <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-            <div className="text-xl sm:text-3xl font-bold text-green-600">R 16,000.00</div>
+            <div className="text-xl sm:text-3xl font-bold text-green-600">{formatCurrency(totalPosted)}</div>
             <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3" /> Successfully reconciled
             </p>
@@ -413,7 +564,7 @@ export default function SupervisorDashboard() {
             <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Total System Revenue</CardTitle>
           </CardHeader>
           <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-            <div className="text-xl sm:text-3xl font-bold text-purple-600">R 49,001.00</div>
+            <div className="text-xl sm:text-3xl font-bold text-purple-600">{formatCurrency(totalSystemRevenue)}</div>
             <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                 <TrendingUp className="w-3 h-3" /> All active shifts
             </p>
@@ -421,7 +572,6 @@ export default function SupervisorDashboard() {
         </Card>
       </div>
 
-      {/* Cancellation Approvals Section */}
       <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 sm:p-4">
           <Tabs defaultValue="pending" className="w-full">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 sm:mb-4">
@@ -637,16 +787,18 @@ export default function SupervisorDashboard() {
                   className="pl-9"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  data-testid="input-search-cashier"
               />
           </div>
           <Select value={filterOffice} onValueChange={setFilterOffice}>
-              <SelectTrigger className="w-full md:w-[200px]">
+              <SelectTrigger className="w-full md:w-[200px]" data-testid="select-filter-office">
                   <SelectValue placeholder="Filter by Office" />
               </SelectTrigger>
               <SelectContent>
                   <SelectItem value="All">All Offices</SelectItem>
-                  <SelectItem value="Main Civic Center">Main Civic Center</SelectItem>
-                  <SelectItem value="Traffic Dept">Traffic Dept</SelectItem>
+                  {uniqueOffices.map(office => (
+                    <SelectItem key={office} value={office}>{office}</SelectItem>
+                  ))}
               </SelectContent>
           </Select>
           <Button variant="outline" className="gap-2 w-full md:w-auto" asChild>
@@ -703,7 +855,6 @@ export default function SupervisorDashboard() {
           </Button>
       </div>
       
-      {/* Quick Status Filters */}
       <Tabs value={filterStatus} onValueChange={setFilterStatus} className="w-full">
         <TabsList className="bg-white border w-full justify-start h-auto p-1 flex-wrap gap-1">
             <TabsTrigger value="All" className="text-xs sm:text-sm data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900">
@@ -719,19 +870,28 @@ export default function SupervisorDashboard() {
         </TabsList>
       </Tabs>
 
-      {reconMode === 'PER_CASHIER' ? (
+      {isLoadingShifts ? (
+        <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
+          <Loader2 className="w-5 h-5 animate-spin" /> Loading cashier shifts...
+        </div>
+      ) : reconMode === 'PER_CASHIER' ? (
           <div className="bg-white rounded-lg shadow-sm border overflow-x-auto">
-              <div className="p-3 sm:p-4 border-b bg-slate-50">
+              <div className="p-3 sm:p-4 border-b bg-slate-50 flex items-center justify-between">
                   <h3 className="font-semibold text-sm sm:text-base">Cashier Shifts</h3>
+                  <span className="text-xs text-muted-foreground">{filteredShifts.length} cashier(s)</span>
               </div>
+              {filteredShifts.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground text-sm">
+                  No cashier shifts found. Cashiers may not have submitted day-end yet.
+                </div>
+              ) : (
               <Table>
                   <TableHeader>
                       <TableRow>
                           <TableHead className="whitespace-nowrap">Cashier</TableHead>
                           <TableHead className="whitespace-nowrap">Office</TableHead>
-                          <TableHead className="whitespace-nowrap">Shift Start</TableHead>
+                          <TableHead className="whitespace-nowrap">Date</TableHead>
                           <TableHead className="text-right whitespace-nowrap">Tx Count</TableHead>
-                          <TableHead className="text-right whitespace-nowrap">Voids</TableHead>
                           <TableHead className="text-right whitespace-nowrap">System Total</TableHead>
                           <TableHead className="text-right whitespace-nowrap">Variance</TableHead>
                           <TableHead className="text-center whitespace-nowrap">Status</TableHead>
@@ -739,38 +899,12 @@ export default function SupervisorDashboard() {
                       </TableRow>
                   </TableHeader>
                   <TableBody>
-                      {filteredShifts.map(shift => {
-                          // Find cashier ID from name to look up transactions
-                          const cashierProfile = referenceData.cashiers.find(c => c.name === shift.cashierName);
-                          // Calculate void count from global transactions
-                          const voidCount = recentTransactions.filter(t => 
-                              t.cashierId === cashierProfile?.id && 
-                              (t.status === 'CANCELLED' || t.status === 'PENDING_CANCELLATION')
-                          ).length;
-
-                          return (
-                          <TableRow key={shift.id}>
+                      {filteredShifts.map(shift => (
+                          <TableRow key={shift.id} data-testid={`row-cashier-${shift.id}`}>
                               <TableCell className="font-medium">{shift.cashierName}</TableCell>
-                              <TableCell className="text-muted-foreground">{shift.cashOffice}</TableCell>
-                              <TableCell>{new Date(shift.startTime).toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')}</TableCell>
+                              <TableCell className="text-muted-foreground">{shift.cashOffice || '-'}</TableCell>
+                              <TableCell>{new Date(shift.startTime).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' })}</TableCell>
                               <TableCell className="text-right">{shift.transactionCount}</TableCell>
-                              <TableCell className="text-right">
-                                  <div className="flex items-center justify-end gap-1">
-                                      <span className={`font-bold ${voidCount > 0 ? 'text-red-600' : 'text-slate-400'}`}>
-                                          {voidCount}
-                                      </span>
-                                      {voidCount > 2 && (
-                                          <HoverCard>
-                                              <HoverCardTrigger>
-                                                  <AlertCircle className="w-3 h-3 text-red-500 cursor-help" />
-                                              </HoverCardTrigger>
-                                              <HoverCardContent className="w-60 text-xs">
-                                                  High cancellation rate detected for this cashier. Monitor performance.
-                                              </HoverCardContent>
-                                          </HoverCard>
-                                      )}
-                                  </div>
-                              </TableCell>
                               <TableCell className="text-right font-mono">{formatCurrency(shift.systemTotals.total)}</TableCell>
                               <TableCell className={`text-right font-mono font-bold ${(shift.variance?.total || 0) !== 0 ? 'text-red-600' : 'text-green-600'}`}>
                                   {(shift.variance?.total || 0) === 0 ? '-' : formatCurrency(shift.variance?.total || 0)}
@@ -783,18 +917,17 @@ export default function SupervisorDashboard() {
                                       size="sm" 
                                       variant="ghost" 
                                       className="h-8 px-2 lg:px-3"
-                                      onClick={() => {
-                                          setSelectedShift(shift);
-                                          setReturnReason('');
-                                      }}
+                                      data-testid={`button-review-${shift.id}`}
+                                      onClick={() => handleReview(shift)}
                                   >
                                       Review
                                   </Button>
                               </TableCell>
                           </TableRow>
-                      )})}
+                      ))}
                   </TableBody>
               </Table>
+              )}
           </div>
       ) : (
           <div className="grid gap-6">
@@ -831,8 +964,8 @@ export default function SupervisorDashboard() {
                                       <TableCell className="text-right font-mono">{formatCurrency(shift.declaredTotals?.total || 0)}</TableCell>
                                       <TableCell className="text-center"><StatusBadge status={shift.status} /></TableCell>
                                       <TableCell className="text-right">
-                                          <Button size="sm" variant="outline" onClick={() => downloadReport(shift)}>
-                                              <Download className="w-3 h-3 mr-1" /> Report
+                                          <Button size="sm" variant="outline" onClick={() => handleReview(shift)}>
+                                              Review
                                           </Button>
                                       </TableCell>
                                   </TableRow>
@@ -844,7 +977,6 @@ export default function SupervisorDashboard() {
           </div>
       )}
 
-      {/* Variance History Modal */}
       <Dialog open={showVarianceHistory} onOpenChange={setShowVarianceHistory}>
         <DialogContent className="max-w-5xl h-[90vh] flex flex-col">
             <DialogHeader>
@@ -858,7 +990,6 @@ export default function SupervisorDashboard() {
             </DialogHeader>
 
             <div className="flex flex-col gap-6 py-4 flex-1 overflow-hidden">
-                {/* Filters */}
                 <div className="flex flex-wrap items-end gap-4 bg-slate-50 p-4 rounded-lg border">
                     <div className="flex flex-col gap-1.5">
                         <Label>Financial Year</Label>
@@ -877,7 +1008,11 @@ export default function SupervisorDashboard() {
 
                     <div className="flex flex-col gap-1.5">
                         <Label>Month</Label>
-                        <Select value={statsMonth} onValueChange={(val) => updateStatsPeriod(statsFinancialYear, val)} disabled={statsFinancialYear === 'All'}>
+                        <Select 
+                            value={statsMonth} 
+                            onValueChange={(val) => updateStatsPeriod(statsFinancialYear, val)}
+                            disabled={statsFinancialYear === 'All'}
+                        >
                             <SelectTrigger className="w-[140px] bg-white">
                                 <SelectValue placeholder="All Months" />
                             </SelectTrigger>
@@ -891,111 +1026,46 @@ export default function SupervisorDashboard() {
                     </div>
 
                     <div className="flex flex-col gap-1.5">
-                        <Label>Quick Presets</Label>
-                        <Select onValueChange={(val) => {
-                            // Reset specialized filters when using quick presets
-                            setStatsFinancialYear('All');
-                            setStatsMonth('All');
-                            
-                            const now = new Date();
-                            if (val === 'last_30') {
-                                setStatsDateRange({ from: subDays(now, 30), to: now });
-                            } else if (val === 'this_year') {
-                                setStatsDateRange({ from: startOfYear(now), to: now });
-                            }
-                        }}>
-                            <SelectTrigger className="w-[180px] bg-white">
-                                <SelectValue placeholder="Select Range" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="last_30">Last 30 Days</SelectItem>
-                                <SelectItem value="this_year">This Calendar Year</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-
-                    <div className="flex flex-col gap-1.5">
                         <Label>Cashier</Label>
                         <Select value={statsCashier} onValueChange={setStatsCashier}>
-                            <SelectTrigger className="w-[200px] bg-white">
+                            <SelectTrigger className="w-[180px] bg-white">
                                 <SelectValue placeholder="All Cashiers" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="All">All Cashiers</SelectItem>
-                                {referenceData.cashiers.map(c => (
-                                    <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                                {shifts.map(s => (
+                                    <SelectItem key={s.id} value={s.cashierName}>{s.cashierName}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
                     </div>
-
-                    <div className="flex flex-col gap-1.5">
-                        <Label>Custom Range</Label>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                        "w-[240px] justify-start text-left font-normal bg-white",
-                                        !statsDateRange && "text-muted-foreground"
-                                    )}
-                                >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {statsDateRange?.from ? (
-                                        statsDateRange.to ? (
-                                            <>
-                                                {format(statsDateRange.from, "LLL dd, y")} -{" "}
-                                                {format(statsDateRange.to, "LLL dd, y")}
-                                            </>
-                                        ) : (
-                                            format(statsDateRange.from, "LLL dd, y")
-                                        )
-                                    ) : (
-                                        <span>Pick a date</span>
-                                    )}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                    initialFocus
-                                    mode="range"
-                                    defaultMonth={statsDateRange?.from}
-                                    selected={statsDateRange as any}
-                                    onSelect={setStatsDateRange as any}
-                                    numberOfMonths={2}
-                                />
-                            </PopoverContent>
-                        </Popover>
-                    </div>
                 </div>
 
-                {/* Stats Cards */}
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <Card className="bg-red-50 border-red-200 shadow-sm">
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-red-800">Total Shortages</CardTitle>
+                            <CardTitle className="text-sm font-medium text-red-800">Total Shortage</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-red-600">
                                 {formatCurrency(varianceStats?.totalShortage || 0)}
                             </div>
                             <p className="text-xs text-red-700 mt-1">
-                                {varianceStats?.shortageCount} shifts with shortages
+                                {varianceStats?.shortageCount} occurrences
                             </p>
                         </CardContent>
                     </Card>
 
                     <Card className="bg-green-50 border-green-200 shadow-sm">
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-green-800">Total Surpluses</CardTitle>
+                            <CardTitle className="text-sm font-medium text-green-800">Total Surplus</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-green-600">
                                 {formatCurrency(varianceStats?.totalSurplus || 0)}
                             </div>
                             <p className="text-xs text-green-700 mt-1">
-                                {varianceStats?.surplusCount} shifts with surpluses
+                                {varianceStats?.surplusCount} occurrences
                             </p>
                         </CardContent>
                     </Card>
@@ -1034,7 +1104,6 @@ export default function SupervisorDashboard() {
                     </Card>
                 </div>
 
-                {/* History Table */}
                 <div className="border rounded-md flex-1 overflow-auto">
                     <Table>
                         <TableHeader className="bg-slate-50 sticky top-0">
@@ -1082,268 +1151,176 @@ export default function SupervisorDashboard() {
       </Dialog>
 
       {selectedShift && (
-          <Dialog open={!!selectedShift} onOpenChange={() => setSelectedShift(null)}>
-              {/* NOTE: We now switch content based on mode (Cashier vs Office) */}
-              {reconMode === 'CASH_OFFICE' ? (
-                /* Cash Office Mode Verification Modal */
-                <DialogContent className="max-w-[95vw] w-full max-h-[95vh] overflow-y-auto p-0 gap-0">
-                    <div className="p-3 sm:p-4 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-gray-50/50">
-                        <div>
-                             <h2 className="text-lg sm:text-xl font-bold tracking-tight">Cash Office Day End Reconcile Verification</h2>
-                             <p className="text-xs text-muted-foreground">Authorise Day End Reconcile Per Cash Office</p>
-                        </div>
-                        <div className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-medium border border-orange-200">
-                             Welcome Francois Naude (2025/2026 M8)
-                        </div>
-                    </div>
-
-                    <div className="p-3 sm:p-6 space-y-6 sm:space-y-8 bg-white min-h-[400px] sm:min-h-[600px]">
-                        {/* Top Filters / Status */}
-                        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-                            <div className="space-y-4 w-full sm:w-1/3">
-                                <div className="grid grid-cols-3 items-center gap-4">
-                                    <Label className="text-right text-xs uppercase tracking-wider text-muted-foreground">Cash Office*</Label>
-                                    <Select defaultValue={selectedShift.cashOffice}>
-                                        <SelectTrigger className="col-span-2 h-8">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value={selectedShift.cashOffice}>{selectedShift.cashOffice}</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="grid grid-cols-3 items-center gap-4">
-                                    <Label className="text-right text-xs uppercase tracking-wider text-muted-foreground">CashBook*</Label>
-                                    <Select defaultValue="FNB">
-                                        <SelectTrigger className="col-span-2 h-8 bg-muted/20">
-                                            <SelectValue placeholder="First National Bank" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="FNB">First National Bank</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                            <div className="text-left sm:text-right space-y-1">
-                                <div className="text-red-600 font-bold text-sm">0 Out of 1 Completed</div>
-                                <div className="text-xs sm:text-sm text-muted-foreground">Reconcile Date: {new Date().toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
-                            </div>
-                        </div>
-
-                        {/* Cashier Information Table */}
-                        <div className="space-y-1">
-                             <div className="bg-gradient-to-r from-gray-200 to-gray-300 px-2 py-1 text-xs font-bold text-gray-700 flex items-center border rounded-t-sm">
-                                <span className="mr-2">▼</span> Cashier Information
-                             </div>
-                             <div className="border rounded-sm overflow-x-auto">
-                                 <Table>
-                                     <TableHeader className="bg-gray-100">
-                                         <TableRow className="h-8">
-                                             <TableHead className="h-8 py-0 text-xs font-bold text-gray-700 border-r">Cashier Id</TableHead>
-                                             <TableHead className="h-8 py-0 text-xs font-bold text-gray-700 border-r">Cashier Name</TableHead>
-                                             <TableHead className="h-8 py-0 text-xs font-bold text-gray-700">Cashier Reconcile Status</TableHead>
-                                         </TableRow>
-                                     </TableHeader>
-                                     <TableBody>
-                                         <TableRow className="h-8">
-                                             <TableCell className="py-1 text-sm border-r">28758</TableCell>
-                                             <TableCell className="py-1 text-sm border-r">Cashier UPDI</TableCell>
-                                             <TableCell className="py-1 text-sm">Not Yet Submitted</TableCell>
-                                         </TableRow>
-                                     </TableBody>
-                                 </Table>
-                             </div>
-                        </div>
-
-                        {/* Payout Information */}
-                        <div className="space-y-1">
-                             <div className="bg-gradient-to-r from-gray-200 to-gray-300 px-2 py-1 text-xs font-bold text-gray-700 flex items-center border rounded-t-sm">
-                                <span className="mr-2">▼</span> Payout Information
-                             </div>
-                             <div className="border-b border-x p-2">
-                                 <div className="text-sm border-b border-gray-200 pb-1 mb-1">DropBox Payment</div>
-                             </div>
-                        </div>
-
-                         {/* Receipt Information */}
-                         <div className="space-y-1">
-                             <div className="bg-gradient-to-r from-gray-200 to-gray-300 px-2 py-1 text-xs font-bold text-gray-700 flex items-center border rounded-t-sm">
-                                <span className="mr-2">▼</span> Receipt Information
-                             </div>
-                             <div className="border-x border-b p-4 space-y-4">
-                                 <div className="border-b border-gray-300 pb-1">
-                                     <span className="text-sm font-medium">Cash</span>
-                                 </div>
-                                 <div className="border-b border-gray-300 pb-1">
-                                     <span className="text-sm font-medium">Cheque</span>
-                                 </div>
-                                 <div className="border-b border-gray-300 pb-1">
-                                     <span className="text-sm font-medium">Credit Card</span>
-                                 </div>
-                                 <div className="border-b border-gray-300 pb-1">
-                                     <span className="text-sm font-medium">Postal Order</span>
-                                 </div>
-                                 
-                                 <div className="flex justify-center py-2">
-                                     <div className="bg-gradient-to-r from-gray-200 to-gray-300 rounded-full px-12 py-1 text-sm font-bold text-gray-700 shadow-sm w-2/3 text-center border">
-                                         Grand Total
-                                     </div>
-                                 </div>
-                             </div>
-                        </div>
-
-                         {/* System vs Cashier Totals */}
-                         <div className="space-y-1">
-                             <div className="bg-gradient-to-r from-gray-200 to-gray-300 px-2 py-1 text-xs font-bold text-gray-700 flex items-center border rounded-t-sm">
-                                <span className="mr-2">▼</span> System vs Cashier Totals
-                             </div>
-                             <div className="h-12 border-x border-b bg-gray-50/20"></div>
-                        </div>
-
-                         {/* Reason */}
-                         <div className="space-y-1">
-                            <Label className="text-xs">Reason (*if returned to cashier)</Label>
-                            <Input className="bg-white h-8" />
-                         </div>
-
-                    </div>
-                    
-                    <DialogFooter className="p-4 border-t bg-gray-50 flex justify-center sm:justify-center">
-                        <Button className="bg-gradient-to-b from-gray-700 to-black text-white px-8 h-8 shadow-md hover:from-gray-600 hover:to-gray-900" onClick={() => setSelectedShift(null)}>
-                            Cancel
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-              ) : (
-                /* Per Cashier Mode Verification Modal (Existing Logic) */
-                <DialogContent className="max-w-[95vw] sm:max-w-3xl">
+          <Dialog open={!!selectedShift} onOpenChange={() => { setSelectedShift(null); setReviewData(null); }}>
+              <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[95vh] overflow-y-auto">
                   <DialogHeader>
                       <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
                           Reconciliation Review: <span className="text-blue-600">{selectedShift.cashierName}</span>
                       </DialogTitle>
                       <DialogDescription className="text-xs sm:text-sm">
-                          Shift ID: {selectedShift.id} | Office: {selectedShift.cashOffice}
+                          Cashier ID: {selectedShift.id} | Office: {selectedShift.cashOffice || 'N/A'}
                       </DialogDescription>
                   </DialogHeader>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 py-4">
-                      {/* Left: System Totals */}
-                      <div className="space-y-4">
-                          <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground border-b pb-2">System Totals</h3>
-                          
-                          <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                              <div className="flex items-center gap-2">
-                                  <Banknote className="w-4 h-4 text-gray-500" />
-                                  <span>Cash System</span>
+                  {reviewLoading ? (
+                    <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
+                      <Loader2 className="w-5 h-5 animate-spin" /> Loading reconciliation data...
+                    </div>
+                  ) : reviewData ? (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8">
+                          <div className="space-y-4">
+                              <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground border-b pb-2">System Totals</h3>
+                              
+                              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                  <div className="flex items-center gap-2">
+                                      <Banknote className="w-4 h-4 text-gray-500" />
+                                      <span>Cash</span>
+                                  </div>
+                                  <span className="font-mono font-medium">{formatCurrency(Number(reviewData.details?.totalCashAmt || reviewData.details?.cashAmount || selectedShift.systemTotals.cash || 0))}</span>
                               </div>
-                              <span className="font-mono font-medium">R {selectedShift.systemTotals.cash.toFixed(2)}</span>
+
+                              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                  <div className="flex items-center gap-2">
+                                      <CreditCard className="w-4 h-4 text-gray-500" />
+                                      <span>Card</span>
+                                  </div>
+                                  <span className="font-mono font-medium">{formatCurrency(Number(reviewData.details?.totalCreditAmt || reviewData.details?.cardAmount || selectedShift.systemTotals.card || 0))}</span>
+                              </div>
+
+                              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                  <div className="flex items-center gap-2">
+                                      <FileText className="w-4 h-4 text-gray-500" />
+                                      <span>Cheque</span>
+                                  </div>
+                                  <span className="font-mono font-medium">{formatCurrency(Number(reviewData.details?.totalChequeAmt || reviewData.details?.chequeAmount || 0))}</span>
+                              </div>
+
+                              <div className="flex justify-between items-center p-3 bg-gray-100 rounded-lg border border-gray-200">
+                                  <span className="font-bold text-gray-700">Total</span>
+                                  <span className="font-mono font-bold text-lg">{formatCurrency(Number(reviewData.details?.totalAmt || reviewData.details?.totalAmount || selectedShift.systemTotals.total || 0))}</span>
+                              </div>
                           </div>
 
-                          <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                              <div className="flex items-center gap-2">
-                                  <CreditCard className="w-4 h-4 text-gray-500" />
-                                  <span>Card System</span>
-                              </div>
-                              <span className="font-mono font-medium">R {selectedShift.systemTotals.card.toFixed(2)}</span>
-                          </div>
-
-                          <div className="flex justify-between items-center p-3 bg-gray-100 rounded-lg border border-gray-200">
-                              <span className="font-bold text-gray-700">Total System</span>
-                              <span className="font-mono font-bold text-lg">R {selectedShift.systemTotals.total.toFixed(2)}</span>
+                          <div className="space-y-4">
+                              <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground border-b pb-2">Reconcile Data</h3>
+                              {reviewData.reconcile ? (
+                                <>
+                                  <div className="grid grid-cols-2 gap-2">
+                                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                          <div className="text-xs text-blue-700 mb-1">Cash Declared</div>
+                                          <div className="font-mono font-bold">{formatCurrency(Number(reviewData.reconcile.totalCashAmt || reviewData.reconcile.cashDeclared || 0))}</div>
+                                      </div>
+                                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                          <div className="text-xs text-blue-700 mb-1">Card Declared</div>
+                                          <div className="font-mono font-bold">{formatCurrency(Number(reviewData.reconcile.totalCreditAmt || reviewData.reconcile.cardDeclared || 0))}</div>
+                                      </div>
+                                  </div>
+                                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                      <div className="text-xs text-blue-700 mb-1">Float</div>
+                                      <div className="font-mono font-bold">{formatCurrency(Number(reviewData.reconcile.cashFloat || reviewData.reconcile.float || 0))}</div>
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="h-full flex items-center justify-center text-muted-foreground italic bg-muted/20 rounded-lg border-2 border-dashed p-8">
+                                    No reconcile data available
+                                </div>
+                              )}
                           </div>
                       </div>
 
-                      {/* Right: Declared & Variance */}
-                      <div className="space-y-4">
-                          <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground border-b pb-2">Declared & Variance</h3>
-                          
-                          {selectedShift.status === 'NOT_SUBMITTED' ? (
-                               <div className="h-full flex items-center justify-center text-muted-foreground italic bg-muted/20 rounded-lg border-2 border-dashed">
-                                   Not submitted yet
-                               </div>
-                           ) : (
-                               <>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
-                                        <div className="text-xs text-blue-700 mb-1">Cash Declared</div>
-                                        <div className="font-mono font-bold">R {selectedShift.declaredTotals?.cash.toFixed(2)}</div>
-                                    </div>
-                                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
-                                        <div className="text-xs text-blue-700 mb-1">Card Declared</div>
-                                        <div className="font-mono font-bold">R {selectedShift.declaredTotals?.card.toFixed(2)}</div>
-                                    </div>
-                                </div>
+                      {reviewData.systemVsCashier.length > 0 && (
+                        <div className="border rounded-lg overflow-hidden">
+                          <div className="bg-gray-50 px-4 py-2 border-b text-xs font-semibold text-muted-foreground">
+                            SYSTEM VS CASHIER COMPARISON
+                          </div>
+                          <div className="max-h-[200px] overflow-y-auto">
+                            <Table>
+                              <TableHeader className="bg-slate-50 sticky top-0">
+                                <TableRow>
+                                  <TableHead className="text-xs">Description</TableHead>
+                                  <TableHead className="text-xs text-right">System</TableHead>
+                                  <TableHead className="text-xs text-right">Cashier</TableHead>
+                                  <TableHead className="text-xs text-right">Variance</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {reviewData.systemVsCashier.map((row: any, idx: number) => (
+                                  <TableRow key={idx}>
+                                    <TableCell className="text-xs">{row.description || row.paymentType || row.type || `Row ${idx + 1}`}</TableCell>
+                                    <TableCell className="text-xs text-right font-mono">{formatCurrency(Number(row.systemAmount || row.systemTotal || 0))}</TableCell>
+                                    <TableCell className="text-xs text-right font-mono">{formatCurrency(Number(row.cashierAmount || row.cashierTotal || 0))}</TableCell>
+                                    <TableCell className={`text-xs text-right font-mono font-bold ${Number(row.variance || row.difference || 0) !== 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                      {formatCurrency(Number(row.variance || row.difference || 0))}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </div>
+                      )}
 
-                                <div className={`p-4 rounded-lg border ${selectedShift.variance?.total === 0 ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
-                                    <div className="flex justify-between items-center">
-                                        <span className="font-bold flex items-center gap-2">
-                                            {selectedShift.variance?.total === 0 ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
-                                            Total Variance
-                                        </span>
-                                        <span className="font-mono font-bold text-xl">R {selectedShift.variance?.total.toFixed(2)}</span>
-                                    </div>
-                                </div>
-                               </>
-                           )}
+                      <div className="border rounded-lg overflow-hidden">
+                        <Tabs value={reviewTab} onValueChange={setReviewTab}>
+                          <div className="bg-gray-50 px-4 py-2 border-b">
+                            <TabsList className="bg-white border">
+                              <TabsTrigger value="cash" className="text-xs">Cash ({reviewData.cashReceipts.length})</TabsTrigger>
+                              <TabsTrigger value="card" className="text-xs">Card ({reviewData.cardReceipts.length})</TabsTrigger>
+                              <TabsTrigger value="cheque" className="text-xs">Cheque ({reviewData.chequeReceipts.length})</TabsTrigger>
+                              <TabsTrigger value="postal" className="text-xs">Postal ({reviewData.postalReceipts.length})</TabsTrigger>
+                              <TabsTrigger value="dropbox" className="text-xs">Dropbox ({reviewData.dropboxReceipts.length})</TabsTrigger>
+                            </TabsList>
+                          </div>
+                          <TabsContent value="cash" className="mt-0 p-2">
+                            {renderReceiptTable(reviewData.cashReceipts, 'cash')}
+                          </TabsContent>
+                          <TabsContent value="card" className="mt-0 p-2">
+                            {renderReceiptTable(reviewData.cardReceipts, 'card')}
+                          </TabsContent>
+                          <TabsContent value="cheque" className="mt-0 p-2">
+                            {renderReceiptTable(reviewData.chequeReceipts, 'cheque')}
+                          </TabsContent>
+                          <TabsContent value="postal" className="mt-0 p-2">
+                            {renderReceiptTable(reviewData.postalReceipts, 'postal order')}
+                          </TabsContent>
+                          <TabsContent value="dropbox" className="mt-0 p-2">
+                            {renderReceiptTable(reviewData.dropboxReceipts, 'dropbox')}
+                          </TabsContent>
+                        </Tabs>
                       </div>
-                  </div>
 
-                  {/* Transaction List Preview */}
-                  <div className="border rounded-lg overflow-x-auto mt-2">
-                       <div className="bg-gray-50 px-4 py-2 border-b text-xs font-semibold text-muted-foreground flex justify-between items-center">
-                           <span>TRANSACTION SUMMARY</span>
-                           <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="h-7 text-xs gap-1 bg-white"
-                              onClick={() => downloadReport(selectedShift)}
-                           >
-                              <Download className="w-3 h-3" />
-                              Export Report
-                           </Button>
-                       </div>
-                       <div className="max-h-[150px] overflow-y-auto">
-                           <Table>
-                               <TableBody>
-                                   {[1,2,3].map(i => (
-                                       <TableRow key={i} className="text-xs">
-                                           <TableCell className="font-mono">REC-{Math.floor(Math.random()*900000)}</TableCell>
-                                           <TableCell>{new Date().toLocaleTimeString('en-ZA', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</TableCell>
-                                           <TableCell>Consumer Payment</TableCell>
-                                           <TableCell className="text-right font-mono">R {(Math.random() * 500).toFixed(2)}</TableCell>
-                                       </TableRow>
-                                   ))}
-                               </TableBody>
-                           </Table>
-                       </div>
-                  </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Return Reason (required to return)</Label>
+                        <Input 
+                          value={returnReason} 
+                          onChange={(e) => setReturnReason(e.target.value)} 
+                          placeholder="Enter reason for returning to cashier..."
+                          data-testid="input-return-reason"
+                        />
+                      </div>
+                    </div>
+                  ) : null}
 
                   <DialogFooter className="gap-2 sm:gap-0">
-                      {selectedShift.status === 'PENDING_APPROVAL' && (
-                          <>
-                            <Button 
-                                variant="destructive" 
-                                className="mr-auto w-32"
-                                onClick={handleReturn}
-                                disabled={!returnReason.trim()}
-                            >
-                                Return to Cashier
-                            </Button>
-                            <Button variant="outline" onClick={() => setSelectedShift(null)}>Cancel</Button>
-                            <Button 
-                                className="bg-green-600 hover:bg-green-700 w-32"
-                                onClick={() => handleApprove(selectedShift.id)}
-                            >
-                                Approve & Post
-                            </Button>
-                          </>
-                      )}
-                      {selectedShift.status !== 'PENDING_APPROVAL' && (
-                          <Button onClick={() => setSelectedShift(null)}>Close</Button>
-                      )}
+                      <Button 
+                          variant="destructive" 
+                          className="mr-auto w-32"
+                          onClick={handleReturn}
+                          disabled={!returnReason.trim() || actionLoading}
+                      >
+                          {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Return to Cashier'}
+                      </Button>
+                      <Button variant="outline" onClick={() => { setSelectedShift(null); setReviewData(null); }}>Cancel</Button>
+                      <Button 
+                          className="bg-green-600 hover:bg-green-700 w-32"
+                          onClick={() => handleApprove(selectedShift.id)}
+                          disabled={actionLoading}
+                      >
+                          {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Approve & Post'}
+                      </Button>
                   </DialogFooter>
               </DialogContent>
-            )}
           </Dialog>
       )}
     </div>

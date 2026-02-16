@@ -1075,6 +1075,7 @@ export async function registerRoutes(
   app.get("/api/platinum/billing-payment-day-end/get-cashier-list", async (req, res) => {
     try {
       const data = await platinumGet("/api/billing-payment-day-end-reconcile/get-cashier-list");
+      console.log(`[dayend-cashier-list] Response:`, JSON.stringify(data).substring(0, 1000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1083,7 +1084,9 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-payment-day-end/get-cashier-details", async (req, res) => {
     try {
+      console.log(`[dayend-cashier-details] Query:`, req.query);
       const data = await platinumGet("/api/billing-payment-day-end-reconcile/get-cashier-details", req.query as Record<string, string>);
+      console.log(`[dayend-cashier-details] Response:`, JSON.stringify(data).substring(0, 1000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1092,7 +1095,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment-day-end/get-cashier-receipt-cheque-list", async (req, res) => {
     try {
+      console.log(`[dayend-cheque] Query: id=${req.query.id}, Body:`, JSON.stringify(req.body));
       const data = await platinumPost("/api/billing-payment-day-end-reconcile/get-cashier-receipt-cheque-list", req.body, req.query as Record<string, string>);
+      console.log(`[dayend-cheque] Response:`, JSON.stringify(data).substring(0, 1000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1101,7 +1106,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment-day-end/get-cashier-receipt-card-list", async (req, res) => {
     try {
+      console.log(`[dayend-card] Query: id=${req.query.id}, Body:`, JSON.stringify(req.body));
       const data = await platinumPost("/api/billing-payment-day-end-reconcile/get-cashier-receipt-card-list", req.body, req.query as Record<string, string>);
+      console.log(`[dayend-card] Response:`, JSON.stringify(data).substring(0, 1000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1110,7 +1117,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment-day-end/get-cashier-receipt-drop-box-list", async (req, res) => {
     try {
+      console.log(`[dayend-dropbox] Query: id=${req.query.id}, Body:`, JSON.stringify(req.body));
       const data = await platinumPost("/api/billing-payment-day-end-reconcile/get-cashier-receipt-drop-box-list", req.body, req.query as Record<string, string>);
+      console.log(`[dayend-dropbox] Response:`, JSON.stringify(data).substring(0, 1000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1119,7 +1128,9 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-payment-day-end/get-cashier-receipt-reconcile-list", async (req, res) => {
     try {
+      console.log(`[dayend-reconcile-list] Query:`, req.query);
       const data = await platinumGet("/api/billing-payment-day-end-reconcile/get-cashier-receipt-reconcile-list", req.query as Record<string, string>);
+      console.log(`[dayend-reconcile-list] Response:`, JSON.stringify(data).substring(0, 1000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1128,7 +1139,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment-day-end/save-reconcile-data", async (req, res) => {
     try {
+      console.log(`[dayend-save] Query: userId=${req.query.userId}, Payload:`, JSON.stringify(req.body));
       const data = await platinumPost("/api/billing-payment-day-end-reconcile/save-Reconcile-data", req.body, req.query as Record<string, string>);
+      console.log(`[dayend-save] Response:`, JSON.stringify(data).substring(0, 1000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1139,7 +1152,9 @@ export async function registerRoutes(
 
   app.get("/api/platinum/auth-day-end/cashier-list", async (req, res) => {
     try {
+      console.log(`[auth-dayend-cashier-list] Fetching...`);
       const data = await platinumGet("/api/billing/auth-day-end-reconcile/cashier-list");
+      console.log(`[auth-dayend-cashier-list] Response:`, JSON.stringify(data).substring(0, 1000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1148,7 +1163,9 @@ export async function registerRoutes(
 
   app.get("/api/platinum/auth-day-end/cashier-reconcile-by-cashierid", async (req, res) => {
     try {
+      console.log(`[auth-dayend-reconcile] Query:`, req.query);
       const data = await platinumGet("/api/billing/auth-day-end-reconcile/cashier-reconcile-by-cashierid", req.query as Record<string, string>);
+      console.log(`[auth-dayend-reconcile] Response:`, JSON.stringify(data).substring(0, 1000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1157,7 +1174,7 @@ export async function registerRoutes(
 
   app.get("/api/platinum/auth-day-end/pos-cashier", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing/auth-day-end-reconcile/pos-cashier");
+      const data = await platinumGet("/api/billing/auth-day-end-reconcile/pos-cashier", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1175,7 +1192,9 @@ export async function registerRoutes(
 
   app.get("/api/platinum/auth-day-end/cashier-details", async (req, res) => {
     try {
+      console.log(`[auth-dayend-details] Query:`, req.query);
       const data = await platinumGet("/api/billing/auth-day-end-reconcile/cashier-details", req.query as Record<string, string>);
+      console.log(`[auth-dayend-details] Response:`, JSON.stringify(data).substring(0, 1000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1184,7 +1203,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/cashier-receipt-cash-list", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cashier-receipt-cash-list", req.body);
+      console.log(`[auth-dayend-cash] Query: id=${req.query.id}, Body:`, JSON.stringify(req.body));
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cashier-receipt-cash-list", req.body, req.query as Record<string, string>);
+      console.log(`[auth-dayend-cash] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1193,7 +1214,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/cashier-receipt-cheque-list", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cashier-receipt-cheque-list", req.body);
+      console.log(`[auth-dayend-cheque] Query: id=${req.query.id}, Body:`, JSON.stringify(req.body));
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cashier-receipt-cheque-list", req.body, req.query as Record<string, string>);
+      console.log(`[auth-dayend-cheque] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1202,7 +1225,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/cashier-receipt-card-list", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cashier-receipt-card-list", req.body);
+      console.log(`[auth-dayend-card] Query: id=${req.query.id}, Body:`, JSON.stringify(req.body));
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cashier-receipt-card-list", req.body, req.query as Record<string, string>);
+      console.log(`[auth-dayend-card] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1211,7 +1236,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/cashier-receipt-postal-order-list", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cashier-receipt-postal-order-list", req.body);
+      console.log(`[auth-dayend-postal] Query: id=${req.query.id}, Body:`, JSON.stringify(req.body));
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cashier-receipt-postal-order-list", req.body, req.query as Record<string, string>);
+      console.log(`[auth-dayend-postal] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1220,7 +1247,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/cashier-receipt-offline-data-list", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cashier-receipt-offline-data-list", req.body);
+      console.log(`[auth-dayend-offline] Query: id=${req.query.id}, Body:`, JSON.stringify(req.body));
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cashier-receipt-offline-data-list", req.body, req.query as Record<string, string>);
+      console.log(`[auth-dayend-offline] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1229,7 +1258,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/cashier-receipt-drop-box-list", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cashier-receipt-drop-box-list", req.body);
+      console.log(`[auth-dayend-dropbox] Query: id=${req.query.id}, Body:`, JSON.stringify(req.body));
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cashier-receipt-drop-box-list", req.body, req.query as Record<string, string>);
+      console.log(`[auth-dayend-dropbox] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1238,7 +1269,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/system-vs-cashier-data-list", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/system-vs-cashier-data-list", req.body);
+      console.log(`[auth-dayend-sys-vs-cashier] Query: id=${req.query.id}, Body:`, JSON.stringify(req.body));
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/system-vs-cashier-data-list", req.body, req.query as Record<string, string>);
+      console.log(`[auth-dayend-sys-vs-cashier] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1247,7 +1280,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/finish-day-end-reconcile", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/finish-day-end-reconcile", req.body);
+      console.log(`[auth-dayend-finish] Query: userId=${req.query.userId}`);
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/finish-day-end-reconcile", req.body, req.query as Record<string, string>);
+      console.log(`[auth-dayend-finish] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1256,7 +1291,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/return-day-end-reconcile", async (req, res) => {
     try {
+      console.log(`[auth-dayend-return] Body:`, JSON.stringify(req.body));
       const data = await platinumPost("/api/billing/auth-day-end-reconcile/return-day-end-reconcile", req.body);
+      console.log(`[auth-dayend-return] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1265,7 +1302,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/validate-cashbook", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/validate-cashbook", req.body);
+      console.log(`[auth-dayend-validate] Query: cashierId=${req.query.cashierId}`);
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/validate-cashbook", req.body, req.query as Record<string, string>);
+      console.log(`[auth-dayend-validate] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1274,7 +1313,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/submit-day-auth-reconcile", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/submit-day-auth-reconcile", req.body);
+      console.log(`[auth-dayend-submit] Query:`, req.query);
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/submit-day-auth-reconcile", req.body, req.query as Record<string, string>);
+      console.log(`[auth-dayend-submit] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1283,7 +1324,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/cancel-receipt", async (req, res) => {
     try {
+      console.log(`[auth-dayend-cancel] Body:`, JSON.stringify(req.body));
       const data = await platinumPost("/api/billing/auth-day-end-reconcile/cancel-day-auth-reconcile-receipt", req.body);
+      console.log(`[auth-dayend-cancel] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
