@@ -199,6 +199,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   const [items, setItems] = useState<TransactionItem[]>([]);
   const [payment, setPayment] = useState({ cash: 0, card: 0, cardReference: '' });
+  const [completedPaymentSnapshot, setCompletedPaymentSnapshot] = useState<{ cashAmount: number; cardAmount: number; cardReference: string; tenderTotal: number; changeDue: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [transactionProcessing, setTransactionProcessing] = useState(false);
@@ -1514,6 +1515,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     } finally {
         setTransactionProcessing(false);
+        setCompletedPaymentSnapshot({
+            cashAmount: payment.cash,
+            cardAmount: payment.card,
+            cardReference: payment.cardReference,
+            tenderTotal: payment.cash + payment.card,
+            changeDue,
+        });
         clearTransaction();
         console.log('[Payment] Transaction complete — receipt modal stays open for user to print/review');
         setTimeout(() => {
@@ -1527,6 +1535,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const closeReceiptModal = () => {
     setIsReceiptModalOpen(false);
     setCurrentTransactionId(null);
+    setCompletedPaymentSnapshot(null);
     clearTransaction();
     loadTransactionsFromApi().catch(() => {});
   };
@@ -1599,7 +1608,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       activeTransactionType,
       transactionItems: items,
       // ... (keep payment)
-      payment: {
+      payment: completedPaymentSnapshot && isReceiptModalOpen ? completedPaymentSnapshot : {
         cashAmount: payment.cash,
         cardAmount: payment.card,
         cardReference: payment.cardReference,
