@@ -27,7 +27,7 @@ function formatPropertyId(propId: string | number | undefined): string {
 
 export function AccountEnquiryView({ item }: { item: TransactionItem }) {
   const baseAccount = item.originalData as Account;
-  const { updateItemAmount, removeItem, addItem, viewingItemId, setViewingItem } = usePos();
+  const { updateItemAmount, updateItemDetails, removeItem, addItem, viewingItemId, setViewingItem } = usePos();
   const [isOpen, setIsOpen] = useState(false);
   const [account, setAccount] = useState<Account>(baseAccount);
   const [detailsLoaded, setDetailsLoaded] = useState(false);
@@ -254,6 +254,9 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
           agingBreakdown,
           outstandingAmount: totalOutstanding
         }));
+        updateItemDetails(item.id, {
+          originalData: { ...item.originalData, agingBreakdown, outstandingAmount: totalOutstanding }
+        });
       }
     } catch (e: any) {
       setBalanceError(e.message || 'Failed to load balance data');

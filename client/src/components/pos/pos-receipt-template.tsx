@@ -155,11 +155,11 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
             <span className="text-right">{rd?.receiptDate || rd?.ReceiptDate || formatDate(transaction.timestamp)}</span>
         </div>
 
-        {(primaryAccount || rd?.accountId) && sortedItems.length <= 1 && (
+        {(primaryAccount || rd?.accountId) && (
             <>
                 <div className="flex justify-between mb-0.5">
                     <span>Account No</span>
-                    <span className="text-right">{rd?.accountId || primaryAccount?.accountNo || primaryAccount?.accountNumber || ''}</span>
+                    <span className="text-right">{rd?.accountId || primaryAccount?.accountNo || primaryAccount?.accountNumber || (primaryAccount?.apiId ? String(primaryAccount.apiId).padStart(12, '0') : '')}</span>
                 </div>
                 {(rd?.oldAccountCode || primaryAccount?.oldCode || primaryAccount?.oldPropertyCode || primaryAccount?.oldAccountCode) && (
                     <div className="flex justify-between mb-0.5">
