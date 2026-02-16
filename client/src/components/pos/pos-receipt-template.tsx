@@ -17,37 +17,29 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
 
   const rd = transaction.receiptDetail;
 
-  const sortedItems = [...transaction.items].sort((a, b) => {
-      const getPriority = (type: string) => {
-          switch (type) {
-              case 'CONSUMER_SERVICES': return 1;
-              case 'CLEARANCE': return 2;
-              case 'DIRECT_INCOME': return 3;
-              case 'ACCOUNT_GROUP': return 4;
-              case 'PREPAID': return 10;
-              default: return 5;
-          }
-      };
-      return getPriority(a.type) - getPriority(b.type);
-  });
-
-  const totalAmount = transaction.totalAmount;
-
   const splitReceipts = transaction.splitReceipts || [];
   const hasSplitReceipts = splitReceipts.length > 1;
   const cashReceipts = splitReceipts.filter(r => r.paymentType === 'cash');
   const cardReceipts = splitReceipts.filter(r => r.paymentType === 'card');
   const isSplitPayment = cashReceipts.length > 0 && cardReceipts.length > 0;
 
-  const primaryItem = sortedItems.find(i => i.type === 'CONSUMER_SERVICES' || i.type === 'PREPAID' || i.type === 'CLEARANCE');
-  const primaryAccount = primaryItem?.originalData as (Account & Record<string, any>) | null;
+  const totalAmount = transaction.totalAmount;
+
+  const firstSplitRd = splitReceipts[0]?.receiptDetail;
+  const effectiveRd = rd || firstSplitRd;
 
   const tenderAmount = isSplitPayment
     ? (transaction.payment.cash + transaction.payment.card)
-    : (rd?.tenderAmount ?? rd?.TenderAmount ?? (transaction.payment.cash + transaction.payment.card));
+    : (effectiveRd?.tenderAmount ?? 0);
   const changeAmount = isSplitPayment
     ? Math.max(0, (transaction.payment.cash + transaction.payment.card) - totalAmount)
-    : (rd?.changeAmount ?? rd?.ChangeAmount ?? Math.max(0, tenderAmount - totalAmount));
+    : (effectiveRd?.changeAmount ?? 0);
+
+  const hasApiData = !!effectiveRd;
+
+  const apiLineItems: { description: string; amount: number; vatAmount: number }[] =
+    effectiveRd?.lineItems || splitReceipts.flatMap((sr: any) => sr.receiptDetail?.lineItems || []);
+  const hasLineItems = apiLineItems.length > 0;
 
   const formatDate = (ts: number) => {
     return new Date(ts).toLocaleString('en-ZA', {
@@ -69,6 +61,22 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
       if (sr.paymentType === 'cash') entry.cashReceipt = sr;
       if (sr.paymentType === 'card') entry.cardReceipt = sr;
     }
+  }
+
+  if (!hasApiData) {
+    return (
+      <div ref={ref} className="bg-white p-4 mx-auto text-[11px] font-mono leading-relaxed receipt-print w-[340px]">
+        <div className="text-center mb-4">
+          <h1 className="font-bold text-sm mb-0.5">{muniInfo?.name || 'George UAT Municipality'}</h1>
+        </div>
+        <div className="border-t border-gray-300 pt-4 text-center">
+          <div className="text-red-600 font-bold text-xs mb-2">RECEIPT DATA NOT AVAILABLE</div>
+          <p className="text-[10px] text-gray-600">Receipt data could not be retrieved from the billing system.</p>
+          <p className="text-[10px] text-gray-600 mt-1">Receipt Number: {transaction.receiptNumber || 'Unknown'}</p>
+          <p className="text-[10px] text-gray-600 mt-1">Please contact support or reprint from the View Receipts screen.</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -147,193 +155,69 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
         ) : (
             <div className="flex justify-between mb-0.5">
                 <span>Receipt No</span>
-                <span className="text-right">{transaction.receiptNumber}</span>
+                <span className="text-right">{effectiveRd.receiptNo || transaction.receiptNumber}</span>
             </div>
         )}
         <div className="flex justify-between mb-0.5">
             <span>Receipt Date</span>
-            <span className="text-right">{rd?.receiptDate || rd?.ReceiptDate || formatDate(transaction.timestamp)}</span>
+            <span className="text-right">{effectiveRd.receiptDate || formatDate(transaction.timestamp)}</span>
         </div>
 
-        {(rd?.accountId || primaryAccount) && (
+        {effectiveRd.accountId && (
             <>
                 <div className="flex justify-between mb-0.5">
                     <span>Account No</span>
-                    <span className="text-right">{rd?.accountId || primaryAccount?.accountNo || primaryAccount?.accountNumber || (primaryAccount?.apiId ? String(primaryAccount.apiId).padStart(12, '0') : '')}</span>
+                    <span className="text-right">{effectiveRd.accountId}</span>
                 </div>
-                {(rd?.oldAccountCode || primaryAccount?.oldCode || primaryAccount?.oldPropertyCode || primaryAccount?.oldAccountCode) && (
+                {effectiveRd.oldAccountCode && (
                     <div className="flex justify-between mb-0.5">
                         <span>Old Account No</span>
-                        <span className="text-right">{rd?.oldAccountCode || primaryAccount?.oldCode || primaryAccount?.oldPropertyCode || primaryAccount?.oldAccountCode}</span>
+                        <span className="text-right">{effectiveRd.oldAccountCode}</span>
                     </div>
                 )}
                 <div className="flex justify-between mb-0.5">
                     <span>Account Name</span>
-                    <span className="text-right">{rd?.accName || primaryAccount?.name || primaryAccount?.firstName || ''}</span>
+                    <span className="text-right">{effectiveRd.accName || ''}</span>
                 </div>
-                {(rd?.sgNumber || primaryAccount?.sgNo) && (
+                {effectiveRd.sgNumber && (
                     <div className="flex justify-between mb-0.5">
                         <span>SG Number</span>
-                        <span className="text-right">{rd?.sgNumber || primaryAccount?.sgNo}</span>
+                        <span className="text-right">{effectiveRd.sgNumber}</span>
                     </div>
                 )}
-                {(rd?.accAddress || primaryAccount?.address || primaryAccount?.locationAddress || primaryAccount?.deliveryAddress) && (
+                {effectiveRd.accAddress && (
                     <div className="flex justify-between mb-0.5">
                         <span>Address</span>
-                        <span className="text-right max-w-[55%] break-words">{(rd?.accAddress || primaryAccount?.deliveryAddress || primaryAccount?.locationAddress || primaryAccount?.address || '').replace(/\r\n/g, ', ')}</span>
-                    </div>
-                )}
-            </>
-        )}
-
-        {!primaryAccount && sortedItems.length > 0 && sortedItems[0].type === 'DIRECT_INCOME' && (
-            <>
-                {sortedItems[0].paidBy && (
-                    <div className="flex justify-between mb-0.5">
-                        <span>Paid By</span>
-                        <span className="text-right">{sortedItems[0].paidBy}</span>
-                    </div>
-                )}
-                {sortedItems[0].reference && (
-                    <div className="flex justify-between mb-0.5">
-                        <span>Reference</span>
-                        <span className="text-right">{sortedItems[0].reference}</span>
+                        <span className="text-right max-w-[55%] break-words">{effectiveRd.accAddress.replace(/\r\n/g, ', ')}</span>
                     </div>
                 )}
             </>
         )}
       </div>
 
-      <div className="border-t border-gray-300 pt-2 mb-2">
-        {(() => {
-            const apiLineItems = rd?.lineItems as { description: string; amount: number; vatAmount: number }[] | undefined;
-            const allSplitLineItems = splitReceipts.flatMap((sr: any) => sr.receiptDetail?.lineItems || []);
-            const lineItemsToUse = (apiLineItems && apiLineItems.length > 0) ? apiLineItems : (allSplitLineItems.length > 0 ? allSplitLineItems : null);
-
-            if (lineItemsToUse && lineItemsToUse.length > 0) {
-                const totalVat = lineItemsToUse.reduce((sum: number, li: any) => sum + (li.vatAmount || 0), 0);
-                return (
-                    <>
-                        {lineItemsToUse.filter((li: any) => li.description).map((li: any, idx: number) => (
-                            <div key={idx} className="flex justify-between mb-0.5">
-                                <span className="break-words w-[65%]">{li.description}</span>
-                                <span className="text-right">{Number(li.amount || 0).toFixed(2)}</span>
-                            </div>
-                        ))}
-                        {totalVat > 0 && (
-                            <div className="flex justify-between mt-1 border-t border-dashed border-gray-300 pt-1 mb-1">
-                                <span>Vat Amount</span>
-                                <span className="text-right">{totalVat.toFixed(2)}</span>
-                            </div>
-                        )}
-                    </>
-                );
-            }
-
-            return sortedItems.map((item, idx) => {
-                const isDirect = item.type === 'DIRECT_INCOME';
-                const directData = isDirect ? (item.originalData as DirectIncomeItem) : null;
-                const displayDescription = isDirect
-                    ? (item.notes || directData?.groupName || item.description)
-                    : item.description;
-
-                const acctData = item.originalData as any;
-                const showAccountDetail = sortedItems.length > 1 && (item.type === 'CONSUMER_SERVICES' || item.type === 'MULTI_ACCOUNT' || item.type === 'ACCOUNT_GROUP');
-
-                return (
-                    <div key={idx} className="mb-2">
-                        {showAccountDetail && (
-                            <div className="text-[9px] text-gray-600 mb-0.5">
-                                Acc: {acctData?.accountNo || acctData?.accountNumber || item.reference}
-                                {acctData?.name ? ` - ${acctData.name}` : ''}
-                            </div>
-                        )}
-                        <div className="flex justify-between">
-                            <span className="break-words w-[65%]">{displayDescription}</span>
-                            <span className="text-right">{item.amountToPay.toFixed(2)}</span>
-                        </div>
-                        {item.type === 'PREPAID' && (
-                            <div className="mt-1 bg-gray-50 p-1 rounded border border-gray-200 text-[9px]">
-                                <div className="font-bold text-center mb-1">TOKEN: 1234 5678 9012 3456 7890</div>
-                                <div className="grid grid-cols-2 gap-x-2">
-                                    <span>Units:</span>
-                                    <span className="text-right">124.5 kWh</span>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                );
-            });
-        })()}
-      </div>
-
-      {(() => {
-          const hasApiLineItems = (rd?.lineItems && rd.lineItems.length > 0) || splitReceipts.some((sr: any) => sr.receiptDetail?.lineItems?.length > 0);
-          if (hasApiLineItems) return null;
-
-          const allServiceBalances: ServiceBalance[] = [];
-          for (const sr of splitReceipts) {
-              if (sr.serviceBalances && sr.serviceBalances.length > 0) {
-                  for (const sb of sr.serviceBalances) {
-                      if (!allServiceBalances.find(x => x.serviceDescription === sb.serviceDescription)) {
-                          allServiceBalances.push(sb);
-                      }
-                  }
-              }
-          }
-
-          if (allServiceBalances.length > 0) {
-              const totalOwed = allServiceBalances.reduce((s, b) => s + (b.totalAmount || 0), 0);
-              return (
-                  <div className="border-t border-gray-300 pt-2 mb-2">
-                      <div className="font-bold text-center text-[10px] uppercase mb-1">Service Allocation</div>
-                      {allServiceBalances.filter(b => Math.abs(b.totalAmount || 0) >= 0.01).map((bal, idx) => {
-                          const proportion = totalOwed > 0 ? (bal.totalAmount || 0) / totalOwed : 0;
-                          const allocated = Math.round(totalAmount * proportion * 100) / 100;
-                          return (
-                              <div key={idx} className="mb-0.5">
-                                  <div className="flex justify-between">
-                                      <span className="w-[60%] truncate">{bal.serviceDescription}</span>
-                                      <span className="text-right">{allocated.toFixed(2)}</span>
-                                  </div>
-                              </div>
-                          );
-                      })}
-                      <div className="flex justify-between mt-1 border-t border-dashed border-gray-300 pt-1">
-                          <span>Vat Amount</span>
-                          <span className="text-right">{(totalAmount * 15 / 115).toFixed(2)}</span>
-                      </div>
+      {hasLineItems ? (
+          <div className="border-t border-gray-300 pt-2 mb-2">
+              {apiLineItems.filter(li => li.description).map((li, idx) => (
+                  <div key={idx} className="flex justify-between mb-0.5">
+                      <span className="break-words w-[65%]">{li.description}</span>
+                      <span className="text-right">{Number(li.amount || 0).toFixed(2)}</span>
                   </div>
-              );
-          } else if (transaction.allocations && transaction.allocations.length > 0) {
-              return (
-                  <div className="border-t border-gray-300 pt-2 mb-2">
-                      <div className="font-bold text-center text-[10px] uppercase mb-1">Service Allocation</div>
-                      {transaction.allocations.map((alloc, idx) => (
-                          <div key={idx} className="mb-1">
-                              <div className="flex justify-between">
-                                  <span className="w-[65%] truncate">{alloc.service}</span>
-                                  <span className="text-right">{alloc.amount.toFixed(2)}</span>
-                              </div>
-                          </div>
-                      ))}
-                      <div className="flex justify-between mt-1">
+              ))}
+              {(() => {
+                  const totalVat = apiLineItems.reduce((sum, li) => sum + (li.vatAmount || 0), 0);
+                  return totalVat > 0 ? (
+                      <div className="flex justify-between mt-1 border-t border-dashed border-gray-300 pt-1 mb-1">
                           <span>Vat Amount</span>
-                          <span className="text-right">{transaction.allocations.reduce((sum, a) => sum + a.vat, 0).toFixed(2)}</span>
+                          <span className="text-right">{totalVat.toFixed(2)}</span>
                       </div>
-                  </div>
-              );
-          } else {
-              return (
-                  <div className="border-t border-gray-300 pt-2 mb-2">
-                      <div className="flex justify-between mt-1">
-                          <span>Vat Amount</span>
-                          <span className="text-right">{(totalAmount * 15 / 115).toFixed(2)}</span>
-                      </div>
-                  </div>
-              );
-          }
-      })()}
+                  ) : null;
+              })()}
+          </div>
+      ) : (
+          <div className="border-t border-gray-300 pt-2 mb-2">
+              <div className="text-center text-[10px] text-red-500 italic">Line item data not available from billing system</div>
+          </div>
+      )}
 
       <div className="border-t border-gray-300 pt-2 mb-2">
         <div className="flex justify-between font-bold text-sm">
@@ -374,10 +258,10 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
                   </div>
               )}
 
-              {uniqueAccounts.size > 0 && sortedItems.length > 1 && (
+              {uniqueAccounts.size > 0 && splitReceipts.length > 1 && (
                   <div className="mt-2 pt-1 border-t border-dashed border-gray-300">
                       <div className="font-bold text-center text-[9px] uppercase mb-1">Per-Account Receipt Detail</div>
-                      {Array.from(uniqueAccounts.entries()).map(([key, acct], idx) => (
+                      {Array.from(uniqueAccounts.entries()).map(([key, acct]) => (
                           <div key={key} className="mb-1.5">
                               <div className="text-[9px] font-bold">{acct.accountName || `Account ${acct.accountId}`}</div>
                               {acct.cashReceipt && (
@@ -411,11 +295,11 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
           </div>
       )}
 
-      {!isSplitPayment && (rd?.outstandingAmount != null || rd?.OutstandingAmount != null || rd?.outstandingBalance != null || rd?.OutstandingBalance != null || primaryAccount?.outstandingAmount != null || primaryAccount?.outStandingAmt != null) && (
+      {effectiveRd.outstandingAmount != null && (
           <div className="border-t border-gray-300 pt-2 mb-2">
               <div className="flex justify-between">
                   <span>Outstanding<br/>Balance</span>
-                  <span className="text-right">{(rd?.outstandingAmount ?? rd?.OutstandingAmount ?? rd?.outstandingBalance ?? rd?.OutstandingBalance ?? ((primaryAccount?.outstandingAmount ?? primaryAccount?.outStandingAmt ?? 0) - totalAmount + changeAmount)).toFixed(2)}</span>
+                  <span className="text-right">{Number(effectiveRd.outstandingAmount).toFixed(2)}</span>
               </div>
           </div>
       )}
@@ -439,19 +323,19 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
       <div className="border-t border-gray-300 pt-2 mb-3">
         <div className="flex justify-between mb-0.5">
             <span>Payment Type</span>
-            <span className="text-right">{isSplitPayment ? 'Split (Cash + Card)' : (rd?.paymentType || rd?.PaymentType || transaction.paymentTypeName || (transaction.payment.card > 0 ? 'Card' : 'Cash'))}</span>
+            <span className="text-right">{isSplitPayment ? 'Split (Cash + Card)' : (effectiveRd.paymentType || '')}</span>
         </div>
         <div className="flex justify-between mb-0.5">
             <span>Payment Option</span>
-            <span className="text-right">{rd?.paymentOption || rd?.PaymentOption || transaction.paymentOptionName || 'Consumer Services'}</span>
+            <span className="text-right">{effectiveRd.paymentOption || ''}</span>
         </div>
         <div className="flex justify-between mb-0.5">
             <span>Cashier</span>
-            <span className="text-right">{rd?.cashierName || rd?.CashierName || transaction.cashierName || transaction.cashierId}</span>
+            <span className="text-right">{effectiveRd.cashierName || ''}</span>
         </div>
         <div className="flex justify-between mb-0.5">
             <span>Cash Office</span>
-            <span className="text-right">{rd?.cashOffice || rd?.CashOffice || transaction.cashOfficeName || ''}</span>
+            <span className="text-right">{effectiveRd.cashOffice || ''}</span>
         </div>
       </div>
 
