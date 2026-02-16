@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { usePos } from '@/lib/pos-state';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PosReceiptTemplate } from './pos-receipt-template';
 import { PermitTemplate } from './permit-template';
-import { useReactToPrint } from 'react-to-print';
 
 export function ReceiptModal() {
   const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions, transactionProcessing, currentTransactionId } = usePos();
@@ -29,18 +28,90 @@ export function ReceiptModal() {
   const [emailAddress, setEmailAddress] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
 
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: `${isPermit ? 'Permit' : 'Receipt'}-${currentTransaction?.receiptNumber || 'New'}`,
-    onAfterPrint: () => {
-        closeReceiptModal();
-    }
-  });
+  const handlePrint = useCallback(() => {
+    if (!printRef.current) return;
+    const content = printRef.current.innerHTML;
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${isPermit ? 'Permit' : 'Receipt'}-${currentTransaction?.receiptNumber || 'New'}</title>
+        <style>
+          body { margin: 0; padding: 10px; font-family: 'Courier New', monospace; font-size: 12px; }
+          * { box-sizing: border-box; }
+          .flex { display: flex; }
+          .justify-between { justify-content: space-between; }
+          .justify-center { justify-content: center; }
+          .items-center { align-items: center; }
+          .text-center { text-align: center; }
+          .text-right { text-align: right; }
+          .text-left { text-align: left; }
+          .font-bold { font-weight: bold; }
+          .font-semibold { font-weight: 600; }
+          .font-mono { font-family: 'Courier New', monospace; }
+          .text-xs { font-size: 10px; }
+          .text-sm { font-size: 11px; }
+          .text-lg { font-size: 14px; }
+          .text-xl { font-size: 16px; }
+          .mb-0\\.5 { margin-bottom: 2px; }
+          .mb-1 { margin-bottom: 4px; }
+          .mb-2 { margin-bottom: 8px; }
+          .mb-3 { margin-bottom: 12px; }
+          .mb-4 { margin-bottom: 16px; }
+          .mt-1 { margin-top: 4px; }
+          .mt-2 { margin-top: 8px; }
+          .mt-3 { margin-top: 12px; }
+          .mt-4 { margin-top: 16px; }
+          .pt-2 { padding-top: 8px; }
+          .pt-3 { padding-top: 12px; }
+          .pb-2 { padding-bottom: 8px; }
+          .py-1 { padding-top: 4px; padding-bottom: 4px; }
+          .py-2 { padding-top: 8px; padding-bottom: 8px; }
+          .px-2 { padding-left: 8px; padding-right: 8px; }
+          .p-2 { padding: 8px; }
+          .border-t { border-top: 1px solid #d1d5db; }
+          .border-b { border-bottom: 1px solid #d1d5db; }
+          .border { border: 1px solid #d1d5db; }
+          .border-dashed { border-style: dashed; }
+          .border-gray-300 { border-color: #d1d5db; }
+          .border-gray-400 { border-color: #9ca3af; }
+          .bg-gray-50 { background-color: #f9fafb; }
+          .bg-gray-100 { background-color: #f3f4f6; }
+          .rounded { border-radius: 4px; }
+          .space-y-1 > * + * { margin-top: 4px; }
+          .gap-1 { gap: 4px; }
+          .gap-2 { gap: 8px; }
+          .w-full { width: 100%; }
+          .flex-1 { flex: 1; }
+          .italic { font-style: italic; }
+          .line-through { text-decoration: line-through; }
+          .text-red-600 { color: #dc2626; }
+          .text-red-700 { color: #b91c1c; }
+          .text-gray-400 { color: #9ca3af; }
+          .text-gray-500 { color: #6b7280; }
+          .text-muted-foreground { color: #6b7280; }
+          .uppercase { text-transform: uppercase; }
+          .tracking-wider { letter-spacing: 0.05em; }
+          .flex-col { flex-direction: column; }
+          @media print { body { margin: 0; padding: 5px; } }
+        </style>
+      </head>
+      <body>${content}</body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+      closeReceiptModal();
+    }, 300);
+  }, [isPermit, currentTransaction, closeReceiptModal]);
 
-  // Load default contact info when modal opens
   useEffect(() => {
     if (isReceiptModalOpen && transactionItems.length > 0) {
-        // Try to find contact info from the first account item
         const accountItem = transactionItems.find(item => item.originalData && (item.originalData.email || item.originalData.mobile));
         
         if (accountItem) {
@@ -53,7 +124,6 @@ export function ReceiptModal() {
             }
         }
     } else {
-        // Reset if closed/reopened
         setPrintSelected(true);
         setEmailSelected(false);
         setSmsSelected(false);
@@ -61,7 +131,6 @@ export function ReceiptModal() {
   }, [isReceiptModalOpen, transactionItems]);
 
   const handleComplete = () => {
-      // Log options for demo/debugging
       console.log('Receipt Options:', {
           receiptNo: currentTransaction?.receiptNumber,
           print: printSelected,
@@ -70,10 +139,8 @@ export function ReceiptModal() {
       });
 
       if (printSelected) {
-          // Triggers print dialog. Modal closes via onAfterPrint callback
           handlePrint();
       } else {
-          // If no print selected, close immediately
           closeReceiptModal();
       }
   };
@@ -158,7 +225,6 @@ export function ReceiptModal() {
             {paymentSucceeded && <div className="mt-6 space-y-4">
                 <p className="text-sm font-medium mb-2">Receipt Options</p>
                 
-                {/* Print Option */}
                 <div 
                     className={`flex items-center space-x-3 border p-3 rounded-lg cursor-pointer transition-colors ${printSelected ? 'border-primary bg-primary/5' : 'border-input hover:bg-muted/50'}`}
                     onClick={() => setPrintSelected(!printSelected)}
@@ -169,7 +235,6 @@ export function ReceiptModal() {
                     </Label>
                 </div>
 
-                {/* Email Option */}
                 <div className={`border rounded-lg transition-all ${emailSelected ? 'border-primary bg-primary/5' : 'border-input'}`}>
                     <div 
                         className="flex items-center space-x-3 p-3 cursor-pointer hover:bg-muted/50 rounded-t-lg"
@@ -192,7 +257,6 @@ export function ReceiptModal() {
                     )}
                 </div>
 
-                {/* SMS Option */}
                 <div className={`border rounded-lg transition-all ${smsSelected ? 'border-primary bg-primary/5' : 'border-input'}`}>
                     <div 
                         className="flex items-center space-x-3 p-3 cursor-pointer hover:bg-muted/50 rounded-t-lg"
@@ -233,7 +297,7 @@ export function ReceiptModal() {
           )}
         </DialogFooter>
         
-        <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
+        <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', width: '80mm' }}>
             <div ref={printRef}>
                 {isPermit ? (
                      <PermitTemplate transaction={currentTransaction} items={transactionItems} />
@@ -246,4 +310,3 @@ export function ReceiptModal() {
     </Dialog>
   );
 }
-
