@@ -985,6 +985,15 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 if (rd.receiptNo) receiptNo = rd.receiptNo;
                 acctId = rd.accountId || '';
                 acctName = rd.accName || '';
+
+                const lineItems = receiptData.map((row: any) => ({
+                    description: row.billType || '',
+                    amount: row.amount ?? 0,
+                    vatAmount: row.vatAmount ?? 0,
+                }));
+
+                const paymentTypeLabel = rd.paymentTypeId === 1 ? 'Cash' : rd.paymentTypeId === 3 ? 'Credit Card' : rd.paymentTypeId === 2 ? 'Cheque' : rd.paymentTypeId === 4 ? 'Postal Order' : 'Cash';
+
                 receiptDetail = {
                     receiptNo: rd.receiptNo,
                     cashierName: rd.cashierName,
@@ -992,7 +1001,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     tenderAmount: rd.tenderAmount,
                     changeAmount: rd.changeAmount,
                     outstandingAmount: rd.outstandingAmount,
-                    paymentType: rd.billType || (rd.paymentTypeId === 1 ? 'Cash' : rd.paymentTypeId === 3 ? 'Credit Card' : rd.paymentTypeId === 2 ? 'Cheque' : rd.paymentTypeId === 4 ? 'Postal Order' : 'Cash'),
+                    paymentType: paymentTypeLabel,
                     paymentOption: rd.payMode || 'Consumer Services',
                     accountId: rd.accountId,
                     oldAccountCode: rd.oldAccountCode,
@@ -1002,8 +1011,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     receiptDate: rd.receiptDate,
                     paymentDate: rd.paymentDate,
                     isCancelled: rd.isCancelled,
+                    lineItems,
                 };
-                console.log(`[Priority 1 ${paymentLabel}] Receipt ${receiptNo} for account ${acctId} (${acctName})`);
+                console.log(`[Priority 1 ${paymentLabel}] Receipt ${receiptNo} for account ${acctId} (${acctName}), ${lineItems.length} line items`);
             }
 
             if (!finalReceiptNumber) {

@@ -155,7 +155,7 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
             <span className="text-right">{rd?.receiptDate || rd?.ReceiptDate || formatDate(transaction.timestamp)}</span>
         </div>
 
-        {(primaryAccount || rd?.accountId) && (
+        {(rd?.accountId || primaryAccount) && (
             <>
                 <div className="flex justify-between mb-0.5">
                     <span>Account No</span>
@@ -205,44 +205,72 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
       </div>
 
       <div className="border-t border-gray-300 pt-2 mb-2">
-        <div className="font-bold text-center text-[10px] uppercase mb-1">Line Items</div>
-        {sortedItems.map((item, idx) => {
-            const isDirect = item.type === 'DIRECT_INCOME';
-            const directData = isDirect ? (item.originalData as DirectIncomeItem) : null;
-            const displayDescription = isDirect
-                ? (item.notes || directData?.groupName || item.description)
-                : item.description;
+        {(() => {
+            const apiLineItems = rd?.lineItems as { description: string; amount: number; vatAmount: number }[] | undefined;
+            const allSplitLineItems = splitReceipts.flatMap((sr: any) => sr.receiptDetail?.lineItems || []);
+            const lineItemsToUse = (apiLineItems && apiLineItems.length > 0) ? apiLineItems : (allSplitLineItems.length > 0 ? allSplitLineItems : null);
 
-            const acctData = item.originalData as any;
-            const showAccountDetail = sortedItems.length > 1 && (item.type === 'CONSUMER_SERVICES' || item.type === 'MULTI_ACCOUNT' || item.type === 'ACCOUNT_GROUP');
-
-            return (
-                <div key={idx} className="mb-2">
-                    {showAccountDetail && (
-                        <div className="text-[9px] text-gray-600 mb-0.5">
-                            Acc: {acctData?.accountNo || acctData?.accountNumber || item.reference}
-                            {acctData?.name ? ` - ${acctData.name}` : ''}
-                        </div>
-                    )}
-                    <div className="flex justify-between">
-                        <span className="break-words w-[65%]">{displayDescription}</span>
-                        <span className="text-right">{item.amountToPay.toFixed(2)}</span>
-                    </div>
-                    {item.type === 'PREPAID' && (
-                        <div className="mt-1 bg-gray-50 p-1 rounded border border-gray-200 text-[9px]">
-                            <div className="font-bold text-center mb-1">TOKEN: 1234 5678 9012 3456 7890</div>
-                            <div className="grid grid-cols-2 gap-x-2">
-                                <span>Units:</span>
-                                <span className="text-right">124.5 kWh</span>
+            if (lineItemsToUse && lineItemsToUse.length > 0) {
+                const totalVat = lineItemsToUse.reduce((sum: number, li: any) => sum + (li.vatAmount || 0), 0);
+                return (
+                    <>
+                        {lineItemsToUse.filter((li: any) => li.description).map((li: any, idx: number) => (
+                            <div key={idx} className="flex justify-between mb-0.5">
+                                <span className="break-words w-[65%]">{li.description}</span>
+                                <span className="text-right">{Number(li.amount || 0).toFixed(2)}</span>
                             </div>
+                        ))}
+                        {totalVat > 0 && (
+                            <div className="flex justify-between mt-1 border-t border-dashed border-gray-300 pt-1 mb-1">
+                                <span>Vat Amount</span>
+                                <span className="text-right">{totalVat.toFixed(2)}</span>
+                            </div>
+                        )}
+                    </>
+                );
+            }
+
+            return sortedItems.map((item, idx) => {
+                const isDirect = item.type === 'DIRECT_INCOME';
+                const directData = isDirect ? (item.originalData as DirectIncomeItem) : null;
+                const displayDescription = isDirect
+                    ? (item.notes || directData?.groupName || item.description)
+                    : item.description;
+
+                const acctData = item.originalData as any;
+                const showAccountDetail = sortedItems.length > 1 && (item.type === 'CONSUMER_SERVICES' || item.type === 'MULTI_ACCOUNT' || item.type === 'ACCOUNT_GROUP');
+
+                return (
+                    <div key={idx} className="mb-2">
+                        {showAccountDetail && (
+                            <div className="text-[9px] text-gray-600 mb-0.5">
+                                Acc: {acctData?.accountNo || acctData?.accountNumber || item.reference}
+                                {acctData?.name ? ` - ${acctData.name}` : ''}
+                            </div>
+                        )}
+                        <div className="flex justify-between">
+                            <span className="break-words w-[65%]">{displayDescription}</span>
+                            <span className="text-right">{item.amountToPay.toFixed(2)}</span>
                         </div>
-                    )}
-                </div>
-            );
-        })}
+                        {item.type === 'PREPAID' && (
+                            <div className="mt-1 bg-gray-50 p-1 rounded border border-gray-200 text-[9px]">
+                                <div className="font-bold text-center mb-1">TOKEN: 1234 5678 9012 3456 7890</div>
+                                <div className="grid grid-cols-2 gap-x-2">
+                                    <span>Units:</span>
+                                    <span className="text-right">124.5 kWh</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            });
+        })()}
       </div>
 
       {(() => {
+          const hasApiLineItems = (rd?.lineItems && rd.lineItems.length > 0) || splitReceipts.some((sr: any) => sr.receiptDetail?.lineItems?.length > 0);
+          if (hasApiLineItems) return null;
+
           const allServiceBalances: ServiceBalance[] = [];
           for (const sr of splitReceipts) {
               if (sr.serviceBalances && sr.serviceBalances.length > 0) {
