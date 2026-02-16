@@ -846,7 +846,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment-clearance/get-clearance-data", async (req, res) => {
     try {
+      console.log(`[clearance-data] Request:`, JSON.stringify(req.body));
       const data = await platinumPost("/api/billing-payment-clearance/get-clearance-data", req.body);
+      console.log(`[clearance-data] Response:`, JSON.stringify(data).substring(0, 2000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -855,7 +857,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment-clearance/get-accounts-for-clearance", async (req, res) => {
     try {
+      console.log(`[clearance-accounts] Request:`, JSON.stringify(req.body));
       const data = await platinumPost("/api/billing-payment-clearance/get-accounts-for-clearance", req.body);
+      console.log(`[clearance-accounts] Response:`, JSON.stringify(data).substring(0, 2000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -865,10 +869,46 @@ export async function registerRoutes(
   app.post("/api/platinum/billing-payment-clearance/submit-payment", async (req, res) => {
     try {
       console.log(`[clearance-submit] Request payload:`, JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing-payment-clearance/submit-payment", req.body);
-      console.log(`[clearance-submit] Response:`, JSON.stringify(data));
-      handlePlatinumResult(res, data);
+
+      const token = await getPlatinumToken();
+      const apiUrl = getPlatinumApiUrl();
+      const url = `${apiUrl}/api/billing-payment-clearance/submit-payment`;
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 35000);
+      try {
+        const rawRes = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(req.body),
+          signal: controller.signal,
+        });
+
+        const rawText = await rawRes.text();
+        console.log(`[clearance-submit] Raw status: ${rawRes.status}, Raw response:`, rawText.substring(0, 2000));
+
+        if (!rawRes.ok) {
+          console.error(`[clearance-submit] API error ${rawRes.status}: ${rawText}`);
+          return res.status(rawRes.status).json({ message: rawRes.statusText, detail: rawText.substring(0, 1000) });
+        }
+
+        let data;
+        try {
+          data = rawText ? JSON.parse(rawText) : null;
+        } catch {
+          data = rawText;
+        }
+        console.log(`[clearance-submit] Parsed response:`, JSON.stringify(data).substring(0, 500));
+        res.json(data);
+      } finally {
+        clearTimeout(timeoutId);
+      }
     } catch (e: any) {
+      console.error(`[clearance-submit] Error:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
