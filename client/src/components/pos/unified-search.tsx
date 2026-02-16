@@ -207,6 +207,7 @@ export function UnifiedSearch() {
                 originalData: {
                     ...clr,
                     clearanceId: clearanceId,
+                    clearanceStagingId: clearanceInfo?.clearanceStaging_ID || clearanceId,
                     scheduleNo: String(clearanceId),
                     totalDue,
                     ownerName,

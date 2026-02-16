@@ -1264,28 +1264,28 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         for (const item of clearanceItems) {
             const origData = item.originalData || {};
-            const clearanceId = origData.clearanceId || origData.scheduleNo || item.reference;
+            const clearanceStagingId = origData.clearanceStagingId || origData.clearanceStaging_ID || origData.clearanceId || origData.scheduleNo || item.reference;
             const paidItems = origData.paidItems || [];
             const accountHolderName = item.paidBy || origData.ownerName || origData.linkedAccounts?.[0]?.name || 'Walk-in';
 
             const submitOneClearance = async (paymentTypeId: number, amount: number, tender: number, change: number, label: string, splitType: 'cash' | 'card') => {
                 const clrPayload = {
                     userId: sessionUserId,
-                    paymentTypeId,
-                    cashierId: platinumCashierId || sessionUserId,
+                    paymentTypeId: 1,
+                    cashierId: platinumCashierId || null,
                     receiptDate,
                     tenderAmount: tender,
                     changeAmount: change,
                     paidAmount: amount,
                     outstandingAmount: item.amountDue || amount,
-                    clearance_ID: String(clearanceId),
+                    clearance_ID: String(clearanceStagingId),
                     finYear,
                     accountHolderName,
-                    chequeNo: '',
-                    bankId: 0,
-                    branchId: 0,
-                    cardNo: record.payment.cardReference || '',
-                    cardExpiryDate: '',
+                    chequeNo: null,
+                    bankId: null,
+                    branchId: null,
+                    cardNo: record.payment.cardReference || null,
+                    cardExpiryDate: null,
                     paySection1181Only: origData.paySection1181Only || false,
                     section1181Amount: origData.paySection1181Only ? Math.abs(origData.total1181 || 0) : 0,
                     paidItems: paidItems.map((pi: any) => ({
@@ -1293,12 +1293,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         accountNumber: pi.accountNumber || pi.accountNo || null,
                         name: pi.name || null,
                         debT_TYPE: pi.debT_TYPE || pi.debtType || null,
-                        amount: Math.round((pi.amount || pi.paymentAmount || 0) * (amount / (item.amountToPay || 1)) * 100) / 100,
+                        amount: pi.paymentAmount || pi.amount || 0,
                     })),
                 };
-                console.log(`[Priority 1B ${label}] Clearance payload for ${clearanceId}:`, JSON.stringify(clrPayload));
+                console.log(`[Priority 1B ${label}] Clearance payload for ${clearanceStagingId}:`, JSON.stringify(clrPayload));
                 const clrResult = await platinumSubmitClearancePayment(clrPayload);
-                console.log(`[Priority 1B ${label}] Submitted clearance payment for ${clearanceId}`, clrResult);
+                console.log(`[Priority 1B ${label}] Submitted clearance payment for ${clearanceStagingId}`, clrResult);
 
                 const clrReceiptIds = extractReceiptIds(clrResult);
                 if (clrReceiptIds.length > 0) {
@@ -1341,25 +1341,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             };
 
             try {
-                if (isSplitPayment) {
-                    const cashPaid = Math.max(0, record.payment.cash - totalChange);
-                    const cashPaidRatio = grandTotal > 0 ? cashPaid / grandTotal : 0;
-                    const itemCash = Math.round(item.amountToPay * cashPaidRatio * 100) / 100;
-                    const itemCard = Math.round((item.amountToPay - itemCash) * 100) / 100;
-                    const itemCashTender = isMixedBasket ? itemCash : record.payment.cash;
-                    const itemCashChange = isMixedBasket ? 0 : totalChange;
-
-                    console.log(`[Priority 1B SPLIT] Clearance ${clearanceId}: Cash R${itemCash} (tender R${itemCashTender}), Card R${itemCard}`);
-
-                    await submitOneClearance(1, itemCash, itemCashTender, itemCashChange, 'CASH', 'cash');
-                    if (itemCard > 0) {
-                        await submitOneClearance(3, itemCard, itemCard, 0, 'CARD', 'card');
-                    }
-                } else {
-                    await submitOneClearance(record.payment.card > 0 ? 3 : 1, item.amountToPay, clrGroupTender, clrGroupChange, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash');
-                }
+                const clrTenderForItem = isMixedBasket ? item.amountToPay : clrGroupTender;
+                const clrChangeForItem = isMixedBasket ? 0 : clrGroupChange;
+                await submitOneClearance(1, item.amountToPay, clrTenderForItem, clrChangeForItem, 'FULL', record.payment.card > 0 ? 'card' : 'cash');
             } catch (e: any) {
-                console.warn(`[Priority 1B] Failed to submit clearance payment for ${clearanceId}`, e);
+                console.warn(`[Priority 1B] Failed to submit clearance payment for ${clearanceStagingId}`, e);
                 toast({ title: "Clearance Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
             }
 
