@@ -67,6 +67,7 @@ Preferred communication style: Simple, everyday language.
 3. **Transaction Types**: Six types auto-detected from search: Consumer Services, Multi-Account, Account Group, Prepaid, Direct Income, Clearance
 4. **Day-End Process**: Cashiers submit cash-on-hand counts; supervisors approve/return; denomination counting is configurable
 5. **Cancellation Workflow**: Regular cashiers request cancellation (goes to supervisor); supervisors can cancel directly
+6. **Payment Options/Types Validation**: Cashiers are restricted based on Platinum database tables (POS_CashierPOSPaymentOption for functions like Consumer Services/Clearance/Prepaid, POS_CashierPOSPaymentType for tender methods like Cash/Card). Validation runs at addItem (option check) and completeTransaction (type check). Currently uses fallback data (all allowed) until Platinum exposes per-cashier endpoints. Backend routes: `/api/platinum/receipt-prepaid/cashier-payment-options` and `/api/platinum/receipt-prepaid/cashier-payment-types`
 
 ## External Dependencies
 
