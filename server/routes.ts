@@ -685,10 +685,56 @@ export async function registerRoutes(
   app.post("/api/platinum/view-receipt/get-receipt-list", async (req, res) => {
     try {
       console.log(`[get-receipt-list] Request payload:`, JSON.stringify(req.body));
-      const data = await platinumPost("/api/ViewReceipt/get-receipt-list", req.body);
-      console.log(`[get-receipt-list] Response item count:`, Array.isArray(data) ? data.length : (data?.items?.length ?? 'unknown'), `full:`, JSON.stringify(data).substring(0, 500));
-      handlePlatinumResult(res, data);
+
+      const token = await getPlatinumToken();
+      const apiUrl = getPlatinumApiUrl();
+      const url = `${apiUrl}/api/ViewReceipt/get-receipt-list`;
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 35000);
+      try {
+        const rawRes = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(req.body),
+          signal: controller.signal,
+        });
+
+        const rawText = await rawRes.text();
+        console.log(`[get-receipt-list] Raw status: ${rawRes.status}, Raw response (first 1000 chars):`, rawText.substring(0, 1000));
+
+        if (!rawRes.ok) {
+          console.error(`[get-receipt-list] API error ${rawRes.status}: ${rawText.substring(0, 500)}`);
+          return res.status(rawRes.status).json({ message: rawRes.statusText, detail: rawText.substring(0, 500) });
+        }
+
+        let data;
+        try {
+          data = rawText ? JSON.parse(rawText) : null;
+        } catch {
+          data = rawText;
+        }
+
+        console.log(`[get-receipt-list] Parsed item count:`, Array.isArray(data) ? data.length : (data?.items?.length ?? 'unknown'));
+
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+          const items = data.items || data.value || data.results || data.data || [];
+          const totalCount = data.totalCount ?? data.totalRecords ?? data.total ?? items.length;
+          res.json({ items, totalCount });
+        } else if (Array.isArray(data)) {
+          res.json({ items: data, totalCount: data.length });
+        } else {
+          res.json({ items: [], totalCount: 0 });
+        }
+      } finally {
+        clearTimeout(timeoutId);
+      }
     } catch (e: any) {
+      console.error(`[get-receipt-list] Error:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
