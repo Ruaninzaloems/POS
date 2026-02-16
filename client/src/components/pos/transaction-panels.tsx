@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 
 export function TransactionPanels() {
-  const { activeTransactionType, transactionItems, removeItem, updateItemAmount, addItem, viewingItemId, setViewingItem } = usePos();
+  const { activeTransactionType, transactionItems, removeItem, updateItemAmount, updateItemDetails, addItem, viewingItemId, setViewingItem } = usePos();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -292,78 +292,109 @@ export function TransactionPanels() {
                                 return getPriority(a.type) - getPriority(b.type);
                             })
                             .map((item) => (
-                              <div key={item.id} className="sm:grid sm:grid-cols-[1fr_2fr_1fr_1fr_auto] sm:gap-4 sm:items-center p-3 sm:p-4 border-b last:border-0 hover:bg-muted/5 transition-colors">
-                                  <div className="flex items-center justify-between sm:justify-start gap-2 mb-2 sm:mb-0">
-                                      <div className="flex items-center gap-2">
-                                          {item.type === 'CONSUMER_SERVICES' && <Badge variant="secondary" className="font-mono text-xs">ACC</Badge>}
-                                          {item.type === 'PREPAID' && (
-                                             <Badge variant="outline" className={`font-mono text-xs ${
-                                                 (item.originalData as Account).prepaidType === 'Water' 
-                                                 ? 'border-blue-500 text-blue-600 bg-blue-50'
-                                                 : 'border-yellow-500 text-yellow-600 bg-yellow-50'
-                                             }`}>
-                                                 {(item.originalData as Account).prepaidType === 'Water' ? 'H2O' : 'ELEC'}
-                                             </Badge>
-                                          )}
-                                          {item.type === 'CLEARANCE' && <Badge variant="outline" className="font-mono text-xs border-amber-500 text-amber-600 bg-amber-50">CLR</Badge>}
-                                          {item.type === 'DIRECT_INCOME' && <Badge variant="outline" className="font-mono text-xs border-green-500 text-green-600 bg-green-50">INC</Badge>}
-                                          {item.type === 'ACCOUNT_GROUP' && <Badge variant="outline" className="font-mono text-xs border-purple-500 text-purple-600 bg-purple-50">GRP</Badge>}
+                              <div key={item.id} className="border-b last:border-0 hover:bg-muted/5 transition-colors">
+                                  <div className="sm:grid sm:grid-cols-[1fr_2fr_1fr_1fr_auto] sm:gap-4 sm:items-center p-3 sm:p-4">
+                                      <div className="flex items-center justify-between sm:justify-start gap-2 mb-2 sm:mb-0">
+                                          <div className="flex items-center gap-2">
+                                              {item.type === 'CONSUMER_SERVICES' && <Badge variant="secondary" className="font-mono text-xs">ACC</Badge>}
+                                              {item.type === 'PREPAID' && (
+                                                 <Badge variant="outline" className={`font-mono text-xs ${
+                                                     (item.originalData as Account).prepaidType === 'Water' 
+                                                     ? 'border-blue-500 text-blue-600 bg-blue-50'
+                                                     : 'border-yellow-500 text-yellow-600 bg-yellow-50'
+                                                 }`}>
+                                                     {(item.originalData as Account).prepaidType === 'Water' ? 'H2O' : 'ELEC'}
+                                                 </Badge>
+                                              )}
+                                              {item.type === 'CLEARANCE' && <Badge variant="outline" className="font-mono text-xs border-amber-500 text-amber-600 bg-amber-50">CLR</Badge>}
+                                              {item.type === 'DIRECT_INCOME' && <Badge variant="outline" className="font-mono text-xs border-green-500 text-green-600 bg-green-50">INC</Badge>}
+                                              {item.type === 'ACCOUNT_GROUP' && <Badge variant="outline" className="font-mono text-xs border-purple-500 text-purple-600 bg-purple-50">GRP</Badge>}
+                                          </div>
+                                          <Button variant="ghost" size="icon" className="h-7 w-7 sm:hidden text-muted-foreground hover:text-destructive" onClick={() => removeItem(item.id)}>
+                                              <Trash2 className="w-4 h-4" />
+                                          </Button>
                                       </div>
-                                      <Button variant="ghost" size="icon" className="h-7 w-7 sm:hidden text-muted-foreground hover:text-destructive" onClick={() => removeItem(item.id)}>
-                                          <Trash2 className="w-4 h-4" />
-                                      </Button>
-                                  </div>
-                                  
-                                  <div className="min-w-0 flex flex-col mb-2 sm:mb-0">
-                                      <div className="font-medium truncate flex items-center gap-2 text-sm sm:text-base">
-                                          {item.description}
-                                          {(item.type === 'CONSUMER_SERVICES' || item.type === 'ACCOUNT_GROUP') && (
-                                              <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className="h-6 w-6 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                                                title="View Account Enquiry"
-                                                onClick={() => setViewingItem(item.id)}
-                                              >
-                                                  <Search className="w-3.5 h-3.5" />
-                                              </Button>
-                                          )}
+                                      
+                                      <div className="min-w-0 flex flex-col mb-2 sm:mb-0">
+                                          <div className="font-medium truncate flex items-center gap-2 text-sm sm:text-base">
+                                              {item.description}
+                                              {(item.type === 'CONSUMER_SERVICES' || item.type === 'ACCOUNT_GROUP') && (
+                                                  <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-6 w-6 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                                    title="View Account Enquiry"
+                                                    onClick={() => setViewingItem(item.id)}
+                                                  >
+                                                      <Search className="w-3.5 h-3.5" />
+                                                  </Button>
+                                              )}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground font-mono">{item.reference}</div>
                                       </div>
-                                      <div className="text-xs text-muted-foreground font-mono">{item.reference}</div>
+
+                                      <div className="flex items-center justify-between sm:block sm:text-right gap-2 mb-2 sm:mb-0">
+                                          <span className="text-xs text-muted-foreground sm:hidden">Due:</span>
+                                          <span className="font-mono text-muted-foreground text-sm">
+                                              {item.amountDue > 0 ? `R ${item.amountDue.toFixed(2)}` : '-'}
+                                          </span>
+                                      </div>
+
+                                      <div className="flex items-center gap-2 sm:block">
+                                          <span className="text-xs text-muted-foreground sm:hidden shrink-0">Pay:</span>
+                                          <div className="relative flex-1 sm:flex-none">
+                                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-xs">R</span>
+                                             <Input 
+                                                type="number" 
+                                                min="0"
+                                                step="0.01"
+                                                className="h-9 pl-6 text-right font-mono"
+                                                value={item.amountToPay}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    if (val && parseFloat(val) < 0) return;
+                                                    if (val.includes('.') && val.split('.')[1].length > 2) return;
+                                                    updateItemAmount(item.id, parseFloat(val) || 0);
+                                                }}
+                                             />
+                                          </div>
+                                      </div>
+
+                                      <div className="hidden sm:block">
+                                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => removeItem(item.id)}>
+                                              <Trash2 className="w-4 h-4" />
+                                          </Button>
+                                      </div>
                                   </div>
 
-                                  <div className="flex items-center justify-between sm:block sm:text-right gap-2 mb-2 sm:mb-0">
-                                      <span className="text-xs text-muted-foreground sm:hidden">Due:</span>
-                                      <span className="font-mono text-muted-foreground text-sm">
-                                          {item.amountDue > 0 ? `R ${item.amountDue.toFixed(2)}` : '-'}
-                                      </span>
-                                  </div>
-
-                                  <div className="flex items-center gap-2 sm:block">
-                                      <span className="text-xs text-muted-foreground sm:hidden shrink-0">Pay:</span>
-                                      <div className="relative flex-1 sm:flex-none">
-                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-xs">R</span>
-                                         <Input 
-                                            type="number" 
-                                            min="0"
-                                            step="0.01"
-                                            className="h-9 pl-6 text-right font-mono"
-                                            value={item.amountToPay}
-                                            onChange={(e) => {
-                                                const val = e.target.value;
-                                                if (val && parseFloat(val) < 0) return;
-                                                if (val.includes('.') && val.split('.')[1].length > 2) return;
-                                                updateItemAmount(item.id, parseFloat(val) || 0);
-                                            }}
-                                         />
+                                  {item.type === 'DIRECT_INCOME' && (
+                                      <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-0">
+                                          <div className="bg-green-50 border border-green-200 rounded-md p-3 space-y-2">
+                                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                  <div>
+                                                      <Label className="text-[10px] font-semibold text-green-700 uppercase">Paid By (Last Name) *</Label>
+                                                      <Input
+                                                          placeholder="Surname / Company"
+                                                          className={`h-8 text-sm bg-white ${(item as any).paidByError ? 'border-red-400 ring-1 ring-red-400' : 'border-green-200'}`}
+                                                          value={item.paidBy || ''}
+                                                          onChange={(e) => updateItemDetails(item.id, { paidBy: e.target.value })}
+                                                          data-testid={`input-basket-paidby-${item.id}`}
+                                                      />
+                                                  </div>
+                                                  <div>
+                                                      <Label className="text-[10px] font-semibold text-green-700 uppercase">Description/Notes *</Label>
+                                                      <Input
+                                                          placeholder="Payment description..."
+                                                          className={`h-8 text-sm bg-white ${(item as any).notesError ? 'border-red-400 ring-1 ring-red-400' : 'border-green-200'}`}
+                                                          value={item.notes || ''}
+                                                          onChange={(e) => updateItemDetails(item.id, { notes: e.target.value })}
+                                                          data-testid={`input-basket-notes-${item.id}`}
+                                                      />
+                                                  </div>
+                                              </div>
+                                          </div>
                                       </div>
-                                  </div>
-
-                                  <div className="hidden sm:block">
-                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => removeItem(item.id)}>
-                                          <Trash2 className="w-4 h-4" />
-                                      </Button>
-                                  </div>
+                                  )}
                               </div>
                           ))}
                       </CardContent>
