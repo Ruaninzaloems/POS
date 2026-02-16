@@ -102,7 +102,7 @@ function downloadReport(shift: CashierShift) {
   csvContent += "Transaction Report\n";
   csvContent += `Cashier,${shift.cashierName}\n`;
   csvContent += `Office,${shift.cashOffice}\n`;
-  csvContent += `Date,${format(new Date(shift.startTime), 'yyyy-MM-dd')}\n\n`;
+  csvContent += `Date,${new Date(shift.startTime).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' })}\n\n`;
   
   Object.entries(groups).forEach(([type, txs]) => {
     csvContent += `TYPE: ${type}\n`;
@@ -121,7 +121,7 @@ function downloadReport(shift: CashierShift) {
   const encodedUri = encodeURI(csvContent);
   const link = document.createElement("a");
   link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `day_end_report_${shift.cashierName.replace(' ', '_')}_${format(new Date(), 'yyyyMMdd')}.csv`);
+  link.setAttribute("download", `day_end_report_${shift.cashierName.replace(' ', '_')}_${new Date().toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '')}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -514,8 +514,8 @@ export default function SupervisorDashboard() {
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex flex-col">
-                                                <span className="text-slate-900">{format(new Date(tx.timestamp), 'HH:mm')}</span>
-                                                <span className="text-xs text-muted-foreground">{format(new Date(tx.timestamp), 'MMM dd')}</span>
+                                                <span className="text-slate-900">{new Date(tx.timestamp).toLocaleTimeString('en-ZA', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+                                                <span className="text-xs text-muted-foreground">{new Date(tx.timestamp).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', month: 'short', day: '2-digit' })}</span>
                                             </div>
                                         </TableCell>
                                         <TableCell>
@@ -604,8 +604,8 @@ export default function SupervisorDashboard() {
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex flex-col">
-                                                <span className="text-slate-900">{format(new Date(tx.timestamp), 'HH:mm')}</span>
-                                                <span className="text-xs text-muted-foreground">{format(new Date(tx.timestamp), 'MMM dd')}</span>
+                                                <span className="text-slate-900">{new Date(tx.timestamp).toLocaleTimeString('en-ZA', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+                                                <span className="text-xs text-muted-foreground">{new Date(tx.timestamp).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', month: 'short', day: '2-digit' })}</span>
                                             </div>
                                         </TableCell>
                                         <TableCell>
@@ -752,7 +752,7 @@ export default function SupervisorDashboard() {
                           <TableRow key={shift.id}>
                               <TableCell className="font-medium">{shift.cashierName}</TableCell>
                               <TableCell className="text-muted-foreground">{shift.cashOffice}</TableCell>
-                              <TableCell>{format(new Date(shift.startTime), 'MMM dd, HH:mm')}</TableCell>
+                              <TableCell>{new Date(shift.startTime).toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')}</TableCell>
                               <TableCell className="text-right">{shift.transactionCount}</TableCell>
                               <TableCell className="text-right">
                                   <div className="flex items-center justify-end gap-1">
@@ -1057,7 +1057,7 @@ export default function SupervisorDashboard() {
                             ) : (
                                 varianceStats?.history.map(shift => (
                                     <TableRow key={shift.id}>
-                                        <TableCell>{format(new Date(shift.startTime), 'yyyy-MM-dd')}</TableCell>
+                                        <TableCell>{new Date(shift.startTime).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' })}</TableCell>
                                         <TableCell>{shift.cashierName}</TableCell>
                                         <TableCell className="text-right font-mono text-muted-foreground">{formatCurrency(shift.systemTotals.total)}</TableCell>
                                         <TableCell className="text-right font-mono">{formatCurrency(shift.declaredTotals?.total || 0)}</TableCell>
@@ -1126,7 +1126,7 @@ export default function SupervisorDashboard() {
                             </div>
                             <div className="text-left sm:text-right space-y-1">
                                 <div className="text-red-600 font-bold text-sm">0 Out of 1 Completed</div>
-                                <div className="text-xs sm:text-sm text-muted-foreground">Reconcile Date: {format(new Date(), 'dd/MM/yyyy')}</div>
+                                <div className="text-xs sm:text-sm text-muted-foreground">Reconcile Date: {new Date().toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
                             </div>
                         </div>
 
@@ -1308,7 +1308,7 @@ export default function SupervisorDashboard() {
                                    {[1,2,3].map(i => (
                                        <TableRow key={i} className="text-xs">
                                            <TableCell className="font-mono">REC-{Math.floor(Math.random()*900000)}</TableCell>
-                                           <TableCell>{format(new Date(), 'HH:mm:ss')}</TableCell>
+                                           <TableCell>{new Date().toLocaleTimeString('en-ZA', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</TableCell>
                                            <TableCell>Consumer Payment</TableCell>
                                            <TableCell className="text-right font-mono">R {(Math.random() * 500).toFixed(2)}</TableCell>
                                        </TableRow>

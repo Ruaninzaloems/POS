@@ -349,7 +349,7 @@ export default function AllocationHistory() {
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-sm truncate">{tx.description}</div>
                       <div className="text-xs text-muted-foreground font-mono mt-0.5">
-                        {format(new Date(tx.transactionDate), 'dd/MM/yyyy')} | Ref: {tx.reference}
+                        {new Date(tx.transactionDate).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric' })} | Ref: {tx.reference}
                       </div>
                     </div>
                     <span className="font-mono font-bold text-sm shrink-0">R {tx.amount.toFixed(2)}</span>
@@ -404,10 +404,10 @@ export default function AllocationHistory() {
                         {filteredHistory.map(tx => (
                             <TableRow key={tx.id}>
                                 <TableCell className="font-mono text-xs text-muted-foreground">
-                                    {format(new Date(tx.transactionDate), 'dd/MM/yyyy')}
+                                    {new Date(tx.transactionDate).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric' })}
                                 </TableCell>
                                 <TableCell className="font-mono text-xs">
-                                    {tx.details?.allocationDate ? format(new Date(tx.details.allocationDate), 'dd/MM/yyyy HH:mm') : '-'}
+                                    {tx.details?.allocationDate ? new Date(tx.details.allocationDate).toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '') : '-'}
                                 </TableCell>
                                 <TableCell className="text-sm font-medium">{tx.description}</TableCell>
                                 <TableCell>
@@ -549,7 +549,7 @@ export default function AllocationHistory() {
                         </div>
                         <div className="text-right">
                             <div className="text-sm font-medium text-slate-500">Report Date</div>
-                            <div className="font-mono">{format(new Date(), 'dd MMM yyyy HH:mm')}</div>
+                            <div className="font-mono">{new Date().toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')}</div>
                         </div>
                     </div>
 
@@ -568,7 +568,7 @@ export default function AllocationHistory() {
                                 </div>
                                 <div className="grid grid-cols-3">
                                     <dt className="text-muted-foreground">Date:</dt>
-                                    <dd className="col-span-2">{format(new Date(selectedTx.transactionDate), 'dd/MM/yyyy')}</dd>
+                                    <dd className="col-span-2">{new Date(selectedTx.transactionDate).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric' })}</dd>
                                 </div>
                                 <div className="grid grid-cols-3">
                                     <dt className="text-muted-foreground">Bank Account:</dt>
@@ -597,7 +597,7 @@ export default function AllocationHistory() {
                                 </div>
                                 <div className="grid grid-cols-3">
                                     <dt className="text-muted-foreground">Allocation Date:</dt>
-                                    <dd className="col-span-2">{selectedAllocation?.allocationDate ? format(new Date(selectedAllocation.allocationDate), 'dd MMM yyyy HH:mm') : '-'}</dd>
+                                    <dd className="col-span-2">{selectedAllocation?.allocationDate ? new Date(selectedAllocation.allocationDate).toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '') : '-'}</dd>
                                 </div>
                                 <div className="grid grid-cols-3">
                                     <dt className="text-muted-foreground">Type:</dt>

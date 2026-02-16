@@ -147,7 +147,7 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
                              }>
                                  <TableCell className="font-mono text-xs">{tx.receiptNumber}</TableCell>
                                  <TableCell className="text-xs text-muted-foreground">
-                                     {format(new Date(tx.timestamp), 'HH:mm:ss')}
+                                     {new Date(tx.timestamp).toLocaleTimeString('en-ZA', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
                                  </TableCell>
                                  <TableCell className="font-mono text-xs">
                                      {tx.items[0]?.reference || tx.items[0]?.originalData?.accountId || tx.items[0]?.originalData?.oldAccountCode || '-'}

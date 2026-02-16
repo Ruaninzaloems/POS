@@ -293,7 +293,7 @@ export default function UnmatchedQueue() {
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-sm truncate">{tx.note || '-'}</div>
                     <div className="text-xs text-muted-foreground font-mono mt-0.5">
-                      #{tx.posItem_ID} | {tx.dateOfTransaction ? format(new Date(tx.dateOfTransaction), 'dd/MM/yyyy') : '-'}
+                      #{tx.posItem_ID} | {tx.dateOfTransaction ? new Date(tx.dateOfTransaction).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}
                     </div>
                   </div>
                   {tx.billingAllocated ? (
@@ -353,7 +353,7 @@ export default function UnmatchedQueue() {
                   >
                     <TableCell className="font-mono text-xs text-muted-foreground">{tx.posItem_ID}</TableCell>
                     <TableCell className="whitespace-nowrap font-mono text-xs">
-                        {tx.dateOfTransaction ? format(new Date(tx.dateOfTransaction), 'dd/MM/yyyy') : '-'}
+                        {tx.dateOfTransaction ? new Date(tx.dateOfTransaction).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}
                     </TableCell>
                     <TableCell className="font-medium text-sm max-w-xs truncate" title={tx.note}>
                       {tx.note || '-'}
