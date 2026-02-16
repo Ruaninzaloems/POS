@@ -80,7 +80,7 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
             onClose();
         }
     }}>
-      <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col">
+      <DialogContent className="max-w-6xl max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Receipt className="w-5 h-5" />
@@ -102,6 +102,8 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
                          <TableRow>
                              <TableHead>Receipt No</TableHead>
                              <TableHead>Time</TableHead>
+                             <TableHead>Account</TableHead>
+                             <TableHead>Type</TableHead>
                              <TableHead>Items</TableHead>
                              <TableHead className="text-right">Amount</TableHead>
                              <TableHead>Payment</TableHead>
@@ -118,6 +120,14 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
                                  <TableCell className="font-mono text-xs">{tx.receiptNumber}</TableCell>
                                  <TableCell className="text-xs text-muted-foreground">
                                      {format(new Date(tx.timestamp), 'HH:mm:ss')}
+                                 </TableCell>
+                                 <TableCell className="font-mono text-xs">
+                                     {tx.items[0]?.reference || tx.items[0]?.originalData?.accountId || tx.items[0]?.originalData?.oldAccountCode || '-'}
+                                 </TableCell>
+                                 <TableCell>
+                                     <Badge variant="outline" className="text-[10px] px-1.5 h-5 whitespace-nowrap">
+                                         {tx.paymentOptionName || tx.items[0]?.type?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || '-'}
+                                     </Badge>
                                  </TableCell>
                                  <TableCell className="max-w-[200px]">
                                      <div className="text-sm truncate" title={tx.items.map(i => i.description).join(', ')}>
