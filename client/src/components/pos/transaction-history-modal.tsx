@@ -17,9 +17,17 @@ interface TransactionHistoryModalProps {
 }
 
 export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryModalProps) {
-  const { recentTransactions, cancelTransaction, dayEndStatus, currentUser } = usePos();
+  const { recentTransactions, cancelTransaction, dayEndStatus, currentUser, refreshTransactions } = usePos();
   const { toast } = useToast();
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
+  useEffect(() => {
+    if (isOpen && refreshTransactions) {
+      setIsRefreshing(true);
+      refreshTransactions().finally(() => setIsRefreshing(false));
+    }
+  }, [isOpen]);
+
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancellationReason, setCancellationReason] = useState('');
   const [reprintTx, setReprintTx] = useState<TransactionRecord | null>(null);
@@ -120,7 +128,11 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto py-4">
-             {recentTransactions.length === 0 ? (
+             {isRefreshing && recentTransactions.length === 0 ? (
+                 <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-lg border-2 border-dashed">
+                     <p>Loading transactions from the billing system...</p>
+                 </div>
+             ) : recentTransactions.length === 0 ? (
                  <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-lg border-2 border-dashed">
                      <p>No transactions recorded for this session.</p>
                  </div>

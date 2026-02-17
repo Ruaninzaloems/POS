@@ -2450,7 +2450,8 @@ export async function registerRoutes(
       let highestKnownId = startId;
       if (!highestKnownId) {
         try {
-          const probeIds = [1041400, 1041350, 1041300, 1041280, 1041270, 1041260];
+          const baseProbe = 1041300;
+          const probeIds = [baseProbe + 200, baseProbe + 150, baseProbe + 100, baseProbe + 50, baseProbe, baseProbe - 20];
           for (const probeId of probeIds) {
             const url = `${EXTERNAL_API_BASE}/api/pos-multi-receipt-print?receiptId=${probeId}`;
             const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
@@ -2463,8 +2464,8 @@ export async function registerRoutes(
             }
           }
           if (!highestKnownId) {
-            let probeId = 1041300;
-            while (probeId > 1041200) {
+            let probeId = baseProbe;
+            while (probeId > baseProbe - 100) {
               const url = `${EXTERNAL_API_BASE}/api/pos-multi-receipt-print?receiptId=${probeId}`;
               const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
               if (resp.ok) {
@@ -2478,10 +2479,10 @@ export async function registerRoutes(
             }
           }
         } catch {}
-        if (!highestKnownId) highestKnownId = 1041280;
+        if (!highestKnownId) highestKnownId = 1041300;
       }
 
-      const scanStartId = highestKnownId + 30;
+      const scanStartId = highestKnownId + 50;
       console.log(`[by-cashier] Scanning from ${scanStartId} backwards for cashierName=${cashierName}, count=${scanCount}`);
 
       const ids: number[] = [];
