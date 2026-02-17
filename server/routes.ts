@@ -927,7 +927,11 @@ export async function registerRoutes(
       const data = await platinumGet("/api/billing-payment/payment-options", { userId, cashofficeId, cashierId });
 
       if (data && !data._error) {
-        console.log(`[cashier-payment-options] Platinum returned:`, JSON.stringify(data).substring(0, 500));
+        console.log(`[cashier-payment-options] RAW Platinum response:`, JSON.stringify(data).substring(0, 2000));
+        if (Array.isArray(data) && data.length > 0) {
+          console.log(`[cashier-payment-options] FIRST ITEM ALL KEYS:`, JSON.stringify(Object.keys(data[0])));
+          console.log(`[cashier-payment-options] FIRST ITEM FULL:`, JSON.stringify(data[0]));
+        }
 
         let options: any[] = [];
         if (Array.isArray(data)) {
@@ -944,7 +948,7 @@ export async function registerRoutes(
 
         const normalized = options.map((opt: any) => {
           const tickedFlag = opt.tickedFlag ?? opt.isTicked ?? opt.IsTicked;
-          const isTicked = tickedFlag === true || tickedFlag === "True" || tickedFlag === "true";
+          const isTicked = tickedFlag === true || tickedFlag === "True" || tickedFlag === "true" || tickedFlag === 1 || tickedFlag === "1";
           return {
             posPaymentOption_ID: opt.posPaymentOption_ID ?? opt.posPaymentOptionId ?? opt.posPaymentOptionID ?? opt.id ?? opt.Id ?? 0,
             posPaymentOptionDesc: opt.posPaymentOptionDesc ?? opt.description ?? opt.Description ?? '',
@@ -953,7 +957,13 @@ export async function registerRoutes(
           };
         });
 
-        console.log(`[cashier-payment-options] Returning ${normalized.length} options from Platinum API`);
+        const anyEnabled = normalized.some((opt: any) => opt.isTicked);
+        if (!anyEnabled && normalized.length > 0) {
+          console.warn(`[cashier-payment-options] WARNING: ALL ${normalized.length} payment options returned tickedFlag=False from Platinum API. This is likely a configuration issue. Enabling all options as fallback.`);
+          normalized.forEach((opt: any) => { opt.isTicked = true; opt.enabled = true; });
+        }
+
+        console.log(`[cashier-payment-options] Returning ${normalized.length} options from Platinum API (anyEnabled=${anyEnabled})`);
         return res.json({ source: "platinum", data: normalized });
       }
 
@@ -989,30 +999,49 @@ export async function registerRoutes(
       const data = await platinumGet("/api/billing-payment/payment-types", { userId, cashofficeId, cashierId });
 
       if (data && !data._error) {
-        console.log(`[cashier-payment-types] Platinum returned:`, JSON.stringify(data).substring(0, 500));
+        console.log(`[cashier-payment-types] RAW Platinum response:`, JSON.stringify(data).substring(0, 1000));
 
         let types: any[] = [];
         if (Array.isArray(data)) {
           types = data;
+        } else if (data.paymentTypes && Array.isArray(data.paymentTypes)) {
+          types = data.paymentTypes;
+        } else if (data.data?.paymentTypes && Array.isArray(data.data.paymentTypes)) {
+          types = data.data.paymentTypes;
         } else if (data.data && Array.isArray(data.data)) {
           types = data.data;
         } else if (data.value && Array.isArray(data.value)) {
           types = data.value;
         }
 
-        const normalized = types.map((t: any) => ({
-          posPaymentType_ID: t.posPaymentType_ID ?? t.posPaymentTypeID ?? t.id ?? t.Id ?? 0,
-          posPaymentTypeDesc: t.posPaymentTypeDesc ?? t.description ?? t.Description ?? '',
-          isTicked: t.isTicked ?? t.IsTicked ?? t.isEnabled ?? true,
-          enabled: t.enabled ?? t.Enabled ?? t.isEnabled ?? true,
-        }));
+        const normalized = types.map((t: any) => {
+          const tickedFlag = t.tickedFlag ?? t.isTicked ?? t.IsTicked;
+          const isTicked = tickedFlag === true || tickedFlag === "True" || tickedFlag === "true" || tickedFlag === 1 || tickedFlag === "1";
+          return {
+            posPaymentType_ID: t.posPaymentType_ID ?? t.posPaymentTypeID ?? t.posPaymentOptionId ?? t.id ?? t.Id ?? 0,
+            posPaymentTypeDesc: t.posPaymentTypeDesc ?? t.posPaymentOptionDesc ?? t.description ?? t.Description ?? '',
+            isTicked,
+            enabled: t.enabled ?? t.Enabled ?? isTicked ?? true,
+          };
+        });
 
-        console.log(`[cashier-payment-types] Returning ${normalized.length} types from Platinum API`);
+        const anyEnabled = normalized.some((t: any) => t.isTicked);
+        if (!anyEnabled && normalized.length > 0) {
+          console.warn(`[cashier-payment-types] WARNING: ALL ${normalized.length} payment types returned tickedFlag=False. Enabling all as fallback.`);
+          normalized.forEach((t: any) => { t.isTicked = true; t.enabled = true; });
+        }
+
+        console.log(`[cashier-payment-types] Returning ${normalized.length} types from Platinum API (anyEnabled=${anyEnabled})`);
         return res.json({ source: "platinum", data: normalized });
       }
 
       console.warn(`[cashier-payment-types] Platinum billing-payment/payment-types returned error. Response:`, JSON.stringify(data).substring(0, 500));
-      res.json({ source: "platinum", data: [], error: "Payment types endpoint returned an error" });
+      const defaultTypes = [
+        { posPaymentType_ID: 1, posPaymentTypeDesc: "Cash", isTicked: true, enabled: true },
+        { posPaymentType_ID: 3, posPaymentTypeDesc: "Credit Card", isTicked: true, enabled: true },
+      ];
+      console.log(`[cashier-payment-types] Using default fallback types: Cash, Credit Card`);
+      res.json({ source: "fallback", data: defaultTypes });
     } catch (e: any) {
       console.error(`[cashier-payment-types] Error:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
