@@ -348,7 +348,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (data.isActive === true && data.officeId) {
             const officeId = String(data.officeId);
             const cashFloat = data.cashFloat ?? data.details?.cashFloat ?? 0;
-            console.log(`[Session] is-cashier-active API confirms session is active — auto-resuming. Office: ${officeName} (ID: ${officeId}), Float: ${cashFloat}`);
+            console.log(`[Session] validate-cashier API confirms session is active (POS_Cashier.IsActive=1) — auto-resuming. Office: ${officeName} (ID: ${officeId}), Float: ${cashFloat}`);
             setActiveSession(true);
             setSessionDetails({
               startTime: Date.now(),
@@ -357,7 +357,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               floatAmount: cashFloat
             });
           } else {
-            console.log(`[Session] Cashier registered but is-cashier-active returned false. Must start session via cashier setup page.`);
+            console.log(`[Session] Cashier registered but validate-cashier returned isActive=false. Must start session via cashier setup page.`);
           }
         }
       } catch (e) {
@@ -699,9 +699,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const userId = platinumUser.user_ID;
       const finYear = platinumUser.finYear || '2025/2026';
-      const res = await fetch(`/api/platinum/auth/is-cashier-active?userId=${userId}&finYear=${encodeURIComponent(finYear)}`);
+      const res = await fetch(`/api/platinum/receipt-prepaid/validate-cashier?userId=${userId}&finYear=${encodeURIComponent(finYear)}`);
       if (!res.ok) {
-        console.error(`[SessionEnforcement] is-cashier-active API returned ${res.status} — ending session`);
+        console.error(`[SessionEnforcement] validate-cashier API returned ${res.status} — ending session`);
         setActiveSession(false);
         setSessionDetails(undefined);
         toast({
@@ -712,8 +712,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return;
       }
       const result = await res.json();
-      if (result !== true) {
-        console.warn(`[SessionEnforcement] is-cashier-active returned false — session is no longer active in POS_Cashier table. Ending session.`);
+      const isActive = result?.cashier?.isActive === true;
+      if (!isActive) {
+        console.warn(`[SessionEnforcement] validate-cashier returned isActive=${result?.cashier?.isActive} — session is no longer active (POS_Cashier.IsActive != 1). Ending session.`);
         setActiveSession(false);
         setSessionDetails(undefined);
         toast({
@@ -721,9 +722,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           description: "Your cashier session is no longer active in the billing system. Please set up a new session.",
           variant: "destructive"
         });
+      } else {
+        console.log(`[SessionEnforcement] validate-cashier confirmed isActive=true (POS_Cashier.IsActive=1)`);
       }
     } catch (e) {
-      console.error(`[SessionEnforcement] Failed to check is-cashier-active:`, e);
+      console.error(`[SessionEnforcement] Failed to check validate-cashier:`, e);
     }
   }, [platinumUser?.user_ID, platinumUser?.finYear, toast]);
 

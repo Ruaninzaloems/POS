@@ -54,18 +54,18 @@ export function PosLayout({ children }: PosLayoutProps) {
     const finYear = platinumUser.finYear || '2025/2026';
     try {
       setApiCheckLoading(true);
-      const res = await fetch(`/api/platinum/auth/is-cashier-active?userId=${userId}&finYear=${encodeURIComponent(finYear)}`);
+      const res = await fetch(`/api/platinum/receipt-prepaid/validate-cashier?userId=${userId}&finYear=${encodeURIComponent(finYear)}`);
       if (!res.ok) {
-        console.warn(`[SessionBadge] is-cashier-active API returned ${res.status}`);
+        console.warn(`[SessionBadge] validate-cashier API returned ${res.status}`);
         setApiSessionActive(false);
         return;
       }
       const result = await res.json();
-      const isActive = result === true;
-      console.log(`[SessionBadge] is-cashier-active API for userId=${userId}: ${isActive}`);
+      const isActive = result?.cashier?.isActive === true;
+      console.log(`[SessionBadge] validate-cashier API for userId=${userId}: isActive=${isActive} (POS_Cashier.IsActive=${result?.cashier?.isActive})`);
       setApiSessionActive(isActive);
     } catch (err) {
-      console.warn('[SessionBadge] Failed to check session via is-cashier-active API:', err);
+      console.warn('[SessionBadge] Failed to check session via validate-cashier API:', err);
       setApiSessionActive(false);
     } finally {
       setApiCheckLoading(false);
@@ -266,7 +266,7 @@ export function PosLayout({ children }: PosLayoutProps) {
                   <button
                     onClick={checkApiSessionStatus}
                     disabled={apiCheckLoading}
-                    title={apiSessionActive === true ? 'Session active (is-cashier-active API — POS_Cashier.IsActive=1)' : apiSessionActive === false ? 'Session NOT active (is-cashier-active API — POS_Cashier.IsActive=0)' : 'Checking session status...'}
+                    title={apiSessionActive === true ? 'Session active (validate-cashier API — POS_Cashier.IsActive=1)' : apiSessionActive === false ? 'Session NOT active (validate-cashier API — POS_Cashier.IsActive=0)' : 'Checking session status...'}
                     className={`hidden md:flex items-center gap-1.5 ml-1 px-2.5 py-1 text-[10px] font-semibold rounded-full border whitespace-nowrap cursor-pointer transition-all duration-300 ${
                       apiSessionActive === null
                         ? 'bg-slate-100 text-slate-500 border-slate-200'

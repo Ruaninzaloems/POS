@@ -2,20 +2,18 @@
 
 ## Overview
 
-This is a **Municipal Point-of-Sale (POS) Receipting System** prototype built as a React/Express/PostgreSQL web application. It serves as a unified cashier interface for municipal payments including consumer services, multi-account payments, prepaid recharges, direct income payments, clearance payments, and direct deposit allocations.
+This project is a **Municipal Point-of-Sale (POS) Receipting System** prototype, a React/Express/PostgreSQL web application serving as a unified cashier interface for various municipal payments. It handles consumer services, multi-account payments, prepaid recharges, direct income, clearance, and direct deposit allocations. The system is designed to demonstrate business logic, UI flows, and data models for a future Angular production environment.
 
-The system is designed as a prototype that will eventually be migrated to an Angular production environment. The React frontend demonstrates all business logic, UI flows, and data models that the production system will need.
-
-Key business capabilities:
-- **Unified POS Screen**: Single search bar auto-detects transaction type (consumer payment, prepaid, direct income, clearance, etc.)
-- **Split Payments**: Cash + Card can be split on the same transaction with change calculated on cash portion only. Consumer account split payments submit TWO separate `submit-consumer-payment` API calls: first stages cash portion amounts via `save-multiple-account-payment` then submits with paymentType=1, then stages card portion amounts and submits with paymentType=3. Each staging payload uses `buildPortionStagingPayload` which proportionally distributes the portion total across accounts with rounding reconciliation on the last account. After both submissions, accounts are rebuilt and the updated outstanding balance is fetched from the API via `cons-account-details`.
-- **Single Active Session Enforcement**: Each cashier can only have one active session at a time. If the user logs out and back in, the system auto-detects and resumes their existing Platinum session (isActive=true). New session creation is blocked while an active session exists.
-- **API-Only Transaction Storage**: All transactions (ACC payments, misc/direct income, clearance) are stored via Platinum API, not locally. Receipts are loaded from Platinum's `ViewReceipt/get-receipt-list` endpoint. Cancellations go through Platinum's cancel-receipt API. This ensures all transactions are available for day-end reconciliation.
-- **Cashier Session Management**: Float tracking, day-end reconciliation, denomination counting
-- **Supervisor Dashboard**: Transaction oversight, cancellation approvals, day-end reviews
-- **Direct Deposit Allocation**: Manual and bulk allocation of unmatched bank transactions to consumer accounts
-- **Receipt Management**: Print, email, SMS receipt delivery with permit/certificate generation
-- **External API Integration**: Proxied connections to Platinum Inzalo EMS API and legacy Sebata Billing microservices for live account data
+Key capabilities include:
+- A unified POS screen that auto-detects transaction types.
+- Split payments (cash + card) with change calculation on the cash portion.
+- Enforcement of a single active session per cashier.
+- All transaction storage handled via the Platinum API, not locally, ensuring data consistency for day-end reconciliation.
+- Cashier session management, float tracking, and day-end reconciliation.
+- Supervisor dashboard for transaction oversight and approvals.
+- Direct deposit allocation (manual and bulk).
+- Receipt management (print, email, SMS) and permit/certificate generation.
+- Integration with Platinum Inzalo EMS API and legacy Sebata Billing microservices for live account data.
 
 ## User Preferences
 
@@ -24,91 +22,61 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### Frontend (React + TypeScript)
-- **Framework**: React 18 with TypeScript, using Vite as the build tool
-- **Routing**: `wouter` (lightweight router, similar to React Router)
-- **Styling**: Tailwind CSS with shadcn/ui component library (Radix UI primitives)
-- **State Management**: React Context API (`PosProvider` in `client/src/lib/pos-state.tsx`) manages the entire POS session state including cart items, payment amounts, cashier profile, and transaction history
-- **Data Fetching**: TanStack React Query for server state, with a custom `apiRequest` helper in `client/src/lib/queryClient.ts`
-- **UI Components**: Located in `client/src/components/ui/` (shadcn/ui) and `client/src/components/pos/` (business-specific POS components)
-
-### Key Frontend Patterns
-- **Business Logic Separation**: Pure calculation functions live in `client/src/lib/pos-logic.ts` and `client/src/lib/allocation-logic.ts`, separate from UI components
-- **No localStorage**: The application does NOT use localStorage or any browser-side persistence. All data comes from APIs (Platinum and Sebata). Transaction history uses a server-side discovery scan endpoint (`/api/proxy/pos-multi-receipt-print/by-cashier`) that finds receipts by cashier name via the Sebata API.
-- **Layout System**: `PosLayout` component wraps all pages, providing the navigation sidebar and cashier session gate (blocks access until session is started)
-- **Page Structure**: Main pages in `client/src/pages/` — the POS screen (`pos.tsx`), supervisor dashboard, settings, view receipts, and direct deposit allocation pages
+- **Framework**: React 18 with TypeScript, using Vite.
+- **Routing**: `wouter` for lightweight routing.
+- **Styling**: Tailwind CSS with `shadcn/ui` (Radix UI primitives).
+- **State Management**: React Context API (`PosProvider`) manages session state, cart, payments, cashier profile, and history.
+- **Data Fetching**: TanStack React Query with a custom `apiRequest` helper.
+- **UI Components**: Separated into generic `shadcn/ui` components and business-specific POS components.
+- **Key Patterns**: Business logic (`pos-logic.ts`, `allocation-logic.ts`) is separated from UI. No `localStorage` is used; all data is API-driven. A `PosLayout` component provides a consistent layout and enforces cashier session gating.
 
 ### Backend (Express + Node.js)
-- **Framework**: Express 5 with TypeScript, compiled via `tsx`
-- **API Pattern**: RESTful routes registered in `server/routes.ts`
-- **Proxy Layer**: Backend proxies requests to two external APIs:
-  - **Platinum Inzalo EMS API** (`georgeplatinumuatapi.azurewebsites.net`): Authenticated via JWT tokens (`server/platinum-auth.ts`). Routes prefixed with `/api/platinum/` cover all POS operations (payments, prepaid, clearance, miscellaneous, day-end reconciliation, direct deposits, third-party payments, account management, billing enquiry, dashboard)
-  - **Legacy Sebata Billing API** (`george-uat-ems-billing-api.azurewebsites.net`): Unauthenticated OData proxy. Routes prefixed with `/api/proxy/` for backward compatibility
-- **Static Serving**: Production builds served from `dist/public/`; development uses Vite middleware with HMR
-- **Storage Layer**: `server/storage.ts` implements `IStorage` interface with a `DatabaseStorage` class using Drizzle ORM
+- **Framework**: Express 5 with TypeScript.
+- **API Pattern**: RESTful routes.
+- **Proxy Layer**: Proxies requests to Platinum Inzalo EMS API (authenticated via JWT for POS operations) and legacy Sebata Billing API (unauthenticated OData for backward compatibility).
+- **Serving**: Serves production builds statically; uses Vite middleware for development.
+- **Storage Layer**: Implements `IStorage` interface with `DatabaseStorage` using Drizzle ORM, though currently not actively used for persistence as all transactions go to Platinum API.
 
 ### Database (PostgreSQL + Drizzle ORM)
-- **ORM**: Drizzle ORM with PostgreSQL dialect
-- **Schema**: Defined in `shared/schema.ts` with Zod validation via `drizzle-zod`
-- **Tables**:
-  - `users` — Basic user authentication (id, username, password)
-  - `cashier_sessions` — Tracks cashier login sessions with float amount, cash office, start/end times, and status
-  - `transactions` — Stores completed transactions with receipt numbers, payment split (cash/card amounts), line items (JSONB), and status tracking
-- **Migrations**: Managed via `drizzle-kit push` (schema-push approach, not migration files)
-- **Connection**: Uses `pg.Pool` with `DATABASE_URL` environment variable
-
-### Build System
-- **Development**: `tsx server/index.ts` runs the server which sets up Vite dev middleware for the client
-- **Production Build**: Custom build script (`script/build.ts`) uses Vite for client and esbuild for server, outputting to `dist/`
-- **Port**: Dev server runs on port 5000
+- **ORM**: Drizzle ORM for PostgreSQL.
+- **Schema**: Defined in `shared/schema.ts` with Zod validation.
+- **Tables**: `users`, `cashier_sessions`, `transactions`.
+- **Migrations**: Managed via `drizzle-kit push`.
+- **Note**: While a database layer is defined, the system primarily uses external APIs for transaction persistence and session management. The local database code is legacy and not actively used for core transaction/session data.
 
 ### Key Business Logic Decisions
-1. **Rounding**: Transaction totals are rounded UP to nearest 10 cents to prevent outstanding balances
-2. **Change Calculation**: Change is only calculated on the cash portion: `changeDue = max(0, cash - (total - card))`
-3. **Transaction Types**: Six types auto-detected from search: Consumer Services, Multi-Account, Account Group, Prepaid, Direct Income, Clearance
-4. **Day-End Process**: Cashiers submit cash-on-hand counts; supervisors approve/return; denomination counting is configurable
-5. **Cancellation Workflow**: Regular cashiers request cancellation (goes to supervisor); supervisors can cancel directly
-6. **Payment Options/Types Validation**: Cashiers are restricted based on Platinum database tables (POS_CashierPOSPaymentOption for functions like Consumer Services/Clearance/Prepaid, POS_CashierPOSPaymentType for tender methods like Cash/Card). Both now call per-cashier Platinum API endpoints: `GET /api/billing-payment/payment-options?userId=X&cashofficeId=X&cashierId=X` and `GET /api/billing-payment/payment-types?userId=X&cashofficeId=X&cashierId=X`. Validation runs at addItem (option check) and completeTransaction (type check). When source is "platinum", unknown options/types are blocked; when fallback, they default to allowed. Backend routes: `/api/platinum/receipt-prepaid/cashier-payment-options` and `/api/platinum/receipt-prepaid/cashier-payment-types`
-7. **Receipt Range Validation**: Before processing any payment in `completeTransaction`, the system validates receipt range allocation via `/api/platinum/receipt-prepaid/validate-receipt-range`. This uses ONLY `/api/billing-payment/payment-options` (with userId, cashofficeId, cashierId) — if options are returned, receipt range is valid. Does NOT use `validate-cashier` or `ActiveCashierDetails` (those are unreliable). Payments are blocked if no payment options are configured.
-8. **Session Detection**: Uses `/api/billing/pos/third-party-payments/is-cashier-active?userId=X&finYear=X` API to reliably check POS_Cashier.IsActive field. Returns boolean `true`/`false`. `ActiveCashierDetails.isActive` is UNRELIABLE (returns `true` even when IsActive=0) — NEVER use it for session status. Auto-resume works when `is-cashier-active` returns `true`. Session badge polls this API every 30 seconds.
-9. **API Isolation**: Payment options use ONLY `/api/billing-payment/payment-options`. Payment types use ONLY `/api/billing-payment/payment-types`. No fallback to clearance APIs (`billing-payment-clearance/pos-payment-type`) for non-clearance features.
+- **Rounding**: Transaction totals are rounded up to the nearest 10 cents.
+- **Change Calculation**: Only on the cash portion: `max(0, cash - (total - card))`.
+- **Transaction Types**: Six types auto-detected: Consumer Services, Multi-Account, Account Group, Prepaid, Direct Income, Clearance.
+- **Day-End Process**: Cashiers submit cash counts, supervisors approve.
+- **Cancellation Workflow**: Cashiers request, supervisors approve/cancel.
+- **Payment Validation**: Cashier payment options/types are validated against Platinum API endpoints (`/api/billing-payment/payment-options`, `/api/billing-payment/payment-types`).
+- **Receipt Range Validation**: Verified via `/api/platinum/receipt-prepaid/validate-receipt-range` before payment processing.
+- **Session Detection**: Uses `/api/ReceiptPrepaid/validate-cashier` as the single source of truth for cashier session status (`isActive` field). Auto-resume and session enforcement are based on this.
 
 ## External Dependencies
 
 ### External APIs
-- **Platinum Inzalo EMS API** (`georgeplatinumuatapi.azurewebsites.net`): Full POS system API authenticated via JWT bearer tokens. Auth module in `server/platinum-auth.ts` handles token management with auto-refresh. Credentials stored as environment secrets (PLATINUM_API_PASSWORD) and env vars (PLATINUM_API_USERNAME, PLATINUM_API_DBNAME). OpenAPI spec in `platinum-openapi.json`.
-  - Key endpoint groups: ReceiptPrepaid (cashier/account operations), billing-payment (consumer/clearance/misc payments), auth-day-end-reconcile (supervisor), billing-payment-day-end-reconcile (cashier), billing-direct-deposit-allocation (manual), billing/direct-deposit-bulk-allocation (bulk), third-party-payments v2, BillingEnquiry, BillingDashboard
-  - **API Naming Convention**: Platinum API expects PascalCase input with underscores preserved (e.g., `Const_CashOffice`, `User_Id`, `account_ID`) but returns camelCase output (e.g., `accountID`, `outStandingAmount`)
-  - **Performance**: Account search via `BillingEnquiry/EnquiryResults` is slow (~23 seconds for broad queries). All API calls have 30-35 second timeouts configured with AbortController
-  - **Working Payment Flow**: `save-multiple-account-payment` → `submit-consumer-payment/{userId}` (per account, uses `BillingConsumerPaymentSubmitDto: { account, requestModel }`) → returns `{isSuccess: true, ids: [receiptId]}` → `print-receipt` (POST with receipt IDs array, generates PDF) → `pos-multi-receipt-print` (structured receipt data for display). **IMPORTANT**: Only `submit-consumer-payment` is used for payments. `submit-multiple-payment` has been removed entirely.
-  - **Payment Type IDs** (from `pos-payment-type` API): 1=Cash, 2=Cheque, 3=Credit Card, 4=Postal Order. **CRITICAL**: Card payments must use paymentType=3, NOT 2.
-  - **Payment Option vs Payment Type**: `paymentType` = tender method (1=Cash, 3=Card etc). `paymentOption` = service category (1=Consumer Services). These are different fields — paymentOption should always be 1 for consumer payments regardless of tender type.
-  - **Payment Type IDs sent to API**: Cash-only payments use paymentType=1, card-only payments use paymentType=3, split payments create two receipts (cash=1, card=3). The actual tender type is sent to Platinum so receipts display the correct payment method.
-  - **Receipt Data**: `pos-multi-receipt-print` (Sebata proxy) returns structured receipt data with `receiptNo`, `cashierName`, `cashOfficeName`, `tenderAmount`, `changeAmount`, `outstandingAmount`, `payMode`, `billType`
-  - **Cashier Setup Flow** (in `client/src/pages/cashier-setup.tsx`): Three-step flow: (1) `validateCashier` GET on page load with userId/finYear, (2) `getCashOffices` GET after validation with finYear, (3) `submitCashierSetup` POST on submit button click with POSCashier payload. All via Platinum ReceiptPrepaid endpoints.
-  - **Cashier Session**: User 4697 (Francois Francois), cashierId 31055, Uniondale cash office (cashOffice_ID: 2). Session managed by Platinum, not local DB.
-  - **Auth Note**: JWT token resolves to System Administration (ID:1) due to Azure SSO mapping issue. userId parameter (4697) is passed separately to API calls
-- **Sebata Billing Microservice** (`george-uat-ems-billing-api.azurewebsites.net`): Legacy OData-based API providing consumer account data, billing config, and receipt staging. Accessed via server-side proxy routes (`/api/proxy/`) for backward compatibility. Swagger spec in `swagger.json`.
-  
-### Database
-- **No local database**: The application does NOT use a local PostgreSQL database. All data persistence is handled through the Platinum Inzalo EMS API and Sebata Billing API. The `server/storage.ts`, `server/db.ts`, and `shared/schema.ts` files exist as legacy code but are not imported or used by any active code path. Session state is managed in-memory via React Context, and transaction/receipt history is sourced from Platinum API endpoints (e.g., `pos-multi-receipt-print`). This architecture ensures the frontend can be deployed into any environment with only API access to Platinum.
+-   **Platinum Inzalo EMS API** (`georgeplatinumuatapi.azurewebsites.net`):
+    -   Handles all core POS operations (payments, prepaid, clearance, day-end, direct deposits, etc.).
+    -   Authenticated via JWT tokens; `server/platinum-auth.ts` manages token refresh.
+    -   Environment variables: `PLATINUM_API_PASSWORD`, `PLATINUM_API_USERNAME`, `PLATINUM_API_DBNAME`.
+    -   Key endpoint groups: `ReceiptPrepaid`, `billing-payment`, `auth-day-end-reconcile`, `billing-direct-deposit-allocation`, `BillingEnquiry`, `BillingDashboard`.
+    -   **Critical Payment Flow**: `save-multiple-account-payment` → `submit-consumer-payment/{userId}` (per account) → `print-receipt` → `pos-multi-receipt-print` (for structured receipt data).
+    -   Payment Type IDs: 1=Cash, 3=Credit Card (critical for split payments). Payment Option (e.g., 1 for Consumer Services) is distinct from Payment Type.
+    -   Cashier setup and session status are managed through specific Platinum endpoints.
+-   **Sebata Billing Microservice** (`george-uat-ems-billing-api.azurewebsites.net`):
+    -   Legacy OData-based API for consumer account data and billing configuration.
+    -   Accessed via server-side proxy routes (`/api/proxy/`).
 
 ### Frontend Libraries
-- **shadcn/ui + Radix UI**: Complete component library (dialogs, dropdowns, tabs, tables, tooltips, etc.)
-- **TanStack React Query**: Server state management
-- **date-fns**: Date formatting and manipulation
-- **react-to-print**: Browser print functionality for receipts and permits
-- **embla-carousel-react**: Carousel component
-- **cmdk**: Command palette component
-- **recharts**: Charting library (likely used in supervisor dashboard)
+-   `shadcn/ui` + `Radix UI`: Comprehensive UI component library.
+-   `TanStack React Query`: Server state management.
+-   `date-fns`: Date utilities.
+-   `react-to-print`: Printing functionality.
 
 ### Build Tools
-- **Vite**: Frontend bundler with React plugin and Tailwind CSS plugin
-- **esbuild**: Server bundler for production builds
-- **tsx**: TypeScript execution for development server
-- **drizzle-kit**: Database schema management
-
-### Replit-Specific
-- `@replit/vite-plugin-runtime-error-modal`: Error overlay in development
-- `@replit/vite-plugin-cartographer`: Development tooling
-- `@replit/vite-plugin-dev-banner`: Development banner
-- Custom `vite-plugin-meta-images.ts`: Updates OpenGraph meta tags for Replit deployments
+-   `Vite`: Frontend bundler.
+-   `esbuild`: Server bundler.
+-   `tsx`: TypeScript execution for development.
+-   `drizzle-kit`: Database schema management (for the unused local database).

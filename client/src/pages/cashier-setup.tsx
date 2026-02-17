@@ -92,7 +92,7 @@ export default function CashierSetup() {
                     setStep1Status('success');
 
                     if (data.isActive === true && data.officeId) {
-                        console.log(`[CashierSetup] is-cashier-active API confirms session is active at office ${data.officeName} (ID: ${data.officeId})`);
+                        console.log(`[CashierSetup] validate-cashier API confirms session is active (POS_Cashier.IsActive=1) at office ${data.officeName} (ID: ${data.officeId})`);
                         setResumingSession(true);
                         setStep2Status('success');
                         setStep3Status('pending');
@@ -342,7 +342,7 @@ export default function CashierSetup() {
         startSession(officeId, cashFloat, officeName);
         setStep3Status('success');
         setSetupComplete(true);
-        console.log(`[CashierSetup] Cashier resumed active session (verified via is-cashier-active API) — office: ${officeName} (ID: ${officeId}), float: ${cashFloat}`);
+        console.log(`[CashierSetup] Cashier resumed active session (verified via validate-cashier API — POS_Cashier.IsActive=1) — office: ${officeName} (ID: ${officeId}), float: ${cashFloat}`);
     };
 
     if (sessionLoading || (step1Status === 'loading' && step2Status === 'pending')) {
@@ -398,7 +398,7 @@ export default function CashierSetup() {
                                 <p className="text-sm text-green-700 mt-1">
                                     User <strong>{`${firstName} ${lastName}`.trim() || currentUser.name}</strong> (User ID: {userId}) is registered as a cashier.
                                     {resumingSession
-                                        ? ' An active session was found (verified via is-cashier-active API). You can resume it or start a new one below.'
+                                        ? ' An active session was found (verified via validate-cashier API — POS_Cashier.IsActive=1). You can resume it or start a new one below.'
                                         : ' Select your cash office and float amount below.'}
                                 </p>
                             </div>
@@ -413,7 +413,7 @@ export default function CashierSetup() {
                                 </div>
                                 <div className="flex-1">
                                     <p className="font-medium text-blue-800">Active Session Found</p>
-                                    <p className="text-xs text-blue-600 mt-0.5">Verified via is-cashier-active API (POS_Cashier.IsActive = 1)</p>
+                                    <p className="text-xs text-blue-600 mt-0.5">Verified via validate-cashier API (POS_Cashier.IsActive = 1)</p>
                                     <p className="text-sm text-blue-700 mt-1">
                                         Office: <strong>{cashierDetails.const_CashOffice?.cashOfficeDesc || 'Unknown'}</strong>
                                         {' | '}Float: <strong>R {(cashierDetails.cashFloat ?? 0).toFixed(2)}</strong>
