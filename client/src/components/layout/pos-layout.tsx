@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { 
   LayoutDashboard, 
   LogOut, 
@@ -99,8 +99,13 @@ export function PosLayout({ children }: PosLayoutProps) {
       );
   }
 
+  useEffect(() => {
+      if (!activeSession && !sessionLoading && location === '/pos') {
+          setLocation('/cashier-setup');
+      }
+  }, [activeSession, sessionLoading, location, setLocation]);
+
   if (!activeSession && location === '/pos') {
-      setLocation('/cashier-setup');
       return null;
   }
 
