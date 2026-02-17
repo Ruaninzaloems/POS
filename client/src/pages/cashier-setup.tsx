@@ -58,6 +58,7 @@ export default function CashierSetup() {
 
     const [setupComplete, setSetupComplete] = useState(false);
     const [resumingSession, setResumingSession] = useState(false);
+    const [defaultOfficeId, setDefaultOfficeId] = useState<string>('');
 
     useEffect(() => {
         if (setupComplete && activeSession && sessionDetails) {
@@ -101,7 +102,8 @@ export default function CashierSetup() {
                     const currentOfficeId = data.officeId || data.details?.officeId;
                     if (currentOfficeId) {
                         setSelectedOfficeId(String(currentOfficeId));
-                        console.log(`[CashierSetup] Pre-selected office ID ${currentOfficeId} from Platinum record`);
+                        setDefaultOfficeId(String(currentOfficeId));
+                        console.log(`[CashierSetup] Pre-selected default office ID ${currentOfficeId} from Platinum record`);
                     }
 
                     if (data.cashFloat != null) {
@@ -145,6 +147,9 @@ export default function CashierSetup() {
         runSetupFlow();
     }, [activeSession, sessionLoading, sessionDetails, userId, finYear]);
 
+    const isDefaultOffice = defaultOfficeId !== '' && selectedOfficeId === defaultOfficeId;
+    const isNonDefaultOffice = defaultOfficeId !== '' && selectedOfficeId !== defaultOfficeId;
+
     useEffect(() => {
         if (!isCashierRegistered || !cashierId || !selectedOfficeId || !userId) return;
 
@@ -152,6 +157,9 @@ export default function CashierSetup() {
             setConfigLoading(true);
             setConfigError('');
             const officeId = Number(selectedOfficeId);
+            const usingDefaultOffice = defaultOfficeId === '' || selectedOfficeId === defaultOfficeId;
+
+            console.log(`[CashierSetup] Loading config — officeId=${officeId}, defaultOfficeId=${defaultOfficeId}, isDefault=${usingDefaultOffice}`);
 
             try {
                 const [optionsResult, typesResult, rangeResult] = await Promise.all([
@@ -160,13 +168,26 @@ export default function CashierSetup() {
                     validateReceiptRange(userId, cashierId, finYear || undefined, officeId)
                 ]);
 
-                setPaymentOptions(optionsResult.data || []);
-                setPaymentOptionsSource(optionsResult.source || '');
-                setPaymentTypes(typesResult.data || []);
-                setPaymentTypesSource(typesResult.source || '');
+                let finalOptions = optionsResult.data || [];
+                let finalTypes = typesResult.data || [];
+                let optionsSource = optionsResult.source || '';
+                let typesSource = typesResult.source || '';
+
+                if (!usingDefaultOffice) {
+                    optionsSource = `office-${officeId}`;
+                    typesSource = `office-${officeId}`;
+                    console.log(`[CashierSetup] Non-default office selected (${officeId} vs default ${defaultOfficeId}) — using office-level payment config`);
+                } else {
+                    console.log(`[CashierSetup] Default office selected — using user's POS receipting options`);
+                }
+
+                setPaymentOptions(finalOptions);
+                setPaymentOptionsSource(optionsSource);
+                setPaymentTypes(finalTypes);
+                setPaymentTypesSource(typesSource);
                 setReceiptRangeStatus(rangeResult);
 
-                if (optionsResult.data?.length === 0 && typesResult.data?.length === 0) {
+                if (finalOptions.length === 0 && finalTypes.length === 0) {
                     setConfigError('Could not load payment configuration from the billing system.');
                 }
             } catch (e: any) {
@@ -178,7 +199,7 @@ export default function CashierSetup() {
         };
 
         loadCashierConfig();
-    }, [isCashierRegistered, cashierId, selectedOfficeId, userId, finYear]);
+    }, [isCashierRegistered, cashierId, selectedOfficeId, userId, finYear, defaultOfficeId]);
 
     const selectedOffice = cashOffices.find(o => String(o.cashOffice_ID) === selectedOfficeId);
     const scoaCode = selectedOffice?.vote || selectedOffice?.vote1 || selectedOffice?.voteDesc || null;
@@ -495,12 +516,17 @@ export default function CashierSetup() {
                                 <SelectContent className="max-h-[300px]">
                                     {cashOffices.map(office => (
                                         <SelectItem key={office.cashOffice_ID} value={String(office.cashOffice_ID)} data-testid={`office-option-${office.cashOffice_ID}`}>
-                                            {office.cashOfficeDesc || `Office ${office.cashOffice_ID}`}
+                                            {office.cashOfficeDesc || `Office ${office.cashOffice_ID}`}{defaultOfficeId && String(office.cashOffice_ID) === defaultOfficeId ? ' (Default)' : ''}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
+                        {isNonDefaultOffice && (
+                            <div className="ml-0 sm:ml-[216px] text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1 -mt-1" data-testid="non-default-office-note">
+                                Non-default office — payment functions loaded from office configuration
+                            </div>
+                        )}
 
                         <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] items-start sm:items-center gap-1 sm:gap-4">
                             <Label className="text-left sm:text-right text-slate-600 text-sm">Ledger Vote</Label>
@@ -540,15 +566,16 @@ export default function CashierSetup() {
                                                     setReceiptRangeStatus(null);
                                                     const officeId = Number(selectedOfficeId);
                                                     setConfigLoading(true);
+                                                    const usingDefault = defaultOfficeId === '' || selectedOfficeId === defaultOfficeId;
                                                     Promise.all([
                                                         fetchCashierPaymentOptions(cashierId!, userId, officeId),
                                                         fetchCashierPaymentTypes(cashierId!, userId, officeId),
                                                         validateReceiptRange(userId, cashierId!, finYear || undefined, officeId)
                                                     ]).then(([optR, typR, rangeR]) => {
                                                         setPaymentOptions(optR.data || []);
-                                                        setPaymentOptionsSource(optR.source || '');
+                                                        setPaymentOptionsSource(usingDefault ? (optR.source || '') : `office-${officeId}`);
                                                         setPaymentTypes(typR.data || []);
-                                                        setPaymentTypesSource(typR.source || '');
+                                                        setPaymentTypesSource(usingDefault ? (typR.source || '') : `office-${officeId}`);
                                                         setReceiptRangeStatus(rangeR);
                                                     }).catch(() => {
                                                         setConfigError('Retry failed. Please check your connection.');
@@ -582,7 +609,7 @@ export default function CashierSetup() {
                                                 </div>
                                             </div>
                                             {paymentOptionsSource && !configLoading && (
-                                                <Badge variant="outline" className="text-[9px] px-1 py-0 text-blue-400 border-blue-200" data-testid="options-source">{paymentOptionsSource === 'platinum' ? 'API' : paymentOptionsSource}</Badge>
+                                                <Badge variant="outline" className="text-[9px] px-1 py-0 text-blue-400 border-blue-200" data-testid="options-source">{paymentOptionsSource.startsWith('office-') ? 'Office' : paymentOptionsSource === 'platinum' ? 'API' : paymentOptionsSource}</Badge>
                                             )}
                                         </div>
                                         {configLoading ? (
@@ -620,7 +647,7 @@ export default function CashierSetup() {
                                                 </div>
                                             </div>
                                             {paymentTypesSource && !configLoading && (
-                                                <Badge variant="outline" className="text-[9px] px-1 py-0 text-violet-400 border-violet-200" data-testid="types-source">{paymentTypesSource === 'platinum' ? 'API' : paymentTypesSource}</Badge>
+                                                <Badge variant="outline" className="text-[9px] px-1 py-0 text-violet-400 border-violet-200" data-testid="types-source">{paymentTypesSource.startsWith('office-') ? 'Office' : paymentTypesSource === 'platinum' ? 'API' : paymentTypesSource}</Badge>
                                             )}
                                         </div>
                                         {configLoading ? (
