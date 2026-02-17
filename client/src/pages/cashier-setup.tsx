@@ -237,23 +237,30 @@ export default function CashierSetup() {
             const apiMessage = responseData?.message || '';
             console.log(`[CashierSetup] Platinum submit message: "${apiMessage}"`);
 
-            console.log(`[CashierSetup] Step 3 VERIFY: Calling active-cashier-by-userid to confirm session is active for userId=${userId}`);
-            const verifyRes = await fetch(`/api/platinum/auth/active-cashier-by-userid?userid=${userId}`);
+            console.log(`[CashierSetup] Step 3 VERIFY: Calling validate-cashier to confirm session is active for userId=${userId}`);
+            const verifyRes = await fetch(`/api/platinum/receipt-prepaid/validate-cashier?userId=${userId}&finYear=${encodeURIComponent(finYear)}`);
             const verifyData = await verifyRes.json().catch(() => null);
-            console.log(`[CashierSetup] Step 3 VERIFY response:`, JSON.stringify(verifyData));
+            console.log(`[CashierSetup] Step 3 VERIFY (validate-cashier) response:`, JSON.stringify(verifyData));
 
-            if (!verifyData || verifyData.isActive !== true) {
+            const submitCashier = responseData?.cashier;
+            const submitIsActive = submitCashier?.isActive === true;
+            const submitId = submitCashier?.id || 0;
+
+            const validateCashierId = verifyData?.cashierId || verifyData?.cashierReconcile_Id || 0;
+            const verifyConfirmed = validateCashierId > 0 || (submitIsActive && apiMessage === 'Cashier Setup Added' && submitId > 0);
+
+            if (!verifyConfirmed) {
                 const reason = apiMessage || 'Platinum did not activate the session.';
-                console.error(`[CashierSetup] VERIFY FAILED — Platinum says session is NOT active. Submit message: "${reason}"`);
+                console.error(`[CashierSetup] VERIFY FAILED — submit isActive=${submitIsActive}, submitId=${submitId}, validateCashierId=${validateCashierId}, message="${reason}"`);
                 throw new Error(`Session not activated by Platinum: ${reason}. Please check your setup and try again.`);
             }
 
-            const verifiedOfficeId = verifyData.officeId;
-            const verifiedOfficeName = verifyData.officeName || verifyData.details?.const_CashOffice?.cashOfficeDesc || selectedOffice.cashOfficeDesc || '';
-            const verifiedFloat = verifyData.cashFloat ?? verifyData.details?.cashFloat ?? float;
-            const verifiedCashierId = verifyData.cashierId || verifyData.details?.id || 0;
+            const verifiedCashierId = validateCashierId || submitId;
+            const verifiedFloat = submitCashier?.cashFloat ?? float;
+            const verifiedOfficeId = submitCashier?.officeId || selectedOffice.cashOffice_ID;
+            const verifiedOfficeName = selectedOffice.cashOfficeDesc || '';
 
-            console.log(`[CashierSetup] VERIFY PASSED — Platinum confirms active session. CashierId: ${verifiedCashierId}, Office: ${verifiedOfficeName} (ID: ${verifiedOfficeId}), Float: ${verifiedFloat}`);
+            console.log(`[CashierSetup] VERIFY PASSED — CashierId: ${verifiedCashierId}, Office: ${verifiedOfficeName} (ID: ${verifiedOfficeId}), Float: ${verifiedFloat}, validate-cashier returned cashierId: ${validateCashierId}, submit returned id: ${submitId}`);
 
             const officeId = String(verifiedOfficeId || selectedOffice.cashOffice_ID);
             const officeName = verifiedOfficeName;
