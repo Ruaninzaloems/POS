@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect, useRef,
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange } from './external-api';
 
 if (import.meta.hot) {
   import.meta.hot.accept(() => {
@@ -1293,9 +1293,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 paymentOptionId: number,
                 label: string,
                 paymentAmountOverride?: number,
-                skipPrint: boolean = false,
             ) => {
                 const accountsToSubmit = saveAccounts;
+                const allReceiptIds: number[] = [];
 
                 const perAccountPayments: { acct: any; localItem: any; itemPayment: number; acctOutstanding: number }[] = [];
                 for (let i = 0; i < accountsToSubmit.length; i++) {
@@ -1309,6 +1309,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         : userEnteredAmount;
                     const acctOutstanding = acct.outStandingAmt ?? localItem?.originalData?.outStandingAmt ?? localItem?.originalData?.outstandingAmount ?? 0;
                     console.log(`[Priority 1 SUBMIT] Account ${acct.account_ID}: userEnteredAmount=R${userEnteredAmount}, itemPayment=R${itemPayment}, fullOutstanding=R${acctOutstanding}, paymentAmountOverride=${paymentAmountOverride}`);
+                    if (itemPayment !== userEnteredAmount && paymentAmountOverride === undefined) {
+                        console.warn(`[Priority 1 SUBMIT WARNING] itemPayment (R${itemPayment}) differs from userEnteredAmount (R${userEnteredAmount}) — this should not happen for non-split payments!`);
+                    }
                     perAccountPayments.push({ acct, localItem, itemPayment, acctOutstanding });
                 }
 
@@ -1321,75 +1324,55 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     }
                 }
 
-                const totalPaymentAmount = perAccountPayments.reduce((s, p) => s + p.itemPayment, 0);
-                const isCardPayment = paymentTypeId === 3;
+                for (let i = 0; i < perAccountPayments.length; i++) {
+                    const { acct, itemPayment, acctOutstanding } = perAccountPayments[i];
 
-                const multiAccounts = perAccountPayments.map(({ acct, itemPayment }) => {
-                    const orig = acct;
-                    return {
-                        capturerID: sessionUserId,
-                        accountID: Number(orig.account_ID),
-                        oldAccountCode: orig.oldAccountCode || '',
-                        name: orig.name || '',
-                        sgNumber: orig.erfNumber || '',
-                        address: orig.deliveryAddress || '',
-                        outstandingAmount: itemPayment,
-                        accountStatus: orig.statusDesc || 'Active',
-                        accountType: orig.accountDesc || orig.typeOfUseDesc || '',
-                        paymentAmount: itemPayment,
-                        accountNumber: orig.accountNumber || '',
-                        receiptID: null,
+                    const isCardPayment = paymentTypeId === 3;
+                    const requestModel = {
+                        finYear,
+                        receiptDate,
+                        totalAmount: itemPayment,
+                        tenderAmount: i === 0 ? tenderAmt : itemPayment,
+                        changeAmount: i === 0 ? changeAmt : 0,
+                        paymentType: paymentTypeId,
+                        paymentOption: paymentOptionId,
+                        outStandingAmount: itemPayment,
+                        cardNumber: isCardPayment ? (record.payment.cardReference || '') : '',
+                        expiryDate: '',
+                        chequeNumber: '',
+                        chequeDate: null,
+                        processingMonth: null,
+                        accountHolderName: acct.name || '',
+                        bankName: '',
+                        bankBranchCode: '',
+                        cutOffID: acct.cutOffID ?? 0,
+                        debtArrangementId: acct.debtArrangementId ?? 0,
                     };
-                });
 
-                const firstAcct = perAccountPayments[0]?.acct || {};
-                const requestModel = {
-                    finYear,
-                    receiptDate,
-                    totalAmount: totalPaymentAmount,
-                    tenderAmount: tenderAmt,
-                    changeAmount: changeAmt,
-                    paymentType: paymentTypeId,
-                    paymentOption: paymentOptionId,
-                    outStandingAmount: totalPaymentAmount,
-                    cardNumber: isCardPayment ? (record.payment.cardReference || '') : '',
-                    expiryDate: '',
-                    chequeNumber: '',
-                    chequeDate: null,
-                    processingMonth: null,
-                    accountHolderName: firstAcct.name || '',
-                    bankName: '',
-                    bankBranchCode: '',
-                    cutOffID: firstAcct.cutOffID ?? 0,
-                    debtArrangementId: firstAcct.debtArrangementId ?? 0,
-                };
+                    console.log(`[Priority 1 ${label}] Submitting consumer payment for account ${acct.account_ID} (${acct.name}), PAYMENT amount: R${itemPayment}, full outstanding: R${acctOutstanding}, requestModel.totalAmount: R${requestModel.totalAmount}, requestModel.outStandingAmount: R${requestModel.outStandingAmount}, paymentType: ${paymentTypeId}, cardNumber: "${requestModel.cardNumber}"`);
 
-                console.log(`[Priority 1 ${label}] Submitting via submit-multiple-payment — ${multiAccounts.length} account(s), totalAmount: R${totalPaymentAmount}, tender: R${tenderAmt}, change: R${changeAmt}, paymentType: ${paymentTypeId}, paymentOption: ${paymentOptionId}`);
-                for (const ma of multiAccounts) {
-                    console.log(`[Priority 1 ${label}]   Account ${ma.accountID} (${ma.name}): paymentAmount=R${ma.paymentAmount}, outstanding=R${ma.outstandingAmount}`);
+                    const { _userAmountToPay: _, ...submitAccount } = acct;
+                    submitAccount.outStandingAmt = itemPayment;
+                    console.log(`[Priority 1 ${label}] submitAccount.outStandingAmt set to payment amount: R${submitAccount.outStandingAmt} (matches staged amount, requestModel.totalAmount: R${itemPayment})`);
+                    const result = await submitConsumerPayment(sessionUserId, {
+                        account: submitAccount,
+                        requestModel,
+                    });
+                    console.log(`[Priority 1 ${label}] submit-consumer-payment response for account ${acct.account_ID}:`, result);
+                    if (result && result.isSuccess === false) {
+                        throw new Error(result.message || `Payment failed for account ${acct.account_ID}`);
+                    }
+                    const ids = extractReceiptIds(result);
+                    allReceiptIds.push(...ids);
                 }
 
-                const result = await submitMultiplePayment(sessionUserId, {
-                    accounts: multiAccounts,
-                    requestModel,
-                });
-                console.log(`[Priority 1 ${label}] submit-multiple-payment response:`, JSON.stringify(result).substring(0, 2000));
-
-                if (result && result.isSuccess === false) {
-                    throw new Error(result.message || `Payment submission failed`);
-                }
-
-                const allReceiptIds = extractReceiptIds(result);
-
-                if (allReceiptIds.length > 0 && !skipPrint) {
+                if (allReceiptIds.length > 0) {
                     try {
                         await platinumPrintReceipt(allReceiptIds);
                         console.log(`[Priority 1 ${label}] print-receipt called for IDs: ${allReceiptIds.join(', ')}`);
                     } catch (e) {
                         console.warn(`[Priority 1 ${label}] print-receipt failed (non-critical)`, e);
                     }
-                } else if (skipPrint) {
-                    console.log(`[Priority 1 ${label}] Skipping individual print — will consolidate with split receipts`);
                 }
 
                 return { isSuccess: true, ids: allReceiptIds, perAccountAmounts: perAccountPayments.map(p => ({ accountId: String(p.acct.account_ID), accountName: p.acct.name || '', amount: p.itemPayment })) };
@@ -1424,16 +1407,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     return result;
                 };
 
-                const allSplitReceiptIds: number[] = [];
-
                 try {
                     const cashStagingPayload = buildPortionStagingPayload(accCashActual);
                     console.log(`[Priority 1 SPLIT CASH] Staging ${cashStagingPayload.length} accounts with cash portions`, cashStagingPayload.map(a => `${a.account_ID}: R${a.outStandingAmt}`));
                     await platinumSaveMultipleAccountPayment(cashStagingPayload, { userId: String(sessionUserId) });
-                    const cashResult = await submitConsumerPayments(accCashActual, accCashTender, accCashChange, 1, 1, 'CASH', accCashActual, true);
-                    console.log(`[Priority 1 SPLIT CASH] Submitted cash payment via submit-multiple-payment`, cashResult);
+                    const cashResult = await submitConsumerPayments(accCashActual, accCashTender, accCashChange, 1, 1, 'CASH', accCashActual);
+                    console.log(`[Priority 1 SPLIT CASH] Submitted cash payment`, cashResult);
                     const cashReceiptIds = extractReceiptIds(cashResult);
-                    allSplitReceiptIds.push(...cashReceiptIds);
                     await processAccReceiptResult(cashReceiptIds, 'CASH', 'cash', accCashActual, cashResult.perAccountAmounts);
                 } catch (e: any) {
                     console.warn(`[Priority 1 SPLIT CASH] Failed to submit cash payment`, e);
@@ -1445,23 +1425,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         const cardStagingPayload = buildPortionStagingPayload(accCardActual);
                         console.log(`[Priority 1 SPLIT CARD] Staging ${cardStagingPayload.length} accounts with card portions`, cardStagingPayload.map(a => `${a.account_ID}: R${a.outStandingAmt}`));
                         await platinumSaveMultipleAccountPayment(cardStagingPayload, { userId: String(sessionUserId) });
-                        const cardResult = await submitConsumerPayments(accCardActual, accCardActual, 0, 3, 1, 'CARD', accCardActual, true);
-                        console.log(`[Priority 1 SPLIT CARD] Submitted card payment via submit-multiple-payment`, cardResult);
+                        const cardResult = await submitConsumerPayments(accCardActual, accCardActual, 0, 3, 1, 'CARD', accCardActual);
+                        console.log(`[Priority 1 SPLIT CARD] Submitted card payment`, cardResult);
                         const cardReceiptIds = extractReceiptIds(cardResult);
-                        allSplitReceiptIds.push(...cardReceiptIds);
                         await processAccReceiptResult(cardReceiptIds, 'CARD', 'card', accCardActual, cardResult.perAccountAmounts);
                     } catch (e: any) {
                         console.warn(`[Priority 1 SPLIT CARD] Failed to submit card payment`, e);
                         toast({ title: "Card Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
-                    }
-                }
-
-                if (allSplitReceiptIds.length > 0) {
-                    try {
-                        await platinumPrintReceipt(allSplitReceiptIds);
-                        console.log(`[Priority 1 SPLIT] Consolidated print-receipt for all split IDs: ${allSplitReceiptIds.join(', ')} (${allSplitReceiptIds.length} receipt(s) — cash+card combined)`);
-                    } catch (e) {
-                        console.warn(`[Priority 1 SPLIT] Consolidated print-receipt failed (non-critical)`, e);
                     }
                 }
             } else {
