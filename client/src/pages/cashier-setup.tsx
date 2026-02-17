@@ -224,39 +224,39 @@ export default function CashierSetup() {
         setStep3Status('loading');
 
         try {
-            const now = new Date().toISOString();
+            const nowSAST = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().replace('Z', '');
             const prevOffice = cashierDetails?.const_CashOffice || {};
 
             const payload = {
                 id: cashierDetails?.id || 0,
                 cashFloat: float,
-                stsPort: cashierDetails?.stsPort ?? 0,
-                plesseyPort: cashierDetails?.plesseyPort ?? 0,
+                stsPort: cashierDetails?.stsPort ?? null,
+                plesseyPort: cashierDetails?.plesseyPort ?? null,
                 officeId: selectedOffice.cashOffice_ID,
                 isActive: true,
-                dateCaptured: cashierDetails?.dateCaptured || now,
-                capturerId: cashierDetails?.capturerId ?? 0,
-                dateModified: now,
-                modifiredId: cashierDetails?.modifiredId ?? 0,
+                dateCaptured: cashierDetails?.dateCaptured || nowSAST,
+                capturerId: cashierDetails?.capturerId ?? userId,
+                dateModified: null,
+                modifiredId: null,
                 user_Id: userId,
-                sourceReferenceID: cashierDetails?.sourceReferenceID || "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                offlineReconciled: cashierDetails?.offlineReconciled ?? 0,
-                offlineRelations: cashierDetails?.offlineRelations || "",
-                isVirtual: false,
+                sourceReferenceID: cashierDetails?.sourceReferenceID ?? null,
+                offlineReconciled: cashierDetails?.offlineReconciled ?? null,
+                offlineRelations: cashierDetails?.offlineRelations ?? null,
+                isVirtual: cashierDetails?.isVirtual ?? null,
                 const_CashOffice: {
                     cashOffice_ID: selectedOffice.cashOffice_ID,
                     cashOfficeDesc: selectedOffice.cashOfficeDesc || '',
-                    enabled: true,
-                    dateCaptured: prevOffice.dateCaptured || now,
+                    enabled: prevOffice.enabled ?? true,
+                    dateCaptured: prevOffice.dateCaptured || nowSAST,
                     capturerID: prevOffice.capturerID ?? 0,
-                    dateModified: prevOffice.dateModified || now,
-                    modifierID: prevOffice.modifierID ?? 0,
+                    dateModified: prevOffice.dateModified ?? null,
+                    modifierID: prevOffice.modifierID ?? null,
                     groupCashiers: prevOffice.groupCashiers ?? false,
                     cashOnHandLimit: selectedOffice.cashOnHandLimit ?? prevOffice.cashOnHandLimit ?? 999999,
                     scoaConfigurationID: selectedOffice.scoaConfigurationID ?? prevOffice.scoaConfigurationID ?? 4,
-                    classificationID: prevOffice.classificationID ?? 0,
+                    classificationID: prevOffice.classificationID ?? null,
                     allowDelayedDayEndRecon: prevOffice.allowDelayedDayEndRecon ?? true,
-                    delayDaysSincePreviousDayEndRecon: prevOffice.delayDaysSincePreviousDayEndRecon ?? 2,
+                    delayDaysSincePreviousDayEndRecon: prevOffice.delayDaysSincePreviousDayEndRecon ?? 1,
                     cashOfficeScoaItemID: selectedOffice.vote_ID || selectedOffice.cashOfficeScoaItemID || prevOffice.cashOfficeScoaItemID || null,
                 },
             };
