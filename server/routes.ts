@@ -246,28 +246,16 @@ export async function registerRoutes(
       }
 
       let isSessionActive = false;
-      const finYear = req.query.finYear as string || req.query.finyear as string || '2025/2026';
-      try {
-        const validateResult = await platinumGet("/api/ReceiptPrepaid/validate-cashier", { userId, finYear });
-        if (validateResult && !validateResult._error && validateResult.status !== 404) {
-          const vcId = validateResult.cashierId || validateResult.cashierReconcile_Id || 0;
-          if (vcId > 0) {
-            isSessionActive = true;
-            console.log(`[active-cashier] validate-cashier CONFIRMED active session — cashierId: ${vcId}`);
-          } else {
-            console.log(`[active-cashier] validate-cashier returned but no valid cashierId — session NOT active`);
-          }
-        } else {
-          console.log(`[active-cashier] validate-cashier says NO active session:`, JSON.stringify(validateResult)?.substring(0, 200));
-        }
-      } catch (e) {
-        console.log(`[active-cashier] validate-cashier failed, session NOT active:`, (e as any)?.message);
-      }
 
-      if (isSessionActive && cashierDetails) {
-        const cashOffice = cashierDetails?.const_CashOffice || null;
-        activeOfficeId = cashOffice?.cashOffice_ID || cashierDetails?.officeId || null;
-        activeOfficeName = cashOffice?.cashOfficeDesc || null;
+      if (cashierDetails) {
+        isSessionActive = cashierDetails.isActive === true;
+        console.log(`[active-cashier] ActiveCashierDetails.isActive = ${cashierDetails.isActive} (POS_Cashier table)`);
+
+        if (isSessionActive) {
+          const cashOffice = cashierDetails?.const_CashOffice || null;
+          activeOfficeId = cashOffice?.cashOffice_ID || cashierDetails?.officeId || null;
+          activeOfficeName = cashOffice?.cashOfficeDesc || null;
+        }
       }
 
       const hasOffice = !!activeOfficeId;

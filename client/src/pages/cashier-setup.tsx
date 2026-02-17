@@ -275,33 +275,26 @@ export default function CashierSetup() {
                 throw new Error(`Platinum API rejected the setup: "${apiMessage}". Full response: ${JSON.stringify(responseData)}`);
             }
 
-            console.log(`[CashierSetup] Step 3 VERIFY: Calling validate-cashier to confirm session is active for userId=${userId}`);
-            const verifyRes = await fetch(`/api/platinum/receipt-prepaid/validate-cashier?userId=${userId}&finYear=${encodeURIComponent(finYear)}`);
-            const verifyData = await verifyRes.json().catch(() => null);
-            console.log(`[CashierSetup] Step 3 VERIFY (validate-cashier) response:`, JSON.stringify(verifyData));
-
             const submitCashier = responseData?.cashier;
             const submitId = submitCashier?.id || 0;
+            const submitIsActive = submitCashier?.isActive === true;
 
-            const validateCashierId = verifyData?.cashierId || verifyData?.cashierReconcile_Id || 0;
-
-            if (validateCashierId <= 0) {
-                console.error(`[CashierSetup] VERIFY FAILED — validate-cashier did NOT confirm active session in POS_Cashier table.`);
-                console.error(`[CashierSetup] validate-cashier response: ${JSON.stringify(verifyData)}`);
-                console.error(`[CashierSetup] submit-cashier-setup response: ${JSON.stringify(responseData)}`);
+            if (!submitCashier || submitId <= 0 || !submitIsActive) {
+                console.error(`[CashierSetup] POST response missing valid cashier record. id=${submitId}, isActive=${submitIsActive}`);
+                console.error(`[CashierSetup] Full response: ${JSON.stringify(responseData)}`);
                 throw new Error(
-                    `Session NOT activated. The Platinum API POST returned "${apiMessage}" but the database does NOT show IsActive=1 for this user. ` +
-                    `validate-cashier returned: ${JSON.stringify(verifyData)}. ` +
-                    `Please contact your Platinum administrator — the submit-cashier-setup endpoint is not persisting to the POS_Cashier table.`
+                    `Platinum POST failed: submit-cashier-setup returned id=${submitId}, isActive=${submitIsActive}. ` +
+                    `Expected a cashier record with id > 0 and isActive=true. ` +
+                    `Full response: ${JSON.stringify(responseData)}`
                 );
             }
 
-            const verifiedCashierId = validateCashierId;
-            const verifiedFloat = submitCashier?.cashFloat ?? float;
-            const verifiedOfficeId = submitCashier?.officeId || selectedOffice.cashOffice_ID;
+            const verifiedCashierId = submitId;
+            const verifiedFloat = submitCashier.cashFloat ?? float;
+            const verifiedOfficeId = submitCashier.officeId || selectedOffice.cashOffice_ID;
             const verifiedOfficeName = selectedOffice.cashOfficeDesc || '';
 
-            console.log(`[CashierSetup] VERIFY PASSED — validate-cashier confirmed IsActive=1. CashierId: ${verifiedCashierId}, Office: ${verifiedOfficeName} (ID: ${verifiedOfficeId}), Float: ${verifiedFloat}`);
+            console.log(`[CashierSetup] POST SUCCESS — Cashier record created. id: ${verifiedCashierId}, isActive: true, Office: ${verifiedOfficeName} (ID: ${verifiedOfficeId}), Float: ${verifiedFloat}`);
 
             const officeId = String(verifiedOfficeId || selectedOffice.cashOffice_ID);
             const officeName = verifiedOfficeName;

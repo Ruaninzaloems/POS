@@ -55,11 +55,10 @@ export function PosLayout({ children }: PosLayoutProps) {
     const finYear = platinumUser.finYear || '2025/2026';
     try {
       setDbCheckLoading(true);
-      const res = await fetch(`/api/platinum/receipt-prepaid/validate-cashier?userId=${userId}&finYear=${encodeURIComponent(finYear)}`);
+      const res = await fetch(`/api/platinum/auth/active-cashier-by-userid?userid=${userId}&finYear=${encodeURIComponent(finYear)}`);
       const data = await res.json().catch(() => null);
-      const cashierId = data?.cashierId || data?.cashierReconcile_Id || 0;
-      const isActive = cashierId > 0;
-      console.log(`[SessionBadge] validate-cashier for userId=${userId}: cashierId=${cashierId}, isActive=${isActive}`);
+      const isActive = data?.isActive === true;
+      console.log(`[SessionBadge] ActiveCashierDetails for userId=${userId}: isActive=${isActive}, cashierId=${data?.cashierId}, officeId=${data?.officeId}`);
       setDbSessionActive(isActive);
       if (!isActive) {
         setDbFlash(true);
