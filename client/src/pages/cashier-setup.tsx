@@ -185,7 +185,7 @@ export default function CashierSetup() {
             const prevOffice = cashierDetails?.const_CashOffice || {};
 
             const payload = {
-                id: cashierId || cashierDetails?.id || 0,
+                id: cashierDetails?.id || 0,
                 cashFloat: float,
                 stsPort: cashierDetails?.stsPort ?? 0,
                 plesseyPort: cashierDetails?.plesseyPort ?? 0,
