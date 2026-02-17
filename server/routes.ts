@@ -204,6 +204,33 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/platinum/auth/is-cashier-active", async (req, res) => {
+    try {
+      const userId = req.query.userId as string;
+      const finYear = req.query.finYear as string;
+
+      if (!userId) {
+        return res.status(400).json({ message: "userId is required" });
+      }
+
+      console.log(`[is-cashier-active] Calling /api/billing/pos/third-party-payments/is-cashier-active — userId=${userId}, finYear=${finYear || ''}`);
+      const params: Record<string, string> = { userId };
+      if (finYear) params.finYear = finYear;
+
+      const data = await platinumGet("/api/billing/pos/third-party-payments/is-cashier-active", params);
+      console.log(`[is-cashier-active] Platinum response:`, JSON.stringify(data).substring(0, 1000));
+
+      if (data && data._error) {
+        return res.status(502).json({ message: "Platinum API error", detail: JSON.stringify(data) });
+      }
+
+      res.json(data);
+    } catch (e: any) {
+      console.error(`[is-cashier-active] Error:`, e.message);
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.get("/api/platinum/auth/active-cashier-by-userid", async (req, res) => {
     try {
       const userId = req.query.userid as string;
@@ -251,18 +278,28 @@ export async function registerRoutes(
         activeOfficeName = cashOffice?.cashOfficeDesc || null;
       }
 
-      console.log(`[active-cashier] ActiveCashierDetails.isActive = ${cashierDetails?.isActive} (NOTE: this field is unreliable — do NOT use for session status)`);
-      console.log(`[active-cashier] Final result — registered: ${isCashierRegistered}, officeId: ${activeOfficeId}, officeName: ${activeOfficeName}`);
+      let isSessionActive = false;
+      const finYear = (req.query.finYear as string) || '2025/2026';
+      try {
+        const isCashierActiveResult = await platinumGet("/api/billing/pos/third-party-payments/is-cashier-active", { userId, finYear });
+        isSessionActive = isCashierActiveResult === true;
+        console.log(`[active-cashier] is-cashier-active API (POS_Cashier.IsActive) = ${isCashierActiveResult}`);
+      } catch (e: any) {
+        console.error(`[active-cashier] is-cashier-active API failed:`, e.message);
+        isSessionActive = false;
+      }
+
+      console.log(`[active-cashier] Final result — registered: ${isCashierRegistered}, isActive: ${isSessionActive}, officeId: ${activeOfficeId}, officeName: ${activeOfficeName}`);
 
       res.json({
-        active: false,
+        active: isSessionActive,
         cashierId: isCashierRegistered ? cashierId : null,
         cashierRegistered: isCashierRegistered,
         cashFloat: cashierDetails?.cashFloat ?? 0,
         officeId: cashierDetails?.officeId || null,
         officeName: activeOfficeName || null,
         cashOnHandLimit: cashierDetails?.const_CashOffice?.cashOnHandLimit || 999999,
-        isActive: false,
+        isActive: isSessionActive,
         details: cashierDetails || null,
       });
     } catch (e: any) {

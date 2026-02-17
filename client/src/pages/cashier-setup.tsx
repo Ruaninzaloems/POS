@@ -57,6 +57,7 @@ export default function CashierSetup() {
     const finYear = platinumUser?.finYear || '';
 
     const [setupComplete, setSetupComplete] = useState(false);
+    const [resumingSession, setResumingSession] = useState(false);
 
     useEffect(() => {
         if (setupComplete && activeSession && sessionDetails) {
@@ -89,6 +90,13 @@ export default function CashierSetup() {
                     setCashierId(data.cashierId);
                     setCashierDetails(data.details || null);
                     setStep1Status('success');
+
+                    if (data.isActive === true && data.officeId) {
+                        console.log(`[CashierSetup] is-cashier-active API confirms session is active at office ${data.officeName} (ID: ${data.officeId})`);
+                        setResumingSession(true);
+                        setStep2Status('success');
+                        setStep3Status('pending');
+                    }
 
                     const currentOfficeId = data.officeId || data.details?.officeId;
                     if (currentOfficeId) {
@@ -324,6 +332,19 @@ export default function CashierSetup() {
         </div>
     );
 
+    const handleResumeSession = () => {
+        if (!cashierDetails || !userId) return;
+        const officeId = String(cashierDetails.officeId || cashierDetails.const_CashOffice?.cashOffice_ID || '');
+        const officeName = cashierDetails.const_CashOffice?.cashOfficeDesc || '';
+        const cashFloat = cashierDetails.cashFloat ?? 0;
+        const fullName = `${firstName} ${lastName}`.trim();
+        switchUser(String(userId), fullName || currentUser.name, officeName);
+        startSession(officeId, cashFloat, officeName);
+        setStep3Status('success');
+        setSetupComplete(true);
+        console.log(`[CashierSetup] Cashier resumed active session (verified via is-cashier-active API) — office: ${officeName} (ID: ${officeId}), float: ${cashFloat}`);
+    };
+
     if (sessionLoading || (step1Status === 'loading' && step2Status === 'pending')) {
         return (
             <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4" data-testid="cashier-setup-loading">
@@ -331,7 +352,7 @@ export default function CashierSetup() {
                     <CardContent className="p-12 flex flex-col items-center gap-4">
                         <Loader2 className="h-8 w-8 animate-spin text-slate-600" />
                         <p className="text-slate-600">
-                            Validating cashier registration...
+                            {sessionLoading ? 'Checking session status...' : 'Validating cashier registration...'}
                         </p>
                     </CardContent>
                 </Card>
@@ -376,12 +397,50 @@ export default function CashierSetup() {
                                 <p className="font-medium text-green-800">Cashier Validated</p>
                                 <p className="text-sm text-green-700 mt-1">
                                     User <strong>{`${firstName} ${lastName}`.trim() || currentUser.name}</strong> (User ID: {userId}) is registered as a cashier.
-                                    {' Select your cash office and float amount below.'}
+                                    {resumingSession
+                                        ? ' An active session was found (verified via is-cashier-active API). You can resume it or start a new one below.'
+                                        : ' Select your cash office and float amount below.'}
                                 </p>
                             </div>
                         </div>
                     )}
 
+                    {resumingSession && cashierDetails && (
+                        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg" data-testid="resume-session-section">
+                            <div className="flex items-start gap-3">
+                                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+                                    <CheckCircle2 className="h-5 w-5 text-blue-600" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="font-medium text-blue-800">Active Session Found</p>
+                                    <p className="text-xs text-blue-600 mt-0.5">Verified via is-cashier-active API (POS_Cashier.IsActive = 1)</p>
+                                    <p className="text-sm text-blue-700 mt-1">
+                                        Office: <strong>{cashierDetails.const_CashOffice?.cashOfficeDesc || 'Unknown'}</strong>
+                                        {' | '}Float: <strong>R {(cashierDetails.cashFloat ?? 0).toFixed(2)}</strong>
+                                    </p>
+                                    <div className="mt-3 flex gap-2">
+                                        <Button
+                                            type="button"
+                                            onClick={handleResumeSession}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                                            data-testid="button-resume-session"
+                                        >
+                                            Resume Session
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => setResumingSession(false)}
+                                            className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                                            data-testid="button-new-session"
+                                        >
+                                            Start New Session
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
                         <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] items-start sm:items-center gap-1 sm:gap-4">

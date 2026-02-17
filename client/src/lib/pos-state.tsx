@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
@@ -337,13 +337,28 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         if (data.cashierRegistered === true) {
           const userName = `${platinumUser.firstName || ''} ${platinumUser.lastName || ''}`.trim();
+          const officeName = data.officeName || data.details?.const_CashOffice?.cashOfficeDesc || '';
 
           setCurrentUser({
             id: String(platinumUser.user_ID),
             name: userName || platinumUser.userName || 'Cashier',
-            cashOffice: ''
+            cashOffice: officeName
           });
-          console.log(`[Session] Cashier registered: ${userName}. Session must be started via cashier setup page.`);
+
+          if (data.isActive === true && data.officeId) {
+            const officeId = String(data.officeId);
+            const cashFloat = data.cashFloat ?? data.details?.cashFloat ?? 0;
+            console.log(`[Session] is-cashier-active API confirms session is active — auto-resuming. Office: ${officeName} (ID: ${officeId}), Float: ${cashFloat}`);
+            setActiveSession(true);
+            setSessionDetails({
+              startTime: Date.now(),
+              officeId,
+              officeDesc: officeName,
+              floatAmount: cashFloat
+            });
+          } else {
+            console.log(`[Session] Cashier registered but is-cashier-active returned false. Must start session via cashier setup page.`);
+          }
         }
       } catch (e) {
         console.warn("Failed to check active Platinum session", e);
@@ -676,6 +691,50 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       console.log(`[startSession] Session started - officeId: ${officeId}, float: ${floatAmount}, office: ${officeName}`);
   };
+
+  const sessionPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const checkSessionViaApi = useCallback(async () => {
+    if (!platinumUser?.user_ID) return;
+    try {
+      const userId = platinumUser.user_ID;
+      const finYear = platinumUser.finYear || '2025/2026';
+      const res = await fetch(`/api/platinum/auth/is-cashier-active?userId=${userId}&finYear=${encodeURIComponent(finYear)}`);
+      if (!res.ok) {
+        console.error(`[SessionEnforcement] is-cashier-active API returned ${res.status} — ending session`);
+        setActiveSession(false);
+        setSessionDetails(undefined);
+        toast({
+          title: "Session Error",
+          description: "Unable to verify your session with the billing system. Your session has been ended.",
+          variant: "destructive"
+        });
+        return;
+      }
+      const result = await res.json();
+      if (result !== true) {
+        console.warn(`[SessionEnforcement] is-cashier-active returned false — session is no longer active in POS_Cashier table. Ending session.`);
+        setActiveSession(false);
+        setSessionDetails(undefined);
+        toast({
+          title: "Session Ended",
+          description: "Your cashier session is no longer active in the billing system. Please set up a new session.",
+          variant: "destructive"
+        });
+      }
+    } catch (e) {
+      console.error(`[SessionEnforcement] Failed to check is-cashier-active:`, e);
+    }
+  }, [platinumUser?.user_ID, platinumUser?.finYear, toast]);
+
+  useEffect(() => {
+    if (activeSession && platinumUser?.user_ID) {
+      sessionPollRef.current = setInterval(checkSessionViaApi, 30000);
+    }
+    return () => {
+      if (sessionPollRef.current) clearInterval(sessionPollRef.current);
+    };
+  }, [activeSession, platinumUser?.user_ID, checkSessionViaApi]);
 
   const endSession = async () => {
       if (dayEndStatus !== 'RECONCILED') {

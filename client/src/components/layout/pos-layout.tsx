@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { 
   LayoutDashboard, 
   LogOut, 
@@ -44,6 +44,45 @@ export function PosLayout({ children }: PosLayoutProps) {
   const [location, setLocation] = useLocation();
   const { currentUser, activeSession, sessionLoading, endSession, viewMode, toggleViewMode, sessionDetails, dayEndStatus, platinumUser, cashierRegistered } = usePos();
 
+  const [apiSessionActive, setApiSessionActive] = useState<boolean | null>(null);
+  const [apiCheckLoading, setApiCheckLoading] = useState(false);
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const checkApiSessionStatus = useCallback(async () => {
+    if (!platinumUser?.user_ID) return;
+    const userId = platinumUser.user_ID;
+    const finYear = platinumUser.finYear || '2025/2026';
+    try {
+      setApiCheckLoading(true);
+      const res = await fetch(`/api/platinum/auth/is-cashier-active?userId=${userId}&finYear=${encodeURIComponent(finYear)}`);
+      if (!res.ok) {
+        console.warn(`[SessionBadge] is-cashier-active API returned ${res.status}`);
+        setApiSessionActive(false);
+        return;
+      }
+      const result = await res.json();
+      const isActive = result === true;
+      console.log(`[SessionBadge] is-cashier-active API for userId=${userId}: ${isActive}`);
+      setApiSessionActive(isActive);
+    } catch (err) {
+      console.warn('[SessionBadge] Failed to check session via is-cashier-active API:', err);
+      setApiSessionActive(false);
+    } finally {
+      setApiCheckLoading(false);
+    }
+  }, [platinumUser?.user_ID, platinumUser?.finYear]);
+
+  useEffect(() => {
+    if (activeSession && platinumUser?.user_ID) {
+      checkApiSessionStatus();
+      pollTimerRef.current = setInterval(checkApiSessionStatus, 30000);
+    } else {
+      setApiSessionActive(null);
+    }
+    return () => {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    };
+  }, [activeSession, platinumUser?.user_ID, checkApiSessionStatus]);
 
   const isPosPage = location === '/pos';
   const isReceiptingPage = isPosPage || location.startsWith('/view-receipts');
@@ -224,15 +263,24 @@ export function PosLayout({ children }: PosLayoutProps) {
                     <span className="font-medium">{currentUser.name}</span>
                     <span className="text-xs text-muted-foreground">{sessionDetails?.officeDesc || currentUser.cashOffice}</span>
                   </div>
-                  {activeSession && (
-                    <span
-                      className="hidden md:flex items-center gap-1.5 ml-1 px-2.5 py-1 text-[10px] font-semibold rounded-full border whitespace-nowrap bg-green-100 text-green-700 border-green-300"
-                      data-testid="badge-session-status"
-                    >
-                      <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
-                      SESSION ACTIVE
-                    </span>
-                  )}
+                  <button
+                    onClick={checkApiSessionStatus}
+                    disabled={apiCheckLoading}
+                    title={apiSessionActive === true ? 'Session active (is-cashier-active API — POS_Cashier.IsActive=1)' : apiSessionActive === false ? 'Session NOT active (is-cashier-active API — POS_Cashier.IsActive=0)' : 'Checking session status...'}
+                    className={`hidden md:flex items-center gap-1.5 ml-1 px-2.5 py-1 text-[10px] font-semibold rounded-full border whitespace-nowrap cursor-pointer transition-all duration-300 ${
+                      apiSessionActive === null
+                        ? 'bg-slate-100 text-slate-500 border-slate-200'
+                        : apiSessionActive === true
+                          ? 'bg-green-100 text-green-700 border-green-300 hover:bg-green-200'
+                          : 'border-red-300 text-red-700 hover:bg-red-200 bg-red-100 animate-pulse'
+                    }`}
+                    data-testid="badge-session-status"
+                  >
+                    <span className={`inline-block w-2 h-2 rounded-full ${
+                      apiSessionActive === null ? 'bg-slate-400' : apiSessionActive ? 'bg-green-500' : 'bg-red-500'
+                    }`} />
+                    {apiCheckLoading ? 'CHECKING...' : apiSessionActive === true ? 'SESSION ACTIVE' : apiSessionActive === false ? 'SESSION INACTIVE' : 'CHECKING...'}
+                  </button>
                </div>
 
                <div className="h-6 w-px bg-border hidden sm:block" />
