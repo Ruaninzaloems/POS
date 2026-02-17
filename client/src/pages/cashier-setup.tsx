@@ -329,8 +329,7 @@ export default function CashierSetup() {
                             <div>
                                 <p className="font-medium text-green-800">Cashier Validated</p>
                                 <p className="text-sm text-green-700 mt-1">
-                                    User <strong>{`${firstName} ${lastName}`.trim() || currentUser.name}</strong> is registered.
-                                    {cashierId ? ` Cashier ID: ${cashierId}` : ''}
+                                    User <strong>{`${firstName} ${lastName}`.trim() || currentUser.name}</strong> (User ID: {userId}) is registered as a cashier.
                                     {' '}Select your cash office and float amount below.
                                 </p>
                             </div>
