@@ -228,36 +228,43 @@ export default function CashierSetup() {
             });
 
             const responseData = await res.json().catch(() => null);
-            console.log(`[CashierSetup] Step 3 response:`, JSON.stringify(responseData));
+            console.log(`[CashierSetup] Step 3 submit response:`, JSON.stringify(responseData));
 
             if (!res.ok) {
                 throw new Error(responseData?.detail || responseData?.message || `HTTP ${res.status}`);
             }
 
-            const cashier = responseData?.cashier;
-            const cashierSetupId = cashier?.id || 0;
-            const isActive = cashier?.isActive === true;
             const apiMessage = responseData?.message || '';
-            console.log(`[CashierSetup] Platinum API response: "${apiMessage}", cashier ID: ${cashierSetupId}, isActive: ${isActive}`);
+            console.log(`[CashierSetup] Platinum submit message: "${apiMessage}"`);
 
-            if (cashierSetupId === 0 && !isActive) {
-                throw new Error(apiMessage || 'Platinum did not create a valid cashier session. Please contact your administrator.');
+            console.log(`[CashierSetup] Step 3 VERIFY: Calling active-cashier-by-userid to confirm session is active`);
+            const verifyRes = await fetch('/api/platinum/auth/active-cashier-by-userid');
+            const verifyData = await verifyRes.json().catch(() => null);
+            console.log(`[CashierSetup] Step 3 VERIFY response:`, JSON.stringify(verifyData));
+
+            if (!verifyData || verifyData.isActive !== true) {
+                const reason = apiMessage || 'Platinum did not activate the session.';
+                console.error(`[CashierSetup] VERIFY FAILED — Platinum says session is NOT active. Submit message: "${reason}"`);
+                throw new Error(`Session not activated by Platinum: ${reason}. Please check your setup and try again.`);
             }
 
-            if (apiMessage && apiMessage !== '' && cashierSetupId === 0) {
-                console.warn(`[CashierSetup] Warning from Platinum: "${apiMessage}" — proceeding with session (isActive=${isActive})`);
-            }
+            const verifiedOfficeId = verifyData.officeId;
+            const verifiedOfficeName = verifyData.officeName || verifyData.details?.const_CashOffice?.cashOfficeDesc || selectedOffice.cashOfficeDesc || '';
+            const verifiedFloat = verifyData.cashFloat ?? verifyData.details?.cashFloat ?? float;
+            const verifiedCashierId = verifyData.cashierId || verifyData.details?.id || 0;
 
-            const officeId = String(selectedOffice.cashOffice_ID);
-            const officeName = selectedOffice.cashOfficeDesc || '';
+            console.log(`[CashierSetup] VERIFY PASSED — Platinum confirms active session. CashierId: ${verifiedCashierId}, Office: ${verifiedOfficeName} (ID: ${verifiedOfficeId}), Float: ${verifiedFloat}`);
+
+            const officeId = String(verifiedOfficeId || selectedOffice.cashOffice_ID);
+            const officeName = verifiedOfficeName;
             const fullName = `${firstName} ${lastName}`.trim();
 
             switchUser(String(userId), fullName || currentUser.name, officeName);
-            startSession(officeId, float, officeName);
+            startSession(officeId, verifiedFloat, officeName);
 
             setStep3Status('success');
             setSetupComplete(true);
-            console.log(`[CashierSetup] Session started via Platinum API — cashier record ID: ${cashierSetupId}`);
+            console.log(`[CashierSetup] Session started — verified active by Platinum. Cashier record ID: ${verifiedCashierId}`);
         } catch (err: any) {
             console.error('[CashierSetup] Step 3 failed:', err);
             setError(`Failed to start session: ${err?.message || 'Unknown error'}. Please try again.`);
