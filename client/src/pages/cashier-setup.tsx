@@ -185,7 +185,7 @@ export default function CashierSetup() {
             const prevOffice = cashierDetails?.const_CashOffice || {};
 
             const payload = {
-                id: cashierDetails?.id ?? 0,
+                id: cashierId || cashierDetails?.id || 0,
                 cashFloat: float,
                 stsPort: cashierDetails?.stsPort ?? 0,
                 plesseyPort: cashierDetails?.plesseyPort ?? 0,
@@ -237,7 +237,16 @@ export default function CashierSetup() {
             const cashier = responseData?.cashier;
             const cashierSetupId = cashier?.id || 0;
             const isActive = cashier?.isActive === true;
-            console.log(`[CashierSetup] Platinum API response: "${responseData?.message}", cashier ID: ${cashierSetupId}, isActive: ${isActive}`);
+            const apiMessage = responseData?.message || '';
+            console.log(`[CashierSetup] Platinum API response: "${apiMessage}", cashier ID: ${cashierSetupId}, isActive: ${isActive}`);
+
+            if (cashierSetupId === 0 && !isActive) {
+                throw new Error(apiMessage || 'Platinum did not create a valid cashier session. Please contact your administrator.');
+            }
+
+            if (apiMessage && apiMessage !== '' && cashierSetupId === 0) {
+                console.warn(`[CashierSetup] Warning from Platinum: "${apiMessage}" — proceeding with session (isActive=${isActive})`);
+            }
 
             const officeId = String(selectedOffice.cashOffice_ID);
             const officeName = selectedOffice.cashOfficeDesc || '';

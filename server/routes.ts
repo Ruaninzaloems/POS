@@ -520,9 +520,8 @@ export async function registerRoutes(
         });
       }
 
-      body.userDetail = userDetail;
-
       console.log(`[submit-cashier-setup] Submitting for user ${userDetail.firstName} ${userDetail.lastName} (ID: ${userId}), office: ${body.officeId}`);
+      console.log(`[submit-cashier-setup] Payload:`, JSON.stringify(body));
       const data = await platinumPost("/api/ReceiptPrepaid/submit-cashier-setup", body);
       console.log(`[submit-cashier-setup] Response:`, JSON.stringify(data));
 
