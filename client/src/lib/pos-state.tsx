@@ -156,6 +156,7 @@ interface PosState {
   };
   platinumUser: PlatinumUserInfo | null;
   cashierRegistered: boolean | null;
+  apiSessionActive: boolean | null;
 }
 
 interface PosActions {
@@ -218,6 +219,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [sessionDetails, setSessionDetails] = useState<{startTime: number; officeId: string; officeDesc?: string; floatAmount: number} | undefined>(undefined);
   const [platinumCashierId, setPlatinumCashierId] = useState<number | null>(null);
   const [cashierRegistered, setCashierRegistered] = useState<boolean | null>(null);
+  const [apiSessionActive, setApiSessionActive] = useState<boolean | null>(null);
   
   const [officeLimits, setOfficeLimits] = useState<Record<string, number>>({});
   const [allowedPaymentOptions, setAllowedPaymentOptions] = useState<CashierPaymentOption[]>([]);
@@ -350,6 +352,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const cashFloat = data.cashFloat ?? data.details?.cashFloat ?? 0;
             console.log(`[Session] validate-cashier API confirms session is active (POS_Cashier.IsActive=1) — auto-resuming. Office: ${officeName} (ID: ${officeId}), Float: ${cashFloat}`);
             setActiveSession(true);
+            setApiSessionActive(true);
             setSessionDetails({
               startTime: Date.now(),
               officeId,
@@ -358,6 +361,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             });
           } else {
             console.log(`[Session] Cashier registered but validate-cashier returned isActive=false. Must start session via cashier setup page.`);
+            setApiSessionActive(false);
           }
         }
       } catch (e) {
@@ -713,6 +717,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       const result = await res.json();
       const isActive = result?.cashier?.isActive === true;
+      setApiSessionActive(isActive);
       if (!isActive) {
         console.warn(`[SessionEnforcement] validate-cashier returned isActive=${result?.cashier?.isActive} — session is no longer active (POS_Cashier.IsActive != 1). Ending session.`);
         setActiveSession(false);
@@ -1001,12 +1006,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     try {
-        const sessionCheck = await fetch(`/api/platinum/auth/active-cashier-by-userid?userid=${sessionUserId}`);
+        const finYear = platinumUser?.finYear || '2025/2026';
+        const sessionCheck = await fetch(`/api/platinum/receipt-prepaid/validate-cashier?userId=${sessionUserId}&finYear=${encodeURIComponent(finYear)}`);
         if (sessionCheck.ok) {
-            const sessionData = await sessionCheck.json();
-            console.log(`[Payment] Active session validated — isActive: ${sessionData.isActive}, cashierId: ${sessionData.cashierId}, officeId: ${sessionData.officeId}`);
-            if (!sessionData.isActive) {
-                console.error(`[Payment] Session is NOT active for userId ${sessionUserId}. Payment may fail.`);
+            const sessionResult = await sessionCheck.json();
+            const isStillActive = sessionResult?.cashier?.isActive === true;
+            console.log(`[Payment] validate-cashier pre-payment check — isActive: ${isStillActive} (POS_Cashier.IsActive=${sessionResult?.cashier?.isActive})`);
+            if (!isStillActive) {
+                console.error(`[Payment] Session is NOT active (POS_Cashier.IsActive != 1) for userId ${sessionUserId}. BLOCKING payment.`);
+                setActiveSession(false);
+                setSessionDetails(undefined);
                 toast({
                     title: "Session Expired",
                     description: "Your cashier session is no longer active. Please restart your session from the setup screen.",
@@ -1018,10 +1027,26 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 return;
             }
         } else {
-            console.warn(`[Payment] Could not verify active session (status ${sessionCheck.status}), proceeding with payment`);
+            console.error(`[Payment] validate-cashier returned ${sessionCheck.status} — BLOCKING payment (cannot verify session)`);
+            toast({
+                title: "Session Verification Failed",
+                description: "Unable to verify your session with the billing system. Please try again.",
+                variant: "destructive",
+            });
+            setTransactionProcessing(false);
+            setIsReceiptModalOpen(false);
+            return;
         }
     } catch (e: any) {
-        console.warn(`[Payment] Failed to verify active session:`, e?.message || e);
+        console.error(`[Payment] Failed to call validate-cashier before payment:`, e?.message || e);
+        toast({
+            title: "Session Verification Failed",
+            description: "Unable to verify your session. Please check your connection and try again.",
+            variant: "destructive",
+        });
+        setTransactionProcessing(false);
+        setIsReceiptModalOpen(false);
+        return;
     }
 
     const extractReceiptIds = (result: any): number[] => {
@@ -1859,7 +1884,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updateSystemSettings,
       referenceData,
       platinumUser,
-      cashierRegistered
+      cashierRegistered,
+      apiSessionActive
     }}>
       {children}
     </PosContext.Provider>
