@@ -306,70 +306,82 @@ export async function registerRoutes(
         finYear: finYear || "2025/2026"
       });
 
-      if (!validateResult || validateResult._error) {
-        console.warn(`[validate-receipt-range] validate-cashier failed:`, JSON.stringify(validateResult).substring(0, 500));
-        return res.json({
-          valid: false,
-          reason: "Unable to validate cashier with Platinum API",
-          details: validateResult
-        });
+      let isActive = false;
+      let cashierDetailsId = 0;
+      let officeId: any = null;
+      let officeName: any = null;
+
+      if (validateResult && !validateResult._error) {
+        isActive = validateResult.isActive === true || validateResult.active === true;
+        cashierDetailsId = validateResult.details?.id || 0;
+        officeId = validateResult.details?.officeId || validateResult.officeId || null;
+        officeName = validateResult.details?.const_CashOffice?.cashOfficeDesc || validateResult.officeName || null;
+        console.log(`[validate-receipt-range] validate-cashier OK — isActive=${isActive}, detailsId=${cashierDetailsId}, officeId=${officeId}, officeName=${officeName}`);
+      } else {
+        console.warn(`[validate-receipt-range] validate-cashier failed (may be no reconciliation yet):`, JSON.stringify(validateResult).substring(0, 300));
+        console.log(`[validate-receipt-range] Falling back to ActiveCashierDetails...`);
       }
 
-      const isActive = validateResult.isActive === true || validateResult.active === true;
-      const cashierDetailsId = validateResult.details?.id || 0;
-      const officeId = validateResult.details?.officeId || validateResult.officeId || null;
-      const officeName = validateResult.details?.const_CashOffice?.cashOfficeDesc || validateResult.officeName || null;
+      let activeCashierDetails: any = null;
+      try {
+        activeCashierDetails = await platinumGet("/api/ReceiptPrepaid/ActiveCashierDetails", { userId });
+        if (activeCashierDetails && !activeCashierDetails._error) {
+          console.log(`[validate-receipt-range] ActiveCashierDetails:`, JSON.stringify(activeCashierDetails).substring(0, 500));
+          if (!isActive && activeCashierDetails.isActive === true) {
+            isActive = true;
+          }
+          if (!cashierDetailsId || cashierDetailsId === 0) {
+            cashierDetailsId = activeCashierDetails.id || 0;
+          }
+          if (!officeId) {
+            officeId = activeCashierDetails.officeId || null;
+          }
+          if (!officeName) {
+            officeName = activeCashierDetails.const_CashOffice?.cashOfficeDesc || null;
+          }
+        } else {
+          console.warn(`[validate-receipt-range] ActiveCashierDetails also failed:`, JSON.stringify(activeCashierDetails).substring(0, 300));
+        }
+      } catch (e) {
+        console.warn(`[validate-receipt-range] Failed to get ActiveCashierDetails`);
+      }
 
-      console.log(`[validate-receipt-range] Cashier status — isActive=${isActive}, detailsId=${cashierDetailsId}, officeId=${officeId}, officeName=${officeName}`);
+      const activeDetailsId = activeCashierDetails?.id || cashierDetailsId;
+      const activeOfficeId = activeCashierDetails?.officeId || officeId;
+      const activeOfficeName = activeCashierDetails?.const_CashOffice?.cashOfficeDesc || officeName;
 
       if (!isActive) {
         return res.json({
           valid: false,
           reason: "Cashier session is not active. Please complete cashier setup first.",
           isActive: false,
-          cashierDetailsId,
-          officeId,
-          officeName
+          cashierDetailsId: activeDetailsId,
+          officeId: activeOfficeId,
+          officeName: activeOfficeName
         });
       }
 
-      if (!cashierDetailsId || cashierDetailsId === 0) {
+      if (!activeDetailsId || activeDetailsId === 0) {
         return res.json({
           valid: false,
           reason: "No active POS cashier record found. Receipts cannot be allocated without a valid setup.",
           isActive,
-          cashierDetailsId,
-          officeId,
-          officeName
+          cashierDetailsId: activeDetailsId,
+          officeId: activeOfficeId,
+          officeName: activeOfficeName
         });
       }
 
-      if (!officeId) {
+      if (!activeOfficeId) {
         return res.json({
           valid: false,
           reason: "No cash office assigned. Please select a cash office during setup.",
           isActive,
-          cashierDetailsId,
-          officeId,
-          officeName
+          cashierDetailsId: activeDetailsId,
+          officeId: activeOfficeId,
+          officeName: activeOfficeName
         });
       }
-
-      let activeCashierDetails: any = null;
-      if (cashierId) {
-        try {
-          activeCashierDetails = await platinumGet("/api/ReceiptPrepaid/ActiveCashierDetails", { userId });
-          if (activeCashierDetails && !activeCashierDetails._error) {
-            console.log(`[validate-receipt-range] ActiveCashierDetails:`, JSON.stringify(activeCashierDetails).substring(0, 500));
-          }
-        } catch (e) {
-          console.warn(`[validate-receipt-range] Failed to get ActiveCashierDetails, continuing with validate-cashier data`);
-        }
-      }
-
-      const activeDetailsId = activeCashierDetails?.id || cashierDetailsId;
-      const activeOfficeId = activeCashierDetails?.officeId || officeId;
-      const activeOfficeName = activeCashierDetails?.const_CashOffice?.cashOfficeDesc || officeName;
 
       if (activeDetailsId > 0 && activeCashierDetails?.isActive === false) {
         return res.json({
@@ -953,18 +965,26 @@ export async function registerRoutes(
         let options: any[] = [];
         if (Array.isArray(data)) {
           options = data;
+        } else if (data.paymentOptions && Array.isArray(data.paymentOptions)) {
+          options = data.paymentOptions;
         } else if (data.data && Array.isArray(data.data)) {
           options = data.data;
+        } else if (data.data?.paymentOptions && Array.isArray(data.data.paymentOptions)) {
+          options = data.data.paymentOptions;
         } else if (data.value && Array.isArray(data.value)) {
           options = data.value;
         }
 
-        const normalized = options.map((opt: any) => ({
-          posPaymentOption_ID: opt.posPaymentOption_ID ?? opt.posPaymentOptionID ?? opt.id ?? opt.Id ?? 0,
-          posPaymentOptionDesc: opt.posPaymentOptionDesc ?? opt.description ?? opt.Description ?? '',
-          isTicked: opt.isTicked ?? opt.IsTicked ?? opt.isEnabled ?? true,
-          enabled: opt.enabled ?? opt.Enabled ?? opt.isEnabled ?? true,
-        }));
+        const normalized = options.map((opt: any) => {
+          const tickedFlag = opt.tickedFlag ?? opt.isTicked ?? opt.IsTicked;
+          const isTicked = tickedFlag === true || tickedFlag === "True" || tickedFlag === "true";
+          return {
+            posPaymentOption_ID: opt.posPaymentOption_ID ?? opt.posPaymentOptionId ?? opt.posPaymentOptionID ?? opt.id ?? opt.Id ?? 0,
+            posPaymentOptionDesc: opt.posPaymentOptionDesc ?? opt.description ?? opt.Description ?? '',
+            isTicked,
+            enabled: opt.enabled ?? opt.Enabled ?? isTicked ?? true,
+          };
+        });
 
         console.log(`[cashier-payment-options] Returning ${normalized.length} options from Platinum API`);
         return res.json({ source: "platinum", data: normalized });
