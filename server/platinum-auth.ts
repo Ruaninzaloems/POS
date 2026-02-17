@@ -100,18 +100,18 @@ async function fetchNewToken(): Promise<{ token: string; userData: any; authMode
   }
 
   const overrideUser = {
-    user_ID: 4697, 
-    userName: "Francois",
+    user_ID: 213, 
+    userName: "Francois Naude",
     firstName: "Francois",
-    lastName: "Francois",
-    eMail: null,
+    lastName: "Naude",
+    eMail: "FrancoisN@Solvem.co.za",
     enabled: true,
-    superUser: true,
+    superUser: false,
     cashFloat: 0,
-    finYear: apiUserData.finYear || data.finYear || "2026/2027"
+    finYear: apiUserData.finYear || data.finYear || "2025/2026"
   };
 
-  console.log(`[PlatinumAuth] Token obtained. API returned generic user (ID:${apiUserId}) — overriding with Francois Francois (user_ID: 4697)`);
+  console.log(`[PlatinumAuth] Token obtained. API returned generic user (ID:${apiUserId}) — overriding with Francois Naude (user_ID: 213)`);
   console.log(`[PlatinumAuth] NOTE: The JWT token identity is 'System Administration' (ID:1). Platinum enquiries will attribute actions to this token user, not to the userId parameter.`);
   console.log(`[PlatinumAuth] To fix this, the Platinum admin must configure the Azure SSO mapping to resolve '${PLATINUM_USERNAME}' to the correct user.`);
 

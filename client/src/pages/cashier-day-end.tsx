@@ -206,7 +206,7 @@ export default function CashierDayEnd() {
         }
         setIsSaving(true);
         try {
-            const userId = currentUser?.id ? Number(currentUser.id) : 4697;
+            const userId = currentUser?.id ? Number(currentUser.id) : 213;
             const payload = {
                 cashierId: Number(selectedCashierId),
                 reason: reason || null,
