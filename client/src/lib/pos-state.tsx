@@ -1065,6 +1065,28 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return [];
     };
 
+    const serviceBalanceMap = new Map<string, ServiceBalance[]>();
+    for (const item of accountItems) {
+        const acct = item.originalData as any;
+        const acctId = acct?.apiId || acct?.account_ID || acct?.accountID || acct?.accountId || '';
+        if (acctId && acct?.agingBreakdown && Array.isArray(acct.agingBreakdown) && acct.agingBreakdown.length > 0) {
+            const balances: ServiceBalance[] = acct.agingBreakdown
+                .filter((row: any) => Math.abs(row.totalOutstanding || 0) >= 0.01)
+                .map((row: any) => ({
+                    serviceDescription: row.totalOutstanding < 0 && row.serviceDescription === 'Balance B/F' ? 'Advance Payment' : (row.serviceDescription || 'Unknown'),
+                    amount: row.totalOutstanding || 0,
+                    vat: 0,
+                    totalAmount: row.totalOutstanding || 0,
+                    currentCharge: row.newCharge || 0,
+                    openingBalance: 0,
+                }));
+            if (balances.length > 0) {
+                serviceBalanceMap.set(String(acctId), balances);
+                console.log(`[Priority 1] Pre-payment service balances for ${acctId}:`, balances.map(b => `${b.serviceDescription}: ${b.totalAmount}`));
+            }
+        }
+    }
+
     const processAccReceiptResult = async (receiptIds: number[], paymentLabel: string, paymentType: 'cash' | 'card', paymentAmount: number, perAccountAmounts?: { accountId: string; accountName: string; amount: number }[]) => {
         if (receiptIds.length === 0) {
             console.warn(`[Priority 1 ${paymentLabel}] No receipt IDs returned — receipt print skipped`);
@@ -1089,28 +1111,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
             const matched = perAccountAmounts?.[rIdx];
             if (matched?.accountId) uniqueAccountIds.add(matched.accountId);
-        }
-
-        const serviceBalanceMap = new Map<string, ServiceBalance[]>();
-        for (const item of accountItems) {
-            const acct = item.originalData as any;
-            const acctId = acct?.apiId || acct?.account_ID || acct?.accountID || acct?.accountId || '';
-            if (acctId && acct?.agingBreakdown && Array.isArray(acct.agingBreakdown) && acct.agingBreakdown.length > 0) {
-                const balances: ServiceBalance[] = acct.agingBreakdown
-                    .filter((row: any) => Math.abs(row.totalOutstanding || 0) >= 0.01)
-                    .map((row: any) => ({
-                        serviceDescription: row.totalOutstanding < 0 && row.serviceDescription === 'Balance B/F' ? 'Advance Payment' : (row.serviceDescription || 'Unknown'),
-                        amount: row.totalOutstanding || 0,
-                        vat: 0,
-                        totalAmount: row.totalOutstanding || 0,
-                        currentCharge: row.newCharge || 0,
-                        openingBalance: 0,
-                    }));
-                if (balances.length > 0) {
-                    serviceBalanceMap.set(String(acctId), balances);
-                    console.log(`[Priority 1 ${paymentLabel}] Service balances from agingBreakdown for ${acctId}:`, balances.map(b => `${b.serviceDescription}: ${b.totalAmount}`));
-                }
-            }
         }
 
         for (let rIdx = 0; rIdx < receiptIds.length; rIdx++) {
@@ -1487,6 +1487,58 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     }
                 } catch (e) {
                     console.warn(`[Priority 1] Failed to fetch updated outstanding for account ${accountId}`, e);
+                }
+
+                const prePaymentBalances = serviceBalanceMap.get(String(accountId));
+                if (prePaymentBalances && prePaymentBalances.length > 0) {
+                    try {
+                        const balanceRes = await fetch(`/api/platinum/billing-enquiry/total-balance-debt?accountId=${accountId}`);
+                        if (balanceRes.ok) {
+                            const balanceData = await balanceRes.json();
+                            let rows: any[] = [];
+                            if (Array.isArray(balanceData)) rows = balanceData;
+                            else if (balanceData?.results && Array.isArray(balanceData.results)) rows = balanceData.results;
+                            else if (balanceData && typeof balanceData === 'object') rows = [balanceData];
+
+                            if (rows.length > 0) {
+                                const postPaymentMap = new Map<string, number>();
+                                for (const row of rows) {
+                                    const desc = row.serviceDescription || row.description || 'Unknown';
+                                    postPaymentMap.set(desc, row.totalOutStanding || row.totalOutstanding || 0);
+                                }
+
+                                const allocations: ReceiptAllocation[] = [];
+                                for (const pre of prePaymentBalances) {
+                                    const postAmount = postPaymentMap.get(pre.serviceDescription) ?? pre.totalAmount;
+                                    const allocated = Math.round((pre.totalAmount - postAmount) * 100) / 100;
+                                    if (Math.abs(allocated) >= 0.01) {
+                                        allocations.push({
+                                            service: pre.serviceDescription,
+                                            amount: allocated,
+                                            vat: 0,
+                                            total: allocated,
+                                        });
+                                    }
+                                }
+
+                                if (allocations.length > 0) {
+                                    console.log(`[Priority 1] Payment allocations for account ${accountId}:`, allocations.map(a => `${a.service}: R${a.amount}`));
+                                    if (!record.allocations) record.allocations = [];
+                                    record.allocations.push(...allocations);
+                                    for (const sr of (record.splitReceipts || [])) {
+                                        if (String(sr.accountId) === String(accountId) || String(sr.receiptDetail?.accountId) === String(accountId)) {
+                                            sr.allocations = allocations;
+                                            sr.serviceBalances = undefined;
+                                        }
+                                    }
+                                } else {
+                                    console.log(`[Priority 1] No measurable allocations detected for account ${accountId} (payment may not have changed individual service balances)`);
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.warn(`[Priority 1] Failed to compute payment allocations for account ${accountId}`, e);
+                    }
                 }
             }
         }

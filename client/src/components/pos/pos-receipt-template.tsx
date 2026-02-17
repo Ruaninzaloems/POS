@@ -41,11 +41,17 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
     effectiveRd?.lineItems || splitReceipts.flatMap((sr: any) => sr.receiptDetail?.lineItems || []);
   const hasLineItems = apiLineItems.length > 0;
 
+  const paymentAllocations: { service: string; amount: number }[] =
+    splitReceipts[0]?.allocations || transaction.allocations || [];
+  const hasPaymentAllocations = paymentAllocations.length > 0;
+
   const serviceBalances: { serviceDescription: string; amount: number }[] =
-    splitReceipts[0]?.serviceBalances || transaction.items?.[0]?.originalData?.agingBreakdown?.filter((b: any) => Math.abs(b.totalOutstanding || 0) >= 0.01).map((b: any) => ({
-      serviceDescription: b.serviceDescription || 'Unknown',
-      amount: b.totalOutstanding || 0,
-    })) || [];
+    !hasPaymentAllocations ? (
+      splitReceipts[0]?.serviceBalances || transaction.items?.[0]?.originalData?.agingBreakdown?.filter((b: any) => Math.abs(b.totalOutstanding || 0) >= 0.01).map((b: any) => ({
+        serviceDescription: b.serviceDescription || 'Unknown',
+        amount: b.totalOutstanding || 0,
+      })) || []
+    ) : [];
   const hasServiceBalances = serviceBalances.length > 0;
 
   const formatDate = (ts: number) => {
@@ -202,7 +208,19 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
         )}
       </div>
 
-      {hasServiceBalances && (
+      {hasPaymentAllocations && (
+          <div className="border-t border-gray-300 pt-2 mb-2">
+              <div className="font-bold text-[10px] mb-1">Payment Allocation:</div>
+              {paymentAllocations.map((alloc: any, idx: number) => (
+                  <div key={idx} className="flex justify-between mb-0.5">
+                      <span className="break-words w-[65%]">{alloc.service}</span>
+                      <span className="text-right">{Number(alloc.amount).toFixed(2)}</span>
+                  </div>
+              ))}
+          </div>
+      )}
+
+      {hasServiceBalances && !hasPaymentAllocations && (
           <div className="border-t border-gray-300 pt-2 mb-2">
               <div className="font-bold text-[10px] mb-1">Service Balances:</div>
               {serviceBalances.map((sb: any, idx: number) => (
