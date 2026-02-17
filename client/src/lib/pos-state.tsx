@@ -1132,22 +1132,26 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const isSingleAccount = accountItems.length === 1;
 
         if (saveAccounts.length > 0) {
-            try {
-                await platinumSaveMultipleAccountPayment(stagingPayload, { userId: String(sessionUserId) });
-                console.log(`[Priority 1] Saved ${stagingPayload.length} account(s) for payment (userId: ${sessionUserId})`);
-            } catch (e) {
-                console.warn(`[Priority 1] Failed to save multiple account payment`, e);
-            }
-
-            let serverAccounts: any[] | null = null;
-            try {
-                const serverData = await platinumGetMultipleAccountPayment({ userId: String(sessionUserId) });
-                if (Array.isArray(serverData) && serverData.length > 0) {
-                    serverAccounts = serverData;
-                    console.log(`[Priority 1] Fetched ${serverAccounts.length} server-enriched account(s)`);
+            if (!isSplitPayment) {
+                try {
+                    await platinumSaveMultipleAccountPayment(stagingPayload, { userId: String(sessionUserId) });
+                    console.log(`[Priority 1] Saved ${stagingPayload.length} account(s) for payment (userId: ${sessionUserId})`);
+                } catch (e) {
+                    console.warn(`[Priority 1] Failed to save multiple account payment`, e);
                 }
-            } catch (e) {
-                console.warn(`[Priority 1] Failed to fetch server accounts, falling back to local data`, e);
+
+                let serverAccounts: any[] | null = null;
+                try {
+                    const serverData = await platinumGetMultipleAccountPayment({ userId: String(sessionUserId) });
+                    if (Array.isArray(serverData) && serverData.length > 0) {
+                        serverAccounts = serverData;
+                        console.log(`[Priority 1] Fetched ${serverAccounts.length} server-enriched account(s)`);
+                    }
+                } catch (e) {
+                    console.warn(`[Priority 1] Failed to fetch server accounts, falling back to local data`, e);
+                }
+            } else {
+                console.log(`[Priority 1] Skipping initial staging for split payment — each portion will stage separately`);
             }
 
             const submitConsumerPayments = async (
@@ -1192,6 +1196,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 for (let i = 0; i < perAccountPayments.length; i++) {
                     const { acct, itemPayment, acctOutstanding } = perAccountPayments[i];
 
+                    const isCardPayment = paymentTypeId === 3;
                     const requestModel = {
                         finYear,
                         receiptDate,
@@ -1201,7 +1206,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         paymentType: paymentTypeId,
                         paymentOption: paymentOptionId,
                         outStandingAmount: itemPayment,
-                        cardNumber: record.payment.cardReference || '',
+                        cardNumber: isCardPayment ? (record.payment.cardReference || '') : '',
                         expiryDate: '',
                         chequeNumber: '',
                         chequeDate: null,
@@ -1213,11 +1218,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         debtArrangementId: acct.debtArrangementId ?? 0,
                     };
 
-                    console.log(`[Priority 1 ${label}] Submitting consumer payment for account ${acct.account_ID} (${acct.name}), PAYMENT amount: R${itemPayment}, full outstanding: R${acctOutstanding}, requestModel.totalAmount: R${requestModel.totalAmount}, requestModel.outStandingAmount: R${requestModel.outStandingAmount}`);
+                    console.log(`[Priority 1 ${label}] Submitting consumer payment for account ${acct.account_ID} (${acct.name}), PAYMENT amount: R${itemPayment}, full outstanding: R${acctOutstanding}, requestModel.totalAmount: R${requestModel.totalAmount}, requestModel.outStandingAmount: R${requestModel.outStandingAmount}, paymentType: ${paymentTypeId}, cardNumber: "${requestModel.cardNumber}"`);
 
                     const { _userAmountToPay: _, ...submitAccount } = acct;
-                    submitAccount.outStandingAmt = itemPayment;
-                    console.log(`[Priority 1 ${label}] submitAccount.outStandingAmt overridden to user payment: R${submitAccount.outStandingAmt} (was full outstanding: R${acctOutstanding})`);
+                    console.log(`[Priority 1 ${label}] submitAccount.outStandingAmt kept at full outstanding: R${submitAccount.outStandingAmt} (payment amount in requestModel: R${itemPayment})`);
                     const result = await submitConsumerPayment(sessionUserId, {
                         account: submitAccount,
                         requestModel,
