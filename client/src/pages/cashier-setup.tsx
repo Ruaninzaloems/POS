@@ -20,6 +20,7 @@ interface CashOfficeViewModel {
     vote: string | null;
     vote_ID: number | null;
     voteDesc: string | null;
+    cashOfficeScoaItemID?: number | null;
 }
 
 type StepStatus = 'pending' | 'loading' | 'success' | 'error';
@@ -207,7 +208,7 @@ export default function CashierSetup() {
                     classificationID: prevOffice.classificationID ?? 0,
                     allowDelayedDayEndRecon: prevOffice.allowDelayedDayEndRecon ?? true,
                     delayDaysSincePreviousDayEndRecon: prevOffice.delayDaysSincePreviousDayEndRecon ?? 2,
-                    cashOfficeScoaItemID: prevOffice.cashOfficeScoaItemID ?? 0,
+                    cashOfficeScoaItemID: selectedOffice.vote_ID || selectedOffice.cashOfficeScoaItemID || prevOffice.cashOfficeScoaItemID || null,
                 },
             };
 
