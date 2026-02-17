@@ -925,13 +925,15 @@ export async function registerRoutes(
       const userId = req.query.userId as string;
       const cashofficeId = req.query.cashofficeId as string;
       const cashierId = req.query.cashierId as string;
+      const officeOnly = req.query.officeOnly as string;
 
       if (!userId || !cashofficeId || !cashierId) {
         return res.status(400).json({ message: "userId, cashofficeId, and cashierId are all required" });
       }
 
-      console.log(`[cashier-payment-options] Calling Platinum billing-payment/payment-options — userId=${userId}, cashofficeId=${cashofficeId}, cashierId=${cashierId}`);
-      const data = await platinumGet("/api/billing-payment/payment-options", { userId, cashofficeId, cashierId });
+      const effectiveCashierId = officeOnly === 'true' ? '0' : cashierId;
+      console.log(`[cashier-payment-options] Calling Platinum billing-payment/payment-options — userId=${userId}, cashofficeId=${cashofficeId}, cashierId=${effectiveCashierId}, officeOnly=${officeOnly}`);
+      const data = await platinumGet("/api/billing-payment/payment-options", { userId, cashofficeId, cashierId: effectiveCashierId });
 
       if (data && !data._error) {
         console.log(`[cashier-payment-options] RAW Platinum response:`, JSON.stringify(data).substring(0, 2000));
@@ -965,13 +967,15 @@ export async function registerRoutes(
         });
 
         const anyEnabled = normalized.some((opt: any) => opt.isTicked);
-        if (!anyEnabled && normalized.length > 0) {
+        if (!anyEnabled && normalized.length > 0 && officeOnly !== 'true') {
           console.warn(`[cashier-payment-options] WARNING: ALL ${normalized.length} payment options returned tickedFlag=False from Platinum API. This is likely a configuration issue. Enabling all options as fallback.`);
           normalized.forEach((opt: any) => { opt.isTicked = true; opt.enabled = true; });
+        } else if (!anyEnabled && normalized.length > 0 && officeOnly === 'true') {
+          console.log(`[cashier-payment-options] Office-level config: all ${normalized.length} options have tickedFlag=False — this is the office's actual configuration, not enabling fallback`);
         }
 
-        console.log(`[cashier-payment-options] Returning ${normalized.length} options from Platinum API (anyEnabled=${anyEnabled})`);
-        return res.json({ source: "platinum", data: normalized });
+        console.log(`[cashier-payment-options] Returning ${normalized.length} options from Platinum API (anyEnabled=${anyEnabled}, officeOnly=${officeOnly})`);
+        return res.json({ source: officeOnly === 'true' ? "office" : "platinum", data: normalized });
       }
 
       console.warn(`[cashier-payment-options] Platinum API returned error or empty, using fallback. Response:`, JSON.stringify(data).substring(0, 500));
@@ -997,13 +1001,15 @@ export async function registerRoutes(
       const userId = req.query.userId as string;
       const cashofficeId = req.query.cashofficeId as string;
       const cashierId = req.query.cashierId as string;
+      const officeOnly = req.query.officeOnly as string;
 
       if (!userId || !cashofficeId || !cashierId) {
         return res.status(400).json({ message: "userId, cashofficeId, and cashierId are all required" });
       }
 
-      console.log(`[cashier-payment-types] Calling Platinum billing-payment/payment-types — userId=${userId}, cashofficeId=${cashofficeId}, cashierId=${cashierId}`);
-      const data = await platinumGet("/api/billing-payment/payment-types", { userId, cashofficeId, cashierId });
+      const effectiveCashierId = officeOnly === 'true' ? '0' : cashierId;
+      console.log(`[cashier-payment-types] Calling Platinum billing-payment/payment-types — userId=${userId}, cashofficeId=${cashofficeId}, cashierId=${effectiveCashierId}, officeOnly=${officeOnly}`);
+      const data = await platinumGet("/api/billing-payment/payment-types", { userId, cashofficeId, cashierId: effectiveCashierId });
 
       if (data && !data._error) {
         console.log(`[cashier-payment-types] RAW Platinum response:`, JSON.stringify(data).substring(0, 1000));
@@ -1033,13 +1039,15 @@ export async function registerRoutes(
         });
 
         const anyEnabled = normalized.some((t: any) => t.isTicked);
-        if (!anyEnabled && normalized.length > 0) {
+        if (!anyEnabled && normalized.length > 0 && officeOnly !== 'true') {
           console.warn(`[cashier-payment-types] WARNING: ALL ${normalized.length} payment types returned tickedFlag=False. Enabling all as fallback.`);
           normalized.forEach((t: any) => { t.isTicked = true; t.enabled = true; });
+        } else if (!anyEnabled && normalized.length > 0 && officeOnly === 'true') {
+          console.log(`[cashier-payment-types] Office-level config: all ${normalized.length} types have tickedFlag=False — this is the office's actual configuration`);
         }
 
-        console.log(`[cashier-payment-types] Returning ${normalized.length} types from Platinum API (anyEnabled=${anyEnabled})`);
-        return res.json({ source: "platinum", data: normalized });
+        console.log(`[cashier-payment-types] Returning ${normalized.length} types from Platinum API (anyEnabled=${anyEnabled}, officeOnly=${officeOnly})`);
+        return res.json({ source: officeOnly === 'true' ? "office" : "platinum", data: normalized });
       }
 
       console.warn(`[cashier-payment-types] Platinum billing-payment/payment-types returned error. Response:`, JSON.stringify(data).substring(0, 500));

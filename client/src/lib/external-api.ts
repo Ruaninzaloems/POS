@@ -152,17 +152,21 @@ export interface CashierPaymentType {
 export async function fetchCashierPaymentOptions(
     cashierId: number,
     userId?: number,
-    cashofficeId?: number
+    cashofficeId?: number,
+    officeOnly?: boolean
 ): Promise<{ source: string; data: CashierPaymentOption[] }> {
     try {
         const params = new URLSearchParams();
         params.append('userId', String(userId || 0));
         params.append('cashofficeId', String(cashofficeId || 0));
         params.append('cashierId', String(cashierId));
+        if (officeOnly) {
+            params.append('officeOnly', 'true');
+        }
         const res = await fetch(`/api/platinum/receipt-prepaid/cashier-payment-options?${params.toString()}`);
         if (res.ok) {
             const result = await res.json();
-            console.log(`[PaymentOptions] Loaded for cashier ${cashierId}, userId=${userId}, officeId=${cashofficeId} (source: ${result.source}):`, result.data?.length, 'options');
+            console.log(`[PaymentOptions] Loaded for cashier ${cashierId}, userId=${userId}, officeId=${cashofficeId}, officeOnly=${officeOnly} (source: ${result.source}):`, result.data?.length, 'options');
             if (result.data) {
                 result.data.forEach((opt: CashierPaymentOption) => {
                     console.log(`[PaymentOptions]   ${opt.posPaymentOption_ID}: ${opt.posPaymentOptionDesc} — isTicked=${opt.isTicked}, enabled=${opt.enabled}`);
@@ -180,17 +184,21 @@ export async function fetchCashierPaymentOptions(
 export async function fetchCashierPaymentTypes(
     cashierId: number,
     userId?: number,
-    cashofficeId?: number
+    cashofficeId?: number,
+    officeOnly?: boolean
 ): Promise<{ source: string; data: CashierPaymentType[] }> {
     try {
         const params = new URLSearchParams();
         params.append('userId', String(userId || 0));
         params.append('cashofficeId', String(cashofficeId || 0));
         params.append('cashierId', String(cashierId));
+        if (officeOnly) {
+            params.append('officeOnly', 'true');
+        }
         const res = await fetch(`/api/platinum/receipt-prepaid/cashier-payment-types?${params.toString()}`);
         if (res.ok) {
             const result = await res.json();
-            console.log(`[PaymentTypes] Loaded for cashier ${cashierId}, userId=${userId}, officeId=${cashofficeId} (source: ${result.source}):`, result.data?.length, 'types');
+            console.log(`[PaymentTypes] Loaded for cashier ${cashierId}, userId=${userId}, officeId=${cashofficeId}, officeOnly=${officeOnly} (source: ${result.source}):`, result.data?.length, 'types');
             if (result.data) {
                 result.data.forEach((t: CashierPaymentType) => {
                     console.log(`[PaymentTypes]   ${t.posPaymentType_ID}: ${t.posPaymentTypeDesc} — isTicked=${t.isTicked}, enabled=${t.enabled}`);
