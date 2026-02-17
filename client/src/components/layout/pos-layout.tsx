@@ -45,6 +45,13 @@ export function PosLayout({ children }: PosLayoutProps) {
   const { currentUser, activeSession, sessionLoading, endSession, viewMode, toggleViewMode, sessionDetails, dayEndStatus, platinumUser, cashierRegistered } = usePos();
 
   const isPosPage = location === '/pos';
+  const isReceiptingPage = isPosPage || location.startsWith('/view-receipts');
+
+  useEffect(() => {
+      if (!activeSession && !sessionLoading && location === '/pos') {
+          setLocation('/cashier-setup');
+      }
+  }, [activeSession, sessionLoading, location, setLocation]);
 
   if (sessionLoading && isPosPage) {
       return (
@@ -56,8 +63,6 @@ export function PosLayout({ children }: PosLayoutProps) {
         </div>
       );
   }
-
-  const isReceiptingPage = isPosPage || location.startsWith('/view-receipts');
 
   if (isReceiptingPage && platinumUser?.authMode === 'override') {
       return (
@@ -98,12 +103,6 @@ export function PosLayout({ children }: PosLayoutProps) {
         </div>
       );
   }
-
-  useEffect(() => {
-      if (!activeSession && !sessionLoading && location === '/pos') {
-          setLocation('/cashier-setup');
-      }
-  }, [activeSession, sessionLoading, location, setLocation]);
 
   if (!activeSession && location === '/pos') {
       return null;
