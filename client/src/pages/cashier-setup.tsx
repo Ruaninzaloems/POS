@@ -218,21 +218,21 @@ export default function CashierSetup() {
             const prevOffice = cashierDetails?.const_CashOffice || {};
 
             const payload = {
-                id: cashierDetails?.id || 0,
+                id: 0,
                 cashFloat: float,
-                stsPort: cashierDetails?.stsPort ?? null,
-                plesseyPort: cashierDetails?.plesseyPort ?? null,
+                stsPort: null,
+                plesseyPort: null,
                 officeId: selectedOffice.cashOffice_ID,
                 isActive: true,
-                dateCaptured: cashierDetails?.dateCaptured || nowSAST,
-                capturerId: cashierDetails?.capturerId ?? userId,
+                dateCaptured: nowSAST,
+                capturerId: userId,
                 dateModified: null,
                 modifiredId: null,
                 user_Id: userId,
-                sourceReferenceID: cashierDetails?.sourceReferenceID ?? null,
-                offlineReconciled: cashierDetails?.offlineReconciled ?? null,
-                offlineRelations: cashierDetails?.offlineRelations ?? null,
-                isVirtual: cashierDetails?.isVirtual ?? null,
+                sourceReferenceID: null,
+                offlineReconciled: null,
+                offlineRelations: null,
+                isVirtual: null,
                 const_CashOffice: {
                     cashOffice_ID: selectedOffice.cashOffice_ID,
                     cashOfficeDesc: selectedOffice.cashOfficeDesc || '',
@@ -281,16 +281,22 @@ export default function CashierSetup() {
             console.log(`[CashierSetup] Step 3 VERIFY (validate-cashier) response:`, JSON.stringify(verifyData));
 
             const submitCashier = responseData?.cashier;
-            const submitIsActive = submitCashier?.isActive === true;
             const submitId = submitCashier?.id || 0;
 
             const validateCashierId = verifyData?.cashierId || verifyData?.cashierReconcile_Id || 0;
-            const verifyConfirmed = validateCashierId > 0 || (submitIsActive && apiMessage === 'Cashier Setup Added' && submitId > 0);
 
-            if (!verifyConfirmed) {
-                const reason = apiMessage || 'Platinum did not activate the session.';
-                console.error(`[CashierSetup] VERIFY FAILED — submit isActive=${submitIsActive}, submitId=${submitId}, validateCashierId=${validateCashierId}, message="${reason}"`);
-                throw new Error(`Session not activated by Platinum: ${reason}. Please check your setup and try again.`);
+            if (validateCashierId <= 0) {
+                console.error(`[CashierSetup] VERIFY FAILED — validate-cashier did NOT confirm active session. validateCashierId=${validateCashierId}, submitId=${submitId}, submit response: ${JSON.stringify(responseData)}`);
+
+                const detailRes = await fetch(`/api/platinum/auth/active-cashier-by-userid?userid=${userId}&finYear=${encodeURIComponent(finYear)}`);
+                const detailData = await detailRes.json().catch(() => null);
+                const dbIsActive = detailData?.isActive === true;
+                console.log(`[CashierSetup] Fallback check — active-cashier-by-userid isActive=${dbIsActive}`);
+
+                if (!dbIsActive) {
+                    throw new Error('Session was NOT activated by Platinum. The cashier setup POST did not create an active session in the database. Please contact your administrator.');
+                }
+                console.log(`[CashierSetup] Fallback: active-cashier-by-userid confirms session IS active`);
             }
 
             const verifiedCashierId = validateCashierId || submitId;
