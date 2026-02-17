@@ -888,8 +888,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             console.warn("[Payment] Failed to fetch active fin year for receipt range validation, using default");
         }
     }
-    console.log(`[Payment] Validating receipt range — userId=${sessionUserId}, cashierId=${platinumCashierId}, finYear=${resolvedFinYear}`);
-    const receiptRangeResult = await validateReceiptRange(sessionUserId, platinumCashierId || undefined, resolvedFinYear);
+    const receiptOfficeId = sessionDetails?.officeId ? Number(sessionDetails.officeId) : undefined;
+    console.log(`[Payment] Validating receipt range — userId=${sessionUserId}, cashierId=${platinumCashierId}, finYear=${resolvedFinYear}, officeId=${receiptOfficeId}`);
+    const receiptRangeResult = await validateReceiptRange(sessionUserId, platinumCashierId || undefined, resolvedFinYear, receiptOfficeId);
     if (!receiptRangeResult.valid) {
         console.warn(`[Payment] Receipt range validation FAILED:`, receiptRangeResult.reason);
         toast({

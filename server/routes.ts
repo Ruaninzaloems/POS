@@ -309,9 +309,15 @@ export async function registerRoutes(
         });
       }
 
+      console.log(`[validate-receipt-range] RAW payment-options response:`, JSON.stringify(paymentOptionsResult).substring(0, 1000));
+
       let options: any[] = [];
       if (Array.isArray(paymentOptionsResult)) {
         options = paymentOptionsResult;
+      } else if (paymentOptionsResult.paymentOptions && Array.isArray(paymentOptionsResult.paymentOptions)) {
+        options = paymentOptionsResult.paymentOptions;
+      } else if (paymentOptionsResult.data?.paymentOptions && Array.isArray(paymentOptionsResult.data.paymentOptions)) {
+        options = paymentOptionsResult.data.paymentOptions;
       } else if (paymentOptionsResult.data && Array.isArray(paymentOptionsResult.data)) {
         options = paymentOptionsResult.data;
       } else if (paymentOptionsResult.value && Array.isArray(paymentOptionsResult.value)) {
