@@ -177,18 +177,65 @@ export async function fetchCashierPaymentOptions(
     return { source: "error-fallback", data: [] };
 }
 
-export async function fetchCashierPaymentTypes(cashierId: number): Promise<{ source: string; data: CashierPaymentType[] }> {
+export async function fetchCashierPaymentTypes(
+    cashierId: number,
+    userId?: number,
+    cashofficeId?: number
+): Promise<{ source: string; data: CashierPaymentType[] }> {
     try {
-        const res = await fetch(`/api/platinum/receipt-prepaid/cashier-payment-types?cashierId=${cashierId}`);
+        const params = new URLSearchParams();
+        params.append('userId', String(userId || 0));
+        params.append('cashofficeId', String(cashofficeId || 0));
+        params.append('cashierId', String(cashierId));
+        const res = await fetch(`/api/platinum/receipt-prepaid/cashier-payment-types?${params.toString()}`);
         if (res.ok) {
             const result = await res.json();
-            console.log(`[PaymentTypes] Loaded for cashier ${cashierId} (source: ${result.source}):`, result.data?.length, 'types');
+            console.log(`[PaymentTypes] Loaded for cashier ${cashierId}, userId=${userId}, officeId=${cashofficeId} (source: ${result.source}):`, result.data?.length, 'types');
+            if (result.data) {
+                result.data.forEach((t: CashierPaymentType) => {
+                    console.log(`[PaymentTypes]   ${t.posPaymentType_ID}: ${t.posPaymentTypeDesc} — isTicked=${t.isTicked}, enabled=${t.enabled}`);
+                });
+            }
             return result;
         }
+        console.warn(`[PaymentTypes] API returned ${res.status} for cashier ${cashierId}`);
     } catch (e) {
         console.warn("Failed to fetch cashier payment types", e);
     }
     return { source: "error-fallback", data: [] };
+}
+
+export interface ReceiptRangeValidation {
+    valid: boolean;
+    reason: string;
+    isActive?: boolean;
+    cashierDetailsId?: number;
+    officeId?: number | null;
+    officeName?: string | null;
+}
+
+export async function validateReceiptRange(
+    userId: number,
+    cashierId?: number,
+    finYear?: string
+): Promise<ReceiptRangeValidation> {
+    try {
+        const params = new URLSearchParams();
+        params.append('userId', String(userId));
+        if (cashierId) params.append('cashierId', String(cashierId));
+        if (finYear) params.append('finYear', finYear);
+        const res = await fetch(`/api/platinum/receipt-prepaid/validate-receipt-range?${params.toString()}`);
+        if (res.ok) {
+            const result = await res.json();
+            console.log(`[ReceiptRange] Validation result for userId=${userId}:`, result);
+            return result;
+        }
+        console.warn(`[ReceiptRange] API returned ${res.status}`);
+        return { valid: false, reason: `Receipt range validation failed (HTTP ${res.status})` };
+    } catch (e) {
+        console.warn("Failed to validate receipt range", e);
+        return { valid: false, reason: "Unable to reach receipt range validation API" };
+    }
 }
 
 // Maps our internal TransactionType to the Platinum payment option IDs

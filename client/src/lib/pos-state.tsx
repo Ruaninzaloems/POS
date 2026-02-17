@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from '
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange } from './external-api';
 
 if (import.meta.hot) {
   import.meta.hot.accept(() => {
@@ -138,6 +138,7 @@ interface PosState {
   allowedPaymentOptions: CashierPaymentOption[];
   allowedPaymentTypes: CashierPaymentType[];
   paymentOptionsSource: string;
+  paymentTypesSource: string;
   isPaymentOptionAllowed: (transactionType: TransactionType) => boolean;
   isPaymentTypeAllowed: (typeId: number) => boolean;
   viewMode: 'desktop' | 'mobile';
@@ -222,6 +223,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [allowedPaymentOptions, setAllowedPaymentOptions] = useState<CashierPaymentOption[]>([]);
   const [allowedPaymentTypes, setAllowedPaymentTypes] = useState<CashierPaymentType[]>([]);
   const [paymentOptionsSource, setPaymentOptionsSource] = useState<string>('not-loaded');
+  const [paymentTypesSource, setPaymentTypesSource] = useState<string>('not-loaded');
 
   const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
   const [systemSettings, setSystemSettings] = useState({
@@ -556,7 +558,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
           const [optionsResult, typesResult] = await Promise.all([
             fetchCashierPaymentOptions(platinumCashierId, userId, cashofficeId),
-            fetchCashierPaymentTypes(platinumCashierId),
+            fetchCashierPaymentTypes(platinumCashierId, userId, cashofficeId),
           ]);
           if (optionsResult.data?.length > 0) {
             setAllowedPaymentOptions(optionsResult.data);
@@ -565,6 +567,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
           if (typesResult.data?.length > 0) {
             setAllowedPaymentTypes(typesResult.data);
+            setPaymentTypesSource(typesResult.source);
             console.log(`[PaymentConfig] Loaded ${typesResult.data.length} payment types (source: ${typesResult.source})`);
           }
         } catch (e) {
@@ -616,10 +619,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return (typeId: number): boolean => {
       if (allowedPaymentTypes.length === 0) return true;
       const pt = allowedPaymentTypes.find(t => t.posPaymentType_ID === typeId);
-      if (!pt) return false;
+      if (!pt) {
+        if (paymentTypesSource === 'platinum') {
+          console.warn(`[PaymentTypes] Type ${typeId} not found in Platinum types — BLOCKED`);
+          return false;
+        }
+        return false;
+      }
       return pt.isTicked && pt.enabled;
     };
-  }, [allowedPaymentTypes]);
+  }, [allowedPaymentTypes, paymentTypesSource]);
 
   const switchUser = (cashierId: string, name?: string, cashOffice?: string) => {
       // Try to find in API cashiers first
@@ -809,6 +818,31 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return;
     }
 
+    let resolvedFinYear = platinumUser?.finYear || '2025/2026';
+    if (!resolvedFinYear || resolvedFinYear === '2025/2026') {
+        try {
+            const fyRes = await fetch('/api/platinum/active-fin-year');
+            if (fyRes.ok) {
+                const apiFy = await fyRes.json();
+                if (apiFy) resolvedFinYear = apiFy;
+            }
+        } catch (e) {
+            console.warn("[Payment] Failed to fetch active fin year for receipt range validation, using default");
+        }
+    }
+    console.log(`[Payment] Validating receipt range — userId=${sessionUserId}, cashierId=${platinumCashierId}, finYear=${resolvedFinYear}`);
+    const receiptRangeResult = await validateReceiptRange(sessionUserId, platinumCashierId || undefined, resolvedFinYear);
+    if (!receiptRangeResult.valid) {
+        console.warn(`[Payment] Receipt range validation FAILED:`, receiptRangeResult.reason);
+        toast({
+            title: "Receipt Range Invalid",
+            description: receiptRangeResult.reason || "Your cashier session is not properly set up for receipt allocation. Please complete cashier setup.",
+            variant: "destructive"
+        });
+        return;
+    }
+    console.log(`[Payment] Receipt range valid — cashier active at ${receiptRangeResult.officeName}, POS record ${receiptRangeResult.cashierDetailsId}`);
+
     const record = createTransactionRecord(items, totalToPay, payment, currentUser.id, {
         cashierName: currentUser.name,
         cashOfficeName: sessionOfficeDesc,
@@ -819,18 +853,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsReceiptModalOpen(true);
     setTransactionProcessing(true);
 
-    let finYear = platinumUser?.finYear || '2025/2026';
-    if (!finYear || finYear === '2025/2026') {
-        try {
-            const res = await fetch('/api/platinum/active-fin-year');
-            if (res.ok) {
-                const apiFinYear = await res.json();
-                if (apiFinYear) finYear = apiFinYear;
-            }
-        } catch (e) {
-            console.warn("Failed to fetch active fin year, using default", e);
-        }
-    }
+    const finYear = resolvedFinYear;
     console.log(`[Priority 1] Using finYear: ${finYear} (platinumUser: ${platinumUser?.finYear})`);
 
     const isSplitPayment = record.payment.cash > 0 && record.payment.card > 0;
@@ -1774,6 +1797,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       allowedPaymentOptions,
       allowedPaymentTypes,
       paymentOptionsSource,
+      paymentTypesSource,
       isPaymentOptionAllowed,
       isPaymentTypeAllowed,
       viewMode,

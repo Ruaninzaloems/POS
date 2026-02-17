@@ -285,6 +285,117 @@ export async function registerRoutes(
     }
   });
 
+  // === RECEIPT RANGE VALIDATION ===
+  // Validates that the cashier has a valid active session with receipt range allocated in Platinum
+  // Calls validate-cashier and active-cashier-details to confirm the cashier is properly set up
+  app.get("/api/platinum/receipt-prepaid/validate-receipt-range", async (req, res) => {
+    try {
+      const userId = req.query.userId as string;
+      const cashierId = req.query.cashierId as string;
+      const finYear = req.query.finYear as string;
+
+      if (!userId) {
+        return res.status(400).json({ message: "userId is required" });
+      }
+
+      console.log(`[validate-receipt-range] Checking receipt range for userId=${userId}, cashierId=${cashierId}, finYear=${finYear}`);
+
+      const validateResult = await platinumGet("/api/ReceiptPrepaid/validate-cashier", {
+        userId,
+        finYear: finYear || "2025/2026"
+      });
+
+      if (!validateResult || validateResult._error) {
+        console.warn(`[validate-receipt-range] validate-cashier failed:`, JSON.stringify(validateResult).substring(0, 500));
+        return res.json({
+          valid: false,
+          reason: "Unable to validate cashier with Platinum API",
+          details: validateResult
+        });
+      }
+
+      const isActive = validateResult.isActive === true || validateResult.active === true;
+      const cashierDetailsId = validateResult.details?.id || 0;
+      const officeId = validateResult.details?.officeId || validateResult.officeId || null;
+      const officeName = validateResult.details?.const_CashOffice?.cashOfficeDesc || validateResult.officeName || null;
+
+      console.log(`[validate-receipt-range] Cashier status — isActive=${isActive}, detailsId=${cashierDetailsId}, officeId=${officeId}, officeName=${officeName}`);
+
+      if (!isActive) {
+        return res.json({
+          valid: false,
+          reason: "Cashier session is not active. Please complete cashier setup first.",
+          isActive: false,
+          cashierDetailsId,
+          officeId,
+          officeName
+        });
+      }
+
+      if (!cashierDetailsId || cashierDetailsId === 0) {
+        return res.json({
+          valid: false,
+          reason: "No active POS cashier record found. Receipts cannot be allocated without a valid setup.",
+          isActive,
+          cashierDetailsId,
+          officeId,
+          officeName
+        });
+      }
+
+      if (!officeId) {
+        return res.json({
+          valid: false,
+          reason: "No cash office assigned. Please select a cash office during setup.",
+          isActive,
+          cashierDetailsId,
+          officeId,
+          officeName
+        });
+      }
+
+      let activeCashierDetails: any = null;
+      if (cashierId) {
+        try {
+          activeCashierDetails = await platinumGet("/api/ReceiptPrepaid/ActiveCashierDetails", { userId });
+          if (activeCashierDetails && !activeCashierDetails._error) {
+            console.log(`[validate-receipt-range] ActiveCashierDetails:`, JSON.stringify(activeCashierDetails).substring(0, 500));
+          }
+        } catch (e) {
+          console.warn(`[validate-receipt-range] Failed to get ActiveCashierDetails, continuing with validate-cashier data`);
+        }
+      }
+
+      const activeDetailsId = activeCashierDetails?.id || cashierDetailsId;
+      const activeOfficeId = activeCashierDetails?.officeId || officeId;
+      const activeOfficeName = activeCashierDetails?.const_CashOffice?.cashOfficeDesc || officeName;
+
+      if (activeDetailsId > 0 && activeCashierDetails?.isActive === false) {
+        return res.json({
+          valid: false,
+          reason: "Cashier POS record exists but is not active. Session may have ended. Please restart your session.",
+          isActive: false,
+          cashierDetailsId: activeDetailsId,
+          officeId: activeOfficeId,
+          officeName: activeOfficeName
+        });
+      }
+
+      console.log(`[validate-receipt-range] Receipt range valid — cashier ${userId} is active with POS record ${activeDetailsId} at office ${activeOfficeName}`);
+      return res.json({
+        valid: true,
+        isActive: true,
+        cashierDetailsId: activeDetailsId,
+        officeId: activeOfficeId,
+        officeName: activeOfficeName,
+        reason: "Cashier is properly set up with receipt allocation"
+      });
+    } catch (e: any) {
+      console.error(`[validate-receipt-range] Error:`, e.message);
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.get("/api/platinum/receipt-prepaid/cons-accounts", async (req, res) => {
     try {
       const data = await platinumGet("/api/ReceiptPrepaid/cons-accounts", req.query as Record<string, string>);
@@ -863,27 +974,66 @@ export async function registerRoutes(
   });
 
   // === CASHIER PAYMENT TYPES (per-cashier allowed tender methods) ===
-  // PLACEHOLDER: Currently returns global payment types from billing-payment-clearance.
-  // When the developer adds a per-cashier endpoint using POS_CashierPOSPaymentType table,
-  // replace this with the real call filtered by cashierId.
+  // GET /api/billing-payment/payment-types?userId={userId}&cashofficeId={cashofficeId}&cashierId={cashierId}
   app.get("/api/platinum/receipt-prepaid/cashier-payment-types", async (req, res) => {
     try {
+      const userId = req.query.userId as string;
+      const cashofficeId = req.query.cashofficeId as string;
       const cashierId = req.query.cashierId as string;
-      if (!cashierId) {
-        return res.status(400).json({ message: "cashierId is required" });
+
+      if (!userId || !cashofficeId || !cashierId) {
+        return res.status(400).json({ message: "userId, cashofficeId, and cashierId are all required" });
       }
 
-      // TODO: Replace with per-cashier endpoint once available:
-      // const data = await platinumGet("/api/ReceiptPrepaid/cashier-payment-types", { cashierId });
-      // if (data && !data._error) { return res.json(data); }
+      console.log(`[cashier-payment-types] Calling Platinum billing-payment/payment-types — userId=${userId}, cashofficeId=${cashofficeId}, cashierId=${cashierId}`);
+      const data = await platinumGet("/api/billing-payment/payment-types", { userId, cashofficeId, cashierId });
 
+      if (data && !data._error) {
+        console.log(`[cashier-payment-types] Platinum returned:`, JSON.stringify(data).substring(0, 500));
+
+        let types: any[] = [];
+        if (Array.isArray(data)) {
+          types = data;
+        } else if (data.data && Array.isArray(data.data)) {
+          types = data.data;
+        } else if (data.value && Array.isArray(data.value)) {
+          types = data.value;
+        }
+
+        const normalized = types.map((t: any) => ({
+          posPaymentType_ID: t.posPaymentType_ID ?? t.posPaymentTypeID ?? t.id ?? t.Id ?? 0,
+          posPaymentTypeDesc: t.posPaymentTypeDesc ?? t.description ?? t.Description ?? '',
+          isTicked: t.isTicked ?? t.IsTicked ?? t.isEnabled ?? true,
+          enabled: t.enabled ?? t.Enabled ?? t.isEnabled ?? true,
+        }));
+
+        console.log(`[cashier-payment-types] Returning ${normalized.length} types from Platinum API`);
+        return res.json({ source: "platinum", data: normalized });
+      }
+
+      console.warn(`[cashier-payment-types] Platinum per-cashier API returned error, falling back to global. Response:`, JSON.stringify(data).substring(0, 500));
       const globalTypes = await platinumGet("/api/billing-payment-clearance/pos-payment-type");
       if (globalTypes && !globalTypes._error) {
-        console.log(`[cashier-payment-types] Using global payment types for cashier ${cashierId} (per-cashier endpoint not yet available)`);
-        return res.json({ source: "global", data: globalTypes });
+        console.log(`[cashier-payment-types] Using global payment types for cashier ${cashierId}`);
+        let globalArr: any[] = Array.isArray(globalTypes) ? globalTypes : (globalTypes.data || globalTypes.value || []);
+        const normalizedGlobal = globalArr.map((t: any) => ({
+          posPaymentType_ID: t.posPaymentType_ID ?? t.posPaymentTypeID ?? t.id ?? 0,
+          posPaymentTypeDesc: t.posPaymentTypeDesc ?? t.description ?? '',
+          isTicked: t.isTicked ?? true,
+          enabled: t.enabled ?? true,
+        }));
+        return res.json({ source: "global-fallback", data: normalizedGlobal });
       }
-      handlePlatinumResult(res, globalTypes);
+
+      const allTypesEnabled = [
+        { posPaymentType_ID: 1, posPaymentTypeDesc: "Cash", isTicked: true, enabled: true },
+        { posPaymentType_ID: 2, posPaymentTypeDesc: "Cheque", isTicked: true, enabled: true },
+        { posPaymentType_ID: 3, posPaymentTypeDesc: "Credit Card", isTicked: true, enabled: true },
+        { posPaymentType_ID: 4, posPaymentTypeDesc: "Postal Order", isTicked: true, enabled: true },
+      ];
+      res.json({ source: "fallback", data: allTypesEnabled });
     } catch (e: any) {
+      console.error(`[cashier-payment-types] Error:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
