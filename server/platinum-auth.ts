@@ -218,6 +218,53 @@ export async function loginWithCredentials(username: string, password: string, d
 
     const apiUserData = data.data || data.user || data.userData || {};
     const apiUserId = apiUserData.user_ID ?? apiUserData.userId ?? apiUserData.id;
+    const tokenUserName = apiUserData.userName ?? '';
+
+    cachedToken = data.token;
+    tokenExpiry = Date.now() + 7 * 60 * 60 * 1000;
+
+    if (tokenUserName.toLowerCase() !== username.toLowerCase() && apiUserId) {
+      console.log(`[PlatinumAuth] Token resolved to ${tokenUserName} (ID:${apiUserId}), but login was for "${username}". Looking up actual user...`);
+      try {
+        const userListRes = await fetch(`${PLATINUM_API_URL}/api/User`, {
+          headers: { Authorization: `Bearer ${data.token}`, Accept: "application/json" },
+        });
+        if (userListRes.ok) {
+          const users: any[] = await userListRes.json();
+          const matchedUser = users.find((u: any) =>
+            u.userName?.toLowerCase() === username.toLowerCase() ||
+            u.email?.toLowerCase() === username.toLowerCase()
+          );
+          if (matchedUser) {
+            const user = {
+              user_ID: matchedUser.userId,
+              userName: matchedUser.userName,
+              firstName: matchedUser.firstName || username,
+              lastName: matchedUser.lastName || '',
+              eMail: matchedUser.email || null,
+              enabled: matchedUser.enabled ?? true,
+              superUser: matchedUser.superUser ?? false,
+              cashFloat: matchedUser.cashFloat ?? 0,
+              finYear: apiUserData.finYear || data.finYear || "2025/2026",
+              authMode: 'azure' as const
+            };
+            cachedUserData = user;
+            cachedAuthMode = 'azure';
+            cachedPosCashierId = null;
+            userLoggedIn = true;
+            console.log(`[PlatinumAuth] Login successful — resolved "${username}" to ${user.firstName} ${user.lastName} (user_ID: ${user.user_ID})`);
+            return { success: true, userData: user };
+          } else {
+            cachedToken = null;
+            tokenExpiry = 0;
+            console.log(`[PlatinumAuth] User "${username}" not found in Platinum user list`);
+            return { success: false, error: `User "${username}" not found in the system. Please check the username.` };
+          }
+        }
+      } catch (lookupErr: any) {
+        console.log(`[PlatinumAuth] User lookup failed: ${lookupErr.message}, using token user`);
+      }
+    }
 
     const user = {
       user_ID: apiUserId || 0,
@@ -232,11 +279,9 @@ export async function loginWithCredentials(username: string, password: string, d
       authMode: 'azure' as const
     };
 
-    cachedToken = data.token;
     cachedUserData = user;
     cachedAuthMode = 'azure';
     cachedPosCashierId = null;
-    tokenExpiry = Date.now() + 7 * 60 * 60 * 1000;
 
     console.log(`[PlatinumAuth] Login successful via Azure: ${user.firstName} ${user.lastName} (user_ID: ${user.user_ID})`);
     userLoggedIn = true;

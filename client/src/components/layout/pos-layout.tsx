@@ -45,7 +45,7 @@ export function PosLayout({ children }: PosLayoutProps) {
   const [location, setLocation] = useLocation();
   const { currentUser, activeSession, sessionLoading, endSession, viewMode, toggleViewMode, sessionDetails, dayEndStatus, platinumUser, cashierRegistered } = usePos();
 
-  const isPosPage = location === '/pos';
+  const isPosPage = location === '/pos' || location === '/cashier-setup';
 
   if (sessionLoading && isPosPage) {
       return (

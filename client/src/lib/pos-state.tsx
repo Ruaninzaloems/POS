@@ -332,6 +332,26 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setOfficeLimits(prev => ({ ...prev, [String(data.officeId)]: data.cashOnHandLimit }));
         }
         console.log("Platinum cashier status:", { registered: data.cashierRegistered, isActive: data.isActive, officeId: data.officeId, officeName: data.officeName });
+
+        if (data.isActive === true && data.officeId && (data.cashierRegistered === true || data.cashierId)) {
+          const officeId = String(data.officeId);
+          const officeName = data.officeName || data.details?.const_CashOffice?.cashOfficeDesc || '';
+          const cashFloat = data.cashFloat || data.details?.cashFloat || 0;
+          const userName = `${platinumUser.firstName || ''} ${platinumUser.lastName || ''}`.trim();
+          setCurrentUser({
+            id: String(platinumUser.user_ID),
+            name: userName || platinumUser.userName || 'Cashier',
+            cashOffice: officeName
+          });
+          setActiveSession(true);
+          setSessionDetails({
+            startTime: Date.now(),
+            officeId,
+            officeDesc: officeName,
+            floatAmount: cashFloat
+          });
+          console.log(`[Session] Auto-resumed active session for ${userName} at ${officeName} (officeId: ${officeId}, float: ${cashFloat})`);
+        }
       } catch (e) {
         console.warn("Failed to check active Platinum session", e);
         setCashierRegistered(false);

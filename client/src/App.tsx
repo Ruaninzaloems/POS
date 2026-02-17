@@ -11,6 +11,7 @@ import PosPage from "@/pages/pos";
 import SupervisorDashboard from "@/pages/supervisor-dashboard";
 import PlaceholderPage from "@/pages/placeholder-page";
 import LoginPage from "@/pages/login";
+import CashierSetupPage from "@/pages/cashier-setup";
 
 import UnmatchedQueue from "@/pages/direct-deposits/manual/unmatched-queue";
 import AllocateTransaction from "@/pages/direct-deposits/manual/allocate-transaction";
@@ -61,6 +62,7 @@ function Router() {
     <Switch>
       <Route path="/" component={HomePage} />
       <Route path="/pos" component={PosPage} />
+      <Route path="/cashier-setup" component={PosPage} />
       <Route path="/settings" component={SettingsPage} />
       
       {/* Direct Deposits Manual Module */}
