@@ -1128,8 +1128,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 acctName = rd.accName || '';
 
                 const lineItems = receiptData.map((row: any) => ({
-                    description: row.billType || '',
-                    amount: row.amount ?? 0,
+                    description: row.billType || 'Cash',
+                    amount: row.tenderAmount ?? row.amount ?? 0,
                     vatAmount: row.vatAmount ?? 0,
                 }));
 

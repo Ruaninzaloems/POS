@@ -41,6 +41,13 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
     effectiveRd?.lineItems || splitReceipts.flatMap((sr: any) => sr.receiptDetail?.lineItems || []);
   const hasLineItems = apiLineItems.length > 0;
 
+  const serviceBalances: { serviceDescription: string; amount: number }[] =
+    splitReceipts[0]?.serviceBalances || transaction.items?.[0]?.originalData?.agingBreakdown?.filter((b: any) => Math.abs(b.totalOutstanding || 0) >= 0.01).map((b: any) => ({
+      serviceDescription: b.serviceDescription || 'Unknown',
+      amount: b.totalOutstanding || 0,
+    })) || [];
+  const hasServiceBalances = serviceBalances.length > 0;
+
   const formatDate = (ts: number) => {
     return new Date(ts).toLocaleString('en-ZA', {
       timeZone: 'Africa/Johannesburg',
@@ -195,47 +202,42 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
         )}
       </div>
 
+      {hasServiceBalances && (
+          <div className="border-t border-gray-300 pt-2 mb-2">
+              <div className="font-bold text-[10px] mb-1">Service Balances:</div>
+              {serviceBalances.map((sb: any, idx: number) => (
+                  <div key={idx} className="flex justify-between mb-0.5">
+                      <span className="break-words w-[65%]">{sb.serviceDescription}</span>
+                      <span className="text-right">{Number(sb.amount).toFixed(2)}</span>
+                  </div>
+              ))}
+          </div>
+      )}
+
       {hasLineItems ? (
           <div className="border-t border-gray-300 pt-2 mb-2">
               {(() => {
                   const filteredItems = apiLineItems.filter(li => li.description);
-                  const rawLineTotal = filteredItems.reduce((sum, li) => sum + (Number(li.amount) || 0), 0);
-                  const rawVatTotal = filteredItems.reduce((sum, li) => sum + (Number(li.vatAmount) || 0), 0);
-                  const rawGrossTotal = rawLineTotal + rawVatTotal;
-                  const needsScaling = totalAmount > 0 && rawGrossTotal > 0 && rawGrossTotal > totalAmount + 0.02;
-                  const scaleFactor = needsScaling ? totalAmount / rawGrossTotal : 1;
-
-                  const scaledItems = filteredItems.map(li => ({
-                      description: li.description,
-                      amount: Math.round((Number(li.amount) || 0) * scaleFactor * 100) / 100,
-                      vatAmount: Math.round((Number(li.vatAmount) || 0) * scaleFactor * 100) / 100,
-                  }));
-
-                  const scaledVatTotal = scaledItems.reduce((sum, li) => sum + li.vatAmount, 0);
 
                   return (
                       <>
-                          {scaledItems.map((li, idx) => (
+                          {filteredItems.map((li, idx) => (
                               <div key={idx} className="flex justify-between mb-0.5">
                                   <span className="break-words w-[65%]">{li.description}</span>
-                                  <span className="text-right">{li.amount.toFixed(2)}</span>
+                                  <span className="text-right">{Number(li.amount).toFixed(2)}</span>
                               </div>
                           ))}
-                          {scaledVatTotal > 0 ? (
+                          {filteredItems.some(li => (Number(li.vatAmount) || 0) > 0) && (
                               <div className="flex justify-between mt-1 border-t border-dashed border-gray-300 pt-1 mb-1">
                                   <span>Vat Amount</span>
-                                  <span className="text-right">{scaledVatTotal.toFixed(2)}</span>
+                                  <span className="text-right">{filteredItems.reduce((sum, li) => sum + (Number(li.vatAmount) || 0), 0).toFixed(2)}</span>
                               </div>
-                          ) : null}
+                          )}
                       </>
                   );
               })()}
           </div>
-      ) : (
-          <div className="border-t border-gray-300 pt-2 mb-2">
-              <div className="text-center text-[10px] text-red-500 italic">Line item data not available from billing system</div>
-          </div>
-      )}
+      ) : null}
 
       <div className="border-t border-gray-300 pt-2 mb-2">
         <div className="flex justify-between font-bold text-sm">
