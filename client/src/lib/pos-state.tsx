@@ -1220,36 +1220,99 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (isSplitPayment) {
                 const cashPaid = Math.max(0, record.payment.cash - totalChange);
                 const cardPaid = record.payment.card;
-                const cashPaidRatio = grandTotal > 0 ? cashPaid / grandTotal : 0;
                 const accGroupTotal = isMixedBasket ? accountTotal : grandTotal;
-                const accCashActual = Math.round(accGroupTotal * cashPaidRatio * 100) / 100;
-                const accCardActual = Math.round((accGroupTotal - accCashActual) * 100) / 100;
-                const accCashTender = isMixedBasket ? accCashActual : record.payment.cash;
-                const accCashChange = isMixedBasket ? 0 : totalChange;
+                const accTenderTotal = isMixedBasket ? accGroupTotal : (record.payment.cash + record.payment.card);
+                const accChangeTotal = isMixedBasket ? 0 : totalChange;
+                const accCashRatio = accGroupTotal > 0 ? Math.min(1, (isMixedBasket ? (cashPaid * accountTotal / grandTotal) : cashPaid) / accGroupTotal) : 0.5;
 
-                console.log(`[Priority 1 SPLIT] ACC total: R${accGroupTotal}, Cash: R${accCashActual} (tender: R${accCashTender}, change: R${accCashChange}), Card: R${accCardActual}`);
+                console.log(`[Priority 1 SPLIT] ACC total: R${accGroupTotal}, Cash portion: R${cashPaid}, Card portion: R${cardPaid} — submitting as SINGLE API call with paymentType=1`);
 
                 try {
-                    const cashResult = await submitConsumerPayments(accCashActual, accCashTender, accCashChange, 1, 1, 'CASH', accCashActual);
-                    console.log(`[Priority 1 CASH] Submitted cash payment`, cashResult);
-                    const cashReceiptIds = extractReceiptIds(cashResult);
-                    await processAccReceiptResult(cashReceiptIds, 'CASH', 'cash', accCashActual, cashResult.perAccountAmounts);
-                } catch (e: any) {
-                    console.warn(`[Priority 1 CASH] Failed to submit cash payment`, e);
-                    toast({ title: "Cash Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
-                }
+                    const splitResult = await submitConsumerPayments(accGroupTotal, accTenderTotal, accChangeTotal, 1, 1, 'SPLIT');
+                    console.log(`[Priority 1 SPLIT] Submitted single payment for split`, splitResult);
+                    const receiptIds = extractReceiptIds(splitResult);
+                    const perAcctAmounts = splitResult.perAccountAmounts || [];
 
-                if (accCardActual > 0) {
-                    try {
-                        await platinumSaveMultipleAccountPayment(stagingPayload, { userId: String(sessionUserId) });
-                        const cardResult = await submitConsumerPayments(accCardActual, accCardActual, 0, 3, 1, 'CARD', accCardActual);
-                        console.log(`[Priority 1 CARD] Submitted card payment`, cardResult);
-                        const cardReceiptIds = extractReceiptIds(cardResult);
-                        await processAccReceiptResult(cardReceiptIds, 'CARD', 'card', accCardActual, cardResult.perAccountAmounts);
-                    } catch (e: any) {
-                        console.warn(`[Priority 1 CARD] Failed to submit card payment`, e);
-                        toast({ title: "Card Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
+                    for (let rIdx = 0; rIdx < receiptIds.length; rIdx++) {
+                        const rid = receiptIds[rIdx];
+                        let receiptNo = `REC-${rid}`;
+                        let receiptDetail: any = null;
+
+                        try {
+                            const receiptData = await fetchPosMultiReceiptPrint(String(rid));
+                            if (receiptData && receiptData.length > 0) {
+                                const rd = receiptData[0];
+                                if (rd.receiptNo) receiptNo = rd.receiptNo;
+                                const lineItems = receiptData.map((row: any) => ({
+                                    description: row.billType || '',
+                                    amount: row.amount ?? 0,
+                                    vatAmount: row.vatAmount ?? 0,
+                                }));
+                                receiptDetail = {
+                                    receiptNo: rd.receiptNo,
+                                    cashierName: rd.cashierName,
+                                    cashOffice: rd.cashOfficeName,
+                                    tenderAmount: rd.tenderAmount,
+                                    changeAmount: rd.changeAmount,
+                                    outstandingAmount: rd.outstandingAmount,
+                                    paymentType: 'Split (Cash + Card)',
+                                    paymentOption: rd.payMode || 'Consumer Services',
+                                    accountId: rd.accountId,
+                                    oldAccountCode: rd.oldAccountCode,
+                                    sgNumber: rd.sgNumber,
+                                    accAddress: rd.accAddress,
+                                    accName: rd.accName,
+                                    receiptDate: rd.receiptDate,
+                                    paymentDate: rd.paymentDate,
+                                    isCancelled: rd.isCancelled,
+                                    lineItems,
+                                };
+                            }
+                        } catch (e) {
+                            console.warn(`[Priority 1 SPLIT] Could not fetch receipt data for ${rid}`, e);
+                        }
+
+                        if (!finalReceiptNumber) {
+                            finalReceiptNumber = receiptNo;
+                            updateRecordReceiptNumber(record, finalReceiptNumber);
+                        }
+
+                        const matchedPerAcct = perAcctAmounts[rIdx];
+                        const acctPayment = matchedPerAcct?.amount || (accGroupTotal / Math.max(1, receiptIds.length));
+                        const acctCash = Math.round(acctPayment * accCashRatio * 100) / 100;
+                        const acctCard = Math.round((acctPayment - acctCash) * 100) / 100;
+
+                        const cashSplitEntry: SplitReceipt = {
+                            receiptNumber: receiptNo,
+                            receiptId: rid,
+                            paymentType: 'cash',
+                            amount: acctCash,
+                            accountId: matchedPerAcct?.accountId || '',
+                            accountName: matchedPerAcct?.accountName || '',
+                        };
+                        if (receiptDetail) cashSplitEntry.receiptDetail = receiptDetail;
+                        record.splitReceipts!.push(cashSplitEntry);
+
+                        const cardSplitEntry: SplitReceipt = {
+                            receiptNumber: receiptNo,
+                            receiptId: rid,
+                            paymentType: 'card',
+                            amount: acctCard,
+                            accountId: matchedPerAcct?.accountId || '',
+                            accountName: matchedPerAcct?.accountName || '',
+                        };
+                        if (receiptDetail) cardSplitEntry.receiptDetail = receiptDetail;
+                        record.splitReceipts!.push(cardSplitEntry);
+
+                        if (receiptDetail && !record.receiptDetail) {
+                            record.receiptDetail = receiptDetail;
+                        }
+
+                        console.log(`[Priority 1 SPLIT] Receipt ${receiptNo} — acct cash: R${acctCash}, acct card: R${acctCard} (total: R${acctPayment})`);
                     }
+                } catch (e: any) {
+                    console.warn(`[Priority 1 SPLIT] Failed to submit payment`, e);
+                    toast({ title: "Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
                 }
             } else {
                 try {

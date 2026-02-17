@@ -8,7 +8,7 @@ The system is designed as a prototype that will eventually be migrated to an Ang
 
 Key business capabilities:
 - **Unified POS Screen**: Single search bar auto-detects transaction type (consumer payment, prepaid, direct income, clearance, etc.)
-- **Split Payments**: Cash + Card can be split on the same transaction with change calculated on cash portion only
+- **Split Payments**: Cash + Card can be split on the same transaction with change calculated on cash portion only. Consumer account split payments submit a SINGLE API call for the full combined amount (paymentType=1), then create two local split receipt entries (cash + card) with proportional per-account allocation. This avoids the staging data consumption issue where two separate submit-consumer-payment calls would fail on the second call.
 - **Single Active Session Enforcement**: Each cashier can only have one active session at a time. If the user logs out and back in, the system auto-detects and resumes their existing Platinum session (isActive=true). New session creation is blocked while an active session exists.
 - **API-Only Transaction Storage**: All transactions (ACC payments, misc/direct income, clearance) are stored via Platinum API, not locally. Receipts are loaded from Platinum's `ViewReceipt/get-receipt-list` endpoint. Cancellations go through Platinum's cancel-receipt API. This ensures all transactions are available for day-end reconciliation.
 - **Cashier Session Management**: Float tracking, day-end reconciliation, denomination counting
