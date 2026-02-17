@@ -220,7 +220,7 @@ export async function registerRoutes(
       let activeOfficeId: number | null = null;
       let activeOfficeName: string | null = null;
 
-      const detailEndpoints = [
+      const detailEndpoints: Array<{ path: string; params: Record<string, string> }> = [
         { path: "/api/ReceiptPrepaid/ActiveCashierDetails", params: { userId } },
         { path: "/api/ReceiptPrepaid/active-cashier-details", params: { user: userId } },
         { path: "/api/ReceiptPrepaid/cashier-detailsById", params: { cashierId: String(cashierId) } },
@@ -809,23 +809,44 @@ export async function registerRoutes(
   });
 
   // === CASHIER PAYMENT OPTIONS (per-cashier allowed functions) ===
-  // PLACEHOLDER: Currently returns all options as enabled because the Platinum API
-  // does not yet expose the POS_CashierPOSPaymentOption / Const_POSPaymentOption_sys tables.
-  // When the developer adds an endpoint like:
-  //   GET /api/ReceiptPrepaid/cashier-payment-options?cashierId={id}
-  // Replace the fallback below with the real API call.
+  // GET /api/billing-payment/payment-options?userId={userId}&cashofficeId={cashofficeId}&cashierId={cashierId}
   app.get("/api/platinum/receipt-prepaid/cashier-payment-options", async (req, res) => {
     try {
+      const userId = req.query.userId as string;
+      const cashofficeId = req.query.cashofficeId as string;
       const cashierId = req.query.cashierId as string;
-      if (!cashierId) {
-        return res.status(400).json({ message: "cashierId is required" });
+
+      if (!userId || !cashofficeId || !cashierId) {
+        return res.status(400).json({ message: "userId, cashofficeId, and cashierId are all required" });
       }
 
-      // TODO: Replace this fallback with real Platinum API call once endpoint exists:
-      // const data = await platinumGet("/api/ReceiptPrepaid/cashier-payment-options", { cashierId });
-      // if (data && !data._error) { return res.json(data); }
+      console.log(`[cashier-payment-options] Calling Platinum billing-payment/payment-options — userId=${userId}, cashofficeId=${cashofficeId}, cashierId=${cashierId}`);
+      const data = await platinumGet("/api/billing-payment/payment-options", { userId, cashofficeId, cashierId });
 
-      console.log(`[cashier-payment-options] No Platinum endpoint available yet — returning all options enabled for cashier ${cashierId}`);
+      if (data && !data._error) {
+        console.log(`[cashier-payment-options] Platinum returned:`, JSON.stringify(data).substring(0, 500));
+
+        let options: any[] = [];
+        if (Array.isArray(data)) {
+          options = data;
+        } else if (data.data && Array.isArray(data.data)) {
+          options = data.data;
+        } else if (data.value && Array.isArray(data.value)) {
+          options = data.value;
+        }
+
+        const normalized = options.map((opt: any) => ({
+          posPaymentOption_ID: opt.posPaymentOption_ID ?? opt.posPaymentOptionID ?? opt.id ?? opt.Id ?? 0,
+          posPaymentOptionDesc: opt.posPaymentOptionDesc ?? opt.description ?? opt.Description ?? '',
+          isTicked: opt.isTicked ?? opt.IsTicked ?? opt.isEnabled ?? true,
+          enabled: opt.enabled ?? opt.Enabled ?? opt.isEnabled ?? true,
+        }));
+
+        console.log(`[cashier-payment-options] Returning ${normalized.length} options from Platinum API`);
+        return res.json({ source: "platinum", data: normalized });
+      }
+
+      console.warn(`[cashier-payment-options] Platinum API returned error or empty, using fallback. Response:`, JSON.stringify(data).substring(0, 500));
       const allOptionsEnabled = [
         { posPaymentOption_ID: 1, posPaymentOptionDesc: "Consumer Services", isTicked: true, enabled: true },
         { posPaymentOption_ID: 2, posPaymentOptionDesc: "Miscellaneous", isTicked: true, enabled: true },
@@ -836,6 +857,7 @@ export async function registerRoutes(
       ];
       res.json({ source: "fallback", data: allOptionsEnabled });
     } catch (e: any) {
+      console.error(`[cashier-payment-options] Error:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });

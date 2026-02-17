@@ -149,14 +149,28 @@ export interface CashierPaymentType {
     enabled: boolean;
 }
 
-export async function fetchCashierPaymentOptions(cashierId: number): Promise<{ source: string; data: CashierPaymentOption[] }> {
+export async function fetchCashierPaymentOptions(
+    cashierId: number,
+    userId?: number,
+    cashofficeId?: number
+): Promise<{ source: string; data: CashierPaymentOption[] }> {
     try {
-        const res = await fetch(`/api/platinum/receipt-prepaid/cashier-payment-options?cashierId=${cashierId}`);
+        const params = new URLSearchParams();
+        params.append('userId', String(userId || 0));
+        params.append('cashofficeId', String(cashofficeId || 0));
+        params.append('cashierId', String(cashierId));
+        const res = await fetch(`/api/platinum/receipt-prepaid/cashier-payment-options?${params.toString()}`);
         if (res.ok) {
             const result = await res.json();
-            console.log(`[PaymentOptions] Loaded for cashier ${cashierId} (source: ${result.source}):`, result.data?.length, 'options');
+            console.log(`[PaymentOptions] Loaded for cashier ${cashierId}, userId=${userId}, officeId=${cashofficeId} (source: ${result.source}):`, result.data?.length, 'options');
+            if (result.data) {
+                result.data.forEach((opt: CashierPaymentOption) => {
+                    console.log(`[PaymentOptions]   ${opt.posPaymentOption_ID}: ${opt.posPaymentOptionDesc} — isTicked=${opt.isTicked}, enabled=${opt.enabled}`);
+                });
+            }
             return result;
         }
+        console.warn(`[PaymentOptions] API returned ${res.status} for cashier ${cashierId}`);
     } catch (e) {
         console.warn("Failed to fetch cashier payment options", e);
     }

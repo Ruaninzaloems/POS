@@ -550,8 +550,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const loadPaymentConfig = async () => {
         try {
+          const userId = platinumUser?.user_ID || 0;
+          const cashofficeId = sessionDetails?.officeId ? Number(sessionDetails.officeId) : 0;
+          console.log(`[PaymentConfig] Loading payment options — userId=${userId}, cashofficeId=${cashofficeId}, cashierId=${platinumCashierId}`);
+
           const [optionsResult, typesResult] = await Promise.all([
-            fetchCashierPaymentOptions(platinumCashierId),
+            fetchCashierPaymentOptions(platinumCashierId, userId, cashofficeId),
             fetchCashierPaymentTypes(platinumCashierId),
           ]);
           if (optionsResult.data?.length > 0) {
@@ -597,10 +601,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const optionId = mapTransactionTypeToPaymentOptionId(transactionType);
       if (optionId === null) return true;
       const option = allowedPaymentOptions.find(o => o.posPaymentOption_ID === optionId);
-      if (!option) return true;
+      if (!option) {
+        if (paymentOptionsSource === 'platinum') {
+          console.warn(`[PaymentOptions] Option ${optionId} (${transactionType}) not found in Platinum options — BLOCKED`);
+          return false;
+        }
+        return true;
+      }
       return option.isTicked && option.enabled;
     };
-  }, [allowedPaymentOptions]);
+  }, [allowedPaymentOptions, paymentOptionsSource]);
 
   const isPaymentTypeAllowed = useMemo(() => {
     return (typeId: number): boolean => {
