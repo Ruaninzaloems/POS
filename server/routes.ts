@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { platinumGet, platinumPost, getPlatinumUserInfo, getPlatinumToken, getPlatinumApiUrl, getPlatinumAuthMode } from "./platinum-auth";
+import { platinumGet, platinumPost, getPlatinumUserInfo, getPlatinumToken, getPlatinumApiUrl, getPlatinumAuthMode, loginWithCredentials, logoutUser, isAuthenticated } from "./platinum-auth";
 import { execSync } from "child_process";
 import { writeFileSync, unlinkSync, existsSync } from "fs";
 
@@ -101,6 +101,42 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+
+  // =====================================================
+  // LOGIN / LOGOUT / AUTH STATUS
+  // =====================================================
+
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { username, password, dbName } = req.body;
+      if (!username) {
+        return res.status(400).json({ success: false, error: "Username is required" });
+      }
+      const result = await loginWithCredentials(username, password, dbName);
+      if (result.success) {
+        res.json({ success: true, user: result.userData });
+      } else {
+        res.status(401).json({ success: false, error: result.error });
+      }
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  app.post("/api/auth/logout", async (_req, res) => {
+    logoutUser();
+    res.json({ success: true });
+  });
+
+  app.get("/api/auth/status", async (_req, res) => {
+    const authenticated = isAuthenticated();
+    if (authenticated) {
+      const userData = await getPlatinumUserInfo();
+      res.json({ authenticated: true, user: userData });
+    } else {
+      res.json({ authenticated: false });
+    }
+  });
 
   // =====================================================
   // PLATINUM AUTH / USER INFO

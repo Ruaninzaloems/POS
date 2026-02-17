@@ -1,4 +1,4 @@
-import { Component, type ReactNode } from "react";
+import { Component, type ReactNode, useState, useEffect } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -10,6 +10,7 @@ import HomePage from "@/pages/home";
 import PosPage from "@/pages/pos";
 import SupervisorDashboard from "@/pages/supervisor-dashboard";
 import PlaceholderPage from "@/pages/placeholder-page";
+import LoginPage from "@/pages/login";
 
 import UnmatchedQueue from "@/pages/direct-deposits/manual/unmatched-queue";
 import AllocateTransaction from "@/pages/direct-deposits/manual/allocate-transaction";
@@ -93,12 +94,55 @@ function Router() {
 }
 
 function App() {
+  const [authChecked, setAuthChecked] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [authKey, setAuthKey] = useState(0);
+
+  useEffect(() => {
+    fetch('/api/auth/status')
+      .then(res => res.json())
+      .then(data => {
+        setAuthenticated(data.authenticated === true);
+        setAuthChecked(true);
+      })
+      .catch(() => {
+        setAuthenticated(false);
+        setAuthChecked(true);
+      });
+  }, []);
+
+  const handleLoginSuccess = (_user: any) => {
+    setAuthenticated(true);
+    setAuthKey(prev => prev + 1);
+  };
+
+  if (!authChecked) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "system-ui, sans-serif" }}>
+        <p style={{ color: "#666" }}>Checking authentication...</p>
+      </div>
+    );
+  }
+
+  if (!authenticated) {
+    return (
+      <ErrorBoundary>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <Toaster />
+            <LoginPage onLoginSuccess={handleLoginSuccess} />
+          </TooltipProvider>
+        </QueryClientProvider>
+      </ErrorBoundary>
+    );
+  }
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Toaster />
-          <PosProvider>
+          <PosProvider key={authKey}>
             <Router />
           </PosProvider>
         </TooltipProvider>

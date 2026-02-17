@@ -8,6 +8,7 @@ let tokenExpiry: number = 0;
 let cachedUserData: any = null;
 let cachedPosCashierId: number | null = null;
 let cachedAuthMode: 'direct' | 'azure' | 'override' = 'override';
+let userLoggedIn: boolean = false;
 
 async function fetchNewToken(): Promise<{ token: string; userData: any; authMode: 'direct' | 'azure' | 'override' }> {
   console.log(`[PlatinumAuth] Attempting login for username: ${PLATINUM_USERNAME} on DB: ${PLATINUM_DBNAME}`);
@@ -132,12 +133,132 @@ export async function getPlatinumToken(): Promise<string> {
 }
 
 export async function getPlatinumUserInfo(): Promise<any> {
+  if (!userLoggedIn) return null;
   await getPlatinumToken();
   return cachedUserData;
 }
 
 export function getPlatinumAuthMode(): 'direct' | 'azure' | 'override' {
   return cachedAuthMode;
+}
+
+export async function loginWithCredentials(username: string, password: string, dbName?: string): Promise<{ success: boolean; userData?: any; error?: string }> {
+  const db = dbName || PLATINUM_DBNAME;
+
+  if (password) {
+    try {
+      const res = await fetch(`${PLATINUM_API_URL}/auth/createToken`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userName: username, password, dbName: db }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.token) {
+          const apiUserData = data.data || data.user || data.userData || {};
+          const apiUserId = apiUserData.user_ID ?? apiUserData.userId ?? apiUserData.id;
+
+          if (apiUserId && apiUserId !== 1) {
+            const user = {
+              user_ID: apiUserId,
+              userName: apiUserData.userName ?? username,
+              firstName: apiUserData.firstName ?? username,
+              lastName: apiUserData.lastName ?? '',
+              eMail: apiUserData.eMail ?? null,
+              enabled: apiUserData.enabled ?? true,
+              superUser: apiUserData.superUser ?? false,
+              cashFloat: apiUserData.cashFloat ?? 0,
+              finYear: apiUserData.finYear || data.finYear || "2025/2026",
+              authMode: 'direct' as const
+            };
+
+            cachedToken = data.token;
+            cachedUserData = user;
+            cachedAuthMode = 'direct';
+            cachedPosCashierId = null;
+            tokenExpiry = Date.now() + 7 * 60 * 60 * 1000;
+            userLoggedIn = true;
+
+            console.log(`[PlatinumAuth] Login successful via createToken: ${user.firstName} ${user.lastName} (user_ID: ${user.user_ID})`);
+            return { success: true, userData: user };
+          }
+        }
+      } else {
+        const text = await res.text();
+        console.log(`[PlatinumAuth] createToken failed for ${username}: ${res.status} - ${text.substring(0, 200)}`);
+      }
+    } catch (e: any) {
+      console.log(`[PlatinumAuth] createToken error: ${e.message}`);
+    }
+  }
+
+  try {
+    const res = await fetch(`${PLATINUM_API_URL}/auth/createTokenAzure`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        azureUid: "00000000-0000-0000-0000-000000000000",
+        email: username,
+        username: username,
+        dbName: db,
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.log(`[PlatinumAuth] Login failed for ${username}: ${res.status} - ${text.substring(0, 200)}`);
+      return { success: false, error: `User "${username}" not found in the system` };
+    }
+
+    const data = await res.json();
+    if (!data.token) {
+      return { success: false, error: "No token returned from server" };
+    }
+
+    const apiUserData = data.data || data.user || data.userData || {};
+    const apiUserId = apiUserData.user_ID ?? apiUserData.userId ?? apiUserData.id;
+
+    const user = {
+      user_ID: apiUserId || 0,
+      userName: apiUserData.userName ?? username,
+      firstName: apiUserData.firstName ?? username,
+      lastName: apiUserData.lastName ?? '',
+      eMail: apiUserData.eMail ?? null,
+      enabled: apiUserData.enabled ?? true,
+      superUser: apiUserData.superUser ?? false,
+      cashFloat: apiUserData.cashFloat ?? 0,
+      finYear: apiUserData.finYear || data.finYear || "2025/2026",
+      authMode: 'azure' as const
+    };
+
+    cachedToken = data.token;
+    cachedUserData = user;
+    cachedAuthMode = 'azure';
+    cachedPosCashierId = null;
+    tokenExpiry = Date.now() + 7 * 60 * 60 * 1000;
+
+    console.log(`[PlatinumAuth] Login successful via Azure: ${user.firstName} ${user.lastName} (user_ID: ${user.user_ID})`);
+    userLoggedIn = true;
+    return { success: true, userData: user };
+  } catch (e: any) {
+    console.error(`[PlatinumAuth] Login error:`, e.message);
+    return { success: false, error: "Could not connect to the billing system" };
+  }
+}
+
+export function logoutUser(): void {
+  cachedToken = null;
+  cachedUserData = null;
+  cachedPosCashierId = null;
+  cachedAuthMode = 'override';
+  tokenExpiry = 0;
+  userLoggedIn = false;
+  console.log(`[PlatinumAuth] User logged out`);
+}
+
+export function isAuthenticated(): boolean {
+  return userLoggedIn && !!(cachedToken && cachedUserData && tokenExpiry > Date.now());
 }
 
 export async function getPosCashierId(): Promise<number | null> {

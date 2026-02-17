@@ -264,13 +264,35 @@ export function PosLayout({ children }: PosLayoutProps) {
                    <LogOut className="w-4 h-4" />
                  </Button>
                )}
+               <Button
+                 variant="ghost"
+                 size="sm"
+                 className="h-8 text-xs text-muted-foreground hover:text-destructive"
+                 onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.reload(); }}
+                 title="Sign out and switch user"
+                 data-testid="button-sign-out"
+               >
+                 Sign Out
+               </Button>
              </>
            ) : (
-             <Button variant="outline" size="sm" onClick={() => setLocation('/pos')} className="gap-1 sm:gap-2 text-xs sm:text-sm">
-               <Layers className="w-4 h-4" />
-               <span className="hidden sm:inline">Start POS Session</span>
-               <span className="sm:hidden">Start</span>
-             </Button>
+             <div className="flex items-center gap-2">
+               <Button variant="outline" size="sm" onClick={() => setLocation('/pos')} className="gap-1 sm:gap-2 text-xs sm:text-sm">
+                 <Layers className="w-4 h-4" />
+                 <span className="hidden sm:inline">Start POS Session</span>
+                 <span className="sm:hidden">Start</span>
+               </Button>
+               <Button
+                 variant="ghost"
+                 size="sm"
+                 className="h-8 text-xs text-muted-foreground hover:text-destructive"
+                 onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.reload(); }}
+                 title="Sign out and switch user"
+                 data-testid="button-sign-out-no-session"
+               >
+                 Sign Out
+               </Button>
+             </div>
            )}
         </div>
       </header>
