@@ -224,9 +224,10 @@ export async function registerRoutes(
       const cashOffice = vcData.cashOffice || null;
       const receiptRange = vcData.receiptRange || vcData.receiptRangeAvailable || null;
 
-      const isCashierRegistered = cashier != null && (cashier.id > 0 || cashier.user_Id > 0);
+      const hasReceiptRangeData = receiptRange != null && (receiptRange.user_Id > 0 || receiptRange.isEnabled === true);
+      const isCashierRegistered = (cashier != null && (cashier.id > 0 || cashier.user_Id > 0)) || hasReceiptRangeData;
       const isSessionActive = cashier?.isActive === true;
-      const cashierId = cashier?.id || cashier?.user_Id || null;
+      const cashierId = cashier?.id || cashier?.user_Id || (hasReceiptRangeData ? Number(userId) : null);
       const activeOfficeId = cashOffice?.cashOffice_ID || cashier?.officeId || null;
       const activeOfficeName = cashOffice?.cashOfficeDesc || null;
       const cashFloat = cashier?.cashFloat ?? 0;
