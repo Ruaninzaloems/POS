@@ -8,8 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { useLocation } from 'wouter';
-import { Loader2, AlertTriangle, CheckCircle2, Circle } from 'lucide-react';
-import { platinumGetCashOffices } from '@/lib/external-api';
+import { Loader2, AlertTriangle, CheckCircle2, Circle, ShieldCheck, CreditCard, Banknote, XCircle, RefreshCw } from 'lucide-react';
+import { platinumGetCashOffices, fetchCashierPaymentOptions, fetchCashierPaymentTypes, validateReceiptRange, CashierPaymentOption, CashierPaymentType, ReceiptRangeValidation } from '@/lib/external-api';
 
 interface CashOfficeViewModel {
     cashOffice_ID: number;
@@ -42,6 +42,14 @@ export default function CashierSetup() {
     const [selectedOfficeId, setSelectedOfficeId] = useState<string>('');
     const [error, setError] = useState<string>('');
     const [submitting, setSubmitting] = useState(false);
+
+    const [paymentOptions, setPaymentOptions] = useState<CashierPaymentOption[]>([]);
+    const [paymentTypes, setPaymentTypes] = useState<CashierPaymentType[]>([]);
+    const [paymentOptionsSource, setPaymentOptionsSource] = useState<string>('');
+    const [paymentTypesSource, setPaymentTypesSource] = useState<string>('');
+    const [receiptRangeStatus, setReceiptRangeStatus] = useState<ReceiptRangeValidation | null>(null);
+    const [configLoading, setConfigLoading] = useState(false);
+    const [configError, setConfigError] = useState<string>('');
 
     const userId = platinumUser?.user_ID || Number(currentUser.id) || 0;
     const firstName = platinumUser?.firstName || currentUser.name?.split(' ')[0] || '';
@@ -146,6 +154,41 @@ export default function CashierSetup() {
 
         runSetupFlow();
     }, [activeSession, sessionLoading, sessionDetails, userId, finYear]);
+
+    useEffect(() => {
+        if (!isCashierRegistered || !cashierId || !selectedOfficeId || !userId) return;
+
+        const loadCashierConfig = async () => {
+            setConfigLoading(true);
+            setConfigError('');
+            const officeId = Number(selectedOfficeId);
+
+            try {
+                const [optionsResult, typesResult, rangeResult] = await Promise.all([
+                    fetchCashierPaymentOptions(cashierId, userId, officeId),
+                    fetchCashierPaymentTypes(cashierId, userId, officeId),
+                    validateReceiptRange(userId, cashierId, finYear || undefined, officeId)
+                ]);
+
+                setPaymentOptions(optionsResult.data || []);
+                setPaymentOptionsSource(optionsResult.source || '');
+                setPaymentTypes(typesResult.data || []);
+                setPaymentTypesSource(typesResult.source || '');
+                setReceiptRangeStatus(rangeResult);
+
+                if (optionsResult.data?.length === 0 && typesResult.data?.length === 0) {
+                    setConfigError('Could not load payment configuration from the billing system.');
+                }
+            } catch (e: any) {
+                console.warn('[CashierSetup] Failed to load cashier config:', e);
+                setConfigError('Failed to load cashier configuration. Click retry to try again.');
+            } finally {
+                setConfigLoading(false);
+            }
+        };
+
+        loadCashierConfig();
+    }, [isCashierRegistered, cashierId, selectedOfficeId, userId, finYear]);
 
     const selectedOffice = cashOffices.find(o => String(o.cashOffice_ID) === selectedOfficeId);
     const scoaCode = selectedOffice?.vote || selectedOffice?.vote1 || selectedOffice?.voteDesc || null;
@@ -443,8 +486,187 @@ export default function CashierSetup() {
                             </div>
                         </div>
 
+                        {isCashierRegistered && selectedOfficeId && (
+                            <div className="mt-6 space-y-4" data-testid="cashier-config-panel">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Cashier Configuration</h3>
+                                    <div className="flex items-center gap-2">
+                                        {configLoading && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
+                                        {configError && !configLoading && (
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700"
+                                                onClick={() => {
+                                                    setConfigError('');
+                                                    setPaymentOptions([]);
+                                                    setPaymentTypes([]);
+                                                    setReceiptRangeStatus(null);
+                                                    const officeId = Number(selectedOfficeId);
+                                                    setConfigLoading(true);
+                                                    Promise.all([
+                                                        fetchCashierPaymentOptions(cashierId!, userId, officeId),
+                                                        fetchCashierPaymentTypes(cashierId!, userId, officeId),
+                                                        validateReceiptRange(userId, cashierId!, finYear || undefined, officeId)
+                                                    ]).then(([optR, typR, rangeR]) => {
+                                                        setPaymentOptions(optR.data || []);
+                                                        setPaymentOptionsSource(optR.source || '');
+                                                        setPaymentTypes(typR.data || []);
+                                                        setPaymentTypesSource(typR.source || '');
+                                                        setReceiptRangeStatus(rangeR);
+                                                    }).catch(() => {
+                                                        setConfigError('Retry failed. Please check your connection.');
+                                                    }).finally(() => setConfigLoading(false));
+                                                }}
+                                                data-testid="button-retry-config"
+                                            >
+                                                <RefreshCw className="h-3 w-3 mr-1" /> Retry
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {configError && !configLoading && (
+                                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2 text-xs text-amber-700" data-testid="config-error">
+                                        <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                                        {configError}
+                                    </div>
+                                )}
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 border border-blue-200 rounded-xl p-4" data-testid="card-payment-options">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                                                    <ShieldCheck className="h-4 w-4 text-blue-600" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-semibold text-blue-800">Payment Functions</p>
+                                                    <p className="text-[10px] text-blue-600">What you can process</p>
+                                                </div>
+                                            </div>
+                                            {paymentOptionsSource && !configLoading && (
+                                                <Badge variant="outline" className="text-[9px] px-1 py-0 text-blue-400 border-blue-200" data-testid="options-source">{paymentOptionsSource === 'platinum' ? 'API' : paymentOptionsSource}</Badge>
+                                            )}
+                                        </div>
+                                        {configLoading ? (
+                                            <div className="flex items-center gap-2 py-2">
+                                                <Loader2 className="h-3 w-3 animate-spin text-blue-400" />
+                                                <span className="text-xs text-blue-500">Loading...</span>
+                                            </div>
+                                        ) : paymentOptions.length === 0 ? (
+                                            <p className="text-xs text-blue-500 italic py-1">No options loaded</p>
+                                        ) : (
+                                            <div className="space-y-1.5">
+                                                {paymentOptions.map(opt => (
+                                                    <div key={opt.posPaymentOption_ID} className="flex items-center justify-between" data-testid={`payment-option-${opt.posPaymentOption_ID}`}>
+                                                        <span className="text-xs text-slate-700 truncate mr-2">{opt.posPaymentOptionDesc}</span>
+                                                        {opt.isTicked && opt.enabled ? (
+                                                            <Badge className="text-[10px] px-1.5 py-0 bg-green-100 text-green-700 border-green-200 hover:bg-green-100" data-testid={`option-status-${opt.posPaymentOption_ID}`}>Enabled</Badge>
+                                                        ) : (
+                                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-slate-400 border-slate-200" data-testid={`option-status-${opt.posPaymentOption_ID}`}>Disabled</Badge>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="bg-gradient-to-br from-violet-50 to-violet-100/50 border border-violet-200 rounded-xl p-4" data-testid="card-payment-types">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                                                    <CreditCard className="h-4 w-4 text-violet-600" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-semibold text-violet-800">Tender Methods</p>
+                                                    <p className="text-[10px] text-violet-600">How you can accept payment</p>
+                                                </div>
+                                            </div>
+                                            {paymentTypesSource && !configLoading && (
+                                                <Badge variant="outline" className="text-[9px] px-1 py-0 text-violet-400 border-violet-200" data-testid="types-source">{paymentTypesSource === 'platinum' ? 'API' : paymentTypesSource}</Badge>
+                                            )}
+                                        </div>
+                                        {configLoading ? (
+                                            <div className="flex items-center gap-2 py-2">
+                                                <Loader2 className="h-3 w-3 animate-spin text-violet-400" />
+                                                <span className="text-xs text-violet-500">Loading...</span>
+                                            </div>
+                                        ) : paymentTypes.length === 0 ? (
+                                            <p className="text-xs text-violet-500 italic py-1">No types loaded</p>
+                                        ) : (
+                                            <div className="space-y-1.5">
+                                                {paymentTypes.map(t => (
+                                                    <div key={t.posPaymentType_ID} className="flex items-center justify-between" data-testid={`payment-type-${t.posPaymentType_ID}`}>
+                                                        <div className="flex items-center gap-1.5">
+                                                            {t.posPaymentType_ID === 1 ? (
+                                                                <Banknote className="h-3 w-3 text-green-600" />
+                                                            ) : t.posPaymentType_ID === 3 ? (
+                                                                <CreditCard className="h-3 w-3 text-violet-600" />
+                                                            ) : (
+                                                                <Circle className="h-3 w-3 text-slate-400" />
+                                                            )}
+                                                            <span className="text-xs text-slate-700">{t.posPaymentTypeDesc}</span>
+                                                        </div>
+                                                        {t.isTicked && t.enabled ? (
+                                                            <Badge className="text-[10px] px-1.5 py-0 bg-green-100 text-green-700 border-green-200 hover:bg-green-100" data-testid={`type-status-${t.posPaymentType_ID}`}>Enabled</Badge>
+                                                        ) : (
+                                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-slate-400 border-slate-200" data-testid={`type-status-${t.posPaymentType_ID}`}>Disabled</Badge>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className={`bg-gradient-to-br ${receiptRangeStatus?.valid ? 'from-emerald-50 to-emerald-100/50 border-emerald-200' : receiptRangeStatus === null ? 'from-slate-50 to-slate-100/50 border-slate-200' : 'from-red-50 to-red-100/50 border-red-200'} border rounded-xl p-4`} data-testid="card-receipt-range">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${receiptRangeStatus?.valid ? 'bg-emerald-500/10' : receiptRangeStatus === null ? 'bg-slate-500/10' : 'bg-red-500/10'}`}>
+                                                {receiptRangeStatus?.valid ? (
+                                                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                                                ) : receiptRangeStatus === null ? (
+                                                    <RefreshCw className="h-4 w-4 text-slate-400" />
+                                                ) : (
+                                                    <XCircle className="h-4 w-4 text-red-600" />
+                                                )}
+                                            </div>
+                                            <div>
+                                                <p className={`text-xs font-semibold ${receiptRangeStatus?.valid ? 'text-emerald-800' : receiptRangeStatus === null ? 'text-slate-600' : 'text-red-800'}`}>Receipt Status</p>
+                                                <p className={`text-[10px] ${receiptRangeStatus?.valid ? 'text-emerald-600' : receiptRangeStatus === null ? 'text-slate-500' : 'text-red-600'}`}>Receipt range allocation</p>
+                                            </div>
+                                        </div>
+                                        {configLoading ? (
+                                            <div className="flex items-center gap-2 py-2">
+                                                <Loader2 className="h-3 w-3 animate-spin text-slate-400" />
+                                                <span className="text-xs text-slate-500">Validating...</span>
+                                            </div>
+                                        ) : receiptRangeStatus === null ? (
+                                            <p className="text-xs text-slate-500 italic py-1">Waiting for validation...</p>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-1.5">
+                                                    {receiptRangeStatus.valid ? (
+                                                        <Badge className="text-[10px] px-1.5 py-0 bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100" data-testid="receipt-range-valid">Ready</Badge>
+                                                    ) : (
+                                                        <Badge className="text-[10px] px-1.5 py-0 bg-red-100 text-red-700 border-red-200 hover:bg-red-100" data-testid="receipt-range-invalid">Not Ready</Badge>
+                                                    )}
+                                                </div>
+                                                {receiptRangeStatus.officeName && (
+                                                    <p className="text-[10px] text-slate-600">Office: {receiptRangeStatus.officeName}</p>
+                                                )}
+                                                {!receiptRangeStatus.valid && receiptRangeStatus.reason && (
+                                                    <p className="text-[10px] text-red-600 mt-1">{receiptRangeStatus.reason}</p>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {error && (
-                            <div className="text-red-500 text-sm text-center bg-red-50 p-2 rounded" data-testid="text-error">
+                            <div className="text-red-500 text-sm text-center bg-red-50 p-2 rounded mt-4" data-testid="text-error">
                                 {error}
                             </div>
                         )}

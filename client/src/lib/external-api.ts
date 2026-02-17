@@ -217,13 +217,15 @@ export interface ReceiptRangeValidation {
 export async function validateReceiptRange(
     userId: number,
     cashierId?: number,
-    finYear?: string
+    finYear?: string,
+    officeId?: number
 ): Promise<ReceiptRangeValidation> {
     try {
         const params = new URLSearchParams();
         params.append('userId', String(userId));
         if (cashierId) params.append('cashierId', String(cashierId));
         if (finYear) params.append('finYear', finYear);
+        if (officeId) params.append('officeId', String(officeId));
         const res = await fetch(`/api/platinum/receipt-prepaid/validate-receipt-range?${params.toString()}`);
         if (res.ok) {
             const result = await res.json();

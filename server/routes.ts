@@ -293,12 +293,13 @@ export async function registerRoutes(
       const userId = req.query.userId as string;
       const cashierId = req.query.cashierId as string;
       const finYear = req.query.finYear as string;
+      const requestedOfficeId = req.query.officeId as string;
 
       if (!userId) {
         return res.status(400).json({ message: "userId is required" });
       }
 
-      console.log(`[validate-receipt-range] Checking receipt range for userId=${userId}, cashierId=${cashierId}, finYear=${finYear}`);
+      console.log(`[validate-receipt-range] Checking receipt range for userId=${userId}, cashierId=${cashierId}, finYear=${finYear}, requestedOfficeId=${requestedOfficeId}`);
 
       const validateResult = await platinumGet("/api/ReceiptPrepaid/validate-cashier", {
         userId,
@@ -375,6 +376,18 @@ export async function registerRoutes(
           valid: false,
           reason: "Cashier POS record exists but is not active. Session may have ended. Please restart your session.",
           isActive: false,
+          cashierDetailsId: activeDetailsId,
+          officeId: activeOfficeId,
+          officeName: activeOfficeName
+        });
+      }
+
+      if (requestedOfficeId && activeOfficeId && String(activeOfficeId) !== String(requestedOfficeId)) {
+        console.warn(`[validate-receipt-range] Office mismatch — requested=${requestedOfficeId}, active=${activeOfficeId} (${activeOfficeName})`);
+        return res.json({
+          valid: false,
+          reason: `Selected office (ID: ${requestedOfficeId}) does not match the cashier's assigned office: ${activeOfficeName || activeOfficeId}. Please select the correct office or contact your supervisor.`,
+          isActive: true,
           cashierDetailsId: activeDetailsId,
           officeId: activeOfficeId,
           officeName: activeOfficeName
