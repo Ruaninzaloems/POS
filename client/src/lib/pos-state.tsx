@@ -1221,7 +1221,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     console.log(`[Priority 1 ${label}] Submitting consumer payment for account ${acct.account_ID} (${acct.name}), PAYMENT amount: R${itemPayment}, full outstanding: R${acctOutstanding}, requestModel.totalAmount: R${requestModel.totalAmount}, requestModel.outStandingAmount: R${requestModel.outStandingAmount}, paymentType: ${paymentTypeId}, cardNumber: "${requestModel.cardNumber}"`);
 
                     const { _userAmountToPay: _, ...submitAccount } = acct;
-                    console.log(`[Priority 1 ${label}] submitAccount.outStandingAmt kept at full outstanding: R${submitAccount.outStandingAmt} (payment amount in requestModel: R${itemPayment})`);
+                    submitAccount.outStandingAmt = itemPayment;
+                    console.log(`[Priority 1 ${label}] submitAccount.outStandingAmt set to payment amount: R${submitAccount.outStandingAmt} (matches staged amount, requestModel.totalAmount: R${itemPayment})`);
                     const result = await submitConsumerPayment(sessionUserId, {
                         account: submitAccount,
                         requestModel,
