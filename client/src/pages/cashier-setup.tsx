@@ -167,8 +167,8 @@ export default function CashierSetup() {
         }
 
         const float = parseFloat(floatInput);
-        if (isNaN(float) || float <= 0) {
-            setError('Cash float must be greater than 0. Platinum requires a starting cash float.');
+        if (isNaN(float) || float < 0) {
+            setError('Cash float must be a valid number.');
             return;
         }
 
@@ -238,7 +238,8 @@ export default function CashierSetup() {
             console.log(`[CashierSetup] Platinum submit message: "${apiMessage}"`);
 
             if (apiMessage && apiMessage !== 'Cashier Setup Added') {
-                throw new Error(`Platinum: ${apiMessage}`);
+                console.error(`[CashierSetup] Platinum rejected setup: "${apiMessage}". Full response:`, JSON.stringify(responseData));
+                throw new Error(`Platinum API rejected the setup: "${apiMessage}". Full response: ${JSON.stringify(responseData)}`);
             }
 
             console.log(`[CashierSetup] Step 3 VERIFY: Calling validate-cashier to confirm session is active for userId=${userId}`);
