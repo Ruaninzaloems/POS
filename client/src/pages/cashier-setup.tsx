@@ -167,8 +167,8 @@ export default function CashierSetup() {
         }
 
         const float = parseFloat(floatInput);
-        if (isNaN(float) || float < 0) {
-            setError('Cash float must be 0 or greater.');
+        if (isNaN(float) || float <= 0) {
+            setError('Cash float must be greater than 0. Platinum requires a starting cash float.');
             return;
         }
 
@@ -236,6 +236,10 @@ export default function CashierSetup() {
 
             const apiMessage = responseData?.message || '';
             console.log(`[CashierSetup] Platinum submit message: "${apiMessage}"`);
+
+            if (apiMessage && apiMessage !== 'Cashier Setup Added') {
+                throw new Error(`Platinum: ${apiMessage}`);
+            }
 
             console.log(`[CashierSetup] Step 3 VERIFY: Calling validate-cashier to confirm session is active for userId=${userId}`);
             const verifyRes = await fetch(`/api/platinum/receipt-prepaid/validate-cashier?userId=${userId}&finYear=${encodeURIComponent(finYear)}`);
