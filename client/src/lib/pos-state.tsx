@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from '
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails } from './external-api';
 
 if (import.meta.hot) {
   import.meta.hot.accept(() => {
@@ -1164,6 +1164,15 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     perAccountPayments.push({ acct, localItem, itemPayment, acctOutstanding });
                 }
 
+                if (paymentAmountOverride !== undefined && perAccountPayments.length > 1) {
+                    const pSum = perAccountPayments.reduce((s, p) => s + p.itemPayment, 0);
+                    const pDelta = Math.round((paymentAmountOverride - pSum) * 100) / 100;
+                    if (pDelta !== 0) {
+                        perAccountPayments[perAccountPayments.length - 1].itemPayment =
+                            Math.round((perAccountPayments[perAccountPayments.length - 1].itemPayment + pDelta) * 100) / 100;
+                    }
+                }
+
                 for (let i = 0; i < perAccountPayments.length; i++) {
                     const { acct, itemPayment, acctOutstanding } = perAccountPayments[i];
 
@@ -1220,99 +1229,58 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (isSplitPayment) {
                 const cashPaid = Math.max(0, record.payment.cash - totalChange);
                 const cardPaid = record.payment.card;
+                const cashPaidRatio = grandTotal > 0 ? cashPaid / grandTotal : 0;
                 const accGroupTotal = isMixedBasket ? accountTotal : grandTotal;
-                const accTenderTotal = isMixedBasket ? accGroupTotal : (record.payment.cash + record.payment.card);
-                const accChangeTotal = isMixedBasket ? 0 : totalChange;
-                const accCashRatio = accGroupTotal > 0 ? Math.min(1, (isMixedBasket ? (cashPaid * accountTotal / grandTotal) : cashPaid) / accGroupTotal) : 0.5;
+                const accCashActual = Math.round(accGroupTotal * cashPaidRatio * 100) / 100;
+                const accCardActual = Math.round((accGroupTotal - accCashActual) * 100) / 100;
+                const accCashTender = isMixedBasket ? accCashActual : record.payment.cash;
+                const accCashChange = isMixedBasket ? 0 : totalChange;
 
-                console.log(`[Priority 1 SPLIT] ACC total: R${accGroupTotal}, Cash portion: R${cashPaid}, Card portion: R${cardPaid} — submitting as SINGLE API call with paymentType=1`);
+                console.log(`[Priority 1 SPLIT] ACC total: R${accGroupTotal}, Cash: R${accCashActual} (tender: R${accCashTender}, change: R${accCashChange}), Card: R${accCardActual}`);
+
+                const buildPortionStagingPayload = (portionTotal: number) => {
+                    const result = saveAccounts.map(acct => {
+                        const { _userAmountToPay, ...rest } = acct;
+                        const userAmt = _userAmountToPay > 0 ? _userAmountToPay : rest.outStandingAmt;
+                        const portionAmt = accGroupTotal > 0
+                            ? Math.round((userAmt / accGroupTotal) * portionTotal * 100) / 100
+                            : Math.round(portionTotal / saveAccounts.length * 100) / 100;
+                        return { ...rest, outStandingAmt: portionAmt };
+                    });
+                    const summed = result.reduce((s, a) => s + a.outStandingAmt, 0);
+                    const delta = Math.round((portionTotal - summed) * 100) / 100;
+                    if (delta !== 0 && result.length > 0) {
+                        result[result.length - 1].outStandingAmt = Math.round((result[result.length - 1].outStandingAmt + delta) * 100) / 100;
+                    }
+                    return result;
+                };
 
                 try {
-                    const splitResult = await submitConsumerPayments(accGroupTotal, accTenderTotal, accChangeTotal, 1, 1, 'SPLIT');
-                    console.log(`[Priority 1 SPLIT] Submitted single payment for split`, splitResult);
-                    const receiptIds = extractReceiptIds(splitResult);
-                    const perAcctAmounts = splitResult.perAccountAmounts || [];
-
-                    for (let rIdx = 0; rIdx < receiptIds.length; rIdx++) {
-                        const rid = receiptIds[rIdx];
-                        let receiptNo = `REC-${rid}`;
-                        let receiptDetail: any = null;
-
-                        try {
-                            const receiptData = await fetchPosMultiReceiptPrint(String(rid));
-                            if (receiptData && receiptData.length > 0) {
-                                const rd = receiptData[0];
-                                if (rd.receiptNo) receiptNo = rd.receiptNo;
-                                const lineItems = receiptData.map((row: any) => ({
-                                    description: row.billType || '',
-                                    amount: row.amount ?? 0,
-                                    vatAmount: row.vatAmount ?? 0,
-                                }));
-                                receiptDetail = {
-                                    receiptNo: rd.receiptNo,
-                                    cashierName: rd.cashierName,
-                                    cashOffice: rd.cashOfficeName,
-                                    tenderAmount: rd.tenderAmount,
-                                    changeAmount: rd.changeAmount,
-                                    outstandingAmount: rd.outstandingAmount,
-                                    paymentType: 'Split (Cash + Card)',
-                                    paymentOption: rd.payMode || 'Consumer Services',
-                                    accountId: rd.accountId,
-                                    oldAccountCode: rd.oldAccountCode,
-                                    sgNumber: rd.sgNumber,
-                                    accAddress: rd.accAddress,
-                                    accName: rd.accName,
-                                    receiptDate: rd.receiptDate,
-                                    paymentDate: rd.paymentDate,
-                                    isCancelled: rd.isCancelled,
-                                    lineItems,
-                                };
-                            }
-                        } catch (e) {
-                            console.warn(`[Priority 1 SPLIT] Could not fetch receipt data for ${rid}`, e);
-                        }
-
-                        if (!finalReceiptNumber) {
-                            finalReceiptNumber = receiptNo;
-                            updateRecordReceiptNumber(record, finalReceiptNumber);
-                        }
-
-                        const matchedPerAcct = perAcctAmounts[rIdx];
-                        const acctPayment = matchedPerAcct?.amount || (accGroupTotal / Math.max(1, receiptIds.length));
-                        const acctCash = Math.round(acctPayment * accCashRatio * 100) / 100;
-                        const acctCard = Math.round((acctPayment - acctCash) * 100) / 100;
-
-                        const cashSplitEntry: SplitReceipt = {
-                            receiptNumber: receiptNo,
-                            receiptId: rid,
-                            paymentType: 'cash',
-                            amount: acctCash,
-                            accountId: matchedPerAcct?.accountId || '',
-                            accountName: matchedPerAcct?.accountName || '',
-                        };
-                        if (receiptDetail) cashSplitEntry.receiptDetail = receiptDetail;
-                        record.splitReceipts!.push(cashSplitEntry);
-
-                        const cardSplitEntry: SplitReceipt = {
-                            receiptNumber: receiptNo,
-                            receiptId: rid,
-                            paymentType: 'card',
-                            amount: acctCard,
-                            accountId: matchedPerAcct?.accountId || '',
-                            accountName: matchedPerAcct?.accountName || '',
-                        };
-                        if (receiptDetail) cardSplitEntry.receiptDetail = receiptDetail;
-                        record.splitReceipts!.push(cardSplitEntry);
-
-                        if (receiptDetail && !record.receiptDetail) {
-                            record.receiptDetail = receiptDetail;
-                        }
-
-                        console.log(`[Priority 1 SPLIT] Receipt ${receiptNo} — acct cash: R${acctCash}, acct card: R${acctCard} (total: R${acctPayment})`);
-                    }
+                    const cashStagingPayload = buildPortionStagingPayload(accCashActual);
+                    console.log(`[Priority 1 SPLIT CASH] Staging ${cashStagingPayload.length} accounts with cash portions`, cashStagingPayload.map(a => `${a.account_ID}: R${a.outStandingAmt}`));
+                    await platinumSaveMultipleAccountPayment(cashStagingPayload, { userId: String(sessionUserId) });
+                    const cashResult = await submitConsumerPayments(accCashActual, accCashTender, accCashChange, 1, 1, 'CASH', accCashActual);
+                    console.log(`[Priority 1 SPLIT CASH] Submitted cash payment`, cashResult);
+                    const cashReceiptIds = extractReceiptIds(cashResult);
+                    await processAccReceiptResult(cashReceiptIds, 'CASH', 'cash', accCashActual, cashResult.perAccountAmounts);
                 } catch (e: any) {
-                    console.warn(`[Priority 1 SPLIT] Failed to submit payment`, e);
-                    toast({ title: "Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
+                    console.warn(`[Priority 1 SPLIT CASH] Failed to submit cash payment`, e);
+                    toast({ title: "Cash Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
+                }
+
+                if (accCardActual > 0) {
+                    try {
+                        const cardStagingPayload = buildPortionStagingPayload(accCardActual);
+                        console.log(`[Priority 1 SPLIT CARD] Staging ${cardStagingPayload.length} accounts with card portions`, cardStagingPayload.map(a => `${a.account_ID}: R${a.outStandingAmt}`));
+                        await platinumSaveMultipleAccountPayment(cardStagingPayload, { userId: String(sessionUserId) });
+                        const cardResult = await submitConsumerPayments(accCardActual, accCardActual, 0, 3, 1, 'CARD', accCardActual);
+                        console.log(`[Priority 1 SPLIT CARD] Submitted card payment`, cardResult);
+                        const cardReceiptIds = extractReceiptIds(cardResult);
+                        await processAccReceiptResult(cardReceiptIds, 'CARD', 'card', accCardActual, cardResult.perAccountAmounts);
+                    } catch (e: any) {
+                        console.warn(`[Priority 1 SPLIT CARD] Failed to submit card payment`, e);
+                        toast({ title: "Card Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
+                    }
                 }
             } else {
                 try {
@@ -1327,22 +1295,47 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }
             }
 
-            const postProcessPromises = accountItems.map(async (item) => {
+            for (const item of accountItems) {
                 const accountId = item.originalData?.account_ID || item.originalData?.apiId || item.originalData?.accountID || item.originalData?.accountId;
-                if (!accountId) return;
+                if (!accountId) continue;
                 const latestReceiptId = record.splitReceipts && record.splitReceipts.length > 0
                     ? String(record.splitReceipts[record.splitReceipts.length - 1].receiptId)
                     : record.receiptNumber.replace(/\D/g, '') || '0';
-                await Promise.all([
-                    postMultipleAccountPaymentReceipt(String(sessionUserId), accountId, latestReceiptId)
-                        .then(() => console.log(`[Priority 1] Legacy receipt posted for account ${accountId}`))
-                        .catch(e => console.warn(`[Priority 1] Failed to post legacy receipt for account ${accountId}`, e)),
-                    rebuildFullAccount(Number(accountId))
-                        .then(() => console.log(`[Priority 1] Rebuild triggered for account ${accountId}`))
-                        .catch(e => console.warn(`[Priority 1] Failed to rebuild account ${accountId}`, e)),
-                ]);
-            });
-            Promise.all(postProcessPromises).catch(() => {});
+
+                try {
+                    await postMultipleAccountPaymentReceipt(String(sessionUserId), accountId, latestReceiptId);
+                    console.log(`[Priority 1] Legacy receipt posted for account ${accountId}`);
+                } catch (e) {
+                    console.warn(`[Priority 1] Failed to post legacy receipt for account ${accountId}`, e);
+                }
+
+                try {
+                    await rebuildFullAccount(Number(accountId));
+                    console.log(`[Priority 1] Rebuild completed for account ${accountId}`);
+                } catch (e) {
+                    console.warn(`[Priority 1] Failed to rebuild account ${accountId}`, e);
+                }
+
+                try {
+                    const consDetails = await platinumGetConsAccountDetails(Number(accountId));
+                    if (consDetails && consDetails.outStandingAmt !== undefined) {
+                        const updatedOutstanding = consDetails.outStandingAmt;
+                        console.log(`[Priority 1] Updated outstanding balance for account ${accountId}: R${updatedOutstanding} (from API)`);
+
+                        if (record.receiptDetail && (String(record.receiptDetail.accountId) === String(accountId))) {
+                            record.receiptDetail.outstandingAmount = updatedOutstanding;
+                        }
+
+                        for (const sr of (record.splitReceipts || [])) {
+                            if (sr.receiptDetail && (String(sr.accountId) === String(accountId) || String(sr.receiptDetail.accountId) === String(accountId))) {
+                                sr.receiptDetail.outstandingAmount = updatedOutstanding;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`[Priority 1] Failed to fetch updated outstanding for account ${accountId}`, e);
+                }
+            }
         }
     }
 
