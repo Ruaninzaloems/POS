@@ -319,7 +319,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!platinumUser) return;
     const checkActiveSession = async () => {
       try {
-        const res = await fetch(`/api/platinum/auth/active-cashier-by-userid?userid=${platinumUser.user_ID}`);
+        const res = await fetch(`/api/platinum/auth/active-cashier-by-userid?userid=${platinumUser.user_ID}&finYear=${encodeURIComponent(platinumUser.finYear || '2025/2026')}`);
         if (!res.ok) {
           setCashierRegistered(false);
           setSessionLoading(false);

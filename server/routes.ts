@@ -216,6 +216,8 @@ export async function registerRoutes(
         return res.json({ active: false, cashierId: null, cashierRegistered: false });
       }
 
+      const isCashierRegistered = cashierId != null && cashierId !== 0;
+
       let cashierDetails: any = null;
       let activeOfficeId: number | null = null;
       let activeOfficeName: string | null = null;
@@ -230,40 +232,58 @@ export async function registerRoutes(
         try {
           const result = await platinumGet(ep.path, ep.params);
           if (result && !result._error) {
-            const hasValidData = result.id > 0 || result.isActive === true || result.officeId > 0;
+            const hasValidData = result.id > 0 || result.officeId > 0;
             if (hasValidData) {
               cashierDetails = result;
-              console.log(`[active-cashier] Got valid details from ${ep.path}:`, JSON.stringify({ id: result.id, officeId: result.officeId, isActive: result.isActive, office: result.const_CashOffice?.cashOfficeDesc }));
+              console.log(`[active-cashier] Got details from ${ep.path}:`, JSON.stringify({ id: result.id, officeId: result.officeId, isActive: result.isActive, office: result.const_CashOffice?.cashOfficeDesc }));
               break;
             } else if (!cashierDetails && result.const_CashOffice) {
               cashierDetails = result;
-              console.log(`[active-cashier] Got fallback details from ${ep.path} (id:${result.id}, inactive):`, JSON.stringify({ office: result.const_CashOffice?.cashOfficeDesc }));
+              console.log(`[active-cashier] Got fallback details from ${ep.path} (id:${result.id}):`, JSON.stringify({ office: result.const_CashOffice?.cashOfficeDesc }));
             }
           }
         } catch {}
       }
 
-      const isSessionActive = cashierDetails?.isActive === true;
+      let isSessionActive = false;
+      const finYear = req.query.finYear as string || req.query.finyear as string || '2025/2026';
+      try {
+        const validateResult = await platinumGet("/api/ReceiptPrepaid/validate-cashier", { userId, finYear });
+        if (validateResult && !validateResult._error && validateResult.status !== 404) {
+          const vcId = validateResult.cashierId || validateResult.cashierReconcile_Id || 0;
+          if (vcId > 0) {
+            isSessionActive = true;
+            console.log(`[active-cashier] validate-cashier CONFIRMED active session — cashierId: ${vcId}`);
+          } else {
+            console.log(`[active-cashier] validate-cashier returned but no valid cashierId — session NOT active`);
+          }
+        } else {
+          console.log(`[active-cashier] validate-cashier says NO active session:`, JSON.stringify(validateResult)?.substring(0, 200));
+        }
+      } catch (e) {
+        console.log(`[active-cashier] validate-cashier failed, session NOT active:`, (e as any)?.message);
+      }
 
-      if (isSessionActive) {
+      if (isSessionActive && cashierDetails) {
         const cashOffice = cashierDetails?.const_CashOffice || null;
         activeOfficeId = cashOffice?.cashOffice_ID || cashierDetails?.officeId || null;
         activeOfficeName = cashOffice?.cashOfficeDesc || null;
       }
 
       const hasOffice = !!activeOfficeId;
-      const isCashierRegistered = cashierId != null && cashierId !== 0;
+
+      console.log(`[active-cashier] Final result — registered: ${isCashierRegistered}, isActive: ${isSessionActive}, officeId: ${activeOfficeId}, officeName: ${activeOfficeName}`);
 
       res.json({
         active: isSessionActive && hasOffice,
         cashierId: isCashierRegistered ? cashierId : null,
         cashierRegistered: isCashierRegistered,
         cashFloat: cashierDetails?.cashFloat ?? 0,
-        officeId: activeOfficeId,
-        officeName: activeOfficeName,
+        officeId: isSessionActive ? activeOfficeId : (cashierDetails?.officeId || null),
+        officeName: isSessionActive ? activeOfficeName : (cashierDetails?.const_CashOffice?.cashOfficeDesc || null),
         cashOnHandLimit: isSessionActive ? (cashierDetails?.const_CashOffice?.cashOnHandLimit || 999999) : 999999,
         isActive: isSessionActive,
-        details: cashierDetails,
+        details: cashierDetails ? { ...cashierDetails, isActive: isSessionActive } : null,
       });
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });

@@ -78,7 +78,7 @@ export default function CashierSetup() {
 
             try {
                 console.log(`[CashierSetup] Step 1: Validate cashier registration — userId=${userId}`);
-                const res = await fetch(`/api/platinum/auth/active-cashier-by-userid?userid=${userId}`);
+                const res = await fetch(`/api/platinum/auth/active-cashier-by-userid?userid=${userId}&finYear=${encodeURIComponent(finYear)}`);
                 if (!res.ok) {
                     throw new Error('Failed to check cashier registration');
                 }
