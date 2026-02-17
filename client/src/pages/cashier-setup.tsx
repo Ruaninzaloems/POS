@@ -237,8 +237,8 @@ export default function CashierSetup() {
             const apiMessage = responseData?.message || '';
             console.log(`[CashierSetup] Platinum submit message: "${apiMessage}"`);
 
-            console.log(`[CashierSetup] Step 3 VERIFY: Calling active-cashier-by-userid to confirm session is active`);
-            const verifyRes = await fetch('/api/platinum/auth/active-cashier-by-userid');
+            console.log(`[CashierSetup] Step 3 VERIFY: Calling active-cashier-by-userid to confirm session is active for userId=${userId}`);
+            const verifyRes = await fetch(`/api/platinum/auth/active-cashier-by-userid?userid=${userId}`);
             const verifyData = await verifyRes.json().catch(() => null);
             console.log(`[CashierSetup] Step 3 VERIFY response:`, JSON.stringify(verifyData));
 
