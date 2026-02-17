@@ -286,25 +286,22 @@ export default function CashierSetup() {
             const validateCashierId = verifyData?.cashierId || verifyData?.cashierReconcile_Id || 0;
 
             if (validateCashierId <= 0) {
-                console.error(`[CashierSetup] VERIFY FAILED — validate-cashier did NOT confirm active session. validateCashierId=${validateCashierId}, submitId=${submitId}, submit response: ${JSON.stringify(responseData)}`);
-
-                const detailRes = await fetch(`/api/platinum/auth/active-cashier-by-userid?userid=${userId}&finYear=${encodeURIComponent(finYear)}`);
-                const detailData = await detailRes.json().catch(() => null);
-                const dbIsActive = detailData?.isActive === true;
-                console.log(`[CashierSetup] Fallback check — active-cashier-by-userid isActive=${dbIsActive}`);
-
-                if (!dbIsActive) {
-                    throw new Error('Session was NOT activated by Platinum. The cashier setup POST did not create an active session in the database. Please contact your administrator.');
-                }
-                console.log(`[CashierSetup] Fallback: active-cashier-by-userid confirms session IS active`);
+                console.error(`[CashierSetup] VERIFY FAILED — validate-cashier did NOT confirm active session in POS_Cashier table.`);
+                console.error(`[CashierSetup] validate-cashier response: ${JSON.stringify(verifyData)}`);
+                console.error(`[CashierSetup] submit-cashier-setup response: ${JSON.stringify(responseData)}`);
+                throw new Error(
+                    `Session NOT activated. The Platinum API POST returned "${apiMessage}" but the database does NOT show IsActive=1 for this user. ` +
+                    `validate-cashier returned: ${JSON.stringify(verifyData)}. ` +
+                    `Please contact your Platinum administrator — the submit-cashier-setup endpoint is not persisting to the POS_Cashier table.`
+                );
             }
 
-            const verifiedCashierId = validateCashierId || submitId;
+            const verifiedCashierId = validateCashierId;
             const verifiedFloat = submitCashier?.cashFloat ?? float;
             const verifiedOfficeId = submitCashier?.officeId || selectedOffice.cashOffice_ID;
             const verifiedOfficeName = selectedOffice.cashOfficeDesc || '';
 
-            console.log(`[CashierSetup] VERIFY PASSED — CashierId: ${verifiedCashierId}, Office: ${verifiedOfficeName} (ID: ${verifiedOfficeId}), Float: ${verifiedFloat}, validate-cashier returned cashierId: ${validateCashierId}, submit returned id: ${submitId}`);
+            console.log(`[CashierSetup] VERIFY PASSED — validate-cashier confirmed IsActive=1. CashierId: ${verifiedCashierId}, Office: ${verifiedOfficeName} (ID: ${verifiedOfficeId}), Float: ${verifiedFloat}`);
 
             const officeId = String(verifiedOfficeId || selectedOffice.cashOffice_ID);
             const officeName = verifiedOfficeName;

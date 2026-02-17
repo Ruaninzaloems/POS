@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { 
   LayoutDashboard, 
   LogOut, 
@@ -43,6 +43,49 @@ interface PosLayoutProps {
 export function PosLayout({ children }: PosLayoutProps) {
   const [location, setLocation] = useLocation();
   const { currentUser, activeSession, sessionLoading, endSession, viewMode, toggleViewMode, sessionDetails, dayEndStatus, platinumUser, cashierRegistered } = usePos();
+
+  const [dbSessionActive, setDbSessionActive] = useState<boolean | null>(null);
+  const [dbCheckLoading, setDbCheckLoading] = useState(false);
+  const [dbFlash, setDbFlash] = useState(false);
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const checkDbSessionStatus = useCallback(async () => {
+    if (!platinumUser?.user_ID) return;
+    const userId = platinumUser.user_ID;
+    const finYear = platinumUser.finYear || '2025/2026';
+    try {
+      setDbCheckLoading(true);
+      const res = await fetch(`/api/platinum/receipt-prepaid/validate-cashier?userId=${userId}&finYear=${encodeURIComponent(finYear)}`);
+      const data = await res.json().catch(() => null);
+      const cashierId = data?.cashierId || data?.cashierReconcile_Id || 0;
+      const isActive = cashierId > 0;
+      console.log(`[SessionBadge] validate-cashier for userId=${userId}: cashierId=${cashierId}, isActive=${isActive}`);
+      setDbSessionActive(isActive);
+      if (!isActive) {
+        setDbFlash(true);
+        setTimeout(() => setDbFlash(false), 600);
+      }
+    } catch (err) {
+      console.warn('[SessionBadge] Failed to check session status:', err);
+      setDbSessionActive(false);
+      setDbFlash(true);
+      setTimeout(() => setDbFlash(false), 600);
+    } finally {
+      setDbCheckLoading(false);
+    }
+  }, [platinumUser?.user_ID, platinumUser?.finYear]);
+
+  useEffect(() => {
+    if (activeSession && platinumUser?.user_ID) {
+      checkDbSessionStatus();
+      pollTimerRef.current = setInterval(checkDbSessionStatus, 30000);
+    } else {
+      setDbSessionActive(null);
+    }
+    return () => {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    };
+  }, [activeSession, platinumUser?.user_ID, checkDbSessionStatus]);
 
   const isPosPage = location === '/pos';
   const isReceiptingPage = isPosPage || location.startsWith('/view-receipts');
@@ -223,9 +266,24 @@ export function PosLayout({ children }: PosLayoutProps) {
                     <span className="font-medium">{currentUser.name}</span>
                     <span className="text-xs text-muted-foreground">{sessionDetails?.officeDesc || currentUser.cashOffice}</span>
                   </div>
-                  <div className="hidden md:block ml-1 px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-semibold rounded-full border border-green-200 whitespace-nowrap">
-                    SESSION ACTIVE
-                  </div>
+                  <button
+                    onClick={checkDbSessionStatus}
+                    disabled={dbCheckLoading}
+                    title={dbSessionActive === true ? 'Session is active in POS_Cashier table (click to refresh)' : dbSessionActive === false ? 'Session is NOT active in POS_Cashier table (click to refresh)' : 'Checking session status...'}
+                    className={`hidden md:flex items-center gap-1.5 ml-1 px-2.5 py-1 text-[10px] font-semibold rounded-full border whitespace-nowrap cursor-pointer transition-all duration-300 ${
+                      dbSessionActive === null
+                        ? 'bg-slate-100 text-slate-500 border-slate-200'
+                        : dbSessionActive === true
+                          ? 'bg-green-100 text-green-700 border-green-300 hover:bg-green-200'
+                          : `border-red-300 text-red-700 hover:bg-red-200 ${dbFlash ? 'bg-red-300 scale-105' : 'bg-red-100 animate-pulse'}`
+                    }`}
+                    data-testid="badge-session-status"
+                  >
+                    <span className={`inline-block w-2 h-2 rounded-full ${
+                      dbSessionActive === null ? 'bg-slate-400' : dbSessionActive ? 'bg-green-500' : 'bg-red-500'
+                    }`} />
+                    {dbCheckLoading ? 'CHECKING...' : dbSessionActive === true ? 'SESSION ACTIVE' : dbSessionActive === false ? 'SESSION INACTIVE' : 'CHECKING...'}
+                  </button>
                </div>
 
                <div className="h-6 w-px bg-border hidden sm:block" />
