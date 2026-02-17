@@ -92,20 +92,10 @@ export default function CashierSetup() {
                     setStep1Status('success');
 
                     if (data.isActive === true && data.officeId) {
-                        console.log(`[CashierSetup] Active session detected — auto-resuming session for office ${data.officeName} (ID: ${data.officeId})`);
+                        console.log(`[CashierSetup] Platinum shows active session for office ${data.officeName} (ID: ${data.officeId}) — cashier must confirm to resume`);
                         setResumingSession(true);
                         setStep2Status('success');
-                        setStep3Status('success');
-
-                        const officeId = String(data.officeId);
-                        const officeName = data.officeName || data.details?.const_CashOffice?.cashOfficeDesc || '';
-                        const cashFloat = data.cashFloat ?? data.details?.cashFloat ?? 0;
-                        const fullName = `${firstName} ${lastName}`.trim();
-                        switchUser(String(userId), fullName || currentUser.name, officeName);
-                        startSession(officeId, cashFloat, officeName);
-
-                        setSetupComplete(true);
-                        return;
+                        setStep3Status('pending');
                     }
 
                     const currentOfficeId = data.officeId || data.details?.officeId;
@@ -346,18 +336,28 @@ export default function CashierSetup() {
         </div>
     );
 
-    if (sessionLoading || (step1Status === 'loading' && step2Status === 'pending') || resumingSession) {
+    const handleResumeSession = () => {
+        if (!cashierDetails || !userId) return;
+        const officeId = String(cashierDetails.officeId || cashierDetails.const_CashOffice?.cashOffice_ID || '');
+        const officeName = cashierDetails.const_CashOffice?.cashOfficeDesc || '';
+        const cashFloat = cashierDetails.cashFloat ?? 0;
+        const fullName = `${firstName} ${lastName}`.trim();
+        switchUser(String(userId), fullName || currentUser.name, officeName);
+        startSession(officeId, cashFloat, officeName);
+        setStep3Status('success');
+        setSetupComplete(true);
+        console.log(`[CashierSetup] Cashier confirmed session resume — office: ${officeName} (ID: ${officeId}), float: ${cashFloat}`);
+    };
+
+    if (sessionLoading || (step1Status === 'loading' && step2Status === 'pending')) {
         return (
             <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4" data-testid="cashier-setup-loading">
                 <Card className="w-full max-w-2xl shadow-lg">
                     <CardContent className="p-12 flex flex-col items-center gap-4">
                         <Loader2 className="h-8 w-8 animate-spin text-slate-600" />
                         <p className="text-slate-600">
-                            {resumingSession ? 'Resuming your active session...' : sessionLoading ? 'Checking for active session...' : 'Validating cashier registration...'}
+                            {sessionLoading ? 'Checking for active session...' : 'Validating cashier registration...'}
                         </p>
-                        {resumingSession && (
-                            <p className="text-sm text-slate-500">You have an active cashier session. Redirecting to POS...</p>
-                        )}
                     </CardContent>
                 </Card>
             </div>
@@ -401,8 +401,46 @@ export default function CashierSetup() {
                                 <p className="font-medium text-green-800">Cashier Validated</p>
                                 <p className="text-sm text-green-700 mt-1">
                                     User <strong>{`${firstName} ${lastName}`.trim() || currentUser.name}</strong> (User ID: {userId}) is registered as a cashier.
-                                    {' '}Select your cash office and float amount below.
+                                    {resumingSession
+                                        ? ' An active session was found. You can resume it or start a new one below.'
+                                        : ' Select your cash office and float amount below.'}
                                 </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {resumingSession && cashierDetails && (
+                        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg" data-testid="resume-session-section">
+                            <div className="flex items-start gap-3">
+                                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+                                    <CheckCircle2 className="h-5 w-5 text-blue-600" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="font-medium text-blue-800">Active Session Found</p>
+                                    <p className="text-sm text-blue-700 mt-1">
+                                        Office: <strong>{cashierDetails.const_CashOffice?.cashOfficeDesc || 'Unknown'}</strong>
+                                        {' | '}Float: <strong>R {(cashierDetails.cashFloat ?? 0).toFixed(2)}</strong>
+                                    </p>
+                                    <div className="mt-3 flex gap-2">
+                                        <Button
+                                            type="button"
+                                            onClick={handleResumeSession}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                                            data-testid="button-resume-session"
+                                        >
+                                            Resume Session
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => setResumingSession(false)}
+                                            className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                                            data-testid="button-new-session"
+                                        >
+                                            Start New Session
+                                        </Button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
