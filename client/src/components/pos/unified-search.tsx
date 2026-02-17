@@ -68,7 +68,7 @@ export function UnifiedSearch() {
         description: `${acc.name} (${acc.accountNo})`,
         reference: acc.accountNo,
         amountDue: acc.outstandingAmount,
-        amountToPay: acc.outstandingAmount,
+        amountToPay: acc.outstandingAmount > 0 ? acc.outstandingAmount : 0,
         originalData: acc
       };
 
