@@ -77,9 +77,9 @@ export default function CashierSetup() {
                 const data = await res.json();
                 console.log(`[CashierSetup] Step 1 response:`, JSON.stringify(data));
 
-                if (data.cashierRegistered === true || data.cashierId) {
+                if (data.cashierRegistered === true && data.cashierId) {
                     setIsCashierRegistered(true);
-                    setCashierId(data.cashierId || userId);
+                    setCashierId(data.cashierId);
                     setCashierDetails(data.details || null);
                     setStep1Status('success');
 
@@ -91,7 +91,7 @@ export default function CashierSetup() {
 
                         const officeId = String(data.officeId);
                         const officeName = data.officeName || data.details?.const_CashOffice?.cashOfficeDesc || '';
-                        const cashFloat = data.cashFloat || data.details?.cashFloat || 0;
+                        const cashFloat = data.cashFloat ?? data.details?.cashFloat ?? 0;
                         const fullName = `${firstName} ${lastName}`.trim();
                         switchUser(String(userId), fullName || currentUser.name, officeName);
                         startSession(officeId, cashFloat, officeName);
@@ -106,7 +106,7 @@ export default function CashierSetup() {
                         console.log(`[CashierSetup] Pre-selected office ID ${currentOfficeId} from Platinum record`);
                     }
 
-                    if (data.cashFloat > 0) {
+                    if (data.cashFloat != null) {
                         setFloatInput(String(data.cashFloat));
                     }
                 } else {
@@ -167,8 +167,8 @@ export default function CashierSetup() {
         }
 
         const float = parseFloat(floatInput);
-        if (isNaN(float) || float <= 0) {
-            setError('Cash float is required. Please enter an amount greater than 0.');
+        if (isNaN(float) || float < 0) {
+            setError('Cash float must be 0 or greater.');
             return;
         }
 

@@ -333,10 +333,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         console.log("Platinum cashier status:", { registered: data.cashierRegistered, isActive: data.isActive, officeId: data.officeId, officeName: data.officeName });
 
-        if (data.isActive === true && data.officeId && (data.cashierRegistered === true || data.cashierId)) {
+        if (data.isActive === true && data.officeId && data.cashierRegistered === true && data.cashierId) {
           const officeId = String(data.officeId);
           const officeName = data.officeName || data.details?.const_CashOffice?.cashOfficeDesc || '';
-          const cashFloat = data.cashFloat || data.details?.cashFloat || 0;
+          const cashFloat = data.cashFloat ?? data.details?.cashFloat ?? 0;
           const userName = `${platinumUser.firstName || ''} ${platinumUser.lastName || ''}`.trim();
           setCurrentUser({
             id: String(platinumUser.user_ID),

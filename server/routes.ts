@@ -252,11 +252,12 @@ export async function registerRoutes(
       }
 
       const hasOffice = !!activeOfficeId;
+      const hasCashierRecord = !!(cashierDetails && cashierDetails.id > 0);
 
       res.json({
         active: isSessionActive && hasOffice,
-        cashierId,
-        cashierRegistered: true,
+        cashierId: hasCashierRecord ? cashierId : null,
+        cashierRegistered: hasCashierRecord,
         cashFloat: cashierDetails?.cashFloat ?? 0,
         officeId: activeOfficeId,
         officeName: activeOfficeName,
