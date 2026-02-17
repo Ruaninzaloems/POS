@@ -19,7 +19,6 @@ export function PaymentDrawer() {
     transactionItems, 
     removeItem,
     dayEndStatus,
-    currentTransactionLimit,
     viewMode
   } = usePos();
 
@@ -51,8 +50,7 @@ export function PaymentDrawer() {
         }
         return true;
     }) &&
-    payment.changeDue <= 200 && // Limit change to R200
-    payment.tenderTotal <= currentTransactionLimit; // Check against configured limit
+    payment.changeDue <= 200; // Limit change to R200
 
   const totalDue = transactionItems.reduce((acc, i) => acc + i.amountToPay, 0);
 
@@ -183,17 +181,6 @@ export function PaymentDrawer() {
                     <div className="text-4xl font-mono font-bold text-primary">R {totalDue.toFixed(2)}</div>
                  </div>
 
-                 {totalDue > currentTransactionLimit && (
-                     <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center text-red-800 flex items-center gap-3">
-                         <div className="bg-red-100 p-2 rounded-full">
-                            <ShieldAlert className="w-5 h-5" />
-                         </div>
-                         <div className="text-left">
-                             <h3 className="font-bold text-sm">Limit Exceeded</h3>
-                             <p className="text-xs">Transaction exceeds limit of R {currentTransactionLimit.toFixed(2)}</p>
-                         </div>
-                     </div>
-                 )}
                  
                  {dayEndStatus === 'RECONCILED' ? (
                      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center text-red-800 space-y-2">
