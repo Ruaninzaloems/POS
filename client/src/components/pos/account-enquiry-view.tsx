@@ -77,7 +77,7 @@ function PaymentInput({ id, value, onChange }: { id: string; value: number; onCh
 
 export function AccountEnquiryView({ item }: { item: TransactionItem }) {
   const baseAccount = item.originalData as Account;
-  const { updateItemAmount, updateItemDetails, removeItem, addItem, viewingItemId, setViewingItem } = usePos();
+  const { updateItemAmount, updateItemDetails, removeItem, addItem, viewingItemId, setViewingItem, receiptDate, setReceiptDate } = usePos();
   const [isOpen, setIsOpen] = useState(false);
   const [account, setAccount] = useState<Account>(baseAccount);
   const [detailsLoaded, setDetailsLoaded] = useState(false);
@@ -668,7 +668,19 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                <div>
                    <div className="text-xs uppercase tracking-wider text-blue-600 font-semibold mb-1">Total Outstanding</div>
-                   <div className="text-2xl sm:text-3xl font-bold text-red-600 font-mono">R {account.outstandingAmount.toFixed(2)}</div>
+                   <div className="text-2xl sm:text-3xl font-bold text-red-600 font-mono" data-testid="text-total-outstanding">R {account.outstandingAmount.toFixed(2)}</div>
+               </div>
+
+               <div className="w-full sm:w-auto">
+                   <Label htmlFor="receipt-date" className="text-xs uppercase tracking-wider text-blue-600 font-semibold mb-1 block">Receipt Date</Label>
+                   <Input
+                       id="receipt-date"
+                       type="date"
+                       value={receiptDate}
+                       onChange={(e) => setReceiptDate(e.target.value)}
+                       className="w-full sm:w-[180px] bg-white border-2 border-blue-300 text-slate-800 font-mono text-sm h-10 focus:border-blue-500 focus:ring-blue-200"
+                       data-testid="input-receipt-date"
+                   />
                </div>
                
                <div className="w-full sm:w-auto">

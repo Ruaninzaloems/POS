@@ -157,6 +157,7 @@ interface PosState {
   platinumUser: PlatinumUserInfo | null;
   cashierRegistered: boolean | null;
   apiSessionActive: boolean | null;
+  receiptDate: string;
 }
 
 interface PosActions {
@@ -180,6 +181,7 @@ interface PosActions {
   cancelTransaction: (id: string, reason: string) => void;
   approveCancellation: (id: string, approved: boolean) => void;
   refreshTransactions: () => Promise<void>;
+  setReceiptDate: (date: string) => void;
 }
 
 const PosContext = createContext<(PosState & PosActions) | null>(null);
@@ -220,6 +222,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [platinumCashierId, setPlatinumCashierId] = useState<number | null>(null);
   const [cashierRegistered, setCashierRegistered] = useState<boolean | null>(null);
   const [apiSessionActive, setApiSessionActive] = useState<boolean | null>(null);
+  const getSADateString = () => {
+    const saDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Johannesburg' }));
+    return saDate.getFullYear() + '-' + String(saDate.getMonth() + 1).padStart(2, '0') + '-' + String(saDate.getDate()).padStart(2, '0');
+  };
+  const [receiptDate, setReceiptDate] = useState<string>(getSADateString());
   
   const [officeLimits, setOfficeLimits] = useState<Record<string, number>>({});
   const [allowedPaymentOptions, setAllowedPaymentOptions] = useState<CashierPaymentOption[]>([]);
@@ -917,12 +924,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const isSplitPayment = record.payment.cash > 0 && record.payment.card > 0;
     const saDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Johannesburg' }));
-    const receiptDate = saDate.getFullYear() + '-' +
-        String(saDate.getMonth() + 1).padStart(2, '0') + '-' +
-        String(saDate.getDate()).padStart(2, '0') + 'T' +
-        String(saDate.getHours()).padStart(2, '0') + ':' +
+    const saTime = String(saDate.getHours()).padStart(2, '0') + ':' +
         String(saDate.getMinutes()).padStart(2, '0') + ':' +
         String(saDate.getSeconds()).padStart(2, '0');
+    const selectedDatePart = receiptDate || getSADateString();
+    const formattedReceiptDate = selectedDatePart + 'T' + saTime;
+    console.log(`[Payment] Using receipt date: ${formattedReceiptDate} (selected date: ${receiptDate}, current time: ${saTime})`);
 
     const accountItems = record.items.filter(item =>
         item.type === 'CONSUMER_SERVICES' || item.type === 'MULTI_ACCOUNT' || item.type === 'ACCOUNT_GROUP'
@@ -1331,7 +1338,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     const isCardPayment = paymentTypeId === 3;
                     const requestModel = {
                         finYear,
-                        receiptDate,
+                        receiptDate: formattedReceiptDate,
                         totalAmount: itemPayment,
                         tenderAmount: i === 0 ? tenderAmt : itemPayment,
                         changeAmount: i === 0 ? changeAmt : 0,
@@ -1560,7 +1567,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     userId: sessionUserId,
                     paymentTypeId,
                     cashierId: platinumCashierId || null,
-                    receiptDate,
+                    receiptDate: formattedReceiptDate,
                     tenderAmount: tender,
                     changeAmount: change,
                     paidAmount: amount,
@@ -1685,7 +1692,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     miscellaneousPaymentGroup: Number(groupId),
                     scoaItem: Number(scoaItemId),
                     description: item.notes || item.description || origData?.description || '',
-                    receiptDate,
+                    receiptDate: formattedReceiptDate,
                     totalAmount: amount,
                     vatAmount: Math.round(itemVat * 100) / 100,
                     amount: Math.round(itemAmtExVat * 100) / 100,
@@ -1938,7 +1945,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       referenceData,
       platinumUser,
       cashierRegistered,
-      apiSessionActive
+      apiSessionActive,
+      receiptDate,
+      setReceiptDate
     }}>
       {children}
     </PosContext.Provider>
