@@ -833,6 +833,15 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const prepaidTotal = electricityPrepaidItems.reduce((sum, i) => sum + i.amountToPay, 0)
         + waterPrepaidItems.reduce((sum, i) => sum + i.amountToPay, 0);
     const grandTotal = record.totalAmount;
+
+    for (const item of accountItems) {
+        const origOutstanding = item.originalData?.outstandingAmount ?? item.originalData?.outStandingAmt ?? item.originalData?._rawSearchResult?.outStandingAmt ?? 'N/A';
+        console.log(`[AMOUNT TRACE] Account item "${item.reference}": amountToPay=R${item.amountToPay}, amountDue=R${item.amountDue}, originalData.outstandingAmount=R${origOutstanding}`);
+        if (item.amountToPay === origOutstanding && item.amountToPay !== item.amountDue) {
+            console.warn(`[AMOUNT TRACE WARNING] amountToPay equals full outstanding — user may not have changed the amount!`);
+        }
+    }
+    console.log(`[AMOUNT TRACE] accountTotal=R${accountTotal}, grandTotal=R${grandTotal}, record.totalAmount=R${record.totalAmount}`);
     const totalTender = record.payment.cash + record.payment.card;
     const totalChange = Math.max(0, totalTender - grandTotal);
 
@@ -1109,9 +1118,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             .filter(item => item.originalData?.apiId || item.originalData?.accountID || item.originalData?.accountId || item.originalData?.account_ID)
             .map(item => buildAccountPayload(item));
 
+        for (const acct of saveAccounts) {
+            console.log(`[Priority 1 AMOUNT CHECK] Account ${acct.account_ID}: _userAmountToPay=R${acct._userAmountToPay}, fullOutstanding(outStandingAmt)=R${acct.outStandingAmt}`);
+        }
+
         const stagingPayload = saveAccounts.map(acct => {
             const { _userAmountToPay, ...rest } = acct;
-            return { ...rest, outStandingAmt: _userAmountToPay > 0 ? _userAmountToPay : rest.outStandingAmt };
+            return { ...rest, outStandingAmt: _userAmountToPay };
         });
 
         console.log(`[Priority 1] Staging payload outStandingAmt (user amount): R${stagingPayload[0]?.outStandingAmt}, full outstanding: R${saveAccounts[0]?.outStandingAmt}, user amountToPay: R${saveAccounts[0]?._userAmountToPay}`);
@@ -1156,11 +1169,14 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         item => String(item.originalData?.account_ID ?? item.originalData?.accountID ?? item.originalData?.apiId) === String(acct.account_ID)
                     ) || accountItems[i];
                     const userEnteredAmount = acct._userAmountToPay ?? localItem?.amountToPay ?? 0;
-                    const itemPayment = paymentAmountOverride !== undefined && localItem
+                    const itemPayment = paymentAmountOverride !== undefined
                         ? Math.round((userEnteredAmount / accountTotal) * paymentAmountOverride * 100) / 100
-                        : (userEnteredAmount > 0 ? userEnteredAmount : (acct.outStandingAmt ?? 0));
+                        : userEnteredAmount;
                     const acctOutstanding = acct.outStandingAmt ?? localItem?.originalData?.outStandingAmt ?? localItem?.originalData?.outstandingAmount ?? 0;
-                    console.log(`[Priority 1] Account ${acct.account_ID}: userEnteredAmount=${userEnteredAmount}, itemPayment=${itemPayment}, fullOutstanding=${acctOutstanding}`);
+                    console.log(`[Priority 1 SUBMIT] Account ${acct.account_ID}: userEnteredAmount=R${userEnteredAmount}, itemPayment=R${itemPayment}, fullOutstanding=R${acctOutstanding}, paymentAmountOverride=${paymentAmountOverride}`);
+                    if (itemPayment !== userEnteredAmount && paymentAmountOverride === undefined) {
+                        console.warn(`[Priority 1 SUBMIT WARNING] itemPayment (R${itemPayment}) differs from userEnteredAmount (R${userEnteredAmount}) — this should not happen for non-split payments!`);
+                    }
                     perAccountPayments.push({ acct, localItem, itemPayment, acctOutstanding });
                 }
 
@@ -1241,7 +1257,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 const buildPortionStagingPayload = (portionTotal: number) => {
                     const result = saveAccounts.map(acct => {
                         const { _userAmountToPay, ...rest } = acct;
-                        const userAmt = _userAmountToPay > 0 ? _userAmountToPay : rest.outStandingAmt;
+                        const userAmt = _userAmountToPay;
                         const portionAmt = accGroupTotal > 0
                             ? Math.round((userAmt / accGroupTotal) * portionTotal * 100) / 100
                             : Math.round(portionTotal / saveAccounts.length * 100) / 100;

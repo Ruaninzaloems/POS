@@ -536,6 +536,10 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment/save-multiple-account-payment", async (req, res) => {
     try {
+      const accounts = Array.isArray(req.body) ? req.body : [];
+      for (const acct of accounts) {
+        console.log(`[save-multiple-account-payment] account_ID=${acct.account_ID}, outStandingAmt=${acct.outStandingAmt}, name=${acct.name}`);
+      }
       const data = await platinumPost("/api/billing-payment/save-multiple-account-payment", req.body, req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
