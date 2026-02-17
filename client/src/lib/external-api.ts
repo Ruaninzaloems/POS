@@ -1364,6 +1364,19 @@ export async function submitConsumerPayment(userId: number, data: any): Promise<
     return await res.json();
 }
 
+export async function submitMultiplePayment(userId: number, data: { accounts: any[]; requestModel: any }): Promise<any> {
+    const res = await fetch(`/api/platinum/billing-payment/submit-multiple-payment/${userId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Failed to submit multiple payment: ${text}`);
+    }
+    return await res.json();
+}
+
 
 export async function submitPrepaidPayment(data: any): Promise<any> {
     const res = await fetch('/api/platinum/receipt-prepaid/submit-prepaid-payment', {

@@ -632,6 +632,19 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/platinum/billing-payment/submit-multiple-payment/:userId", async (req, res) => {
+    try {
+      const userId = req.params.userId;
+      console.log(`[submit-multiple-payment] userId=${userId}, payload:`, JSON.stringify(req.body, null, 2).substring(0, 2000));
+      const data = await platinumPost(`/api/billing-payment/submit-multiple-payment/${userId}`, req.body);
+      console.log(`[submit-multiple-payment] response:`, JSON.stringify(data).substring(0, 2000));
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      console.error(`[submit-multiple-payment] Error:`, e.message);
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.post("/api/platinum/billing-payment/save-multiple-account-payment", async (req, res) => {
     try {
       const accounts = Array.isArray(req.body) ? req.body : [];
