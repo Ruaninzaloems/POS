@@ -35,7 +35,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import CashierSetup from '@/pages/cashier-setup';
 
 interface PosLayoutProps {
   children: React.ReactNode;
@@ -45,7 +44,7 @@ export function PosLayout({ children }: PosLayoutProps) {
   const [location, setLocation] = useLocation();
   const { currentUser, activeSession, sessionLoading, endSession, viewMode, toggleViewMode, sessionDetails, dayEndStatus, platinumUser, cashierRegistered } = usePos();
 
-  const isPosPage = location === '/pos' || location === '/cashier-setup';
+  const isPosPage = location === '/pos';
 
   if (sessionLoading && isPosPage) {
       return (
@@ -100,37 +99,9 @@ export function PosLayout({ children }: PosLayoutProps) {
       );
   }
 
-  if (!activeSession && isPosPage) {
-      if (cashierRegistered === false) {
-          return (
-            <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-              <div className="bg-white rounded-xl shadow-lg border border-red-200 max-w-lg w-full p-6 sm:p-8 text-center space-y-4">
-                <div className="mx-auto w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
-                  <AlertTriangle className="h-8 w-8 text-red-600" />
-                </div>
-                <h2 className="text-xl font-bold text-slate-800">Not Registered as Cashier</h2>
-                <p className="text-slate-600 text-sm leading-relaxed">
-                  User <strong>{currentUser.name || 'Unknown'}</strong> (ID: {currentUser.id}) is not set up as a cashier 
-                  in the Platinum billing system. You cannot open a session or process payments.
-                </p>
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-left">
-                  <p className="text-sm text-red-700">
-                    Please contact your system administrator to register you as a cashier 
-                    in the Platinum admin portal before you can use the POS system.
-                  </p>
-                </div>
-                <Button 
-                  variant="outline" 
-                  className="mt-2"
-                  onClick={() => setLocation('/')}
-                >
-                  Back to Home
-                </Button>
-              </div>
-            </div>
-          );
-      }
-      return <CashierSetup />;
+  if (!activeSession && location === '/pos') {
+      setLocation('/cashier-setup');
+      return null;
   }
 
   const getPageTitle = (path: string) => {
@@ -277,7 +248,7 @@ export function PosLayout({ children }: PosLayoutProps) {
              </>
            ) : (
              <div className="flex items-center gap-2">
-               <Button variant="outline" size="sm" onClick={() => setLocation('/pos')} className="gap-1 sm:gap-2 text-xs sm:text-sm">
+               <Button variant="outline" size="sm" onClick={() => setLocation('/cashier-setup')} className="gap-1 sm:gap-2 text-xs sm:text-sm">
                  <Layers className="w-4 h-4" />
                  <span className="hidden sm:inline">Start POS Session</span>
                  <span className="sm:hidden">Start</span>

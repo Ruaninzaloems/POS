@@ -62,7 +62,7 @@ function Router() {
     <Switch>
       <Route path="/" component={HomePage} />
       <Route path="/pos" component={PosPage} />
-      <Route path="/cashier-setup" component={PosPage} />
+      <Route path="/cashier-setup" component={CashierSetupPage} />
       <Route path="/settings" component={SettingsPage} />
       
       {/* Direct Deposits Manual Module */}
