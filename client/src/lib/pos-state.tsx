@@ -337,28 +337,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         if (data.cashierRegistered === true) {
           const userName = `${platinumUser.firstName || ''} ${platinumUser.lastName || ''}`.trim();
-          const officeName = data.officeName || data.details?.const_CashOffice?.cashOfficeDesc || '';
 
           setCurrentUser({
             id: String(platinumUser.user_ID),
             name: userName || platinumUser.userName || 'Cashier',
-            cashOffice: officeName
+            cashOffice: ''
           });
-
-          if (data.isActive === true && data.officeId) {
-            const officeId = String(data.officeId);
-            const cashFloat = data.cashFloat ?? data.details?.cashFloat ?? 0;
-            console.log(`[Session] ActiveCashierDetails confirms isActive=true — auto-resuming session. Office: ${officeName} (ID: ${officeId}), Float: ${cashFloat}`);
-            setActiveSession(true);
-            setSessionDetails({
-              startTime: Date.now(),
-              officeId,
-              officeDesc: officeName,
-              floatAmount: cashFloat
-            });
-          } else {
-            console.log(`[Session] Cashier registered but NOT active (isActive=${data.isActive}). Must start session via cashier setup page.`);
-          }
+          console.log(`[Session] Cashier registered: ${userName}. Session must be started via cashier setup page.`);
         }
       } catch (e) {
         console.warn("Failed to check active Platinum session", e);
