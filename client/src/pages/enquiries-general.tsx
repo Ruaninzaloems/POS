@@ -27,10 +27,11 @@ import { IncentivesTab, DepositsTab, PaymentPlansTab, PaymentExtensionHistoryTab
 import { PropertyDetailsTab, ContactInfoTab, HandoverTab, NotificationsTab, StatementsTab, ClearanceTab, DebtorNotesTab, Section129Tab, OccupiersTab } from './enquiries/other-tabs';
 import { SEARCH_FIELDS, detectSearchType, SmartSearchDropdown, ExpandableResultRow } from './enquiries/search-components';
 
-function FieldAutocompleteInput({ fieldKey, placeholder, value, onChange, onSelectAllLinked, onEnter, onAutoResults }: {
+function FieldAutocompleteInput({ fieldKey, placeholder, value, onChange, onSelectAllLinked, onSelectByFieldValue, onEnter, onAutoResults }: {
   fieldKey: string; placeholder: string; value: string;
   onChange: (key: string, val: string) => void;
   onSelectAllLinked: (accountIds: number[]) => void;
+  onSelectByFieldValue: (fieldKey: string, displayValue: string) => void;
   onEnter: () => void;
   onAutoResults?: (fieldKey: string, accountIds: number[]) => void;
 }) {
@@ -61,10 +62,10 @@ function FieldAutocompleteInput({ fieldKey, placeholder, value, onChange, onSele
       try {
         const items = await autocomplete(val.trim(), acType);
         if (tokenRef.current !== tok) return;
-        const valid = items.filter(s => s.accountId && s.accountId > 0);
-        setSuggestions(valid.slice(0, 20));
+        setSuggestions(items.slice(0, 25));
         setOpen(true);
-        const uniqueIds = [...new Set(valid.map(s => s.accountId))].slice(0, 5);
+        const withIds = items.filter(s => s.accountId && s.accountId > 0);
+        const uniqueIds = [...new Set(withIds.map(s => s.accountId))].slice(0, 5);
         if (uniqueIds.length > 0 && onAutoResults) onAutoResults(fieldKey, uniqueIds);
       } catch {
         if (tokenRef.current === tok) setSuggestions([]);
@@ -82,8 +83,11 @@ function FieldAutocompleteInput({ fieldKey, placeholder, value, onChange, onSele
         .filter(s => s.displayItem === selected.displayItem && s.accountId > 0)
         .map(s => s.accountId)
     )];
-    if (allLinkedIds.length === 0) allLinkedIds.push(selected.accountId);
-    onSelectAllLinked(allLinkedIds);
+    if (allLinkedIds.length > 0) {
+      onSelectAllLinked(allLinkedIds);
+    } else {
+      onSelectByFieldValue(fieldKey, selected.displayItem);
+    }
   };
 
   return (
@@ -419,6 +423,33 @@ function GeneralEnquiriesContent() {
       enrichWithBalances(all, fullSearchTokenRef, token, setResults);
     } catch {
       if (fullSearchTokenRef.current === token) setResults([]);
+    } finally {
+      setSearching(false);
+    }
+  }, [enrichWithBalances]);
+
+  const handleSelectByFieldValue = useCallback(async (key: string, displayValue: string) => {
+    const token = ++fullSearchTokenRef.current;
+    setSearching(true);
+    setSearchError(null);
+    setHasSearched(true);
+    setShowDropdown(false);
+    try {
+      let searchVal = displayValue.trim();
+      if (key === 'name') {
+        searchVal = searchVal.replace(/\s*\([^)]*\)\s*$/, '').trim();
+      }
+      const fieldCriteria: EnquirySearchCriteria = { [key]: searchVal };
+      const data = await searchAccounts(fieldCriteria);
+      if (fullSearchTokenRef.current !== token) return;
+      setResults(data);
+      setSearching(false);
+      enrichWithBalances(data, fullSearchTokenRef, token, setResults);
+    } catch (e: any) {
+      if (fullSearchTokenRef.current === token) {
+        setSearchError(e.message || 'Search failed');
+        setResults([]);
+      }
     } finally {
       setSearching(false);
     }
@@ -842,6 +873,7 @@ function GeneralEnquiriesContent() {
                   value={(criteria as any)[f.key] || ''}
                   onChange={handleFieldChange}
                   onSelectAllLinked={handleSelectAllLinked}
+                  onSelectByFieldValue={handleSelectByFieldValue}
                   onEnter={handleFullSearch}
                   onAutoResults={handleAutoResults}
                 />
