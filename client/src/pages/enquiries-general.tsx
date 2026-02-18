@@ -793,41 +793,41 @@ function SmartSearchDropdown({
           <div ref={listRef} className="overflow-y-auto flex-1">
             {results.slice(0, 50).map((account, i) => (
               <div
-                key={account.account_ID || i}
+                key={account.accountID || account.account_ID || i}
                 onClick={() => onSelect(account)}
                 className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all border-b border-slate-50 last:border-0
                   ${highlightIdx === i ? 'bg-blue-50 border-l-2 border-l-blue-500' : 'hover:bg-slate-50 border-l-2 border-l-transparent'}`}
-                data-testid={`dropdown-account-${account.account_ID || i}`}
+                data-testid={`dropdown-account-${account.accountID || account.account_ID || i}`}
               >
                 <div className={`shrink-0 h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold
-                  ${(account.statusDesc || account.accountStatus)?.toLowerCase() === 'active' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>
+                  ${(account.accountStatus || account.statusDesc)?.toLowerCase() === 'active' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>
                   {(account.name || account.surname_Company || '?').charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-slate-800 truncate">{account.name || account.surname_Company || 'Unknown'}</span>
                     <Badge
-                      variant={(account.statusDesc || account.accountStatus)?.toLowerCase() === 'active' ? 'default' : 'secondary'}
+                      variant={(account.accountStatus || account.statusDesc)?.toLowerCase() === 'active' ? 'default' : 'secondary'}
                       className="text-[9px] shrink-0 h-4 px-1.5"
                     >
-                      {account.statusDesc || account.accountStatus || '?'}
+                      {account.accountStatus || account.statusDesc || '?'}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-3 mt-0.5">
-                    <span className="text-xs font-mono text-blue-600">{account.accountNumber || account.account_ID || account.accountID}</span>
+                    <span className="text-xs font-mono text-blue-600">{account.accountNumber || account.accountID || account.account_ID}</span>
                     {account.oldAccountCode && <span className="text-[10px] text-slate-400 font-mono">Old: {account.oldAccountCode}</span>}
-                    {(account.deliveryAddress || account.address) && (
+                    {(account.address || account.deliveryAddress) && (
                       <span className="text-[10px] text-slate-400 truncate max-w-[200px]">
-                        {(account.deliveryAddress || account.address || '').replace(/\r\n/g, ', ').substring(0, 50)}
+                        {(account.address || account.deliveryAddress || '').replace(/\r\n/g, ', ').substring(0, 50)}
                       </span>
                     )}
                   </div>
                 </div>
                 <div className="shrink-0 text-right">
-                  <div className={`text-sm font-mono font-bold ${(account.outStandingAmt ?? account.outStandingAmount ?? 0) > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    R {(account.outStandingAmt ?? account.outStandingAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                  <div className={`text-sm font-mono font-bold ${(account.outStandingAmount ?? account.outStandingAmt ?? 0) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    R {(account.outStandingAmount ?? account.outStandingAmt ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
                   </div>
-                  <div className="text-[10px] text-slate-400">{account.accountDesc || account.accountType || ''}</div>
+                  <div className="text-[10px] text-slate-400">{account.accountType || account.accountDesc || ''}</div>
                 </div>
                 <ArrowRight className="w-4 h-4 text-slate-300 shrink-0" />
               </div>
@@ -998,12 +998,12 @@ function GeneralEnquiriesContent() {
             <div className="min-w-0">
               <div className="text-sm font-semibold text-slate-800 truncate" data-testid="text-selected-account-name">{selectedAccount.name || selectedAccount.surname_Company}</div>
               <div className="text-xs text-slate-500">
-                Acc: {selectedAccount.accountNumber || selectedAccount.account_ID || selectedAccount.accountID}
+                Acc: {selectedAccount.accountNumber || selectedAccount.accountID || selectedAccount.account_ID}
                 {selectedAccount.oldAccountCode && ` | Old: ${selectedAccount.oldAccountCode}`}
               </div>
             </div>
-            <Badge variant={(selectedAccount.statusDesc || selectedAccount.accountStatus)?.toLowerCase() === 'active' ? 'default' : 'secondary'} className="ml-2 shrink-0">
-              {selectedAccount.statusDesc || selectedAccount.accountStatus || 'Unknown'}
+            <Badge variant={(selectedAccount.accountStatus || selectedAccount.statusDesc)?.toLowerCase() === 'active' ? 'default' : 'secondary'} className="ml-2 shrink-0">
+              {selectedAccount.accountStatus || selectedAccount.statusDesc || 'Unknown'}
             </Badge>
           </div>
         </div>
@@ -1250,9 +1250,11 @@ function GeneralEnquiriesContent() {
               </thead>
               <tbody>
                 {results.map((account, i) => {
-                  const aid = account.account_ID || account.accountID || i;
-                  const status = account.statusDesc || account.accountStatus || '-';
-                  const outstanding = account.outStandingAmt ?? account.outStandingAmount ?? 0;
+                  const aid = account.accountID || account.account_ID || i;
+                  const status = account.accountStatus || account.statusDesc || '-';
+                  const outstanding = account.outStandingAmount ?? account.outStandingAmt ?? 0;
+                  const acctType = account.accountType || account.accountDesc || '-';
+                  const addr = account.address || account.deliveryAddress || account.locationAddress || '-';
                   return (
                     <tr
                       key={aid}
@@ -1264,15 +1266,17 @@ function GeneralEnquiriesContent() {
                       <td className="py-2.5 px-4 text-slate-500 font-mono text-xs">{account.oldAccountCode || '-'}</td>
                       <td className="py-2.5 px-4 font-medium text-slate-800">{account.name || account.surname_Company || '-'}</td>
                       <td className="py-2.5 px-4 text-slate-500 text-xs font-mono">{account.idRegistrationNumber || '-'}</td>
-                      <td className="py-2.5 px-4 text-slate-500 text-xs max-w-[200px] truncate">{(account.deliveryAddress || account.address || account.locationAddress || '-').replace(/\r\n/g, ', ')}</td>
-                      <td className="py-2.5 px-4"><Badge variant="outline" className="text-[10px] font-normal">{account.accountDesc || account.accountType || '-'}</Badge></td>
+                      <td className="py-2.5 px-4 text-slate-500 text-xs max-w-[200px] truncate">{addr.replace(/\r\n/g, ', ')}</td>
+                      <td className="py-2.5 px-4"><Badge variant="outline" className="text-[10px] font-normal">{acctType}</Badge></td>
                       <td className="py-2.5 px-4">
                         <Badge variant={status.toLowerCase() === 'active' ? 'default' : 'secondary'} className="text-[10px]">
                           {status}
                         </Badge>
                       </td>
-                      <td className="py-2.5 px-4 text-right font-mono font-semibold text-red-600">
-                        {outstanding.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                      <td className="py-2.5 px-4 text-right font-mono font-semibold">
+                        <span className={outstanding > 0 ? 'text-red-600' : 'text-green-600'}>
+                          R {outstanding.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                        </span>
                       </td>
                     </tr>
                   );
