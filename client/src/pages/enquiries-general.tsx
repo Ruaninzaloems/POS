@@ -36,6 +36,9 @@ import {
   getDebtorNoteLists,
   getSection129AccountEnquiry,
   getOccupiers,
+  getServicesSearchResults,
+  getAdditionalBillingSearchResults,
+  getChequeFinalSearchList,
   type EnquirySearchCriteria, type EnquirySearchResult,
 } from '@/lib/enquiries-service';
 
@@ -143,141 +146,242 @@ function GenericTable({ data, columns, testId }: { data: any[]; columns: { key: 
   );
 }
 
-function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
-  const [acctInfo, setAcctInfo] = useState<any>(null);
-  const [propInfo, setPropInfo] = useState<any>(null);
-  const [nameInfo, setNameInfo] = useState<any>(null);
-  const [basicDetails, setBasicDetails] = useState<any>(null);
-  const [acctInfoResult, setAcctInfoResult] = useState<any>(null);
-  const [partitionInfo, setPartitionInfo] = useState<any>(null);
-  const [deliveryAddr, setDeliveryAddr] = useState<any>(null);
-  const [handoverData, setHandoverData] = useState<any>(null);
-  const [depositData, setDepositData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const loaded = useRef(false);
-
-  useEffect(() => {
-    if (loaded.current) return;
-    loaded.current = true;
-    const accountId = account.account_ID || account.accountID;
-    Promise.all([
-      getAccountInformation(accountId).catch(() => null),
-      getPropertyDetails(accountId).catch(() => null),
-      getNameInfo(accountId).catch(() => null),
-      getBasicAccountDetails(accountId).catch(() => null),
-      getAccountInfoResult(accountId).catch(() => null),
-      getPartitionDetails(accountId).catch(() => null),
-      getAccountDeliveryAddressDetail(accountId).catch(() => null),
-      getHandoverInfo(accountId).catch(() => null),
-      getDeposits(accountId).catch(() => null),
-    ]).then(([ai, pi, ni, bd, air, part, delAddr, ho, dep]) => {
-      setAcctInfo(ai);
-      setPropInfo(Array.isArray(pi) ? pi[0] : pi);
-      setNameInfo(ni);
-      setBasicDetails(bd);
-      setAcctInfoResult(air);
-      setPartitionInfo(Array.isArray(part) ? part[0] : part);
-      setDeliveryAddr(Array.isArray(delAddr) ? delAddr[0] : delAddr);
-      setHandoverData(Array.isArray(ho) ? ho[0] : ho);
-      setDepositData(Array.isArray(dep) ? dep : dep ? [dep] : []);
-      setLoading(false);
-    });
-  }, [account.account_ID, account.accountID]);
-
-  const a = { ...(acctInfo || {}), ...(basicDetails || {}), ...(acctInfoResult || {}) };
-  const p = propInfo || {};
-  const n = nameInfo || {};
-  const part = partitionInfo || {};
-  const da = deliveryAddr || {};
-  const ho = handoverData || {};
-  const s = account;
-  const totalDeposit = (depositData || []).reduce((sum: number, d: any) => sum + (d.depositAmount || d.amount || 0), 0);
+function PaginatedTable({ data, columns, itemsPerPage = 50, tableId }: { data: any[]; columns: { key: string; label: string; render?: (row: any) => React.ReactNode }[]; itemsPerPage?: number; tableId?: string }) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(data.length / itemsPerPage));
+  const paged = data.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+  const tid = tableId || 'table';
 
   return (
-    <div className="p-4 space-y-1" data-testid="account-info-panel">
-      <h3 className="text-base font-bold text-slate-800 mb-2">Account Enquiry</h3>
+    <div data-testid={`${tid}-container`}>
+      <div className="overflow-x-auto border border-slate-200 rounded">
+        <table className="w-full text-xs" data-testid={`${tid}-grid`}>
+          <thead>
+            <tr className="bg-slate-100 border-b border-slate-200">
+              {columns.map((c) => (
+                <th key={c.key} className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap">{c.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {paged.length === 0 ? (
+              <tr><td colSpan={columns.length} className="text-center text-slate-400 py-4" data-testid={`${tid}-empty`}>No records to display</td></tr>
+            ) : paged.map((row, i) => (
+              <tr key={i} className="border-b border-slate-100 hover:bg-slate-50" data-testid={`${tid}-row-${i}`}>
+                {columns.map((c) => (
+                  <td key={c.key} className="px-3 py-2 text-slate-700 whitespace-nowrap" data-testid={`${tid}-cell-${c.key}-${i}`}>
+                    {c.render ? c.render(row) : (row[c.key] ?? '')}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex items-center justify-end gap-2 mt-2 text-xs text-slate-500">
+        <span>Items per page:</span>
+        <span className="border rounded px-2 py-0.5">{itemsPerPage}</span>
+        <span data-testid={`${tid}-page-info`}>{data.length === 0 ? '0 of 0' : `${(page-1)*itemsPerPage+1} - ${Math.min(page*itemsPerPage, data.length)} of ${data.length}`}</span>
+        <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1} className="px-1 disabled:opacity-30" data-testid={`${tid}-prev-page`}>&lt;</button>
+        <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page===totalPages} className="px-1 disabled:opacity-30" data-testid={`${tid}-next-page`}>&gt;</button>
+      </div>
+    </div>
+  );
+}
 
-      <SectionHeader title="Account Information" />
+function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
+  const [loading, setLoading] = useState(true);
+  const [propInfo, setPropInfo] = useState<any>(null);
+  const [acctInfoResult, setAcctInfoResult] = useState<any>(null);
+  const [partitionInfo, setPartitionInfo] = useState<any>(null);
+  const [deliveryAddresses, setDeliveryAddresses] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
+  const [additionalBilling, setAdditionalBilling] = useState<any[]>([]);
+  const [additionalInfo, setAdditionalInfo] = useState<any[]>([]);
+  const prevAccountId = useRef<number | null>(null);
+
+  const accountId = account.account_ID || account.accountID;
+
+  useEffect(() => {
+    if (prevAccountId.current === accountId) return;
+    prevAccountId.current = accountId;
+    setLoading(true);
+    Promise.all([
+      getPropertyDetails(accountId).catch(() => null),
+      getAccountInfoResult(accountId).catch(() => null),
+      getPartitionDetails(accountId).catch(() => null),
+      getAccountDeliveryAddressDetail(accountId).catch(() => []),
+      getServicesSearchResults(accountId).catch(() => []),
+      getAdditionalBillingSearchResults(accountId).catch(() => []),
+      getChequeFinalSearchList(accountId).catch(() => []),
+    ]).then(([pi, air, part, da, svc, ab, ai]) => {
+      setPropInfo(Array.isArray(pi) ? pi[0] : pi);
+      setAcctInfoResult(air);
+      setPartitionInfo(Array.isArray(part) ? part[0] : part);
+      setDeliveryAddresses(Array.isArray(da) ? da : da ? [da] : []);
+      setServices(Array.isArray(svc) ? svc : svc ? [svc] : []);
+      setAdditionalBilling(Array.isArray(ab) ? ab : ab ? [ab] : []);
+      setAdditionalInfo(Array.isArray(ai) ? ai : ai ? [ai] : []);
+      setLoading(false);
+    });
+  }, [accountId]);
+
+  const p = propInfo || {};
+  const air = acctInfoResult || {};
+  const part = partitionInfo || {};
+  const s = account;
+
+  const propertyStreet = p.streetNumber && p.streetName
+    ? [p.streetNumber, p.streetName, p.suburb, p.town].filter(Boolean).join(', ')
+    : (air.propertyStreet || s.locationAddress || '').replace(/&amp;/g, '&');
+  const owner = air.owner || p.name || s.name || '';
+  const name = air.name || p.name || s.name || '';
+  const sgNumber = p.sgNumber || air.sgNumber || s.sgNumber || '';
+  const propCategory = part.propertyCategory || part.propertyCategoryDesc || p.ratesTariff || '';
+  const typeOfUse = air.typeOfUseDesc || p.typeofUse || p.townPlanningZoneType || part.typeOfUse || '';
+  const isMasterProp = p.masterProperty || (p.flatReferenceNumber ? 'N' : 'N');
+  const accountType = air.accountDesc || s.accountType || s.accountDesc || '';
+  const accountGrouping = part.accountGrouping || air.accountGrouping || '';
+  const subAccountGrouping = part.subAccountGrouping || air.subAccountGrouping || 'None : Normal';
+
+  const formatDate = (v: any) => {
+    if (!v) return '';
+    try { const d = new Date(v); return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString('en-ZA'); } catch { return String(v); }
+  };
+
+  return (
+    <div className="p-4 space-y-4" data-testid="account-info-panel">
+      <h3 className="text-base font-bold text-slate-800 mb-2">Account</h3>
+
+      <SectionHeader title="Details:" />
       {loading ? <LoadingSkeleton /> : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0 mb-4">
           <div>
-            <InfoField label="Account Number" value={s.accountNumber || a.accountNumber} />
-            <InfoField label="Account Group" value={a.institutionDesc || a.accountGroup || a.accountGroupDesc || a.accountGroupDescription} />
-            <InfoField label="Payment Group" value={a.paymentGroupDesc || a.paymentGroup || a.groupCodeDesc || a.paymentGroupDescription} />
-            <InfoField label="Account Type" value={a.accountDesc || a.accountType || a.accountTypeDesc || s.accountDesc} />
-            <InfoField label="Incentive Scheme Code" value={a.incentiveSchemeCode || a.incentiveScheme} />
-            <InfoField label="Email" value={n.email || n.emailId || n.emailAddress || a.emailId || a.email || s.emailId || s.email} />
-            <InfoField label="Paid Deposit Amount" value={totalDeposit > 0 ? totalDeposit : (a.paidDepositAmount ?? a.depositAmount)} />
+            <InfoField label="Property Street and Number" value={propertyStreet} />
+            <InfoField label="Owner" value={owner} />
+            <InfoField label="Property Type of Use" value={typeOfUse} />
+            <InfoField label="Name" value={name} />
+            <InfoField label="Is Master Property" value={isMasterProp} />
           </div>
           <div>
-            <InfoField label="Name" value={s.name || a.fullNAME || a.name || n.surname_Company || n.fullName} />
-            <InfoField label="Sub Account Group" value={a.subAccountGroup || a.subAccountGroupDesc || a.subAccountGroupDescription} />
-            <InfoField label="Account Status" value={a.accountStatus || a.statusDesc || s.statusDesc || s.accountStatus} />
-            <InfoField label="Delivery Address" value={(() => {
-              const parts = [da.streetNumber, da.streetName, da.suburbName, da.town, da.postalCode].filter(Boolean).join(', ').replace(/,\s*,/g, ',').replace(/,\s*$/, '');
-              return (parts || a.deliveryAddress || s.deliveryAddress || '').replace(/\r\n/g, ', ');
-            })()} />
-            <InfoField label="Contact Number" value={n.contactNo || n.tel_Mobile || n.tel_Home || n.tel_Work || a.contactNo || a.contactNumber || s.contactNo} />
+            <InfoField label="SG Number" value={sgNumber} />
+            <InfoField label="Property Category" value={propCategory} />
+            <InfoField label="Account Type" value={accountType} />
+            <InfoField label="Account Grouping" value={accountGrouping} />
+            <InfoField label="Sub Account Grouping" value={subAccountGrouping} />
           </div>
         </div>
       )}
 
-      <SectionHeader title="Additional Account Details" />
+      <SectionHeader title="Other accounts linked to the same address:" />
       {loading ? <LoadingSkeleton /> : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
-          <div>
-            <InfoField label="Interest Waiver Status" value={a.interestWaiverStatus || a.interestWaiverStatusDesc || a.interestWaiver || 'N/A'} />
-            <InfoField label="Indigent Subsidy Status" value={a.indigentSubsidyStatus || a.indigentSubsidyStatusDesc || a.indigentStatus} />
-            <InfoField label="Consumer RPP Status" value={a.consumerRPPStatus || a.consumerRPPStatusDesc || a.consumerRPP || 'N/A'} />
-            <InfoField label="Departmental Account" value={a.departmentalAccount || a.isDepartmental || a.departmentalAccountDesc} />
-          </div>
-          <div>
-            <InfoField label="Rebate Status" value={a.rebateStatus || a.rebateStatusDesc || a.rebate || 'N/A'} />
-            <InfoField label="Handover Status" value={ho.handoverStatus || ho.handoverStatusDesc || a.handoverStatus || a.handover || 'N/A'} />
-            <InfoField label="Loan RPP Status" value={a.loanRPPStatus || a.loanRPPStatusDesc || a.loanRPP || 'N/A'} />
-          </div>
-        </div>
+        <PaginatedTable
+          data={[]}
+          tableId="linked-accounts"
+          columns={[
+            { key: 'account', label: 'Account' },
+            { key: 'accStatus', label: 'Acc Status' },
+            { key: 'accType', label: 'Acc Type' },
+            { key: 'personCompany', label: 'Person/Company' },
+            { key: 'service', label: 'Service' },
+            { key: 'serviceStatus', label: 'Service Status' },
+            { key: 'tariffCode', label: 'Tariff Code' },
+            { key: 'tariffDesc', label: 'Tariff Desc' },
+            { key: 'physicalMeterNo', label: 'Physical Meter No' },
+            { key: 'meterNo', label: 'Meter No' },
+            { key: 'meterClassification', label: 'Meter Classification' },
+            { key: 'meterStatus', label: 'Meter Status' },
+          ]}
+        />
       )}
 
-      <SectionHeader title="Property" />
+      <SectionHeader title="Delivery Address Details:" />
       {loading ? <LoadingSkeleton /> : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
-          <div>
-            <InfoField label="SG Number" value={p.sgNumber || p.sg_Number || a.sgNumber} />
-            <InfoField label="Old Property Code" value={s.oldAccountCode || a.oldAccountCode || p.oldPropertyCode || a.oldPropertyCode} />
-            <InfoField label="Billing Cycle" value={a.cycleDescription || a.billingCycle || a.billingCycleDesc} />
-            <InfoField label="Sectional Title Scheme" value={p.masterProperty || p.sectionalTitleScheme || p.sectionalTitleSchemeDesc || a.sectionalTitleScheme} />
-            <InfoField label="Location Address" value={(a.fullAddress || a.propertyStreet || p.locationAddress || s.locationAddress || '').replace(/\r\n/g, ', ').replace(/&amp;/g, '&')} />
-            <InfoField label="Longitude" value={p.longitude || p.xCoordinate} />
-            <InfoField label="Registration Status" value={p.registrationStatus || p.registrationStatusDesc} />
-          </div>
-          <div>
-            <InfoField label="Property ID" value={p.propertyId || p.property_ID || p.propertyID} />
-            <InfoField label="Property Status" value={p.propertyStatus || p.propertyStatusDesc || p.status} />
-            <InfoField label="Allotment Area" value={p.allotmentArea || p.allotmentAreaDesc || a.allotmentArea || s.allotmentArea} />
-            <InfoField label="Farm Name" value={p.farmName || p.farm} />
-            <InfoField label="Property Type" value={p.typeofUse || p.townPlanningZoneType || p.propertyType || p.propertyTypeDesc} />
-            <InfoField label="Latitude" value={p.latitude || p.yCoordinate} />
-            <InfoField label="Magisterial District" value={p.magisterialDistrict || p.magisterialDistrictDesc || p.magDistrict} />
-            <InfoField label="Property Market Value" value={p.marketValue ?? p.propertyMarketValue ?? p.market_Value} isCurrency />
-          </div>
-        </div>
+        <PaginatedTable
+          data={deliveryAddresses}
+          tableId="delivery-address"
+          columns={[
+            { key: 'addressStatus', label: 'Address Status' },
+            { key: 'startDate', label: 'Start Date' },
+            { key: 'typeofDeliveryAddress', label: 'Type of Delivery Address' },
+            { key: 'town', label: 'City/Town' },
+            { key: 'suburbName', label: 'Suburb' },
+            { key: 'streetName', label: 'Street Name / Non Standard Address', render: (r: any) => r.streetName || r.complexName || '' },
+            { key: 'streetNumber', label: 'Street Number' },
+            { key: 'boxBagNo', label: 'Box/Bag Number' },
+            { key: 'complexName', label: 'Complex Name' },
+            { key: 'unitNumber', label: 'Unit Number' },
+            { key: 'postalCode', label: 'Postal Code' },
+          ]}
+        />
       )}
 
-      <SectionHeader title="Partition" />
+      <SectionHeader title="Services:" />
       {loading ? <LoadingSkeleton /> : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
-          <div>
-            <InfoField label="Property Type of Use" value={a.typeOfUseDesc || part.propertyTypeOfUse || part.typeOfUse || p.typeofUse || p.propertyTypeOfUse} />
-            <InfoField label="Property Category" value={part.propertyCategory || part.propertyCategoryDesc || p.propertyCategory || p.category || p.ratesTariff} />
-            <InfoField label="Accountable Owner Name" value={part.accountableOwnerName || part.ownerName || a.owner || p.name || s.name} />
-          </div>
-          <div>
-            <InfoField label="Valuation Category" value={part.valuationCategory || part.valuationCategoryDesc || p.valuationCategory} />
-            <InfoField label="Partition Description" value={part.partitionDescription || part.partitionDesc || part.partition || p.partitionDescription || p.partition} />
-            <InfoField label="Partition Market Value" value={part.partitionMarketValue ?? part.marketValue ?? p.partitionMarketValue} />
-          </div>
-        </div>
+        <PaginatedTable
+          data={services}
+          tableId="services"
+          columns={[
+            { key: 'serviceStatus', label: 'Service Status', render: (r: any) => r.serviceStatus || r.statusDesc || r.status || '' },
+            { key: 'serviceType', label: 'Service Type', render: (r: any) => r.serviceType || r.serviceTypeDesc || r.serviceDesc || '' },
+            { key: 'tariff', label: 'Tariff', render: (r: any) => r.tariff || r.tariffDescription || r.tariffDesc || '' },
+            { key: 'physicalMeter', label: 'Physical Meter + Meter Code', render: (r: any) => {
+              const meter = r.physicalMeterNo || r.meterNo || r.physicalMeter || '';
+              const code = r.meterCode || '';
+              return meter && code ? `${meter} - ${code}` : meter || code || 'No Meter';
+            }},
+            { key: 'frequency', label: 'Frequency', render: (r: any) => r.frequency || r.frequencyDesc || '' },
+            { key: 'meterConnectionSize', label: 'Meter Connection Size', render: (r: any) => r.meterConnectionSize || r.connectionSize || '' },
+            { key: 'factorQuantity', label: 'FactorQuantity', render: (r: any) => r.factorQuantity ?? r.factor ?? '' },
+            { key: 'requestDate', label: 'Request Date', render: (r: any) => formatDate(r.requestDate) },
+            { key: 'commencementDate', label: 'Commencement Date', render: (r: any) => formatDate(r.commencementDate || r.startDate) },
+            { key: 'tariffType', label: 'Tariff Type', render: (r: any) => r.tariffType || r.tariffTypeDesc || '' },
+            { key: 'tariffRate', label: 'Tariff Rate', render: (r: any) => {
+              const parts: string[] = [];
+              if (r.tariffStartDate || r.tariffEndDate) parts.push(`Start Date - End Date:\n${formatDate(r.tariffStartDate)} - ${formatDate(r.tariffEndDate)}`);
+              if (r.interval !== undefined || r.cost !== undefined) parts.push(`Interval : Cost:\n${r.interval ?? ''}`);
+              if (r.remainder !== undefined) parts.push(`Remainder : ${typeof r.remainder === 'number' ? r.remainder.toFixed(6) : r.remainder}`);
+              return parts.length > 0 ? <div className="whitespace-pre-wrap text-[10px]">{parts.join('\n')}</div> : '';
+            }},
+          ]}
+        />
+      )}
+
+      <SectionHeader title="Additional Billing Services:" />
+      {loading ? <LoadingSkeleton /> : (
+        <PaginatedTable
+          data={additionalBilling}
+          tableId="additional-billing"
+          columns={[
+            { key: 'status', label: 'Status', render: (r: any) => r.status || r.statusDesc || r.serviceStatus || '' },
+            { key: 'type', label: 'Type', render: (r: any) => r.type || r.typeDesc || r.billingType || r.serviceDesc || '' },
+            { key: 'amount', label: 'Amount', render: (r: any) => typeof r.amount === 'number' ? r.amount.toFixed(2) : (r.amount || '') },
+            { key: 'commencementDate', label: 'Commencement Date', render: (r: any) => formatDate(r.commencementDate || r.startDate) },
+            { key: 'terminationDate', label: 'Termination Date', render: (r: any) => formatDate(r.terminationDate || r.endDate) },
+            { key: 'frequency', label: 'Frequency', render: (r: any) => r.frequency || r.frequencyDesc || '' },
+            { key: 'levyMonth', label: 'Levy Month', render: (r: any) => r.levyMonth || '' },
+            { key: 'factorQuantity', label: 'Factor Quantity', render: (r: any) => r.factorQuantity ?? r.factor ?? '' },
+          ]}
+        />
+      )}
+
+      <SectionHeader title="Additional Information:" />
+      {loading ? <LoadingSkeleton /> : (
+        <PaginatedTable
+          data={additionalInfo}
+          tableId="additional-info"
+          columns={[
+            { key: 'blockOrUnblock', label: 'Block or Unblock', render: (r: any) => r.blockOrUnblock || r.type || '' },
+            { key: 'receiptNo', label: 'Receipt No', render: (r: any) => r.receiptNo || r.receiptNumber || '' },
+            { key: 'receiptDate', label: 'Receipt Date', render: (r: any) => formatDate(r.receiptDate) },
+            { key: 'cardNo', label: 'Card No', render: (r: any) => r.cardNo || r.chequeNo || '' },
+            { key: 'receiptAmount', label: 'Receipt Amount', render: (r: any) => typeof r.receiptAmount === 'number' ? r.receiptAmount.toFixed(2) : (r.receiptAmount || r.amount || '') },
+            { key: 'transactionDate', label: 'Transaction Date', render: (r: any) => formatDate(r.transactionDate) },
+            { key: 'documentNo', label: 'Document No', render: (r: any) => r.documentNo || r.documentNumber || '' },
+            { key: 'comment', label: 'Comment', render: (r: any) => r.comment || r.remarks || '' },
+            { key: 'adminFee', label: 'Admin Fee', render: (r: any) => typeof r.adminFee === 'number' ? r.adminFee.toFixed(2) : (r.adminFee || '') },
+          ]}
+        />
       )}
     </div>
   );
