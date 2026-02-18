@@ -39,6 +39,7 @@ import {
   getServicesSearchResults,
   getAdditionalBillingSearchResults,
   getChequeFinalSearchList,
+  getContactDetails,
   type EnquirySearchCriteria, type EnquirySearchResult,
 } from '@/lib/enquiries-service';
 
@@ -710,26 +711,33 @@ function ConsumptionTab({ accountId }: { accountId: number }) {
 }
 
 function ContactInfoTab({ accountId }: { accountId: number }) {
-  const [data, setData] = useState<any>(null);
+  const [nameData, setNameData] = useState<any>(null);
+  const [contactData, setContactData] = useState<any>(null);
+  const [deliveryAddr, setDeliveryAddr] = useState<any[]>([]);
   const [contactHistory, setContactHistory] = useState<any[]>([]);
   const [addressHistory, setAddressHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const loaded = useRef(false);
+  const [showContactHistory, setShowContactHistory] = useState(false);
+  const [showAddressHistory, setShowAddressHistory] = useState(false);
+  const prevAccountId = useRef<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [nameResult, chResult, ahResult] = await Promise.all([
-        getNameInfo(accountId),
+      const [nameResult, contactResult, daResult, chResult, ahResult] = await Promise.all([
+        getNameInfo(accountId).catch(() => null),
+        getContactDetails(accountId).catch(() => null),
+        getAccountDeliveryAddressDetail(accountId).catch(() => []),
         getContactDetailsHistory(accountId).catch(() => []),
         getDeliveryAddressHistory(accountId).catch(() => []),
       ]);
-      setData(nameResult);
-      setContactHistory(chResult);
-      setAddressHistory(ahResult);
-      loaded.current = true;
+      setNameData(nameResult);
+      setContactData(contactResult);
+      setDeliveryAddr(Array.isArray(daResult) ? daResult : daResult ? [daResult] : []);
+      setContactHistory(Array.isArray(chResult) ? chResult : []);
+      setAddressHistory(Array.isArray(ahResult) ? ahResult : []);
     } catch (e: any) {
       setError(e.message || 'Failed to load contact information');
     } finally {
@@ -737,99 +745,197 @@ function ContactInfoTab({ accountId }: { accountId: number }) {
     }
   }, [accountId]);
 
-  useEffect(() => { if (!loaded.current) load(); }, [load]);
+  useEffect(() => {
+    if (prevAccountId.current !== accountId) {
+      prevAccountId.current = accountId;
+      load();
+    }
+  }, [accountId, load]);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
-  if (!data) return <EmptyState message="No contact information available" />;
+
+  const n = nameData || {};
+  const c = contactData || {};
+  const da = deliveryAddr[0] || {};
+
+  const phoneFormat = '(### ######) / +27## #######)';
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-slate-600 flex items-center gap-2"><User className="w-4 h-4" /> Personal Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-0">
-            <FieldRow label="Surname / Company" value={data.surname_Company} />
-            <FieldRow label="Initials" value={data.initials} />
-            <FieldRow label="Title" value={data.title} />
-            <FieldRow label="ID Number" value={data.idRegistrationNumber || data.idNumber} />
-            <FieldRow label="Date of Birth" value={data.dateOfBirth ? new Date(data.dateOfBirth).toLocaleDateString('en-ZA') : null} />
-            <FieldRow label="Gender" value={data.gender} />
-            <FieldRow label="Language" value={data.language} />
-            <FieldRow label="Marital Status" value={data.maritalStatus} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-slate-600 flex items-center gap-2"><Phone className="w-4 h-4" /> Contact Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-0">
-            <FieldRow label="Mobile" value={data.tel_Mobile || data.mobile} icon={<Phone className="w-3.5 h-3.5" />} />
-            <FieldRow label="Home Phone" value={data.tel_Home || data.homePhone} icon={<Phone className="w-3.5 h-3.5" />} />
-            <FieldRow label="Work Phone" value={data.tel_Work || data.workPhone} icon={<Phone className="w-3.5 h-3.5" />} />
-            <FieldRow label="Email" value={data.email || data.emailAddress} icon={<Mail className="w-3.5 h-3.5" />} />
-            <FieldRow label="Fax" value={data.fax || data.faxNumber} />
-            <FieldRow label="Postal Address" value={data.postalAddress?.replace(/\r\n/g, ', ')} icon={<MapPin className="w-3.5 h-3.5" />} />
-          </CardContent>
-        </Card>
+    <div className="p-4 space-y-5" data-testid="contact-info-panel">
+      <h3 className="text-base font-bold text-slate-800">Consumer Contact Details</h3>
+
+      <div className="border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm">
+        <button
+          onClick={() => {}}
+          className="w-full flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-slate-50 to-white border-b border-slate-200 text-left"
+          data-testid="section-contact-details"
+        >
+          <ChevronDown className="w-4 h-4 text-slate-500" />
+          <span className="text-sm font-semibold text-slate-700">Contact Details</span>
+        </button>
+        <div className="p-5">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-8 gap-y-4">
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-slate-400 block mb-0.5">Telephone (Mobile)</label>
+                <div className="flex items-center gap-2">
+                  <input readOnly className="flex-1 bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={n.tel_Mobile || c.mobile || c.tel_Mobile || ''} data-testid="input-tel-mobile" />
+                </div>
+                <span className="text-[10px] text-slate-400 italic">{phoneFormat}</span>
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 block mb-0.5">Telephone (Home)</label>
+                <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={n.tel_Home || c.homePhone || c.tel_Home || ''} data-testid="input-tel-home" />
+                <span className="text-[10px] text-slate-400 italic">{phoneFormat}</span>
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 block mb-0.5">Telephone (Work)</label>
+                <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={n.tel_Work || c.workPhone || c.tel_Work || ''} data-testid="input-tel-work" />
+                <span className="text-[10px] text-slate-400 italic">{phoneFormat}</span>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-slate-400 block mb-0.5">Fax</label>
+                <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={n.fax || c.fax || ''} data-testid="input-fax" />
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-slate-400 block mb-0.5">Email Address</label>
+                <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={n.email || c.email || c.emailAddress || ''} data-testid="input-email" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {contactHistory.length > 0 && (
-        <>
-          <SectionHeader title="Contact Details History" />
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" data-testid="table-contact-history">
-              <thead>
-                <tr className="border-b-2 border-slate-200">
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Field</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Old Value</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">New Value</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Changed By</th>
-                </tr>
-              </thead>
-              <tbody>
-                {contactHistory.map((item: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                    <td className="py-2 px-3 text-slate-500">{item.changeDate ? new Date(item.changeDate).toLocaleDateString('en-ZA') : item.date || '-'}</td>
-                    <td className="py-2 px-3 font-medium">{item.fieldName || item.field || item.description || '-'}</td>
-                    <td className="py-2 px-3 text-slate-500">{item.oldValue || item.previousValue || '-'}</td>
-                    <td className="py-2 px-3 font-medium">{item.newValue || item.currentValue || '-'}</td>
-                    <td className="py-2 px-3 text-slate-500 text-xs">{item.changedBy || item.user || '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <div className="border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm">
+        <div className="px-4 py-2.5 bg-gradient-to-r from-blue-50 to-white border-b border-slate-200">
+          <span className="text-sm font-semibold text-slate-700">Additional Statement Emails</span>
+          <p className="text-[10px] text-orange-600 mt-0.5">NOTE: The Primary Email Address above needs to be populated with a valid Email Address in Contact Details before this form will be considered. If you enter email addresses here and statements are emailed to these, it will receive it as well. Clearing a field and Saving will delete the additional Email.</p>
+        </div>
+        <div className="p-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
+            <div>
+              <label className="text-xs text-slate-400 block mb-0.5">Additional Email Address 1</label>
+              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={c.additionalEmail1 || ''} data-testid="input-additional-email-1" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 block mb-0.5">Additional Email Address 2</label>
+              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={c.additionalEmail2 || ''} data-testid="input-additional-email-2" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 block mb-0.5">Additional Email Address 3</label>
+              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={c.additionalEmail3 || ''} data-testid="input-additional-email-3" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 block mb-0.5">Additional Email Address 4</label>
+              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={c.additionalEmail4 || ''} data-testid="input-additional-email-4" />
+            </div>
           </div>
-        </>
+        </div>
+      </div>
+
+      <button
+        onClick={() => setShowContactHistory(!showContactHistory)}
+        className="text-sm font-semibold text-blue-700 underline hover:text-blue-900 transition-colors flex items-center gap-1"
+        data-testid="toggle-contact-history"
+      >
+        <Clock className="w-3.5 h-3.5" />
+        Contact Details History
+        {showContactHistory ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+      </button>
+      {showContactHistory && (
+        <PaginatedTable
+          data={contactHistory}
+          tableId="contact-history"
+          columns={[
+            { key: 'changeDate', label: 'Date', render: (r: any) => { try { return r.changeDate ? new Date(r.changeDate).toLocaleDateString('en-ZA') : r.date || ''; } catch { return r.changeDate || ''; } } },
+            { key: 'fieldName', label: 'Field', render: (r: any) => r.fieldName || r.field || r.description || '' },
+            { key: 'oldValue', label: 'Old Value', render: (r: any) => r.oldValue || r.previousValue || '' },
+            { key: 'newValue', label: 'New Value', render: (r: any) => r.newValue || r.currentValue || '' },
+            { key: 'changedBy', label: 'Changed By', render: (r: any) => r.changedBy || r.user || '' },
+          ]}
+        />
       )}
 
-      {addressHistory.length > 0 && (
-        <>
-          <SectionHeader title="Delivery Address History" />
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" data-testid="table-address-history">
-              <thead>
-                <tr className="border-b-2 border-slate-200">
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Address</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Changed By</th>
-                </tr>
-              </thead>
-              <tbody>
-                {addressHistory.map((item: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                    <td className="py-2 px-3 text-slate-500">{item.changeDate ? new Date(item.changeDate).toLocaleDateString('en-ZA') : item.date || '-'}</td>
-                    <td className="py-2 px-3 font-medium">{(item.address || item.deliveryAddress || '-').replace(/\r\n/g, ', ')}</td>
-                    <td className="py-2 px-3 text-slate-500 text-xs">{item.changedBy || item.user || '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <div className="border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm">
+        <button
+          onClick={() => {}}
+          className="w-full flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-slate-50 to-white border-b border-slate-200 text-left"
+          data-testid="section-delivery-address"
+        >
+          <ChevronDown className="w-4 h-4 text-slate-500" />
+          <span className="text-sm font-semibold text-slate-700">Delivery Address Details</span>
+        </button>
+        <div className="p-5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-3">
+            <div>
+              <label className="text-xs text-slate-400 block mb-0.5">Type of Delivery Address *</label>
+              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={da.typeofDeliveryAddress || da.typeOfDeliveryAddress || ''} data-testid="input-delivery-type" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 block mb-0.5">Complex Name</label>
+              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={da.complexName || ''} data-testid="input-complex-name" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 block mb-0.5">City / Town</label>
+              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={da.town || ''} data-testid="input-city" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 block mb-0.5">Unit Number</label>
+              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={da.unitNumber || ''} data-testid="input-unit-number" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 block mb-0.5">Suburb</label>
+              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={da.suburbName || da.suburb || ''} data-testid="input-suburb" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 block mb-0.5">Postal Code *</label>
+              <input readOnly className="w-full bg-orange-50 border border-orange-300 rounded px-3 py-1.5 text-sm text-slate-700 font-medium" value={da.postalCode || ''} data-testid="input-postal-code" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 block mb-0.5">Address Line 1</label>
+              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={da.streetNumber || ''} data-testid="input-address-line1" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 block mb-0.5">Care Of</label>
+              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={da.careOf || ''} data-testid="input-care-of" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 block mb-0.5">Address Line 2</label>
+              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={da.streetName || ''} data-testid="input-address-line2" />
+            </div>
+            <div />
+            <div>
+              <label className="text-xs text-slate-400 block mb-0.5">Address Line 3</label>
+              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={da.boxBagNo || ''} data-testid="input-address-line3" />
+            </div>
           </div>
-        </>
+        </div>
+      </div>
+
+      <button
+        onClick={() => setShowAddressHistory(!showAddressHistory)}
+        className="text-sm font-semibold text-blue-700 underline hover:text-blue-900 transition-colors flex items-center gap-1"
+        data-testid="toggle-address-history"
+      >
+        <Clock className="w-3.5 h-3.5" />
+        Delivery Address Details History
+        {showAddressHistory ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+      </button>
+      {showAddressHistory && (
+        <PaginatedTable
+          data={addressHistory}
+          tableId="address-history"
+          columns={[
+            { key: 'changeDate', label: 'Date', render: (r: any) => { try { return r.changeDate ? new Date(r.changeDate).toLocaleDateString('en-ZA') : r.date || ''; } catch { return r.changeDate || ''; } } },
+            { key: 'address', label: 'Address', render: (r: any) => (r.address || r.deliveryAddress || '').replace(/\r\n/g, ', ') },
+            { key: 'changedBy', label: 'Changed By', render: (r: any) => r.changedBy || r.user || '' },
+          ]}
+        />
       )}
     </div>
   );
