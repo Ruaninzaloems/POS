@@ -3122,133 +3122,256 @@ function TransactionHistoryTab({ accountId, accountNumber }: { accountId: number
     }
   }, [accountId, accountNumber]);
 
+  const [printingId, setPrintingId] = useState<string | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<any>(null);
+
+  const sortedReceipts = useMemo(() =>
+    [...data].sort((a, b) => {
+      const da = a.receiptDate ? new Date(a.receiptDate).getTime() : 0;
+      const db = b.receiptDate ? new Date(b.receiptDate).getTime() : 0;
+      return db - da;
+    }),
+  [data]);
+
+  const totalAmount = useMemo(() => sortedReceipts.reduce((s, r) => s + (r.amount ?? 0), 0), [sortedReceipts]);
+
   useEffect(() => { if (!loaded.current) load(); }, [load]);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
 
+  const handlePrintReceipt = async (item: any) => {
+    const receiptId = item.receiptId || item.receipt_ID;
+    if (!receiptId) return;
+    setPrintingId(String(receiptId));
+    try {
+      const params = new URLSearchParams({ receiptId: String(receiptId) });
+      const res = await fetch(`/api/proxy/pos-multi-receipt-print?${params.toString()}`);
+      if (res.ok) {
+        const receiptData = await res.json();
+        setReceiptPreview(receiptData);
+        setTimeout(() => {
+          const printContent = document.getElementById('enquiry-receipt-print');
+          if (printContent) {
+            const printWindow = window.open('', '_blank', 'width=400,height=600');
+            if (printWindow) {
+              printWindow.document.write(`<html><head><title>Receipt ${item.receiptNo || receiptId}</title><style>body{font-family:monospace;font-size:12px;padding:20px;max-width:350px;margin:0 auto}table{width:100%;border-collapse:collapse}td{padding:2px 4px}h2,h3{text-align:center;margin:4px 0}.divider{border-top:1px dashed #333;margin:8px 0}.right{text-align:right}.bold{font-weight:bold}@media print{body{padding:0}}</style></head><body>${printContent.innerHTML}<script>window.print();window.close();<\/script></body></html>`);
+              printWindow.document.close();
+            }
+          }
+          setReceiptPreview(null);
+        }, 500);
+      }
+    } catch (e) {
+      console.error('Failed to fetch receipt for printing:', e);
+    } finally {
+      setPrintingId(null);
+    }
+  };
+
   return (
     <div className="p-5 space-y-5">
-      <div className="flex gap-2 border-b border-slate-200 pb-2">
+      {receiptPreview && (
+        <div id="enquiry-receipt-print" className="hidden">
+          <h2>{receiptPreview.municipalityName || 'George Municipality'}</h2>
+          <p style={{textAlign:'center'}}>{receiptPreview.address || ''}</p>
+          <div className="divider"></div>
+          <p><strong>Receipt:</strong> {receiptPreview.receiptNo || receiptPreview.receiptNumber || ''}</p>
+          <p><strong>Date:</strong> {receiptPreview.receiptDate || ''}</p>
+          <p><strong>Account:</strong> {receiptPreview.accountNumber || accountNumber}</p>
+          <p><strong>Consumer:</strong> {receiptPreview.consumerName || ''}</p>
+          <div className="divider"></div>
+          {receiptPreview.services && Array.isArray(receiptPreview.services) && receiptPreview.services.map((s: any, si: number) => (
+            <p key={si}>{s.serviceDescription || s.description}: R {(s.amount ?? 0).toFixed(2)}</p>
+          ))}
+          <div className="divider"></div>
+          <p className="bold">Total: R {(receiptPreview.totalAmount ?? receiptPreview.amount ?? 0).toFixed(2)}</p>
+          <p>Payment: {receiptPreview.paymentType || ''}</p>
+          <p>Cashier: {receiptPreview.cashierName || ''}</p>
+        </div>
+      )}
+
+      <div className="flex items-center gap-1 bg-white rounded-xl border border-slate-200 p-1.5 shadow-sm w-fit">
         {[
-          { key: 'receipts', label: 'Receipt History', count: data.length },
-          { key: 'billing', label: 'Billing Period', count: billingPeriodTxns.length },
-          { key: 'detailed', label: 'Detailed Transactions', count: detailedTxns.length },
-        ].map(sub => (
-          <button
-            key={sub.key}
-            onClick={() => setActiveSubTab(sub.key)}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${activeSubTab === sub.key ? 'bg-blue-100 text-blue-700' : 'text-slate-500 hover:bg-slate-100'}`}
-            data-testid={`button-subtab-${sub.key}`}
-          >
-            {sub.label} ({sub.count})
-          </button>
-        ))}
+          { key: 'receipts', label: 'Receipt History', count: data.length, icon: Receipt },
+          { key: 'billing', label: 'Billing Period', count: billingPeriodTxns.length, icon: CalendarDays },
+          { key: 'detailed', label: 'Detailed Transactions', count: detailedTxns.length, icon: FileText },
+        ].map(sub => {
+          const Icon = sub.icon;
+          return (
+            <button
+              key={sub.key}
+              onClick={() => setActiveSubTab(sub.key)}
+              className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${activeSubTab === sub.key ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}
+              data-testid={`button-subtab-${sub.key}`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              {sub.label}
+              <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${activeSubTab === sub.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>{sub.count}</span>
+            </button>
+          );
+        })}
       </div>
 
       {activeSubTab === 'receipts' && (
         data.length === 0 ? <EmptyState message="No receipt history found" /> : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" data-testid="table-transaction-history">
-              <thead>
-                <tr className="border-b-2 border-slate-200">
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Receipt No.</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Payment Type</th>
-                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Card/Cheque Detail</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Cashier</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Cash Book</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...data].sort((a, b) => {
-                  const da = a.receiptDate ? new Date(a.receiptDate).getTime() : 0;
-                  const db = b.receiptDate ? new Date(b.receiptDate).getTime() : 0;
-                  return db - da;
-                }).map((item: any, i: number) => (
-                  <tr key={item.receiptId || i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                    <td className="py-2 px-3 font-mono text-blue-700 font-medium whitespace-nowrap">{item.receiptNo || '-'}</td>
-                    <td className="py-2 px-3 text-slate-600 whitespace-nowrap">{item.receiptDate ? new Date(item.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
-                    <td className="py-2 px-3">{item.paymentType || '-'}</td>
-                    <td className="py-2 px-3 text-right font-mono font-semibold">{(item.amount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                    <td className="py-2 px-3 text-slate-500 text-xs">{item.cardChequeDetail || '-'}</td>
-                    <td className="py-2 px-3 text-slate-500 text-xs">{item.cashierName || '-'}</td>
-                    <td className="py-2 px-3 text-slate-500 text-xs">{item.cashBook || '-'}</td>
-                    <td className="py-2 px-3">
-                      {item.isCancelled ? (
-                        <Badge variant="destructive" className="text-[10px]">Cancelled</Badge>
-                      ) : (
-                        <Badge variant="default" className="text-[10px] bg-green-100 text-green-700 hover:bg-green-100">Active</Badge>
-                      )}
-                    </td>
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Receipt className="w-4 h-4 text-white" />
+                <h3 className="text-sm font-semibold text-white tracking-wide">Receipt History</h3>
+                <Badge className="bg-white/20 text-white border-white/30 text-[10px]">{data.length} receipts</Badge>
+              </div>
+              <div className="text-white text-sm font-mono font-bold">
+                Total: R {totalAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" data-testid="table-transaction-history">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Receipt No.</th>
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Date</th>
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Payment Type</th>
+                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Card/Cheque Detail</th>
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Cashier</th>
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Cash Book</th>
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
+                    <th className="text-center py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Print</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {sortedReceipts.map((item: any, i: number) => (
+                    <tr key={item.receiptId || i} className={`border-b border-slate-100 hover:bg-blue-50/30 transition-colors ${item.isCancelled ? 'bg-red-50/30' : ''}`}>
+                      <td className="py-2.5 px-3 font-mono text-blue-700 font-semibold whitespace-nowrap text-xs">{item.receiptNo || '-'}</td>
+                      <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{item.receiptDate ? new Date(item.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
+                      <td className="py-2.5 px-3">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium ${
+                          (item.paymentType || '').toLowerCase().includes('cash') ? 'bg-green-50 text-green-700 border border-green-200' :
+                          (item.paymentType || '').toLowerCase().includes('eft') ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                          (item.paymentType || '').toLowerCase().includes('card') ? 'bg-purple-50 text-purple-700 border border-purple-200' :
+                          'bg-slate-50 text-slate-600 border border-slate-200'
+                        }`}>
+                          {(item.paymentType || '').toLowerCase().includes('cash') && <Banknote className="w-3 h-3" />}
+                          {(item.paymentType || '').toLowerCase().includes('card') && <CreditCard className="w-3 h-3" />}
+                          {item.paymentType || '-'}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">{(item.amount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                      <td className="py-2.5 px-3 text-slate-500 text-xs">{item.cardChequeDetail || '-'}</td>
+                      <td className="py-2.5 px-3 text-slate-600 text-xs font-medium">{item.cashierName || '-'}</td>
+                      <td className="py-2.5 px-3 text-slate-500 text-xs">{item.cashBook || '-'}</td>
+                      <td className="py-2.5 px-3">
+                        {item.isCancelled ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 border border-red-200">
+                            <X className="w-3 h-3" /> Cancelled
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                            <Activity className="w-3 h-3" /> Active
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <button
+                          onClick={() => handlePrintReceipt(item)}
+                          disabled={printingId === String(item.receiptId || item.receipt_ID) || !item.receiptId}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-[10px] font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                          data-testid={`button-print-receipt-${i}`}
+                          title="Print Receipt"
+                        >
+                          {printingId === String(item.receiptId || item.receipt_ID) ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <FileText className="w-3 h-3" />
+                          )}
+                          Print
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )
       )}
 
       {activeSubTab === 'billing' && (
         billingPeriodTxns.length === 0 ? <EmptyState message="No billing period transactions found" /> : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" data-testid="table-billing-period-transactions">
-              <thead>
-                <tr className="border-b-2 border-slate-200">
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Period</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Description</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Service</th>
-                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Debit</th>
-                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Credit</th>
-                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Balance</th>
-                </tr>
-              </thead>
-              <tbody>
-                {billingPeriodTxns.map((item: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                    <td className="py-2 px-3 text-slate-600">{item.period || item.billingPeriod || '-'}</td>
-                    <td className="py-2 px-3">{item.description || item.transactionDescription || '-'}</td>
-                    <td className="py-2 px-3">{item.serviceType || item.serviceDescription || '-'}</td>
-                    <td className="py-2 px-3 text-right font-mono">{(item.debit ?? item.debitAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                    <td className="py-2 px-3 text-right font-mono">{(item.credit ?? item.creditAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                    <td className="py-2 px-3 text-right font-mono font-semibold">{(item.balance ?? item.runningBalance ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
+              <CalendarDays className="w-4 h-4 text-white" />
+              <h3 className="text-sm font-semibold text-white tracking-wide">Billing Period Transactions</h3>
+              <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{billingPeriodTxns.length}</Badge>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" data-testid="table-billing-period-transactions">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Period</th>
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Description</th>
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service</th>
+                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Debit</th>
+                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Credit</th>
+                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Balance</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {billingPeriodTxns.map((item: any, i: number) => (
+                    <tr key={i} className="border-b border-slate-100 hover:bg-emerald-50/30 transition-colors">
+                      <td className="py-2.5 px-3 text-slate-600 font-medium">{item.period || item.billingPeriod || '-'}</td>
+                      <td className="py-2.5 px-3">{item.description || item.transactionDescription || '-'}</td>
+                      <td className="py-2.5 px-3">{item.serviceType || item.serviceDescription || '-'}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-red-600">{(item.debit ?? item.debitAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-green-600">{(item.credit ?? item.creditAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">{(item.balance ?? item.runningBalance ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )
       )}
 
       {activeSubTab === 'detailed' && (
         detailedTxns.length === 0 ? <EmptyState message="No detailed transactions found" /> : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" data-testid="table-detailed-transactions">
-              <thead>
-                <tr className="border-b-2 border-slate-200">
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Type</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Description</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Service</th>
-                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Reference</th>
-                </tr>
-              </thead>
-              <tbody>
-                {detailedTxns.map((item: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                    <td className="py-2 px-3 text-slate-600">{item.transactionDate ? new Date(item.transactionDate).toLocaleDateString('en-ZA') : item.date || '-'}</td>
-                    <td className="py-2 px-3">{item.transactionType || item.type || '-'}</td>
-                    <td className="py-2 px-3">{item.description || item.transactionDescription || '-'}</td>
-                    <td className="py-2 px-3">{item.serviceType || item.serviceDescription || '-'}</td>
-                    <td className="py-2 px-3 text-right font-mono font-semibold">{(item.amount ?? item.transactionAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                    <td className="py-2 px-3 text-slate-500 text-xs">{item.reference || '-'}</td>
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-3 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-white" />
+              <h3 className="text-sm font-semibold text-white tracking-wide">Detailed Transactions</h3>
+              <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{detailedTxns.length}</Badge>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" data-testid="table-detailed-transactions">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Date</th>
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Type</th>
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Description</th>
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service</th>
+                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reference</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {detailedTxns.map((item: any, i: number) => (
+                    <tr key={i} className="border-b border-slate-100 hover:bg-purple-50/30 transition-colors">
+                      <td className="py-2.5 px-3 text-slate-600">{item.transactionDate ? new Date(item.transactionDate).toLocaleDateString('en-ZA') : item.date || '-'}</td>
+                      <td className="py-2.5 px-3">
+                        <span className="inline-flex px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">{item.transactionType || item.type || '-'}</span>
+                      </td>
+                      <td className="py-2.5 px-3">{item.description || item.transactionDescription || '-'}</td>
+                      <td className="py-2.5 px-3">{item.serviceType || item.serviceDescription || '-'}</td>
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">{(item.amount ?? item.transactionAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                      <td className="py-2.5 px-3 text-slate-500 text-xs font-mono">{item.reference || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )
       )}
