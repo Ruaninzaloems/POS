@@ -12,7 +12,7 @@ import {
   CreditCard, Droplets, Zap, FileText, Shield, Gift, Landmark,
   RefreshCw, AlertTriangle, ChevronDown, ChevronUp, Hash,
   Filter, Clock, ArrowRight, Loader2, SlidersHorizontal,
-  Eye, Layers, Home, Activity, ChevronRight, Mail
+  Eye, Layers, Home, Activity, ChevronRight, Mail, Download
 } from 'lucide-react';
 import {
   searchAccounts, getAccountBalance, getServiceTypeBalance,
@@ -1883,7 +1883,34 @@ function ConsumptionTab({ accountId }: { accountId: number }) {
           <div className="px-4 py-3 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
             <FileText className="w-4 h-4 text-white" />
             <h3 className="text-sm font-semibold text-white tracking-wide">Meter Reading History</h3>
-            <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{readingHistory.length} records</Badge>
+            <div className="ml-auto flex items-center gap-2">
+              <Badge variant="outline" className="bg-white/20 text-white border-white/30 text-[10px]">{readingHistory.length} records</Badge>
+              <button
+                onClick={() => {
+                  const headers = historyCols.map(c => c.label);
+                  const rows = sortedHistory.map((item: any) =>
+                    historyCols.map(col => {
+                      let val = item[col.key];
+                      if ((val === undefined || val === null || val === '') && (col as any).fallback) val = (col as any).fallback();
+                      return String(val ?? '').replace(/"/g, '""');
+                    })
+                  );
+                  const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n');
+                  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `meter-reading-history-${selectedMeter?.physicalMeterNo || selectedMeter?.meterNo || 'export'}.csv`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/20 hover:bg-white/30 text-white text-[11px] font-medium rounded-md transition-colors border border-white/20"
+                data-testid="btn-download-meter-history"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Download
+              </button>
+            </div>
           </div>
           <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
             <table className="w-full text-sm" data-testid="table-meter-reading-history">
