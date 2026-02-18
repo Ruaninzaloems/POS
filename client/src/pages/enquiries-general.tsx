@@ -48,6 +48,7 @@ function GeneralEnquiriesContent() {
   const [quickFilters, setQuickFilters] = useState<Set<string>>(new Set());
   const [showFiltersPanel, setShowFiltersPanel] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const fieldDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownContainerRef = useRef<HTMLDivElement>(null);
 
@@ -295,6 +296,35 @@ function GeneralEnquiriesContent() {
       setSearching(false);
     }
   }, [quickQuery, criteria, recentSearches, enrichWithBalances]);
+
+  const handleFieldChange = useCallback((key: string, value: string) => {
+    const newCriteria = { ...criteria, [key]: value };
+    setCriteria(newCriteria);
+    if (fieldDebounceRef.current) clearTimeout(fieldDebounceRef.current);
+    const hasAnyValue = Object.values(newCriteria).some(v => v && String(v).trim().length >= 2);
+    if (!hasAnyValue) return;
+    fieldDebounceRef.current = setTimeout(async () => {
+      const token = ++fullSearchTokenRef.current;
+      setSearching(true);
+      setSearchError(null);
+      setHasSearched(true);
+      setShowDropdown(false);
+      try {
+        const data = await searchAccounts(newCriteria);
+        if (fullSearchTokenRef.current !== token) return;
+        setResults(data);
+        setSearching(false);
+        enrichWithBalances(data, fullSearchTokenRef, token, setResults);
+      } catch (e: any) {
+        if (fullSearchTokenRef.current === token) {
+          setSearchError(e.message || 'Search failed');
+          setResults([]);
+        }
+      } finally {
+        setSearching(false);
+      }
+    }, 500);
+  }, [criteria, enrichWithBalances]);
 
   const handleClear = () => {
     setQuickQuery('');
@@ -678,7 +708,7 @@ function GeneralEnquiriesContent() {
                   type="text"
                   placeholder={f.placeholder}
                   value={(criteria as any)[f.key] || ''}
-                  onChange={(e) => setCriteria(prev => ({ ...prev, [f.key]: e.target.value }))}
+                  onChange={(e) => handleFieldChange(f.key, e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleFullSearch(); }}
                   className="h-8 px-2 text-xs rounded border border-slate-300 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   data-testid={`input-field-${f.key}`}
