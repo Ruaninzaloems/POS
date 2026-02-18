@@ -12,7 +12,9 @@ import {
   CreditCard, Droplets, Zap, FileText, Shield, Gift, Landmark,
   RefreshCw, AlertTriangle, ChevronDown, ChevronUp, Hash,
   Filter, Clock, ArrowRight, Loader2, SlidersHorizontal,
-  Eye, Layers, Home, Activity, ChevronRight, Mail, Download
+  Eye, Layers, Home, Activity, ChevronRight, Mail, Download,
+  Briefcase, Heart, Users, Receipt, CalendarDays, Banknote, Scale,
+  Gauge, Link2, AlertCircle
 } from 'lucide-react';
 import {
   searchAccounts, getAccountBalance, getServiceTypeBalance,
@@ -202,20 +204,20 @@ function PaginatedTable({ data, columns, itemsPerPage = 50, tableId, onRowClick 
 
   return (
     <div data-testid={`${tid}-container`}>
-      <div className="overflow-x-auto border border-slate-200 rounded">
+      <div className="overflow-x-auto rounded-xl border border-slate-200">
         <table className="w-full text-xs" data-testid={`${tid}-grid`}>
           <thead>
-            <tr className="bg-slate-100 border-b border-slate-200">
+            <tr className="bg-slate-50 border-b border-slate-200">
               {columns.map((c) => (
-                <th key={c.key} className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap">{c.label}</th>
+                <th key={c.key} className="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider font-bold text-slate-600 whitespace-nowrap">{c.label}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {paged.length === 0 ? (
-              <tr><td colSpan={columns.length} className="text-center text-slate-400 py-4" data-testid={`${tid}-empty`}>No records to display</td></tr>
+              <tr><td colSpan={columns.length} className="text-center text-slate-400 py-8" data-testid={`${tid}-empty`}>No records to display</td></tr>
             ) : paged.map((row, i) => (
-              <tr key={i} className={`border-b border-slate-100 hover:bg-slate-50 ${onRowClick ? 'cursor-pointer' : ''}`} onClick={() => onRowClick?.(row)} data-testid={`${tid}-row-${i}`}>
+              <tr key={i} className={`border-b border-slate-100 hover:bg-blue-50/30 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`} onClick={() => onRowClick?.(row)} data-testid={`${tid}-row-${i}`}>
                 {columns.map((c) => (
                   <td key={c.key} className="px-3 py-2 text-slate-700 whitespace-nowrap" data-testid={`${tid}-cell-${c.key}-${i}`}>
                     {c.render ? c.render(row) : (row[c.key] ?? '')}
@@ -226,12 +228,12 @@ function PaginatedTable({ data, columns, itemsPerPage = 50, tableId, onRowClick 
           </tbody>
         </table>
       </div>
-      <div className="flex items-center justify-end gap-2 mt-2 text-xs text-slate-500">
-        <span>Items per page:</span>
-        <span className="border rounded px-2 py-0.5">{itemsPerPage}</span>
-        <span data-testid={`${tid}-page-info`}>{data.length === 0 ? '0 of 0' : `${(page-1)*itemsPerPage+1} - ${Math.min(page*itemsPerPage, data.length)} of ${data.length}`}</span>
-        <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1} className="px-1 disabled:opacity-30" data-testid={`${tid}-prev-page`}>&lt;</button>
-        <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page===totalPages} className="px-1 disabled:opacity-30" data-testid={`${tid}-next-page`}>&gt;</button>
+      <div className="flex items-center justify-end gap-2 mt-2.5 text-xs text-slate-500">
+        <span className="text-slate-400">Items per page:</span>
+        <span className="border border-slate-200 rounded-md px-2 py-0.5 bg-white text-slate-600 font-medium">{itemsPerPage}</span>
+        <span className="text-slate-600 font-medium" data-testid={`${tid}-page-info`}>{data.length === 0 ? '0 of 0' : `${(page-1)*itemsPerPage+1} - ${Math.min(page*itemsPerPage, data.length)} of ${data.length}`}</span>
+        <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1} className="w-6 h-6 flex items-center justify-center rounded border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 transition-colors" data-testid={`${tid}-prev-page`}>&lt;</button>
+        <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page===totalPages} className="w-6 h-6 flex items-center justify-center rounded border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 transition-colors" data-testid={`${tid}-next-page`}>&gt;</button>
       </div>
     </div>
   );
@@ -622,67 +624,84 @@ function NameTab({ accountId }: { accountId: number }) {
   const dob = n.dateOfBirth ? (() => { try { const d = new Date(n.dateOfBirth); return isNaN(d.getTime()) ? n.dateOfBirth : d.toLocaleDateString('en-ZA'); } catch { return n.dateOfBirth; } })() : '';
 
   return (
-    <div className="p-4 space-y-1" data-testid="name-info-panel">
-      <h3 className="text-base font-bold text-slate-800 mb-2">Name</h3>
-
-      <SectionHeader title="Person Details" />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
-        <div>
-          <InfoField label="ID Number" value={n.idNo_RegistrationNo} />
-          <InfoField label="Passport Number" value={n.passportNo} />
-          <InfoField label="Country Name" value={n.nameCountry} />
-          <InfoField label="Title" value={n.title} />
-          <InfoField label="Last Name" value={n.surname_Company} />
-          <InfoField label="Full Name" value={fullName || n.firstNames} />
-          <InfoField label="Is Farmer?" value={n.isFarmer} />
-          <InfoField label="Is Sole Proprietor?" value={n.isSoleProp} />
+    <div className="p-5 space-y-5" data-testid="name-info-panel">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+          <User className="w-4 h-4 text-white" />
+          <h3 className="text-sm font-semibold text-white tracking-wide">Person Details</h3>
         </div>
-        <div>
-          <InfoField label="Nickname" value={n.nickName} />
-          <InfoField label="Maiden Name" value={n.maidenName} />
-          <InfoField label="Date of Birth" value={dob} />
-          <InfoField label="Gender" value={n.genderDesc} />
-          <InfoField label="Ethnicity" value={n.ethnicDesc} />
-          <InfoField label="Language for Correspondence" value={n.languageCorrespond} />
-        </div>
-      </div>
-
-      <SectionHeader title="Employer Details" />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
-        <div>
-          <InfoField label="Employment Status" value={n.employementStatusDesc} />
-          <InfoField label="Employer" value={n.employer} />
-          <InfoField label="Contact Person Telephone" value={n.tel_ContactPerson || n.tel_ContactPerson1} />
-        </div>
-        <div>
-          <InfoField label="Contact Person" value={n.contactPerson} />
-          <InfoField label="Occupation" value={n.occupation || n.occupation1} />
+        <div className="p-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
+            <div>
+              <InfoField label="ID Number" value={n.idNo_RegistrationNo} />
+              <InfoField label="Passport Number" value={n.passportNo} />
+              <InfoField label="Country Name" value={n.nameCountry} />
+              <InfoField label="Title" value={n.title} />
+              <InfoField label="Last Name" value={n.surname_Company} />
+              <InfoField label="Full Name" value={fullName || n.firstNames} />
+              <InfoField label="Is Farmer?" value={n.isFarmer} />
+              <InfoField label="Is Sole Proprietor?" value={n.isSoleProp} />
+            </div>
+            <div>
+              <InfoField label="Nickname" value={n.nickName} />
+              <InfoField label="Maiden Name" value={n.maidenName} />
+              <InfoField label="Date of Birth" value={dob} />
+              <InfoField label="Gender" value={n.genderDesc} />
+              <InfoField label="Ethnicity" value={n.ethnicDesc} />
+              <InfoField label="Language for Correspondence" value={n.languageCorrespond} />
+            </div>
+          </div>
         </div>
       </div>
 
-      <SectionHeader title="Next of Kin" />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
-        <div>
-          <InfoField label="Last Name" value={n.kinLastName} />
-          <InfoField label="Full Name" value={[n.kinFirstName, n.kinLastName].filter(Boolean).join(' ').trim() || undefined} />
-          <InfoField label="Relationship" value={n.kinRelationShip} />
-          <InfoField label="Town/City" value={n.kinTown} />
-          <InfoField label="Suburb" value={n.kinSuburb} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
+            <Briefcase className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Employer Details</h3>
+          </div>
+          <div className="p-5">
+            <InfoField label="Employment Status" value={n.employementStatusDesc} />
+            <InfoField label="Employer" value={n.employer} />
+            <InfoField label="Contact Person" value={n.contactPerson} />
+            <InfoField label="Contact Telephone" value={n.tel_ContactPerson || n.tel_ContactPerson1} />
+            <InfoField label="Occupation" value={n.occupation || n.occupation1} />
+          </div>
         </div>
-        <div>
-          <InfoField label="Street Name" value={n.kinStreetName} />
-          <InfoField label="Street Number" value={n.kinStreetNumber} />
-          <InfoField label="Telephone (Home)" value={n.kinTelephone} />
-          <InfoField label="Telephone (Mobile)" value={n.kinMobile} />
+
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
+            <Heart className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Marital Details</h3>
+          </div>
+          <div className="p-5">
+            <InfoField label="Marital Status" value={n.kinMarriedStatus} />
+          </div>
         </div>
       </div>
 
-      <SectionHeader title="Marital Details" />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
-        <div>
-          <InfoField label="Marital Status" value={n.kinMarriedStatus} />
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center gap-2">
+          <Users className="w-4 h-4 text-white" />
+          <h3 className="text-sm font-semibold text-white tracking-wide">Next of Kin</h3>
         </div>
-        <div />
+        <div className="p-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
+            <div>
+              <InfoField label="Last Name" value={n.kinLastName} />
+              <InfoField label="Full Name" value={[n.kinFirstName, n.kinLastName].filter(Boolean).join(' ').trim() || undefined} />
+              <InfoField label="Relationship" value={n.kinRelationShip} />
+              <InfoField label="Town/City" value={n.kinTown} />
+              <InfoField label="Suburb" value={n.kinSuburb} />
+            </div>
+            <div>
+              <InfoField label="Street Name" value={n.kinStreetName} />
+              <InfoField label="Street Number" value={n.kinStreetNumber} />
+              <InfoField label="Telephone (Home)" value={n.kinTelephone} />
+              <InfoField label="Telephone (Mobile)" value={n.kinMobile} />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -776,9 +795,9 @@ function BalanceDebtTab({ accountId }: { accountId: number }) {
   );
 
   return (
-    <div className="p-4 space-y-6" data-testid="balance-debt-tab">
-      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+    <div className="p-5 space-y-5" data-testid="balance-debt-tab">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
           <Landmark className="w-4 h-4 text-white" />
           <h3 className="text-sm font-semibold text-white tracking-wide">Total Balance / Debt Inquiry</h3>
           <button
@@ -838,7 +857,7 @@ function BalanceDebtTab({ accountId }: { accountId: number }) {
           </div>
           <div className="p-5 space-y-5">
             {ratesData && (
-              <div className="rounded-lg border border-slate-200 overflow-hidden">
+              <div className="rounded-xl border border-slate-200 overflow-hidden">
                 <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
                   <h4 className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Property Rates</h4>
                 </div>
@@ -893,7 +912,7 @@ function BalanceDebtTab({ accountId }: { accountId: number }) {
         </div>
       )}
 
-      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 flex items-center gap-2">
           <CreditCard className="w-4 h-4 text-white" />
           <h3 className="text-sm font-semibold text-white tracking-wide">Payments Received</h3>
@@ -949,7 +968,7 @@ function BalanceDebtTab({ accountId }: { accountId: number }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-white" />
             <h3 className="text-sm font-semibold text-white tracking-wide">Payment Reversals</h3>
@@ -983,7 +1002,7 @@ function BalanceDebtTab({ accountId }: { accountId: number }) {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
             <Layers className="w-4 h-4 text-white" />
             <h3 className="text-sm font-semibold text-white tracking-wide">Debtors - Remaining Capital Amounts</h3>
@@ -992,12 +1011,12 @@ function BalanceDebtTab({ accountId }: { accountId: number }) {
             {capitalData ? (
               <div className="space-y-3">
                 {Array.isArray(capitalData) ? capitalData.map((cap: any, i: number) => (
-                  <div key={i} className="flex items-center justify-between p-3 bg-purple-50/50 rounded-lg border border-purple-100">
+                  <div key={i} className="flex items-center justify-between p-3 bg-purple-50/50 rounded-xl border border-purple-100">
                     <span className="text-sm text-slate-700 font-medium">{cap.description || cap.serviceDescription || `Item ${i + 1}`}</span>
                     <span className="font-mono font-bold text-purple-700 text-sm">{fmt(cap.amount || cap.remainingCapital || cap.capitalAmount || 0)}</span>
                   </div>
                 )) : (
-                  <div className="flex items-center justify-between p-3 bg-purple-50/50 rounded-lg border border-purple-100">
+                  <div className="flex items-center justify-between p-3 bg-purple-50/50 rounded-xl border border-purple-100">
                     <span className="text-sm text-slate-700 font-medium">Remaining Capital</span>
                     <span className="font-mono font-bold text-purple-700 text-sm">{fmt(capitalData.amount || capitalData.remainingCapital || capitalData.capitalAmount || capitalData.totalAmount || 0)}</span>
                   </div>
@@ -1160,7 +1179,7 @@ function ServiceBalanceTab({ accountId }: { accountId: number }) {
 
     return (
       <div className="p-4 space-y-6" data-testid="service-balance-detail">
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-3">
             <button onClick={() => setSelectedService(null)} className="text-white hover:text-blue-200 transition-colors" data-testid="button-back-services">
               <ChevronLeft className="w-5 h-5" />
@@ -1225,7 +1244,7 @@ function ServiceBalanceTab({ accountId }: { accountId: number }) {
         </div>
 
         {chartData.length > 0 && (
-          <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700">
               <h3 className="text-sm font-semibold text-white tracking-wide">Service Type Balance</h3>
             </div>
@@ -1248,7 +1267,7 @@ function ServiceBalanceTab({ accountId }: { accountId: number }) {
   };
 
   return (
-    <div className="p-4 space-y-6" data-testid="service-balance-tab">
+    <div className="p-5 space-y-5" data-testid="service-balance-tab">
       <div className="text-center mb-2">
         <h3 className="text-sm font-bold text-blue-700 uppercase tracking-wider">Services</h3>
         <div className="mx-auto mt-1 w-20 h-0.5 bg-gradient-to-r from-transparent via-blue-400 to-transparent" />
@@ -1472,8 +1491,8 @@ function PropertyDetailsTab({ accountId }: { accountId: number }) {
   };
 
   return (
-    <div className="p-4 space-y-6" data-testid="property-details-tab">
-      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+    <div className="p-5 space-y-5" data-testid="property-details-tab">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
           <Building2 className="w-4 h-4 text-white" />
           <h3 className="text-sm font-semibold text-white tracking-wide">Property Information</h3>
@@ -1502,7 +1521,7 @@ function PropertyDetailsTab({ accountId }: { accountId: number }) {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-4 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
           <Landmark className="w-4 h-4 text-white" />
           <h3 className="text-sm font-semibold text-white tracking-wide">General Valuations</h3>
@@ -1553,7 +1572,7 @@ function PropertyDetailsTab({ accountId }: { accountId: number }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-4 py-3 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
             <Gift className="w-4 h-4 text-white" />
             <h3 className="text-sm font-semibold text-white tracking-wide">Rebates & Levies</h3>
@@ -1561,27 +1580,27 @@ function PropertyDetailsTab({ accountId }: { accountId: number }) {
           <div className="p-4">
             {ratesDetails ? (
               <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-amber-50/50 rounded-lg border border-amber-100">
+                <div className="flex items-center justify-between p-3 bg-amber-50/50 rounded-xl border border-amber-100">
                   <span className="text-sm text-slate-700">Annual Property Rates</span>
                   <span className="font-mono font-bold text-slate-800">{fmt(ratesDetails.annualPropertyRates)}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-amber-50/50 rounded-lg border border-amber-100">
+                <div className="flex items-center justify-between p-3 bg-amber-50/50 rounded-xl border border-amber-100">
                   <span className="text-sm text-slate-700">Installment</span>
                   <span className="font-mono font-bold text-slate-800">{fmt(ratesDetails.installment)}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-amber-50/50 rounded-lg border border-amber-100">
+                <div className="flex items-center justify-between p-3 bg-amber-50/50 rounded-xl border border-amber-100">
                   <span className="text-sm text-slate-700">Frequency</span>
                   <span className="font-medium text-slate-800">{ratesDetails.frequency || '-'}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-amber-50/50 rounded-lg border border-amber-100">
+                <div className="flex items-center justify-between p-3 bg-amber-50/50 rounded-xl border border-amber-100">
                   <span className="text-sm text-slate-700">Remaining Installments</span>
                   <span className="font-medium text-slate-800">{ratesDetails.remainingInstallments ?? '-'}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-amber-50/50 rounded-lg border border-amber-100">
+                <div className="flex items-center justify-between p-3 bg-amber-50/50 rounded-xl border border-amber-100">
                   <span className="text-sm text-slate-700">Remaining Amount</span>
                   <span className="font-mono font-bold text-slate-800">{fmt(ratesDetails.remaingAmount ?? ratesDetails.remainingAmount)}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-green-50/50 rounded-lg border border-green-200">
+                <div className="flex items-center justify-between p-3 bg-green-50/50 rounded-xl border border-green-200">
                   <span className="text-sm text-green-800 font-medium">Rebate Amount</span>
                   <span className="font-mono font-bold text-green-700">{fmt(ratesDetails.rebateAmount)}</span>
                 </div>
@@ -1592,30 +1611,30 @@ function PropertyDetailsTab({ accountId }: { accountId: number }) {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-4 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center gap-2">
             <Shield className="w-4 h-4 text-white" />
             <h3 className="text-sm font-semibold text-white tracking-wide">Election Information</h3>
           </div>
           <div className="p-4">
             <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
+              <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
                 <span className="text-sm text-slate-700">Ward</span>
                 <span className="font-medium text-indigo-800">{cu.wardID ? `Ward ${cu.wardID}` : '-'}</span>
               </div>
-              <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
+              <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
                 <span className="text-sm text-slate-700">Polling Station</span>
                 <span className="font-medium text-indigo-800">{cu.pollingStationID ? `Station ${cu.pollingStationID}` : '-'}</span>
               </div>
-              <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
+              <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
                 <span className="text-sm text-slate-700">Magisterial District</span>
                 <span className="font-medium text-indigo-800">{cu.magisterialID ? `District ${cu.magisterialID}` : '-'}</span>
               </div>
-              <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
+              <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
                 <span className="text-sm text-slate-700">NT Property Category</span>
                 <span className="font-medium text-indigo-800">{cu.ntPropertyCategoryID ?? '-'}</span>
               </div>
-              <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
+              <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
                 <span className="text-sm text-slate-700">Billing Cycle</span>
                 <span className="font-medium text-indigo-800">{cu.billingCycleID ?? '-'}</span>
               </div>
@@ -1624,7 +1643,7 @@ function PropertyDetailsTab({ accountId }: { accountId: number }) {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-4 py-3 bg-gradient-to-r from-cyan-600 to-cyan-700 flex items-center gap-2">
           <Zap className="w-4 h-4 text-white" />
           <h3 className="text-sm font-semibold text-white tracking-wide">Meters</h3>
@@ -1664,7 +1683,7 @@ function PropertyDetailsTab({ accountId }: { accountId: number }) {
         )}
       </div>
 
-      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
           <ArrowRight className="w-4 h-4 text-white" />
           <h3 className="text-sm font-semibold text-white tracking-wide">Transfer of Ownership History</h3>
@@ -1879,8 +1898,8 @@ function ConsumptionTab({ accountId }: { accountId: number }) {
   });
 
   return (
-    <div className="p-4 space-y-6" data-testid="consumption-tab">
-      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+    <div className="p-5 space-y-5" data-testid="consumption-tab">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
           <Zap className="w-4 h-4 text-white" />
           <h3 className="text-sm font-semibold text-white tracking-wide">Consumption</h3>
@@ -1923,12 +1942,12 @@ function ConsumptionTab({ accountId }: { accountId: number }) {
       </div>
 
       {selectedMeter && (
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-4 py-3 bg-gradient-to-r from-slate-100 to-white border-b border-slate-200">
             <h3 className="text-sm font-bold text-slate-800">Meter Reading History Chart</h3>
           </div>
           <div className="p-4">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-4 gap-y-2 mb-4 border border-slate-200 rounded-lg p-3 bg-slate-50">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-4 gap-y-2 mb-4 border border-slate-200 rounded-xl p-3 bg-slate-50">
               <div><span className="text-[10px] text-slate-400 block">Service Type</span><span className="text-xs font-medium text-slate-700">{selectedMeter.serviceDesc || '-'}</span></div>
               <div><span className="text-[10px] text-slate-400 block">Meter Classification</span><span className="text-xs font-medium text-slate-700">{selectedMeter.meterClassificationDesc || '-'}</span></div>
               <div><span className="text-[10px] text-slate-400 block">Tariff</span><span className="text-xs font-medium text-slate-700 break-words">{selectedMeter.tariff || '-'}</span></div>
@@ -1949,7 +1968,7 @@ function ConsumptionTab({ accountId }: { accountId: number }) {
       )}
 
       {selectedMeter && !historyLoading && readingHistory.length > 0 && (
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-4 py-3 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
             <FileText className="w-4 h-4 text-white" />
             <h3 className="text-sm font-semibold text-white tracking-wide">Meter Reading History</h3>
@@ -2070,18 +2089,13 @@ function ContactInfoTab({ accountId }: { accountId: number }) {
   const phoneFormat = '(### ######) / +27## #######)';
 
   return (
-    <div className="p-4 space-y-5" data-testid="contact-info-panel">
-      <h3 className="text-base font-bold text-slate-800">Consumer Contact Details</h3>
+    <div className="p-5 space-y-5" data-testid="contact-info-panel">
 
-      <div className="border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm">
-        <button
-          onClick={() => {}}
-          className="w-full flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-slate-50 to-white border-b border-slate-200 text-left"
-          data-testid="section-contact-details"
-        >
-          <ChevronDown className="w-4 h-4 text-slate-500" />
-          <span className="text-sm font-semibold text-slate-700">Contact Details</span>
-        </button>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2" data-testid="section-contact-details">
+          <Phone className="w-4 h-4 text-white" />
+          <h3 className="text-sm font-semibold text-white tracking-wide">Contact Details</h3>
+        </div>
         <div className="p-5">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-8 gap-y-4">
             <div className="space-y-3">
@@ -2119,7 +2133,7 @@ function ContactInfoTab({ accountId }: { accountId: number }) {
         </div>
       </div>
 
-      <div className="border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm">
+      <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
         <div className="px-4 py-2.5 bg-gradient-to-r from-blue-50 to-white border-b border-slate-200">
           <span className="text-sm font-semibold text-slate-700">Additional Statement Emails</span>
           <p className="text-[10px] text-orange-600 mt-0.5">NOTE: The Primary Email Address above needs to be populated with a valid Email Address in Contact Details before this form will be considered. If you enter email addresses here and statements are emailed to these, it will receive it as well. Clearing a field and Saving will delete the additional Email.</p>
@@ -2169,15 +2183,11 @@ function ContactInfoTab({ accountId }: { accountId: number }) {
         />
       )}
 
-      <div className="border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm">
-        <button
-          onClick={() => {}}
-          className="w-full flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-slate-50 to-white border-b border-slate-200 text-left"
-          data-testid="section-delivery-address"
-        >
-          <ChevronDown className="w-4 h-4 text-slate-500" />
-          <span className="text-sm font-semibold text-slate-700">Delivery Address Details</span>
-        </button>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2" data-testid="section-delivery-address">
+          <MapPin className="w-4 h-4 text-white" />
+          <h3 className="text-sm font-semibold text-white tracking-wide">Delivery Address Details</h3>
+        </div>
         <div className="p-5">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-3">
             <div>
@@ -2285,49 +2295,61 @@ function HandoverTab({ accountId }: { accountId: number }) {
 
   const items = data ? (Array.isArray(data) ? data : [data]) : [];
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-5 space-y-5">
       {items.map((item: any, i: number) => (
-        <Card key={i}>
-          <CardContent className="pt-4 space-y-0">
+        <div key={i} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-orange-600 to-orange-700 flex items-center gap-2">
+            <Shield className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Handover Details</h3>
+            {(item.handoverStatus || item.status) && (
+              <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{item.handoverStatus || item.status}</Badge>
+            )}
+          </div>
+          <div className="p-5">
             <FieldRow label="Handover Status" value={item.handoverStatus || item.status} icon={<Shield className="w-3.5 h-3.5" />} />
-            <FieldRow label="Handover Date" value={item.handoverDate ? new Date(item.handoverDate).toLocaleDateString('en-ZA') : null} />
-            <FieldRow label="Attorney" value={item.attorney || item.attorneyName} />
-            <FieldRow label="Reference" value={item.reference || item.handoverReference} />
-            <FieldRow label="Amount" value={item.amount || item.handoverAmount} />
+            <FieldRow label="Handover Date" value={item.handoverDate ? new Date(item.handoverDate).toLocaleDateString('en-ZA') : null} icon={<CalendarDays className="w-3.5 h-3.5" />} />
+            <FieldRow label="Attorney" value={item.attorney || item.attorneyName} icon={<Scale className="w-3.5 h-3.5" />} />
+            <FieldRow label="Reference" value={item.reference || item.handoverReference} icon={<Hash className="w-3.5 h-3.5" />} />
+            <FieldRow label="Amount" value={item.amount || item.handoverAmount} icon={<Banknote className="w-3.5 h-3.5" />} />
             <FieldRow label="Description" value={item.description || item.notes} />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ))}
 
       {enquiry && (
-        <>
-          <SectionHeader title="Handover Account Enquiry" />
-          <Card>
-            <CardContent className="pt-4 space-y-0">
-              {Object.entries(enquiry).filter(([k]) => !k.startsWith('_')).map(([key, val]) => (
-                <FieldRow key={key} label={key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())} value={val as any} />
-              ))}
-            </CardContent>
-          </Card>
-        </>
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Handover Account Enquiry</h3>
+          </div>
+          <div className="p-5">
+            {Object.entries(enquiry).filter(([k]) => !k.startsWith('_')).map(([key, val]) => (
+              <FieldRow key={key} label={key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())} value={val as any} />
+            ))}
+          </div>
+        </div>
       )}
 
       {transactions.length > 0 && (
-        <>
-          <SectionHeader title="Handover Transactions" />
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
+            <Receipt className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Handover Transactions</h3>
+            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{transactions.length}</Badge>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-handover-transactions">
               <thead>
-                <tr className="border-b-2 border-slate-200">
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Description</th>
-                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Reference</th>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Date</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Description</th>
+                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reference</th>
                 </tr>
               </thead>
               <tbody>
                 {transactions.map((tx: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                  <tr key={i} className="border-b border-slate-100 hover:bg-orange-50/30 transition-colors">
                     <td className="py-2 px-3 text-slate-500">{tx.transactionDate ? new Date(tx.transactionDate).toLocaleDateString('en-ZA') : tx.date || '-'}</td>
                     <td className="py-2 px-3">{tx.description || tx.transactionDescription || '-'}</td>
                     <td className="py-2 px-3 text-right font-mono font-semibold">{(tx.amount ?? tx.transactionAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
@@ -2337,7 +2359,7 @@ function HandoverTab({ accountId }: { accountId: number }) {
               </tbody>
             </table>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
@@ -2371,18 +2393,25 @@ function IncentivesTab({ accountId }: { accountId: number }) {
 
   const items = Array.isArray(data) ? data : [data];
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-5 space-y-5">
       {items.map((item: any, i: number) => (
-        <Card key={i}>
-          <CardContent className="pt-4 space-y-0">
+        <div key={i} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
+            <Gift className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Payment Incentive</h3>
+            {(item.status || item.incentiveStatus) && (
+              <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{item.status || item.incentiveStatus}</Badge>
+            )}
+          </div>
+          <div className="p-5">
             <FieldRow label="Incentive Type" value={item.incentiveType || item.type} icon={<Gift className="w-3.5 h-3.5" />} />
-            <FieldRow label="Discount %" value={item.discountPercentage || item.percentage} />
-            <FieldRow label="Discount Amount" value={item.discountAmount || item.amount} />
-            <FieldRow label="Valid From" value={item.validFrom ? new Date(item.validFrom).toLocaleDateString('en-ZA') : null} />
-            <FieldRow label="Valid To" value={item.validTo ? new Date(item.validTo).toLocaleDateString('en-ZA') : null} />
-            <FieldRow label="Status" value={item.status || item.incentiveStatus} />
-          </CardContent>
-        </Card>
+            <FieldRow label="Discount %" value={item.discountPercentage || item.percentage} icon={<Activity className="w-3.5 h-3.5" />} />
+            <FieldRow label="Discount Amount" value={item.discountAmount || item.amount} icon={<Banknote className="w-3.5 h-3.5" />} />
+            <FieldRow label="Valid From" value={item.validFrom ? new Date(item.validFrom).toLocaleDateString('en-ZA') : null} icon={<CalendarDays className="w-3.5 h-3.5" />} />
+            <FieldRow label="Valid To" value={item.validTo ? new Date(item.validTo).toLocaleDateString('en-ZA') : null} icon={<CalendarDays className="w-3.5 h-3.5" />} />
+            <FieldRow label="Status" value={item.status || item.incentiveStatus} icon={<Shield className="w-3.5 h-3.5" />} />
+          </div>
+        </div>
       ))}
     </div>
   );
@@ -2428,10 +2457,10 @@ function DepositsTab({ accountId }: { accountId: number }) {
   const totalPaid = deposits.reduce((s, d) => s + (d.paidAmount ?? 0), 0);
 
   return (
-    <div className="p-4 space-y-6" data-testid="deposits-tab">
+    <div className="p-5 space-y-5" data-testid="deposits-tab">
       <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-xl p-6 shadow-lg">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-lg bg-white/15 flex items-center justify-center backdrop-blur-sm">
+          <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center backdrop-blur-sm">
             <Landmark className="w-5 h-5 text-white" />
           </div>
           <div>
@@ -2615,7 +2644,7 @@ function TransactionSummaryTab({ accountId, accountNumber }: { accountId: number
   };
 
   return (
-    <div className="p-4 space-y-4" data-testid="transaction-summary-panel">
+    <div className="p-5 space-y-5" data-testid="transaction-summary-panel">
       <h3 className="text-base font-bold text-slate-800">Transaction Summary List per Fin-Year/Billing Period</h3>
       <div className="flex items-center gap-3">
         <select
@@ -2915,7 +2944,7 @@ function DetailedTransactionListTab({ accountId }: { accountId: number }) {
   if (error) return <ErrorState message={error} onRetry={() => load(selectedYear)} />;
 
   return (
-    <div className="p-4 space-y-4" data-testid="detailed-transaction-panel">
+    <div className="p-5 space-y-5" data-testid="detailed-transaction-panel">
       <h3 className="text-base font-bold text-slate-800">Detailed Transaction List per Billing Period</h3>
 
       <div className="flex items-center gap-4 flex-wrap">
@@ -2979,7 +3008,7 @@ function DetailedTransactionListTab({ accountId }: { accountId: number }) {
 
       {selectedTxn && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setSelectedTxn(null)} data-testid="txn-detail-overlay">
-          <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 bg-slate-50">
               <h4 className="text-sm font-bold text-slate-700">Detailed Transaction List per Billing Period</h4>
               <button onClick={() => setSelectedTxn(null)} className="text-slate-400 hover:text-slate-700 text-lg" data-testid="button-close-detail">&times;</button>
@@ -3054,7 +3083,7 @@ function TransactionHistoryTab({ accountId, accountNumber }: { accountId: number
   if (error) return <ErrorState message={error} onRetry={load} />;
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-5 space-y-5">
       <div className="flex gap-2 border-b border-slate-200 pb-2">
         {[
           { key: 'receipts', label: 'Receipt History', count: data.length },
@@ -3225,24 +3254,28 @@ function ServicesMetersTab({ accountId, unitId }: { accountId: number; unitId?: 
   if (!hasData) return <EmptyState message="No services or meter data available" />;
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-5 space-y-5">
       {allServices.length > 0 && (
-        <>
-          <SectionHeader title="All Services" />
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+            <Zap className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">All Services</h3>
+            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{allServices.length}</Badge>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-all-services">
               <thead>
-                <tr className="border-b-2 border-slate-200">
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Service ID</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Service Type</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Description</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Tariff</th>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service ID</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service Type</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Description</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Tariff</th>
                 </tr>
               </thead>
               <tbody>
                 {allServices.map((s: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                  <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
                     <td className="py-2 px-3 font-mono text-blue-700">{s.serviceId || s.service_ID || s.serviceID || '-'}</td>
                     <td className="py-2 px-3 font-medium">{s.serviceType || s.serviceTypeDescription || '-'}</td>
                     <td className="py-2 px-3">{s.description || s.serviceDescription || '-'}</td>
@@ -3253,26 +3286,30 @@ function ServicesMetersTab({ accountId, unitId }: { accountId: number; unitId?: 
               </tbody>
             </table>
           </div>
-        </>
+        </div>
       )}
 
       {meteredServices.length > 0 && (
-        <>
-          <SectionHeader title="Metered Services" />
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-teal-600 to-teal-700 flex items-center gap-2">
+            <Gauge className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Metered Services</h3>
+            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{meteredServices.length}</Badge>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-metered-services">
               <thead>
-                <tr className="border-b-2 border-slate-200">
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Meter Number</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Service</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Meter Type</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
-                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Last Reading</th>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Number</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Type</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
+                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Last Reading</th>
                 </tr>
               </thead>
               <tbody>
                 {meteredServices.map((m: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                  <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
                     <td className="py-2 px-3 font-mono font-medium text-slate-700">{m.meterNumber || m.physicalMeterNumber || '-'}</td>
                     <td className="py-2 px-3">{m.serviceType || m.serviceDescription || '-'}</td>
                     <td className="py-2 px-3">{m.meterType || m.meterTypeDescription || '-'}</td>
@@ -3283,25 +3320,29 @@ function ServicesMetersTab({ accountId, unitId }: { accountId: number; unitId?: 
               </tbody>
             </table>
           </div>
-        </>
+        </div>
       )}
 
       {meterPerProperty.length > 0 && (
-        <>
-          <SectionHeader title="Meters Per Property" />
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Meters Per Property</h3>
+            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{meterPerProperty.length}</Badge>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-meter-per-property">
               <thead>
-                <tr className="border-b-2 border-slate-200">
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Property</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Service</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Meter</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Property</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {meterPerProperty.map((m: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                  <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
                     <td className="py-2 px-3">{m.propertyDescription || m.propertyId || '-'}</td>
                     <td className="py-2 px-3">{m.serviceType || m.serviceDescription || '-'}</td>
                     <td className="py-2 px-3 font-mono">{m.meterNumber || m.physicalMeterNumber || '-'}</td>
@@ -3311,25 +3352,29 @@ function ServicesMetersTab({ accountId, unitId }: { accountId: number; unitId?: 
               </tbody>
             </table>
           </div>
-        </>
+        </div>
       )}
 
       {unitLinkedMeters.length > 0 && (
-        <>
-          <SectionHeader title="Unit Linked Meters" />
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-violet-600 to-violet-700 flex items-center gap-2">
+            <Link2 className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Unit Linked Meters</h3>
+            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{unitLinkedMeters.length}</Badge>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-unit-linked-meters">
               <thead>
-                <tr className="border-b-2 border-slate-200">
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Meter Number</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Service</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Type</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Number</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Type</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {unitLinkedMeters.map((m: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                  <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
                     <td className="py-2 px-3 font-mono">{m.meterNumber || m.physicalMeterNumber || '-'}</td>
                     <td className="py-2 px-3">{m.serviceType || m.serviceDescription || '-'}</td>
                     <td className="py-2 px-3">{m.meterType || '-'}</td>
@@ -3339,25 +3384,29 @@ function ServicesMetersTab({ accountId, unitId }: { accountId: number; unitId?: 
               </tbody>
             </table>
           </div>
-        </>
+        </div>
       )}
 
       {prepaidMeters.length > 0 && (
-        <>
-          <SectionHeader title="Prepaid Meter Services" />
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
+            <Zap className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Prepaid Meter Services</h3>
+            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{prepaidMeters.length}</Badge>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-prepaid-meters">
               <thead>
-                <tr className="border-b-2 border-slate-200">
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Meter Number</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Service</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
-                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Last Recharge</th>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Number</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
+                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Last Recharge</th>
                 </tr>
               </thead>
               <tbody>
                 {prepaidMeters.map((m: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                  <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
                     <td className="py-2 px-3 font-mono font-medium">{m.meterNumber || m.physicalMeterNumber || '-'}</td>
                     <td className="py-2 px-3">{m.serviceType || m.serviceDescription || '-'}</td>
                     <td className="py-2 px-3">{m.status || m.meterStatus || '-'}</td>
@@ -3367,7 +3416,7 @@ function ServicesMetersTab({ accountId, unitId }: { accountId: number; unitId?: 
               </tbody>
             </table>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
@@ -3416,13 +3465,16 @@ function PaymentPlansTab({ accountId }: { accountId: number }) {
   if (!hasData) return <EmptyState message="No payment plan data available" />;
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-5 space-y-5">
       {(remainingCapital || repaymentStatus) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {remainingCapital && (
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-slate-600">Remaining Capital</CardTitle></CardHeader>
-              <CardContent className="space-y-0">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+                <Banknote className="w-4 h-4 text-white" />
+                <h3 className="text-sm font-semibold text-white tracking-wide">Remaining Capital</h3>
+              </div>
+              <div className="p-5">
                 {typeof remainingCapital === 'object' ? (
                   Object.entries(remainingCapital).filter(([k]) => !k.startsWith('_')).map(([key, val]) => (
                     <FieldRow key={key} label={key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())} value={val as any} />
@@ -3430,13 +3482,16 @@ function PaymentPlansTab({ accountId }: { accountId: number }) {
                 ) : (
                   <FieldRow label="Remaining Capital" value={remainingCapital} />
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
           {repaymentStatus && (
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-slate-600">Repayment Plan Status</CardTitle></CardHeader>
-              <CardContent className="space-y-0">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
+                <Shield className="w-4 h-4 text-white" />
+                <h3 className="text-sm font-semibold text-white tracking-wide">Repayment Plan Status</h3>
+              </div>
+              <div className="p-5">
                 {typeof repaymentStatus === 'object' ? (
                   Object.entries(repaymentStatus).filter(([k]) => !k.startsWith('_')).map(([key, val]) => (
                     <FieldRow key={key} label={key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())} value={val as any} />
@@ -3444,15 +3499,19 @@ function PaymentPlansTab({ accountId }: { accountId: number }) {
                 ) : (
                   <FieldRow label="Status" value={repaymentStatus} />
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
         </div>
       )}
 
       {plans.length > 0 && (
-        <>
-          <SectionHeader title="Payment Plans" />
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Payment Plans</h3>
+            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{plans.length}</Badge>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-payment-plans">
               <thead>
@@ -3481,25 +3540,29 @@ function PaymentPlansTab({ accountId }: { accountId: number }) {
               </tbody>
             </table>
           </div>
-        </>
+        </div>
       )}
 
       {extensions.length > 0 && (
-        <>
-          <SectionHeader title="Payment Extensions" />
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
+            <CalendarDays className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Payment Extensions</h3>
+            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{extensions.length}</Badge>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-payment-extensions">
               <thead>
-                <tr className="border-b-2 border-slate-200">
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Extension Type</th>
-                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Date</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Extension Type</th>
+                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {extensions.map((ext: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                  <tr key={i} className="border-b border-slate-100 hover:bg-amber-50/30 transition-colors">
                     <td className="py-2 px-3">{ext.extensionDate ? new Date(ext.extensionDate).toLocaleDateString('en-ZA') : ext.date || '-'}</td>
                     <td className="py-2 px-3">{ext.extensionType || ext.type || '-'}</td>
                     <td className="py-2 px-3 text-right font-mono">{(ext.amount ?? ext.extensionAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
@@ -3509,24 +3572,28 @@ function PaymentPlansTab({ accountId }: { accountId: number }) {
               </tbody>
             </table>
           </div>
-        </>
+        </div>
       )}
 
       {paymentAmounts.length > 0 && (
-        <>
-          <SectionHeader title="Payment Amounts" />
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center gap-2">
+            <Banknote className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Payment Amounts</h3>
+            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{paymentAmounts.length}</Badge>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-payment-amounts">
               <thead>
-                <tr className="border-b-2 border-slate-200">
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Description</th>
-                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Description</th>
+                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Date</th>
                 </tr>
               </thead>
               <tbody>
                 {paymentAmounts.map((pa: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                  <tr key={i} className="border-b border-slate-100 hover:bg-indigo-50/30 transition-colors">
                     <td className="py-2 px-3">{pa.description || pa.paymentDescription || '-'}</td>
                     <td className="py-2 px-3 text-right font-mono font-semibold">{(pa.amount ?? pa.paymentAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
                     <td className="py-2 px-3 text-slate-500">{pa.paymentDate ? new Date(pa.paymentDate).toLocaleDateString('en-ZA') : '-'}</td>
@@ -3535,7 +3602,7 @@ function PaymentPlansTab({ accountId }: { accountId: number }) {
               </tbody>
             </table>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
@@ -3576,7 +3643,7 @@ function PaymentExtensionHistoryTab({ accountId }: { accountId: number }) {
   };
 
   return (
-    <div className="p-4 space-y-4" data-testid="payment-extension-history-panel">
+    <div className="p-5 space-y-5" data-testid="payment-extension-history-panel">
       <h3 className="text-base font-bold text-slate-800">Payment Extension History</h3>
       <PaginatedTable
         data={extensions}
@@ -3626,25 +3693,29 @@ function DebitOrdersTab({ accountId }: { accountId: number }) {
   if (!deductions.length && !debitOrders.length) return <EmptyState message="No debit order data available" />;
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-5 space-y-5">
       {deductions.length > 0 && (
-        <>
-          <SectionHeader title="Debit Order Deductions" />
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Debit Order Deductions</h3>
+            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{deductions.length}</Badge>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-debit-order-deductions">
               <thead>
-                <tr className="border-b-2 border-slate-200">
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Bank</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Account</th>
-                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Reference</th>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Date</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Bank</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Account</th>
+                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reference</th>
                 </tr>
               </thead>
               <tbody>
                 {deductions.map((d: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                  <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
                     <td className="py-2 px-3">{d.deductionDate ? new Date(d.deductionDate).toLocaleDateString('en-ZA') : d.date || '-'}</td>
                     <td className="py-2 px-3">{d.bankName || d.bank || '-'}</td>
                     <td className="py-2 px-3 font-mono text-xs">{d.bankAccountNumber || d.accountNumber || '-'}</td>
@@ -3656,23 +3727,27 @@ function DebitOrdersTab({ accountId }: { accountId: number }) {
               </tbody>
             </table>
           </div>
-        </>
+        </div>
       )}
 
       {debitOrders.length > 0 && (
-        <>
-          <SectionHeader title="Debit Orders" />
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
+            <Landmark className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Debit Orders</h3>
+            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{debitOrders.length}</Badge>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-debit-orders">
               <thead>
-                <tr className="border-b-2 border-slate-200">
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Bank</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Branch</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Account Holder</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Account Type</th>
-                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Day of Deduction</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Bank</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Branch</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Account Holder</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Account Type</th>
+                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Day of Deduction</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -3690,7 +3765,7 @@ function DebitOrdersTab({ accountId }: { accountId: number }) {
               </tbody>
             </table>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
@@ -3728,25 +3803,29 @@ function RatesValuationsTab({ accountId, propertyId }: { accountId: number; prop
   if (!ratesDetails.length && !ratesHistory.length) return <EmptyState message="No rates & valuations data available" />;
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-5 space-y-5">
       {ratesDetails.length > 0 && (
-        <>
-          <SectionHeader title="Account Rates Details" />
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
+            <Scale className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Account Rates Details</h3>
+            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{ratesDetails.length}</Badge>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-rates-details">
               <thead>
-                <tr className="border-b-2 border-slate-200">
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Category</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Description</th>
-                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Market Value</th>
-                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Rateable Value</th>
-                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Rate</th>
-                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Monthly Amount</th>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Category</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Description</th>
+                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Market Value</th>
+                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Rateable Value</th>
+                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Rate</th>
+                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Monthly Amount</th>
                 </tr>
               </thead>
               <tbody>
                 {ratesDetails.map((r: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                  <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
                     <td className="py-2 px-3 font-medium">{r.category || r.rateCategory || '-'}</td>
                     <td className="py-2 px-3">{r.description || r.rateDescription || '-'}</td>
                     <td className="py-2 px-3 text-right font-mono">{(r.marketValue ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
@@ -3758,26 +3837,30 @@ function RatesValuationsTab({ accountId, propertyId }: { accountId: number; prop
               </tbody>
             </table>
           </div>
-        </>
+        </div>
       )}
 
       {ratesHistory.length > 0 && (
-        <>
-          <SectionHeader title="Rates Run History" />
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Rates Run History</h3>
+            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{ratesHistory.length}</Badge>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-rates-run-history">
               <thead>
-                <tr className="border-b-2 border-slate-200">
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Run Date</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Period</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Description</th>
-                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Run Date</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Period</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Description</th>
+                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {ratesHistory.map((r: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                  <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
                     <td className="py-2 px-3 text-slate-600">{r.runDate ? new Date(r.runDate).toLocaleDateString('en-ZA') : r.date || '-'}</td>
                     <td className="py-2 px-3">{r.period || r.billingPeriod || '-'}</td>
                     <td className="py-2 px-3">{r.description || '-'}</td>
@@ -3788,7 +3871,7 @@ function RatesValuationsTab({ accountId, propertyId }: { accountId: number; prop
               </tbody>
             </table>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
@@ -3826,7 +3909,7 @@ function NotificationsTab({ accountId }: { accountId: number }) {
   if (!accountNotifs.length && !propertyNotif) return <EmptyState message="No notifications available" />;
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-5 space-y-5">
       {propertyNotif && (
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-slate-600">Property Notification</CardTitle></CardHeader>
@@ -3843,22 +3926,26 @@ function NotificationsTab({ accountId }: { accountId: number }) {
       )}
 
       {accountNotifs.length > 0 && (
-        <>
-          <SectionHeader title="Account Notifications" />
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-orange-600 to-orange-700 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Account Notifications</h3>
+            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{accountNotifs.length}</Badge>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-account-notifications">
               <thead>
-                <tr className="border-b-2 border-slate-200">
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Type</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Message</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Created By</th>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Date</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Type</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Message</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Created By</th>
                 </tr>
               </thead>
               <tbody>
                 {accountNotifs.map((n: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                  <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
                     <td className="py-2 px-3 text-slate-600">{n.notificationDate ? new Date(n.notificationDate).toLocaleDateString('en-ZA') : n.date || n.createdDate || '-'}</td>
                     <td className="py-2 px-3 font-medium">{n.notificationType || n.type || '-'}</td>
                     <td className="py-2 px-3 max-w-[300px] truncate">{n.message || n.notificationMessage || n.description || '-'}</td>
@@ -3869,7 +3956,7 @@ function NotificationsTab({ accountId }: { accountId: number }) {
               </tbody>
             </table>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
@@ -3944,7 +4031,7 @@ function StatementsTab({ accountId }: { accountId: number }) {
   if (error) return <ErrorState message={error} onRetry={load} />;
 
   return (
-    <div className="p-4 space-y-4" data-testid="statements-panel">
+    <div className="p-5 space-y-5" data-testid="statements-panel">
       <div className="overflow-x-auto">
         <table className="w-full text-sm" data-testid="table-statements">
           <thead>
@@ -3980,7 +4067,7 @@ function StatementsTab({ accountId }: { accountId: number }) {
 
       {showModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)} data-testid="statement-modal-overlay">
-          <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
             <div className="px-5 py-3 border-b border-slate-200 bg-slate-50">
               <h4 className="text-sm font-bold text-slate-700">Account Summary</h4>
             </div>
@@ -4204,7 +4291,7 @@ function Section129Tab({ accountId }: { accountId: number }) {
 
   const items = Array.isArray(data) ? data : [data];
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-5 space-y-5">
       {items.map((item: any, i: number) => (
         <Card key={i}>
           <CardContent className="pt-4 space-y-0">
@@ -4326,7 +4413,7 @@ function OccupiersTab({ accountId }: { accountId: number }) {
   if (error) return <ErrorState message={error} onRetry={load} />;
 
   return (
-    <div className="p-4 space-y-4" data-testid="occupiers-panel">
+    <div className="p-5 space-y-5" data-testid="occupiers-panel">
       <div className="flex items-center justify-center gap-3 flex-wrap">
         <button onClick={() => setShowAddModal(true)} className="px-4 py-2 bg-slate-700 text-white text-sm rounded hover:bg-slate-600 transition-colors" data-testid="button-add-occupier">Add</button>
         <button onClick={() => { const sel = data.find((_, i) => document.querySelector(`[data-testid="occupier-row-${i}"]`)?.classList.contains('bg-blue-50')); if (sel) handleRemove(sel); else if (data.length > 0) alert('Select an occupier to remove'); }} className="px-4 py-2 bg-slate-700 text-white text-sm rounded hover:bg-slate-600 transition-colors" data-testid="button-remove-occupier">Remove Occupiers</button>
@@ -4367,7 +4454,7 @@ function OccupiersTab({ accountId }: { accountId: number }) {
 
       {showAddModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowAddModal(false)} data-testid="add-occupier-modal">
-          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full" onClick={e => e.stopPropagation()}>
             <div className="px-5 py-3 border-b border-slate-200 bg-slate-50">
               <h4 className="text-sm font-bold text-slate-700">Add Occupier</h4>
             </div>
@@ -4393,7 +4480,7 @@ function OccupiersTab({ accountId }: { accountId: number }) {
 
       {showProofModal && proofData && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowProofModal(false)} data-testid="proof-of-residence-modal">
-          <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
             <div className="px-5 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
               <h4 className="text-sm font-bold text-slate-700">Proof of Residence</h4>
               <div className="flex gap-2">
@@ -4505,7 +4592,7 @@ function SmartSearchDropdown({
 
   return (
     <div
-      className="absolute left-0 right-0 top-full mt-1 bg-white rounded-lg shadow-xl border border-slate-200 z-50 max-h-[420px] overflow-hidden flex flex-col"
+      className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-slate-200 z-50 max-h-[420px] overflow-hidden flex flex-col"
       data-testid="smart-search-dropdown"
     >
       {loading && (
@@ -4806,7 +4893,7 @@ function ExpandableResultRow({ account, onSelect, isExpanded, onToggleExpand }: 
                         const svcStatus = (svc.statusDesc || svc.status || '-').toLowerCase().trim();
                         const isActive = svcStatus === 'active';
                         return (
-                          <div key={si} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg ${isActive ? 'bg-green-50/60 border border-green-100' : 'bg-slate-50 border border-slate-100'}`} data-testid={`service-item-${aid}-${si}`}>
+                          <div key={si} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl ${isActive ? 'bg-green-50/60 border border-green-100' : 'bg-slate-50 border border-slate-100'}`} data-testid={`service-item-${aid}-${si}`}>
                             <Layers className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                             <div className="min-w-0 flex-1">
                               <span className="font-medium text-slate-700">{svc.serviceDesc || svc.serviceDescription || svc.serviceType || `Service ${si + 1}`}</span>
@@ -5157,7 +5244,7 @@ function GeneralEnquiriesContent() {
                 </TabsList>
               </div>
             </div>
-            <div className="flex-1 overflow-auto bg-slate-50/50">
+            <div className="flex-1 overflow-auto bg-gradient-to-b from-slate-50/80 to-slate-100/50">
               <TabsContent value="account" className="m-0"><AccountInfoTab account={selectedAccount} /></TabsContent>
               <TabsContent value="name" className="m-0"><NameTab accountId={accountId} /></TabsContent>
               <TabsContent value="balance" className="m-0"><BalanceDebtTab accountId={accountId} /></TabsContent>
@@ -5221,7 +5308,7 @@ function GeneralEnquiriesContent() {
                 onKeyDown={handleQuickKeyDown}
                 onFocus={() => { if (quickQuery.trim().length >= 2 || recentSearches.length > 0) setShowDropdown(true); }}
                 placeholder="Search by account number, name, ID number, phone, email..."
-                className="w-full h-11 pl-10 pr-10 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-800 placeholder:text-slate-400
+                className="w-full h-11 pl-10 pr-10 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-800 placeholder:text-slate-400
                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
                 data-testid="input-smart-search"
               />
@@ -5256,7 +5343,7 @@ function GeneralEnquiriesContent() {
           </div>
 
           {quickQuery.trim().length >= 1 && quickQuery.trim().length < 2 && showDropdown && (
-            <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 z-50 px-4 py-3">
+            <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-slate-200 z-50 px-4 py-3">
               <p className="text-xs text-slate-400">Type at least 2 characters to search...</p>
             </div>
           )}
@@ -5273,7 +5360,7 @@ function GeneralEnquiriesContent() {
           )}
 
           {quickQuery.trim().length < 2 && showDropdown && recentSearches.length > 0 && (
-            <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 z-50 py-2">
+            <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-slate-200 z-50 py-2">
               <div className="px-4 py-1.5 flex items-center gap-2 border-b border-slate-100 mb-1">
                 <Clock className="w-3 h-3 text-slate-400" />
                 <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Recent Searches</span>
