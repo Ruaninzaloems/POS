@@ -78,7 +78,15 @@ app.use((req, res, next) => {
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
+  const fs = await import("fs");
+  const distExists = fs.existsSync(
+    (await import("path")).resolve(import.meta.dirname, "..", "dist", "public", "index.html")
+  );
+
   if (process.env.NODE_ENV === "production") {
+    serveStatic(app);
+  } else if (distExists) {
+    log("Production build found, serving static files for reliability");
     serveStatic(app);
   } else {
     const { setupVite } = await import("./vite");
