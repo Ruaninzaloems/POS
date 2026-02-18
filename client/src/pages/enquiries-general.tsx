@@ -12,7 +12,7 @@ import {
   CreditCard, Droplets, Zap, FileText, Shield, Gift, Landmark,
   RefreshCw, AlertTriangle, ChevronDown, ChevronUp, Hash,
   Filter, Clock, ArrowRight, Loader2, SlidersHorizontal,
-  Eye, Layers, Home, Activity, ChevronRight
+  Eye, Layers, Home, Activity, ChevronRight, Mail
 } from 'lucide-react';
 import {
   searchAccounts, getAccountBalance, getServiceTypeBalance,
@@ -3884,6 +3884,7 @@ const SEARCH_FIELDS = [
   { key: 'oldAccountCode', label: 'Old Account Code', placeholder: 'Legacy code', icon: FileText, smart: false },
   { key: 'name', label: 'Name / Company', placeholder: 'Search by name', icon: User, smart: true },
   { key: 'idNo', label: 'ID / Registration No.', placeholder: '13 digit ID number', icon: CreditCard, smart: true },
+  { key: 'emailAddress', label: 'Email Address', placeholder: 'user@example.com', icon: Mail, smart: true },
   { key: 'physicalMeterNumber', label: 'Meter Number', placeholder: 'Physical meter number', icon: Zap, smart: false },
   { key: 'locationAddress', label: 'Location / Erf Address', placeholder: 'Street, location or erf', icon: MapPin, smart: false },
   { key: 'mobileNumber', label: 'Mobile Number', placeholder: '0821234567', icon: Phone, smart: false },
@@ -3897,7 +3898,7 @@ function detectSearchType(query: string): { field: string; label: string; unsupp
   if (/^\d{6,15}$/.test(trimmed)) return { field: 'accountNo', label: 'Account Number' };
   if (/^\d{1,5}$/.test(trimmed)) return { field: 'accountNo', label: 'Account Number' };
   if (/@/.test(trimmed) || /\.(com|co\.za|org|net|gov|ac\.za)$/i.test(trimmed) || /^(gmail|yahoo|outlook|hotmail|webmail|mail)/i.test(trimmed)) {
-    return { field: 'name', label: 'Email (not supported)', unsupported: true };
+    return { field: 'emailAddress', label: 'Email Address' };
   }
   return { field: 'name', label: 'Name / Company' };
 }

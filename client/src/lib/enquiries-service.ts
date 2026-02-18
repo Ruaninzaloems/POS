@@ -35,6 +35,7 @@ export interface EnquirySearchCriteria {
   locationAddress?: string;
   mobileNumber?: string;
   physicalMeterNumber?: string;
+  emailAddress?: string;
 }
 
 export interface EnquirySearchResult {
@@ -66,6 +67,10 @@ export interface EnquirySearchResult {
 
 // === SEARCH ===
 export async function searchAccounts(criteria: EnquirySearchCriteria): Promise<EnquirySearchResult[]> {
+  if (criteria.emailAddress && !criteria.accountNo && !criteria.name && !criteria.idNo) {
+    return searchByEmail(criteria.emailAddress);
+  }
+
   const body: Record<string, any> = {};
   if (criteria.accountNo) body.accountID = criteria.accountNo;
   if (criteria.oldAccountCode) body.oldAccount = criteria.oldAccountCode;
@@ -75,6 +80,7 @@ export async function searchAccounts(criteria: EnquirySearchCriteria): Promise<E
   if (criteria.locationAddress) body.locationAddress = criteria.locationAddress;
   if (criteria.mobileNumber) body.mobileNumber = criteria.mobileNumber;
   if (criteria.physicalMeterNumber) body.physicalMeterNumber = criteria.physicalMeterNumber;
+  if (criteria.emailAddress) body.emailAddress = criteria.emailAddress;
 
   const data = await fetchWithTimeout('/api/platinum/billing-enquiry/enquiry-results', {
     method: 'POST',
@@ -82,6 +88,56 @@ export async function searchAccounts(criteria: EnquirySearchCriteria): Promise<E
     body: JSON.stringify(body),
   });
   return normalizeArray(data);
+}
+
+export async function getAdditionalEmails(emailAddress: string): Promise<any[]> {
+  const data = await fetchWithTimeout(`/api/platinum/billing-account-management/get-additional-emails?emailAddress=${encodeURIComponent(emailAddress)}`);
+  return normalizeArray(data);
+}
+
+export async function searchByEmail(email: string): Promise<EnquirySearchResult[]> {
+  const [directResults, emailResults] = await Promise.allSettled([
+    fetchWithTimeout('/api/platinum/billing-enquiry/enquiry-results', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emailAddress: email }),
+    }).then(normalizeArray),
+    getAdditionalEmails(email),
+  ]);
+
+  const direct = directResults.status === 'fulfilled' ? directResults.value : [];
+  const emailMatches = emailResults.status === 'fulfilled' ? emailResults.value : [];
+
+  const accountIds = new Set<number>();
+  direct.forEach((r: any) => { const id = r.account_ID || r.accountID; if (id) accountIds.add(id); });
+
+  const emailAccountIds: number[] = [];
+  emailMatches.forEach((em: any) => {
+    const id = em.accountId || em.account_ID || em.accountID;
+    if (id && !accountIds.has(id)) { emailAccountIds.push(id); accountIds.add(id); }
+  });
+
+  const additionalResults: EnquirySearchResult[] = [];
+  if (emailAccountIds.length > 0) {
+    const BATCH = 5;
+    for (let i = 0; i < emailAccountIds.length; i += BATCH) {
+      const batch = emailAccountIds.slice(i, i + BATCH);
+      const batchResults = await Promise.allSettled(
+        batch.map(id =>
+          fetchWithTimeout('/api/platinum/billing-enquiry/enquiry-results', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accountID: id }),
+          }).then(normalizeArray)
+        )
+      );
+      batchResults.forEach(r => {
+        if (r.status === 'fulfilled' && r.value.length > 0) additionalResults.push(...r.value);
+      });
+    }
+  }
+
+  return [...direct, ...additionalResults];
 }
 
 export async function billingEnquirySearch(body: any): Promise<any[]> {

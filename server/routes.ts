@@ -1192,7 +1192,7 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-enquiry/enquiry-results", async (req, res) => {
     try {
-      const unsupportedFields = ['erfNumber', 'emailAddress', 'deliveryAddress', 'trading', 'allotmentArea', 'sgNumber'];
+      const unsupportedFields = ['erfNumber', 'deliveryAddress', 'trading', 'allotmentArea', 'sgNumber'];
       const cleanBody: Record<string, any> = {};
       for (const [k, v] of Object.entries(req.body)) {
         if (!unsupportedFields.includes(k) && v !== undefined && v !== null && String(v).trim() !== '') {
@@ -2331,6 +2331,15 @@ export async function registerRoutes(
   app.get("/api/platinum/billing-account-management/get-payment-group-list", async (req, res) => {
     try {
       const data = await platinumGet("/api/billing/account-management/get-payment-group-list");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-account-management/get-additional-emails", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing/account-management/get-additional-emails", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
