@@ -36,7 +36,7 @@ import {
   getClearanceInquiries,
   getDebtorNoteLists,
   getSection129AccountEnquiry,
-  getOccupiers,
+  getOccupiers, addOccupier, deleteOccupier,
   getServicesSearchResults,
   getAdditionalBillingSearchResults,
   getChequeFinalSearchList,
@@ -4023,14 +4023,23 @@ function OccupiersTab({ accountId }: { accountId: number }) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showProofModal, setShowProofModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addName, setAddName] = useState('');
+  const [addIdNumber, setAddIdNumber] = useState('');
+  const [addLoading, setAddLoading] = useState(false);
+  const [removeLoading, setRemoveLoading] = useState<number | null>(null);
+  const [proofData, setProofData] = useState<{ property: any; nameInfo: any } | null>(null);
+  const [proofLoading, setProofLoading] = useState(false);
   const loaded = useRef(false);
+  const printRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const result = await getOccupiers(accountId);
-      setData(result);
+      setData(Array.isArray(result) ? result : []);
       loaded.current = true;
     } catch (e: any) {
       setError(e.message || 'Failed to load occupiers data');
@@ -4041,36 +4050,209 @@ function OccupiersTab({ accountId }: { accountId: number }) {
 
   useEffect(() => { if (!loaded.current) load(); }, [load]);
 
+  const handleAdd = async () => {
+    if (!addName.trim()) return;
+    setAddLoading(true);
+    try {
+      await addOccupier({ accountId, name: addName.trim(), idNumber: addIdNumber.trim() });
+      setAddName('');
+      setAddIdNumber('');
+      setShowAddModal(false);
+      await load();
+    } catch (e: any) {
+      alert(e.message || 'Failed to add occupier');
+    } finally {
+      setAddLoading(false);
+    }
+  };
+
+  const handleRemove = async (occupier: any) => {
+    const id = occupier.occupierId || occupier.id || occupier.occupier_ID;
+    if (!id) { alert('Cannot identify occupier to remove'); return; }
+    if (!confirm(`Remove occupier "${occupier.name || occupier.occupierName || 'this person'}"?`)) return;
+    setRemoveLoading(id);
+    try {
+      await deleteOccupier(id);
+      await load();
+    } catch (e: any) {
+      alert(e.message || 'Failed to remove occupier');
+    } finally {
+      setRemoveLoading(null);
+    }
+  };
+
+  const handleProofOfResidence = async () => {
+    setProofLoading(true);
+    try {
+      const [propResp, nameResp] = await Promise.all([
+        fetch(`/api/platinum/billing-enquiry/property-details-by-account?accountId=${accountId}`).then(r => r.json()).catch(() => null),
+        fetch(`/api/platinum/billing-enquiry/name-info-by-account?accountId=${accountId}`).then(r => r.json()).catch(() => null),
+      ]);
+      setProofData({ property: propResp, nameInfo: nameResp });
+      setShowProofModal(true);
+    } catch {
+      alert('Failed to load property details for proof of residence');
+    } finally {
+      setProofLoading(false);
+    }
+  };
+
+  const handlePrintProof = () => {
+    if (!printRef.current) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Proof of Residence</title><style>
+      body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+      .proof-container { max-width: 700px; margin: 0 auto; border: 1px solid #333; padding: 30px; }
+      .header { display: flex; align-items: flex-start; justify-content: space-between; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px; }
+      .header-center { text-align: center; font-weight: bold; font-size: 16px; }
+      .header-left { font-size: 12px; line-height: 1.6; }
+      .header-right { font-size: 12px; line-height: 1.6; text-align: right; }
+      .date-line { text-align: right; margin: 10px 0 25px; font-weight: bold; }
+      .title { font-size: 18px; font-weight: bold; margin: 20px 0; }
+      .detail { margin: 8px 0 8px 40px; font-size: 14px; }
+      .detail-label { font-weight: bold; }
+      .address-block { margin: 15px 0 15px 40px; line-height: 1.8; font-size: 14px; }
+      .footer { margin-top: 80px; font-weight: bold; font-size: 14px; }
+      @media print { body { margin: 0; } .proof-container { border: none; } }
+    </style></head><body>${printRef.current.innerHTML}</body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); }, 300);
+  };
+
+  const accountNumber = String(accountId).padStart(12, '0');
+
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
-  if (!data.length) return <EmptyState message="No occupiers data available" />;
 
   return (
-    <div className="p-4 overflow-x-auto">
-      <table className="w-full text-sm" data-testid="table-occupiers">
-        <thead>
-          <tr className="border-b-2 border-slate-200">
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Name</th>
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">ID Number</th>
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Contact</th>
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Email</th>
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Move In Date</th>
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((o: any, i: number) => (
-            <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-              <td className="py-2 px-3 font-medium">{o.name || o.occupierName || o.surname || '-'}</td>
-              <td className="py-2 px-3 font-mono text-xs">{o.idNumber || o.idRegistrationNumber || '-'}</td>
-              <td className="py-2 px-3">{o.contactNumber || o.tel_Mobile || o.phone || '-'}</td>
-              <td className="py-2 px-3 text-slate-500">{o.email || o.emailAddress || '-'}</td>
-              <td className="py-2 px-3">{o.moveInDate ? new Date(o.moveInDate).toLocaleDateString('en-ZA') : o.startDate || '-'}</td>
-              <td className="py-2 px-3"><Badge variant={o.status === 'Active' ? 'default' : 'secondary'} className="text-[10px]">{o.status || o.occupierStatus || '-'}</Badge></td>
+    <div className="p-4 space-y-4" data-testid="occupiers-panel">
+      <div className="flex items-center justify-center gap-3 flex-wrap">
+        <button onClick={() => setShowAddModal(true)} className="px-4 py-2 bg-slate-700 text-white text-sm rounded hover:bg-slate-600 transition-colors" data-testid="button-add-occupier">Add</button>
+        <button onClick={() => { const sel = data.find((_, i) => document.querySelector(`[data-testid="occupier-row-${i}"]`)?.classList.contains('bg-blue-50')); if (sel) handleRemove(sel); else if (data.length > 0) alert('Select an occupier to remove'); }} className="px-4 py-2 bg-slate-700 text-white text-sm rounded hover:bg-slate-600 transition-colors" data-testid="button-remove-occupier">Remove Occupiers</button>
+        <button onClick={handleProofOfResidence} disabled={proofLoading} className="px-4 py-2 bg-slate-700 text-white text-sm rounded hover:bg-slate-600 transition-colors disabled:opacity-50" data-testid="button-proof-of-residence">
+          {proofLoading ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : null}
+          Proof of Residence
+        </button>
+      </div>
+
+      <div className="overflow-x-auto border border-slate-200 rounded">
+        <table className="w-full text-sm" data-testid="table-occupiers">
+          <thead>
+            <tr className="bg-slate-100 border-b border-slate-200">
+              <th className="text-left py-2 px-3 font-semibold text-slate-700">Name</th>
+              <th className="text-left py-2 px-3 font-semibold text-slate-700">ID Number</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {data.length === 0 ? (
+              <tr><td colSpan={2} className="text-center text-slate-400 py-4 italic">No records to display.</td></tr>
+            ) : data.map((o: any, i: number) => (
+              <tr key={i} className="border-b border-slate-100 hover:bg-blue-50 cursor-pointer transition-colors" data-testid={`occupier-row-${i}`} onClick={e => {
+                document.querySelectorAll('[data-testid^="occupier-row-"]').forEach(el => el.classList.remove('bg-blue-50'));
+                (e.currentTarget as HTMLElement).classList.add('bg-blue-50');
+              }}>
+                <td className="py-2 px-3 font-medium">{o.name || o.occupierName || o.surname || '-'}</td>
+                <td className="py-2 px-3 font-mono text-xs">{o.idNumber || o.idRegistrationNumber || o.idNo || '-'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex items-center justify-end gap-2 text-xs text-slate-500">
+        <span>Items per page: <span className="border rounded px-2 py-0.5">50</span></span>
+        <span>{data.length === 0 ? '0 of 0' : `1 - ${data.length} of ${data.length}`}</span>
+      </div>
+
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowAddModal(false)} data-testid="add-occupier-modal">
+          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-3 border-b border-slate-200 bg-slate-50">
+              <h4 className="text-sm font-bold text-slate-700">Add Occupier</h4>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
+                <input type="text" value={addName} onChange={e => setAddName(e.target.value)} className="w-full border border-slate-300 rounded px-3 py-2 text-sm" placeholder="Full name" data-testid="input-occupier-name" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">SA ID Number</label>
+                <input type="text" value={addIdNumber} onChange={e => setAddIdNumber(e.target.value)} className="w-full border border-slate-300 rounded px-3 py-2 text-sm" placeholder="ID Number" data-testid="input-occupier-id" />
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button onClick={() => setShowAddModal(false)} className="px-4 py-2 border border-slate-300 text-sm rounded hover:bg-slate-50" data-testid="button-cancel-add">Cancel</button>
+                <button onClick={handleAdd} disabled={addLoading || !addName.trim()} className="px-4 py-2 bg-slate-800 text-white text-sm rounded hover:bg-slate-700 disabled:opacity-50" data-testid="button-confirm-add">
+                  {addLoading ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : null}Add
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showProofModal && proofData && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowProofModal(false)} data-testid="proof-of-residence-modal">
+          <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+              <h4 className="text-sm font-bold text-slate-700">Proof of Residence</h4>
+              <div className="flex gap-2">
+                <button onClick={handlePrintProof} className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700" data-testid="button-print-proof">Print</button>
+                <button onClick={() => setShowProofModal(false)} className="text-slate-400 hover:text-slate-700 text-lg">&times;</button>
+              </div>
+            </div>
+            <div className="p-5">
+              <div ref={printRef}>
+                <div className="proof-container border border-slate-300 p-8 max-w-[700px] mx-auto bg-white" style={{ fontFamily: 'Arial, sans-serif' }}>
+                  <div className="flex items-start justify-between border-b-2 border-slate-800 pb-4 mb-5">
+                    <div className="text-xs leading-relaxed">
+                      <div>71  York Street</div>
+                      <div>George</div>
+                      <div>George - 6530</div>
+                    </div>
+                    <div className="text-center font-bold text-base">George UAT Municipality</div>
+                    <div className="text-xs leading-relaxed text-right">
+                      <div>Tel: 044 8019111</div>
+                      <div>Fax: 086 5896402</div>
+                      <div>Email: accounts@george.gov.za</div>
+                      <div>Website: https://www.george.gov.za/</div>
+                      <div>Municipality VAT No:- 4630193664</div>
+                    </div>
+                  </div>
+
+                  <div className="text-right font-bold mb-6">Date : {new Date().toLocaleDateString('en-ZA', { day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
+
+                  <h2 className="text-xl font-bold mb-6">PROOF OF RESIDENTIAL ADDRESS</h2>
+
+                  <p className="mb-4 text-sm">It is hereby certified that</p>
+
+                  <div className="ml-10 space-y-2 text-sm">
+                    <p><span className="font-bold">Name:</span> {proofData.nameInfo?.firstNames} {proofData.nameInfo?.surname_Company}</p>
+                    <p><span className="font-bold">ID Number:</span> {proofData.nameInfo?.idNo_RegistrationNo || '-'}</p>
+                    <p><span className="font-bold">Account Number:</span> {accountNumber}</p>
+                    <p><span className="font-bold">Erf Number:</span> {(() => { const sg = proofData.property?.sgNumber || ''; const parts = sg.split('/'); return parts.length >= 3 ? parts[2] : ''; })()}</p>
+                  </div>
+
+                  <p className="mt-6 mb-3 text-sm">are according to our records residing at :</p>
+
+                  <div className="ml-10 text-sm leading-relaxed">
+                    <p>{proofData.property?.streetName} {proofData.property?.streetNumber}</p>
+                    <p>{proofData.property?.suburb || proofData.property?.town}</p>
+                    <p>{proofData.property?.town}</p>
+                    <p>6530</p>
+                  </div>
+
+                  <div className="mt-24 font-bold text-sm">Municipal Manager</div>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-center pb-5">
+              <button onClick={() => setShowProofModal(false)} className="px-6 py-2 bg-slate-800 text-white text-sm rounded hover:bg-slate-700" data-testid="button-close-proof">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
