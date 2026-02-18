@@ -843,71 +843,58 @@ function BalanceDebtTab({ accountId }: { accountId: number }) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 flex items-center gap-2">
-            <CreditCard className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Payments Received</h3>
-            <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{payments.length}</Badge>
-          </div>
-          <div className="max-h-[300px] overflow-y-auto">
-            {payments.length === 0 ? (
-              <div className="p-6 text-center text-slate-400 text-sm">No payments found in recent history</div>
-            ) : (
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-slate-50 z-10">
-                  <tr className="border-b border-slate-200">
-                    <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Date</th>
-                    <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Receipt #</th>
-                    <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Type</th>
-                    <th className="text-right py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {payments.slice(0, 20).map((p: any, i: number) => (
-                    <tr key={i} className="border-b border-slate-50 hover:bg-green-50/50">
-                      <td className="py-1.5 px-3 text-slate-600">{p.receiptDate ? new Date(p.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
-                      <td className="py-1.5 px-3 font-mono text-slate-700">{p.receiptNumber || p.receiptNo || '-'}</td>
-                      <td className="py-1.5 px-3 text-slate-500">{p.receiptType || p.transactionType || '-'}</td>
-                      <td className="py-1.5 px-3 text-right font-mono font-medium text-green-700">{fmt(p.amount || p.receiptAmount || 0)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 flex items-center gap-2">
+          <CreditCard className="w-4 h-4 text-white" />
+          <h3 className="text-sm font-semibold text-white tracking-wide">Payments Received</h3>
+          <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{payments.length}</Badge>
         </div>
-
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-4 py-3 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
-            <RefreshCw className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Refunds</h3>
-            <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{refunds.length}</Badge>
-          </div>
-          <div className="max-h-[300px] overflow-y-auto">
-            {refunds.length === 0 ? (
-              <div className="p-6 text-center text-slate-400 text-sm">No refunds found in recent history</div>
-            ) : (
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-slate-50 z-10">
-                  <tr className="border-b border-slate-200">
-                    <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Date</th>
-                    <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Receipt #</th>
-                    <th className="text-right py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Amount</th>
+        <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+          {payments.length === 0 ? (
+            <div className="p-6 text-center text-slate-400 text-sm">No payments found in recent history</div>
+          ) : (
+            <table className="w-full text-xs" data-testid="table-payments-received">
+              <thead className="sticky top-0 bg-slate-50 z-10">
+                <tr className="border-b border-slate-200">
+                  <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold whitespace-nowrap">Receipt No</th>
+                  <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold whitespace-nowrap">Payment Type</th>
+                  <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold whitespace-nowrap">Receipt Date and Time</th>
+                  <th className="text-right py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold whitespace-nowrap">Receipt Amount</th>
+                  <th className="text-center py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold whitespace-nowrap">Reprint</th>
+                  <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold whitespace-nowrap">Cashier</th>
+                  <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold whitespace-nowrap">Cash Book</th>
+                  <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold whitespace-nowrap">Reason for Cancellation</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payments.map((p: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-50 hover:bg-green-50/50" data-testid={`row-payment-${i}`}>
+                    <td className="py-1.5 px-3 font-mono text-slate-700 whitespace-nowrap">{p.receiptNumber || p.receiptNo || '-'}</td>
+                    <td className="py-1.5 px-3 text-slate-600 whitespace-nowrap">{p.paymentType || p.receiptType || p.transactionType || '-'}</td>
+                    <td className="py-1.5 px-3 text-slate-600 whitespace-nowrap">{p.receiptDate ? new Date(p.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
+                    <td className="py-1.5 px-3 text-right font-mono font-medium text-green-700 whitespace-nowrap">{fmt(p.amount || p.receiptAmount || 0)}</td>
+                    <td className="py-1.5 px-3 text-center">
+                      <button
+                        onClick={() => {
+                          const receiptId = p.receiptId || p.receipt_ID || p.id;
+                          if (receiptId) {
+                            window.open(`/api/platinum/billing-payment/print-receipt?receiptId=${receiptId}`, '_blank');
+                          }
+                        }}
+                        className="text-blue-600 hover:text-blue-800 hover:underline text-xs font-medium"
+                        data-testid={`btn-print-receipt-${i}`}
+                      >
+                        Print Receipt
+                      </button>
+                    </td>
+                    <td className="py-1.5 px-3 text-slate-600 whitespace-nowrap">{p.cashierName || p.cashier || '-'}</td>
+                    <td className="py-1.5 px-3 text-slate-600 whitespace-nowrap">{p.cashBook || p.cashBookName || '-'}</td>
+                    <td className="py-1.5 px-3 text-slate-500 whitespace-nowrap">{p.cancellationReason || p.reasonForCancellation || ''}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {refunds.slice(0, 20).map((r: any, i: number) => (
-                    <tr key={i} className="border-b border-slate-50 hover:bg-amber-50/50">
-                      <td className="py-1.5 px-3 text-slate-600">{r.receiptDate ? new Date(r.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
-                      <td className="py-1.5 px-3 font-mono text-slate-700">{r.receiptNumber || r.receiptNo || '-'}</td>
-                      <td className="py-1.5 px-3 text-right font-mono font-medium text-amber-700">{fmt(r.amount || r.receiptAmount || 0)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 

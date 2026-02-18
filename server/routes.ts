@@ -2127,6 +2127,7 @@ export async function registerRoutes(
     ["handover-account-enquiry", "getHandoverAccountEnquiry"],
     ["cons-handover-transaction-detail", "getConsHandoverTransactionDetail"],
     ["meter-info-by-id", "getMeterInfoById"],
+    ["payments-received", "PaymentsReceived"],
     ["lookups", "lookups"],
     ["billing-calculation-popup-data", "getBillingalculationPopupDataDetails"],
     ["check-file-exists", "CheckFileExists"],
