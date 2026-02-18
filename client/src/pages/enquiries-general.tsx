@@ -283,6 +283,107 @@ function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
   );
 }
 
+function NameTab({ accountId }: { accountId: number }) {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const prevAccountId = useRef<number | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getNameInfo(accountId);
+      setData(result);
+    } catch (e: any) {
+      setError(e.message || 'Failed to load name details');
+    } finally {
+      setLoading(false);
+    }
+  }, [accountId]);
+
+  useEffect(() => {
+    if (prevAccountId.current !== accountId) {
+      prevAccountId.current = accountId;
+      load();
+    }
+  }, [accountId, load]);
+
+  if (loading) return <LoadingSkeleton />;
+  if (error) return <ErrorState message={error} onRetry={load} />;
+  if (!data) return <EmptyState message="No name details available" />;
+
+  const n = data;
+  const fullName = [n.firstNames, n.surname_Company].filter(Boolean).join(' ').trim();
+  const dob = n.dateOfBirth ? (() => { try { const d = new Date(n.dateOfBirth); return isNaN(d.getTime()) ? n.dateOfBirth : d.toLocaleDateString('en-ZA'); } catch { return n.dateOfBirth; } })() : '';
+
+  return (
+    <div className="p-4 space-y-1" data-testid="name-info-panel">
+      <h3 className="text-base font-bold text-slate-800 mb-2">Name</h3>
+
+      <SectionHeader title="Person Details" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
+        <div>
+          <InfoField label="ID Number" value={n.idNo_RegistrationNo} />
+          <InfoField label="Passport Number" value={n.passportNo} />
+          <InfoField label="Country Name" value={n.nameCountry} />
+          <InfoField label="Title" value={n.title} />
+          <InfoField label="Last Name" value={n.surname_Company} />
+          <InfoField label="Full Name" value={fullName || n.firstNames} />
+          <InfoField label="Is Farmer?" value={n.isFarmer} />
+          <InfoField label="Is Sole Proprietor?" value={n.isSoleProp} />
+        </div>
+        <div>
+          <InfoField label="Nickname" value={n.nickName} />
+          <InfoField label="Maiden Name" value={n.maidenName} />
+          <InfoField label="Date of Birth" value={dob} />
+          <InfoField label="Gender" value={n.genderDesc} />
+          <InfoField label="Ethnicity" value={n.ethnicDesc} />
+          <InfoField label="Language for Correspondence" value={n.languageCorrespond} />
+        </div>
+      </div>
+
+      <SectionHeader title="Employer Details" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
+        <div>
+          <InfoField label="Employment Status" value={n.employementStatusDesc} />
+          <InfoField label="Employer" value={n.employer} />
+          <InfoField label="Contact Person Telephone" value={n.tel_ContactPerson || n.tel_ContactPerson1} />
+        </div>
+        <div>
+          <InfoField label="Contact Person" value={n.contactPerson} />
+          <InfoField label="Occupation" value={n.occupation || n.occupation1} />
+        </div>
+      </div>
+
+      <SectionHeader title="Next of Kin" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
+        <div>
+          <InfoField label="Last Name" value={n.kinLastName} />
+          <InfoField label="Full Name" value={[n.kinFirstName, n.kinLastName].filter(Boolean).join(' ').trim() || undefined} />
+          <InfoField label="Relationship" value={n.kinRelationShip} />
+          <InfoField label="Town/City" value={n.kinTown} />
+          <InfoField label="Suburb" value={n.kinSuburb} />
+        </div>
+        <div>
+          <InfoField label="Street Name" value={n.kinStreetName} />
+          <InfoField label="Street Number" value={n.kinStreetNumber} />
+          <InfoField label="Telephone (Home)" value={n.kinTelephone} />
+          <InfoField label="Telephone (Mobile)" value={n.kinMobile} />
+        </div>
+      </div>
+
+      <SectionHeader title="Marital Details" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
+        <div>
+          <InfoField label="Marital Status" value={n.kinMarriedStatus} />
+        </div>
+        <div />
+      </div>
+    </div>
+  );
+}
+
 function BalanceDebtTab({ accountId }: { accountId: number }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -2452,6 +2553,7 @@ function GeneralEnquiriesContent() {
             <div className="shrink-0 bg-white border-b px-2 sm:px-4 overflow-x-auto">
               <TabsList className="h-auto flex flex-nowrap gap-0.5 bg-transparent p-0 justify-start min-w-max">
                 <TabsTrigger value="account" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-account-info">Account Info</TabsTrigger>
+                <TabsTrigger value="name" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-name">Name</TabsTrigger>
                 <TabsTrigger value="balance" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-balance">Balance / Debt</TabsTrigger>
                 <TabsTrigger value="services" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-services">Service Balances</TabsTrigger>
                 <TabsTrigger value="property" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-property">Property</TabsTrigger>
@@ -2475,6 +2577,7 @@ function GeneralEnquiriesContent() {
             </div>
             <div className="flex-1 overflow-auto">
               <TabsContent value="account" className="m-0"><AccountInfoTab account={selectedAccount} /></TabsContent>
+              <TabsContent value="name" className="m-0"><NameTab accountId={accountId} /></TabsContent>
               <TabsContent value="balance" className="m-0"><BalanceDebtTab accountId={accountId} /></TabsContent>
               <TabsContent value="services" className="m-0"><ServiceBalanceTab accountId={accountId} /></TabsContent>
               <TabsContent value="property" className="m-0"><PropertyDetailsTab accountId={accountId} /></TabsContent>
