@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { platinumGet, platinumPost, getPlatinumUserInfo, getPlatinumToken, getPlatinumApiUrl, getPlatinumAuthMode, loginWithCredentials, logoutUser, isAuthenticated } from "./platinum-auth";
+import { platinumGet, platinumPost, platinumDelete, getPlatinumUserInfo, getPlatinumToken, getPlatinumApiUrl, getPlatinumAuthMode, loginWithCredentials, logoutUser, isAuthenticated } from "./platinum-auth";
 import { execSync } from "child_process";
 import { writeFileSync, unlinkSync, existsSync } from "fs";
 
@@ -2037,6 +2037,119 @@ export async function registerRoutes(
   app.get("/api/platinum/billing-enquiry/payment-incentive-by-account", async (req, res) => {
     try {
       const data = await platinumGet("/api/BillingEnquiry/PaymentIncentiveByAccountId", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  // --- Additional Billing Enquiry endpoints (registry-based) ---
+  const billingEnquiryGetEndpoints: Array<[string, string]> = [
+    ["basic-account-details", "BasicAccountDetails"],
+    ["partition-details", "PartitionDetails"],
+    ["unit-partition-owner", "UnitPartitionOwner"],
+    ["property", "Property"],
+    ["cons-unit-search", "ConsUnitSearch"],
+    ["debit-order-deduction-by-account", "debitorderdeductionbyaccountid"],
+    ["account-notifications", "AccountNotifications"],
+    ["repayment-plan-status", "RepaymentPlanStatus"],
+    ["allotment-description-by-id", "AllotmentDescriptionById"],
+    ["sectional-title-scheme", "SectionalTitleScheme"],
+    ["account-info-result", "AccountInfoResult"],
+    ["account-service-meter-per-property", "AccountServiceMeterPerProperty"],
+    ["account-delivery-address-detail", "AccountDeliveryAddressDetail"],
+    ["additional-billing-search-results", "AdditionalBillingSearchResults"],
+    ["services-search-results", "ServicesSearchResults"],
+    ["bank-guarantee-history", "GetBankGuaranteetHistory"],
+    ["payment-extension-search-results", "PaymentExtensionSearchResults"],
+    ["detailed-transaction-results", "DetailedTransactionResults"],
+    ["get-billing-period-transactions", "getBillingPeriodTransactions"],
+    ["all-services", "AllServices"],
+    ["payment-plan-remaining-capital", "PaymentPlanRemainingCapitalAmount"],
+    ["payment-amount-by-account-ids", "PaymentAmountByAccountIds"],
+    ["cheque-final-search-list", "ChequeFinalSearchList"],
+    ["cheque-write-back-detail", "ChequeWriteBackDetail"],
+    ["payment-plans-by-account-id", "PaymentPlansByAccountId"],
+    ["payment-incentive-journals", "PaymentIncentiveJournals"],
+    ["metered-services-on-account", "MeteredServicesOnAccount"],
+    ["valuation-by-id", "ValuationById"],
+    ["valuation-by-unit", "ValuationByUnit"],
+    ["valuation-import-by-id", "ValuationImportById"],
+    ["supplementary-valuations", "SupplementaryValuations"],
+    ["rates-run-history", "RatesRunHistory"],
+    ["account-rates-details", "GetAccountRatesDetails"],
+    ["unit-linked-meters", "UnitLinkedMeters"],
+    ["transfer-ownership", "TransferOwnerShip"],
+    ["clearance-inquiries", "ClearanceInquiries"],
+    ["prepaid-meter-services-for-account", "PrepaidMeterServicesForAccount"],
+    ["periods", "Periods"],
+    ["attp-application-history", "AttpApplicationHistory"],
+    ["debtor-note-lists", "DebtorNoteLists"],
+    ["account-inquiries", "AccountInquiries"],
+    ["add-occupiers", "AddOccupiers"],
+    ["autocomplete", "Autocomplete"],
+    ["meter-reading-history", "meter-reading-history"],
+    ["meter-reading-history-barchart", "meter-reading-history-barchart"],
+    ["get-status", "get-status"],
+    ["departmental-accounts-by-id", "get-departmental-accounts-by-id"],
+    ["generated-statements-by-id", "get-generated-statements-by-id"],
+    ["billing-template", "getBillingTemplate"],
+    ["detail-billing-template", "getDetailBillingTemplate"],
+    ["contact-details-history-by-id", "get-contactdetails-history-by-id"],
+    ["delivery-address-history-by-id", "get-delivery-address-history-by-id"],
+    ["delivery-account-details-by-id", "get-delivery-account-details-by-id"],
+    ["property-notification", "getPropertyNotification"],
+    ["billing-processing-month", "getBillingProcessingMonth"],
+    ["levy-transaction-detail", "getLevyTransactionDetail"],
+    ["open-balance-detail", "getOpenBalanceDetail"],
+    ["close-balance-detail", "getCloseBalanceDetail"],
+    ["journal-transaction-details", "getJournalTransactionDetails"],
+    ["rebate-transaction-detail", "getRebateTransactionDetail"],
+    ["interest-cons-payment-detail", "getInterestConsPaymentTransactionDetail"],
+    ["interest-late-payment-detail", "getInterestLatePaymentTransactionDetail"],
+    ["prepaid-recharge-details-for-meter", "getPrepaidRechargeDetailsForMeter"],
+    ["section129-account-enquiry", "GetSection129AccountEnquiry"],
+    ["get-debit-order-deduction", "getDebitOrderDeduction"],
+    ["handover-account-enquiry", "getHandoverAccountEnquiry"],
+    ["cons-handover-transaction-detail", "getConsHandoverTransactionDetail"],
+    ["meter-info-by-id", "getMeterInfoById"],
+    ["lookups", "lookups"],
+    ["billing-calculation-popup-data", "getBillingalculationPopupDataDetails"],
+    ["check-file-exists", "CheckFileExists"],
+  ];
+
+  for (const [localPath, platinumPath] of billingEnquiryGetEndpoints) {
+    app.get(`/api/platinum/billing-enquiry/${localPath}`, async (req, res) => {
+      try {
+        const data = await platinumGet(`/api/BillingEnquiry/${platinumPath}`, req.query as Record<string, string>);
+        handlePlatinumResult(res, data);
+      } catch (e: any) {
+        res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+      }
+    });
+  }
+
+  app.post("/api/platinum/billing-enquiry/search", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/BillingEnquiry/search", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/billing-enquiry/add-occupier", async (req, res) => {
+    try {
+      const data = await platinumPost("/api/BillingEnquiry/AddOccupier", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.delete("/api/platinum/billing-enquiry/add-occupier", async (req, res) => {
+    try {
+      const data = await platinumDelete("/api/BillingEnquiry/AddOccupier", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });

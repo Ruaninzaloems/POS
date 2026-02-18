@@ -513,6 +513,43 @@ export async function platinumPost(path: string, body: any, params?: Record<stri
   }
 }
 
+export async function platinumDelete(path: string, params?: Record<string, string>): Promise<any> {
+  const token = await getPlatinumToken();
+  let url = `${PLATINUM_API_URL}${path}`;
+  if (params) {
+    const qs = new URLSearchParams(params).toString();
+    if (qs) url += `?${qs}`;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  try {
+    const res = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      return { _error: true, status: res.status, statusText: res.statusText, detail: errText };
+    }
+
+    const text = await res.text();
+    try { return text ? JSON.parse(text) : null; } catch { return text; }
+  } catch (e: any) {
+    if (e.name === 'AbortError') {
+      return { _error: true, status: 408, statusText: 'Request Timeout' };
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 export function getPlatinumApiUrl(): string {
   return PLATINUM_API_URL;
 }

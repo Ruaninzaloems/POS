@@ -18,6 +18,22 @@ import {
   getPropertyDetails, getConsumptionUnits, getNameInfo,
   getHandoverInfo, getPaymentIncentive, getDeposits, getDepositAmount,
   getTransactionHistory, getAccountInformation,
+  getBasicAccountDetails, getAccountInfoResult,
+  getContactDetailsHistory, getDeliveryAddressHistory,
+  getHandoverAccountEnquiry, getConsHandoverTransactionDetail,
+  getBillingPeriodTransactions, getDetailedTransactionResults,
+  getAllServices, getMeteredServicesOnAccount, getAccountServiceMeterPerProperty,
+  getUnitLinkedMeters, getPrepaidMeterServicesForAccount,
+  getPaymentPlansByAccountId, getPaymentPlanRemainingCapital,
+  getRepaymentPlanStatus, getPaymentExtensionSearchResults, getPaymentAmountByAccountIds,
+  getDebitOrderDeductionByAccount, getDebitOrderDeduction,
+  getAccountRatesDetails, getRatesRunHistory,
+  getAccountNotifications, getPropertyNotification,
+  getGeneratedStatements,
+  getClearanceInquiries,
+  getDebtorNoteLists,
+  getSection129AccountEnquiry,
+  getOccupiers,
   type EnquirySearchCriteria, type EnquirySearchResult,
 } from '@/lib/enquiries-service';
 
@@ -95,10 +111,42 @@ function InfoField({ label, value, isCurrency }: { label: string; value: any; is
   );
 }
 
+function GenericTable({ data, columns, testId }: { data: any[]; columns: { key: string; label: string; align?: string; format?: (v: any, row: any) => string }[]; testId: string }) {
+  if (!data.length) return <EmptyState message="No data available" />;
+  return (
+    <div className="p-4 overflow-x-auto">
+      <table className="w-full text-sm" data-testid={testId}>
+        <thead>
+          <tr className="border-b-2 border-slate-200">
+            {columns.map(col => (
+              <th key={col.key} className={`${col.align === 'right' ? 'text-right' : 'text-left'} py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold`}>{col.label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((item: any, i: number) => (
+            <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+              {columns.map(col => {
+                const raw = item[col.key];
+                const display = col.format ? col.format(raw, item) : (raw ?? '-');
+                return (
+                  <td key={col.key} className={`py-2 px-3 ${col.align === 'right' ? 'text-right font-mono' : ''}`}>{String(display)}</td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
   const [acctInfo, setAcctInfo] = useState<any>(null);
   const [propInfo, setPropInfo] = useState<any>(null);
   const [nameInfo, setNameInfo] = useState<any>(null);
+  const [basicDetails, setBasicDetails] = useState<any>(null);
+  const [acctInfoResult, setAcctInfoResult] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const loaded = useRef(false);
 
@@ -110,15 +158,19 @@ function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
       getAccountInformation(accountId).catch(() => null),
       getPropertyDetails(accountId).catch(() => null),
       getNameInfo(accountId).catch(() => null),
-    ]).then(([ai, pi, ni]) => {
+      getBasicAccountDetails(accountId).catch(() => null),
+      getAccountInfoResult(accountId).catch(() => null),
+    ]).then(([ai, pi, ni, bd, air]) => {
       setAcctInfo(ai);
       setPropInfo(Array.isArray(pi) ? pi[0] : pi);
       setNameInfo(ni);
+      setBasicDetails(bd);
+      setAcctInfoResult(air);
       setLoading(false);
     });
   }, [account.account_ID, account.accountID]);
 
-  const a = acctInfo || {};
+  const a = { ...(acctInfo || {}), ...(basicDetails || {}), ...(acctInfoResult || {}) };
   const p = propInfo || {};
   const n = nameInfo || {};
   const s = account;
@@ -138,6 +190,7 @@ function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
             <InfoField label="Incentive Scheme Code" value={a.incentiveSchemeCode || a.incentiveScheme} />
             <InfoField label="Email" value={n.email || n.emailAddress || s.email || a.email} />
             <InfoField label="Paid Deposit Amount" value={a.paidDepositAmount ?? a.depositAmount} />
+            <InfoField label="Billing Cycle" value={a.billingCycle || a.billingCycleDescription} />
           </div>
           <div>
             <InfoField label="Name" value={s.name || a.name || n.surname_Company} />
@@ -145,6 +198,8 @@ function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
             <InfoField label="Account Status" value={a.accountStatus || s.statusDesc} />
             <InfoField label="Delivery Address" value={(a.deliveryAddress || s.deliveryAddress || '').replace(/\r\n/g, ', ')} />
             <InfoField label="Contact Number" value={n.tel_Mobile || n.tel_Home || n.tel_Work || a.contactNumber} />
+            <InfoField label="Opening Date" value={a.openingDate ? new Date(a.openingDate).toLocaleDateString('en-ZA') : a.openDate} />
+            <InfoField label="Closing Date" value={a.closingDate ? new Date(a.closingDate).toLocaleDateString('en-ZA') : a.closeDate} />
           </div>
         </div>
       )}
@@ -157,11 +212,16 @@ function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
             <InfoField label="Indigent Subsidy Status" value={a.indigentSubsidyStatus || a.indigentStatus} />
             <InfoField label="Consumer RPP Status" value={a.consumerRPPStatus || a.consumerRPP || 'N/A'} />
             <InfoField label="Departmental Account" value={a.departmentalAccount || a.isDepartmental} />
+            <InfoField label="Credit Rating" value={a.creditRating} />
+            <InfoField label="Payment Terms" value={a.paymentTerms} />
           </div>
           <div>
             <InfoField label="Rebate Status" value={a.rebateStatus || a.rebate || 'N/A'} />
             <InfoField label="Handover Status" value={a.handoverStatus || a.handover || 'N/A'} />
             <InfoField label="Loan RPP Status" value={a.loanRPPStatus || a.loanRPP || 'N/A'} />
+            <InfoField label="Meter Access" value={a.meterAccess} />
+            <InfoField label="Postal Code" value={a.postalCode} />
+            <InfoField label="Ward" value={a.ward || a.wardNumber} />
           </div>
         </div>
       )}
@@ -433,6 +493,8 @@ function ConsumptionTab({ accountId }: { accountId: number }) {
 
 function ContactInfoTab({ accountId }: { accountId: number }) {
   const [data, setData] = useState<any>(null);
+  const [contactHistory, setContactHistory] = useState<any[]>([]);
+  const [addressHistory, setAddressHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const loaded = useRef(false);
@@ -441,8 +503,14 @@ function ContactInfoTab({ accountId }: { accountId: number }) {
     setLoading(true);
     setError(null);
     try {
-      const result = await getNameInfo(accountId);
-      setData(result);
+      const [nameResult, chResult, ahResult] = await Promise.all([
+        getNameInfo(accountId),
+        getContactDetailsHistory(accountId).catch(() => []),
+        getDeliveryAddressHistory(accountId).catch(() => []),
+      ]);
+      setData(nameResult);
+      setContactHistory(chResult);
+      setAddressHistory(ahResult);
       loaded.current = true;
     } catch (e: any) {
       setError(e.message || 'Failed to load contact information');
@@ -458,40 +526,101 @@ function ContactInfoTab({ accountId }: { accountId: number }) {
   if (!data) return <EmptyState message="No contact information available" />;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold text-slate-600 flex items-center gap-2"><User className="w-4 h-4" /> Personal Information</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-0">
-          <FieldRow label="Surname / Company" value={data.surname_Company} />
-          <FieldRow label="Initials" value={data.initials} />
-          <FieldRow label="Title" value={data.title} />
-          <FieldRow label="ID Number" value={data.idRegistrationNumber || data.idNumber} />
-          <FieldRow label="Date of Birth" value={data.dateOfBirth ? new Date(data.dateOfBirth).toLocaleDateString('en-ZA') : null} />
-          <FieldRow label="Gender" value={data.gender} />
-          <FieldRow label="Language" value={data.language} />
-          <FieldRow label="Marital Status" value={data.maritalStatus} />
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold text-slate-600 flex items-center gap-2"><Phone className="w-4 h-4" /> Contact Details</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-0">
-          <FieldRow label="Mobile" value={data.tel_Mobile || data.mobile} icon={<Phone className="w-3.5 h-3.5" />} />
-          <FieldRow label="Home Phone" value={data.tel_Home || data.homePhone} icon={<Phone className="w-3.5 h-3.5" />} />
-          <FieldRow label="Work Phone" value={data.tel_Work || data.workPhone} icon={<Phone className="w-3.5 h-3.5" />} />
-          <FieldRow label="Email" value={data.email || data.emailAddress} icon={<Mail className="w-3.5 h-3.5" />} />
-          <FieldRow label="Postal Address" value={data.postalAddress?.replace(/\r\n/g, ', ')} icon={<MapPin className="w-3.5 h-3.5" />} />
-        </CardContent>
-      </Card>
+    <div className="p-4 space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-slate-600 flex items-center gap-2"><User className="w-4 h-4" /> Personal Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-0">
+            <FieldRow label="Surname / Company" value={data.surname_Company} />
+            <FieldRow label="Initials" value={data.initials} />
+            <FieldRow label="Title" value={data.title} />
+            <FieldRow label="ID Number" value={data.idRegistrationNumber || data.idNumber} />
+            <FieldRow label="Date of Birth" value={data.dateOfBirth ? new Date(data.dateOfBirth).toLocaleDateString('en-ZA') : null} />
+            <FieldRow label="Gender" value={data.gender} />
+            <FieldRow label="Language" value={data.language} />
+            <FieldRow label="Marital Status" value={data.maritalStatus} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-slate-600 flex items-center gap-2"><Phone className="w-4 h-4" /> Contact Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-0">
+            <FieldRow label="Mobile" value={data.tel_Mobile || data.mobile} icon={<Phone className="w-3.5 h-3.5" />} />
+            <FieldRow label="Home Phone" value={data.tel_Home || data.homePhone} icon={<Phone className="w-3.5 h-3.5" />} />
+            <FieldRow label="Work Phone" value={data.tel_Work || data.workPhone} icon={<Phone className="w-3.5 h-3.5" />} />
+            <FieldRow label="Email" value={data.email || data.emailAddress} icon={<Mail className="w-3.5 h-3.5" />} />
+            <FieldRow label="Fax" value={data.fax || data.faxNumber} />
+            <FieldRow label="Postal Address" value={data.postalAddress?.replace(/\r\n/g, ', ')} icon={<MapPin className="w-3.5 h-3.5" />} />
+          </CardContent>
+        </Card>
+      </div>
+
+      {contactHistory.length > 0 && (
+        <>
+          <SectionHeader title="Contact Details History" />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-contact-history">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Field</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Old Value</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">New Value</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Changed By</th>
+                </tr>
+              </thead>
+              <tbody>
+                {contactHistory.map((item: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="py-2 px-3 text-slate-500">{item.changeDate ? new Date(item.changeDate).toLocaleDateString('en-ZA') : item.date || '-'}</td>
+                    <td className="py-2 px-3 font-medium">{item.fieldName || item.field || item.description || '-'}</td>
+                    <td className="py-2 px-3 text-slate-500">{item.oldValue || item.previousValue || '-'}</td>
+                    <td className="py-2 px-3 font-medium">{item.newValue || item.currentValue || '-'}</td>
+                    <td className="py-2 px-3 text-slate-500 text-xs">{item.changedBy || item.user || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {addressHistory.length > 0 && (
+        <>
+          <SectionHeader title="Delivery Address History" />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-address-history">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Address</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Changed By</th>
+                </tr>
+              </thead>
+              <tbody>
+                {addressHistory.map((item: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="py-2 px-3 text-slate-500">{item.changeDate ? new Date(item.changeDate).toLocaleDateString('en-ZA') : item.date || '-'}</td>
+                    <td className="py-2 px-3 font-medium">{(item.address || item.deliveryAddress || '-').replace(/\r\n/g, ', ')}</td>
+                    <td className="py-2 px-3 text-slate-500 text-xs">{item.changedBy || item.user || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
 function HandoverTab({ accountId }: { accountId: number }) {
   const [data, setData] = useState<any>(null);
+  const [enquiry, setEnquiry] = useState<any>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const loaded = useRef(false);
@@ -500,8 +629,14 @@ function HandoverTab({ accountId }: { accountId: number }) {
     setLoading(true);
     setError(null);
     try {
-      const result = await getHandoverInfo(accountId);
-      setData(result);
+      const [info, enq, txns] = await Promise.all([
+        getHandoverInfo(accountId).catch(() => null),
+        getHandoverAccountEnquiry(accountId).catch(() => null),
+        getConsHandoverTransactionDetail(accountId).catch(() => []),
+      ]);
+      setData(info);
+      setEnquiry(enq);
+      setTransactions(txns);
       loaded.current = true;
     } catch (e: any) {
       setError(e.message || 'Failed to load handover information');
@@ -514,9 +649,9 @@ function HandoverTab({ accountId }: { accountId: number }) {
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
-  if (!data) return <EmptyState message="No handover information available" />;
+  if (!data && !enquiry && !transactions.length) return <EmptyState message="No handover information available" />;
 
-  const items = Array.isArray(data) ? data : [data];
+  const items = data ? (Array.isArray(data) ? data : [data]) : [];
   return (
     <div className="p-4 space-y-4">
       {items.map((item: any, i: number) => (
@@ -531,6 +666,47 @@ function HandoverTab({ accountId }: { accountId: number }) {
           </CardContent>
         </Card>
       ))}
+
+      {enquiry && (
+        <>
+          <SectionHeader title="Handover Account Enquiry" />
+          <Card>
+            <CardContent className="pt-4 space-y-0">
+              {Object.entries(enquiry).filter(([k]) => !k.startsWith('_')).map(([key, val]) => (
+                <FieldRow key={key} label={key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())} value={val as any} />
+              ))}
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {transactions.length > 0 && (
+        <>
+          <SectionHeader title="Handover Transactions" />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-handover-transactions">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Description</th>
+                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Reference</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map((tx: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="py-2 px-3 text-slate-500">{tx.transactionDate ? new Date(tx.transactionDate).toLocaleDateString('en-ZA') : tx.date || '-'}</td>
+                    <td className="py-2 px-3">{tx.description || tx.transactionDescription || '-'}</td>
+                    <td className="py-2 px-3 text-right font-mono font-semibold">{(tx.amount ?? tx.transactionAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    <td className="py-2 px-3 text-slate-500">{tx.reference || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -647,7 +823,808 @@ function DepositsTab({ accountId }: { accountId: number }) {
   );
 }
 
-function TransactionHistoryTab({ accountNumber }: { accountNumber: string }) {
+function TransactionHistoryTab({ accountId, accountNumber }: { accountId: number; accountNumber: string }) {
+  const [data, setData] = useState<any[]>([]);
+  const [billingPeriodTxns, setBillingPeriodTxns] = useState<any[]>([]);
+  const [detailedTxns, setDetailedTxns] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeSubTab, setActiveSubTab] = useState('receipts');
+  const loaded = useRef(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [receiptResult, billingResult, detailedResult] = await Promise.all([
+        getTransactionHistory(accountNumber).catch(() => []),
+        getBillingPeriodTransactions(accountId).catch(() => []),
+        getDetailedTransactionResults(accountId).catch(() => []),
+      ]);
+      setData(receiptResult);
+      setBillingPeriodTxns(billingResult);
+      setDetailedTxns(detailedResult);
+      loaded.current = true;
+    } catch (e: any) {
+      setError(e.message || 'Failed to load transaction history');
+    } finally {
+      setLoading(false);
+    }
+  }, [accountId, accountNumber]);
+
+  useEffect(() => { if (!loaded.current) load(); }, [load]);
+
+  if (loading) return <LoadingSkeleton />;
+  if (error) return <ErrorState message={error} onRetry={load} />;
+
+  return (
+    <div className="p-4 space-y-4">
+      <div className="flex gap-2 border-b border-slate-200 pb-2">
+        {[
+          { key: 'receipts', label: 'Receipt History', count: data.length },
+          { key: 'billing', label: 'Billing Period', count: billingPeriodTxns.length },
+          { key: 'detailed', label: 'Detailed Transactions', count: detailedTxns.length },
+        ].map(sub => (
+          <button
+            key={sub.key}
+            onClick={() => setActiveSubTab(sub.key)}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${activeSubTab === sub.key ? 'bg-blue-100 text-blue-700' : 'text-slate-500 hover:bg-slate-100'}`}
+            data-testid={`button-subtab-${sub.key}`}
+          >
+            {sub.label} ({sub.count})
+          </button>
+        ))}
+      </div>
+
+      {activeSubTab === 'receipts' && (
+        data.length === 0 ? <EmptyState message="No receipt history found" /> : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-transaction-history">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Receipt No.</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Payment Type</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Payment Option</th>
+                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
+                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Tender</th>
+                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Change</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Cashier</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.map((item: any, i: number) => (
+                  <tr key={item.receiptId || i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="py-2 px-3 font-mono text-blue-700 font-medium">{item.receiptNo || '-'}</td>
+                    <td className="py-2 px-3 text-slate-600">{item.receiptDate ? new Date(item.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
+                    <td className="py-2 px-3">{item.paymentType || '-'}</td>
+                    <td className="py-2 px-3">{item.paymentOption || '-'}</td>
+                    <td className="py-2 px-3 text-right font-mono font-semibold">{(item.amount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    <td className="py-2 px-3 text-right font-mono">{(item.tenderAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    <td className="py-2 px-3 text-right font-mono">{(item.changeAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    <td className="py-2 px-3 text-slate-500 text-xs">{item.cashierName || '-'}</td>
+                    <td className="py-2 px-3">
+                      {item.isCancelled ? (
+                        <Badge variant="destructive" className="text-[10px]">Cancelled</Badge>
+                      ) : (
+                        <Badge variant="default" className="text-[10px] bg-green-100 text-green-700 hover:bg-green-100">Active</Badge>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      )}
+
+      {activeSubTab === 'billing' && (
+        billingPeriodTxns.length === 0 ? <EmptyState message="No billing period transactions found" /> : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-billing-period-transactions">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Period</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Description</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Service</th>
+                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Debit</th>
+                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Credit</th>
+                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {billingPeriodTxns.map((item: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="py-2 px-3 text-slate-600">{item.period || item.billingPeriod || '-'}</td>
+                    <td className="py-2 px-3">{item.description || item.transactionDescription || '-'}</td>
+                    <td className="py-2 px-3">{item.serviceType || item.serviceDescription || '-'}</td>
+                    <td className="py-2 px-3 text-right font-mono">{(item.debit ?? item.debitAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    <td className="py-2 px-3 text-right font-mono">{(item.credit ?? item.creditAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    <td className="py-2 px-3 text-right font-mono font-semibold">{(item.balance ?? item.runningBalance ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      )}
+
+      {activeSubTab === 'detailed' && (
+        detailedTxns.length === 0 ? <EmptyState message="No detailed transactions found" /> : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-detailed-transactions">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Type</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Description</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Service</th>
+                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Reference</th>
+                </tr>
+              </thead>
+              <tbody>
+                {detailedTxns.map((item: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="py-2 px-3 text-slate-600">{item.transactionDate ? new Date(item.transactionDate).toLocaleDateString('en-ZA') : item.date || '-'}</td>
+                    <td className="py-2 px-3">{item.transactionType || item.type || '-'}</td>
+                    <td className="py-2 px-3">{item.description || item.transactionDescription || '-'}</td>
+                    <td className="py-2 px-3">{item.serviceType || item.serviceDescription || '-'}</td>
+                    <td className="py-2 px-3 text-right font-mono font-semibold">{(item.amount ?? item.transactionAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    <td className="py-2 px-3 text-slate-500 text-xs">{item.reference || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      )}
+    </div>
+  );
+}
+
+function ServicesMetersTab({ accountId, unitId }: { accountId: number; unitId?: number }) {
+  const [allServices, setAllServices] = useState<any[]>([]);
+  const [meteredServices, setMeteredServices] = useState<any[]>([]);
+  const [meterPerProperty, setMeterPerProperty] = useState<any[]>([]);
+  const [unitLinkedMeters, setUnitLinkedMeters] = useState<any[]>([]);
+  const [prepaidMeters, setPrepaidMeters] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const loaded = useRef(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [svc, metered, mpp, ulm, prepaid] = await Promise.all([
+        getAllServices(accountId).catch(() => []),
+        getMeteredServicesOnAccount(accountId).catch(() => []),
+        getAccountServiceMeterPerProperty(accountId).catch(() => []),
+        unitId ? getUnitLinkedMeters(unitId).catch(() => []) : Promise.resolve([]),
+        getPrepaidMeterServicesForAccount(accountId).catch(() => []),
+      ]);
+      setAllServices(svc);
+      setMeteredServices(metered);
+      setMeterPerProperty(mpp);
+      setUnitLinkedMeters(ulm);
+      setPrepaidMeters(prepaid);
+      loaded.current = true;
+    } catch (e: any) {
+      setError(e.message || 'Failed to load services & meters');
+    } finally {
+      setLoading(false);
+    }
+  }, [accountId, unitId]);
+
+  useEffect(() => { if (!loaded.current) load(); }, [load]);
+
+  if (loading) return <LoadingSkeleton />;
+  if (error) return <ErrorState message={error} onRetry={load} />;
+
+  const hasData = allServices.length || meteredServices.length || meterPerProperty.length || unitLinkedMeters.length || prepaidMeters.length;
+  if (!hasData) return <EmptyState message="No services or meter data available" />;
+
+  return (
+    <div className="p-4 space-y-4">
+      {allServices.length > 0 && (
+        <>
+          <SectionHeader title="All Services" />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-all-services">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Service ID</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Service Type</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Description</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Tariff</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allServices.map((s: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="py-2 px-3 font-mono text-blue-700">{s.serviceId || s.service_ID || s.serviceID || '-'}</td>
+                    <td className="py-2 px-3 font-medium">{s.serviceType || s.serviceTypeDescription || '-'}</td>
+                    <td className="py-2 px-3">{s.description || s.serviceDescription || '-'}</td>
+                    <td className="py-2 px-3"><Badge variant={s.status === 'Active' ? 'default' : 'secondary'} className="text-[10px]">{s.status || s.serviceStatus || '-'}</Badge></td>
+                    <td className="py-2 px-3 text-slate-500">{s.tariff || s.tariffCode || s.tariffDescription || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {meteredServices.length > 0 && (
+        <>
+          <SectionHeader title="Metered Services" />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-metered-services">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Meter Number</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Service</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Meter Type</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
+                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Last Reading</th>
+                </tr>
+              </thead>
+              <tbody>
+                {meteredServices.map((m: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="py-2 px-3 font-mono font-medium text-slate-700">{m.meterNumber || m.physicalMeterNumber || '-'}</td>
+                    <td className="py-2 px-3">{m.serviceType || m.serviceDescription || '-'}</td>
+                    <td className="py-2 px-3">{m.meterType || m.meterTypeDescription || '-'}</td>
+                    <td className="py-2 px-3"><Badge variant="outline" className="text-[10px]">{m.status || m.meterStatus || '-'}</Badge></td>
+                    <td className="py-2 px-3 text-right font-mono">{m.lastReading ?? m.currentReading ?? '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {meterPerProperty.length > 0 && (
+        <>
+          <SectionHeader title="Meters Per Property" />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-meter-per-property">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Property</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Service</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Meter</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {meterPerProperty.map((m: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="py-2 px-3">{m.propertyDescription || m.propertyId || '-'}</td>
+                    <td className="py-2 px-3">{m.serviceType || m.serviceDescription || '-'}</td>
+                    <td className="py-2 px-3 font-mono">{m.meterNumber || m.physicalMeterNumber || '-'}</td>
+                    <td className="py-2 px-3">{m.status || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {unitLinkedMeters.length > 0 && (
+        <>
+          <SectionHeader title="Unit Linked Meters" />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-unit-linked-meters">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Meter Number</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Service</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Type</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {unitLinkedMeters.map((m: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="py-2 px-3 font-mono">{m.meterNumber || m.physicalMeterNumber || '-'}</td>
+                    <td className="py-2 px-3">{m.serviceType || m.serviceDescription || '-'}</td>
+                    <td className="py-2 px-3">{m.meterType || '-'}</td>
+                    <td className="py-2 px-3">{m.status || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {prepaidMeters.length > 0 && (
+        <>
+          <SectionHeader title="Prepaid Meter Services" />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-prepaid-meters">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Meter Number</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Service</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
+                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Last Recharge</th>
+                </tr>
+              </thead>
+              <tbody>
+                {prepaidMeters.map((m: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="py-2 px-3 font-mono font-medium">{m.meterNumber || m.physicalMeterNumber || '-'}</td>
+                    <td className="py-2 px-3">{m.serviceType || m.serviceDescription || '-'}</td>
+                    <td className="py-2 px-3">{m.status || m.meterStatus || '-'}</td>
+                    <td className="py-2 px-3 text-right font-mono">{m.lastRechargeDate ? new Date(m.lastRechargeDate).toLocaleDateString('en-ZA') : (m.lastRechargeAmount ?? '-')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function PaymentPlansTab({ accountId }: { accountId: number }) {
+  const [plans, setPlans] = useState<any[]>([]);
+  const [remainingCapital, setRemainingCapital] = useState<any>(null);
+  const [repaymentStatus, setRepaymentStatus] = useState<any>(null);
+  const [extensions, setExtensions] = useState<any[]>([]);
+  const [paymentAmounts, setPaymentAmounts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const loaded = useRef(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [pl, rc, rs, ext, pa] = await Promise.all([
+        getPaymentPlansByAccountId(accountId).catch(() => []),
+        getPaymentPlanRemainingCapital(accountId).catch(() => null),
+        getRepaymentPlanStatus(accountId).catch(() => null),
+        getPaymentExtensionSearchResults(accountId).catch(() => []),
+        getPaymentAmountByAccountIds(accountId).catch(() => []),
+      ]);
+      setPlans(pl);
+      setRemainingCapital(rc);
+      setRepaymentStatus(rs);
+      setExtensions(ext);
+      setPaymentAmounts(pa);
+      loaded.current = true;
+    } catch (e: any) {
+      setError(e.message || 'Failed to load payment plans');
+    } finally {
+      setLoading(false);
+    }
+  }, [accountId]);
+
+  useEffect(() => { if (!loaded.current) load(); }, [load]);
+
+  if (loading) return <LoadingSkeleton />;
+  if (error) return <ErrorState message={error} onRetry={load} />;
+
+  const hasData = plans.length || remainingCapital || repaymentStatus || extensions.length || paymentAmounts.length;
+  if (!hasData) return <EmptyState message="No payment plan data available" />;
+
+  return (
+    <div className="p-4 space-y-4">
+      {(remainingCapital || repaymentStatus) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {remainingCapital && (
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-slate-600">Remaining Capital</CardTitle></CardHeader>
+              <CardContent className="space-y-0">
+                {typeof remainingCapital === 'object' ? (
+                  Object.entries(remainingCapital).filter(([k]) => !k.startsWith('_')).map(([key, val]) => (
+                    <FieldRow key={key} label={key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())} value={val as any} />
+                  ))
+                ) : (
+                  <FieldRow label="Remaining Capital" value={remainingCapital} />
+                )}
+              </CardContent>
+            </Card>
+          )}
+          {repaymentStatus && (
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-slate-600">Repayment Plan Status</CardTitle></CardHeader>
+              <CardContent className="space-y-0">
+                {typeof repaymentStatus === 'object' ? (
+                  Object.entries(repaymentStatus).filter(([k]) => !k.startsWith('_')).map(([key, val]) => (
+                    <FieldRow key={key} label={key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())} value={val as any} />
+                  ))
+                ) : (
+                  <FieldRow label="Status" value={repaymentStatus} />
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {plans.length > 0 && (
+        <>
+          <SectionHeader title="Payment Plans" />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-payment-plans">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Plan ID</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Type</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Start Date</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">End Date</th>
+                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Instalment</th>
+                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Total Amount</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {plans.map((p: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="py-2 px-3 font-mono">{p.planId || p.paymentPlanId || p.plan_ID || '-'}</td>
+                    <td className="py-2 px-3">{p.planType || p.paymentPlanType || '-'}</td>
+                    <td className="py-2 px-3 text-slate-600">{p.startDate ? new Date(p.startDate).toLocaleDateString('en-ZA') : '-'}</td>
+                    <td className="py-2 px-3 text-slate-600">{p.endDate ? new Date(p.endDate).toLocaleDateString('en-ZA') : '-'}</td>
+                    <td className="py-2 px-3 text-right font-mono">{(p.instalmentAmount ?? p.instalment ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    <td className="py-2 px-3 text-right font-mono font-semibold">{(p.totalAmount ?? p.amount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    <td className="py-2 px-3"><Badge variant={p.status === 'Active' ? 'default' : 'secondary'} className="text-[10px]">{p.status || p.planStatus || '-'}</Badge></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {extensions.length > 0 && (
+        <>
+          <SectionHeader title="Payment Extensions" />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-payment-extensions">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Extension Type</th>
+                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {extensions.map((ext: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="py-2 px-3">{ext.extensionDate ? new Date(ext.extensionDate).toLocaleDateString('en-ZA') : ext.date || '-'}</td>
+                    <td className="py-2 px-3">{ext.extensionType || ext.type || '-'}</td>
+                    <td className="py-2 px-3 text-right font-mono">{(ext.amount ?? ext.extensionAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    <td className="py-2 px-3">{ext.status || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {paymentAmounts.length > 0 && (
+        <>
+          <SectionHeader title="Payment Amounts" />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-payment-amounts">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Description</th>
+                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paymentAmounts.map((pa: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="py-2 px-3">{pa.description || pa.paymentDescription || '-'}</td>
+                    <td className="py-2 px-3 text-right font-mono font-semibold">{(pa.amount ?? pa.paymentAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    <td className="py-2 px-3 text-slate-500">{pa.paymentDate ? new Date(pa.paymentDate).toLocaleDateString('en-ZA') : '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function DebitOrdersTab({ accountId }: { accountId: number }) {
+  const [deductions, setDeductions] = useState<any[]>([]);
+  const [debitOrders, setDebitOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const loaded = useRef(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [ded, dob] = await Promise.all([
+        getDebitOrderDeductionByAccount(accountId).catch(() => []),
+        getDebitOrderDeduction(accountId).catch(() => []),
+      ]);
+      setDeductions(ded);
+      setDebitOrders(dob);
+      loaded.current = true;
+    } catch (e: any) {
+      setError(e.message || 'Failed to load debit order data');
+    } finally {
+      setLoading(false);
+    }
+  }, [accountId]);
+
+  useEffect(() => { if (!loaded.current) load(); }, [load]);
+
+  if (loading) return <LoadingSkeleton />;
+  if (error) return <ErrorState message={error} onRetry={load} />;
+  if (!deductions.length && !debitOrders.length) return <EmptyState message="No debit order data available" />;
+
+  return (
+    <div className="p-4 space-y-4">
+      {deductions.length > 0 && (
+        <>
+          <SectionHeader title="Debit Order Deductions" />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-debit-order-deductions">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Bank</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Account</th>
+                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Reference</th>
+                </tr>
+              </thead>
+              <tbody>
+                {deductions.map((d: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="py-2 px-3">{d.deductionDate ? new Date(d.deductionDate).toLocaleDateString('en-ZA') : d.date || '-'}</td>
+                    <td className="py-2 px-3">{d.bankName || d.bank || '-'}</td>
+                    <td className="py-2 px-3 font-mono text-xs">{d.bankAccountNumber || d.accountNumber || '-'}</td>
+                    <td className="py-2 px-3 text-right font-mono font-semibold">{(d.amount ?? d.deductionAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    <td className="py-2 px-3"><Badge variant={d.status === 'Successful' ? 'default' : 'secondary'} className="text-[10px]">{d.status || d.deductionStatus || '-'}</Badge></td>
+                    <td className="py-2 px-3 text-slate-500 text-xs">{d.reference || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {debitOrders.length > 0 && (
+        <>
+          <SectionHeader title="Debit Orders" />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-debit-orders">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Bank</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Branch</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Account Holder</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Account Type</th>
+                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Day of Deduction</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {debitOrders.map((d: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="py-2 px-3">{d.bankName || d.bank || '-'}</td>
+                    <td className="py-2 px-3">{d.branchCode || d.branch || '-'}</td>
+                    <td className="py-2 px-3 font-medium">{d.accountHolderName || d.accountHolder || '-'}</td>
+                    <td className="py-2 px-3">{d.accountType || '-'}</td>
+                    <td className="py-2 px-3 text-right font-mono font-semibold">{(d.amount ?? d.debitOrderAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    <td className="py-2 px-3">{d.deductionDay || d.dayOfDeduction || '-'}</td>
+                    <td className="py-2 px-3"><Badge variant={d.status === 'Active' ? 'default' : 'secondary'} className="text-[10px]">{d.status || '-'}</Badge></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function RatesValuationsTab({ accountId, propertyId }: { accountId: number; propertyId?: number }) {
+  const [ratesDetails, setRatesDetails] = useState<any[]>([]);
+  const [ratesHistory, setRatesHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const loaded = useRef(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [rd, rh] = await Promise.all([
+        getAccountRatesDetails(accountId).catch(() => []),
+        getRatesRunHistory(accountId).catch(() => []),
+      ]);
+      setRatesDetails(rd);
+      setRatesHistory(rh);
+      loaded.current = true;
+    } catch (e: any) {
+      setError(e.message || 'Failed to load rates & valuations');
+    } finally {
+      setLoading(false);
+    }
+  }, [accountId]);
+
+  useEffect(() => { if (!loaded.current) load(); }, [load]);
+
+  if (loading) return <LoadingSkeleton />;
+  if (error) return <ErrorState message={error} onRetry={load} />;
+  if (!ratesDetails.length && !ratesHistory.length) return <EmptyState message="No rates & valuations data available" />;
+
+  return (
+    <div className="p-4 space-y-4">
+      {ratesDetails.length > 0 && (
+        <>
+          <SectionHeader title="Account Rates Details" />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-rates-details">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Category</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Description</th>
+                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Market Value</th>
+                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Rateable Value</th>
+                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Rate</th>
+                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Monthly Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ratesDetails.map((r: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="py-2 px-3 font-medium">{r.category || r.rateCategory || '-'}</td>
+                    <td className="py-2 px-3">{r.description || r.rateDescription || '-'}</td>
+                    <td className="py-2 px-3 text-right font-mono">{(r.marketValue ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    <td className="py-2 px-3 text-right font-mono">{(r.rateableValue ?? r.ratableValue ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    <td className="py-2 px-3 text-right font-mono">{r.rateInRand ?? r.rate ?? '-'}</td>
+                    <td className="py-2 px-3 text-right font-mono font-semibold">{(r.monthlyAmount ?? r.amount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {ratesHistory.length > 0 && (
+        <>
+          <SectionHeader title="Rates Run History" />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-rates-run-history">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Run Date</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Period</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Description</th>
+                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ratesHistory.map((r: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="py-2 px-3 text-slate-600">{r.runDate ? new Date(r.runDate).toLocaleDateString('en-ZA') : r.date || '-'}</td>
+                    <td className="py-2 px-3">{r.period || r.billingPeriod || '-'}</td>
+                    <td className="py-2 px-3">{r.description || '-'}</td>
+                    <td className="py-2 px-3 text-right font-mono font-semibold">{(r.amount ?? r.ratesAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    <td className="py-2 px-3"><Badge variant="outline" className="text-[10px]">{r.status || '-'}</Badge></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function NotificationsTab({ accountId }: { accountId: number }) {
+  const [accountNotifs, setAccountNotifs] = useState<any[]>([]);
+  const [propertyNotif, setPropertyNotif] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const loaded = useRef(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [an, pn] = await Promise.all([
+        getAccountNotifications(accountId).catch(() => []),
+        getPropertyNotification(accountId).catch(() => null),
+      ]);
+      setAccountNotifs(an);
+      setPropertyNotif(pn);
+      loaded.current = true;
+    } catch (e: any) {
+      setError(e.message || 'Failed to load notifications');
+    } finally {
+      setLoading(false);
+    }
+  }, [accountId]);
+
+  useEffect(() => { if (!loaded.current) load(); }, [load]);
+
+  if (loading) return <LoadingSkeleton />;
+  if (error) return <ErrorState message={error} onRetry={load} />;
+  if (!accountNotifs.length && !propertyNotif) return <EmptyState message="No notifications available" />;
+
+  return (
+    <div className="p-4 space-y-4">
+      {propertyNotif && (
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-slate-600">Property Notification</CardTitle></CardHeader>
+          <CardContent className="space-y-0">
+            {typeof propertyNotif === 'object' ? (
+              Object.entries(propertyNotif).filter(([k]) => !k.startsWith('_')).map(([key, val]) => (
+                <FieldRow key={key} label={key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())} value={val as any} />
+              ))
+            ) : (
+              <FieldRow label="Notification" value={propertyNotif} />
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {accountNotifs.length > 0 && (
+        <>
+          <SectionHeader title="Account Notifications" />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-account-notifications">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Type</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Message</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Created By</th>
+                </tr>
+              </thead>
+              <tbody>
+                {accountNotifs.map((n: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="py-2 px-3 text-slate-600">{n.notificationDate ? new Date(n.notificationDate).toLocaleDateString('en-ZA') : n.date || n.createdDate || '-'}</td>
+                    <td className="py-2 px-3 font-medium">{n.notificationType || n.type || '-'}</td>
+                    <td className="py-2 px-3 max-w-[300px] truncate">{n.message || n.notificationMessage || n.description || '-'}</td>
+                    <td className="py-2 px-3"><Badge variant="outline" className="text-[10px]">{n.status || n.notificationStatus || '-'}</Badge></td>
+                    <td className="py-2 px-3 text-slate-500 text-xs">{n.createdBy || n.user || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function StatementsTab({ accountId }: { accountId: number }) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -657,56 +1634,254 @@ function TransactionHistoryTab({ accountNumber }: { accountNumber: string }) {
     setLoading(true);
     setError(null);
     try {
-      const result = await getTransactionHistory(accountNumber);
+      const result = await getGeneratedStatements(accountId);
       setData(result);
       loaded.current = true;
     } catch (e: any) {
-      setError(e.message || 'Failed to load transaction history');
+      setError(e.message || 'Failed to load statements');
     } finally {
       setLoading(false);
     }
-  }, [accountNumber]);
+  }, [accountId]);
 
   useEffect(() => { if (!loaded.current) load(); }, [load]);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
-  if (!data.length) return <EmptyState message="No transaction history found" />;
+  if (!data.length) return <EmptyState message="No generated statements available" />;
 
   return (
     <div className="p-4 overflow-x-auto">
-      <table className="w-full text-sm" data-testid="table-transaction-history">
+      <table className="w-full text-sm" data-testid="table-statements">
         <thead>
           <tr className="border-b-2 border-slate-200">
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Receipt No.</th>
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Payment Type</th>
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Payment Option</th>
+            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Statement Date</th>
+            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Period</th>
+            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Description</th>
             <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
-            <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Tender</th>
-            <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Change</th>
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Cashier</th>
+            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
+            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Type</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((s: any, i: number) => (
+            <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+              <td className="py-2 px-3 text-slate-600">{s.statementDate ? new Date(s.statementDate).toLocaleDateString('en-ZA') : s.date || s.generatedDate || '-'}</td>
+              <td className="py-2 px-3">{s.period || s.billingPeriod || '-'}</td>
+              <td className="py-2 px-3">{s.description || s.statementDescription || '-'}</td>
+              <td className="py-2 px-3 text-right font-mono font-semibold">{(s.amount ?? s.totalAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+              <td className="py-2 px-3"><Badge variant="outline" className="text-[10px]">{s.status || '-'}</Badge></td>
+              <td className="py-2 px-3 text-slate-500">{s.statementType || s.type || '-'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ClearanceTab({ accountId }: { accountId: number }) {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const loaded = useRef(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getClearanceInquiries(accountId);
+      setData(result);
+      loaded.current = true;
+    } catch (e: any) {
+      setError(e.message || 'Failed to load clearance data');
+    } finally {
+      setLoading(false);
+    }
+  }, [accountId]);
+
+  useEffect(() => { if (!loaded.current) load(); }, [load]);
+
+  if (loading) return <LoadingSkeleton />;
+  if (error) return <ErrorState message={error} onRetry={load} />;
+  if (!data.length) return <EmptyState message="No clearance inquiries available" />;
+
+  return (
+    <div className="p-4 overflow-x-auto">
+      <table className="w-full text-sm" data-testid="table-clearance">
+        <thead>
+          <tr className="border-b-2 border-slate-200">
+            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
+            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Type</th>
+            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Description</th>
+            <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
+            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
+            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Reference</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((c: any, i: number) => (
+            <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+              <td className="py-2 px-3 text-slate-600">{c.clearanceDate ? new Date(c.clearanceDate).toLocaleDateString('en-ZA') : c.date || c.applicationDate || '-'}</td>
+              <td className="py-2 px-3 font-medium">{c.clearanceType || c.type || '-'}</td>
+              <td className="py-2 px-3">{c.description || c.clearanceDescription || '-'}</td>
+              <td className="py-2 px-3 text-right font-mono font-semibold">{(c.amount ?? c.clearanceAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+              <td className="py-2 px-3"><Badge variant={c.status === 'Approved' ? 'default' : 'secondary'} className="text-[10px]">{c.status || c.clearanceStatus || '-'}</Badge></td>
+              <td className="py-2 px-3 text-slate-500 text-xs">{c.reference || c.clearanceReference || '-'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function DebtorNotesTab({ accountId }: { accountId: number }) {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const loaded = useRef(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getDebtorNoteLists(accountId);
+      setData(result);
+      loaded.current = true;
+    } catch (e: any) {
+      setError(e.message || 'Failed to load debtor notes');
+    } finally {
+      setLoading(false);
+    }
+  }, [accountId]);
+
+  useEffect(() => { if (!loaded.current) load(); }, [load]);
+
+  if (loading) return <LoadingSkeleton />;
+  if (error) return <ErrorState message={error} onRetry={load} />;
+  if (!data.length) return <EmptyState message="No debtor notes available" />;
+
+  return (
+    <div className="p-4 overflow-x-auto">
+      <table className="w-full text-sm" data-testid="table-debtor-notes">
+        <thead>
+          <tr className="border-b-2 border-slate-200">
+            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
+            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Note Type</th>
+            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Description</th>
+            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Created By</th>
+            <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
             <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
           </tr>
         </thead>
         <tbody>
-          {data.map((item: any, i: number) => (
-            <tr key={item.receiptId || i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-              <td className="py-2 px-3 font-mono text-blue-700 font-medium">{item.receiptNo || '-'}</td>
-              <td className="py-2 px-3 text-slate-600">{item.receiptDate ? new Date(item.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
-              <td className="py-2 px-3">{item.paymentType || '-'}</td>
-              <td className="py-2 px-3">{item.paymentOption || '-'}</td>
-              <td className="py-2 px-3 text-right font-mono font-semibold">{(item.amount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-              <td className="py-2 px-3 text-right font-mono">{(item.tenderAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-              <td className="py-2 px-3 text-right font-mono">{(item.changeAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-              <td className="py-2 px-3 text-slate-500 text-xs">{item.cashierName || '-'}</td>
-              <td className="py-2 px-3">
-                {item.isCancelled ? (
-                  <Badge variant="destructive" className="text-[10px]">Cancelled</Badge>
-                ) : (
-                  <Badge variant="default" className="text-[10px] bg-green-100 text-green-700 hover:bg-green-100">Active</Badge>
-                )}
-              </td>
+          {data.map((n: any, i: number) => (
+            <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+              <td className="py-2 px-3 text-slate-600">{n.noteDate ? new Date(n.noteDate).toLocaleDateString('en-ZA') : n.date || n.createdDate || '-'}</td>
+              <td className="py-2 px-3 font-medium">{n.noteType || n.type || '-'}</td>
+              <td className="py-2 px-3 max-w-[300px] truncate">{n.description || n.noteDescription || n.notes || '-'}</td>
+              <td className="py-2 px-3 text-slate-500 text-xs">{n.createdBy || n.user || '-'}</td>
+              <td className="py-2 px-3 text-right font-mono">{n.amount != null ? (n.amount).toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : '-'}</td>
+              <td className="py-2 px-3"><Badge variant="outline" className="text-[10px]">{n.status || '-'}</Badge></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Section129Tab({ accountId }: { accountId: number }) {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const loaded = useRef(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getSection129AccountEnquiry(accountId);
+      setData(result);
+      loaded.current = true;
+    } catch (e: any) {
+      setError(e.message || 'Failed to load Section 129 data');
+    } finally {
+      setLoading(false);
+    }
+  }, [accountId]);
+
+  useEffect(() => { if (!loaded.current) load(); }, [load]);
+
+  if (loading) return <LoadingSkeleton />;
+  if (error) return <ErrorState message={error} onRetry={load} />;
+  if (!data) return <EmptyState message="No Section 129 data available" />;
+
+  const items = Array.isArray(data) ? data : [data];
+  return (
+    <div className="p-4 space-y-4">
+      {items.map((item: any, i: number) => (
+        <Card key={i}>
+          <CardContent className="pt-4 space-y-0">
+            {Object.entries(item).filter(([k]) => !k.startsWith('_')).map(([key, val]) => (
+              <FieldRow key={key} label={key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())} value={val as any} />
+            ))}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function OccupiersTab({ accountId }: { accountId: number }) {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const loaded = useRef(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getOccupiers(accountId);
+      setData(result);
+      loaded.current = true;
+    } catch (e: any) {
+      setError(e.message || 'Failed to load occupiers data');
+    } finally {
+      setLoading(false);
+    }
+  }, [accountId]);
+
+  useEffect(() => { if (!loaded.current) load(); }, [load]);
+
+  if (loading) return <LoadingSkeleton />;
+  if (error) return <ErrorState message={error} onRetry={load} />;
+  if (!data.length) return <EmptyState message="No occupiers data available" />;
+
+  return (
+    <div className="p-4 overflow-x-auto">
+      <table className="w-full text-sm" data-testid="table-occupiers">
+        <thead>
+          <tr className="border-b-2 border-slate-200">
+            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Name</th>
+            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">ID Number</th>
+            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Contact</th>
+            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Email</th>
+            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Move In Date</th>
+            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((o: any, i: number) => (
+            <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+              <td className="py-2 px-3 font-medium">{o.name || o.occupierName || o.surname || '-'}</td>
+              <td className="py-2 px-3 font-mono text-xs">{o.idNumber || o.idRegistrationNumber || '-'}</td>
+              <td className="py-2 px-3">{o.contactNumber || o.tel_Mobile || o.phone || '-'}</td>
+              <td className="py-2 px-3 text-slate-500">{o.email || o.emailAddress || '-'}</td>
+              <td className="py-2 px-3">{o.moveInDate ? new Date(o.moveInDate).toLocaleDateString('en-ZA') : o.startDate || '-'}</td>
+              <td className="py-2 px-3"><Badge variant={o.status === 'Active' ? 'default' : 'secondary'} className="text-[10px]">{o.status || o.occupierStatus || '-'}</Badge></td>
             </tr>
           ))}
         </tbody>
@@ -983,6 +2158,8 @@ function GeneralEnquiriesContent() {
 
   if (selectedAccount) {
     const accountId = selectedAccount.account_ID || selectedAccount.accountID;
+    const propertyId = selectedAccount.propertyID ? Number(selectedAccount.propertyID) : (selectedAccount.unitID || selectedAccount.unitPartitionID || undefined);
+    const unitId = selectedAccount.unitID || undefined;
     return (
       <div className="flex flex-col h-full overflow-hidden">
         <div className="shrink-0 bg-white border-b px-4 sm:px-6 py-3 flex items-center gap-4">
@@ -1010,18 +2187,28 @@ function GeneralEnquiriesContent() {
 
         <div className="flex-1 overflow-auto bg-slate-50">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <div className="shrink-0 bg-white border-b px-4 sm:px-6">
-              <TabsList className="h-auto flex flex-wrap gap-0.5 bg-transparent p-0 justify-start">
-                <TabsTrigger value="account" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5" data-testid="tab-account-info">Account Info</TabsTrigger>
-                <TabsTrigger value="balance" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5" data-testid="tab-balance">Balance / Debt</TabsTrigger>
-                <TabsTrigger value="services" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5" data-testid="tab-services">Service Balances</TabsTrigger>
-                <TabsTrigger value="property" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5" data-testid="tab-property">Property</TabsTrigger>
-                <TabsTrigger value="consumption" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5" data-testid="tab-consumption">Consumption</TabsTrigger>
-                <TabsTrigger value="contact" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5" data-testid="tab-contact">Contact</TabsTrigger>
-                <TabsTrigger value="handover" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5" data-testid="tab-handover">Handover</TabsTrigger>
-                <TabsTrigger value="incentives" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5" data-testid="tab-incentives">Incentives</TabsTrigger>
-                <TabsTrigger value="deposits" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5" data-testid="tab-deposits">Deposits</TabsTrigger>
-                <TabsTrigger value="transactions" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5" data-testid="tab-transactions">Transactions</TabsTrigger>
+            <div className="shrink-0 bg-white border-b px-2 sm:px-4 overflow-x-auto">
+              <TabsList className="h-auto flex flex-nowrap gap-0.5 bg-transparent p-0 justify-start min-w-max">
+                <TabsTrigger value="account" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-account-info">Account Info</TabsTrigger>
+                <TabsTrigger value="balance" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-balance">Balance / Debt</TabsTrigger>
+                <TabsTrigger value="services" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-services">Service Balances</TabsTrigger>
+                <TabsTrigger value="property" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-property">Property</TabsTrigger>
+                <TabsTrigger value="consumption" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-consumption">Consumption</TabsTrigger>
+                <TabsTrigger value="contact" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-contact">Contact</TabsTrigger>
+                <TabsTrigger value="handover" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-handover">Handover</TabsTrigger>
+                <TabsTrigger value="incentives" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-incentives">Incentives</TabsTrigger>
+                <TabsTrigger value="deposits" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-deposits">Deposits</TabsTrigger>
+                <TabsTrigger value="transactions" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-transactions">Transactions</TabsTrigger>
+                <TabsTrigger value="services-meters" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-services-meters">Services & Meters</TabsTrigger>
+                <TabsTrigger value="payment-plans" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-payment-plans">Payment Plans</TabsTrigger>
+                <TabsTrigger value="debit-orders" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-debit-orders">Debit Orders</TabsTrigger>
+                <TabsTrigger value="rates" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-rates">Rates & Valuations</TabsTrigger>
+                <TabsTrigger value="notifications" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-notifications">Notifications</TabsTrigger>
+                <TabsTrigger value="statements" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-statements">Statements</TabsTrigger>
+                <TabsTrigger value="clearance" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-clearance">Clearance</TabsTrigger>
+                <TabsTrigger value="debtor-notes" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-debtor-notes">Debtor Notes</TabsTrigger>
+                <TabsTrigger value="section129" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-section129">Section 129</TabsTrigger>
+                <TabsTrigger value="occupiers" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-occupiers">Occupiers</TabsTrigger>
               </TabsList>
             </div>
             <div className="flex-1 overflow-auto">
@@ -1034,7 +2221,17 @@ function GeneralEnquiriesContent() {
               <TabsContent value="handover" className="m-0"><HandoverTab accountId={accountId} /></TabsContent>
               <TabsContent value="incentives" className="m-0"><IncentivesTab accountId={accountId} /></TabsContent>
               <TabsContent value="deposits" className="m-0"><DepositsTab accountId={accountId} /></TabsContent>
-              <TabsContent value="transactions" className="m-0"><TransactionHistoryTab accountNumber={selectedAccount.accountNumber || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabsContent>
+              <TabsContent value="transactions" className="m-0"><TransactionHistoryTab accountId={accountId} accountNumber={selectedAccount.accountNumber || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabsContent>
+              <TabsContent value="services-meters" className="m-0"><ServicesMetersTab accountId={accountId} unitId={unitId} /></TabsContent>
+              <TabsContent value="payment-plans" className="m-0"><PaymentPlansTab accountId={accountId} /></TabsContent>
+              <TabsContent value="debit-orders" className="m-0"><DebitOrdersTab accountId={accountId} /></TabsContent>
+              <TabsContent value="rates" className="m-0"><RatesValuationsTab accountId={accountId} propertyId={propertyId} /></TabsContent>
+              <TabsContent value="notifications" className="m-0"><NotificationsTab accountId={accountId} /></TabsContent>
+              <TabsContent value="statements" className="m-0"><StatementsTab accountId={accountId} /></TabsContent>
+              <TabsContent value="clearance" className="m-0"><ClearanceTab accountId={accountId} /></TabsContent>
+              <TabsContent value="debtor-notes" className="m-0"><DebtorNotesTab accountId={accountId} /></TabsContent>
+              <TabsContent value="section129" className="m-0"><Section129Tab accountId={accountId} /></TabsContent>
+              <TabsContent value="occupiers" className="m-0"><OccupiersTab accountId={accountId} /></TabsContent>
             </div>
           </Tabs>
         </div>
