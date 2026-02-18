@@ -11,7 +11,8 @@ import {
   Search, X, ChevronLeft, User, Building2, MapPin, Phone, Mail,
   CreditCard, Droplets, Zap, FileText, Shield, Gift, Landmark,
   RefreshCw, AlertTriangle, ChevronDown, ChevronUp, Hash, Globe,
-  Filter, Clock, ArrowRight, Loader2, SlidersHorizontal
+  Filter, Clock, ArrowRight, Loader2, SlidersHorizontal,
+  Eye, Layers, Home, Activity, ChevronRight
 } from 'lucide-react';
 import {
   searchAccounts, getAccountBalance, getServiceTypeBalance,
@@ -27,7 +28,7 @@ import {
   getPaymentPlansByAccountId, getPaymentPlanRemainingCapital,
   getRepaymentPlanStatus, getPaymentExtensionSearchResults, getPaymentAmountByAccountIds,
   getDebitOrderDeductionByAccount, getDebitOrderDeduction,
-  getAccountRatesDetails, getRatesRunHistory,
+  getAccountRatesDetails, getRatesRunHistory, getSectionalTitleScheme,
   getAccountNotifications, getPropertyNotification,
   getGeneratedStatements,
   getClearanceInquiries,
@@ -2014,6 +2015,254 @@ function SmartSearchDropdown({
   );
 }
 
+function ExpandableResultRow({ account, onSelect, isExpanded, onToggleExpand }: {
+  account: EnquirySearchResult;
+  onSelect: (account: EnquirySearchResult) => void;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+}) {
+  const [enrichedData, setEnrichedData] = useState<{ basicDetails: any; propertyDetails: any; services: any[]; sectionalTitle: any } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
+
+  const accountId = account.account_ID || account.accountID;
+  const aid = account.accountID || account.account_ID || 0;
+  const status = account.accountStatus || account.statusDesc || '-';
+  const outstanding = account.outStandingAmount ?? account.outStandingAmt ?? 0;
+  const acctType = account.accountType || account.accountDesc || '-';
+  const addr = account.address || account.deliveryAddress || account.locationAddress || '-';
+
+  const loadEnrichedData = useCallback(() => {
+    setLoading(true);
+    setFetchError(false);
+    Promise.allSettled([
+      getBasicAccountDetails(accountId),
+      getPropertyDetails(accountId),
+      getAllServices(accountId),
+      getSectionalTitleScheme(accountId),
+    ]).then(([bdResult, pdResult, svcResult, stResult]) => {
+      const allFailed = [bdResult, pdResult, svcResult].every(r => r.status === 'rejected');
+      if (allFailed) {
+        setFetchError(true);
+      } else {
+        setEnrichedData({
+          basicDetails: bdResult.status === 'fulfilled' ? bdResult.value : null,
+          propertyDetails: pdResult.status === 'fulfilled' ? (Array.isArray(pdResult.value) ? pdResult.value[0] : pdResult.value) : null,
+          services: svcResult.status === 'fulfilled' ? (Array.isArray(svcResult.value) ? svcResult.value : []) : [],
+          sectionalTitle: stResult.status === 'fulfilled' ? stResult.value : null,
+        });
+      }
+      setLoaded(true);
+      setLoading(false);
+    });
+  }, [accountId]);
+
+  useEffect(() => {
+    if (isExpanded && !loaded && !loading) {
+      loadEnrichedData();
+    }
+  }, [isExpanded, loaded, loading, loadEnrichedData]);
+
+  const bd = enrichedData?.basicDetails || {};
+  const pd = enrichedData?.propertyDetails || {};
+  const services = enrichedData?.services || [];
+  const st = enrichedData?.sectionalTitle;
+  const activeServices = services.filter((s: any) => (s.statusDesc || s.status || '').toLowerCase().trim() === 'active');
+
+  return (
+    <div data-testid={`expandable-row-${aid}`}>
+      <div
+        className={`flex items-center gap-2 px-4 py-2.5 border-b border-slate-100 transition-all duration-200 ${isExpanded ? 'bg-blue-50/80 border-l-2 border-l-blue-500' : 'hover:bg-blue-50/60'}`}
+      >
+        <button
+          onClick={onToggleExpand}
+          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md hover:bg-blue-100 transition-colors"
+          data-testid={`btn-expand-${aid}`}
+        >
+          <ChevronRight className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
+        </button>
+
+        <button
+          onClick={() => onSelect(account)}
+          className="font-mono text-blue-700 font-semibold hover:text-blue-900 hover:underline text-sm shrink-0"
+          data-testid={`btn-account-${aid}`}
+        >
+          {account.accountNumber || aid}
+        </button>
+
+        <span className="text-slate-400 text-xs font-mono shrink-0 hidden lg:inline" data-testid={`text-partition-${aid}`}>
+          P:{account.unitPartitionID || '-'}
+        </span>
+
+        <span className="text-slate-500 font-mono text-xs shrink-0 hidden xl:inline">
+          {account.oldAccountCode || '-'}
+        </span>
+
+        <span className="font-medium text-slate-800 text-sm truncate min-w-0 max-w-[180px]" data-testid={`text-name-${aid}`}>
+          {account.name || account.surname_Company || '-'}
+        </span>
+
+        <Badge
+          variant={status.toLowerCase() === 'active' ? 'default' : 'secondary'}
+          className="text-[10px] shrink-0"
+          data-testid={`badge-status-${aid}`}
+        >
+          {status}
+        </Badge>
+
+        <Badge variant="outline" className="text-[10px] font-normal shrink-0 hidden md:inline-flex" data-testid={`badge-type-${aid}`}>
+          {acctType}
+        </Badge>
+
+        <span className={`font-mono text-sm font-semibold shrink-0 ml-auto ${outstanding > 0 ? 'text-red-600' : 'text-green-600'}`} data-testid={`text-outstanding-${aid}`}>
+          R {outstanding.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+        </span>
+
+        <span className="text-slate-500 text-xs truncate max-w-[160px] hidden lg:inline" data-testid={`text-address-${aid}`}>
+          {addr.replace(/\r\n/g, ', ')}
+        </span>
+
+        <span className="text-slate-400 text-xs font-mono shrink-0 hidden xl:inline">
+          {account.sgNumber || '-'}
+        </span>
+
+        <span className="text-slate-400 text-xs shrink-0 hidden xl:inline">
+          U:{account.unitID || '-'}
+        </span>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onSelect(account)}
+          className="shrink-0 h-7 px-2 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-100"
+          data-testid={`btn-open-${aid}`}
+        >
+          <Eye className="w-3.5 h-3.5 mr-1" />
+          Open
+        </Button>
+      </div>
+
+      <div
+        className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}
+      >
+        <div className="bg-gradient-to-b from-blue-50/50 to-white border-b border-slate-200 border-l-2 border-l-blue-500 px-4 py-4">
+          {loading && (
+            <div className="flex items-center gap-3 py-8 justify-center text-slate-400">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span className="text-sm">Loading enriched details...</span>
+            </div>
+          )}
+
+          {loaded && fetchError && (
+            <div className="flex flex-col items-center gap-2 py-6 text-slate-400">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              <span className="text-sm">Could not load enriched details</span>
+              <button onClick={() => { setLoaded(false); setFetchError(false); loadEnrichedData(); }} className="text-xs text-blue-600 hover:text-blue-800 underline" data-testid={`button-retry-enrich-${aid}`}>Retry</button>
+            </div>
+          )}
+
+          {loaded && !fetchError && enrichedData && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/60 shadow-sm overflow-hidden" data-testid={`panel-account-details-${aid}`}>
+                <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-2.5 flex items-center gap-2">
+                  <User className="w-4 h-4 text-white/80" />
+                  <span className="text-xs font-semibold text-white uppercase tracking-wider">Account Details</span>
+                </div>
+                <div className="p-3 space-y-1.5 text-xs">
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                    <div><span className="text-slate-400">Account No:</span> <span className="font-medium text-slate-800">{account.accountNumber || '-'}</span></div>
+                    <div><span className="text-slate-400">Old Code:</span> <span className="font-medium text-slate-800">{account.oldAccountCode || '-'}</span></div>
+                    <div><span className="text-slate-400">Status:</span> <Badge variant={status.toLowerCase() === 'active' ? 'default' : 'secondary'} className="text-[9px] ml-1">{status}</Badge></div>
+                    <div><span className="text-slate-400">Type:</span> <span className="font-medium text-slate-800">{acctType}</span></div>
+                    <div className="col-span-2"><span className="text-slate-400">Name:</span> <span className="font-medium text-slate-800">{account.name || account.surname_Company || '-'}</span></div>
+                    <div><span className="text-slate-400">Initials:</span> <span className="font-medium text-slate-800">{account.initials || bd.initials || '-'}</span></div>
+                    <div><span className="text-slate-400">ID Number:</span> <span className="font-mono font-medium text-slate-800">{account.addName || account.idRegistrationNumber || bd.idRegistrationNumber || '-'}</span></div>
+                    <div><span className="text-slate-400">Credit Status:</span> <span className="font-medium text-slate-800">{bd.creditStatusDesc || bd.creditStatus || bd.creditRating || '-'}</span></div>
+                    <div><span className="text-slate-400">Solvency:</span> <span className="font-medium text-slate-800">{bd.solvencyDesc || bd.solvency || bd.solvencyStatus || '-'}</span></div>
+                    <div><span className="text-slate-400">Institution:</span> <span className="font-medium text-slate-800">{bd.institutionDesc || bd.institution || bd.institutionName || '-'}</span></div>
+                    <div><span className="text-slate-400">Group Code:</span> <span className="font-medium text-slate-800">{bd.groupCodeDesc || bd.groupCode || bd.accountGroup || '-'}</span></div>
+                    <div><span className="text-slate-400">Payment Group:</span> <span className="font-medium text-slate-800">{bd.paymentGroupDesc || bd.paymentGroup || bd.paymentGroupDescription || '-'}</span></div>
+                    <div><span className="text-slate-400">Postal Code:</span> <span className="font-medium text-slate-800">{bd.postalCode || '-'}</span></div>
+                    <div><span className="text-slate-400">Email:</span> <span className="font-medium text-slate-800 truncate">{bd.emailId || bd.email || bd.emailAddress || '-'}</span></div>
+                    <div><span className="text-slate-400">Contact:</span> <span className="font-medium text-slate-800">{bd.contactNo || bd.contactNumber || bd.tel_Mobile || '-'}</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/60 shadow-sm overflow-hidden" data-testid={`panel-property-${aid}`}>
+                <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 px-4 py-2.5 flex items-center gap-2">
+                  <Home className="w-4 h-4 text-white/80" />
+                  <span className="text-xs font-semibold text-white uppercase tracking-wider">Property Information</span>
+                </div>
+                <div className="p-3 space-y-1.5 text-xs">
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                    <div className="col-span-2"><span className="text-slate-400">SG Number:</span> <span className="font-mono font-medium text-slate-800">{account.sgNumber || pd.sgNumber || pd.sg_Number || '-'}</span></div>
+                    <div className="col-span-2"><span className="text-slate-400">Address:</span> <span className="font-medium text-slate-800">{[pd.streetNumber, pd.streetName].filter(Boolean).join(' ') || addr.replace(/\r\n/g, ', ')}</span></div>
+                    <div><span className="text-slate-400">Suburb:</span> <span className="font-medium text-slate-800">{pd.suburb || '-'}</span></div>
+                    <div><span className="text-slate-400">Town:</span> <span className="font-medium text-slate-800">{pd.town || '-'}</span></div>
+                    <div><span className="text-slate-400">Ward:</span> <span className="font-medium text-slate-800">{pd.ward || pd.wardNumber || '-'}</span></div>
+                    <div><span className="text-slate-400">Type of Use:</span> <span className="font-medium text-slate-800">{pd.typeOfUse || pd.propertyTypeOfUse || pd.typeofUse || '-'}</span></div>
+                    <div className="col-span-2"><span className="text-slate-400">Town Planning Zone:</span> <span className="font-medium text-slate-800">{pd.townPlanningZoneType || pd.townPlanningZone || '-'}</span></div>
+                    <div><span className="text-slate-400">Market Value:</span> <span className="font-medium text-slate-800">{pd.marketValue != null ? `R ${Number(pd.marketValue).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}</span></div>
+                    <div><span className="text-slate-400">Stand Size:</span> <span className="font-medium text-slate-800">{pd.standSize || pd.extent || pd.extentM2 || '-'}</span></div>
+                    <div><span className="text-slate-400">Land Size:</span> <span className="font-medium text-slate-800">{pd.landSize || pd.landExtent || '-'}</span></div>
+                    <div><span className="text-slate-400">Roll Number:</span> <span className="font-medium text-slate-800">{pd.rollNumber || pd.valuationRollNumber || '-'}</span></div>
+                    <div><span className="text-slate-400">Rates Tariff:</span> <span className="font-medium text-slate-800">{pd.ratesTariff || pd.tariff || '-'}</span></div>
+                    <div><span className="text-slate-400">Master Property:</span> <span className="font-medium text-slate-800">{pd.masterProperty != null ? (pd.masterProperty ? 'Yes' : 'No') : '-'}</span></div>
+                    {st && (
+                      <>
+                        <div><span className="text-slate-400">SS Unit No:</span> <span className="font-medium text-slate-800">{st.ssUnitNumber || st.unitNumber || '-'}</span></div>
+                        <div className="col-span-2"><span className="text-slate-400">Sectional Title:</span> <span className="font-medium text-slate-800">{st.schemeName || st.sectionalTitleSchemeName || st.name || '-'}</span></div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/60 shadow-sm overflow-hidden" data-testid={`panel-services-${aid}`}>
+                <div className="bg-gradient-to-r from-violet-600 to-violet-700 px-4 py-2.5 flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-white/80" />
+                  <span className="text-xs font-semibold text-white uppercase tracking-wider">Active Services</span>
+                  <Badge className="ml-auto bg-white/20 text-white text-[10px] border-0">{activeServices.length} active</Badge>
+                </div>
+                <div className="p-3 text-xs">
+                  {services.length === 0 ? (
+                    <p className="text-slate-400 text-center py-4">No services found</p>
+                  ) : (
+                    <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
+                      {services.map((svc: any, si: number) => {
+                        const svcStatus = (svc.statusDesc || svc.status || '-').toLowerCase().trim();
+                        const isActive = svcStatus === 'active';
+                        return (
+                          <div key={si} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg ${isActive ? 'bg-green-50/60 border border-green-100' : 'bg-slate-50 border border-slate-100'}`} data-testid={`service-item-${aid}-${si}`}>
+                            <Layers className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <span className="font-medium text-slate-700">{svc.serviceDesc || svc.serviceDescription || svc.serviceType || `Service ${si + 1}`}</span>
+                              {svc.serviceModeDesc && <span className="text-slate-400 ml-1">({svc.serviceModeDesc})</span>}
+                              {svc.tariff && <span className="text-slate-400 ml-1 truncate max-w-[100px] inline-block align-bottom">• {String(svc.tariff).substring(0, 30)}</span>}
+                            </div>
+                            <Badge
+                              variant={isActive ? 'default' : 'secondary'}
+                              className={`text-[9px] shrink-0 ${isActive ? 'bg-green-600' : ''}`}
+                            >
+                              {svc.statusDesc || svc.status || '-'}
+                            </Badge>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function GeneralEnquiriesContent() {
   const [quickQuery, setQuickQuery] = useState('');
   const [criteria, setCriteria] = useState<EnquirySearchCriteria>({});
@@ -2030,6 +2279,7 @@ function GeneralEnquiriesContent() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [searchMode, setSearchMode] = useState<'quick' | 'advanced'>('quick');
+  const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownContainerRef = useRef<HTMLDivElement>(null);
@@ -2431,55 +2681,33 @@ function GeneralEnquiriesContent() {
         )}
 
         {results.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" data-testid="table-search-results">
-              <thead className="sticky top-0 z-10">
-                <tr className="bg-slate-100 border-b-2 border-slate-200">
-                  <th className="text-left py-2.5 px-4 text-xs uppercase tracking-wider text-slate-600 font-semibold">Account No.</th>
-                  <th className="text-left py-2.5 px-4 text-xs uppercase tracking-wider text-slate-600 font-semibold">Old Code</th>
-                  <th className="text-left py-2.5 px-4 text-xs uppercase tracking-wider text-slate-600 font-semibold">Name</th>
-                  <th className="text-left py-2.5 px-4 text-xs uppercase tracking-wider text-slate-600 font-semibold">ID Number</th>
-                  <th className="text-left py-2.5 px-4 text-xs uppercase tracking-wider text-slate-600 font-semibold">Address</th>
-                  <th className="text-left py-2.5 px-4 text-xs uppercase tracking-wider text-slate-600 font-semibold">Type</th>
-                  <th className="text-left py-2.5 px-4 text-xs uppercase tracking-wider text-slate-600 font-semibold">Status</th>
-                  <th className="text-right py-2.5 px-4 text-xs uppercase tracking-wider text-slate-600 font-semibold">Outstanding</th>
-                </tr>
-              </thead>
-              <tbody>
-                {results.map((account, i) => {
-                  const aid = account.accountID || account.account_ID || i;
-                  const status = account.accountStatus || account.statusDesc || '-';
-                  const outstanding = account.outStandingAmount ?? account.outStandingAmt ?? 0;
-                  const acctType = account.accountType || account.accountDesc || '-';
-                  const addr = account.address || account.deliveryAddress || account.locationAddress || '-';
-                  return (
-                    <tr
-                      key={aid}
-                      onClick={() => handleSelectAccount(account)}
-                      className="border-b border-slate-100 hover:bg-blue-50 cursor-pointer transition-colors group"
-                      data-testid={`row-account-${aid}`}
-                    >
-                      <td className="py-2.5 px-4 font-mono text-blue-700 font-semibold group-hover:text-blue-900">{account.accountNumber || aid}</td>
-                      <td className="py-2.5 px-4 text-slate-500 font-mono text-xs">{account.oldAccountCode || '-'}</td>
-                      <td className="py-2.5 px-4 font-medium text-slate-800">{account.name || account.surname_Company || '-'}</td>
-                      <td className="py-2.5 px-4 text-slate-500 text-xs font-mono">{account.idRegistrationNumber || '-'}</td>
-                      <td className="py-2.5 px-4 text-slate-500 text-xs max-w-[200px] truncate">{addr.replace(/\r\n/g, ', ')}</td>
-                      <td className="py-2.5 px-4"><Badge variant="outline" className="text-[10px] font-normal">{acctType}</Badge></td>
-                      <td className="py-2.5 px-4">
-                        <Badge variant={status.toLowerCase() === 'active' ? 'default' : 'secondary'} className="text-[10px]">
-                          {status}
-                        </Badge>
-                      </td>
-                      <td className="py-2.5 px-4 text-right font-mono font-semibold">
-                        <span className={outstanding > 0 ? 'text-red-600' : 'text-green-600'}>
-                          R {outstanding.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="divide-y divide-slate-100" data-testid="table-search-results">
+            <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 border-b-2 border-slate-200 text-[10px] uppercase tracking-wider text-slate-500 font-semibold sticky top-0 z-10">
+              <span className="w-7 shrink-0"></span>
+              <span className="shrink-0 w-[130px]">Account No.</span>
+              <span className="shrink-0 w-[50px] hidden lg:inline">Part. ID</span>
+              <span className="shrink-0 w-[90px] hidden xl:inline">Old Code</span>
+              <span className="flex-1 min-w-[100px]">Name</span>
+              <span className="shrink-0 w-[70px]">Status</span>
+              <span className="shrink-0 w-[70px] hidden md:inline">Type</span>
+              <span className="shrink-0 w-[120px] text-right">Outstanding</span>
+              <span className="shrink-0 w-[140px] hidden lg:inline">Address</span>
+              <span className="shrink-0 w-[90px] hidden xl:inline">SG Number</span>
+              <span className="shrink-0 w-[50px] hidden xl:inline">Unit</span>
+              <span className="shrink-0 w-[60px]"></span>
+            </div>
+            {results.map((account, i) => {
+              const aid = account.accountID || account.account_ID || i;
+              return (
+                <ExpandableResultRow
+                  key={aid}
+                  account={account}
+                  onSelect={handleSelectAccount}
+                  isExpanded={expandedRowId === aid}
+                  onToggleExpand={() => setExpandedRowId(prev => prev === aid ? null : aid)}
+                />
+              );
+            })}
           </div>
         )}
       </div>
