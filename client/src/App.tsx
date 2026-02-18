@@ -22,6 +22,7 @@ import ThirdPartyPaymentProcessing from "@/pages/third-party/payment-processing"
 import SettingsPage from "@/pages/settings";
 import CashierDayEnd from "@/pages/cashier-day-end";
 import BillingDashboard from "@/pages/billing-dashboard";
+import GeneralEnquiries from "@/pages/enquiries-general";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   constructor(props: { children: ReactNode }) {
@@ -89,6 +90,7 @@ function Router() {
       <Route path="/view-receipts" component={ViewReceipts} />
       <Route path="/cashier-day-end" component={CashierDayEnd} />
       <Route path="/billing-dashboard" component={BillingDashboard} />
+      <Route path="/enquiries/general" component={GeneralEnquiries} />
       <Route path="/supervisor" component={SupervisorDashboard} />
       <Route component={NotFound} />
     </Switch>

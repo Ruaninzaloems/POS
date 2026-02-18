@@ -118,6 +118,7 @@ export function PosLayout({ children }: PosLayoutProps) {
     if (path.startsWith('/view-receipts')) return 'View Receipts';
     if (path.startsWith('/cashier-day-end')) return 'Day-End Reconciliation';
     if (path.startsWith('/billing-dashboard')) return 'Billing Dashboard';
+    if (path.startsWith('/enquiries')) return 'Enquiries';
     if (path.startsWith('/supervisor')) return 'Supervisor';
     return 'Menu';
   };
@@ -139,6 +140,13 @@ export function PosLayout({ children }: PosLayoutProps) {
     { label: 'View Receipts', href: '/view-receipts', icon: FileSearch },
     { label: 'Day-End Reconciliation', href: '/cashier-day-end', icon: Calculator },
     { label: 'Billing Dashboard', href: '/billing-dashboard', icon: BarChart3 },
+    {
+        label: 'Enquiries',
+        icon: Search,
+        children: [
+            { label: 'General Enquiries', href: '/enquiries/general', icon: FileSearch },
+        ]
+    },
     { label: 'System Settings', href: '/settings', icon: Settings },
     { label: 'Supervisor', href: '/supervisor', icon: ShieldCheck },
   ];
