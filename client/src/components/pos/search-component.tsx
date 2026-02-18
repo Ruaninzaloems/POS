@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Account } from '@/lib/mock-data';
 import { searchInstitutions, InstitutionSearchResult, fetchMiscPaymentGroups, fetchMiscPaymentScoaItems, MiscPaymentGroup, MiscPaymentScoaItem, platinumGetClearanceIds } from '@/lib/external-api';
+import { autocomplete } from '@/lib/enquiries-service';
 
 export function parseMobileFromContactDetails(contactDetails: string | undefined | null): string {
     if (!contactDetails) return '';
@@ -139,13 +140,19 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
               finYear: finYear || null,
           };
 
+          let acType = 'accountNumber';
           if (/^\d+$/.test(query)) {
               searchBody.accountNo = query;
+              acType = 'accountNumber';
+          } else if (/@/.test(query)) {
+              searchBody.name = query;
+              acType = 'email';
           } else {
               searchBody.name = query;
+              acType = 'nameCompany';
           }
 
-          const [searchRes, institutionResults, clearanceResults] = await Promise.all([
+          const [searchRes, institutionResults, clearanceResults, acSuggestions] = await Promise.all([
               fetch(searchUrl, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -157,6 +164,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
               }),
               searchInstitutions(query),
               (scope === 'ALL' || scope === 'CLEARANCE') ? platinumGetClearanceIds({ clearanceId: query }).catch(() => []) : Promise.resolve([]),
+              autocomplete(query, acType).catch(() => []),
           ]);
 
           clearTimeout(timeoutId);
@@ -168,6 +176,35 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                   allAccountData = data;
               } else if (data?.value && Array.isArray(data.value)) {
                   allAccountData = data.value;
+              }
+          }
+
+          const acAccountIds = (acSuggestions || []).filter((s: any) => s.accountId && s.accountId > 0).map((s: any) => s.accountId);
+          const existingIds = new Set(allAccountData.map((item: any) => item.account_ID || item.accountID));
+          const missingAcIds = acAccountIds.filter((id: number) => !existingIds.has(id)).slice(0, 5);
+
+          if (missingAcIds.length > 0) {
+              const acLookups = await Promise.allSettled(
+                  missingAcIds.map((id: number) =>
+                      fetch('/api/platinum/billing-enquiry/enquiry-results', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ accountID: String(id) }),
+                          signal: controller.signal,
+                      }).then(r => r.ok ? r.json() : null)
+                  )
+              );
+              for (const r of acLookups) {
+                  if (r.status === 'fulfilled' && r.value) {
+                      const items = Array.isArray(r.value) ? r.value : [r.value];
+                      for (const item of items) {
+                          const itemId = item.account_ID || item.accountID;
+                          if (itemId && !existingIds.has(itemId)) {
+                              existingIds.add(itemId);
+                              allAccountData.push(item);
+                          }
+                      }
+                  }
               }
           }
 

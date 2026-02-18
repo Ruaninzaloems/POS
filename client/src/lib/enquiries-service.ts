@@ -156,15 +156,37 @@ export async function billingEnquirySearch(body: any): Promise<any[]> {
   return normalizeArray(data);
 }
 
+const FIELD_TO_AUTOCOMPLETE_TYPE: Record<string, string> = {
+  accountNo: 'accountNumber',
+  name: 'nameCompany',
+  idNo: 'idRegistrationNumber',
+  emailAddress: 'email',
+  physicalMeterNumber: 'physicalMeterNumber',
+  oldAccountCode: 'oldAccountCode',
+  locationAddress: 'locationAddress',
+  erfNumber: 'erfNumber',
+  sgNumber: 'erfNumber',
+  mobileNumber: 'mobileNumber',
+  passportNumber: 'passportNumber',
+};
+
+export function getAutocompleteType(searchField: string): string | null {
+  return FIELD_TO_AUTOCOMPLETE_TYPE[searchField] || null;
+}
+
 export async function autocomplete(search: string, type: string = 'accountNumber'): Promise<{ displayItem: string; accountId: number }[]> {
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/autocomplete?search=${encodeURIComponent(search)}&type=${encodeURIComponent(type)}`);
   return normalizeArray(data);
 }
 
-export async function autocompleteSearch(search: string): Promise<EnquirySearchResult[]> {
-  const suggestions = await autocomplete(search, 'accountNumber');
+export async function autocompleteSearch(search: string, searchField: string = 'accountNo'): Promise<EnquirySearchResult[]> {
+  const acType = getAutocompleteType(searchField);
+  if (!acType) return [];
+  const suggestions = await autocomplete(search, acType);
   if (!suggestions.length) return [];
-  const top = suggestions.slice(0, 10);
+  const validSuggestions = suggestions.filter(s => s.accountId && s.accountId > 0);
+  if (!validSuggestions.length) return [];
+  const top = validSuggestions.slice(0, 10);
   const results = await Promise.allSettled(
     top.map(s =>
       fetchWithTimeout('/api/platinum/billing-enquiry/enquiry-results', {

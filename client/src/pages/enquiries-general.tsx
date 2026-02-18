@@ -14,7 +14,7 @@ import {
   CircleDot, Wallet, Gauge as MeterIcon, CalendarCheck, Building2
 } from 'lucide-react';
 import {
-  searchAccounts, getAccountBalance, autocompleteSearch,
+  searchAccounts, getAccountBalance, autocompleteSearch, getAutocompleteType,
   type EnquirySearchCriteria, type EnquirySearchResult,
 } from '@/lib/enquiries-service';
 
@@ -166,9 +166,10 @@ function GeneralEnquiriesContent() {
     const token = ++quickSearchTokenRef.current;
     try {
       let data: EnquirySearchResult[];
-      if (field === 'accountNo' && /^\d+$/.test(query.trim())) {
+      const acType = getAutocompleteType(field);
+      if (acType) {
         const [autocompleteData, enquiryData] = await Promise.allSettled([
-          autocompleteSearch(query.trim()),
+          autocompleteSearch(query.trim(), field),
           searchAccounts({ [field]: query.trim() } as any),
         ]);
         if (quickSearchTokenRef.current !== token) return;
@@ -260,10 +261,11 @@ function GeneralEnquiriesContent() {
         searchCriteria = { ...searchCriteria, [field]: quickQuery.trim() };
       }
       let data: EnquirySearchResult[];
-      const isNumericAccountSearch = hasQuick && /^\d+$/.test(quickQuery.trim()) && !hasAdvanced;
-      if (isNumericAccountSearch) {
+      const quickField = hasQuick ? detectSearchType(quickQuery).field : null;
+      const acType = quickField && !hasAdvanced ? getAutocompleteType(quickField) : null;
+      if (hasQuick && acType) {
         const [autocompleteData, enquiryData] = await Promise.allSettled([
-          autocompleteSearch(quickQuery.trim()),
+          autocompleteSearch(quickQuery.trim(), quickField!),
           searchAccounts(searchCriteria),
         ]);
         if (fullSearchTokenRef.current !== token) return;
