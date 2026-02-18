@@ -8,9 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Search, X, ChevronLeft, User, Building2, MapPin, Phone, Mail,
+  Search, X, ChevronLeft, User, Building2, MapPin, Phone,
   CreditCard, Droplets, Zap, FileText, Shield, Gift, Landmark,
-  RefreshCw, AlertTriangle, ChevronDown, ChevronUp, Hash, Globe,
+  RefreshCw, AlertTriangle, ChevronDown, ChevronUp, Hash,
   Filter, Clock, ArrowRight, Loader2, SlidersHorizontal,
   Eye, Layers, Home, Activity, ChevronRight
 } from 'lucide-react';
@@ -2775,17 +2775,13 @@ const SEARCH_FIELDS = [
   { key: 'name', label: 'Name / Company', placeholder: 'Search by name', icon: User, smart: true },
   { key: 'idNo', label: 'ID / Registration No.', placeholder: '13 digit ID number', icon: CreditCard, smart: true },
   { key: 'physicalMeterNumber', label: 'Meter Number', placeholder: 'Physical meter number', icon: Zap, smart: false },
-  { key: 'deliveryAddress', label: 'Delivery Address', placeholder: 'Postal or delivery address', icon: MapPin, smart: false },
-  { key: 'locationAddress', label: 'Location Address', placeholder: 'Street or location', icon: MapPin, smart: false },
-  { key: 'emailAddress', label: 'Email Address', placeholder: 'email@example.com', icon: Mail, smart: false },
+  { key: 'locationAddress', label: 'Location / Erf Address', placeholder: 'Street, location or erf', icon: MapPin, smart: false },
   { key: 'mobileNumber', label: 'Mobile Number', placeholder: '0821234567', icon: Phone, smart: false },
-  { key: 'erfNumber', label: 'Erf Number', placeholder: 'Erf / Stand number', icon: Building2, smart: false },
-  { key: 'trading', label: 'Trading As', placeholder: 'Business trading name', icon: Globe, smart: false },
+  { key: 'passportNumber', label: 'Passport Number', placeholder: 'Passport number', icon: CreditCard, smart: false },
 ] as const;
 
 function detectSearchType(query: string): { field: string; label: string } {
   const trimmed = query.trim();
-  if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(trimmed)) return { field: 'emailAddress', label: 'Email' };
   if (/^0\d{9}$/.test(trimmed)) return { field: 'mobileNumber', label: 'Mobile Number' };
   if (/^\d{13}$/.test(trimmed)) return { field: 'idNo', label: 'ID Number' };
   if (/^\d{6,15}$/.test(trimmed)) return { field: 'accountNo', label: 'Account Number' };

@@ -1192,9 +1192,23 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-enquiry/enquiry-results", async (req, res) => {
     try {
-      const data = await platinumPost("/api/BillingEnquiry/EnquiryResults", req.body);
+      const unsupportedFields = ['erfNumber', 'emailAddress', 'deliveryAddress', 'trading', 'allotmentArea', 'sgNumber'];
+      const cleanBody: Record<string, any> = {};
+      for (const [k, v] of Object.entries(req.body)) {
+        if (!unsupportedFields.includes(k) && v !== undefined && v !== null && String(v).trim() !== '') {
+          cleanBody[k] = v;
+        }
+      }
+      if (Object.keys(cleanBody).length === 0) {
+        return res.json([]);
+      }
+      console.log(`[enquiry-results] Search body:`, JSON.stringify(cleanBody));
+      const data = await platinumPost("/api/BillingEnquiry/EnquiryResults", cleanBody);
+      const count = Array.isArray(data) ? data.length : (data?._error ? 'ERROR' : '1');
+      console.log(`[enquiry-results] Results: ${count}`);
       handlePlatinumResult(res, data);
     } catch (e: any) {
+      console.log(`[enquiry-results] Error: ${e.message}`);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });

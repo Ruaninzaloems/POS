@@ -32,14 +32,9 @@ export interface EnquirySearchCriteria {
   name?: string;
   idNo?: string;
   passportNumber?: string;
-  deliveryAddress?: string;
   locationAddress?: string;
-  allotmentArea?: string;
-  erfNumber?: string;
-  emailAddress?: string;
   mobileNumber?: string;
   physicalMeterNumber?: string;
-  trading?: string;
 }
 
 export interface EnquirySearchResult {
@@ -77,14 +72,9 @@ export async function searchAccounts(criteria: EnquirySearchCriteria): Promise<E
   if (criteria.name) body.companyName = criteria.name;
   if (criteria.idNo) body.idRegistrationNumber = criteria.idNo;
   if (criteria.passportNumber) body.passportNumber = criteria.passportNumber;
-  if (criteria.deliveryAddress) body.deliveryAddress = criteria.deliveryAddress;
   if (criteria.locationAddress) body.locationAddress = criteria.locationAddress;
-  if (criteria.allotmentArea) body.allotmentArea = criteria.allotmentArea;
-  if (criteria.erfNumber) body.erfNumber = criteria.erfNumber;
-  if (criteria.emailAddress) body.emailAddress = criteria.emailAddress;
   if (criteria.mobileNumber) body.mobileNumber = criteria.mobileNumber;
   if (criteria.physicalMeterNumber) body.physicalMeterNumber = criteria.physicalMeterNumber;
-  if (criteria.trading) body.trading = criteria.trading;
 
   const data = await fetchWithTimeout('/api/platinum/billing-enquiry/enquiry-results', {
     method: 'POST',
