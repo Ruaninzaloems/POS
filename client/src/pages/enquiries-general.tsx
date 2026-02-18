@@ -4049,82 +4049,84 @@ function ExpandableResultRow({ account, onSelect, isExpanded, onToggleExpand }: 
   const activeServices = services.filter((s: any) => (s.statusDesc || s.status || '').toLowerCase().trim() === 'active');
 
   return (
-    <div data-testid={`expandable-row-${aid}`}>
-      <div
-        className={`flex items-center gap-2 px-4 py-2.5 border-b border-slate-100 transition-all duration-200 ${isExpanded ? 'bg-blue-50/80 border-l-2 border-l-blue-500' : 'hover:bg-blue-50/60'}`}
+    <>
+      <tr
+        className={`border-b border-slate-100 transition-colors duration-150 cursor-pointer ${isExpanded ? 'bg-blue-50/80' : 'hover:bg-blue-50/60'}`}
+        data-testid={`expandable-row-${aid}`}
       >
-        <button
-          onClick={onToggleExpand}
-          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md hover:bg-blue-100 transition-colors"
-          data-testid={`btn-expand-${aid}`}
-        >
-          <ChevronRight className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
-        </button>
-
-        <button
-          onClick={() => onSelect(account)}
-          className="font-mono text-blue-700 font-semibold hover:text-blue-900 hover:underline text-sm shrink-0"
-          data-testid={`btn-account-${aid}`}
-        >
-          {account.accountNumber || aid}
-        </button>
-
-        <span className="text-slate-400 text-xs font-mono shrink-0 hidden lg:inline" data-testid={`text-partition-${aid}`}>
+        <td className="px-1 py-2.5 text-center w-8">
+          <button
+            onClick={onToggleExpand}
+            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-blue-100 transition-colors mx-auto"
+            data-testid={`btn-expand-${aid}`}
+          >
+            <ChevronRight className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
+          </button>
+        </td>
+        <td className="px-2 py-2.5 whitespace-nowrap">
+          <button
+            onClick={() => onSelect(account)}
+            className="font-mono text-blue-700 font-semibold hover:text-blue-900 hover:underline text-[13px]"
+            data-testid={`btn-account-${aid}`}
+          >
+            {account.accountNumber || aid}
+          </button>
+        </td>
+        <td className="px-2 py-2.5 text-slate-400 font-mono whitespace-nowrap" data-testid={`text-partition-${aid}`}>
           P:{account.unitPartitionID || '-'}
-        </span>
-
-        <span className="text-slate-500 font-mono text-xs shrink-0 hidden xl:inline">
+        </td>
+        <td className="px-2 py-2.5 text-slate-500 font-mono whitespace-nowrap">
           {account.oldAccountCode || '-'}
-        </span>
-
-        <span className="font-medium text-slate-800 text-sm truncate min-w-0 max-w-[180px]" data-testid={`text-name-${aid}`}>
-          {account.name || account.surname_Company || '-'}
-        </span>
-
-        <Badge
-          variant={status.toLowerCase() === 'active' ? 'default' : 'secondary'}
-          className="text-[10px] shrink-0"
-          data-testid={`badge-status-${aid}`}
-        >
-          {status}
-        </Badge>
-
-        <Badge variant="outline" className="text-[10px] font-normal shrink-0 hidden md:inline-flex" data-testid={`badge-type-${aid}`}>
-          {acctType}
-        </Badge>
-
-        <span className={`font-mono text-sm font-semibold shrink-0 ml-auto ${outstanding > 0 ? 'text-red-600' : 'text-green-600'}`} data-testid={`text-outstanding-${aid}`}>
-          R {outstanding.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
-        </span>
-
-        <span className="text-slate-500 text-xs truncate max-w-[160px] hidden lg:inline" data-testid={`text-address-${aid}`}>
-          {addr.replace(/\r\n/g, ', ')}
-        </span>
-
-        <span className="text-slate-400 text-xs font-mono shrink-0 hidden xl:inline">
-          {account.sgNumber || '-'}
-        </span>
-
-        <span className="text-slate-400 text-xs shrink-0 hidden xl:inline">
+        </td>
+        <td className="px-2 py-2.5" data-testid={`text-name-${aid}`}>
+          <span className="font-medium text-slate-800 text-[13px] whitespace-nowrap">{account.name || account.surname_Company || '-'}</span>
+        </td>
+        <td className="px-2 py-2.5 text-center whitespace-nowrap">
+          <Badge
+            variant={status.toLowerCase() === 'active' ? 'default' : 'secondary'}
+            className="text-[10px]"
+            data-testid={`badge-status-${aid}`}
+          >
+            {status}
+          </Badge>
+        </td>
+        <td className="px-2 py-2.5 text-center whitespace-nowrap">
+          <Badge variant="outline" className="text-[10px] font-normal" data-testid={`badge-type-${aid}`}>
+            {acctType}
+          </Badge>
+        </td>
+        <td className="px-2 py-2.5 text-right whitespace-nowrap" data-testid={`text-outstanding-${aid}`}>
+          <span className={`font-mono text-[13px] font-semibold ${outstanding > 0 ? 'text-red-600' : 'text-green-600'}`}>
+            R {outstanding.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+          </span>
+        </td>
+        <td className="px-2 py-2.5 text-slate-500 whitespace-nowrap" data-testid={`text-address-${aid}`}>
+          <span className="truncate block max-w-[180px]">{addr.replace(/\r\n/g, ', ')}</span>
+        </td>
+        <td className="px-2 py-2.5 text-slate-400 font-mono whitespace-nowrap">
+          <span className="truncate block max-w-[180px]">{account.sgNumber || '-'}</span>
+        </td>
+        <td className="px-2 py-2.5 text-slate-400 whitespace-nowrap">
           U:{account.unitID || '-'}
-        </span>
+        </td>
+        <td className="px-2 py-2.5 text-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onSelect(account)}
+            className="h-7 px-2 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-100"
+            data-testid={`btn-open-${aid}`}
+          >
+            <Eye className="w-3.5 h-3.5 mr-1" />
+            Open
+          </Button>
+        </td>
+      </tr>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onSelect(account)}
-          className="shrink-0 h-7 px-2 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-100"
-          data-testid={`btn-open-${aid}`}
-        >
-          <Eye className="w-3.5 h-3.5 mr-1" />
-          Open
-        </Button>
-      </div>
-
-      <div
-        className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}
-      >
-        <div className="bg-gradient-to-b from-blue-50/50 to-white border-b border-slate-200 border-l-2 border-l-blue-500 px-4 py-4">
+      {isExpanded && (
+        <tr>
+          <td colSpan={12} className="p-0">
+            <div className="bg-gradient-to-b from-blue-50/50 to-white border-b border-slate-200 border-l-2 border-l-blue-500 px-4 py-4">
           {loading && (
             <div className="flex items-center gap-3 py-8 justify-center text-slate-400">
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -4235,9 +4237,11 @@ function ExpandableResultRow({ account, onSelect, isExpanded, onToggleExpand }: 
               </div>
             </div>
           )}
-        </div>
-      </div>
-    </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 
@@ -4798,33 +4802,39 @@ function GeneralEnquiriesContent() {
         )}
 
         {results.length > 0 && (
-          <div className="divide-y divide-slate-100" data-testid="table-search-results">
-            <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 border-b-2 border-slate-200 text-[10px] uppercase tracking-wider text-slate-500 font-semibold sticky top-0 z-10">
-              <span className="w-7 shrink-0"></span>
-              <span className="shrink-0 w-[130px]">Account No.</span>
-              <span className="shrink-0 w-[50px] hidden lg:inline">Part. ID</span>
-              <span className="shrink-0 w-[90px] hidden xl:inline">Old Code</span>
-              <span className="flex-1 min-w-[100px]">Name</span>
-              <span className="shrink-0 w-[70px]">Status</span>
-              <span className="shrink-0 w-[70px] hidden md:inline">Type</span>
-              <span className="shrink-0 w-[120px] text-right">Outstanding</span>
-              <span className="shrink-0 w-[140px] hidden lg:inline">Address</span>
-              <span className="shrink-0 w-[90px] hidden xl:inline">SG Number</span>
-              <span className="shrink-0 w-[50px] hidden xl:inline">Unit</span>
-              <span className="shrink-0 w-[60px]"></span>
-            </div>
-            {results.map((account, i) => {
-              const aid = account.accountID || account.account_ID || i;
-              return (
-                <ExpandableResultRow
-                  key={aid}
-                  account={account}
-                  onSelect={handleSelectAccount}
-                  isExpanded={expandedRowId === aid}
-                  onToggleExpand={() => setExpandedRowId(prev => prev === aid ? null : aid)}
-                />
-              );
-            })}
+          <div className="overflow-x-auto" data-testid="table-search-results">
+            <table className="w-full text-xs border-collapse min-w-[1100px]">
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-slate-100 border-b-2 border-slate-200 text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
+                  <th className="w-8 px-1 py-2.5"></th>
+                  <th className="text-left px-2 py-2.5 whitespace-nowrap w-[140px]">Account No.</th>
+                  <th className="text-left px-2 py-2.5 whitespace-nowrap w-[60px]">Part. ID</th>
+                  <th className="text-left px-2 py-2.5 whitespace-nowrap w-[100px]">Old Code</th>
+                  <th className="text-left px-2 py-2.5 whitespace-nowrap">Name</th>
+                  <th className="text-center px-2 py-2.5 whitespace-nowrap w-[70px]">Status</th>
+                  <th className="text-center px-2 py-2.5 whitespace-nowrap w-[130px]">Type</th>
+                  <th className="text-right px-2 py-2.5 whitespace-nowrap w-[110px]">Outstanding</th>
+                  <th className="text-left px-2 py-2.5 whitespace-nowrap w-[180px]">Address</th>
+                  <th className="text-left px-2 py-2.5 whitespace-nowrap w-[180px]">SG Number</th>
+                  <th className="text-left px-2 py-2.5 whitespace-nowrap w-[60px]">Unit</th>
+                  <th className="w-[60px] px-2 py-2.5"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {results.map((account, i) => {
+                  const aid = account.accountID || account.account_ID || i;
+                  return (
+                    <ExpandableResultRow
+                      key={aid}
+                      account={account}
+                      onSelect={handleSelectAccount}
+                      isExpanded={expandedRowId === aid}
+                      onToggleExpand={() => setExpandedRowId(prev => prev === aid ? null : aid)}
+                    />
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
