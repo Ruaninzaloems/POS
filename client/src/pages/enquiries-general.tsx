@@ -2191,7 +2191,7 @@ function DepositsTab({ accountId }: { accountId: number }) {
         getDeposits(accountId).catch(() => []),
         getDepositAmount(accountId).catch(() => null),
       ]);
-      setDeposits(depsResult);
+      setDeposits(Array.isArray(depsResult) ? depsResult : []);
       setDepositAmount(amtResult);
       loaded.current = true;
     } catch (e: any) {
@@ -2206,39 +2206,74 @@ function DepositsTab({ accountId }: { accountId: number }) {
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
 
+  const fmt = (v: any) => {
+    const n = typeof v === 'number' ? v : parseFloat(v) || 0;
+    return n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const totalAmt = typeof depositAmount === 'number' ? depositAmount : (depositAmount?.totalDeposit ?? depositAmount?.amount ?? 0);
+  const totalDeposit = deposits.reduce((s, d) => s + (d.deposit ?? d.depositAmount ?? d.amount ?? 0), 0);
+  const totalPaid = deposits.reduce((s, d) => s + (d.paidAmount ?? 0), 0);
+
   return (
-    <div className="p-4 space-y-4">
-      {depositAmount && (
-        <Card>
-          <CardContent className="pt-4 space-y-0">
-            <FieldRow label="Total Deposit Amount" value={depositAmount.totalDeposit ?? depositAmount.amount ?? depositAmount} icon={<Landmark className="w-3.5 h-3.5" />} />
-          </CardContent>
-        </Card>
-      )}
-      {deposits.length > 0 ? (
-        <table className="w-full text-sm" data-testid="table-deposits">
-          <thead>
-            <tr className="border-b-2 border-slate-200">
-              <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
-              <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Description</th>
-              <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
-              <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Reference</th>
-            </tr>
-          </thead>
-          <tbody>
-            {deposits.map((dep: any, i: number) => (
-              <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                <td className="py-2 px-3">{dep.depositDate ? new Date(dep.depositDate).toLocaleDateString('en-ZA') : '-'}</td>
-                <td className="py-2 px-3">{dep.description || dep.depositDescription || '-'}</td>
-                <td className="py-2 px-3 text-right font-mono font-semibold">{(dep.amount ?? dep.depositAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                <td className="py-2 px-3 text-slate-500">{dep.reference || dep.depositReference || '-'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : (
-        <EmptyState message="No deposit records found" />
-      )}
+    <div className="p-4 space-y-6" data-testid="deposits-tab">
+      <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-xl p-6 shadow-lg">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-10 h-10 rounded-lg bg-white/15 flex items-center justify-center backdrop-blur-sm">
+            <Landmark className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <p className="text-blue-100 text-xs font-medium uppercase tracking-wider">Total Deposit Amount</p>
+            <p className={`text-3xl font-bold font-mono tracking-tight ${totalAmt < 0 ? 'text-red-300' : 'text-white'}`}>
+              {fmt(totalAmt)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/50">
+          <h3 className="text-sm font-bold text-slate-700">Deposit:</h3>
+        </div>
+        {deposits.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-deposits">
+              <thead>
+                <tr className="border-b border-slate-200 bg-white">
+                  <th className="text-left py-3 px-5 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Service Type</th>
+                  <th className="text-left py-3 px-5 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Receipt No / Journal Transaction ID</th>
+                  <th className="text-left py-3 px-5 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Date Captured</th>
+                  <th className="text-right py-3 px-5 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Deposit Amount</th>
+                  <th className="text-right py-3 px-5 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Paid Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {deposits.map((dep: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/40 transition-colors" data-testid={`row-deposit-${i}`}>
+                    <td className="py-3 px-5 text-slate-700 font-medium">{dep.serviceDesc || dep.serviceDescription || dep.description || '-'}</td>
+                    <td className="py-3 px-5 text-slate-600 font-mono text-[13px]">{dep.docNumber || dep.receiptNo || dep.reference || ''}</td>
+                    <td className="py-3 px-5 text-slate-600">{dep.dateCaptured ? new Date(dep.dateCaptured).toLocaleDateString('en-ZA') : dep.depositDate ? new Date(dep.depositDate).toLocaleDateString('en-ZA') : '-'}</td>
+                    <td className="py-3 px-5 text-right font-mono text-slate-800 font-semibold">{fmt(dep.deposit ?? dep.depositAmount ?? dep.amount ?? 0)}</td>
+                    <td className="py-3 px-5 text-right font-mono text-slate-800 font-semibold">{fmt(dep.paidAmount ?? 0)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-slate-300 bg-slate-50/80">
+                  <td colSpan={3} className="py-3 px-5"></td>
+                  <td className="py-3 px-5 text-right font-mono font-bold text-slate-900 text-[14px]">{fmt(totalDeposit)}</td>
+                  <td className="py-3 px-5 text-right font-mono font-bold text-slate-900 text-[14px]">({fmt(Math.abs(totalPaid))})</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        ) : (
+          <div className="p-8 text-center">
+            <Landmark className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+            <p className="text-slate-400 text-sm">No deposit records found for this account</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
