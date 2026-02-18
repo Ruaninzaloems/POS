@@ -14,7 +14,7 @@ import {
   CircleDot, Wallet, Gauge as MeterIcon, CalendarCheck, Building2
 } from 'lucide-react';
 import {
-  searchAccounts, getAccountBalance,
+  searchAccounts, getAccountBalance, autocompleteSearch,
   type EnquirySearchCriteria, type EnquirySearchResult,
 } from '@/lib/enquiries-service';
 
@@ -165,7 +165,24 @@ function GeneralEnquiriesContent() {
     const { field } = detectSearchType(query);
     const token = ++quickSearchTokenRef.current;
     try {
-      const data = await searchAccounts({ [field]: query.trim() } as any);
+      let data: EnquirySearchResult[];
+      if (field === 'accountNo' && /^\d+$/.test(query.trim())) {
+        const [autocompleteData, enquiryData] = await Promise.allSettled([
+          autocompleteSearch(query.trim()),
+          searchAccounts({ [field]: query.trim() } as any),
+        ]);
+        if (quickSearchTokenRef.current !== token) return;
+        const acResults = autocompleteData.status === 'fulfilled' ? autocompleteData.value : [];
+        const eqResults = enquiryData.status === 'fulfilled' ? enquiryData.value : [];
+        const seen = new Set<number>();
+        data = [];
+        for (const r of [...eqResults, ...acResults]) {
+          const id = r.account_ID || r.accountID;
+          if (id && !seen.has(id)) { seen.add(id); data.push(r); }
+        }
+      } else {
+        data = await searchAccounts({ [field]: query.trim() } as any);
+      }
       if (quickSearchTokenRef.current !== token) return;
       setDropdownResults(data);
       setShowDropdown(true);
@@ -242,7 +259,25 @@ function GeneralEnquiriesContent() {
         const { field } = detectSearchType(quickQuery);
         searchCriteria = { ...searchCriteria, [field]: quickQuery.trim() };
       }
-      const data = await searchAccounts(searchCriteria);
+      let data: EnquirySearchResult[];
+      const isNumericAccountSearch = hasQuick && /^\d+$/.test(quickQuery.trim()) && !hasAdvanced;
+      if (isNumericAccountSearch) {
+        const [autocompleteData, enquiryData] = await Promise.allSettled([
+          autocompleteSearch(quickQuery.trim()),
+          searchAccounts(searchCriteria),
+        ]);
+        if (fullSearchTokenRef.current !== token) return;
+        const acResults = autocompleteData.status === 'fulfilled' ? autocompleteData.value : [];
+        const eqResults = enquiryData.status === 'fulfilled' ? enquiryData.value : [];
+        const seen = new Set<number>();
+        data = [];
+        for (const r of [...eqResults, ...acResults]) {
+          const id = r.account_ID || r.accountID;
+          if (id && !seen.has(id)) { seen.add(id); data.push(r); }
+        }
+      } else {
+        data = await searchAccounts(searchCriteria);
+      }
       if (fullSearchTokenRef.current !== token) return;
       setResults(data);
       enrichWithBalances(data, fullSearchTokenRef, token, setResults);

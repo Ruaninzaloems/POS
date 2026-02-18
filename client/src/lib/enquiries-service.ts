@@ -156,9 +156,27 @@ export async function billingEnquirySearch(body: any): Promise<any[]> {
   return normalizeArray(data);
 }
 
-export async function autocomplete(query: string): Promise<any[]> {
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/autocomplete?searchText=${encodeURIComponent(query)}`);
+export async function autocomplete(search: string, type: string = 'accountNumber'): Promise<{ displayItem: string; accountId: number }[]> {
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/autocomplete?search=${encodeURIComponent(search)}&type=${encodeURIComponent(type)}`);
   return normalizeArray(data);
+}
+
+export async function autocompleteSearch(search: string): Promise<EnquirySearchResult[]> {
+  const suggestions = await autocomplete(search, 'accountNumber');
+  if (!suggestions.length) return [];
+  const top = suggestions.slice(0, 10);
+  const results = await Promise.allSettled(
+    top.map(s =>
+      fetchWithTimeout('/api/platinum/billing-enquiry/enquiry-results', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountID: String(s.accountId) }),
+      }).then(normalizeArray)
+    )
+  );
+  const all: EnquirySearchResult[] = [];
+  results.forEach(r => { if (r.status === 'fulfilled') all.push(...r.value); });
+  return all;
 }
 
 // === CONFIG ===
