@@ -176,6 +176,10 @@ export async function getPartitionDetails(accountId: number): Promise<any> {
   return fetchWithTimeout(`/api/platinum/billing-enquiry/partition-details?accountId=${accountId}`);
 }
 
+export async function getPartitionDetailsByUnit(unitPartitionId: number): Promise<any> {
+  return fetchWithTimeout(`/api/platinum/billing-enquiry/partition-details?unitPartitionId=${unitPartitionId}`);
+}
+
 export async function getUnitPartitionOwner(unitPartitionId: number): Promise<any> {
   return fetchWithTimeout(`/api/platinum/billing-enquiry/unit-partition-owner?unitPartitionId=${unitPartitionId}`);
 }

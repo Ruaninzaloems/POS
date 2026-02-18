@@ -30,7 +30,7 @@ import {
   getRepaymentPlanStatus, getPaymentExtensionSearchResults, getPaymentAmountByAccountIds,
   getDebitOrderDeductionByAccount, getDebitOrderDeduction,
   getAccountRatesDetails, getRatesRunHistory, getSectionalTitleScheme,
-  getPartitionDetails, getAccountDeliveryAddressDetail,
+  getPartitionDetails, getPartitionDetailsByUnit, getAccountDeliveryAddressDetail,
   getAccountNotifications, getPropertyNotification,
   getGeneratedStatements,
   getClearanceInquiries,
@@ -94,10 +94,10 @@ function ErrorState({ message, onRetry }: { message: string; onRetry?: () => voi
 
 function SectionHeader({ title }: { title: string }) {
   return (
-    <div className="flex items-center gap-3 py-2 mt-1">
-      <div className="h-px flex-1 bg-slate-200" />
-      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">{title}</span>
-      <div className="h-px flex-1 bg-slate-200" />
+    <div className="flex items-center gap-3 py-2.5 mt-1">
+      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 to-slate-300" />
+      <span className="text-[11px] font-bold text-blue-700 uppercase tracking-[0.15em] whitespace-nowrap px-2">{title}</span>
+      <div className="h-px flex-1 bg-gradient-to-l from-transparent via-slate-300 to-slate-300" />
     </div>
   );
 }
@@ -113,10 +113,10 @@ function InfoField({ label, value, isCurrency, highlight }: { label: string; val
     else display = String(value).replace(/\r\n/g, ', ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/<[^>]*>/g, '');
   }
   return (
-    <div className="flex items-baseline gap-2 py-1">
-      <span className="text-xs text-slate-500 font-medium whitespace-nowrap min-w-[140px]">{label}</span>
-      <span className="text-xs text-slate-400 shrink-0">:</span>
-      <span className={`text-xs font-medium break-words ${highlight ? 'text-blue-600 underline' : 'text-slate-800'}`}>{display}</span>
+    <div className="flex items-baseline gap-2 py-1 group hover:bg-slate-50/50 rounded px-1 -mx-1 transition-colors">
+      <span className="text-[11px] text-slate-500 font-medium whitespace-nowrap min-w-[155px]">{label}</span>
+      <span className="text-[11px] text-slate-300 shrink-0">:</span>
+      <span className={`text-[11px] font-semibold break-words ${highlight ? 'text-blue-600 underline cursor-pointer' : 'text-slate-800'}`}>{display}</span>
     </div>
   );
 }
@@ -212,6 +212,9 @@ function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
   const [services, setServices] = useState<any[]>([]);
   const [additionalBilling, setAdditionalBilling] = useState<any[]>([]);
   const [additionalInfo, setAdditionalInfo] = useState<any[]>([]);
+  const [nameInfo, setNameInfo] = useState<any>(null);
+  const [consUnit, setConsUnit] = useState<any>(null);
+  const [suppValuations, setSuppValuations] = useState<any[]>([]);
   const prevAccountId = useRef<number | null>(null);
 
   const accountId = account.account_ID || account.accountID;
@@ -237,7 +240,9 @@ function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
       getServicesSearchResults(accountId).catch(() => []),
       getAdditionalBillingSearchResults(accountId).catch(() => []),
       getChequeFinalSearchList(accountId).catch(() => []),
-    ]).then(([bas, airRes, propRes, partRes, mgmt, inc, dep, ho, dept, st, rpp, da, svc, ab, ai]) => {
+      getNameInfo(accountId).catch(() => null),
+      getConsumptionUnits(accountId).catch(() => null),
+    ]).then(([bas, airRes, propRes, partRes, mgmt, inc, dep, ho, dept, st, rpp, da, svc, ab, ai, ni, cu]) => {
       setBasic(bas);
       setAir(airRes);
       const propData = Array.isArray(propRes) ? propRes[0] : propRes;
@@ -254,12 +259,19 @@ function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
       setServices(Array.isArray(svc) ? svc : svc ? [svc] : []);
       setAdditionalBilling(Array.isArray(ab) ? ab : ab ? [ab] : []);
       setAdditionalInfo(Array.isArray(ai) ? ai : ai ? [ai] : []);
+      setNameInfo(ni);
+      const cuData = Array.isArray(cu) ? cu[0] : cu;
+      setConsUnit(cuData);
       setLoading(false);
 
       const rawUnitId = bas?.unitPartitionID || propData?.propertyId;
       const unitId = rawUnitId ? parseInt(String(rawUnitId), 10) : null;
       if (unitId && !isNaN(unitId)) {
         getUnitPartitionOwner(unitId).then(owner => setPartitionOwner(owner)).catch(() => {});
+        getSupplementaryValuations(unitId).then(vals => setSuppValuations(Array.isArray(vals) ? vals : vals ? [vals] : [])).catch(() => {});
+        getPartitionDetailsByUnit(unitId).then(pd => {
+          if (pd) setPartition(Array.isArray(pd) ? pd[0] : pd);
+        }).catch(() => {});
       }
     });
   }, [accountId]);
@@ -270,6 +282,8 @@ function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
   const part = partition || {};
   const mgmt = acctMgmt || {};
   const inc = incentive || {};
+  const ni = nameInfo || {};
+  const cu = consUnit || {};
 
   const formatCurrency = (v: any) => {
     if (v === null || v === undefined || v === '') return '-';
@@ -314,11 +328,11 @@ function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
 
   const sgNumber = f(p.sgNumber || a.sgNumber || b.sgNumber);
   const oldPropertyCode = f(b.oldAccountCode || account.oldAccountCode);
-  const billingCycle = f(mgmt.cycleDescription ? `1 ${mgmt.cycleDescription}` : '');
+  const billingCycle = f(mgmt.cycleDescription ? `1 ${mgmt.cycleDescription}` : (cu.billingCycleID ? `${cu.billingCycleID} Consumer Account Cycle` : ''));
   const sectionalTitleSchemeVal = f(sectionalTitle?.schemeName || sectionalTitle?.description || p.complexName);
   const locationAddress = f(b.fullAddress || a.propertyStreet || account.locationAddress);
   const longitude = f(p.longitude || b.longitude);
-  const registrationStatus = f(p.rollNumber ? 'Registered' : '');
+  const registrationStatus = cu.registrationStatus ? 'Registered' : f(p.rollNumber ? 'Registered' : '');
 
   const propertyId = f(p.propertyId || b.propertyID);
   const propertyStatus = f(b.accountStatus || 'Active');
@@ -326,181 +340,204 @@ function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
   const farmName = f(p.farmName);
   const propertyType = f(p.flatReferenceNumber ? 'Sectional Title' : p.propertyId ? 'Erf' : '');
   const latitude = f(p.latitude || b.latitude);
-  const magisterialDistrict = f(p.magisterialDistrict || p.ward);
+  const magisterialDistrict = f(p.ward || p.magisterialDistrict);
   const propertyMarketValue = p.marketValue !== null && p.marketValue !== undefined ? formatCurrency(p.marketValue) : '-';
 
-  const typeOfUse = f(a.typeOfUseDesc || p.typeofUse || a.zoneDesc);
-  const propertyCategory = f(a.zoneDesc || p.townPlanningZoneType || a.typeOfUseDesc);
-  const accountableOwner = f(
+  const suppVal = suppValuations[0];
+  const typeOfUse = f(suppVal?.typeOfUseDesc || a.typeOfUseDesc || p.typeofUse || a.zoneDesc);
+  const propertyCategory = f(suppVal?.zoneDesc || a.zoneDesc || p.townPlanningZoneType || a.typeOfUseDesc);
+  const idNumber = f(partitionOwner?.idNumber || ni.idNo_RegistrationNo || account.idRegistrationNumber);
+  const ownerName = f(
     partitionOwner?.lastName
       ? [partitionOwner.firstNames, partitionOwner.lastName].filter(Boolean).join(' ').trim()
       : (a.owner || p.name || b.fullNAME)
   );
+  const accountableOwner = idNumber !== '-' ? `${ownerName} ${idNumber}` : ownerName;
 
-  const valuationCategory = f(part.valuationCategory || part.valuationCategoryDesc);
-  const partitionDesc = f(part.partitionDescription || part.partitionDesc || part.description);
-  const partitionMarketValue = part.marketValue !== null && part.marketValue !== undefined
-    ? formatCurrency(part.marketValue) : (p.marketValue !== null && p.marketValue !== undefined ? formatCurrency(p.marketValue) : '-');
+  const valuationCategory = f(part.valuationCategory || part.valuationCategoryDesc || suppVal?.type);
+  const partitionDesc = f(part.partitionDescription || part.partitionDesc || part.description || suppVal?.reason);
+  const partitionMarketValue = part.partitionMarketValue !== null && part.partitionMarketValue !== undefined
+    ? formatCurrency(part.partitionMarketValue) : (part.marketValue !== null && part.marketValue !== undefined
+      ? formatCurrency(part.marketValue) : (p.marketValue !== null && p.marketValue !== undefined ? formatCurrency(p.marketValue) : '-'));
 
   return (
-    <div className="p-4 space-y-4" data-testid="account-info-panel">
-      <h3 className="text-base font-bold text-slate-800 mb-2">Account Enquiry</h3>
+    <div className="p-5 space-y-5" data-testid="account-info-panel">
+      <div className="flex items-center gap-3 mb-1">
+        <div className="h-1 w-8 bg-blue-600 rounded-full" />
+        <h3 className="text-lg font-bold text-slate-800 tracking-tight">Account Enquiry</h3>
+      </div>
 
       {loading ? <LoadingSkeleton /> : (
         <>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-0 mb-2">
-            <div>
-              <InfoField label="Account Number" value={accountNumber} highlight />
-              <InfoField label="Account Group" value={accountGroup} />
-              <InfoField label="Payment Group" value={paymentGroup} />
-              <InfoField label="Account Type" value={accountType} />
-              <InfoField label="Incentive Scheme Code" value={incentiveCode} />
-              <InfoField label="Email" value={email} />
-              <InfoField label="Paid Deposit Amount" value={depositDisplay} />
-            </div>
-            <div>
-              <SectionHeader title="ACCOUNT INFORMATION" />
-              <InfoField label="Name" value={accName} />
-              <InfoField label="Sub Account Group" value={subAccountGroup} />
-              <InfoField label="Account Status" value={accountStatus} />
-              <InfoField label="Delivery Address" value={deliveryAddr} />
-              <InfoField label="Contact Number" value={contactNo} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-0 mb-2">
-            <div>
-              <SectionHeader title="ADDITIONAL ACCOUNT DETAILS" />
-              <InfoField label="Interest Waiver Status" value={interestWaiver} />
-              <InfoField label="Indigent Subsidy Status" value={indigentStatus} />
-              <InfoField label="Consumer RPP Status" value={consumerRpp} />
-              <InfoField label="Departmental Account" value={deptAccount} />
-            </div>
-            <div>
-              <div className="h-7" />
-              <InfoField label="Rebate Status" value={rebateStatus} />
-              <InfoField label="Handover Status" value={handoverStatus} />
-              <InfoField label="Loan RPP Status" value={loanRpp} />
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
+              <div className="p-5 space-y-0.5">
+                <InfoField label="Account Number" value={accountNumber} highlight />
+                <InfoField label="Account Group" value={accountGroup} />
+                <InfoField label="Payment Group" value={paymentGroup} />
+                <InfoField label="Account Type" value={accountType} />
+                <InfoField label="Incentive Scheme Code" value={incentiveCode} />
+                <InfoField label="Email" value={email} />
+                <InfoField label="Paid Deposit Amount" value={depositDisplay} />
+              </div>
+              <div className="p-5 space-y-0.5">
+                <SectionHeader title="ACCOUNT INFORMATION" />
+                <InfoField label="Name" value={accName} />
+                <InfoField label="Sub Account Group" value={subAccountGroup} />
+                <InfoField label="Account Status" value={accountStatus} />
+                <InfoField label="Delivery Address" value={deliveryAddr} />
+                <InfoField label="Contact Number" value={contactNo} />
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-0 mb-2">
-            <div>
-              <InfoField label="SG Number" value={sgNumber} />
-              <InfoField label="Old Property Code" value={oldPropertyCode} />
-              <InfoField label="Billing Cycle" value={billingCycle} />
-              <InfoField label="Sectional Title Scheme" value={sectionalTitleSchemeVal} />
-              <InfoField label="Location Address" value={locationAddress} />
-              <InfoField label="Longitude" value={longitude} />
-              <InfoField label="Registration Status" value={registrationStatus} />
-            </div>
-            <div>
-              <SectionHeader title="PROPERTY" />
-              <InfoField label="Property ID" value={propertyId} />
-              <InfoField label="Property Status" value={propertyStatus} />
-              <InfoField label="Allotment Area" value={allotmentArea} />
-              <InfoField label="Farm Name" value={farmName} />
-              <InfoField label="Property Type" value={propertyType} />
-              <InfoField label="Latitude" value={latitude} />
-              <InfoField label="Magisterial District" value={magisterialDistrict} />
-              <InfoField label="Property Market Value" value={propertyMarketValue} />
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
+              <div className="p-5 space-y-0.5">
+                <SectionHeader title="ADDITIONAL ACCOUNT DETAILS" />
+                <InfoField label="Interest Waiver Status" value={interestWaiver} />
+                <InfoField label="Indigent Subsidy Status" value={indigentStatus} />
+                <InfoField label="Consumer RPP Status" value={consumerRpp} />
+                <InfoField label="Departmental Account" value={deptAccount} />
+              </div>
+              <div className="p-5 space-y-0.5 pt-9 lg:pt-5">
+                <div className="h-6 lg:h-7" />
+                <InfoField label="Rebate Status" value={rebateStatus} />
+                <InfoField label="Handover Status" value={handoverStatus} />
+                <InfoField label="Loan RPP Status" value={loanRpp} />
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-0 mb-2">
-            <div>
-              <InfoField label="Property Type of Use" value={typeOfUse} />
-              <InfoField label="Property Category" value={propertyCategory} />
-              <InfoField label="Accountable Owner Name" value={accountableOwner} />
-            </div>
-            <div>
-              <SectionHeader title="PARTITION" />
-              <InfoField label="Valuation Category" value={valuationCategory} />
-              <InfoField label="Partition Description" value={partitionDesc} />
-              <InfoField label="Partition Market Value" value={partitionMarketValue} />
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
+              <div className="p-5 space-y-0.5">
+                <InfoField label="SG Number" value={sgNumber} />
+                <InfoField label="Old Property Code" value={oldPropertyCode} />
+                <InfoField label="Billing Cycle" value={billingCycle} />
+                <InfoField label="Sectional Title Scheme" value={sectionalTitleSchemeVal} />
+                <InfoField label="Location Address" value={locationAddress} />
+                <InfoField label="Longitude" value={longitude} />
+                <InfoField label="Registration Status" value={registrationStatus} />
+              </div>
+              <div className="p-5 space-y-0.5">
+                <SectionHeader title="PROPERTY" />
+                <InfoField label="Property ID" value={propertyId} />
+                <InfoField label="Property Status" value={propertyStatus} />
+                <InfoField label="Allotment Area" value={allotmentArea} />
+                <InfoField label="Farm Name" value={farmName} />
+                <InfoField label="Property Type" value={propertyType} />
+                <InfoField label="Latitude" value={latitude} />
+                <InfoField label="Magisterial District" value={magisterialDistrict} />
+                <InfoField label="Property Market Value" value={propertyMarketValue} />
+              </div>
             </div>
           </div>
 
-          <SectionHeader title="Delivery Address Details:" />
-          <PaginatedTable
-            data={deliveryAddresses}
-            tableId="delivery-address"
-            columns={[
-              { key: 'addressStatus', label: 'Address Status' },
-              { key: 'startDate', label: 'Start Date' },
-              { key: 'typeofDeliveryAddress', label: 'Type of Delivery Address' },
-              { key: 'town', label: 'City/Town' },
-              { key: 'suburbName', label: 'Suburb' },
-              { key: 'streetName', label: 'Street Name / Non Standard Address', render: (r: any) => r.streetName || r.complexName || '' },
-              { key: 'streetNumber', label: 'Street Number' },
-              { key: 'boxBagNo', label: 'Box/Bag Number' },
-              { key: 'complexName', label: 'Complex Name' },
-              { key: 'unitNumber', label: 'Unit Number' },
-              { key: 'postalCode', label: 'Postal Code' },
-            ]}
-          />
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
+              <div className="p-5 space-y-0.5">
+                <InfoField label="Property Type of Use" value={typeOfUse} />
+                <InfoField label="Property Category" value={propertyCategory} />
+                <InfoField label="Accountable Owner Name" value={accountableOwner} />
+              </div>
+              <div className="p-5 space-y-0.5">
+                <SectionHeader title="PARTITION" />
+                <InfoField label="Valuation Category" value={valuationCategory} />
+                <InfoField label="Partition Description" value={partitionDesc} />
+                <InfoField label="Partition Market Value" value={partitionMarketValue} />
+              </div>
+            </div>
+          </div>
 
-          <SectionHeader title="Services:" />
-          <PaginatedTable
-            data={services}
-            tableId="services"
-            columns={[
-              { key: 'serviceStatus', label: 'Service Status', render: (r: any) => r.serviceStatus || r.statusDesc || r.status || '' },
-              { key: 'serviceType', label: 'Service Type', render: (r: any) => r.serviceType || r.serviceTypeDesc || r.serviceDesc || '' },
-              { key: 'tariff', label: 'Tariff', render: (r: any) => r.tariff || r.tariffDescription || r.tariffDesc || '' },
-              { key: 'physicalMeter', label: 'Physical Meter + Meter Code', render: (r: any) => {
-                const meter = r.physicalMeterNo || r.meterNo || r.physicalMeter || '';
-                const code = r.meterCode || '';
-                return meter && code ? `${meter} - ${code}` : meter || code || 'No Meter';
-              }},
-              { key: 'frequency', label: 'Frequency', render: (r: any) => r.frequency || r.frequencyDesc || '' },
-              { key: 'meterConnectionSize', label: 'Meter Connection Size', render: (r: any) => r.meterConnectionSize || r.connectionSize || '' },
-              { key: 'factorQuantity', label: 'FactorQuantity', render: (r: any) => r.factorQuantity ?? r.factor ?? '' },
-              { key: 'requestDate', label: 'Request Date', render: (r: any) => formatDate(r.requestDate) },
-              { key: 'commencementDate', label: 'Commencement Date', render: (r: any) => formatDate(r.commencementDate || r.startDate) },
-              { key: 'tariffType', label: 'Tariff Type', render: (r: any) => r.tariffType || r.tariffTypeDesc || '' },
-              { key: 'tariffRate', label: 'Tariff Rate', render: (r: any) => {
-                const parts: string[] = [];
-                if (r.tariffStartDate || r.tariffEndDate) parts.push(`Start Date - End Date:\n${formatDate(r.tariffStartDate)} - ${formatDate(r.tariffEndDate)}`);
-                if (r.interval !== undefined || r.cost !== undefined) parts.push(`Interval : Cost:\n${r.interval ?? ''}`);
-                if (r.remainder !== undefined) parts.push(`Remainder : ${typeof r.remainder === 'number' ? r.remainder.toFixed(6) : r.remainder}`);
-                return parts.length > 0 ? <div className="whitespace-pre-wrap text-[10px]">{parts.join('\n')}</div> : '';
-              }},
-            ]}
-          />
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-5">
+            <SectionHeader title="DELIVERY ADDRESS DETAILS" />
+            <PaginatedTable
+              data={deliveryAddresses}
+              tableId="delivery-address"
+              columns={[
+                { key: 'addressStatus', label: 'Address Status' },
+                { key: 'startDate', label: 'Start Date' },
+                { key: 'typeofDeliveryAddress', label: 'Type of Delivery Address' },
+                { key: 'town', label: 'City/Town' },
+                { key: 'suburbName', label: 'Suburb' },
+                { key: 'streetName', label: 'Street Name / Non Standard Address', render: (r: any) => r.streetName || r.complexName || '' },
+                { key: 'streetNumber', label: 'Street Number' },
+                { key: 'boxBagNo', label: 'Box/Bag Number' },
+                { key: 'complexName', label: 'Complex Name' },
+                { key: 'unitNumber', label: 'Unit Number' },
+                { key: 'postalCode', label: 'Postal Code' },
+              ]}
+            />
+          </div>
 
-          <SectionHeader title="Additional Billing Services:" />
-          <PaginatedTable
-            data={additionalBilling}
-            tableId="additional-billing"
-            columns={[
-              { key: 'status', label: 'Status', render: (r: any) => r.status || r.statusDesc || r.serviceStatus || '' },
-              { key: 'type', label: 'Type', render: (r: any) => r.type || r.typeDesc || r.billingType || r.serviceDesc || '' },
-              { key: 'amount', label: 'Amount', render: (r: any) => typeof r.amount === 'number' ? r.amount.toFixed(2) : (r.amount || '') },
-              { key: 'commencementDate', label: 'Commencement Date', render: (r: any) => formatDate(r.commencementDate || r.startDate) },
-              { key: 'terminationDate', label: 'Termination Date', render: (r: any) => formatDate(r.terminationDate || r.endDate) },
-              { key: 'frequency', label: 'Frequency', render: (r: any) => r.frequency || r.frequencyDesc || '' },
-              { key: 'levyMonth', label: 'Levy Month', render: (r: any) => r.levyMonth || '' },
-              { key: 'factorQuantity', label: 'Factor Quantity', render: (r: any) => r.factorQuantity ?? r.factor ?? '' },
-            ]}
-          />
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-5">
+            <SectionHeader title="SERVICES" />
+            <PaginatedTable
+              data={services}
+              tableId="services"
+              columns={[
+                { key: 'serviceStatus', label: 'Service Status', render: (r: any) => r.serviceStatus || r.statusDesc || r.status || '' },
+                { key: 'serviceType', label: 'Service Type', render: (r: any) => r.serviceType || r.serviceTypeDesc || r.serviceDesc || '' },
+                { key: 'tariff', label: 'Tariff', render: (r: any) => r.tariff || r.tariffDescription || r.tariffDesc || '' },
+                { key: 'physicalMeter', label: 'Physical Meter + Meter Code', render: (r: any) => {
+                  const meter = r.physicalMeterNo || r.meterNo || r.physicalMeter || '';
+                  const code = r.meterCode || '';
+                  return meter && code ? `${meter} - ${code}` : meter || code || 'No Meter';
+                }},
+                { key: 'frequency', label: 'Frequency', render: (r: any) => r.frequency || r.frequencyDesc || '' },
+                { key: 'meterConnectionSize', label: 'Meter Connection Size', render: (r: any) => r.meterConnectionSize || r.connectionSize || '' },
+                { key: 'factorQuantity', label: 'FactorQuantity', render: (r: any) => r.factorQuantity ?? r.factor ?? '' },
+                { key: 'requestDate', label: 'Request Date', render: (r: any) => formatDate(r.requestDate) },
+                { key: 'commencementDate', label: 'Commencement Date', render: (r: any) => formatDate(r.commencementDate || r.startDate) },
+                { key: 'tariffType', label: 'Tariff Type', render: (r: any) => r.tariffType || r.tariffTypeDesc || '' },
+                { key: 'tariffRate', label: 'Tariff Rate', render: (r: any) => {
+                  const parts: string[] = [];
+                  if (r.tariffStartDate || r.tariffEndDate) parts.push(`Start Date - End Date:\n${formatDate(r.tariffStartDate)} - ${formatDate(r.tariffEndDate)}`);
+                  if (r.interval !== undefined || r.cost !== undefined) parts.push(`Interval : Cost:\n${r.interval ?? ''}`);
+                  if (r.remainder !== undefined) parts.push(`Remainder : ${typeof r.remainder === 'number' ? r.remainder.toFixed(6) : r.remainder}`);
+                  return parts.length > 0 ? <div className="whitespace-pre-wrap text-[10px]">{parts.join('\n')}</div> : '';
+                }},
+              ]}
+            />
+          </div>
 
-          <SectionHeader title="Additional Information:" />
-          <PaginatedTable
-            data={additionalInfo}
-            tableId="additional-info"
-            columns={[
-              { key: 'blockOrUnblock', label: 'Block or Unblock', render: (r: any) => r.blockOrUnblock || r.type || '' },
-              { key: 'receiptNo', label: 'Receipt No', render: (r: any) => r.receiptNo || r.receiptNumber || '' },
-              { key: 'receiptDate', label: 'Receipt Date', render: (r: any) => formatDate(r.receiptDate) },
-              { key: 'cardNo', label: 'Card No', render: (r: any) => r.cardNo || r.chequeNo || '' },
-              { key: 'receiptAmount', label: 'Receipt Amount', render: (r: any) => typeof r.receiptAmount === 'number' ? r.receiptAmount.toFixed(2) : (r.receiptAmount || r.amount || '') },
-              { key: 'transactionDate', label: 'Transaction Date', render: (r: any) => formatDate(r.transactionDate) },
-              { key: 'documentNo', label: 'Document No', render: (r: any) => r.documentNo || r.documentNumber || '' },
-              { key: 'comment', label: 'Comment', render: (r: any) => r.comment || r.remarks || '' },
-              { key: 'adminFee', label: 'Admin Fee', render: (r: any) => typeof r.adminFee === 'number' ? r.adminFee.toFixed(2) : (r.adminFee || '') },
-            ]}
-          />
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-5">
+            <SectionHeader title="ADDITIONAL BILLING SERVICES" />
+            <PaginatedTable
+              data={additionalBilling}
+              tableId="additional-billing"
+              columns={[
+                { key: 'status', label: 'Status', render: (r: any) => r.status || r.statusDesc || r.serviceStatus || '' },
+                { key: 'type', label: 'Type', render: (r: any) => r.type || r.typeDesc || r.billingType || r.serviceDesc || '' },
+                { key: 'amount', label: 'Amount', render: (r: any) => typeof r.amount === 'number' ? r.amount.toFixed(2) : (r.amount || '') },
+                { key: 'commencementDate', label: 'Commencement Date', render: (r: any) => formatDate(r.commencementDate || r.startDate) },
+                { key: 'terminationDate', label: 'Termination Date', render: (r: any) => formatDate(r.terminationDate || r.endDate) },
+                { key: 'frequency', label: 'Frequency', render: (r: any) => r.frequency || r.frequencyDesc || '' },
+                { key: 'levyMonth', label: 'Levy Month', render: (r: any) => r.levyMonth || '' },
+                { key: 'factorQuantity', label: 'Factor Quantity', render: (r: any) => r.factorQuantity ?? r.factor ?? '' },
+              ]}
+            />
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-5">
+            <SectionHeader title="ADDITIONAL INFORMATION" />
+            <PaginatedTable
+              data={additionalInfo}
+              tableId="additional-info"
+              columns={[
+                { key: 'blockOrUnblock', label: 'Block or Unblock', render: (r: any) => r.blockOrUnblock || r.type || '' },
+                { key: 'receiptNo', label: 'Receipt No', render: (r: any) => r.receiptNo || r.receiptNumber || '' },
+                { key: 'receiptDate', label: 'Receipt Date', render: (r: any) => formatDate(r.receiptDate) },
+                { key: 'cardNo', label: 'Card No', render: (r: any) => r.cardNo || r.chequeNo || '' },
+                { key: 'receiptAmount', label: 'Receipt Amount', render: (r: any) => typeof r.receiptAmount === 'number' ? r.receiptAmount.toFixed(2) : (r.receiptAmount || r.amount || '') },
+                { key: 'transactionDate', label: 'Transaction Date', render: (r: any) => formatDate(r.transactionDate) },
+                { key: 'documentNo', label: 'Document No', render: (r: any) => r.documentNo || r.documentNumber || '' },
+                { key: 'comment', label: 'Comment', render: (r: any) => r.comment || r.remarks || '' },
+                { key: 'adminFee', label: 'Admin Fee', render: (r: any) => typeof r.adminFee === 'number' ? r.adminFee.toFixed(2) : (r.adminFee || '') },
+              ]}
+            />
+          </div>
         </>
       )}
     </div>
