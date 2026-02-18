@@ -970,43 +970,66 @@ function BalanceDebtTab({ accountId }: { accountId: number }) {
   );
 }
 
-function parseTariffRateData(svc: any): { startDate: string; endDate: string; intervals: { interval: string; cost: string }[] } {
-  const result = { startDate: '', endDate: '', intervals: [] as { interval: string; cost: string }[] };
+interface TariffBlock {
+  startDate: string;
+  endDate: string;
+  intervals: { interval: string; cost: string }[];
+}
+
+function parseTariffRateData(svc: any): { startDate: string; endDate: string; intervals: { interval: string; cost: string }[]; blocks: TariffBlock[] } {
+  const blocks: TariffBlock[] = [];
 
   const html = svc.endDate || '';
   if (html && typeof html === 'string' && html.includes('<')) {
-    const stripped = html.replace(/<[^>]*>/g, '\n');
-    const lines = stripped.split('\n').map((l: string) => l.trim()).filter(Boolean);
+    const stripped = html.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, ' ');
+    const rawLines = stripped.split('\n').map((l: string) => l.trim()).filter(Boolean);
 
-    const dateLineIdx = lines.findIndex((l: string) => /\d{2}\/\d{2}\/\d{4}\s*-\s*\d{2}\/\d{2}\/\d{4}/.test(l));
-    if (dateLineIdx >= 0) {
-      const dm = lines[dateLineIdx].match(/(\d{2}\/\d{2}\/\d{4})\s*-\s*(\d{2}\/\d{2}\/\d{4})/);
-      if (dm) { result.startDate = dm[1]; result.endDate = dm[2]; }
+    const joined: string[] = [];
+    for (let i = 0; i < rawLines.length; i++) {
+      const line = rawLines[i];
+      if (/^-\s*[\d.]+/.test(line) && joined.length > 0) {
+        joined[joined.length - 1] = joined[joined.length - 1] + ' ' + line;
+      } else {
+        joined.push(line);
+      }
     }
 
-    const costIdx = lines.findIndex((l: string) => /interval.*cost/i.test(l));
-    if (costIdx >= 0) {
-      for (let i = costIdx + 1; i < lines.length; i++) {
-        const line = lines[i];
-        const cm = line.match(/^(.+?)\s*-\s*([\d.]+)$/);
-        if (cm) {
-          const costVal = parseFloat(cm[2]);
-          result.intervals.push({ interval: cm[1].trim(), cost: isNaN(costVal) ? cm[2].trim() : costVal.toFixed(2) });
-        }
+    let currentBlock: TariffBlock | null = null;
+    for (const line of joined) {
+      if (/start\s*date.*end\s*date/i.test(line)) continue;
+      if (/interval\s*[-–]?\s*cost/i.test(line)) continue;
+
+      const dateMatch = line.match(/(\d{2}\/\d{2}\/\d{4})\s*-\s*(\d{2}\/\d{2}\/\d{4})/);
+      if (dateMatch) {
+        currentBlock = { startDate: dateMatch[1], endDate: dateMatch[2], intervals: [] };
+        blocks.push(currentBlock);
+        continue;
+      }
+
+      const costMatch = line.match(/^(.+?)\s*-\s*([\d.]+)\s*$/);
+      if (costMatch && currentBlock) {
+        const costVal = parseFloat(costMatch[2]);
+        currentBlock.intervals.push({
+          interval: costMatch[1].trim(),
+          cost: isNaN(costVal) ? costMatch[2].trim() : costVal.toFixed(6)
+        });
       }
     }
   }
 
-  if (result.intervals.length === 0 && Array.isArray(svc.costInterVal) && svc.costInterVal.length > 0) {
-    if (!result.startDate && svc.startDate) result.startDate = svc.startDate;
+  if (blocks.length === 0 && Array.isArray(svc.costInterVal) && svc.costInterVal.length > 0) {
+    const block: TariffBlock = { startDate: svc.startDate || '', endDate: '', intervals: [] };
     svc.costInterVal.forEach((ci: any) => {
       const costVal = parseFloat(ci.cost);
       const intervalLabel = ci.interval === 0 || ci.interval === '0' ? 'Remainder' : String(ci.interval);
-      result.intervals.push({ interval: intervalLabel, cost: isNaN(costVal) ? String(ci.cost) : costVal.toFixed(2) });
+      block.intervals.push({ interval: intervalLabel, cost: isNaN(costVal) ? String(ci.cost) : costVal.toFixed(6) });
     });
+    blocks.push(block);
   }
 
-  return result;
+  const first = blocks[0] || { startDate: '', endDate: '', intervals: [] };
+  const allIntervals = blocks.flatMap(b => b.intervals);
+  return { startDate: first.startDate, endDate: first.endDate, intervals: allIntervals, blocks };
 }
 
 function ServiceBalanceTab({ accountId }: { accountId: number }) {
@@ -1245,35 +1268,32 @@ function ServiceBalanceTab({ accountId }: { accountId: number }) {
                       <td className="py-3 px-4 text-slate-600 whitespace-nowrap">{commencementDate}</td>
                       <td className="py-3 px-4 text-slate-600 whitespace-nowrap">{svc.tariffType || svc.serviceDesc || '-'}</td>
                       <td className="py-3 px-4 align-top">
-                        {tariffInfo.intervals.length > 0 ? (
-                          <div className="text-xs space-y-0.5">
+                        {tariffInfo.blocks.length > 0 ? (
+                          <div className="text-xs">
                             <button
                               onClick={(e) => { e.stopPropagation(); toggleRate(i); }}
-                              className="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                              className="text-blue-600 hover:text-blue-800 font-medium text-left"
                               data-testid={`btn-tariff-rate-${i}`}
                             >
-                              <span>Interval</span>
-                              <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); toggleRate(i); }}
-                              className="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
-                              data-testid={`btn-tariff-cost-${i}`}
-                            >
-                              <span>Cost</span>
-                              <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                              <div>Interval:</div>
+                              <div>Cost:</div>
                             </button>
                             {isExpanded && (
-                              <div className="mt-1.5 bg-slate-50 rounded-lg border border-slate-200 p-2.5 space-y-1 min-w-[200px] shadow-sm">
-                                <div className="text-slate-500 font-medium pb-1 border-b border-slate-200 text-[10px]">
-                                  <span className="underline">Start Date - End Date:</span>
-                                  <div className="text-slate-700 font-normal mt-0.5">{tariffInfo.startDate} - {tariffInfo.endDate}</div>
-                                </div>
-                                <div className="text-slate-500 font-medium text-[10px] underline mt-1">Interval - Cost:</div>
-                                {tariffInfo.intervals.map((iv, idx) => (
-                                  <div key={idx} className="flex justify-between gap-4 text-slate-700 font-mono py-0.5">
-                                    <span className="text-slate-600">{iv.interval}</span>
-                                    <span className="font-semibold">{iv.cost}</span>
+                              <div className="mt-1 border border-slate-300 bg-white p-2 min-w-[200px] text-[11px] space-y-3">
+                                {tariffInfo.blocks.map((block, bi) => (
+                                  <div key={bi}>
+                                    <div className="font-medium text-slate-700">
+                                      <span className="underline">Start Date - End Date:</span>
+                                      <div>{block.startDate} - {block.endDate}</div>
+                                    </div>
+                                    <div className="mt-1">
+                                      <div className="font-medium text-slate-700 underline">Interval - Cost:</div>
+                                      {block.intervals.map((iv, idx) => (
+                                        <div key={idx} className="text-slate-700">
+                                          {iv.interval} - {iv.cost}
+                                        </div>
+                                      ))}
+                                    </div>
                                   </div>
                                 ))}
                               </div>
