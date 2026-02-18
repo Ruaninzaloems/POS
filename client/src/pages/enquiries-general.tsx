@@ -538,7 +538,7 @@ function BalanceDebtTab({ accountId }: { accountId: number }) {
           {items.map((item: any, i: number) => (
             <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
               <td className="py-2 px-3 font-medium text-slate-700">{item.serviceDescription || item.serviceType || item.description || `Service ${i + 1}`}</td>
-              <td className="py-2 px-3 text-right font-mono text-red-600 font-semibold">{(item.totalOutstandingAmount ?? item.totalOutstanding ?? item.outstandingAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+              <td className="py-2 px-3 text-right font-mono text-red-600 font-semibold">{(item.totalOutStanding ?? item.totalOutstandingAmount ?? item.totalOutstanding ?? item.outstandingAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
               <td className="py-2 px-3 text-right font-mono">{(item.currentAccount ?? item.current ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
               <td className="py-2 px-3 text-right font-mono">{(item.days30 ?? item['30days'] ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
               <td className="py-2 px-3 text-right font-mono">{(item.days60 ?? item['60days'] ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
@@ -548,6 +548,18 @@ function BalanceDebtTab({ accountId }: { accountId: number }) {
             </tr>
           ))}
         </tbody>
+        <tfoot>
+          <tr className="border-t-2 border-slate-300 bg-slate-50 font-bold">
+            <td className="py-2 px-3 text-slate-800">Total</td>
+            <td className="py-2 px-3 text-right font-mono text-red-700">{items.reduce((s: number, item: any) => s + (item.totalOutStanding ?? item.totalOutstandingAmount ?? item.totalOutstanding ?? item.outstandingAmount ?? 0), 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+            <td className="py-2 px-3 text-right font-mono">{items.reduce((s: number, item: any) => s + (item.currentAccount ?? item.current ?? 0), 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+            <td className="py-2 px-3 text-right font-mono">{items.reduce((s: number, item: any) => s + (item.days30 ?? item['30days'] ?? 0), 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+            <td className="py-2 px-3 text-right font-mono">{items.reduce((s: number, item: any) => s + (item.days60 ?? item['60days'] ?? 0), 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+            <td className="py-2 px-3 text-right font-mono">{items.reduce((s: number, item: any) => s + (item.days90 ?? item['90days'] ?? 0), 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+            <td className="py-2 px-3 text-right font-mono">{items.reduce((s: number, item: any) => s + (item.days120 ?? item['120days'] ?? 0), 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+            <td className="py-2 px-3 text-right font-mono">{items.reduce((s: number, item: any) => s + (item.days150 ?? item['150days'] ?? item.days150Plus ?? item.untill360 ?? 0), 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+          </tr>
+        </tfoot>
       </table>
     </div>
   );
@@ -2717,47 +2729,50 @@ function SmartSearchDropdown({
             </span>
           </div>
           <div ref={listRef} className="overflow-y-auto flex-1">
-            {results.slice(0, 50).map((account, i) => (
-              <div
-                key={account.accountID || account.account_ID || i}
-                onClick={() => onSelect(account)}
-                className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all border-b border-slate-50 last:border-0
-                  ${highlightIdx === i ? 'bg-blue-50 border-l-2 border-l-blue-500' : 'hover:bg-slate-50 border-l-2 border-l-transparent'}`}
-                data-testid={`dropdown-account-${account.accountID || account.account_ID || i}`}
-              >
-                <div className={`shrink-0 h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold
-                  ${(account.accountStatus || account.statusDesc)?.toLowerCase() === 'active' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>
-                  {(account.name || account.surname_Company || '?').charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-slate-800 truncate">{account.name || account.surname_Company || 'Unknown'}</span>
-                    <Badge
-                      variant={(account.accountStatus || account.statusDesc)?.toLowerCase() === 'active' ? 'default' : 'secondary'}
-                      className="text-[9px] shrink-0 h-4 px-1.5"
-                    >
-                      {account.accountStatus || account.statusDesc || '?'}
-                    </Badge>
+            {results.slice(0, 50).map((account, i) => {
+              const bal = account.outStandingAmount ?? account.outStandingAmt ?? 0;
+              const acctNum = account.accountNumber || account.accountID || account.account_ID;
+              const isActive = (account.accountStatus || account.statusDesc)?.toLowerCase() === 'active';
+              const idNo = account.addName || account.idRegistrationNumber || '';
+              const addr = (account.address || account.deliveryAddress || '').replace(/\r\n/g, ', ');
+              return (
+                <div
+                  key={account.accountID || account.account_ID || i}
+                  onClick={() => onSelect(account)}
+                  className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-all border-b border-slate-100 last:border-0
+                    ${highlightIdx === i ? 'bg-blue-50 border-l-3 border-l-blue-500' : 'hover:bg-slate-50 border-l-3 border-l-transparent'}`}
+                  data-testid={`dropdown-account-${account.accountID || account.account_ID || i}`}
+                >
+                  <div className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold shadow-sm
+                    ${isActive ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>
+                    {(account.name || account.surname_Company || '?').charAt(0).toUpperCase()}
                   </div>
-                  <div className="flex items-center gap-3 mt-0.5">
-                    <span className="text-xs font-mono text-blue-600">{account.accountNumber || account.accountID || account.account_ID}</span>
-                    {account.oldAccountCode && <span className="text-[10px] text-slate-400 font-mono">Old: {account.oldAccountCode}</span>}
-                    {(account.address || account.deliveryAddress) && (
-                      <span className="text-[10px] text-slate-400 truncate max-w-[200px]">
-                        {(account.address || account.deliveryAddress || '').replace(/\r\n/g, ', ').substring(0, 50)}
-                      </span>
-                    )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-slate-800 truncate">{account.name || account.surname_Company || 'Unknown'}</span>
+                      <Badge
+                        variant={isActive ? 'default' : 'secondary'}
+                        className="text-[9px] shrink-0 h-4 px-1.5"
+                      >
+                        {account.accountStatus || account.statusDesc || '?'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <span className="text-xs font-mono text-blue-600 font-medium">{acctNum}</span>
+                      {idNo && <span className="text-[10px] text-slate-400">|</span>}
+                      {idNo && <span className="text-[10px] text-slate-500 font-mono">ID: {idNo}</span>}
+                      {addr && <span className="text-[10px] text-slate-400 truncate max-w-[250px]">{addr}</span>}
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right min-w-[100px]">
+                    <div className={`text-base font-mono font-bold ${bal > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      R {bal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                    </div>
+                    <div className="text-[10px] text-slate-400">{account.accountType || account.accountDesc || 'Owner / Occupier'}</div>
                   </div>
                 </div>
-                <div className="shrink-0 text-right">
-                  <div className={`text-sm font-mono font-bold ${(account.outStandingAmount ?? account.outStandingAmt ?? 0) > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    R {(account.outStandingAmount ?? account.outStandingAmt ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
-                  </div>
-                  <div className="text-[10px] text-slate-400">{account.accountType || account.accountDesc || ''}</div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-slate-300 shrink-0" />
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}
@@ -2775,12 +2790,11 @@ function ExpandableResultRow({ account, onSelect, isExpanded, onToggleExpand }: 
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [fetchError, setFetchError] = useState(false);
-
   const accountId = account.account_ID || account.accountID;
   const aid = account.accountID || account.account_ID || 0;
   const status = account.accountStatus || account.statusDesc || '-';
   const outstanding = account.outStandingAmount ?? account.outStandingAmt ?? 0;
-  const acctType = account.accountType || account.accountDesc || '-';
+  const acctType = account.accountType || account.accountDesc || 'Owner / Occupier';
   const addr = account.address || account.deliveryAddress || account.locationAddress || '-';
 
   const loadEnrichedData = useCallback(() => {
@@ -3050,6 +3064,55 @@ function GeneralEnquiriesContent() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const quickSearchTokenRef = useRef(0);
+  const fullSearchTokenRef = useRef(0);
+  const balanceCacheRef = useRef<Map<number, number>>(new Map());
+
+  const enrichWithBalances = useCallback(async (accounts: EnquirySearchResult[], tokenRef: React.MutableRefObject<number>, token: number, setter: (val: EnquirySearchResult[]) => void) => {
+    const enriched = [...accounts];
+    const toFetch = enriched.filter(acct => {
+      const id = acct.account_ID || acct.accountID;
+      return id && !balanceCacheRef.current.has(id);
+    });
+
+    if (toFetch.length === 0) {
+      const result = enriched.map(acct => {
+        const id = acct.account_ID || acct.accountID;
+        const cached = id ? balanceCacheRef.current.get(id) : undefined;
+        return cached !== undefined ? { ...acct, outStandingAmount: cached, _balanceEnriched: true } : acct;
+      });
+      if (tokenRef.current === token) setter(result);
+      return;
+    }
+
+    await Promise.allSettled(toFetch.map(async (acct) => {
+      const id = acct.account_ID || acct.accountID;
+      if (!id) return;
+      try {
+        const balanceData = await getAccountBalance(id);
+        if (balanceData) {
+          let bal: number | undefined;
+          if (Array.isArray(balanceData)) {
+            bal = balanceData.reduce((sum: number, svc: any) => sum + (svc.totalOutStanding ?? svc.totalOutstanding ?? 0), 0);
+          } else {
+            bal = balanceData.totalBalance ?? balanceData.totalOutstanding ?? balanceData.outStandingAmount ?? balanceData.balance;
+          }
+          if (bal !== undefined && bal !== null) {
+            balanceCacheRef.current.set(id, bal);
+          }
+        }
+      } catch {}
+    }));
+
+    if (tokenRef.current !== token) return;
+    const result = enriched.map(acct => {
+      const id = acct.account_ID || acct.accountID;
+      const cached = id ? balanceCacheRef.current.get(id) : undefined;
+      return cached !== undefined ? { ...acct, outStandingAmount: cached, _balanceEnriched: true } : acct;
+    });
+    setter(result);
+  }, []);
+
   const doQuickSearch = useCallback(async (query: string) => {
     if (query.trim().length < 2) {
       setDropdownResults([]);
@@ -3058,16 +3121,19 @@ function GeneralEnquiriesContent() {
     }
     setDropdownSearching(true);
     const { field } = detectSearchType(query);
+    const token = ++quickSearchTokenRef.current;
     try {
       const data = await searchAccounts({ [field]: query.trim() } as any);
+      if (quickSearchTokenRef.current !== token) return;
       setDropdownResults(data);
       setShowDropdown(true);
+      enrichWithBalances(data, quickSearchTokenRef, token, setDropdownResults);
     } catch (e: any) {
-      setDropdownResults([]);
+      if (quickSearchTokenRef.current === token) setDropdownResults([]);
     } finally {
       setDropdownSearching(false);
     }
-  }, []);
+  }, [enrichWithBalances]);
 
   const handleQuickQueryChange = (val: string) => {
     setQuickQuery(val);
@@ -3127,6 +3193,7 @@ function GeneralEnquiriesContent() {
     if (term && !recentSearches.includes(term)) {
       setRecentSearches(prev => [term, ...prev].slice(0, 8));
     }
+    const token = ++fullSearchTokenRef.current;
     try {
       let searchCriteria: EnquirySearchCriteria = { ...criteria };
       if (hasQuick) {
@@ -3134,14 +3201,18 @@ function GeneralEnquiriesContent() {
         searchCriteria = { ...searchCriteria, [field]: quickQuery.trim() };
       }
       const data = await searchAccounts(searchCriteria);
+      if (fullSearchTokenRef.current !== token) return;
       setResults(data);
+      enrichWithBalances(data, fullSearchTokenRef, token, setResults);
     } catch (e: any) {
-      setSearchError(e.message || 'Search failed');
-      setResults([]);
+      if (fullSearchTokenRef.current === token) {
+        setSearchError(e.message || 'Search failed');
+        setResults([]);
+      }
     } finally {
       setSearching(false);
     }
-  }, [quickQuery, criteria, recentSearches]);
+  }, [quickQuery, criteria, recentSearches, enrichWithBalances]);
 
   const handleClear = () => {
     setQuickQuery('');
