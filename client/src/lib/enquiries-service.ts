@@ -392,7 +392,31 @@ export async function getInterestLatePaymentDetail(accountId: number): Promise<a
   return normalizeArray(data);
 }
 
-export async function getTransactionHistory(accountNumber: string): Promise<any[]> {
+export async function getTransactionHistory(accountNumber: string, accountId?: number): Promise<any[]> {
+  if (accountId) {
+    try {
+      const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/payment-amount-by-account-ids?accountId=${accountId}`);
+      const items = normalizeArray(data);
+      if (items.length > 0) {
+        return items.map((r: any) => ({
+          receiptNo: r.receiptNo || '-',
+          receiptId: r.receiptID || r.receiptId,
+          receiptDate: r.receiptDate,
+          paymentType: r.paymentType || '-',
+          paymentOption: r.paymentOption || '-',
+          amount: r.amount ?? 0,
+          tenderAmount: r.tenderAmount ?? r.amount ?? 0,
+          changeAmount: r.changeAmount ?? 0,
+          cashierName: r.cashier || r.cashierName || '-',
+          cashBook: r.cashBook || '-',
+          cardChequeDetail: r.cardChequeDetail || '',
+          isCancelled: !!(r.cancelReson || r.isCancelled),
+          cancelReason: r.cancelReson || r.cancelReason || '',
+        }));
+      }
+    } catch {}
+  }
+
   const fromDate = new Date();
   fromDate.setFullYear(fromDate.getFullYear() - 2);
   const body = {
@@ -400,16 +424,21 @@ export async function getTransactionHistory(accountNumber: string): Promise<any[
     fromDate: fromDate.toISOString().split('T')[0],
     toDate: new Date().toISOString().split('T')[0],
     page: 1,
-    pageSize: 100,
+    pageSize: 200,
     orderby: 'receiptDate',
     shortDirection: 'desc',
   };
-  const data = await fetchWithTimeout('/api/platinum/view-receipt/get-receipt-list', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  return normalizeArray(data);
+  try {
+    const data = await fetchWithTimeout('/api/platinum/view-receipt/get-receipt-list', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const items = normalizeArray(data);
+    if (items.length > 0) return items;
+  } catch {}
+
+  return [];
 }
 
 // === PAYMENTS ===

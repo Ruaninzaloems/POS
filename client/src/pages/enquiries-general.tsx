@@ -2793,7 +2793,7 @@ function TransactionHistoryTab({ accountId, accountNumber }: { accountId: number
     setError(null);
     try {
       const [receiptResult, billingResult, detailedResult] = await Promise.all([
-        getTransactionHistory(accountNumber).catch(() => []),
+        getTransactionHistory(accountNumber, accountId).catch(() => []),
         getAllBillingPeriodTransactions(accountId, getFinYearOptions()[0]).catch(() => []),
         getDetailedTransactionResults(accountId, getFinYearOptions()[0]).catch(() => []),
       ]);
@@ -2841,25 +2841,27 @@ function TransactionHistoryTab({ accountId, accountNumber }: { accountId: number
                   <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Receipt No.</th>
                   <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
                   <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Payment Type</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Payment Option</th>
                   <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
-                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Tender</th>
-                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Change</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Card/Cheque Detail</th>
                   <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Cashier</th>
+                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Cash Book</th>
                   <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
                 </tr>
               </thead>
               <tbody>
-                {data.map((item: any, i: number) => (
+                {[...data].sort((a, b) => {
+                  const da = a.receiptDate ? new Date(a.receiptDate).getTime() : 0;
+                  const db = b.receiptDate ? new Date(b.receiptDate).getTime() : 0;
+                  return db - da;
+                }).map((item: any, i: number) => (
                   <tr key={item.receiptId || i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                    <td className="py-2 px-3 font-mono text-blue-700 font-medium">{item.receiptNo || '-'}</td>
-                    <td className="py-2 px-3 text-slate-600">{item.receiptDate ? new Date(item.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
+                    <td className="py-2 px-3 font-mono text-blue-700 font-medium whitespace-nowrap">{item.receiptNo || '-'}</td>
+                    <td className="py-2 px-3 text-slate-600 whitespace-nowrap">{item.receiptDate ? new Date(item.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
                     <td className="py-2 px-3">{item.paymentType || '-'}</td>
-                    <td className="py-2 px-3">{item.paymentOption || '-'}</td>
                     <td className="py-2 px-3 text-right font-mono font-semibold">{(item.amount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                    <td className="py-2 px-3 text-right font-mono">{(item.tenderAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                    <td className="py-2 px-3 text-right font-mono">{(item.changeAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    <td className="py-2 px-3 text-slate-500 text-xs">{item.cardChequeDetail || '-'}</td>
                     <td className="py-2 px-3 text-slate-500 text-xs">{item.cashierName || '-'}</td>
+                    <td className="py-2 px-3 text-slate-500 text-xs">{item.cashBook || '-'}</td>
                     <td className="py-2 px-3">
                       {item.isCancelled ? (
                         <Badge variant="destructive" className="text-[10px]">Cancelled</Badge>
