@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TransactionRecord, TransactionItem, ReceiptAllocation, SplitReceipt, ServiceBalance } from '@/lib/pos-state';
+import { TransactionRecord, TransactionItem, ReceiptAllocation, SplitReceipt } from '@/lib/pos-state';
 import { Account, DirectIncomeItem } from '@/lib/mock-data';
 import { MunicipalityInfo, fetchMunicipalityInfo } from '@/lib/external-api';
 
@@ -45,14 +45,6 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
     splitReceipts[0]?.allocations || transaction.allocations || [];
   const hasPaymentAllocations = paymentAllocations.length > 0;
 
-  const serviceBalances: { serviceDescription: string; amount: number }[] =
-    !hasPaymentAllocations ? (
-      splitReceipts[0]?.serviceBalances || transaction.items?.[0]?.originalData?.agingBreakdown?.filter((b: any) => Math.abs(b.totalOutstanding || 0) >= 0.01).map((b: any) => ({
-        serviceDescription: b.serviceDescription || 'Unknown',
-        amount: b.totalOutstanding || 0,
-      })) || []
-    ) : [];
-  const hasServiceBalances = serviceBalances.length > 0;
 
   const formatDate = (ts: number) => {
     return new Date(ts).toLocaleString('en-ZA', {
@@ -217,22 +209,16 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
                       <span className="text-right">{Number(alloc.amount).toFixed(2)}</span>
                   </div>
               ))}
-          </div>
-      )}
-
-      {hasServiceBalances && !hasPaymentAllocations && (
-          <div className="border-t border-gray-300 pt-2 mb-2">
-              <div className="font-bold text-[10px] mb-1">Service Balances:</div>
-              {serviceBalances.map((sb: any, idx: number) => (
-                  <div key={idx} className="flex justify-between mb-0.5">
-                      <span className="break-words w-[65%]">{sb.serviceDescription}</span>
-                      <span className="text-right">{Number(sb.amount).toFixed(2)}</span>
+              {hasLineItems && apiLineItems.some(li => (Number(li.vatAmount) || 0) > 0) && (
+                  <div className="flex justify-between mt-1 border-t border-dashed border-gray-300 pt-1 mb-1">
+                      <span>Vat Amount</span>
+                      <span className="text-right">{apiLineItems.reduce((sum, li) => sum + (Number(li.vatAmount) || 0), 0).toFixed(2)}</span>
                   </div>
-              ))}
+              )}
           </div>
       )}
 
-      {hasLineItems ? (
+      {!hasPaymentAllocations && hasLineItems ? (
           <div className="border-t border-gray-300 pt-2 mb-2">
               {(() => {
                   const filteredItems = apiLineItems.filter(li => li.description);

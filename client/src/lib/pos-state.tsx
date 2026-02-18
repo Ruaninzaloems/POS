@@ -1076,7 +1076,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     for (const item of accountItems) {
         const acct = item.originalData as any;
         const acctId = acct?.apiId || acct?.account_ID || acct?.accountID || acct?.accountId || '';
-        if (acctId && acct?.agingBreakdown && Array.isArray(acct.agingBreakdown) && acct.agingBreakdown.length > 0) {
+        if (!acctId) continue;
+        if (acct?.agingBreakdown && Array.isArray(acct.agingBreakdown) && acct.agingBreakdown.length > 0) {
             const balances: ServiceBalance[] = acct.agingBreakdown
                 .filter((row: any) => Math.abs(row.totalOutstanding || 0) >= 0.01)
                 .map((row: any) => ({
@@ -1089,7 +1090,35 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }));
             if (balances.length > 0) {
                 serviceBalanceMap.set(String(acctId), balances);
-                console.log(`[Priority 1] Pre-payment service balances for ${acctId}:`, balances.map(b => `${b.serviceDescription}: ${b.totalAmount}`));
+                console.log(`[Priority 1] Pre-payment service balances for ${acctId} (from cart data):`, balances.map(b => `${b.serviceDescription}: ${b.totalAmount}`));
+            }
+        }
+        if (!serviceBalanceMap.has(String(acctId))) {
+            try {
+                const balRes = await fetch(`/api/platinum/billing-enquiry/total-balance-debt?accountId=${acctId}`);
+                if (balRes.ok) {
+                    const balData = await balRes.json();
+                    let rows: any[] = [];
+                    if (Array.isArray(balData)) rows = balData;
+                    else if (balData?.results && Array.isArray(balData.results)) rows = balData.results;
+                    else if (balData && typeof balData === 'object') rows = [balData];
+                    const balances: ServiceBalance[] = rows
+                        .filter((row: any) => Math.abs(row.totalOutStanding || row.totalOutstanding || 0) >= 0.01)
+                        .map((row: any) => ({
+                            serviceDescription: row.serviceDescription || row.description || 'Unknown',
+                            amount: row.totalOutStanding || row.totalOutstanding || 0,
+                            vat: 0,
+                            totalAmount: row.totalOutStanding || row.totalOutstanding || 0,
+                            currentCharge: 0,
+                            openingBalance: 0,
+                        }));
+                    if (balances.length > 0) {
+                        serviceBalanceMap.set(String(acctId), balances);
+                        console.log(`[Priority 1] Pre-payment service balances for ${acctId} (from API):`, balances.map(b => `${b.serviceDescription}: ${b.totalAmount}`));
+                    }
+                }
+            } catch (e) {
+                console.warn(`[Priority 1] Failed to fetch pre-payment service balances for ${acctId}`, e);
             }
         }
     }
@@ -1187,9 +1216,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
 
             const resolvedAcctId = acctId || matchedPerAcct?.accountId || '';
-            if (resolvedAcctId && serviceBalanceMap.has(resolvedAcctId)) {
-                splitEntry.serviceBalances = serviceBalanceMap.get(resolvedAcctId);
-            }
 
             record.splitReceipts!.push(splitEntry);
 
@@ -1500,6 +1526,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     console.warn(`[Priority 1] Failed to fetch updated outstanding for account ${accountId}`, e);
                 }
 
+                let allocations: ReceiptAllocation[] = [];
+
                 const prePaymentBalances = serviceBalanceMap.get(String(accountId));
                 if (prePaymentBalances && prePaymentBalances.length > 0) {
                     try {
@@ -1518,7 +1546,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                                     postPaymentMap.set(desc, row.totalOutStanding || row.totalOutstanding || 0);
                                 }
 
-                                const allocations: ReceiptAllocation[] = [];
                                 for (const pre of prePaymentBalances) {
                                     const postAmount = postPaymentMap.get(pre.serviceDescription) ?? pre.totalAmount;
                                     const allocated = Math.round((pre.totalAmount - postAmount) * 100) / 100;
@@ -1531,24 +1558,29 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                                         });
                                     }
                                 }
-
                                 if (allocations.length > 0) {
-                                    console.log(`[Priority 1] Payment allocations for account ${accountId}:`, allocations.map(a => `${a.service}: R${a.amount}`));
-                                    if (!record.allocations) record.allocations = [];
-                                    record.allocations.push(...allocations);
-                                    for (const sr of (record.splitReceipts || [])) {
-                                        if (String(sr.accountId) === String(accountId) || String(sr.receiptDetail?.accountId) === String(accountId)) {
-                                            sr.allocations = allocations;
-                                            sr.serviceBalances = undefined;
-                                        }
-                                    }
+                                    console.log(`[Priority 1] Payment allocations from balance diff for account ${accountId}:`, allocations.map(a => `${a.service}: R${a.amount}`));
                                 } else {
-                                    console.log(`[Priority 1] No measurable allocations detected for account ${accountId} (payment may not have changed individual service balances)`);
+                                    console.log(`[Priority 1] No measurable allocations via diff for account ${accountId}, trying receipt PDF`);
                                 }
                             }
                         }
                     } catch (e) {
-                        console.warn(`[Priority 1] Failed to compute payment allocations for account ${accountId}`, e);
+                        console.warn(`[Priority 1] Failed to compute payment allocations via diff for account ${accountId}`, e);
+                    }
+                }
+
+                if (allocations.length === 0) {
+                    console.log(`[Priority 1] No payment allocations available for account ${accountId} — receipt will show line items only`);
+                }
+
+                if (allocations.length > 0) {
+                    if (!record.allocations) record.allocations = [];
+                    record.allocations.push(...allocations);
+                    for (const sr of (record.splitReceipts || [])) {
+                        if (String(sr.accountId) === String(accountId) || String(sr.receiptDetail?.accountId) === String(accountId)) {
+                            sr.allocations = allocations;
+                        }
                     }
                 }
             }
