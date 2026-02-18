@@ -33,6 +33,7 @@ export interface EnquirySearchCriteria {
 
 export interface EnquirySearchResult {
   account_ID: number;
+  accountID: number;
   accountNumber: string;
   oldAccountCode: string;
   name: string;
@@ -42,8 +43,11 @@ export interface EnquirySearchResult {
   deliveryAddress: string;
   locationAddress: string;
   statusDesc: string;
+  accountStatus: string;
   accountDesc: string;
+  accountType: string;
   outStandingAmt: number;
+  outStandingAmount: number;
   [key: string]: any;
 }
 

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { PosLayout } from '@/components/layout/pos-layout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Search, X, ChevronLeft, User, Building2, MapPin, Phone, Mail,
   CreditCard, Droplets, Zap, FileText, Shield, Gift, Landmark,
-  RefreshCw, AlertTriangle, ChevronDown, ChevronUp, Hash, Globe
+  RefreshCw, AlertTriangle, ChevronDown, ChevronUp, Hash, Globe,
+  Filter, Clock, ArrowRight, Loader2, SlidersHorizontal
 } from 'lucide-react';
 import {
   searchAccounts, getAccountBalance, getServiceTypeBalance,
@@ -104,7 +105,7 @@ function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
   useEffect(() => {
     if (loaded.current) return;
     loaded.current = true;
-    const accountId = account.account_ID;
+    const accountId = account.account_ID || account.accountID;
     Promise.all([
       getAccountInformation(accountId).catch(() => null),
       getPropertyDetails(accountId).catch(() => null),
@@ -115,7 +116,7 @@ function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
       setNameInfo(ni);
       setLoading(false);
     });
-  }, [account.account_ID]);
+  }, [account.account_ID, account.accountID]);
 
   const a = acctInfo || {};
   const p = propInfo || {};
@@ -715,39 +716,249 @@ function TransactionHistoryTab({ accountNumber }: { accountNumber: string }) {
 }
 
 const SEARCH_FIELDS = [
-  { key: 'accountNo', label: 'Account Number', placeholder: 'e.g. 000000003698', icon: Hash },
-  { key: 'oldAccountCode', label: 'Old Account Code', placeholder: 'Legacy code', icon: FileText },
-  { key: 'name', label: 'Name / Company', placeholder: 'Search by name', icon: User },
-  { key: 'idNo', label: 'ID / Registration No.', placeholder: '13 digit ID number', icon: CreditCard },
-  { key: 'physicalMeterNumber', label: 'Meter Number', placeholder: 'Physical meter number', icon: Zap },
-  { key: 'deliveryAddress', label: 'Delivery Address', placeholder: 'Postal or delivery address', icon: MapPin },
-  { key: 'locationAddress', label: 'Location Address', placeholder: 'Street or location', icon: MapPin },
-  { key: 'emailAddress', label: 'Email Address', placeholder: 'email@example.com', icon: Mail },
-  { key: 'mobileNumber', label: 'Mobile Number', placeholder: '0821234567', icon: Phone },
-  { key: 'erfNumber', label: 'Erf Number', placeholder: 'Erf / Stand number', icon: Building2 },
-  { key: 'trading', label: 'Trading As', placeholder: 'Business trading name', icon: Globe },
+  { key: 'accountNo', label: 'Account Number', placeholder: 'e.g. 000000003698', icon: Hash, smart: true },
+  { key: 'oldAccountCode', label: 'Old Account Code', placeholder: 'Legacy code', icon: FileText, smart: false },
+  { key: 'name', label: 'Name / Company', placeholder: 'Search by name', icon: User, smart: true },
+  { key: 'idNo', label: 'ID / Registration No.', placeholder: '13 digit ID number', icon: CreditCard, smart: true },
+  { key: 'physicalMeterNumber', label: 'Meter Number', placeholder: 'Physical meter number', icon: Zap, smart: false },
+  { key: 'deliveryAddress', label: 'Delivery Address', placeholder: 'Postal or delivery address', icon: MapPin, smart: false },
+  { key: 'locationAddress', label: 'Location Address', placeholder: 'Street or location', icon: MapPin, smart: false },
+  { key: 'emailAddress', label: 'Email Address', placeholder: 'email@example.com', icon: Mail, smart: false },
+  { key: 'mobileNumber', label: 'Mobile Number', placeholder: '0821234567', icon: Phone, smart: false },
+  { key: 'erfNumber', label: 'Erf Number', placeholder: 'Erf / Stand number', icon: Building2, smart: false },
+  { key: 'trading', label: 'Trading As', placeholder: 'Business trading name', icon: Globe, smart: false },
 ] as const;
 
+function detectSearchType(query: string): { field: string; label: string } {
+  const trimmed = query.trim();
+  if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(trimmed)) return { field: 'emailAddress', label: 'Email' };
+  if (/^0\d{9}$/.test(trimmed)) return { field: 'mobileNumber', label: 'Mobile Number' };
+  if (/^\d{13}$/.test(trimmed)) return { field: 'idNo', label: 'ID Number' };
+  if (/^\d{6,15}$/.test(trimmed)) return { field: 'accountNo', label: 'Account Number' };
+  if (/^\d{1,5}$/.test(trimmed)) return { field: 'accountNo', label: 'Account Number' };
+  return { field: 'name', label: 'Name / Company' };
+}
+
+function SmartSearchDropdown({
+  results, loading, query, highlightIdx, onSelect, visible
+}: {
+  results: EnquirySearchResult[];
+  loading: boolean;
+  query: string;
+  highlightIdx: number;
+  onSelect: (a: EnquirySearchResult) => void;
+  visible: boolean;
+}) {
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (listRef.current && highlightIdx >= 0) {
+      const el = listRef.current.children[highlightIdx] as HTMLElement;
+      if (el) el.scrollIntoView({ block: 'nearest' });
+    }
+  }, [highlightIdx]);
+
+  if (!visible) return null;
+
+  return (
+    <div
+      className="absolute left-0 right-0 top-full mt-1 bg-white rounded-lg shadow-xl border border-slate-200 z-50 max-h-[420px] overflow-hidden flex flex-col"
+      data-testid="smart-search-dropdown"
+    >
+      {loading && (
+        <div className="flex items-center gap-3 px-4 py-3 text-sm text-slate-500 border-b border-slate-100">
+          <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+          Searching accounts...
+        </div>
+      )}
+
+      {!loading && query.length >= 2 && results.length === 0 && (
+        <div className="flex flex-col items-center py-8 text-slate-400">
+          <Search className="w-8 h-8 mb-2 opacity-30" />
+          <p className="text-sm font-medium">No accounts found</p>
+          <p className="text-xs mt-1">Try a different search term or use advanced filters</p>
+        </div>
+      )}
+
+      {results.length > 0 && (
+        <>
+          <div className="px-4 py-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+              {results.length} account{results.length !== 1 ? 's' : ''} found
+            </span>
+            <span className="text-[10px] text-slate-400">
+              Use <kbd className="px-1 py-0.5 bg-slate-200 rounded text-[9px] font-mono">↑↓</kbd> to navigate, <kbd className="px-1 py-0.5 bg-slate-200 rounded text-[9px] font-mono">Enter</kbd> to select
+            </span>
+          </div>
+          <div ref={listRef} className="overflow-y-auto flex-1">
+            {results.slice(0, 50).map((account, i) => (
+              <div
+                key={account.account_ID || i}
+                onClick={() => onSelect(account)}
+                className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all border-b border-slate-50 last:border-0
+                  ${highlightIdx === i ? 'bg-blue-50 border-l-2 border-l-blue-500' : 'hover:bg-slate-50 border-l-2 border-l-transparent'}`}
+                data-testid={`dropdown-account-${account.account_ID || i}`}
+              >
+                <div className={`shrink-0 h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold
+                  ${(account.statusDesc || account.accountStatus)?.toLowerCase() === 'active' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>
+                  {(account.name || account.surname_Company || '?').charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-slate-800 truncate">{account.name || account.surname_Company || 'Unknown'}</span>
+                    <Badge
+                      variant={(account.statusDesc || account.accountStatus)?.toLowerCase() === 'active' ? 'default' : 'secondary'}
+                      className="text-[9px] shrink-0 h-4 px-1.5"
+                    >
+                      {account.statusDesc || account.accountStatus || '?'}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-3 mt-0.5">
+                    <span className="text-xs font-mono text-blue-600">{account.accountNumber || account.account_ID || account.accountID}</span>
+                    {account.oldAccountCode && <span className="text-[10px] text-slate-400 font-mono">Old: {account.oldAccountCode}</span>}
+                    {(account.deliveryAddress || account.address) && (
+                      <span className="text-[10px] text-slate-400 truncate max-w-[200px]">
+                        {(account.deliveryAddress || account.address || '').replace(/\r\n/g, ', ').substring(0, 50)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <div className={`text-sm font-mono font-bold ${(account.outStandingAmt ?? account.outStandingAmount ?? 0) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    R {(account.outStandingAmt ?? account.outStandingAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                  </div>
+                  <div className="text-[10px] text-slate-400">{account.accountDesc || account.accountType || ''}</div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-slate-300 shrink-0" />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function GeneralEnquiriesContent() {
+  const [quickQuery, setQuickQuery] = useState('');
   const [criteria, setCriteria] = useState<EnquirySearchCriteria>({});
+  const [dropdownResults, setDropdownResults] = useState<EnquirySearchResult[]>([]);
   const [results, setResults] = useState<EnquirySearchResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const [dropdownSearching, setDropdownSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<EnquirySearchResult | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [activeTab, setActiveTab] = useState('account');
+  const [highlightIdx, setHighlightIdx] = useState(-1);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [searchMode, setSearchMode] = useState<'quick' | 'advanced'>('quick');
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownContainerRef = useRef<HTMLDivElement>(null);
 
-  const handleSearch = useCallback(async () => {
-    const hasAnyCriteria = Object.values(criteria).some(v => v && String(v).trim());
-    if (!hasAnyCriteria) return;
+  const detectedType = useMemo(() => detectSearchType(quickQuery), [quickQuery]);
+
+  useEffect(() => {
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownContainerRef.current && !dropdownContainerRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const doQuickSearch = useCallback(async (query: string) => {
+    if (query.trim().length < 2) {
+      setDropdownResults([]);
+      setDropdownSearching(false);
+      return;
+    }
+    setDropdownSearching(true);
+    const { field } = detectSearchType(query);
+    try {
+      const data = await searchAccounts({ [field]: query.trim() } as any);
+      setDropdownResults(data);
+      setShowDropdown(true);
+    } catch (e: any) {
+      setDropdownResults([]);
+    } finally {
+      setDropdownSearching(false);
+    }
+  }, []);
+
+  const handleQuickQueryChange = (val: string) => {
+    setQuickQuery(val);
+    setHighlightIdx(-1);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (val.trim().length >= 2) {
+      setShowDropdown(true);
+      setDropdownSearching(true);
+      debounceRef.current = setTimeout(() => doQuickSearch(val), 400);
+    } else {
+      setShowDropdown(val.trim().length > 0);
+      setDropdownResults([]);
+      setDropdownSearching(false);
+    }
+  };
+
+  const handleSelectAccount = (account: EnquirySearchResult) => {
+    setSelectedAccount(account);
+    setActiveTab('account');
+    setShowDropdown(false);
+    const term = quickQuery.trim();
+    if (term && !recentSearches.includes(term)) {
+      setRecentSearches(prev => [term, ...prev].slice(0, 8));
+    }
+  };
+
+  const handleQuickKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightIdx(prev => Math.min(prev + 1, Math.min(dropdownResults.length - 1, 49)));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightIdx(prev => Math.max(prev - 1, -1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (highlightIdx >= 0 && highlightIdx < dropdownResults.length) {
+        handleSelectAccount(dropdownResults[highlightIdx]);
+      } else {
+        handleFullSearch();
+      }
+    } else if (e.key === 'Escape') {
+      setShowDropdown(false);
+      setHighlightIdx(-1);
+    }
+  };
+
+  const handleFullSearch = useCallback(async () => {
+    const hasQuick = quickQuery.trim().length >= 2;
+    const hasAdvanced = Object.values(criteria).some(v => v && String(v).trim());
+    if (!hasQuick && !hasAdvanced) return;
 
     setSearching(true);
     setSearchError(null);
     setHasSearched(true);
-    setSelectedAccount(null);
+    setShowDropdown(false);
+    const term = quickQuery.trim();
+    if (term && !recentSearches.includes(term)) {
+      setRecentSearches(prev => [term, ...prev].slice(0, 8));
+    }
     try {
-      const data = await searchAccounts(criteria);
+      let searchCriteria: EnquirySearchCriteria = { ...criteria };
+      if (hasQuick) {
+        const { field } = detectSearchType(quickQuery);
+        searchCriteria = { ...searchCriteria, [field]: quickQuery.trim() };
+      }
+      const data = await searchAccounts(searchCriteria);
       setResults(data);
     } catch (e: any) {
       setSearchError(e.message || 'Search failed');
@@ -755,36 +966,29 @@ function GeneralEnquiriesContent() {
     } finally {
       setSearching(false);
     }
-  }, [criteria]);
+  }, [quickQuery, criteria, recentSearches]);
 
   const handleClear = () => {
+    setQuickQuery('');
     setCriteria({});
     setResults([]);
+    setDropdownResults([]);
     setHasSearched(false);
     setSearchError(null);
     setSelectedAccount(null);
+    setShowDropdown(false);
+    setHighlightIdx(-1);
+    inputRef.current?.focus();
   };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleSearch();
-  };
-
-  const handleSelectAccount = (account: EnquirySearchResult) => {
-    setSelectedAccount(account);
-    setActiveTab('account');
-  };
-
-  const primaryFields = SEARCH_FIELDS.slice(0, 4);
-  const advancedFields = SEARCH_FIELDS.slice(4);
 
   if (selectedAccount) {
-    const accountId = selectedAccount.account_ID;
+    const accountId = selectedAccount.account_ID || selectedAccount.accountID;
     return (
       <div className="flex flex-col h-full overflow-hidden">
         <div className="shrink-0 bg-white border-b px-4 sm:px-6 py-3 flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={() => setSelectedAccount(null)} className="gap-1.5" data-testid="button-back-to-results">
             <ChevronLeft className="w-4 h-4" />
-            Back to Results
+            Back
           </Button>
           <div className="h-5 w-px bg-slate-200" />
           <div className="flex items-center gap-3 min-w-0">
@@ -794,12 +998,12 @@ function GeneralEnquiriesContent() {
             <div className="min-w-0">
               <div className="text-sm font-semibold text-slate-800 truncate" data-testid="text-selected-account-name">{selectedAccount.name || selectedAccount.surname_Company}</div>
               <div className="text-xs text-slate-500">
-                Acc: {selectedAccount.accountNumber || selectedAccount.account_ID}
+                Acc: {selectedAccount.accountNumber || selectedAccount.account_ID || selectedAccount.accountID}
                 {selectedAccount.oldAccountCode && ` | Old: ${selectedAccount.oldAccountCode}`}
               </div>
             </div>
-            <Badge variant={selectedAccount.statusDesc?.toLowerCase() === 'active' ? 'default' : 'secondary'} className="ml-2 shrink-0">
-              {selectedAccount.statusDesc || 'Unknown'}
+            <Badge variant={(selectedAccount.statusDesc || selectedAccount.accountStatus)?.toLowerCase() === 'active' ? 'default' : 'secondary'} className="ml-2 shrink-0">
+              {selectedAccount.statusDesc || selectedAccount.accountStatus || 'Unknown'}
             </Badge>
           </div>
         </div>
@@ -830,7 +1034,7 @@ function GeneralEnquiriesContent() {
               <TabsContent value="handover" className="m-0"><HandoverTab accountId={accountId} /></TabsContent>
               <TabsContent value="incentives" className="m-0"><IncentivesTab accountId={accountId} /></TabsContent>
               <TabsContent value="deposits" className="m-0"><DepositsTab accountId={accountId} /></TabsContent>
-              <TabsContent value="transactions" className="m-0"><TransactionHistoryTab accountNumber={selectedAccount.accountNumber || String(selectedAccount.account_ID)} /></TabsContent>
+              <TabsContent value="transactions" className="m-0"><TransactionHistoryTab accountNumber={selectedAccount.accountNumber || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabsContent>
             </div>
           </Tabs>
         </div>
@@ -841,51 +1045,130 @@ function GeneralEnquiriesContent() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="shrink-0 bg-white border-b px-4 sm:px-6 py-4">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3">
           <div>
             <h2 className="text-lg font-bold text-slate-800" data-testid="text-page-title">General Enquiries</h2>
             <p className="text-xs text-slate-500 mt-0.5">Search and view municipal account information</p>
           </div>
-          {hasSearched && (
-            <Badge variant="outline" className="text-xs" data-testid="text-result-count">
-              {results.length} result{results.length !== 1 ? 's' : ''}
-            </Badge>
+          <div className="flex items-center gap-2">
+            {hasSearched && (
+              <Badge variant="outline" className="text-xs" data-testid="text-result-count">
+                {results.length} result{results.length !== 1 ? 's' : ''}
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        <div ref={dropdownContainerRef} className="relative">
+          <div className="flex gap-2 items-stretch">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              {dropdownSearching && (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500 animate-spin pointer-events-none" />
+              )}
+              <input
+                ref={inputRef}
+                type="text"
+                value={quickQuery}
+                onChange={(e) => handleQuickQueryChange(e.target.value)}
+                onKeyDown={handleQuickKeyDown}
+                onFocus={() => { if (quickQuery.trim().length >= 2 || recentSearches.length > 0) setShowDropdown(true); }}
+                placeholder="Search by account number, name, ID number, phone, email..."
+                className="w-full h-11 pl-10 pr-10 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-800 placeholder:text-slate-400
+                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                data-testid="input-smart-search"
+              />
+              {quickQuery && (
+                <button
+                  onClick={handleClear}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  data-testid="button-clear-quick"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <Button
+              onClick={handleFullSearch}
+              disabled={searching || (quickQuery.trim().length < 2 && !Object.values(criteria).some(v => v && String(v).trim()))}
+              className="h-11 px-5 gap-2 shadow-sm"
+              data-testid="button-search"
+            >
+              {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              Search
+            </Button>
+            <Button
+              variant={searchMode === 'advanced' ? 'secondary' : 'outline'}
+              onClick={() => setSearchMode(prev => prev === 'advanced' ? 'quick' : 'advanced')}
+              className="h-11 px-3 gap-1.5"
+              data-testid="button-toggle-advanced"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              <span className="hidden sm:inline text-xs">Filters</span>
+            </Button>
+          </div>
+
+          {quickQuery.trim().length >= 1 && quickQuery.trim().length < 2 && showDropdown && (
+            <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 z-50 px-4 py-3">
+              <p className="text-xs text-slate-400">Type at least 2 characters to search...</p>
+            </div>
+          )}
+
+          {quickQuery.trim().length >= 2 && (
+            <SmartSearchDropdown
+              results={dropdownResults}
+              loading={dropdownSearching}
+              query={quickQuery}
+              highlightIdx={highlightIdx}
+              onSelect={handleSelectAccount}
+              visible={showDropdown}
+            />
+          )}
+
+          {quickQuery.trim().length < 2 && showDropdown && recentSearches.length > 0 && (
+            <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 z-50 py-2">
+              <div className="px-4 py-1.5 flex items-center gap-2 border-b border-slate-100 mb-1">
+                <Clock className="w-3 h-3 text-slate-400" />
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Recent Searches</span>
+              </div>
+              {recentSearches.map((term, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setQuickQuery(term); handleQuickQueryChange(term); }}
+                  className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2"
+                  data-testid={`recent-search-${i}`}
+                >
+                  <Clock className="w-3 h-3 text-slate-300" />
+                  {term}
+                </button>
+              ))}
+            </div>
           )}
         </div>
 
-        <div className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {primaryFields.map((field) => (
-              <div key={field.key}>
-                <Label htmlFor={`search-${field.key}`} className="text-[11px] uppercase tracking-wider text-slate-500 font-medium mb-1 flex items-center gap-1.5">
-                  <field.icon className="w-3 h-3" />
-                  {field.label}
-                </Label>
-                <Input
-                  id={`search-${field.key}`}
-                  placeholder={field.placeholder}
-                  value={(criteria as any)[field.key] || ''}
-                  onChange={(e) => setCriteria(prev => ({ ...prev, [field.key]: e.target.value }))}
-                  onKeyDown={handleKeyDown}
-                  className="h-9 text-sm"
-                  data-testid={`input-search-${field.key}`}
-                />
-              </div>
-            ))}
+        {quickQuery.trim().length >= 2 && !showDropdown && (
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider">Detected:</span>
+            <Badge variant="outline" className="text-[10px] gap-1 h-5">
+              <Filter className="w-2.5 h-2.5" />
+              {detectedType.label}
+            </Badge>
           </div>
+        )}
 
-          <button
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors"
-            data-testid="button-toggle-advanced"
-          >
-            {showAdvanced ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-            {showAdvanced ? 'Hide' : 'Show'} Advanced Search Fields
-          </button>
-
-          {showAdvanced && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1 border-t border-dashed border-slate-200">
-              {advancedFields.map((field) => (
+        {searchMode === 'advanced' && (
+          <div className="mt-3 pt-3 border-t border-dashed border-slate-200 space-y-3">
+            <div className="flex items-center gap-2 mb-2">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Advanced Filters</span>
+              {Object.values(criteria).some(v => v && String(v).trim()) && (
+                <button onClick={() => setCriteria({})} className="text-[10px] text-blue-600 hover:text-blue-800 ml-auto">
+                  Clear Filters
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {SEARCH_FIELDS.map((field) => (
                 <div key={field.key}>
                   <Label htmlFor={`search-${field.key}`} className="text-[11px] uppercase tracking-wider text-slate-500 font-medium mb-1 flex items-center gap-1.5">
                     <field.icon className="w-3 h-3" />
@@ -896,40 +1179,49 @@ function GeneralEnquiriesContent() {
                     placeholder={field.placeholder}
                     value={(criteria as any)[field.key] || ''}
                     onChange={(e) => setCriteria(prev => ({ ...prev, [field.key]: e.target.value }))}
-                    onKeyDown={handleKeyDown}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleFullSearch(); }}
                     className="h-9 text-sm"
                     data-testid={`input-search-${field.key}`}
                   />
                 </div>
               ))}
             </div>
-          )}
-
-          <div className="flex gap-2 pt-1">
-            <Button onClick={handleSearch} disabled={searching || !Object.values(criteria).some(v => v && String(v).trim())} className="gap-2" data-testid="button-search">
-              {searching ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-              {searching ? 'Searching...' : 'Search'}
-            </Button>
-            <Button variant="outline" onClick={handleClear} className="gap-2" data-testid="button-clear">
-              <X className="w-4 h-4" />
-              Clear
-            </Button>
           </div>
-        </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-auto bg-slate-50">
         {searchError && (
           <div className="p-4">
-            <ErrorState message={searchError} onRetry={handleSearch} />
+            <ErrorState message={searchError} onRetry={handleFullSearch} />
           </div>
         )}
 
         {!hasSearched && !searchError && (
           <div className="flex flex-col items-center justify-center h-full text-slate-400 p-8">
-            <Search className="w-16 h-16 mb-4 opacity-20" />
-            <p className="text-base font-medium mb-1">Search for Accounts</p>
-            <p className="text-sm text-center max-w-md">Enter an account number, name, ID number, or any other criteria above and click Search to find municipal accounts.</p>
+            <div className="relative mb-6">
+              <Search className="w-16 h-16 opacity-15" />
+              <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center">
+                <Zap className="w-3.5 h-3.5 text-blue-600" />
+              </div>
+            </div>
+            <p className="text-base font-semibold text-slate-600 mb-1">Smart Account Search</p>
+            <p className="text-sm text-center max-w-lg text-slate-400 leading-relaxed">
+              Start typing an account number, name, ID number, phone number, or email in the search bar above.
+              Results appear instantly as you type. Use the Filters button for advanced multi-field searches.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-5">
+              {['000000003698', 'Van der Merwe', '8501015012087'].map((example, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setQuickQuery(example); handleQuickQueryChange(example); inputRef.current?.focus(); }}
+                  className="text-xs px-3 py-1.5 rounded-full border border-slate-200 text-slate-500 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 transition-all"
+                  data-testid={`example-search-${i}`}
+                >
+                  Try: {example}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -937,7 +1229,7 @@ function GeneralEnquiriesContent() {
           <div className="flex flex-col items-center justify-center h-full text-slate-400 p-8">
             <FileText className="w-12 h-12 mb-3 opacity-30" />
             <p className="text-sm font-medium">No results found</p>
-            <p className="text-xs mt-1">Try adjusting your search criteria</p>
+            <p className="text-xs mt-1">Try adjusting your search criteria or use the Filters button</p>
           </div>
         )}
 
@@ -957,29 +1249,34 @@ function GeneralEnquiriesContent() {
                 </tr>
               </thead>
               <tbody>
-                {results.map((account, i) => (
-                  <tr
-                    key={account.account_ID || i}
-                    onClick={() => handleSelectAccount(account)}
-                    className="border-b border-slate-100 hover:bg-blue-50 cursor-pointer transition-colors group"
-                    data-testid={`row-account-${account.account_ID || i}`}
-                  >
-                    <td className="py-2.5 px-4 font-mono text-blue-700 font-semibold group-hover:text-blue-900">{account.accountNumber || account.account_ID}</td>
-                    <td className="py-2.5 px-4 text-slate-500 font-mono text-xs">{account.oldAccountCode || '-'}</td>
-                    <td className="py-2.5 px-4 font-medium text-slate-800">{account.name || account.surname_Company || '-'}</td>
-                    <td className="py-2.5 px-4 text-slate-500 text-xs font-mono">{account.idRegistrationNumber || '-'}</td>
-                    <td className="py-2.5 px-4 text-slate-500 text-xs max-w-[200px] truncate">{(account.deliveryAddress || account.locationAddress || '-').replace(/\r\n/g, ', ')}</td>
-                    <td className="py-2.5 px-4"><Badge variant="outline" className="text-[10px] font-normal">{account.accountDesc || '-'}</Badge></td>
-                    <td className="py-2.5 px-4">
-                      <Badge variant={account.statusDesc?.toLowerCase() === 'active' ? 'default' : 'secondary'} className="text-[10px]">
-                        {account.statusDesc || '-'}
-                      </Badge>
-                    </td>
-                    <td className="py-2.5 px-4 text-right font-mono font-semibold text-red-600">
-                      {(account.outStandingAmt ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
-                    </td>
-                  </tr>
-                ))}
+                {results.map((account, i) => {
+                  const aid = account.account_ID || account.accountID || i;
+                  const status = account.statusDesc || account.accountStatus || '-';
+                  const outstanding = account.outStandingAmt ?? account.outStandingAmount ?? 0;
+                  return (
+                    <tr
+                      key={aid}
+                      onClick={() => handleSelectAccount(account)}
+                      className="border-b border-slate-100 hover:bg-blue-50 cursor-pointer transition-colors group"
+                      data-testid={`row-account-${aid}`}
+                    >
+                      <td className="py-2.5 px-4 font-mono text-blue-700 font-semibold group-hover:text-blue-900">{account.accountNumber || aid}</td>
+                      <td className="py-2.5 px-4 text-slate-500 font-mono text-xs">{account.oldAccountCode || '-'}</td>
+                      <td className="py-2.5 px-4 font-medium text-slate-800">{account.name || account.surname_Company || '-'}</td>
+                      <td className="py-2.5 px-4 text-slate-500 text-xs font-mono">{account.idRegistrationNumber || '-'}</td>
+                      <td className="py-2.5 px-4 text-slate-500 text-xs max-w-[200px] truncate">{(account.deliveryAddress || account.address || account.locationAddress || '-').replace(/\r\n/g, ', ')}</td>
+                      <td className="py-2.5 px-4"><Badge variant="outline" className="text-[10px] font-normal">{account.accountDesc || account.accountType || '-'}</Badge></td>
+                      <td className="py-2.5 px-4">
+                        <Badge variant={status.toLowerCase() === 'active' ? 'default' : 'secondary'} className="text-[10px]">
+                          {status}
+                        </Badge>
+                      </td>
+                      <td className="py-2.5 px-4 text-right font-mono font-semibold text-red-600">
+                        {outstanding.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
