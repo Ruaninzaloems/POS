@@ -16,7 +16,7 @@ import {
   searchAccounts, getAccountBalance, getServiceTypeBalance,
   getPropertyDetails, getConsumptionUnits, getNameInfo,
   getHandoverInfo, getPaymentIncentive, getDeposits, getDepositAmount,
-  getTransactionHistory,
+  getTransactionHistory, getAccountInformation,
   type EnquirySearchCriteria, type EnquirySearchResult,
 } from '@/lib/enquiries-service';
 
@@ -65,33 +65,146 @@ function ErrorState({ message, onRetry }: { message: string; onRetry?: () => voi
   );
 }
 
-function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
+function SectionHeader({ title }: { title: string }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold text-slate-600 flex items-center gap-2"><User className="w-4 h-4" /> Account Holder</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-0">
-          <FieldRow label="Name" value={account.name || account.surname_Company} />
-          <FieldRow label="Initials" value={account.initials} />
-          <FieldRow label="ID / Registration" value={account.idRegistrationNumber} />
-          <FieldRow label="Account Type" value={account.accountDesc} />
-          <FieldRow label="Status" value={account.statusDesc} />
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold text-slate-600 flex items-center gap-2"><MapPin className="w-4 h-4" /> Address Details</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-0">
-          <FieldRow label="Account Number" value={account.accountNumber} />
-          <FieldRow label="Old Account Code" value={account.oldAccountCode} />
-          <FieldRow label="Delivery Address" value={account.deliveryAddress?.replace(/\r\n/g, ', ')} />
-          <FieldRow label="Location Address" value={account.locationAddress?.replace(/\r\n/g, ', ')} />
-          <FieldRow label="Erf Number" value={account.erfNumber || account.eftNumber} />
-        </CardContent>
-      </Card>
+    <div className="flex items-center gap-3 py-2 mt-1">
+      <div className="h-px flex-1 bg-slate-200" />
+      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">{title}</span>
+      <div className="h-px flex-1 bg-slate-200" />
+    </div>
+  );
+}
+
+function InfoField({ label, value, isCurrency }: { label: string; value: any; isCurrency?: boolean }) {
+  let display = '-';
+  if (value !== null && value !== undefined && value !== '') {
+    const lbl = label.toLowerCase();
+    const currencyLabel = lbl.includes('amount') || lbl.includes('market value') || lbl.includes('deposit');
+    const numVal = typeof value === 'number' ? value : (currencyLabel ? parseFloat(String(value)) : NaN);
+    if (typeof value === 'boolean') display = value ? 'Yes' : 'No';
+    else if ((isCurrency || currencyLabel) && !isNaN(numVal)) display = `R ${numVal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
+    else display = String(value).replace(/\r\n/g, ', ');
+  }
+  return (
+    <div className="flex items-baseline gap-2 py-1">
+      <span className="text-xs text-slate-500 font-medium whitespace-nowrap min-w-[140px]">{label}</span>
+      <span className="text-xs text-slate-400 shrink-0">:</span>
+      <span className="text-xs text-slate-800 font-medium break-words">{display}</span>
+    </div>
+  );
+}
+
+function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
+  const [acctInfo, setAcctInfo] = useState<any>(null);
+  const [propInfo, setPropInfo] = useState<any>(null);
+  const [nameInfo, setNameInfo] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const loaded = useRef(false);
+
+  useEffect(() => {
+    if (loaded.current) return;
+    loaded.current = true;
+    const accountId = account.account_ID;
+    Promise.all([
+      getAccountInformation(accountId).catch(() => null),
+      getPropertyDetails(accountId).catch(() => null),
+      getNameInfo(accountId).catch(() => null),
+    ]).then(([ai, pi, ni]) => {
+      setAcctInfo(ai);
+      setPropInfo(Array.isArray(pi) ? pi[0] : pi);
+      setNameInfo(ni);
+      setLoading(false);
+    });
+  }, [account.account_ID]);
+
+  const a = acctInfo || {};
+  const p = propInfo || {};
+  const n = nameInfo || {};
+  const s = account;
+
+  return (
+    <div className="p-4 space-y-1" data-testid="account-info-panel">
+      <h3 className="text-base font-bold text-slate-800 mb-2">Account Enquiry</h3>
+
+      <SectionHeader title="Account Information" />
+      {loading ? <LoadingSkeleton /> : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
+          <div>
+            <InfoField label="Account Number" value={s.accountNumber || a.accountNumber} />
+            <InfoField label="Account Group" value={a.accountGroup || a.accountGroupDescription || s.accountDesc} />
+            <InfoField label="Payment Group" value={a.paymentGroup || a.paymentGroupDescription} />
+            <InfoField label="Account Type" value={a.accountType || a.accountTypeDescription || s.accountDesc} />
+            <InfoField label="Incentive Scheme Code" value={a.incentiveSchemeCode || a.incentiveScheme} />
+            <InfoField label="Email" value={n.email || n.emailAddress || s.email || a.email} />
+            <InfoField label="Paid Deposit Amount" value={a.paidDepositAmount ?? a.depositAmount} />
+          </div>
+          <div>
+            <InfoField label="Name" value={s.name || a.name || n.surname_Company} />
+            <InfoField label="Sub Account Group" value={a.subAccountGroup || a.subAccountGroupDescription} />
+            <InfoField label="Account Status" value={a.accountStatus || s.statusDesc} />
+            <InfoField label="Delivery Address" value={(a.deliveryAddress || s.deliveryAddress || '').replace(/\r\n/g, ', ')} />
+            <InfoField label="Contact Number" value={n.tel_Mobile || n.tel_Home || n.tel_Work || a.contactNumber} />
+          </div>
+        </div>
+      )}
+
+      <SectionHeader title="Additional Account Details" />
+      {loading ? <LoadingSkeleton /> : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
+          <div>
+            <InfoField label="Interest Waiver Status" value={a.interestWaiverStatus || a.interestWaiver || 'N/A'} />
+            <InfoField label="Indigent Subsidy Status" value={a.indigentSubsidyStatus || a.indigentStatus} />
+            <InfoField label="Consumer RPP Status" value={a.consumerRPPStatus || a.consumerRPP || 'N/A'} />
+            <InfoField label="Departmental Account" value={a.departmentalAccount || a.isDepartmental} />
+          </div>
+          <div>
+            <InfoField label="Rebate Status" value={a.rebateStatus || a.rebate || 'N/A'} />
+            <InfoField label="Handover Status" value={a.handoverStatus || a.handover || 'N/A'} />
+            <InfoField label="Loan RPP Status" value={a.loanRPPStatus || a.loanRPP || 'N/A'} />
+          </div>
+        </div>
+      )}
+
+      <SectionHeader title="Property" />
+      {loading ? <LoadingSkeleton /> : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
+          <div>
+            <InfoField label="SG Number" value={p.sgNumber || p.sg_Number || a.sgNumber} />
+            <InfoField label="Old Property Code" value={s.oldAccountCode || a.oldPropertyCode} />
+            <InfoField label="Billing Cycle" value={a.billingCycle || a.billingCycleDescription} />
+            <InfoField label="Sectional Title Scheme" value={p.sectionalTitleScheme || a.sectionalTitleScheme} />
+            <InfoField label="Location Address" value={(p.locationAddress || s.locationAddress || '').replace(/\r\n/g, ', ')} />
+            <InfoField label="Longitude" value={p.longitude} />
+            <InfoField label="Registration Status" value={p.registrationStatus} />
+          </div>
+          <div>
+            <InfoField label="Property ID" value={p.property_ID || p.propertyId || p.propertyID} />
+            <InfoField label="Property Status" value={p.propertyStatus || p.status} />
+            <InfoField label="Allotment Area" value={p.allotmentArea || a.allotmentArea || s.allotmentArea} />
+            <InfoField label="Farm Name" value={p.farmName} />
+            <InfoField label="Property Type" value={p.propertyType || p.propertyDesc} />
+            <InfoField label="Latitude" value={p.latitude} />
+            <InfoField label="Magisterial District" value={p.magisterialDistrict || p.magDistrict} />
+            <InfoField label="Property Market Value" value={p.marketValue ?? p.propertyMarketValue} />
+          </div>
+        </div>
+      )}
+
+      <SectionHeader title="Partition" />
+      {loading ? <LoadingSkeleton /> : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
+          <div>
+            <InfoField label="Property Type of Use" value={p.propertyTypeOfUse || p.typeOfUse} />
+            <InfoField label="Property Category" value={p.propertyCategory || p.category} />
+            <InfoField label="Accountable Owner Name" value={p.accountableOwnerName || p.ownerName || s.name} />
+          </div>
+          <div>
+            <InfoField label="Valuation Category" value={p.valuationCategory} />
+            <InfoField label="Partition Description" value={p.partitionDescription || p.partition} />
+            <InfoField label="Partition Market Value" value={p.partitionMarketValue} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

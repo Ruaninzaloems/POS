@@ -140,6 +140,14 @@ export async function getTransactionHistory(accountNumber: string): Promise<any[
   return [];
 }
 
+export async function getAccountInformation(accountId: number): Promise<any> {
+  return fetchWithTimeout(`/api/platinum/billing-account-management/account-information?accountId=${accountId}`);
+}
+
+export async function getContactDetails(accountId: number): Promise<any> {
+  return fetchWithTimeout(`/api/platinum/billing-account-management/get-contact-details?accountId=${accountId}`);
+}
+
 export async function rebuildFullAccount(accountId: number): Promise<any> {
   return fetchWithTimeout(`/api/platinum/billing-enquiry/rebuild-full-account?accountId=${accountId}`);
 }
