@@ -2458,7 +2458,7 @@ function getFinYearOptions(): string[] {
   });
 }
 
-function TransactionSummaryTab({ accountId }: { accountId: number }) {
+function TransactionSummaryTab({ accountId, accountNumber }: { accountId: number; accountNumber?: string }) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -2546,6 +2546,31 @@ function TransactionSummaryTab({ accountId }: { accountId: number }) {
     return num.toLocaleString('en-ZA', { minimumFractionDigits: 2 });
   };
 
+  const exportToExcel = () => {
+    if (!hasData) return;
+    const accNum = accountNumber || String(accountId);
+    const headers = ['Account Number', 'Description', 'Financial Year', ...MONTHS];
+    const rows = pivotData.map((row: any) => {
+      const vals = MONTHS.map(m => {
+        const v = row[m];
+        return v === undefined ? '0.00' : (typeof v === 'number' ? v.toFixed(2) : '0.00');
+      });
+      return [accNum, row.description, selectedYear, ...vals];
+    });
+
+    const BOM = '\uFEFF';
+    const csvContent = BOM + [headers.join('\t'), ...rows.map(r => r.join('\t'))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Transaction_Summary_${accNum}_${selectedYear.replace('/', '-')}.xls`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="p-4 space-y-4" data-testid="transaction-summary-panel">
       <h3 className="text-base font-bold text-slate-800">Transaction Summary List per Fin-Year/Billing Period</h3>
@@ -2558,6 +2583,15 @@ function TransactionSummaryTab({ accountId }: { accountId: number }) {
         >
           {years.map(y => <option key={y} value={y}>{y}</option>)}
         </select>
+        <button
+          onClick={exportToExcel}
+          disabled={!hasData}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          data-testid="btn-export-txn-summary"
+        >
+          <Download className="w-4 h-4" />
+          Export to Excel
+        </button>
       </div>
       <div className="overflow-x-auto border border-slate-200 rounded">
         <table className="w-full text-xs" data-testid="transaction-summary-grid">
@@ -4990,7 +5024,7 @@ function GeneralEnquiriesContent() {
               <TabsContent value="incentives" className="m-0"><IncentivesTab accountId={accountId} /></TabsContent>
               <TabsContent value="deposits" className="m-0"><DepositsTab accountId={accountId} /></TabsContent>
               <TabsContent value="transactions" className="m-0"><TransactionHistoryTab accountId={accountId} accountNumber={selectedAccount.accountNumber || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabsContent>
-              <TabsContent value="txn-summary" className="m-0"><TransactionSummaryTab accountId={accountId} /></TabsContent>
+              <TabsContent value="txn-summary" className="m-0"><TransactionSummaryTab accountId={accountId} accountNumber={selectedAccount.accountNumber || selectedAccount.oldAccountCode || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabsContent>
               <TabsContent value="txn-detailed" className="m-0"><DetailedTransactionListTab accountId={accountId} /></TabsContent>
               <TabsContent value="services-meters" className="m-0"><ServicesMetersTab accountId={accountId} unitId={unitId} /></TabsContent>
               <TabsContent value="payment-plans" className="m-0"><PaymentPlansTab accountId={accountId} /></TabsContent>
