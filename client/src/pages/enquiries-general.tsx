@@ -3185,48 +3185,46 @@ function GeneralEnquiriesContent() {
   const balanceCacheRef = useRef<Map<number, number>>(new Map());
 
   const enrichWithBalances = useCallback(async (accounts: EnquirySearchResult[], tokenRef: React.MutableRefObject<number>, token: number, setter: (val: EnquirySearchResult[]) => void) => {
-    const enriched = [...accounts];
-    const toFetch = enriched.filter(acct => {
+    const applyCache = (accts: EnquirySearchResult[]) => accts.map(acct => {
+      const id = acct.account_ID || acct.accountID;
+      const cached = id ? balanceCacheRef.current.get(id) : undefined;
+      return cached !== undefined ? { ...acct, outStandingAmount: cached, _balanceEnriched: true } : acct;
+    });
+
+    const toFetch = accounts.filter(acct => {
       const id = acct.account_ID || acct.accountID;
       return id && !balanceCacheRef.current.has(id);
     });
 
     if (toFetch.length === 0) {
-      const result = enriched.map(acct => {
-        const id = acct.account_ID || acct.accountID;
-        const cached = id ? balanceCacheRef.current.get(id) : undefined;
-        return cached !== undefined ? { ...acct, outStandingAmount: cached, _balanceEnriched: true } : acct;
-      });
-      if (tokenRef.current === token) setter(result);
+      if (tokenRef.current === token) setter(applyCache(accounts));
       return;
     }
 
-    await Promise.allSettled(toFetch.map(async (acct) => {
-      const id = acct.account_ID || acct.accountID;
-      if (!id) return;
-      try {
-        const balanceData = await getAccountBalance(id);
-        if (balanceData) {
-          let bal: number | undefined;
-          if (Array.isArray(balanceData)) {
-            bal = balanceData.reduce((sum: number, svc: any) => sum + (svc.totalOutStanding ?? svc.totalOutstanding ?? 0), 0);
-          } else {
-            bal = balanceData.totalBalance ?? balanceData.totalOutstanding ?? balanceData.outStandingAmount ?? balanceData.balance;
+    const BATCH = 5;
+    for (let i = 0; i < toFetch.length; i += BATCH) {
+      if (tokenRef.current !== token) return;
+      const batch = toFetch.slice(i, i + BATCH);
+      await Promise.allSettled(batch.map(async (acct) => {
+        const id = acct.account_ID || acct.accountID;
+        if (!id) return;
+        try {
+          const balanceData = await getAccountBalance(id);
+          if (balanceData) {
+            let bal: number | undefined;
+            if (Array.isArray(balanceData)) {
+              bal = balanceData.reduce((sum: number, svc: any) => sum + (svc.totalOutStanding ?? svc.totalOutstanding ?? 0), 0);
+            } else {
+              bal = balanceData.totalBalance ?? balanceData.totalOutstanding ?? balanceData.outStandingAmount ?? balanceData.balance;
+            }
+            if (bal !== undefined && bal !== null) {
+              balanceCacheRef.current.set(id, bal);
+            }
           }
-          if (bal !== undefined && bal !== null) {
-            balanceCacheRef.current.set(id, bal);
-          }
-        }
-      } catch {}
-    }));
-
-    if (tokenRef.current !== token) return;
-    const result = enriched.map(acct => {
-      const id = acct.account_ID || acct.accountID;
-      const cached = id ? balanceCacheRef.current.get(id) : undefined;
-      return cached !== undefined ? { ...acct, outStandingAmount: cached, _balanceEnriched: true } : acct;
-    });
-    setter(result);
+        } catch {}
+      }));
+      if (tokenRef.current === token) setter(applyCache([...accounts]));
+    }
   }, []);
 
   const doQuickSearch = useCallback(async (query: string) => {
