@@ -2628,13 +2628,14 @@ function TransactionSummaryTab({ accountId, accountNumber }: { accountId: number
 }
 
 function DetailedTransactionListTab({ accountId }: { accountId: number }) {
-  const [balanceData, setBalanceData] = useState<any[]>([]);
+  const [detailedData, setDetailedData] = useState<any[]>([]);
+  const [serviceBalanceData, setServiceBalanceData] = useState<any[]>([]);
   const [receiptData, setReceiptData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const years = useMemo(() => getFinYearOptions(), []);
   const [selectedYear, setSelectedYear] = useState(years[0]);
-  const [selectedMonth, setSelectedMonth] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState('January');
   const [selectedTxn, setSelectedTxn] = useState<any>(null);
   const [showCreditMeterOnly, setShowCreditMeterOnly] = useState(false);
   const lastKey = useRef('');
@@ -2646,11 +2647,13 @@ function DetailedTransactionListTab({ accountId }: { accountId: number }) {
     setLoading(true);
     setError(null);
     try {
-      const [balResult, rcptResult] = await Promise.all([
+      const [detResult, balResult, rcptResult] = await Promise.all([
+        getDetailedTransactionResults(accountId, finYear).catch(() => []),
         getServiceTypeBalance(accountId, finYear).catch(() => []),
         getTransactionHistory('', accountId).catch(() => []),
       ]);
-      setBalanceData(Array.isArray(balResult) ? balResult : []);
+      setDetailedData(Array.isArray(detResult) ? detResult : []);
+      setServiceBalanceData(Array.isArray(balResult) ? balResult : []);
       setReceiptData(Array.isArray(rcptResult) ? rcptResult : []);
     } catch (e: any) {
       setError(e.message || 'Failed to load detailed transactions');
@@ -2667,31 +2670,30 @@ function DetailedTransactionListTab({ accountId }: { accountId: number }) {
     }
   }, [accountId, selectedYear, load]);
 
-  const monthsAvailable = useMemo(() => {
+  const monthsWithData = useMemo(() => {
     const mSet = new Set<string>();
-    balanceData.forEach((d: any) => {
+    detailedData.forEach((d: any) => {
+      finYearMonths.forEach(m => {
+        const key = m.toLowerCase();
+        if (d[key] && d[key] !== 0) mSet.add(m);
+      });
+    });
+    serviceBalanceData.forEach((d: any) => {
       if (d.month) mSet.add(d.month);
     });
-    return finYearMonths.filter(m => mSet.has(m));
-  }, [balanceData]);
+    return mSet;
+  }, [detailedData, serviceBalanceData]);
 
   useEffect(() => {
-    if (monthsAvailable.length > 0 && !monthsAvailable.includes(selectedMonth)) {
-      setSelectedMonth(monthsAvailable[monthsAvailable.length - 1]);
+    if (monthsWithData.size > 0 && !monthsWithData.has(selectedMonth)) {
+      const lastWithData = finYearMonths.filter(m => monthsWithData.has(m));
+      if (lastWithData.length > 0) setSelectedMonth(lastWithData[lastWithData.length - 1]);
     }
-  }, [monthsAvailable, selectedMonth]);
+  }, [monthsWithData]);
 
   const detailedRows = useMemo(() => {
     if (!selectedMonth) return [];
-    const monthData = balanceData.filter((d: any) => d.month === selectedMonth);
-    if (monthData.length === 0) return [];
-
-    const rows: any[] = [];
-    const totalOpening = monthData.reduce((s, d) => s + (d.openingBalance || 0), 0);
-    const totalInterest = monthData.reduce((s, d) => s + (d.interestAmount || 0), 0);
-    const totalVat = monthData.reduce((s, d) => s + (d.vat || 0), 0);
-    const totalAmount = monthData.reduce((s, d) => s + (d.amount || 0), 0);
-    const totalTotal = monthData.reduce((s, d) => s + (d.totalAmount || 0), 0);
+    const monthKey = selectedMonth.toLowerCase();
 
     const yearParts = selectedYear.split('/');
     const yearNum = parseInt(yearParts[0]);
@@ -2699,6 +2701,26 @@ function DetailedTransactionListTab({ accountId }: { accountId: number }) {
     const calMonth = monthIdx >= 0 ? monthIdx + 1 : 1;
     const dateYear = calMonth >= 7 ? yearNum : yearNum + 1;
     const monthStart = `01/${String(calMonth).padStart(2, '0')}/${dateYear}`;
+    const billingDateStr = `${dateYear}/${String(calMonth).padStart(2, '0')}/23`;
+
+    const rows: any[] = [];
+
+    const openRow = detailedData.find((d: any) => d.transGroup === 1);
+    const openVal = openRow ? (openRow[monthKey] || 0) : 0;
+    const interestRow = detailedData.find((d: any) => d.transGroup === 601);
+    const interestVal = interestRow ? (interestRow[monthKey] || 0) : 0;
+    const closingRow = detailedData.find((d: any) => d.transGroup === 990);
+    const closingVal = closingRow ? (closingRow[monthKey] || 0) : 0;
+    const totalRow = detailedData.find((d: any) => d.transGroup === 900);
+    const totalVal = totalRow ? (totalRow[monthKey] || 0) : 0;
+    const receiptsRow = detailedData.find((d: any) => d.transGroup === 915);
+    const receiptsVal = receiptsRow ? (receiptsRow[monthKey] || 0) : 0;
+
+    const monthBalData = serviceBalanceData.filter((d: any) => d.month === selectedMonth);
+    const totalInterestFromBal = monthBalData.reduce((s: number, d: any) => s + (d.interestAmount || 0), 0);
+    const totalVatFromBal = monthBalData.reduce((s: number, d: any) => s + (d.vat || 0), 0);
+    const openInterest = totalInterestFromBal;
+    const openVat = totalVatFromBal;
 
     rows.push({
       transactionDate: monthStart,
@@ -2706,56 +2728,137 @@ function DetailedTransactionListTab({ accountId }: { accountId: number }) {
       receiptId: '',
       documentNumber: '',
       tariff: '',
-      amount: totalOpening,
-      interest: totalInterest,
-      vat: totalVat,
-      total: totalOpening + totalInterest + totalVat,
+      amount: openVal,
+      interest: openInterest,
+      vat: openVat,
+      total: openVal + openInterest + openVat,
       isSpecial: true,
     });
 
-    const monthReceipts = receiptData.filter(r => {
+    const monthReceipts = receiptData.filter((r: any) => {
       if (!r.receiptDate) return false;
       const rd = new Date(r.receiptDate);
       return rd.getMonth() === monthIdx && ((calMonth >= 7 && rd.getFullYear() === yearNum) || (calMonth < 7 && rd.getFullYear() === yearNum + 1));
     });
 
-    monthReceipts.forEach(r => {
+    monthReceipts.sort((a: any, b: any) => new Date(a.receiptDate).getTime() - new Date(b.receiptDate).getTime());
+    monthReceipts.forEach((r: any) => {
+      const rDate = r.receiptDate ? new Date(r.receiptDate) : null;
+      const dateStr = rDate ? `${rDate.getFullYear()}/${String(rDate.getMonth()+1).padStart(2,'0')}/${String(rDate.getDate()).padStart(2,'0')}` : '';
       rows.push({
-        transactionDate: r.receiptDate ? new Date(r.receiptDate).toLocaleDateString('en-ZA') : '',
+        transactionDate: dateStr,
         description: 'Payment',
         receiptId: r.receiptNo || '',
         documentNumber: r.receiptId ? `98/${r.receiptId}` : '',
         tariff: '',
         amount: -(r.amount || 0),
         interest: 0,
-        vat: r.vat ? -(r.vat || 0) : 0,
+        vat: 0,
         total: -(r.amount || 0),
         isPayment: true,
       });
     });
 
-    const closingAmount = totalAmount;
-    const closingTotal = totalTotal;
-    const latestDate = monthReceipts.length > 0
-      ? new Date(Math.max(...monthReceipts.map(r => new Date(r.receiptDate).getTime()))).toLocaleDateString('en-ZA')
-      : monthStart;
+    const levyRows = detailedData.filter((d: any) => d.transGroup === 201 && d[monthKey] && d[monthKey] !== 0);
+    const serviceMap = new Map<number, any>();
+    monthBalData.forEach((sb: any) => {
+      if (sb.serviceTypeID) {
+        serviceMap.set(sb.serviceTypeID, sb);
+      }
+    });
 
+    const levyDescMap: Record<number, string> = {
+      1: 'Levy - Water Basic',
+      2: 'Levy - Water Metered',
+      5: 'Levy - Electricity Basic',
+      6: 'Levy - Electricity Metered',
+      9: 'Levy - Property Rates',
+      10: 'Levy - Waste Disposal',
+      11: 'Levy - Sanitation Basic',
+    };
+
+    levyRows.forEach((d: any) => {
+      const svcId = d.serviceTypeId;
+      const bal = serviceMap.get(svcId);
+      const levyAmount = bal ? (bal.currentCharge || 0) : (d[monthKey] || 0);
+      const levyVat = bal ? (bal.vat || 0) : 0;
+      const levyInterest = bal ? (bal.interestAmount || 0) : 0;
+      const total = d[monthKey] || 0;
+      const desc = levyDescMap[svcId] || `Levy - ${d.serviceDesc || 'Unknown'}`;
+
+      rows.push({
+        transactionDate: billingDateStr,
+        description: desc,
+        receiptId: '',
+        documentNumber: '',
+        tariff: d.serviceDesc || '',
+        amount: levyAmount,
+        interest: levyInterest,
+        vat: levyVat,
+        total: total,
+        isLevy: true,
+      });
+    });
+
+    const rebateRows = detailedData.filter((d: any) => (d.transGroup >= 301 && d.transGroup < 600) && d[monthKey] && d[monthKey] !== 0 && d.serviceDesc !== '0 301');
+    rebateRows.forEach((d: any) => {
+      rows.push({
+        transactionDate: billingDateStr,
+        description: `Rebate - ${d.serviceDesc || 'Residential'}`,
+        receiptId: '',
+        documentNumber: '',
+        tariff: '',
+        amount: d[monthKey] || 0,
+        interest: 0,
+        vat: 0,
+        total: d[monthKey] || 0,
+        isRebate: true,
+      });
+    });
+
+    if (interestVal && interestVal !== 0) {
+      rows.push({
+        transactionDate: billingDateStr,
+        description: 'Interest',
+        receiptId: '',
+        documentNumber: '',
+        tariff: '',
+        amount: 0,
+        interest: interestVal,
+        vat: 0,
+        total: interestVal,
+        isInterest: true,
+      });
+    }
+
+    rows.sort((a: any, b: any) => {
+      if (a.isSpecial && a.description === 'Open Balance') return -1;
+      if (b.isSpecial && b.description === 'Open Balance') return 1;
+      const dateA = a.transactionDate || '';
+      const dateB = b.transactionDate || '';
+      if (dateA !== dateB) return dateA.localeCompare(dateB);
+      const typeOrder = (r: any) => r.isPayment ? 0 : r.isLevy ? 1 : r.isRebate ? 2 : r.isInterest ? 3 : 4;
+      return typeOrder(a) - typeOrder(b);
+    });
+
+    const closingInterest = openInterest;
+    const closingVat = openVat;
     rows.push({
-      transactionDate: latestDate,
+      transactionDate: billingDateStr,
       description: 'Closing Balance',
       receiptId: '',
       documentNumber: '',
       tariff: '',
-      amount: closingAmount,
-      interest: totalInterest,
-      vat: totalVat,
-      total: closingTotal,
+      amount: closingVal,
+      interest: closingInterest,
+      vat: closingVat,
+      total: closingVal,
       isSpecial: true,
       isBold: true,
     });
 
     return rows;
-  }, [balanceData, receiptData, selectedMonth, selectedYear]);
+  }, [detailedData, serviceBalanceData, receiptData, selectedMonth, selectedYear]);
 
   const fmt = (v: any) => {
     if (v === undefined || v === null || v === '') return '';
@@ -2782,8 +2885,7 @@ function DetailedTransactionListTab({ accountId }: { accountId: number }) {
           {years.length === 0 && <option value="">No data</option>}
         </select>
         <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="border border-slate-300 rounded px-3 py-1.5 text-sm bg-white" data-testid="select-detail-month">
-          {monthsAvailable.map(m => <option key={m} value={m}>{m}</option>)}
-          {monthsAvailable.length === 0 && <option value="">No data</option>}
+          {finYearMonths.map(m => <option key={m} value={m}>{m}</option>)}
         </select>
       </div>
 
@@ -2791,15 +2893,15 @@ function DetailedTransactionListTab({ accountId }: { accountId: number }) {
         <table className="w-full text-xs" data-testid="detailed-transactions-table">
           <thead>
             <tr className="bg-slate-100 border-b border-slate-200">
-              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap">Transaction Date</th>
-              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap">Transaction Description</th>
-              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap">Receipt ID/ Doc Transaction ID</th>
-              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap">Document Number</th>
-              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap">Tariff</th>
-              <th className="text-right px-3 py-2 font-semibold text-slate-700 whitespace-nowrap">Amount</th>
-              <th className="text-right px-3 py-2 font-semibold text-slate-700 whitespace-nowrap">Interest</th>
-              <th className="text-right px-3 py-2 font-semibold text-slate-700 whitespace-nowrap">VAT</th>
-              <th className="text-right px-3 py-2 font-semibold text-slate-700 whitespace-nowrap">Total</th>
+              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-slate-900">Transaction Date &#x25B4;</th>
+              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-slate-900">Transaction Description &#x25B4;</th>
+              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-slate-900">Receipt ID/ Doc Transaction ID &#x25B4;</th>
+              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-slate-900">Document Number &#x25B4;</th>
+              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-slate-900">Tariff &#x25B4;</th>
+              <th className="text-right px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-slate-900">Amount &#x25B4;</th>
+              <th className="text-right px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-slate-900">Interest &#x25B4;</th>
+              <th className="text-right px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-slate-900">VAT &#x25B4;</th>
+              <th className="text-right px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-slate-900">Total &#x25B4;</th>
             </tr>
           </thead>
           <tbody>
@@ -2808,15 +2910,15 @@ function DetailedTransactionListTab({ accountId }: { accountId: number }) {
             ) : detailedRows.map((row: any, i: number) => (
               <tr
                 key={i}
-                className={`border-b border-slate-100 ${row.isBold ? 'bg-slate-50 font-bold' : ''} ${!row.isSpecial && !row.isPayment ? '' : ''} ${row.isPayment ? 'cursor-pointer hover:bg-blue-50' : 'hover:bg-slate-50'}`}
+                className={`border-b border-slate-100 ${row.isBold ? 'bg-slate-50 font-bold' : ''} ${row.isPayment ? 'cursor-pointer hover:bg-blue-50 text-red-600' : row.isLevy ? 'hover:bg-slate-50' : 'hover:bg-slate-50'}`}
                 onClick={() => row.isPayment && setSelectedTxn(row)}
                 data-testid={`detail-row-${i}`}
               >
                 <td className="px-3 py-2 text-slate-700 whitespace-nowrap">{row.transactionDate}</td>
-                <td className={`px-3 py-2 whitespace-nowrap ${row.isBold ? 'font-bold text-slate-900' : row.isSpecial ? 'text-slate-600 italic' : 'text-slate-700'}`}>{row.description}</td>
+                <td className={`px-3 py-2 whitespace-nowrap ${row.isBold ? 'font-bold text-slate-900' : row.isSpecial ? 'text-slate-600' : row.isPayment ? 'text-red-600' : 'text-slate-700'}`}>{row.description}</td>
                 <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{row.receiptId || ''}</td>
                 <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{row.documentNumber || ''}</td>
-                <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{row.tariff || ''}</td>
+                <td className="px-3 py-2 text-slate-600 whitespace-nowrap max-w-[300px] truncate" title={row.tariff || ''}>{row.tariff || ''}</td>
                 <td className={`px-3 py-2 text-right font-mono whitespace-nowrap ${(row.amount || 0) < 0 ? 'text-red-600' : ''}`}>{fmt(row.amount)}</td>
                 <td className="px-3 py-2 text-right font-mono whitespace-nowrap">{fmt(row.interest)}</td>
                 <td className={`px-3 py-2 text-right font-mono whitespace-nowrap ${(row.vat || 0) < 0 ? 'text-red-600' : ''}`}>{fmt(row.vat)}</td>
