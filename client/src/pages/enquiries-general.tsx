@@ -3623,6 +3623,7 @@ function GeneralEnquiriesContent() {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [searchMode, setSearchMode] = useState<'quick' | 'advanced'>('quick');
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
+  const [headerBalance, setHeaderBalance] = useState<number | null>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownContainerRef = useRef<HTMLDivElement>(null);
@@ -3642,6 +3643,22 @@ function GeneralEnquiriesContent() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!selectedAccount) { setHeaderBalance(null); return; }
+    const id = selectedAccount.account_ID || selectedAccount.accountID;
+    if (!id) return;
+    setHeaderBalance(null);
+    getAccountBalance(id).then((bal: any) => {
+      if (Array.isArray(bal)) {
+        const total = bal.reduce((sum: number, s: any) => sum + (s.totalOutStanding || 0), 0);
+        setHeaderBalance(total);
+      } else {
+        const total = bal?.totalBalance ?? bal?.totalDue ?? bal?.balance ?? bal?.outstandingBalance ?? null;
+        if (total !== null && total !== undefined) setHeaderBalance(Number(total));
+      }
+    }).catch(() => {});
+  }, [selectedAccount]);
 
   const quickSearchTokenRef = useRef(0);
   const fullSearchTokenRef = useRef(0);
@@ -3816,7 +3833,7 @@ function GeneralEnquiriesContent() {
             Back
           </Button>
           <div className="h-5 w-px bg-slate-200" />
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             <div className="shrink-0 h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-sm font-bold">
               {(selectedAccount.name || selectedAccount.surname_Company || '?').charAt(0).toUpperCase()}
             </div>
@@ -3830,6 +3847,21 @@ function GeneralEnquiriesContent() {
             <Badge variant={(selectedAccount.accountStatus || selectedAccount.statusDesc)?.toLowerCase() === 'active' ? 'default' : 'secondary'} className="ml-2 shrink-0">
               {selectedAccount.accountStatus || selectedAccount.statusDesc || 'Unknown'}
             </Badge>
+            {(selectedAccount.accountType || selectedAccount.accountDesc) && (
+              <Badge variant="outline" className="shrink-0 text-[10px] border-blue-200 text-blue-700 bg-blue-50" data-testid="badge-account-type">
+                {selectedAccount.accountType || selectedAccount.accountDesc}
+              </Badge>
+            )}
+          </div>
+          <div className="shrink-0 ml-auto text-right" data-testid="header-balance-section">
+            <div className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">Outstanding Balance</div>
+            {headerBalance !== null ? (
+              <div className={`text-base font-bold font-mono ${headerBalance > 0 ? 'text-red-600' : headerBalance < 0 ? 'text-green-600' : 'text-slate-800'}`} data-testid="text-header-balance">
+                R {headerBalance.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            ) : (
+              <div className="text-xs text-slate-400 animate-pulse">Loading...</div>
+            )}
           </div>
         </div>
 
