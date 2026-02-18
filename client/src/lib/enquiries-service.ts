@@ -154,6 +154,11 @@ export async function autocomplete(query: string): Promise<any[]> {
   return normalizeArray(data);
 }
 
+// === CONFIG ===
+export async function getConfigSetting(keyName: string): Promise<any> {
+  return fetchWithTimeout(`/api/platinum/billing-enquiry/get-config-setting?strKeyName=${encodeURIComponent(keyName)}`);
+}
+
 // === ACCOUNT INFO ===
 export async function getBasicAccountDetails(accountId: number): Promise<any> {
   return fetchWithTimeout(`/api/platinum/billing-enquiry/basic-account-details?accountId=${accountId}`);
