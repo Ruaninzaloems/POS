@@ -1667,6 +1667,59 @@ function PaymentPlansTab({ accountId }: { accountId: number }) {
   );
 }
 
+function PaymentExtensionHistoryTab({ accountId }: { accountId: number }) {
+  const [extensions, setExtensions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const prevAccountId = useRef<number | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getPaymentExtensionSearchResults(accountId);
+      setExtensions(Array.isArray(result) ? result : result ? [result] : []);
+    } catch (e: any) {
+      setError(e.message || 'Failed to load payment extension history');
+    } finally {
+      setLoading(false);
+    }
+  }, [accountId]);
+
+  useEffect(() => {
+    if (prevAccountId.current !== accountId) {
+      prevAccountId.current = accountId;
+      load();
+    }
+  }, [accountId, load]);
+
+  if (loading) return <LoadingSkeleton />;
+  if (error) return <ErrorState message={error} onRetry={load} />;
+
+  const formatDate = (v: any) => {
+    if (!v) return '';
+    try { const d = new Date(v); return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString('en-ZA'); } catch { return String(v); }
+  };
+
+  return (
+    <div className="p-4 space-y-4" data-testid="payment-extension-history-panel">
+      <h3 className="text-base font-bold text-slate-800">Payment Extension History</h3>
+      <PaginatedTable
+        data={extensions}
+        tableId="payment-extension-history"
+        columns={[
+          { key: 'extensionStatus', label: 'Extension Status', render: (r: any) => r.extensionStatus || r.status || r.statusDesc || '' },
+          { key: 'extensionDescription', label: 'Extension Description', render: (r: any) => r.extensionDescription || r.description || r.extensionType || r.type || '' },
+          { key: 'commencementDate', label: 'Commencement Date', render: (r: any) => formatDate(r.commencementDate || r.startDate) },
+          { key: 'terminationDate', label: 'Termination Date', render: (r: any) => formatDate(r.terminationDate || r.endDate) },
+          { key: 'capturedBy', label: 'Captured By', render: (r: any) => r.capturedBy || r.capturerName || r.capturer || '' },
+          { key: 'captureDate', label: 'Capture Date', render: (r: any) => formatDate(r.captureDate || r.dateCaptured) },
+        ]}
+      />
+    </div>
+  );
+}
+
 function DebitOrdersTab({ accountId }: { accountId: number }) {
   const [deductions, setDeductions] = useState<any[]>([]);
   const [debitOrders, setDebitOrders] = useState<any[]>([]);
@@ -2775,6 +2828,7 @@ function GeneralEnquiriesContent() {
                 <TabsTrigger value="transactions" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-transactions">Transactions</TabsTrigger>
                 <TabsTrigger value="services-meters" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-services-meters">Services & Meters</TabsTrigger>
                 <TabsTrigger value="payment-plans" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-payment-plans">Payment Plans</TabsTrigger>
+                <TabsTrigger value="payment-extensions" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-payment-extensions">Payment Extension History</TabsTrigger>
                 <TabsTrigger value="debit-orders" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-debit-orders">Debit Orders</TabsTrigger>
                 <TabsTrigger value="rates" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-rates">Rates & Valuations</TabsTrigger>
                 <TabsTrigger value="notifications" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-notifications">Notifications</TabsTrigger>
@@ -2799,6 +2853,7 @@ function GeneralEnquiriesContent() {
               <TabsContent value="transactions" className="m-0"><TransactionHistoryTab accountId={accountId} accountNumber={selectedAccount.accountNumber || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabsContent>
               <TabsContent value="services-meters" className="m-0"><ServicesMetersTab accountId={accountId} unitId={unitId} /></TabsContent>
               <TabsContent value="payment-plans" className="m-0"><PaymentPlansTab accountId={accountId} /></TabsContent>
+              <TabsContent value="payment-extensions" className="m-0"><PaymentExtensionHistoryTab accountId={accountId} /></TabsContent>
               <TabsContent value="debit-orders" className="m-0"><DebitOrdersTab accountId={accountId} /></TabsContent>
               <TabsContent value="rates" className="m-0"><RatesValuationsTab accountId={accountId} propertyId={propertyId} /></TabsContent>
               <TabsContent value="notifications" className="m-0"><NotificationsTab accountId={accountId} /></TabsContent>
