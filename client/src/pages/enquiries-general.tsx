@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import {
   searchAccounts, getAccountBalance, multiAutocompleteSearch, getAutocompleteType,
-  autocomplete, getAutocompleteType as getAcType,
+  autocomplete,
   type EnquirySearchCriteria, type EnquirySearchResult,
 } from '@/lib/enquiries-service';
 
@@ -27,11 +27,12 @@ import { IncentivesTab, DepositsTab, PaymentPlansTab, PaymentExtensionHistoryTab
 import { PropertyDetailsTab, ContactInfoTab, HandoverTab, NotificationsTab, StatementsTab, ClearanceTab, DebtorNotesTab, Section129Tab, OccupiersTab } from './enquiries/other-tabs';
 import { SEARCH_FIELDS, detectSearchType, SmartSearchDropdown, ExpandableResultRow } from './enquiries/search-components';
 
-function FieldAutocompleteInput({ fieldKey, placeholder, value, onChange, onSelectAndSearch, onEnter }: {
+function FieldAutocompleteInput({ fieldKey, placeholder, value, onChange, onSelectAndSearch, onEnter, onAutoResults }: {
   fieldKey: string; placeholder: string; value: string;
   onChange: (key: string, val: string) => void;
   onSelectAndSearch: (key: string, val: string, accountId: number) => void;
   onEnter: () => void;
+  onAutoResults?: (accountIds: number[]) => void;
 }) {
   const [suggestions, setSuggestions] = useState<{ displayItem: string; accountId: number }[]>([]);
   const [open, setOpen] = useState(false);
@@ -60,8 +61,11 @@ function FieldAutocompleteInput({ fieldKey, placeholder, value, onChange, onSele
       try {
         const items = await autocomplete(val.trim(), acType);
         if (tokenRef.current !== tok) return;
-        setSuggestions(items.filter(s => s.accountId && s.accountId > 0).slice(0, 20));
+        const valid = items.filter(s => s.accountId && s.accountId > 0);
+        setSuggestions(valid.slice(0, 20));
         setOpen(true);
+        const uniqueIds = [...new Set(valid.map(s => s.accountId))].slice(0, 5);
+        if (uniqueIds.length > 0 && onAutoResults) onAutoResults(uniqueIds);
       } catch {
         if (tokenRef.current === tok) setSuggestions([]);
       } finally {
@@ -127,7 +131,7 @@ function GeneralEnquiriesContent() {
   const [quickFilters, setQuickFilters] = useState<Set<string>>(new Set());
   const [showFiltersPanel, setShowFiltersPanel] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
-  const fieldDebounceRef = useRef<NodeJS.Timeout | null>(null);
+
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownContainerRef = useRef<HTMLDivElement>(null);
 
@@ -377,33 +381,40 @@ function GeneralEnquiriesContent() {
   }, [quickQuery, criteria, recentSearches, enrichWithBalances]);
 
   const handleFieldChange = useCallback((key: string, value: string) => {
-    const newCriteria = { ...criteria, [key]: value };
-    setCriteria(newCriteria);
-    if (fieldDebounceRef.current) clearTimeout(fieldDebounceRef.current);
-    const hasAnyValue = Object.values(newCriteria).some(v => v && String(v).trim().length >= 2);
-    if (!hasAnyValue) return;
-    fieldDebounceRef.current = setTimeout(async () => {
-      const token = ++fullSearchTokenRef.current;
-      setSearching(true);
-      setSearchError(null);
-      setHasSearched(true);
-      setShowDropdown(false);
-      try {
-        const data = await searchAccounts(newCriteria);
-        if (fullSearchTokenRef.current !== token) return;
-        setResults(data);
-        setSearching(false);
-        enrichWithBalances(data, fullSearchTokenRef, token, setResults);
-      } catch (e: any) {
-        if (fullSearchTokenRef.current === token) {
-          setSearchError(e.message || 'Search failed');
-          setResults([]);
+    setCriteria(prev => ({ ...prev, [key]: value }));
+  }, []);
+
+  const handleAutoResults = useCallback(async (accountIds: number[]) => {
+    const token = ++fullSearchTokenRef.current;
+    setSearching(true);
+    setSearchError(null);
+    setHasSearched(true);
+    try {
+      const lookups = await Promise.allSettled(
+        accountIds.map(id =>
+          searchAccounts({ accountNo: String(id) })
+        )
+      );
+      if (fullSearchTokenRef.current !== token) return;
+      const all: EnquirySearchResult[] = [];
+      const seen = new Set<number>();
+      for (const r of lookups) {
+        if (r.status === 'fulfilled') {
+          for (const acct of r.value) {
+            const aid = acct.account_ID || acct.accountID;
+            if (aid && !seen.has(aid)) { seen.add(aid); all.push(acct); }
+          }
         }
-      } finally {
-        setSearching(false);
       }
-    }, 500);
-  }, [criteria, enrichWithBalances]);
+      setResults(all);
+      setSearching(false);
+      enrichWithBalances(all, fullSearchTokenRef, token, setResults);
+    } catch {
+      if (fullSearchTokenRef.current === token) setResults([]);
+    } finally {
+      setSearching(false);
+    }
+  }, [enrichWithBalances]);
 
   const handleFieldSelect = useCallback(async (key: string, displayValue: string, accountId: number) => {
     const token = ++fullSearchTokenRef.current;
@@ -812,6 +823,7 @@ function GeneralEnquiriesContent() {
                   onChange={handleFieldChange}
                   onSelectAndSearch={handleFieldSelect}
                   onEnter={handleFullSearch}
+                  onAutoResults={handleAutoResults}
                 />
               ))}
             </div>
