@@ -575,6 +575,7 @@ export async function registerRoutes(
     try {
       const body = { ...req.body };
       body.isActive = true;
+      body.isVirtual = null;
       const userId = body.user_Id;
 
       if (!userId) {

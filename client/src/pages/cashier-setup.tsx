@@ -230,8 +230,10 @@ export default function CashierSetup() {
             const nowSAST = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().replace('Z', '');
             const prevOffice = cashierDetails?.const_CashOffice || {};
 
+            const existingId = cashierDetails?.id || cashierId || 0;
+
             const payload = {
-                id: 0,
+                id: existingId,
                 cashFloat: float,
                 stsPort: null,
                 plesseyPort: null,
