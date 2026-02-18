@@ -439,7 +439,8 @@ export async function getAllBillingPeriodTransactions(accountId: number, finYear
 }
 
 export async function getReceiptTransactionDetail(primaryId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/receipt-transaction-detail?primaryId=${primaryId}`);
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/receipt-transaction-detail?primaryId=${primaryId}`);
+  return normalizeDetailResponse(data);
 }
 
 function normalizeDetailResponse(data: any): any[] | string {

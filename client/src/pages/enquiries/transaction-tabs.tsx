@@ -337,7 +337,7 @@ export function DetailedTransactionListTab({ accountId }: { accountId: number })
     setTxnDetailData(null);
     setTxnDetailLoading(true);
     try {
-      let detail: any[] = [];
+      let detail: any[] | string = [];
       const drilldown = (row.drilldown || '').toLowerCase();
       const pId = row.primaryId != null ? String(row.primaryId) : null;
       const pIdNum = pId ? parseInt(pId) : 0;
@@ -350,6 +350,11 @@ export function DetailedTransactionListTab({ accountId }: { accountId: number })
         detail = await getCloseBalanceDetail(pId, bMonthNum);
       } else if (drilldown === 'receipt' && pIdNum) {
         const result = await getReceiptTransactionDetail(pIdNum);
+        if (typeof result === 'string') {
+          setTxnDetailData(result as any);
+          setTxnDetailLoading(false);
+          return;
+        }
         detail = Array.isArray(result) ? result : result ? [result] : [];
       } else if (drilldown === 'levy' && pIdNum) {
         detail = await getLevyTransactionDetail(pIdNum);
@@ -367,6 +372,11 @@ export function DetailedTransactionListTab({ accountId }: { accountId: number })
         detail = await getJournalTransactionDetails(pId, accountId);
       } else {
         detail = [];
+      }
+      if (typeof detail === 'string') {
+        setTxnDetailData(detail as any);
+        setTxnDetailLoading(false);
+        return;
       }
       setTxnDetailData(detail);
     } catch (e) {
