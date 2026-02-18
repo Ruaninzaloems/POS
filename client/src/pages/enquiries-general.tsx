@@ -1266,112 +1266,190 @@ function ServiceBalanceTab({ accountId }: { accountId: number }) {
     });
   };
 
+  const svcIconMap: Record<string, React.ReactNode> = {
+    'water': <Droplets className="w-4 h-4" />,
+    'electricity': <Zap className="w-4 h-4" />,
+    'sanitation': <Building2 className="w-4 h-4" />,
+    'sewer': <Building2 className="w-4 h-4" />,
+    'waste': <RefreshCw className="w-4 h-4" />,
+    'refuse': <RefreshCw className="w-4 h-4" />,
+    'rates': <Scale className="w-4 h-4" />,
+    'property': <Home className="w-4 h-4" />,
+  };
+  const getSvcIcon = (name: string) => {
+    const lower = (name || '').toLowerCase();
+    for (const [key, icon] of Object.entries(svcIconMap)) {
+      if (lower.includes(key)) return icon;
+    }
+    return <Layers className="w-4 h-4" />;
+  };
+  const getSvcColor = (name: string) => {
+    const lower = (name || '').toLowerCase();
+    if (lower.includes('water')) return { bg: 'from-cyan-500 to-cyan-600', light: 'bg-cyan-50 text-cyan-700 ring-cyan-200', iconBg: 'bg-cyan-100 text-cyan-600' };
+    if (lower.includes('electricity') || lower.includes('elec')) return { bg: 'from-amber-500 to-amber-600', light: 'bg-amber-50 text-amber-700 ring-amber-200', iconBg: 'bg-amber-100 text-amber-600' };
+    if (lower.includes('sanitation') || lower.includes('sewer')) return { bg: 'from-violet-500 to-violet-600', light: 'bg-violet-50 text-violet-700 ring-violet-200', iconBg: 'bg-violet-100 text-violet-600' };
+    if (lower.includes('waste') || lower.includes('refuse')) return { bg: 'from-emerald-500 to-emerald-600', light: 'bg-emerald-50 text-emerald-700 ring-emerald-200', iconBg: 'bg-emerald-100 text-emerald-600' };
+    if (lower.includes('rates') || lower.includes('property')) return { bg: 'from-orange-500 to-orange-600', light: 'bg-orange-50 text-orange-700 ring-orange-200', iconBg: 'bg-orange-100 text-orange-600' };
+    return { bg: 'from-blue-500 to-blue-600', light: 'bg-blue-50 text-blue-700 ring-blue-200', iconBg: 'bg-blue-100 text-blue-600' };
+  };
+
   return (
-    <div className="p-5 space-y-5" data-testid="service-balance-tab">
-      <div className="text-center mb-2">
-        <h3 className="text-sm font-bold text-blue-700 uppercase tracking-wider">Services</h3>
-        <div className="mx-auto mt-1 w-20 h-0.5 bg-gradient-to-r from-transparent via-blue-400 to-transparent" />
+    <div className="p-4 space-y-4" data-testid="service-balance-tab">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-bold text-slate-800">Services</h3>
+          <p className="text-[11px] text-slate-400 mt-0.5">{displayData.length} service{displayData.length !== 1 ? 's' : ''} registered</p>
+        </div>
+        <Badge variant="outline" className="text-xs font-mono">{displayData.length} items</Badge>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        {displayData.length === 0 ? (
-          <div className="p-8 text-center">
-            <Layers className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-            <p className="text-slate-400 text-sm">No services found for this account</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-[13px]" data-testid="table-service-list">
-              <thead>
-                <tr className="border-b border-slate-200 bg-white">
-                  <th className="text-left py-3 px-4 text-[11px] uppercase tracking-wider text-blue-700 font-bold whitespace-nowrap">Service Status</th>
-                  <th className="text-left py-3 px-4 text-[11px] uppercase tracking-wider text-blue-700 font-bold whitespace-nowrap">Service Type</th>
-                  <th className="text-left py-3 px-4 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Tariff</th>
-                  <th className="text-left py-3 px-4 text-[11px] uppercase tracking-wider text-blue-700 font-bold whitespace-nowrap">Physical Meter + Meter Code</th>
-                  <th className="text-left py-3 px-4 text-[11px] uppercase tracking-wider text-blue-700 font-bold whitespace-nowrap">Frequency</th>
-                  <th className="text-left py-3 px-4 text-[11px] uppercase tracking-wider text-blue-700 font-bold whitespace-nowrap">Meter Connection Size</th>
-                  <th className="text-center py-3 px-4 text-[11px] uppercase tracking-wider text-blue-700 font-bold whitespace-nowrap">FactorQuantity</th>
-                  <th className="text-left py-3 px-4 text-[11px] uppercase tracking-wider text-blue-700 font-bold whitespace-nowrap">Request Date</th>
-                  <th className="text-left py-3 px-4 text-[11px] uppercase tracking-wider text-blue-700 font-bold whitespace-nowrap">Commencement Date</th>
-                  <th className="text-left py-3 px-4 text-[11px] uppercase tracking-wider text-blue-700 font-bold whitespace-nowrap">Tariff Type</th>
-                  <th className="text-left py-3 px-4 text-[11px] uppercase tracking-wider text-blue-700 font-bold whitespace-nowrap">Tariff Rate</th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayData.map((svc: any, i: number) => {
-                  const tariffInfo = parseTariffRateData(svc);
-                  const isExpanded = expandedRates.has(i);
-                  const hasCostData = !!svc.costInterVal || (svc.endDate && typeof svc.endDate === 'string' && svc.endDate.includes('<'));
-                  const meterDisplay = hasCostData
-                    ? (svc.meterNo || 'No Meter')
-                    : `${svc.physicalMeterNo || 'No Meter'}${svc.meterNo ? ` - ${svc.meterNo}` : ''}`;
-                  const status = svc.serviceStatus || svc.statusDesc || '-';
-                  const isActive = status.toLowerCase() === 'active';
-                  const requestDate = svc.serviceRequestedDate ? new Date(svc.serviceRequestedDate).toLocaleDateString('en-ZA') : '-';
-                  const commencementDate = svc.serviceCommencementDate || svc.commencementDate
-                    ? new Date(svc.serviceCommencementDate || svc.commencementDate).toLocaleDateString('en-ZA')
-                    : svc.startDate || '-';
+      {displayData.length === 0 ? (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center">
+          <Layers className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+          <p className="text-slate-400 text-sm">No services found for this account</p>
+        </div>
+      ) : (
+        <div className="grid gap-3" data-testid="table-service-list">
+          {displayData.map((svc: any, i: number) => {
+            const tariffInfo = parseTariffRateData(svc);
+            const isExpanded = expandedRates.has(i);
+            const hasCostData = !!svc.costInterVal || (svc.endDate && typeof svc.endDate === 'string' && svc.endDate.includes('<'));
+            const meterDisplay = hasCostData
+              ? (svc.meterNo || 'No Meter')
+              : `${svc.physicalMeterNo || 'No Meter'}${svc.meterNo ? ` - ${svc.meterNo}` : ''}`;
+            const status = svc.serviceStatus || svc.statusDesc || '-';
+            const isActiveStatus = status.toLowerCase() === 'active';
+            const requestDate = svc.serviceRequestedDate ? new Date(svc.serviceRequestedDate).toLocaleDateString('en-ZA') : '-';
+            const commencementDate = svc.serviceCommencementDate || svc.commencementDate
+              ? new Date(svc.serviceCommencementDate || svc.commencementDate).toLocaleDateString('en-ZA')
+              : svc.startDate || '-';
+            const svcName = svc.tariffType || svc.serviceDesc || 'Service';
+            const colors = getSvcColor(svcName);
 
-                  return (
-                    <tr key={i} className={`border-b border-slate-100 hover:bg-blue-50/30 transition-colors ${isExpanded ? 'bg-blue-50/20' : ''}`} data-testid={`row-service-${i}`}>
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${isActive ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-red-50 text-red-600 ring-1 ring-red-200'}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-red-400'}`} />
-                          {status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 font-medium text-blue-700 cursor-pointer hover:underline whitespace-nowrap" onClick={() => setSelectedService(svc)}>{svc.tariffType || svc.serviceDesc || '-'}</td>
-                      <td className="py-3 px-4 text-slate-600 text-xs max-w-[300px]">{svc.tariff || '-'}</td>
-                      <td className="py-3 px-4 font-mono text-slate-700 text-xs whitespace-nowrap">{meterDisplay}</td>
-                      <td className="py-3 px-4 text-slate-600 whitespace-nowrap">{svc.frequency || 'Monthly'}</td>
-                      <td className="py-3 px-4 text-slate-600 whitespace-nowrap">{svc.meterConnectionSize || '-'}</td>
-                      <td className="py-3 px-4 text-center font-mono text-slate-700">{svc.factorQuantity ?? svc.tarifffactor ?? '-'}</td>
-                      <td className="py-3 px-4 text-slate-600 whitespace-nowrap">{requestDate}</td>
-                      <td className="py-3 px-4 text-slate-600 whitespace-nowrap">{commencementDate}</td>
-                      <td className="py-3 px-4 text-slate-600 whitespace-nowrap">{svc.tariffType || svc.serviceDesc || '-'}</td>
-                      <td className="py-3 px-4 align-top">
-                        {tariffInfo.blocks.length > 0 ? (
-                          <div className="text-xs">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); toggleRate(i); }}
-                              className="text-blue-600 hover:text-blue-800 font-medium text-left"
-                              data-testid={`btn-tariff-rate-${i}`}
-                            >
-                              <div>Interval:</div>
-                              <div>Cost:</div>
-                            </button>
-                            {isExpanded && (
-                              <div className="mt-1 border border-slate-300 bg-white p-2 min-w-[200px] text-[11px] space-y-3">
-                                {tariffInfo.blocks.map((block, bi) => (
-                                  <div key={bi}>
-                                    <div className="font-medium text-slate-700">
-                                      <span className="underline">Start Date - End Date:</span>
-                                      <div>{block.startDate} - {block.endDate}</div>
-                                    </div>
-                                    <div className="mt-1">
-                                      <div className="font-medium text-slate-700 underline">Interval - Cost:</div>
-                                      {block.intervals.map((iv, idx) => (
-                                        <div key={idx} className="text-slate-700">
-                                          {iv.interval} - {iv.cost}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                ))}
+            return (
+              <div key={i} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow" data-testid={`row-service-${i}`}>
+                <div className={`px-4 py-2.5 bg-gradient-to-r ${colors.bg} flex items-center gap-3`}>
+                  <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center text-white">
+                    {getSvcIcon(svcName)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <button
+                      onClick={() => setSelectedService(svc)}
+                      className="text-sm font-semibold text-white hover:text-white/80 transition-colors truncate block text-left"
+                      data-testid={`btn-service-detail-${i}`}
+                    >
+                      {svcName}
+                    </button>
+                  </div>
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${isActiveStatus ? 'bg-white/25 text-white' : 'bg-red-100 text-red-700'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${isActiveStatus ? 'bg-white' : 'bg-red-400'}`} />
+                    {status}
+                  </span>
+                </div>
+
+                <div className="px-4 py-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-4 gap-y-2.5">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Tariff</div>
+                      <div className="text-[12px] text-slate-700 mt-0.5 leading-snug">{svc.tariff || '-'}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Meter</div>
+                      <div className="text-[12px] text-slate-700 font-mono mt-0.5">{meterDisplay}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Frequency</div>
+                      <div className="text-[12px] text-slate-700 mt-0.5">{svc.frequency || 'Monthly'}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Connection Size</div>
+                      <div className="text-[12px] text-slate-700 mt-0.5">{svc.meterConnectionSize || '-'}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Factor / Qty</div>
+                      <div className="text-[12px] text-slate-700 font-mono mt-0.5">{svc.factorQuantity ?? svc.tarifffactor ?? '-'}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Request Date</div>
+                      <div className="text-[12px] text-slate-700 mt-0.5">{requestDate}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Commencement</div>
+                      <div className="text-[12px] text-slate-700 mt-0.5">{commencementDate}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Tariff Type</div>
+                      <div className="text-[12px] text-slate-700 mt-0.5">{svc.tariffType || svc.serviceDesc || '-'}</div>
+                    </div>
+                  </div>
+
+                  {tariffInfo.blocks.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-slate-100">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleRate(i); }}
+                        className="flex items-center gap-1.5 text-[11px] font-semibold text-blue-600 hover:text-blue-800 transition-colors mb-2"
+                        data-testid={`btn-tariff-rate-${i}`}
+                      >
+                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                        Tariff Rates & Intervals ({tariffInfo.blocks.reduce((sum, b) => sum + b.intervals.length, 0)} entries)
+                      </button>
+                      {isExpanded && (
+                        <div className="space-y-2">
+                          {tariffInfo.blocks.map((block, bi) => (
+                            <div key={bi} className="rounded-lg border border-slate-200 overflow-hidden">
+                              {(block.startDate || block.endDate) && (
+                                <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200 text-[11px] text-slate-500 font-medium">
+                                  Period: {block.startDate || '—'} to {block.endDate || '—'}
+                                </div>
+                              )}
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-[12px]">
+                                  <thead>
+                                    <tr className="bg-slate-50/50">
+                                      <th className="text-left py-1.5 px-3 text-[10px] uppercase tracking-wider text-slate-500 font-bold">Interval</th>
+                                      <th className="text-right py-1.5 px-3 text-[10px] uppercase tracking-wider text-slate-500 font-bold">Cost (R)</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {block.intervals.map((iv, idx) => (
+                                      <tr key={idx} className="border-t border-slate-100 hover:bg-blue-50/30">
+                                        <td className="py-1.5 px-3 text-slate-700">{iv.interval}</td>
+                                        <td className="py-1.5 px-3 text-right font-mono font-semibold text-blue-700">{iv.cost}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
                               </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 text-xs">-</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {!isExpanded && tariffInfo.blocks.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {tariffInfo.blocks.slice(0, 1).flatMap(b => b.intervals.slice(0, 4)).map((iv, idx) => (
+                            <div key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 border border-blue-100 text-[11px]">
+                              <span className="text-slate-600">{iv.interval}:</span>
+                              <span className="font-mono font-semibold text-blue-700">R {iv.cost}</span>
+                            </div>
+                          ))}
+                          {tariffInfo.blocks.reduce((sum, b) => sum + b.intervals.length, 0) > 4 && (
+                            <span className="text-[11px] text-slate-400 self-center">+{tariffInfo.blocks.reduce((sum, b) => sum + b.intervals.length, 0) - 4} more...</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="flex items-center justify-end text-[11px] text-slate-400">
+        <span>Items per page: 50</span>
+        <span className="ml-4 font-medium">1 - {displayData.length} of {displayData.length}</span>
       </div>
     </div>
   );
