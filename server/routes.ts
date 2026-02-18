@@ -2144,6 +2144,49 @@ export async function registerRoutes(
     });
   }
 
+  app.post("/api/platinum/billing-enquiry/generate-statement", async (req, res) => {
+    try {
+      const { accountId, statementType } = req.body;
+      const endpoint = statementType === 'detailed'
+        ? "/api/BillingEnquiry/getDetailBillingTemplate"
+        : "/api/BillingEnquiry/getBillingTemplate";
+      const data = await platinumGet(endpoint, { accountId: String(accountId) });
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/statement-download", async (req, res) => {
+    try {
+      const fileUrl = req.query.fileUrl as string;
+      if (!fileUrl) {
+        return res.status(400).json({ message: "fileUrl is required" });
+      }
+      const platinumApiUrl = getPlatinumApiUrl();
+      const token = await getPlatinumToken();
+      const fullUrl = fileUrl.startsWith('http') ? fileUrl : `${platinumApiUrl}${fileUrl}`;
+      const response = await fetch(fullUrl, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!response.ok) {
+        return res.status(response.status).json({ message: "Failed to download statement" });
+      }
+      const contentType = response.headers.get('content-type') || 'application/pdf';
+      const contentDisposition = response.headers.get('content-disposition');
+      res.setHeader('Content-Type', contentType);
+      if (contentDisposition) {
+        res.setHeader('Content-Disposition', contentDisposition);
+      } else {
+        res.setHeader('Content-Disposition', 'attachment; filename=statement.pdf');
+      }
+      const buffer = await response.arrayBuffer();
+      res.send(Buffer.from(buffer));
+    } catch (e: any) {
+      res.status(502).json({ message: "Failed to download statement", detail: e.message });
+    }
+  });
+
   app.post("/api/platinum/billing-enquiry/search", async (req, res) => {
     try {
       const data = await platinumPost("/api/BillingEnquiry/search", req.body);
