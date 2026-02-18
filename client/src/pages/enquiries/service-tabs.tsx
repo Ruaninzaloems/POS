@@ -623,9 +623,6 @@ export function ConsumptionTab({ accountId }: { accountId: number }) {
   ];
 
   const historyCols = [
-    { key: 'serviceDesc', label: 'Service Type' },
-    { key: 'meterClassificationDesc', label: 'Meter Classification', fallback: () => selectedMeter?.meterClassificationDesc || '' },
-    { key: 'tariff', label: 'Tariff', fallback: () => selectedMeter?.tariff || '' },
     { key: 'combinationMeterNo', label: 'Combination Meter No' },
     { key: 'tarifffactor', label: 'Factor', fallback: () => selectedMeter?.tarifffactor },
     { key: 'meterNo', label: 'Meter No' },
@@ -640,17 +637,43 @@ export function ConsumptionTab({ accountId }: { accountId: number }) {
     { key: 'readingdays', label: 'Reading Days' },
     { key: 'consumption', label: 'Consumption' },
     { key: 'flag', label: 'Levy Status' },
+    { key: 'testReadingDate', label: 'Test Reading Date' },
+    { key: 'testReading', label: 'Test Reading' },
+    { key: 'declineReason', label: 'Decline Reason' },
+    { key: 'meterErrorCode', label: 'Meter Error Code' },
+    { key: 'importStatus', label: 'Import Status' },
+    { key: 'meterChange', label: 'Meter Change' },
+    { key: 'meterStatus', label: 'Meter Status' },
+    { key: 'serviceStatus', label: 'Service Status' },
+    { key: 'readingStatus', label: 'Reading Status' },
+    { key: 'disconnectionStatus', label: 'Disconnection Status' },
+    { key: 'disconnectionReading', label: 'Disconnection Reading' },
+    { key: 'disconnectionDate', label: 'Disconnection Date' },
+    { key: 'contractorRemarks', label: 'Contractor Remarks' },
+    { key: 'disconnectionLetter', label: 'Disconnection Letter' },
+    { key: 'supportingDocument', label: 'Supporting Document' },
   ];
 
-  const sortedHistory = [...readingHistory].sort((a, b) => {
+  const sortedHistory = (() => {
     const parseDate = (d: string) => {
       if (!d) return 0;
       const parts = d.split('/');
       if (parts.length === 3) return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime();
       return new Date(d).getTime();
     };
-    return parseDate(b.reading1Date) - parseDate(a.reading1Date);
-  });
+
+    const sorted = [...readingHistory].sort((a, b) => parseDate(b.reading1Date) - parseDate(a.reading1Date));
+
+    const seenKeys = new Set<string>();
+    return sorted.filter(item => {
+      const bm = (item.billingmonth || item.billingMonth || '').trim();
+      const finYear = item.finYear || item.financialYear || '';
+      const key = `${finYear}__${bm.toLowerCase()}`;
+      if (seenKeys.has(key)) return false;
+      seenKeys.add(key);
+      return true;
+    });
+  })();
 
   return (
     <div className="p-5 space-y-5" data-testid="consumption-tab">
