@@ -50,11 +50,11 @@ import {
 function FieldRow({ label, value, icon }: { label: string; value: any; icon?: React.ReactNode }) {
   if (value === null || value === undefined || value === '') return null;
   return (
-    <div className="flex items-start gap-3 py-2.5 border-b border-slate-100 last:border-0">
-      {icon && <div className="text-slate-400 mt-0.5 shrink-0">{icon}</div>}
-      <div className="min-w-0 flex-1">
-        <div className="text-[11px] uppercase tracking-wider text-slate-400 font-medium">{label}</div>
-        <div className="text-sm text-slate-800 font-medium mt-0.5 break-words">{typeof value === 'number' ? value.toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : String(value)}</div>
+    <div className="group flex items-center gap-3 py-2.5 px-3 border-b border-slate-100/80 last:border-0 hover:bg-slate-50/50 transition-colors rounded-sm">
+      {icon && <div className="text-blue-500/70 shrink-0">{icon}</div>}
+      <div className="min-w-0 flex-1 flex items-baseline justify-between gap-4">
+        <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold shrink-0">{label}</span>
+        <span className="text-[13px] text-slate-800 font-medium text-right break-words">{typeof value === 'number' ? value.toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : String(value)}</span>
       </div>
     </div>
   );
@@ -62,32 +62,75 @@ function FieldRow({ label, value, icon }: { label: string; value: any; icon?: Re
 
 function LoadingSkeleton() {
   return (
-    <div className="space-y-3 p-4">
-      {[...Array(5)].map((_, i) => (
-        <div key={i} className="flex gap-3">
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-4 flex-1" />
+    <div className="p-6">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/70">
+          <Skeleton className="h-4 w-48" />
         </div>
-      ))}
+        <div className="p-5 space-y-4">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="flex items-center gap-4">
+              <Skeleton className="h-3.5 w-28 rounded-md" />
+              <Skeleton className="h-3.5 flex-1 rounded-md" />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-12 text-slate-400">
-      <FileText className="w-10 h-10 mb-3 opacity-40" />
-      <p className="text-sm">{message}</p>
+    <div className="p-6">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div className="flex flex-col items-center justify-center py-16 px-6">
+          <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+            <FileText className="w-7 h-7 text-slate-300" />
+          </div>
+          <p className="text-sm font-medium text-slate-500">{message}</p>
+          <p className="text-xs text-slate-400 mt-1">No records found for this account</p>
+        </div>
+      </div>
     </div>
   );
 }
 
 function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center py-8 text-red-500">
-      <AlertTriangle className="w-8 h-8 mb-2 opacity-60" />
-      <p className="text-sm mb-2">{message}</p>
-      {onRetry && <Button variant="outline" size="sm" onClick={onRetry}>Retry</Button>}
+    <div className="p-6">
+      <div className="bg-white rounded-xl border border-red-100 shadow-sm">
+        <div className="flex flex-col items-center justify-center py-12 px-6">
+          <div className="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center mb-3">
+            <AlertTriangle className="w-6 h-6 text-red-400" />
+          </div>
+          <p className="text-sm font-medium text-red-600 mb-1">Something went wrong</p>
+          <p className="text-xs text-slate-500 mb-4 text-center max-w-sm">{message}</p>
+          {onRetry && (
+            <Button variant="outline" size="sm" onClick={onRetry} className="gap-1.5 text-xs border-red-200 text-red-600 hover:bg-red-50">
+              <RefreshCw className="w-3 h-3" />
+              Try Again
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TabCard({ children, title, icon, action }: { children: React.ReactNode; title?: string; icon?: React.ReactNode; action?: React.ReactNode }) {
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      {title && (
+        <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {icon && <span className="text-blue-600">{icon}</span>}
+            <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
+          </div>
+          {action && <div>{action}</div>}
+        </div>
+      )}
+      <div>{children}</div>
     </div>
   );
 }
