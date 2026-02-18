@@ -10,7 +10,8 @@ import {
   CreditCard, Droplets, Zap, FileText, Shield, Gift, Landmark,
   AlertTriangle, Clock, ArrowRight, Loader2, SlidersHorizontal,
   Layers, Home, Activity, Users, Receipt, CalendarDays, Banknote, Scale,
-  Gauge, Filter, AlertCircle, Briefcase
+  Gauge, Filter, AlertCircle, Briefcase, Star, ScanBarcode, CheckCircle2,
+  CircleDot, Wallet, Gauge as MeterIcon, CalendarCheck
 } from 'lucide-react';
 import {
   searchAccounts, getAccountBalance,
@@ -43,9 +44,37 @@ function GeneralEnquiriesContent() {
   const [searchMode, setSearchMode] = useState<'quick' | 'advanced'>('quick');
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
   const [headerBalance, setHeaderBalance] = useState<number | null>(null);
+  const [pinnedAccounts, setPinnedAccounts] = useState<EnquirySearchResult[]>([]);
+  const [quickFilters, setQuickFilters] = useState<Set<string>>(new Set());
+  const [showFiltersPanel, setShowFiltersPanel] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownContainerRef = useRef<HTMLDivElement>(null);
+
+  const activeFilterCount = Object.values(criteria).filter(v => v && String(v).trim()).length;
+
+  const toggleQuickFilter = (filter: string) => {
+    setQuickFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(filter)) next.delete(filter);
+      else next.add(filter);
+      return next;
+    });
+  };
+
+  const togglePinAccount = (account: EnquirySearchResult) => {
+    const id = account.account_ID || account.accountID;
+    setPinnedAccounts(prev => {
+      const exists = prev.some(a => (a.account_ID || a.accountID) === id);
+      if (exists) return prev.filter(a => (a.account_ID || a.accountID) !== id);
+      return [...prev, account].slice(0, 10);
+    });
+  };
+
+  const isAccountPinned = (account: EnquirySearchResult) => {
+    const id = account.account_ID || account.accountID;
+    return pinnedAccounts.some(a => (a.account_ID || a.accountID) === id);
+  };
 
   const detectedType = useMemo(() => detectSearchType(quickQuery), [quickQuery]);
 
@@ -239,6 +268,34 @@ function GeneralEnquiriesContent() {
     setHighlightIdx(-1);
     inputRef.current?.focus();
   };
+
+  const QUICK_FILTER_CHIPS = [
+    { key: 'active', label: 'Active', icon: <CheckCircle2 className="w-3 h-3" /> },
+    { key: 'owner', label: 'Owner/Occupier', icon: <User className="w-3 h-3" /> },
+    { key: 'arrears', label: 'In Arrears', icon: <Wallet className="w-3 h-3" /> },
+    { key: 'meter', label: 'Has Meter', icon: <Gauge className="w-3 h-3" /> },
+    { key: 'payplan', label: 'Has Pay Plan', icon: <CalendarCheck className="w-3 h-3" /> },
+  ];
+
+  const EXAMPLE_SEARCHES = [
+    { value: '000000003698', label: 'Account Number' },
+    { value: 'Van der Merwe', label: 'Name' },
+    { value: '8501015012087', label: 'ID Number' },
+    { value: '0821234567', label: 'Phone' },
+  ];
+
+  const filteredResults = useMemo(() => {
+    if (quickFilters.size === 0) return results;
+    return results.filter(account => {
+      const status = (account.accountStatus || account.statusDesc || '').toLowerCase();
+      const accType = (account.accountType || account.accountDesc || '').toLowerCase();
+      const outstanding = account.outStandingAmount ?? account.outStandingAmt ?? 0;
+      if (quickFilters.has('active') && status !== 'active') return false;
+      if (quickFilters.has('owner') && !accType.includes('occupier') && !accType.includes('owner')) return false;
+      if (quickFilters.has('arrears') && outstanding <= 0) return false;
+      return true;
+    });
+  }, [results, quickFilters]);
 
   if (selectedAccount) {
     const accountId = selectedAccount.account_ID || selectedAccount.accountID;
@@ -453,76 +510,148 @@ function GeneralEnquiriesContent() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div className="shrink-0 bg-white border-b px-4 sm:px-6 py-4">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h2 className="text-lg font-bold text-slate-800" data-testid="text-page-title">General Enquiries</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Search and view municipal account information</p>
-          </div>
+    <div className="flex flex-col h-full overflow-hidden relative">
+      <div className="shrink-0 bg-white border-b border-slate-200 px-4 sm:px-6 py-3">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-semibold text-slate-700" data-testid="text-page-title">General Enquiries</h2>
           <div className="flex items-center gap-2">
             {hasSearched && (
-              <Badge variant="outline" className="text-xs" data-testid="text-result-count">
-                {results.length} result{results.length !== 1 ? 's' : ''}
+              <Badge variant="outline" className="text-[10px] h-5" data-testid="text-result-count">
+                {filteredResults.length} result{filteredResults.length !== 1 ? 's' : ''}
+                {quickFilters.size > 0 && ` (filtered from ${results.length})`}
               </Badge>
             )}
           </div>
         </div>
 
         <div ref={dropdownContainerRef} className="relative">
-          <div className="flex gap-2 items-stretch">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-              {dropdownSearching && (
-                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500 animate-spin pointer-events-none" />
+          <div className="relative flex items-stretch" role="search" aria-label="Account search">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" aria-hidden="true" />
+
+            {dropdownSearching && (
+              <div className="absolute left-10 top-1/2 -translate-y-1/2 flex items-center gap-1.5 z-10 pointer-events-none">
+                <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin" />
+                <span className="text-[10px] text-blue-500 font-medium">Searching...</span>
+              </div>
+            )}
+
+            <input
+              ref={inputRef}
+              type="text"
+              value={quickQuery}
+              onChange={(e) => handleQuickQueryChange(e.target.value)}
+              onKeyDown={handleQuickKeyDown}
+              onFocus={() => { if (quickQuery.trim().length >= 2 || recentSearches.length > 0 || pinnedAccounts.length > 0) setShowDropdown(true); }}
+              placeholder={dropdownSearching ? '' : 'Search by account number, name, ID number, phone, email...'}
+              className="w-full h-11 pl-10 pr-[180px] rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-800 placeholder:text-slate-400
+                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+              data-testid="input-smart-search"
+              aria-label="Search accounts"
+              aria-controls="search-dropdown"
+              aria-expanded={showDropdown}
+              aria-autocomplete="list"
+              role="combobox"
+            />
+
+            <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              {quickQuery.trim().length >= 2 && (
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium whitespace-nowrap
+                  ${detectedType.unsupported
+                    ? 'bg-amber-50 text-amber-600 border border-amber-200'
+                    : 'bg-blue-50 text-blue-600 border border-blue-200'}`}
+                  data-testid="badge-detected-type"
+                >
+                  {detectedType.unsupported ? <AlertTriangle className="w-2.5 h-2.5" /> : <CircleDot className="w-2.5 h-2.5" />}
+                  {detectedType.label}
+                </span>
               )}
-              <input
-                ref={inputRef}
-                type="text"
-                value={quickQuery}
-                onChange={(e) => handleQuickQueryChange(e.target.value)}
-                onKeyDown={handleQuickKeyDown}
-                onFocus={() => { if (quickQuery.trim().length >= 2 || recentSearches.length > 0) setShowDropdown(true); }}
-                placeholder="Search by account number, name, ID number, phone, email..."
-                className="w-full h-11 pl-10 pr-10 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-800 placeholder:text-slate-400
-                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
-                data-testid="input-smart-search"
-              />
+
               {quickQuery && (
                 <button
                   onClick={handleClear}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
                   data-testid="button-clear-quick"
+                  aria-label="Clear search"
+                  tabIndex={0}
                 >
                   <X className="w-4 h-4" />
                 </button>
               )}
+
+              <button
+                className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                title="Scan ID / Barcode"
+                data-testid="button-scan-barcode"
+                aria-label="Scan ID or barcode"
+                tabIndex={0}
+              >
+                <ScanBarcode className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={handleFullSearch}
+                disabled={searching || (quickQuery.trim().length < 2 && !Object.values(criteria).some(v => v && String(v).trim()))}
+                className="h-8 px-3 rounded-md bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white flex items-center gap-1.5 text-xs font-medium transition-colors shadow-sm"
+                data-testid="button-search"
+                aria-label="Search"
+                tabIndex={0}
+              >
+                {searching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                Search
+              </button>
             </div>
-            <Button
-              onClick={handleFullSearch}
-              disabled={searching || (quickQuery.trim().length < 2 && !Object.values(criteria).some(v => v && String(v).trim()))}
-              className="h-11 px-5 gap-2 shadow-sm"
-              data-testid="button-search"
-            >
-              {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-              Search
-            </Button>
-            <Button
-              variant={searchMode === 'advanced' ? 'secondary' : 'outline'}
-              onClick={() => setSearchMode(prev => prev === 'advanced' ? 'quick' : 'advanced')}
-              className="h-11 px-3 gap-1.5"
-              data-testid="button-toggle-advanced"
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-              <span className="hidden sm:inline text-xs">Filters</span>
-            </Button>
           </div>
 
-          {quickQuery.trim().length >= 1 && quickQuery.trim().length < 2 && showDropdown && (
-            <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-slate-200 z-50 px-4 py-3">
-              <p className="text-xs text-slate-400">Type at least 2 characters to search...</p>
-            </div>
-          )}
+          <div className="flex items-center justify-between mt-1.5">
+            <p className="text-[11px] text-slate-400">
+              Search by Account, Name, ID, Phone, Email. Results appear as you type.
+            </p>
+            <button
+              onClick={() => setShowFiltersPanel(prev => !prev)}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors border
+                ${showFiltersPanel || activeFilterCount > 0
+                  ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                  : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-700'}`}
+              data-testid="button-toggle-advanced"
+              aria-label={`Advanced Filters${activeFilterCount > 0 ? `, ${activeFilterCount} active` : ''}`}
+            >
+              <SlidersHorizontal className="w-3 h-3" />
+              Advanced Filters
+              {activeFilterCount > 0 && (
+                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold" data-testid="badge-filter-count">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1.5 mt-2 flex-wrap" role="group" aria-label="Quick filters">
+            {QUICK_FILTER_CHIPS.map(chip => (
+              <button
+                key={chip.key}
+                onClick={() => toggleQuickFilter(chip.key)}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all
+                  ${quickFilters.has(chip.key)
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                    : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:border-slate-300'}`}
+                data-testid={`chip-filter-${chip.key}`}
+                aria-pressed={quickFilters.has(chip.key)}
+                tabIndex={0}
+              >
+                {chip.icon}
+                {chip.label}
+              </button>
+            ))}
+            {quickFilters.size > 0 && (
+              <button
+                onClick={() => setQuickFilters(new Set())}
+                className="text-[10px] text-blue-600 hover:text-blue-800 ml-1 underline underline-offset-2"
+                data-testid="button-clear-quick-filters"
+              >
+                Clear
+              </button>
+            )}
+          </div>
 
           {quickQuery.trim().length >= 2 && (
             <SmartSearchDropdown
@@ -532,77 +661,69 @@ function GeneralEnquiriesContent() {
               highlightIdx={highlightIdx}
               onSelect={handleSelectAccount}
               visible={showDropdown}
+              onPin={togglePinAccount}
+              isPinned={isAccountPinned}
+              maxResults={20}
+              onViewAll={() => { setShowDropdown(false); handleFullSearch(); }}
             />
           )}
 
-          {quickQuery.trim().length < 2 && showDropdown && recentSearches.length > 0 && (
-            <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-slate-200 z-50 py-2">
-              <div className="px-4 py-1.5 flex items-center gap-2 border-b border-slate-100 mb-1">
-                <Clock className="w-3 h-3 text-slate-400" />
-                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Recent Searches</span>
-              </div>
-              {recentSearches.map((term, i) => (
-                <button
-                  key={i}
-                  onClick={() => { setQuickQuery(term); handleQuickQueryChange(term); }}
-                  className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2"
-                  data-testid={`recent-search-${i}`}
-                >
-                  <Clock className="w-3 h-3 text-slate-300" />
-                  {term}
-                </button>
-              ))}
+          {quickQuery.trim().length < 2 && showDropdown && (recentSearches.length > 0 || pinnedAccounts.length > 0) && (
+            <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-slate-200 z-50 py-1 max-h-[400px] overflow-y-auto" id="search-dropdown" role="listbox">
+              {pinnedAccounts.length > 0 && (
+                <>
+                  <div className="px-4 py-1.5 flex items-center gap-2 border-b border-slate-100">
+                    <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Pinned Accounts</span>
+                  </div>
+                  {pinnedAccounts.map((acct, i) => {
+                    const acctNum = acct.accountNumber || acct.accountID || acct.account_ID;
+                    const bal = acct.outStandingAmount ?? acct.outStandingAmt ?? 0;
+                    return (
+                      <button
+                        key={acct.account_ID || acct.accountID || i}
+                        onClick={() => handleSelectAccount(acct)}
+                        className="w-full text-left px-4 py-2 hover:bg-blue-50 transition-colors flex items-center gap-3"
+                        data-testid={`pinned-account-${i}`}
+                        role="option"
+                      >
+                        <Star className="w-3 h-3 text-amber-500 fill-amber-500 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-medium text-slate-800">{acct.name || acct.surname_Company || 'Unknown'}</span>
+                          <span className="text-[10px] font-mono text-blue-600 ml-2">{acctNum}</span>
+                        </div>
+                        <span className={`text-xs font-mono font-semibold ${bal > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                          R {bal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </>
+              )}
+
+              {recentSearches.length > 0 && (
+                <>
+                  <div className="px-4 py-1.5 flex items-center gap-2 border-b border-slate-100 mt-0.5">
+                    <Clock className="w-3 h-3 text-slate-400" />
+                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Recent Searches</span>
+                  </div>
+                  {recentSearches.map((term, i) => (
+                    <button
+                      key={i}
+                      onClick={() => { setQuickQuery(term); handleQuickQueryChange(term); }}
+                      className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2"
+                      data-testid={`recent-search-${i}`}
+                      role="option"
+                    >
+                      <Clock className="w-3 h-3 text-slate-300" />
+                      {term}
+                    </button>
+                  ))}
+                </>
+              )}
             </div>
           )}
         </div>
-
-        {quickQuery.trim().length >= 2 && !showDropdown && (
-          <div className="mt-2 flex flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-slate-400 uppercase tracking-wider">Detected:</span>
-              <Badge variant="outline" className={`text-[10px] gap-1 h-5 ${detectedType.unsupported ? 'border-amber-400 text-amber-600 bg-amber-50' : ''}`}>
-                {detectedType.unsupported ? <AlertTriangle className="w-2.5 h-2.5" /> : <Filter className="w-2.5 h-2.5" />}
-                {detectedType.label}
-              </Badge>
-            </div>
-            {detectedType.unsupported && (
-              <p className="text-[10px] text-amber-600">Try searching by account number, name, ID number, address, or mobile number instead</p>
-            )}
-          </div>
-        )}
-
-        {searchMode === 'advanced' && (
-          <div className="mt-3 pt-3 border-t border-dashed border-slate-200 space-y-3">
-            <div className="flex items-center gap-2 mb-2">
-              <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Advanced Filters</span>
-              {Object.values(criteria).some(v => v && String(v).trim()) && (
-                <button onClick={() => setCriteria({})} className="text-[10px] text-blue-600 hover:text-blue-800 ml-auto">
-                  Clear Filters
-                </button>
-              )}
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {SEARCH_FIELDS.map((field) => (
-                <div key={field.key}>
-                  <Label htmlFor={`search-${field.key}`} className="text-[11px] uppercase tracking-wider text-slate-500 font-medium mb-1 flex items-center gap-1.5">
-                    <field.icon className="w-3 h-3" />
-                    {field.label}
-                  </Label>
-                  <Input
-                    id={`search-${field.key}`}
-                    placeholder={field.placeholder}
-                    value={(criteria as any)[field.key] || ''}
-                    onChange={(e) => setCriteria(prev => ({ ...prev, [field.key]: e.target.value }))}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleFullSearch(); }}
-                    className="h-9 text-sm"
-                    data-testid={`input-search-${field.key}`}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="flex-1 overflow-auto bg-slate-50">
@@ -613,69 +734,107 @@ function GeneralEnquiriesContent() {
         )}
 
         {!hasSearched && !searchError && (
-          <div className="flex flex-col items-center justify-center h-full text-slate-400 p-8">
-            <div className="relative mb-6">
-              <Search className="w-16 h-16 opacity-15" />
-              <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center">
-                <Zap className="w-3.5 h-3.5 text-blue-600" />
+          <div className="flex flex-col items-center justify-center h-full text-slate-400 px-8 py-12">
+            <div className="relative mb-4">
+              <Search className="w-12 h-12 opacity-10" />
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                <Zap className="w-3 h-3 text-blue-600" />
               </div>
             </div>
-            <p className="text-base font-semibold text-slate-600 mb-1">Smart Account Search</p>
-            <p className="text-sm text-center max-w-lg text-slate-400 leading-relaxed">
-              Start typing an account number, name, ID number, phone number, or email in the search bar above.
-              Results appear instantly as you type. Use the Filters button for advanced multi-field searches.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-2 mt-5">
-              {['000000003698', 'Van der Merwe', '8501015012087'].map((example, i) => (
+            <p className="text-sm font-medium text-slate-500 mb-3">Quick Start</p>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {EXAMPLE_SEARCHES.map((example, i) => (
                 <button
                   key={i}
-                  onClick={() => { setQuickQuery(example); handleQuickQueryChange(example); inputRef.current?.focus(); }}
-                  className="text-xs px-3 py-1.5 rounded-full border border-slate-200 text-slate-500 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 transition-all"
+                  onClick={() => { setQuickQuery(example.value); handleQuickQueryChange(example.value); inputRef.current?.focus(); }}
+                  className="group flex items-center gap-2 text-xs px-3.5 py-2 rounded-lg border border-slate-200 text-slate-500
+                    hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 transition-all shadow-sm"
                   data-testid={`example-search-${i}`}
                 >
-                  Try: {example}
+                  <span className="font-mono text-blue-600 group-hover:text-blue-800">{example.value}</span>
+                  <span className="text-[10px] text-slate-400 group-hover:text-blue-500">{example.label}</span>
                 </button>
               ))}
             </div>
-          </div>
-        )}
-
-        {hasSearched && !searchError && results.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-slate-400 p-8">
-            <FileText className="w-12 h-12 mb-3 opacity-30" />
-            <p className="text-sm font-medium">No accounts found</p>
-            {detectedType.unsupported ? (
-              <div className="text-center mt-2">
-                <p className="text-xs text-amber-600 font-medium">Email search is not supported by the API</p>
-                <p className="text-xs mt-1.5 text-slate-500">Search by: Account Number, Name, ID Number, Address, Mobile Number, Passport, Old Account Code, or Meter Number</p>
+            {pinnedAccounts.length > 0 && (
+              <div className="mt-6 w-full max-w-md">
+                <div className="flex items-center gap-2 mb-2">
+                  <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                  <span className="text-xs font-semibold text-slate-500">Pinned Accounts</span>
+                </div>
+                <div className="grid gap-1.5">
+                  {pinnedAccounts.map((acct, i) => {
+                    const acctNum = acct.accountNumber || acct.accountID || acct.account_ID;
+                    const bal = acct.outStandingAmount ?? acct.outStandingAmt ?? 0;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => handleSelectAccount(acct)}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-blue-50 hover:border-blue-200 transition-all text-left"
+                        data-testid={`pinned-home-${i}`}
+                      >
+                        <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 text-sm font-bold">
+                          {(acct.name || '?').charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-slate-800 truncate">{acct.name || 'Unknown'}</div>
+                          <div className="text-[10px] font-mono text-slate-400">{acctNum}</div>
+                        </div>
+                        <div className={`text-xs font-mono font-semibold ${bal > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                          R {bal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            ) : (
-              <p className="text-xs mt-1">Try a different search term or use advanced filters</p>
             )}
           </div>
         )}
 
-        {results.length > 0 && (
+        {hasSearched && !searchError && filteredResults.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-16 text-slate-400 px-8">
+            <Search className="w-10 h-10 mb-3 opacity-20" />
+            <p className="text-sm font-semibold text-slate-600 mb-2">No results found</p>
+            {detectedType.unsupported ? (
+              <div className="text-center">
+                <p className="text-xs text-amber-600 font-medium">Email search is not supported by the API</p>
+                <p className="text-xs mt-1.5 text-slate-500">Search by Account Number, Name, ID, Address, Mobile, Passport, Old Code, or Meter Number</p>
+              </div>
+            ) : (
+              <div className="text-center space-y-1.5">
+                <p className="text-xs text-slate-500">Suggestions:</p>
+                <ul className="text-xs text-slate-400 space-y-0.5">
+                  <li>Check your spelling</li>
+                  <li>Try fewer words or characters</li>
+                  <li>Search by account number for exact results</li>
+                  {quickFilters.size > 0 && <li className="text-blue-600 font-medium">Remove active quick filters to see all results</li>}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {filteredResults.length > 0 && (
           <div className="overflow-x-auto" data-testid="table-search-results">
             <table className="w-full text-xs border-collapse min-w-[1100px]">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-slate-100 border-b-2 border-slate-200 text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
                   <th className="w-8 px-1 py-2.5"></th>
+                  <th className="w-8 px-1 py-2.5"></th>
                   <th className="text-left px-2 py-2.5 whitespace-nowrap w-[140px]">Account No.</th>
-                  <th className="text-left px-2 py-2.5 whitespace-nowrap w-[60px]">Part. ID</th>
-                  <th className="text-left px-2 py-2.5 whitespace-nowrap w-[100px]">Old Code</th>
                   <th className="text-left px-2 py-2.5 whitespace-nowrap">Name</th>
+                  <th className="text-left px-2 py-2.5 whitespace-nowrap w-[200px]">Address</th>
                   <th className="text-center px-2 py-2.5 whitespace-nowrap w-[70px]">Status</th>
                   <th className="text-center px-2 py-2.5 whitespace-nowrap w-[130px]">Type</th>
                   <th className="text-right px-2 py-2.5 whitespace-nowrap w-[110px]">Outstanding</th>
-                  <th className="text-left px-2 py-2.5 whitespace-nowrap w-[180px]">Address</th>
+                  <th className="text-left px-2 py-2.5 whitespace-nowrap w-[100px]">Old Code</th>
                   <th className="text-left px-2 py-2.5 whitespace-nowrap w-[180px]">SG Number</th>
-                  <th className="text-left px-2 py-2.5 whitespace-nowrap w-[60px]">Unit</th>
                   <th className="w-[60px] px-2 py-2.5"></th>
                 </tr>
               </thead>
               <tbody>
-                {results.map((account, i) => {
+                {filteredResults.map((account, i) => {
                   const aid = account.accountID || account.account_ID || i;
                   return (
                     <ExpandableResultRow
@@ -684,6 +843,9 @@ function GeneralEnquiriesContent() {
                       onSelect={handleSelectAccount}
                       isExpanded={expandedRowId === aid}
                       onToggleExpand={() => setExpandedRowId(prev => prev === aid ? null : aid)}
+                      searchQuery={quickQuery}
+                      onPin={togglePinAccount}
+                      isPinned={isAccountPinned(account)}
                     />
                   );
                 })}
@@ -692,6 +854,68 @@ function GeneralEnquiriesContent() {
           </div>
         )}
       </div>
+
+      {showFiltersPanel && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/20 z-40"
+            onClick={() => setShowFiltersPanel(false)}
+          />
+          <div className="fixed right-0 top-0 bottom-0 w-[380px] max-w-[90vw] bg-white shadow-2xl border-l border-slate-200 z-50 flex flex-col animate-in slide-in-from-right duration-200" role="dialog" aria-label="Advanced Filters">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-slate-500" />
+                <h3 className="text-sm font-semibold text-slate-800">Advanced Filters</h3>
+                {activeFilterCount > 0 && (
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold">{activeFilterCount}</span>
+                )}
+              </div>
+              <button
+                onClick={() => setShowFiltersPanel(false)}
+                className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                aria-label="Close filters panel"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {SEARCH_FIELDS.map((field) => (
+                <div key={field.key}>
+                  <Label htmlFor={`search-${field.key}`} className="text-[11px] uppercase tracking-wider text-slate-500 font-medium mb-1.5 flex items-center gap-1.5">
+                    <field.icon className="w-3 h-3" />
+                    {field.label}
+                  </Label>
+                  <Input
+                    id={`search-${field.key}`}
+                    placeholder={field.placeholder}
+                    value={(criteria as any)[field.key] || ''}
+                    onChange={(e) => setCriteria(prev => ({ ...prev, [field.key]: e.target.value }))}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { handleFullSearch(); setShowFiltersPanel(false); } }}
+                    className="h-9 text-sm"
+                    data-testid={`input-search-${field.key}`}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="shrink-0 border-t border-slate-200 px-5 py-3 flex items-center gap-2">
+              {activeFilterCount > 0 && (
+                <Button variant="ghost" size="sm" onClick={() => setCriteria({})} className="text-xs" data-testid="button-clear-filters">
+                  Clear All
+                </Button>
+              )}
+              <Button
+                onClick={() => { handleFullSearch(); setShowFiltersPanel(false); }}
+                disabled={searching}
+                className="flex-1 h-9 gap-2"
+                data-testid="button-apply-filters"
+              >
+                {searching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                Apply & Search
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
