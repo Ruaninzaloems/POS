@@ -2625,14 +2625,79 @@ function TransactionSummaryTab({ accountId, accountNumber }: { accountId: number
     const rows = pivotData.map((row: any) => {
       const vals = MONTHS.map(m => {
         const v = row[m];
-        return v === undefined ? '0.00' : (typeof v === 'number' ? v.toFixed(2) : '0.00');
+        return v === undefined ? 0 : (typeof v === 'number' ? v : 0);
       });
       return [accNum, row.description, selectedYear, ...vals];
     });
 
-    const BOM = '\uFEFF';
-    const csvContent = BOM + [headers.join('\t'), ...rows.map(r => r.join('\t'))].join('\r\n');
-    const blob = new Blob([csvContent], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const escXml = (s: string) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    const colWidths = [140, 180, 120, ...MONTHS.map(() => 100)];
+    const colXml = colWidths.map(w => `<Column ss:Width="${w}"/>`).join('');
+
+    const headerCells = headers.map(h =>
+      `<Cell ss:StyleID="header"><Data ss:Type="String">${escXml(h)}</Data></Cell>`
+    ).join('');
+
+    const dataRows = rows.map(row => {
+      const cells = row.map((val: any, ci: number) => {
+        if (ci <= 2) {
+          return `<Cell ss:StyleID="text"><Data ss:Type="String">${escXml(String(val))}</Data></Cell>`;
+        }
+        return `<Cell ss:StyleID="number"><Data ss:Type="Number">${Number(val).toFixed(2)}</Data></Cell>`;
+      }).join('');
+      return `<Row>${cells}</Row>`;
+    }).join('\n');
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+ <Styles>
+  <Style ss:ID="Default">
+   <Font ss:FontName="Calibri" ss:Size="11"/>
+  </Style>
+  <Style ss:ID="header">
+   <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/>
+   <Interior ss:Color="#2563EB" ss:Pattern="Solid"/>
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#1D4ED8"/>
+   </Borders>
+  </Style>
+  <Style ss:ID="text">
+   <Font ss:FontName="Calibri" ss:Size="11"/>
+   <Alignment ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+   </Borders>
+  </Style>
+  <Style ss:ID="number">
+   <Font ss:FontName="Calibri" ss:Size="11"/>
+   <NumberFormat ss:Format="#,##0.00"/>
+   <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+   </Borders>
+  </Style>
+  <Style ss:ID="title">
+   <Font ss:FontName="Calibri" ss:Size="14" ss:Bold="1" ss:Color="#1E293B"/>
+  </Style>
+ </Styles>
+ <Worksheet ss:Name="Transaction Summary">
+  <Table>
+   ${colXml}
+   <Row ss:Height="30">
+    <Cell ss:StyleID="title" ss:MergeAcross="${headers.length - 1}"><Data ss:Type="String">Transaction Summary - Account ${escXml(accNum)} - ${escXml(selectedYear)}</Data></Cell>
+   </Row>
+   <Row></Row>
+   <Row ss:Height="25">${headerCells}</Row>
+   ${dataRows}
+  </Table>
+ </Worksheet>
+</Workbook>`;
+
+    const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
