@@ -836,52 +836,29 @@ export async function registerRoutes(
     try {
       console.log(`[get-receipt-list] Request payload:`, JSON.stringify(req.body));
 
-      const token = await getPlatinumToken();
-      const apiUrl = getPlatinumApiUrl();
-      const url = `${apiUrl}/api/ViewReceipt/get-receipt-list`;
+      const data = await platinumPost("/api/ViewReceipt/get-receipt-list", req.body);
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 35000);
-      try {
-        const rawRes = await fetch(url, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(req.body),
-          signal: controller.signal,
-        });
+      console.log(`[get-receipt-list] Response type: ${typeof data}, isArray: ${Array.isArray(data)}, keys: ${data && typeof data === 'object' ? Object.keys(data).join(',') : 'N/A'}`);
+      if (data && typeof data === 'object' && '_error' in data) {
+        console.log(`[get-receipt-list] Response (first 500):`, JSON.stringify(data).substring(0, 500));
+      }
 
-        const rawText = await rawRes.text();
-        console.log(`[get-receipt-list] Raw status: ${rawRes.status}, Raw response (first 1000 chars):`, rawText.substring(0, 1000));
+      if (data && typeof data === 'object' && data._error) {
+        console.error(`[get-receipt-list] API error: ${data.status} ${data.statusText}`);
+        return res.status(data.status || 502).json({ message: data.statusText || "API error", detail: data.detail || '' });
+      }
 
-        if (!rawRes.ok) {
-          console.error(`[get-receipt-list] API error ${rawRes.status}: ${rawText.substring(0, 500)}`);
-          return res.status(rawRes.status).json({ message: rawRes.statusText, detail: rawText.substring(0, 500) });
-        }
-
-        let data;
-        try {
-          data = rawText ? JSON.parse(rawText) : null;
-        } catch {
-          data = rawText;
-        }
-
-        console.log(`[get-receipt-list] Parsed item count:`, Array.isArray(data) ? data.length : (data?.items?.length ?? 'unknown'));
-
-        if (data && typeof data === 'object' && !Array.isArray(data)) {
-          const items = data.items || data.value || data.results || data.data || [];
-          const totalCount = data.totalCount ?? data.totalRecords ?? data.total ?? items.length;
-          res.json({ items, totalCount });
-        } else if (Array.isArray(data)) {
-          res.json({ items: data, totalCount: data.length });
-        } else {
-          res.json({ items: [], totalCount: 0 });
-        }
-      } finally {
-        clearTimeout(timeoutId);
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        const items = data.items || data.value || data.results || data.data || [];
+        const totalCount = data.totalCount ?? data.totalRecords ?? data.total ?? items.length;
+        console.log(`[get-receipt-list] Returning ${Array.isArray(items) ? items.length : 0} items, totalCount: ${totalCount}`);
+        res.json({ items: Array.isArray(items) ? items : [], totalCount });
+      } else if (Array.isArray(data)) {
+        console.log(`[get-receipt-list] Returning array of ${data.length} items`);
+        res.json({ items: data, totalCount: data.length });
+      } else {
+        console.log(`[get-receipt-list] No data returned, sending empty result`);
+        res.json({ items: [], totalCount: 0 });
       }
     } catch (e: any) {
       console.error(`[get-receipt-list] Error:`, e.message);
