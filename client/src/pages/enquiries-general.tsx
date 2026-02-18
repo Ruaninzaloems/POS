@@ -2712,7 +2712,7 @@ function DetailedTransactionListTab({ accountId }: { accountId: number }) {
   };
 
   if (loading) return <LoadingSkeleton />;
-  if (error) return <ErrorState message={error} onRetry={load} />;
+  if (error) return <ErrorState message={error} onRetry={() => load(selectedYear)} />;
 
   return (
     <div className="p-4 space-y-4" data-testid="detailed-transaction-panel">

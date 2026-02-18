@@ -1603,7 +1603,7 @@ export async function searchSebataReceipts(filters: {
         }
 
         const items: ViewReceiptItem[] = [];
-        for (const [receiptId, group] of grouped) {
+        for (const [receiptId, group] of Array.from(grouped.entries())) {
             const first = group[0];
             const totalAmount = group.reduce((sum: number, g: any) => sum + (parseFloat(g.tenderAmount) || 0), 0);
             items.push({
