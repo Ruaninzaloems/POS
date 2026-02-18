@@ -3680,6 +3680,12 @@ function StatementsTab({ accountId }: { accountId: number }) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [statementType, setStatementType] = useState<'account' | 'detailed'>('account');
+  const years = useMemo(() => getFinYearOptions(), []);
+  const [modalYear, setModalYear] = useState(years[0]);
+  const [modalMonth, setModalMonth] = useState('');
+  const [downloading, setDownloading] = useState<number | null>(null);
   const loaded = useRef(false);
 
   const load = useCallback(async () => {
@@ -3687,7 +3693,7 @@ function StatementsTab({ accountId }: { accountId: number }) {
     setError(null);
     try {
       const result = await getGeneratedStatements(accountId);
-      setData(result);
+      setData(Array.isArray(result) ? result : []);
       loaded.current = true;
     } catch (e: any) {
       setError(e.message || 'Failed to load statements');
@@ -3698,36 +3704,163 @@ function StatementsTab({ accountId }: { accountId: number }) {
 
   useEffect(() => { if (!loaded.current) load(); }, [load]);
 
+  const filteredData = useMemo(() => {
+    return data.filter(s => {
+      const yearMatch = !modalYear || s.financialYear === modalYear;
+      const monthMatch = !modalMonth || s.month === modalMonth;
+      return yearMatch && monthMatch;
+    });
+  }, [data, modalYear, modalMonth]);
+
+  const monthsInData = useMemo(() => {
+    const mSet = new Set<string>();
+    data.forEach(s => { if (s.month) mSet.add(s.month); });
+    return Array.from(mSet);
+  }, [data]);
+
+  const handleDownload = async (statement: any) => {
+    const id = statement.accountstatement_id;
+    setDownloading(id);
+    try {
+      const filePath = statement.filePath;
+      if (filePath) {
+        const resp = await fetch(`/api/platinum/billing-enquiry/check-file-exists?fileUrl=${encodeURIComponent(filePath)}`);
+        const result = await resp.json();
+        if (result === true || result?.exists) {
+          window.open(`/api/platinum/statement-download?fileUrl=${encodeURIComponent(filePath)}`, '_blank');
+        } else {
+          alert('Statement file is not available for download at this time.');
+        }
+      }
+    } catch {
+      alert('Failed to download statement.');
+    } finally {
+      setDownloading(null);
+    }
+  };
+
+  const accountNumber = String(accountId).padStart(12, '0');
+
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
-  if (!data.length) return <EmptyState message="No generated statements available" />;
 
   return (
-    <div className="p-4 overflow-x-auto">
-      <table className="w-full text-sm" data-testid="table-statements">
-        <thead>
-          <tr className="border-b-2 border-slate-200">
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Statement Date</th>
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Period</th>
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Description</th>
-            <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Type</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((s: any, i: number) => (
-            <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-              <td className="py-2 px-3 text-slate-600">{s.statementDate ? new Date(s.statementDate).toLocaleDateString('en-ZA') : s.date || s.generatedDate || '-'}</td>
-              <td className="py-2 px-3">{s.period || s.billingPeriod || '-'}</td>
-              <td className="py-2 px-3">{s.description || s.statementDescription || '-'}</td>
-              <td className="py-2 px-3 text-right font-mono font-semibold">{(s.amount ?? s.totalAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-              <td className="py-2 px-3"><Badge variant="outline" className="text-[10px]">{s.status || '-'}</Badge></td>
-              <td className="py-2 px-3 text-slate-500">{s.statementType || s.type || '-'}</td>
+    <div className="p-4 space-y-4" data-testid="statements-panel">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm" data-testid="table-statements">
+          <thead>
+            <tr className="border-b-2 border-slate-200">
+              <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Statement Date</th>
+              <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Period</th>
+              <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Description</th>
+              <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
+              <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
+              <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Type</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {data.length === 0 ? (
+              <tr><td colSpan={6} className="text-center text-slate-400 py-4">No generated statements available</td></tr>
+            ) : data.map((s: any, i: number) => (
+              <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => setShowModal(true)} data-testid={`statement-row-${i}`}>
+                <td className="py-2 px-3 text-slate-600">{s.statementDate ? new Date(s.statementDate).toLocaleDateString('en-ZA') : '-'}</td>
+                <td className="py-2 px-3">{s.month ? `${s.financialYear} - ${s.month}` : s.period || '-'}</td>
+                <td className="py-2 px-3">{s.description || s.statementDescription || 'Account Statement'}</td>
+                <td className="py-2 px-3 text-right font-mono font-semibold">{(s.amount ?? s.totalAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                <td className="py-2 px-3">
+                  <button className="w-6 h-6 rounded-full border border-slate-300 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:border-slate-400" data-testid={`status-btn-${i}`}>
+                    <span className="text-xs">—</span>
+                  </button>
+                </td>
+                <td className="py-2 px-3 text-slate-500">{s.statementType || s.type || '-'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {showModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)} data-testid="statement-modal-overlay">
+          <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-3 border-b border-slate-200 bg-slate-50">
+              <h4 className="text-sm font-bold text-slate-700">Account Summary</h4>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="flex items-center gap-6">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="radio" name="stmtType" checked={statementType === 'account'} onChange={() => setStatementType('account')} className="text-blue-600" data-testid="radio-account-statement" />
+                  Account Statement
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="radio" name="stmtType" checked={statementType === 'detailed'} onChange={() => setStatementType('detailed')} className="text-blue-600" data-testid="radio-detailed-statement" />
+                  Detailed Account Statement
+                </label>
+              </div>
+
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-sm font-medium text-slate-700">Account Number: {accountNumber}</span>
+                <select value={modalYear} onChange={e => setModalYear(e.target.value)} className="border border-slate-300 rounded px-3 py-1.5 text-sm bg-white" data-testid="select-stmt-year">
+                  {years.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+                <select value={modalMonth} onChange={e => setModalMonth(e.target.value)} className="border border-slate-300 rounded px-3 py-1.5 text-sm bg-white" data-testid="select-stmt-month">
+                  <option value="">--Select--</option>
+                  {monthsInData.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+
+              <div className="flex justify-center">
+                <button className="px-6 py-2 bg-slate-800 text-white text-sm rounded hover:bg-slate-700 transition-colors" data-testid="button-submit-stmt">Submit</button>
+              </div>
+
+              <div className="border border-slate-200 rounded overflow-hidden">
+                <table className="w-full text-sm" data-testid="table-stmt-download">
+                  <thead>
+                    <tr className="bg-slate-100 border-b border-slate-200">
+                      <th className="text-left px-4 py-2 font-semibold text-slate-700">Financial Year</th>
+                      <th className="text-left px-4 py-2 font-semibold text-slate-700">Month</th>
+                      <th className="text-left px-4 py-2 font-semibold text-slate-700">Download</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredData.length === 0 ? (
+                      <tr><td colSpan={3} className="text-center text-slate-400 py-4">No statements found</td></tr>
+                    ) : filteredData.map((s: any, i: number) => (
+                      <tr key={i} className="border-b border-slate-100 hover:bg-slate-50" data-testid={`stmt-download-row-${i}`}>
+                        <td className="px-4 py-3 text-slate-700">{s.financialYear}</td>
+                        <td className="px-4 py-3 text-slate-700">{s.month}</td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => handleDownload(s)}
+                            disabled={downloading === s.accountstatement_id}
+                            className="text-orange-500 hover:text-orange-700 transition-colors disabled:opacity-50"
+                            title="Download Statement PDF"
+                            data-testid={`btn-download-stmt-${i}`}
+                          >
+                            {downloading === s.accountstatement_id ? (
+                              <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                              <Download className="w-5 h-5" />
+                            )}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 text-xs text-slate-500">
+                <span>Items per page: <span className="border rounded px-2 py-0.5">50</span></span>
+                <span>{filteredData.length === 0 ? '0 of 0' : `1 – ${filteredData.length} of ${filteredData.length}`}</span>
+              </div>
+
+              <div className="flex justify-center pt-2">
+                <button onClick={() => setShowModal(false)} className="px-6 py-2 bg-slate-800 text-white text-sm rounded hover:bg-slate-700 transition-colors" data-testid="button-close-stmt-modal">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
