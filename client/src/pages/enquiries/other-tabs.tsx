@@ -18,6 +18,7 @@ import {
   getOccupiers, addOccupier, deleteOccupier,
 } from '@/lib/enquiries-service';
 import { LoadingSkeleton, EmptyState, ErrorState, PaginatedTable, FieldRow, getFinYearOptions } from './shared';
+import { generateStatementPdf } from '@/lib/statement-pdf';
 
 export function PropertyDetailsTab({ accountId }: { accountId: number }) {
   const [propData, setPropData] = useState<any>(null);
@@ -243,18 +244,27 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
                 </tr>
               </thead>
               <tbody>
-                {meters.map((m: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-cyan-50/30 transition-colors">
-                    <td className="py-2 px-3 font-mono font-medium text-slate-800">{m.meterNumber || m.physicalMeterNumber || m.meter_Number || '-'}</td>
-                    <td className="py-2 px-3 text-slate-600">{m.serviceType || m.serviceDescription || m.service || '-'}</td>
-                    <td className="py-2 px-3">
-                      <Badge variant={m.status === 'Active' || m.isActive ? 'default' : 'secondary'} className={`text-[10px] ${m.status === 'Active' || m.isActive ? 'bg-green-100 text-green-800' : ''}`}>{m.status || (m.isActive ? 'Active' : 'Inactive') || '-'}</Badge>
-                    </td>
-                    <td className="py-2 px-3 text-slate-600">{m.meterType || m.type || '-'}</td>
-                    <td className="py-2 px-3 text-right font-mono">{m.lastReading ?? m.currentReading ?? '-'}</td>
-                    <td className="py-2 px-3 text-slate-600">{fmtDate(m.readDate || m.lastReadDate)}</td>
-                  </tr>
-                ))}
+                {meters.map((m: any, i: number) => {
+                  const meterNum = m.physicalMeterNo || m.physicalMeterNumber || m.meterNo || m.meterNumber || m.meter_Number || '-';
+                  const service = m.serviceDesc || m.serviceType || m.serviceDescription || m.service || '-';
+                  const status = m.serviceStatus || m.status || (m.isActive ? 'Active' : m.serviceStatusID === 1 ? 'Active' : 'Inactive') || '-';
+                  const isActiveStatus = status === 'Active' || m.serviceStatusID === 1 || m.isActive;
+                  const meterType = m.meterClassificationDesc || m.meterType || m.type || '-';
+                  const lastReading = m.lastReading ?? m.currentReading ?? '-';
+                  const readDate = m.readDate || m.lastReadDate;
+                  return (
+                    <tr key={i} className="border-b border-slate-100 hover:bg-cyan-50/30 transition-colors">
+                      <td className="py-2 px-3 font-mono font-medium text-slate-800">{meterNum}</td>
+                      <td className="py-2 px-3 text-slate-600">{service}</td>
+                      <td className="py-2 px-3">
+                        <Badge variant={isActiveStatus ? 'default' : 'secondary'} className={`text-[10px] ${isActiveStatus ? 'bg-green-100 text-green-800' : ''}`}>{status}</Badge>
+                      </td>
+                      <td className="py-2 px-3 text-slate-600">{meterType}</td>
+                      <td className="py-2 px-3 text-right font-mono">{lastReading}</td>
+                      <td className="py-2 px-3 text-slate-600">{fmtDate(readDate)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -784,25 +794,11 @@ export function StatementsTab({ accountId }: { accountId: number }) {
     const id = statement.accountstatement_id;
     setDownloading(id);
     try {
-      const filePath = statement.filePath || statement.fileUrl || statement.file_path;
-      if (filePath) {
-        window.open(`/api/platinum/statement-download?fileUrl=${encodeURIComponent(filePath)}`, '_blank');
-      } else {
-        const res = await fetch(`/api/platinum/billing-enquiry/check-file-exists?fileUrl=${encodeURIComponent(statement.accountstatement_id || '')}`);
-        const result = await res.json();
-        if (result && (result === true || result?.exists || result?.filePath)) {
-          const url = result?.filePath || result?.fileUrl || '';
-          if (url) {
-            window.open(`/api/platinum/statement-download?fileUrl=${encodeURIComponent(url)}`, '_blank');
-          } else {
-            alert('Statement file path not found.');
-          }
-        } else {
-          alert('Statement file is not available for download at this time.');
-        }
-      }
-    } catch {
-      alert('Failed to download statement.');
+      const yr = statement.financialYear || modalYear;
+      const mo = statement.month || modalMonth || '';
+      await generateStatementPdf(accountId, accountNumber, yr, mo, statementType);
+    } catch (e: any) {
+      alert('Failed to generate statement PDF: ' + (e.message || 'Unknown error'));
     } finally {
       setDownloading(null);
     }
