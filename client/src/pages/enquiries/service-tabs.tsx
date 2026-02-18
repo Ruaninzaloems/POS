@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import {
   getServiceTypeBalance, getMeteredServicesOnAccount, getAccountServiceMeterPerProperty,
-  getUnitLinkedMeters, getMeterReadingHistory, getPrepaidMeterServicesForAccount,
+  getMeterReadingHistory, getPrepaidMeterServicesForAccount,
   getPrepaidRechargeDetailsForMeter, getAllServices, getConsumptionUnits,
   getServicesSearchResults,
 } from '@/lib/enquiries-service';
@@ -887,10 +887,8 @@ export function ConsumptionTab({ accountId }: { accountId: number }) {
 }
 
 export function ServicesMetersTab({ accountId, unitId }: { accountId: number; unitId?: number }) {
+  const [meters, setMeters] = useState<any[]>([]);
   const [allServices, setAllServices] = useState<any[]>([]);
-  const [meteredServices, setMeteredServices] = useState<any[]>([]);
-  const [meterPerProperty, setMeterPerProperty] = useState<any[]>([]);
-  const [unitLinkedMeters, setUnitLinkedMeters] = useState<any[]>([]);
   const [prepaidMeters, setPrepaidMeters] = useState<any[]>([]);
   const [showPrepaidSales, setShowPrepaidSales] = useState(false);
   const [selectedPrepaidMeter, setSelectedPrepaidMeter] = useState<any>(null);
@@ -898,38 +896,60 @@ export function ServicesMetersTab({ accountId, unitId }: { accountId: number; un
   const [loadingRecharge, setLoadingRecharge] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const loaded = useRef(false);
+  const prevAccountId = useRef<number | null>(null);
+
+  const [consumptionMeter, setConsumptionMeter] = useState<any>(null);
+  const [consumptionHistory, setConsumptionHistory] = useState<any[]>([]);
+  const [consumptionLoading, setConsumptionLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [svc, metered, mpp, ulm, prepaid] = await Promise.all([
-        getAllServices(accountId).catch(() => []),
-        getMeteredServicesOnAccount(accountId).catch(() => []),
+      const [mpp, svc, prepaid] = await Promise.all([
         getAccountServiceMeterPerProperty(accountId).catch(() => []),
-        unitId ? getUnitLinkedMeters(unitId).catch(() => []) : Promise.resolve([]),
+        getAllServices(accountId).catch(() => []),
         getPrepaidMeterServicesForAccount(accountId).catch(() => []),
       ]);
+      setMeters(mpp);
       setAllServices(svc);
-      setMeteredServices(metered);
-      setMeterPerProperty(mpp);
-      setUnitLinkedMeters(ulm);
       setPrepaidMeters(prepaid);
-      loaded.current = true;
     } catch (e: any) {
       setError(e.message || 'Failed to load services & meters');
     } finally {
       setLoading(false);
     }
-  }, [accountId, unitId]);
+  }, [accountId]);
 
-  useEffect(() => { if (!loaded.current) load(); }, [load]);
+  useEffect(() => {
+    if (prevAccountId.current !== accountId) {
+      prevAccountId.current = accountId;
+      setConsumptionMeter(null);
+      load();
+    }
+  }, [accountId, load]);
+
+  const viewConsumption = useCallback(async (meter: any) => {
+    setConsumptionMeter(meter);
+    setConsumptionLoading(true);
+    setConsumptionHistory([]);
+    try {
+      const meterNo = (meter.meterNo || meter.meterNumber || meter.physicalMeterNo || meter.physicalMeterNumber || '').replace(/^0+/, '');
+      if (meterNo) {
+        const history = await getMeterReadingHistory(accountId, meterNo);
+        setConsumptionHistory(Array.isArray(history) ? history : []);
+      }
+    } catch {
+      setConsumptionHistory([]);
+    } finally {
+      setConsumptionLoading(false);
+    }
+  }, [accountId]);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
 
-  const hasData = allServices.length || meteredServices.length || meterPerProperty.length || unitLinkedMeters.length || prepaidMeters.length;
+  const hasData = meters.length || allServices.length || prepaidMeters.length;
   if (!hasData) return <EmptyState message="No services or meter data available" />;
 
   return (
@@ -968,32 +988,67 @@ export function ServicesMetersTab({ accountId, unitId }: { accountId: number; un
         </div>
       )}
 
-      {meteredServices.length > 0 && (
+      {meters.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-teal-600 to-teal-700 flex items-center gap-2">
             <Gauge className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Metered Services</h3>
-            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{meteredServices.length}</Badge>
+            <h3 className="text-sm font-semibold text-white tracking-wide">Meters</h3>
+            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{meters.length}</Badge>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm" data-testid="table-metered-services">
+            <table className="w-full text-sm" data-testid="table-meters">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Number</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Type</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service Type</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Classification</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Physical Meter No</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter No</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Install Date</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Tariff Code</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Main Meter</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Billable</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
-                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Last Reading</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service Status</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Replace</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reason</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Account Number</th>
+                  <th className="text-center py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Consumption</th>
                 </tr>
               </thead>
               <tbody>
-                {meteredServices.map((m: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
-                    <td className="py-2 px-3 font-mono font-medium text-slate-700">{m.meterNumber || m.physicalMeterNumber || '-'}</td>
-                    <td className="py-2 px-3">{m.serviceType || m.serviceDescription || '-'}</td>
-                    <td className="py-2 px-3">{m.meterType || m.meterTypeDescription || '-'}</td>
-                    <td className="py-2 px-3"><Badge variant="outline" className="text-[10px]">{m.status || m.meterStatus || '-'}</Badge></td>
-                    <td className="py-2 px-3 text-right font-mono">{m.lastReading ?? m.currentReading ?? '-'}</td>
+                {meters.map((m: any, i: number) => (
+                  <tr key={i} className={`border-b border-slate-100 hover:bg-teal-50/30 transition-colors ${consumptionMeter === m ? 'bg-teal-50 ring-1 ring-teal-300' : ''}`}>
+                    <td className="py-2 px-3 font-medium">{m.serviceType || m.serviceTypeDescription || '-'}</td>
+                    <td className="py-2 px-3">{m.classification || m.meterClassification || m.meterType || '-'}</td>
+                    <td className="py-2 px-3 font-mono text-sm">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</td>
+                    <td className="py-2 px-3 font-mono font-semibold text-blue-700">{m.meterNo || m.meterNumber || '-'}</td>
+                    <td className="py-2 px-3 text-slate-600">{m.installDate ? new Date(m.installDate).toLocaleDateString('en-ZA') : m.dateInstalled ? new Date(m.dateInstalled).toLocaleDateString('en-ZA') : '-'}</td>
+                    <td className="py-2 px-3 text-xs">{m.tariffCode || m.tariff || m.tariffDescription || '-'}</td>
+                    <td className="py-2 px-3">{m.mainMeter !== undefined ? String(m.mainMeter) : m.isMainMeter !== undefined ? String(m.isMainMeter) : '-'}</td>
+                    <td className="py-2 px-3">{m.billable !== undefined ? String(m.billable) : m.isBillable !== undefined ? String(m.isBillable) : '-'}</td>
+                    <td className="py-2 px-3">
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                        {m.status || '-'}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3">
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.serviceStatus || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                        {m.serviceStatus || '-'}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3">{m.replace !== undefined ? String(m.replace) : m.isReplaced !== undefined ? String(m.isReplaced) : '-'}</td>
+                    <td className="py-2 px-3 text-slate-500 text-xs">{m.reason || m.replaceReason || '-'}</td>
+                    <td className="py-2 px-3 font-mono text-xs">{m.accountNumber || m.accountNo || '-'}</td>
+                    <td className="py-2 px-3 text-center">
+                      <button
+                        onClick={() => viewConsumption(m)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 text-[11px] font-semibold rounded-md border border-cyan-200 transition-all"
+                        data-testid={`button-view-consumption-${i}`}
+                      >
+                        <Activity className="w-3 h-3" />
+                        View
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1002,66 +1057,84 @@ export function ServicesMetersTab({ accountId, unitId }: { accountId: number; un
         </div>
       )}
 
-      {meterPerProperty.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Meters Per Property</h3>
-            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{meterPerProperty.length}</Badge>
+      {consumptionMeter && (
+        <div className="bg-white rounded-xl border border-cyan-200 shadow-sm overflow-hidden" data-testid="consumption-detail-panel">
+          <div className="px-5 py-3 border-b border-cyan-100 bg-gradient-to-r from-cyan-600 to-cyan-700 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Activity className="w-4 h-4 text-white" />
+              <h3 className="text-sm font-semibold text-white tracking-wide">
+                Consumption — Meter {consumptionMeter.meterNo || consumptionMeter.meterNumber || consumptionMeter.physicalMeterNumber || ''}
+              </h3>
+            </div>
+            <button
+              onClick={() => { setConsumptionMeter(null); setConsumptionHistory([]); }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold rounded-lg transition-all border border-white/30"
+              data-testid="button-close-consumption"
+            >
+              Close
+            </button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" data-testid="table-meter-per-property">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Property</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {meterPerProperty.map((m: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
-                    <td className="py-2 px-3">{m.propertyDescription || m.propertyId || '-'}</td>
-                    <td className="py-2 px-3">{m.serviceType || m.serviceDescription || '-'}</td>
-                    <td className="py-2 px-3 font-mono">{m.meterNumber || m.physicalMeterNumber || '-'}</td>
-                    <td className="py-2 px-3">{m.status || '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+          <div className="p-5">
+            <div className="bg-cyan-50 border border-cyan-200 rounded-xl p-4 mb-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Service Type</span>
+                  <p className="font-medium text-slate-800 mt-0.5">{consumptionMeter.serviceType || consumptionMeter.serviceTypeDescription || '-'}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Meter No</span>
+                  <p className="font-mono font-bold text-blue-700 mt-0.5">{consumptionMeter.meterNo || consumptionMeter.meterNumber || '-'}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Physical Meter</span>
+                  <p className="font-mono text-slate-800 mt-0.5">{consumptionMeter.physicalMeterNumber || consumptionMeter.physicalMeterNo || '-'}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Tariff</span>
+                  <p className="text-slate-800 mt-0.5">{consumptionMeter.tariffCode || consumptionMeter.tariff || '-'}</p>
+                </div>
+              </div>
+            </div>
 
-      {unitLinkedMeters.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-violet-600 to-violet-700 flex items-center gap-2">
-            <Link2 className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Unit Linked Meters</h3>
-            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{unitLinkedMeters.length}</Badge>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" data-testid="table-unit-linked-meters">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Number</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Type</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {unitLinkedMeters.map((m: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
-                    <td className="py-2 px-3 font-mono">{m.meterNumber || m.physicalMeterNumber || '-'}</td>
-                    <td className="py-2 px-3">{m.serviceType || m.serviceDescription || '-'}</td>
-                    <td className="py-2 px-3">{m.meterType || '-'}</td>
-                    <td className="py-2 px-3">{m.status || '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {consumptionLoading ? (
+              <div className="flex items-center justify-center py-8 gap-2 text-slate-500">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span className="text-sm">Loading consumption history...</span>
+              </div>
+            ) : consumptionHistory.length === 0 ? (
+              <div className="text-center py-8 text-slate-400">No consumption history found for this meter</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm" data-testid="table-meter-consumption">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200">
+                      <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reading Date</th>
+                      <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reading</th>
+                      <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Consumption</th>
+                      <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Period</th>
+                      <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reading Type</th>
+                      <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Fin Year</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {consumptionHistory.map((h: any, i: number) => (
+                      <tr key={i} className="border-b border-slate-100 hover:bg-cyan-50/30 transition-colors" data-testid={`consumption-row-${i}`}>
+                        <td className="py-2 px-3 text-slate-600">{h.readingDate ? new Date(h.readingDate).toLocaleDateString('en-ZA') : h.date ? new Date(h.date).toLocaleDateString('en-ZA') : '-'}</td>
+                        <td className="py-2 px-3 text-right font-mono font-semibold">{h.reading ?? h.meterReading ?? h.currentReading ?? '-'}</td>
+                        <td className="py-2 px-3 text-right font-mono font-bold text-cyan-700">{h.consumption ?? h.units ?? h.consumptionUnits ?? '-'}</td>
+                        <td className="py-2 px-3">{h.period || h.billingPeriod || h.periodDescription || '-'}</td>
+                        <td className="py-2 px-3">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(h.readingType || '').toLowerCase() === 'actual' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}`}>
+                            {h.readingType || h.type || '-'}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3 text-slate-500">{h.finYear || h.financialYear || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}
