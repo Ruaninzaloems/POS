@@ -5595,32 +5595,50 @@ function GeneralEnquiriesContent() {
     const accountName = selectedAccount.name || selectedAccount.surname_Company || 'Unknown';
     const accountNum = selectedAccount.accountNumber || selectedAccount.accountID || selectedAccount.account_ID;
 
-    const tabItems = [
-      { value: 'account', label: 'Account' },
-      { value: 'name', label: 'Name' },
-      { value: 'balance', label: 'Balance/Debt' },
-      { value: 'services', label: 'Services' },
-      { value: 'property', label: 'Property' },
-      { value: 'consumption', label: 'Consumption' },
-      { value: 'contact', label: 'Contact' },
-      { value: 'handover', label: 'Handover' },
-      { value: 'incentives', label: 'Incentives' },
-      { value: 'deposits', label: 'Deposits' },
-      { value: 'transactions', label: 'Receipts' },
-      { value: 'txn-summary', label: 'Txn Summary' },
-      { value: 'txn-detailed', label: 'Txn Detail' },
-      { value: 'services-meters', label: 'Meters' },
-      { value: 'payment-plans', label: 'Pay Plans' },
-      { value: 'payment-extensions', label: 'Extensions' },
-      { value: 'debit-orders', label: 'Debit Orders' },
-      { value: 'rates', label: 'Rates' },
-      { value: 'notifications', label: 'Notifications' },
-      { value: 'statements', label: 'Statements' },
-      { value: 'clearance', label: 'Clearance' },
-      { value: 'debtor-notes', label: 'Debtor Notes' },
-      { value: 'section129', label: 'Section 129' },
-      { value: 'occupiers', label: 'Occupiers' },
+    const tabItems: { value: string; label: string; icon: React.ReactNode; color: string }[] = [
+      { value: 'account', label: 'Account', icon: <User className="w-4 h-4" />, color: 'blue' },
+      { value: 'name', label: 'Name', icon: <Users className="w-4 h-4" />, color: 'indigo' },
+      { value: 'balance', label: 'Balance/Debt', icon: <CreditCard className="w-4 h-4" />, color: 'red' },
+      { value: 'services', label: 'Services', icon: <Layers className="w-4 h-4" />, color: 'emerald' },
+      { value: 'property', label: 'Property', icon: <Home className="w-4 h-4" />, color: 'amber' },
+      { value: 'consumption', label: 'Consumption', icon: <Droplets className="w-4 h-4" />, color: 'cyan' },
+      { value: 'contact', label: 'Contact', icon: <Phone className="w-4 h-4" />, color: 'violet' },
+      { value: 'handover', label: 'Handover', icon: <ArrowRight className="w-4 h-4" />, color: 'orange' },
+      { value: 'incentives', label: 'Incentives', icon: <Gift className="w-4 h-4" />, color: 'pink' },
+      { value: 'deposits', label: 'Deposits', icon: <Banknote className="w-4 h-4" />, color: 'lime' },
+      { value: 'transactions', label: 'Receipts', icon: <Receipt className="w-4 h-4" />, color: 'blue' },
+      { value: 'txn-summary', label: 'Txn Summary', icon: <FileText className="w-4 h-4" />, color: 'slate' },
+      { value: 'txn-detailed', label: 'Txn Detail', icon: <Activity className="w-4 h-4" />, color: 'indigo' },
+      { value: 'services-meters', label: 'Meters', icon: <Gauge className="w-4 h-4" />, color: 'emerald' },
+      { value: 'payment-plans', label: 'Pay Plans', icon: <CalendarDays className="w-4 h-4" />, color: 'purple' },
+      { value: 'payment-extensions', label: 'Extensions', icon: <Clock className="w-4 h-4" />, color: 'amber' },
+      { value: 'debit-orders', label: 'Debit Orders', icon: <Landmark className="w-4 h-4" />, color: 'teal' },
+      { value: 'rates', label: 'Rates', icon: <Scale className="w-4 h-4" />, color: 'orange' },
+      { value: 'notifications', label: 'Notifications', icon: <AlertCircle className="w-4 h-4" />, color: 'yellow' },
+      { value: 'statements', label: 'Statements', icon: <FileText className="w-4 h-4" />, color: 'blue' },
+      { value: 'clearance', label: 'Clearance', icon: <Shield className="w-4 h-4" />, color: 'emerald' },
+      { value: 'debtor-notes', label: 'Debtor Notes', icon: <Briefcase className="w-4 h-4" />, color: 'red' },
+      { value: 'section129', label: 'Section 129', icon: <AlertTriangle className="w-4 h-4" />, color: 'rose' },
+      { value: 'occupiers', label: 'Occupiers', icon: <Users className="w-4 h-4" />, color: 'violet' },
     ];
+
+    const tabColorMap: Record<string, { bg: string; border: string; text: string; iconBg: string; activeBg: string; activeBorder: string; activeText: string; activeIconBg: string }> = {
+      blue: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-blue-50 text-blue-500', activeBg: 'bg-blue-50', activeBorder: 'border-blue-400 ring-1 ring-blue-200', activeText: 'text-blue-800', activeIconBg: 'bg-blue-500 text-white' },
+      indigo: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-indigo-50 text-indigo-500', activeBg: 'bg-indigo-50', activeBorder: 'border-indigo-400 ring-1 ring-indigo-200', activeText: 'text-indigo-800', activeIconBg: 'bg-indigo-500 text-white' },
+      red: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-red-50 text-red-500', activeBg: 'bg-red-50', activeBorder: 'border-red-400 ring-1 ring-red-200', activeText: 'text-red-800', activeIconBg: 'bg-red-500 text-white' },
+      emerald: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-emerald-50 text-emerald-500', activeBg: 'bg-emerald-50', activeBorder: 'border-emerald-400 ring-1 ring-emerald-200', activeText: 'text-emerald-800', activeIconBg: 'bg-emerald-500 text-white' },
+      amber: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-amber-50 text-amber-600', activeBg: 'bg-amber-50', activeBorder: 'border-amber-400 ring-1 ring-amber-200', activeText: 'text-amber-800', activeIconBg: 'bg-amber-500 text-white' },
+      cyan: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-cyan-50 text-cyan-500', activeBg: 'bg-cyan-50', activeBorder: 'border-cyan-400 ring-1 ring-cyan-200', activeText: 'text-cyan-800', activeIconBg: 'bg-cyan-500 text-white' },
+      violet: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-violet-50 text-violet-500', activeBg: 'bg-violet-50', activeBorder: 'border-violet-400 ring-1 ring-violet-200', activeText: 'text-violet-800', activeIconBg: 'bg-violet-500 text-white' },
+      orange: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-orange-50 text-orange-500', activeBg: 'bg-orange-50', activeBorder: 'border-orange-400 ring-1 ring-orange-200', activeText: 'text-orange-800', activeIconBg: 'bg-orange-500 text-white' },
+      pink: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-pink-50 text-pink-500', activeBg: 'bg-pink-50', activeBorder: 'border-pink-400 ring-1 ring-pink-200', activeText: 'text-pink-800', activeIconBg: 'bg-pink-500 text-white' },
+      lime: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-lime-50 text-lime-600', activeBg: 'bg-lime-50', activeBorder: 'border-lime-400 ring-1 ring-lime-200', activeText: 'text-lime-800', activeIconBg: 'bg-lime-500 text-white' },
+      slate: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-slate-100 text-slate-500', activeBg: 'bg-slate-100', activeBorder: 'border-slate-400 ring-1 ring-slate-300', activeText: 'text-slate-800', activeIconBg: 'bg-slate-600 text-white' },
+      purple: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-purple-50 text-purple-500', activeBg: 'bg-purple-50', activeBorder: 'border-purple-400 ring-1 ring-purple-200', activeText: 'text-purple-800', activeIconBg: 'bg-purple-500 text-white' },
+      teal: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-teal-50 text-teal-500', activeBg: 'bg-teal-50', activeBorder: 'border-teal-400 ring-1 ring-teal-200', activeText: 'text-teal-800', activeIconBg: 'bg-teal-500 text-white' },
+      yellow: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-yellow-50 text-yellow-600', activeBg: 'bg-yellow-50', activeBorder: 'border-yellow-400 ring-1 ring-yellow-200', activeText: 'text-yellow-800', activeIconBg: 'bg-yellow-500 text-white' },
+      rose: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-rose-50 text-rose-500', activeBg: 'bg-rose-50', activeBorder: 'border-rose-400 ring-1 ring-rose-200', activeText: 'text-rose-800', activeIconBg: 'bg-rose-500 text-white' },
+    };
 
     return (
       <div className="flex flex-col h-full overflow-hidden bg-slate-50/80">
@@ -5677,19 +5695,35 @@ function GeneralEnquiriesContent() {
 
         <div className="flex-1 overflow-auto">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <div className="shrink-0 bg-white border-b border-slate-200 sticky top-0 z-20">
-              <div className="px-3 sm:px-4">
-                <TabsList className="h-auto flex flex-nowrap gap-0 bg-transparent p-0 overflow-x-auto scrollbar-hide -mb-px">
-                  {tabItems.map(tab => (
-                    <TabsTrigger
-                      key={tab.value}
-                      value={tab.value}
-                      className="relative text-[12px] font-medium whitespace-nowrap px-3 py-2.5 rounded-none border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50/80 transition-all data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:shadow-none"
-                      data-testid={`tab-${tab.value}`}
-                    >
-                      {tab.label}
-                    </TabsTrigger>
-                  ))}
+            <div className="shrink-0 bg-gradient-to-b from-white to-slate-50/80 border-b border-slate-200 sticky top-0 z-20">
+              <div className="px-3 sm:px-4 py-2.5">
+                <TabsList className="h-auto bg-transparent p-0 w-full block">
+                  <div className="flex flex-wrap gap-1.5">
+                    {tabItems.map(tab => {
+                      const colors = tabColorMap[tab.color] || tabColorMap.blue;
+                      const isTabActive = activeTab === tab.value;
+                      return (
+                        <TabsTrigger
+                          key={tab.value}
+                          value={tab.value}
+                          className={`
+                            inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold
+                            transition-all duration-200 cursor-pointer shadow-sm
+                            ${isTabActive
+                              ? `${colors.activeBg} ${colors.activeBorder} ${colors.activeText} shadow-md`
+                              : `${colors.bg} ${colors.border} ${colors.text} hover:shadow-md hover:border-slate-300 hover:-translate-y-[1px]`
+                            }
+                          `}
+                          data-testid={`tab-${tab.value}`}
+                        >
+                          <span className={`shrink-0 w-5 h-5 rounded-md flex items-center justify-center transition-colors ${isTabActive ? colors.activeIconBg : colors.iconBg}`}>
+                            {tab.icon}
+                          </span>
+                          {tab.label}
+                        </TabsTrigger>
+                      );
+                    })}
+                  </div>
                 </TabsList>
               </div>
             </div>
