@@ -22,6 +22,7 @@ import {
   getChequeFinalSearchList,
   getSupplementaryValuations,
   getPaymentPlanRemainingCapital, getAccountRatesDetails,
+  getLinkedAccountsOnProperty,
   type EnquirySearchResult,
 } from '@/lib/enquiries-service';
 import { LoadingSkeleton, EmptyState, ErrorState, InfoField, SectionHeader, PaginatedTable, FieldRow, TabCard, getFinYearOptions } from './shared';
@@ -813,6 +814,148 @@ export function BalanceDebtTab({ accountId }: { accountId: number }) {
               <div className="text-center text-slate-400 text-sm py-4">No remaining capital data available</div>
             )}
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function LinkedAccountsTab({ accountId, onSelectAccount }: { accountId: number; onSelectAccount?: (account: any) => void }) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [linkedAccounts, setLinkedAccounts] = useState<any[]>([]);
+  const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const prevAccountId = useRef<number | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getLinkedAccountsOnProperty(accountId);
+      setLinkedAccounts(data);
+    } catch (e: any) {
+      setError(e.message || 'Failed to load linked accounts');
+    } finally {
+      setLoading(false);
+    }
+  }, [accountId]);
+
+  useEffect(() => {
+    if (prevAccountId.current !== accountId) {
+      prevAccountId.current = accountId;
+      setExpandedRow(null);
+      load();
+    }
+  }, [accountId, load]);
+
+  const formatCurrency = (v: any) => {
+    if (v === null || v === undefined || v === '') return 'R 0.00';
+    const num = typeof v === 'number' ? v : parseFloat(String(v));
+    if (isNaN(num)) return 'R 0.00';
+    return `R ${num.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  if (loading) return <LoadingSkeleton />;
+  if (error) return <ErrorState message={error} onRetry={load} />;
+  if (!linkedAccounts.length) return <EmptyState message="No other accounts found linked to this property" />;
+
+  const totalCombined = linkedAccounts.reduce((sum, a) => sum + (a.totalOutstanding || 0), 0);
+
+  return (
+    <div className="p-5 space-y-4" data-testid="linked-accounts-tab">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Linked Accounts on Same Property</h3>
+            <Badge variant="outline" className="bg-white/20 text-white border-white/30 text-[10px]">
+              {linkedAccounts.length} account{linkedAccounts.length !== 1 ? 's' : ''}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-[10px] text-purple-200 uppercase tracking-wide">Combined Outstanding</div>
+              <div className={`text-sm font-bold ${totalCombined > 0 ? 'text-red-200' : 'text-green-200'}`}>
+                {formatCurrency(totalCombined)}
+              </div>
+            </div>
+            <button onClick={load} className="p-1.5 rounded-md hover:bg-white/20 text-white transition-colors" title="Refresh" data-testid="button-refresh-linked">
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="divide-y divide-slate-100">
+          {linkedAccounts.map((acct, idx) => {
+            const aId = acct.account_ID || acct.accountID;
+            const accNum = acct.accountNumber || String(aId).padStart(12, '0');
+            const name = acct.name || acct.surname_Company || 'Unknown';
+            const status = acct.accountStatus || acct.statusDesc || '';
+            const accType = acct.accountType || acct.accountDesc || '';
+            const outstanding = acct.totalOutstanding || 0;
+            const balanceDetails = acct.balanceDetails || [];
+            const isExpanded = expandedRow === idx;
+
+            return (
+              <div key={aId || idx}>
+                <div
+                  className={`px-4 py-3 flex items-center gap-4 hover:bg-slate-50 transition-colors cursor-pointer ${isExpanded ? 'bg-purple-50/50' : ''}`}
+                  onClick={() => setExpandedRow(isExpanded ? null : idx)}
+                  data-testid={`linked-account-row-${aId}`}
+                >
+                  <button className="shrink-0 p-0.5 text-slate-400">
+                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </button>
+
+                  <div className="flex-1 min-w-0 grid grid-cols-[1fr_1.5fr_auto_auto_auto] gap-4 items-center">
+                    <div>
+                      <div className="text-xs font-semibold text-slate-800 font-mono">{accNum}</div>
+                      <div className="text-[10px] text-slate-400">{accType}</div>
+                    </div>
+                    <div className="truncate">
+                      <div className="text-xs text-slate-700 font-medium truncate">{name}</div>
+                    </div>
+                    <Badge variant="outline" className={`text-[10px] ${status.toLowerCase() === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                      {status}
+                    </Badge>
+                    <div className={`text-sm font-bold text-right min-w-[100px] ${outstanding > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      {formatCurrency(outstanding)}
+                    </div>
+                    {onSelectAccount && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onSelectAccount(acct); }}
+                        className="px-2 py-1 text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100 transition-colors"
+                        data-testid={`button-view-account-${aId}`}
+                      >
+                        View
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {isExpanded && balanceDetails.length > 0 && (
+                  <div className="px-8 pb-3 bg-purple-50/30">
+                    <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 mt-1">Balance Breakdown</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {balanceDetails.map((b: any, bi: number) => (
+                        <div key={bi} className="flex items-center justify-between bg-white rounded-md border border-slate-100 px-3 py-1.5">
+                          <span className="text-[11px] text-slate-600 truncate mr-2">{b.serviceDescription || 'Unknown Service'}</span>
+                          <span className={`text-[11px] font-semibold shrink-0 ${(b.totalOutStanding || 0) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {formatCurrency(b.totalOutStanding)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {isExpanded && balanceDetails.length === 0 && (
+                  <div className="px-8 pb-3 bg-purple-50/30">
+                    <div className="text-[11px] text-slate-400 italic">No detailed balance breakdown available</div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

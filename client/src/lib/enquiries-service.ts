@@ -660,6 +660,12 @@ export async function getTransferOwnership(accountId: number): Promise<any[]> {
   return normalizeArray(data);
 }
 
+// === LINKED ACCOUNTS ON PROPERTY ===
+export async function getLinkedAccountsOnProperty(accountId: number): Promise<any[]> {
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/linked-accounts-on-property?accountId=${accountId}`);
+  return normalizeArray(data);
+}
+
 // === DEPARTMENTAL ACCOUNTS ===
 export async function getDepartmentalAccountsById(accountId: number): Promise<any[]> {
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/departmental-accounts-by-id?accountId=${accountId}`);

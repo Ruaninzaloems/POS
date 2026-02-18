@@ -603,59 +603,6 @@ export function ConsumptionTab({ accountId }: { accountId: number }) {
     }
   }, [accountId]);
 
-  if (loading) return <LoadingSkeleton />;
-  if (error) return <ErrorState message={error} onRetry={load} />;
-  if (!meters.length) return <EmptyState message="No metered services found for this account" />;
-
-  const meterCols = [
-    { key: 'serviceDesc', label: 'Service Type' },
-    { key: 'meterClassificationDesc', label: 'Meter Classification' },
-    { key: 'tariff', label: 'Tariff' },
-    { key: 'combinationMeterPhysicalNumber', label: 'Combination Meter No' },
-    { key: 'connectionSizeDesc', label: 'Meter Connection Size' },
-    { key: 'tarifffactor', label: 'Factor' },
-    { key: 'dwellingIntervalMultiplier', label: 'Dwelling Unit Interval Multiplier' },
-    { key: 'meterNo', label: 'Meter No' },
-    { key: 'meterPhase', label: 'Meter Phase' },
-    { key: 'physicalMeterNo', label: 'Physical Meter No' },
-    { key: 'meterBookNo', label: 'Meter Book' },
-    { key: 'routeFileName', label: 'Route' },
-    { key: 'serviceStatus', label: 'Service Status' },
-    { key: 'numberofDials', label: 'Number of Dials' },
-  ];
-
-  const historyCols = [
-    { key: 'combinationMeterNo', label: 'Combination Meter No' },
-    { key: 'tarifffactor', label: 'Factor', fallback: () => selectedMeter?.tarifffactor },
-    { key: 'meterNo', label: 'Meter No' },
-    { key: 'physicalMeterNo', label: 'Physical Meter No', fallback: () => selectedMeter?.physicalMeterNo || '' },
-    { key: 'billingmonth', label: 'Billing Month' },
-    { key: 'meterBookNo', label: 'Meter Book', fallback: () => selectedMeter?.meterBookNo || '' },
-    { key: 'routeFileName', label: 'Route' },
-    { key: 'reading1Date', label: 'Old Reading Date' },
-    { key: 'reading1', label: 'Old Reading' },
-    { key: 'reading2Date', label: 'New Reading Date' },
-    { key: 'reading2', label: 'New Reading' },
-    { key: 'readingdays', label: 'Reading Days' },
-    { key: 'consumption', label: 'Consumption' },
-    { key: 'flag', label: 'Levy Status' },
-    { key: 'testReadingDate', label: 'Test Reading Date' },
-    { key: 'testReading', label: 'Test Reading' },
-    { key: 'declineReason', label: 'Decline Reason' },
-    { key: 'meterErrorCode', label: 'Meter Error Code' },
-    { key: 'importStatus', label: 'Import Status' },
-    { key: 'meterChange', label: 'Meter Change' },
-    { key: 'meterStatus', label: 'Meter Status' },
-    { key: 'serviceStatus', label: 'Service Status' },
-    { key: 'readingStatus', label: 'Reading Status' },
-    { key: 'disconnectionStatus', label: 'Disconnection Status' },
-    { key: 'disconnectionReading', label: 'Disconnection Reading' },
-    { key: 'disconnectionDate', label: 'Disconnection Date' },
-    { key: 'contractorRemarks', label: 'Contractor Remarks' },
-    { key: 'disconnectionLetter', label: 'Disconnection Letter' },
-    { key: 'supportingDocument', label: 'Supporting Document' },
-  ];
-
   const parseDate = useCallback((d: string) => {
     if (!d) return 0;
     const parts = d.split('/');
@@ -722,6 +669,59 @@ export function ConsumptionTab({ accountId }: { accountId: number }) {
     const months = (end.getFullYear() - finStart.getFullYear()) * 12 + (end.getMonth() - finStart.getMonth()) + 1;
     return Math.min(Math.max(months, 0), 12);
   }, [selectedFinYear]);
+
+  if (loading) return <LoadingSkeleton />;
+  if (error) return <ErrorState message={error} onRetry={load} />;
+  if (!meters.length) return <EmptyState message="No metered services found for this account" />;
+
+  const meterCols = [
+    { key: 'serviceDesc', label: 'Service Type' },
+    { key: 'meterClassificationDesc', label: 'Meter Classification' },
+    { key: 'tariff', label: 'Tariff' },
+    { key: 'combinationMeterPhysicalNumber', label: 'Combination Meter No' },
+    { key: 'connectionSizeDesc', label: 'Meter Connection Size' },
+    { key: 'tarifffactor', label: 'Factor' },
+    { key: 'dwellingIntervalMultiplier', label: 'Dwelling Unit Interval Multiplier' },
+    { key: 'meterNo', label: 'Meter No' },
+    { key: 'meterPhase', label: 'Meter Phase' },
+    { key: 'physicalMeterNo', label: 'Physical Meter No' },
+    { key: 'meterBookNo', label: 'Meter Book' },
+    { key: 'routeFileName', label: 'Route' },
+    { key: 'serviceStatus', label: 'Service Status' },
+    { key: 'numberofDials', label: 'Number of Dials' },
+  ];
+
+  const historyCols = [
+    { key: 'combinationMeterNo', label: 'Combination Meter No' },
+    { key: 'tarifffactor', label: 'Factor', fallback: () => selectedMeter?.tarifffactor },
+    { key: 'meterNo', label: 'Meter No' },
+    { key: 'physicalMeterNo', label: 'Physical Meter No', fallback: () => selectedMeter?.physicalMeterNo || '' },
+    { key: 'billingmonth', label: 'Billing Month' },
+    { key: 'meterBookNo', label: 'Meter Book', fallback: () => selectedMeter?.meterBookNo || '' },
+    { key: 'routeFileName', label: 'Route' },
+    { key: 'reading1Date', label: 'Old Reading Date' },
+    { key: 'reading1', label: 'Old Reading' },
+    { key: 'reading2Date', label: 'New Reading Date' },
+    { key: 'reading2', label: 'New Reading' },
+    { key: 'readingdays', label: 'Reading Days' },
+    { key: 'consumption', label: 'Consumption' },
+    { key: 'flag', label: 'Levy Status' },
+    { key: 'testReadingDate', label: 'Test Reading Date' },
+    { key: 'testReading', label: 'Test Reading' },
+    { key: 'declineReason', label: 'Decline Reason' },
+    { key: 'meterErrorCode', label: 'Meter Error Code' },
+    { key: 'importStatus', label: 'Import Status' },
+    { key: 'meterChange', label: 'Meter Change' },
+    { key: 'meterStatus', label: 'Meter Status' },
+    { key: 'serviceStatus', label: 'Service Status' },
+    { key: 'readingStatus', label: 'Reading Status' },
+    { key: 'disconnectionStatus', label: 'Disconnection Status' },
+    { key: 'disconnectionReading', label: 'Disconnection Reading' },
+    { key: 'disconnectionDate', label: 'Disconnection Date' },
+    { key: 'contractorRemarks', label: 'Contractor Remarks' },
+    { key: 'disconnectionLetter', label: 'Disconnection Letter' },
+    { key: 'supportingDocument', label: 'Supporting Document' },
+  ];
 
   return (
     <div className="p-5 space-y-5" data-testid="consumption-tab">

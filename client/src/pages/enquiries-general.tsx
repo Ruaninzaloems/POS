@@ -11,7 +11,7 @@ import {
   AlertTriangle, Clock, ArrowRight, Loader2, SlidersHorizontal,
   Layers, Home, Activity, Users, Receipt, CalendarDays, Banknote, Scale,
   Gauge, Filter, AlertCircle, Briefcase, Star, ScanBarcode, CheckCircle2,
-  CircleDot, Wallet, Gauge as MeterIcon, CalendarCheck
+  CircleDot, Wallet, Gauge as MeterIcon, CalendarCheck, Building2
 } from 'lucide-react';
 import {
   searchAccounts, getAccountBalance,
@@ -19,7 +19,7 @@ import {
 } from '@/lib/enquiries-service';
 
 import { ErrorState } from './enquiries/shared';
-import { AccountInfoTab, NameTab, BalanceDebtTab } from './enquiries/account-tabs';
+import { AccountInfoTab, NameTab, BalanceDebtTab, LinkedAccountsTab } from './enquiries/account-tabs';
 import { ServiceBalanceTab, ConsumptionTab, ServicesMetersTab } from './enquiries/service-tabs';
 import { TransactionSummaryTab, DetailedTransactionListTab, TransactionHistoryTab } from './enquiries/transaction-tabs';
 import { IncentivesTab, DepositsTab, PaymentPlansTab, PaymentExtensionHistoryTab, DebitOrdersTab, RatesValuationsTab } from './enquiries/financial-tabs';
@@ -315,6 +315,7 @@ function GeneralEnquiriesContent() {
           { value: 'account', label: 'Account', icon: <User className="w-3.5 h-3.5" />, color: 'blue' },
           { value: 'name', label: 'Name', icon: <Users className="w-3.5 h-3.5" />, color: 'indigo' },
           { value: 'property', label: 'Property', icon: <Home className="w-3.5 h-3.5" />, color: 'amber' },
+          { value: 'linked-accounts', label: 'Linked Accounts', icon: <Building2 className="w-3.5 h-3.5" />, color: 'purple' },
           { value: 'occupiers', label: 'Occupiers', icon: <Users className="w-3.5 h-3.5" />, color: 'violet' },
           { value: 'contact', label: 'Contact', icon: <Phone className="w-3.5 h-3.5" />, color: 'violet' },
           { value: 'handover', label: 'Handover', icon: <ArrowRight className="w-3.5 h-3.5" />, color: 'orange' },
@@ -501,6 +502,7 @@ function GeneralEnquiriesContent() {
               <TabsContent value="clearance" className="m-0"><ClearanceTab accountId={accountId} /></TabsContent>
               <TabsContent value="debtor-notes" className="m-0"><DebtorNotesTab accountId={accountId} /></TabsContent>
               <TabsContent value="section129" className="m-0"><Section129Tab accountId={accountId} /></TabsContent>
+              <TabsContent value="linked-accounts" className="m-0"><LinkedAccountsTab accountId={accountId} onSelectAccount={(acct) => { setSelectedAccount(acct); setActiveTab('account'); }} /></TabsContent>
               <TabsContent value="occupiers" className="m-0"><OccupiersTab accountId={accountId} /></TabsContent>
             </div>
           </Tabs>

@@ -2004,6 +2004,58 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/platinum/billing-enquiry/linked-accounts-on-property", async (req, res) => {
+    try {
+      const accountId = req.query.accountId as string;
+      if (!accountId) return res.status(400).json({ message: "accountId is required" });
+
+      const unitData = await platinumGet("/api/BillingEnquiry/ConsUnitByAccountId", { AccountId: accountId });
+      if (!unitData || unitData._error) {
+        return res.json([]);
+      }
+      const unitId = unitData.unit_ID || unitData.unitID;
+      if (!unitId) return res.json([]);
+
+      const sgNumber = unitData.sgNumber || '';
+
+      const searchResults = await platinumPost("/api/BillingEnquiry/EnquiryResults", {
+        sgNumber: sgNumber,
+      });
+
+      let accounts: any[] = [];
+      if (Array.isArray(searchResults)) {
+        accounts = searchResults;
+      } else if (searchResults && searchResults.results) {
+        accounts = searchResults.results;
+      } else if (searchResults && !searchResults._error) {
+        accounts = [searchResults];
+      }
+
+      const linkedAccounts = accounts.filter((a: any) => {
+        const aId = String(a.account_ID || a.accountID || '');
+        return aId !== String(accountId);
+      });
+
+      const enriched = await Promise.all(
+        linkedAccounts.slice(0, 20).map(async (acct: any) => {
+          const aId = acct.account_ID || acct.accountID;
+          try {
+            const balance = await platinumGet("/api/BillingEnquiry/TotalBalanceDebtInquiry", { accountId: String(aId) });
+            const balanceArr = Array.isArray(balance) ? balance : [];
+            const totalOutstanding = balanceArr.reduce((sum: number, b: any) => sum + (b.totalOutStanding || 0), 0);
+            return { ...acct, balanceDetails: balanceArr, totalOutstanding };
+          } catch {
+            return { ...acct, balanceDetails: [], totalOutstanding: acct.outStandingAmount || 0 };
+          }
+        })
+      );
+
+      res.json(enriched);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.get("/api/platinum/billing-enquiry/property-details-by-account", async (req, res) => {
     try {
       const data = await platinumGet("/api/BillingEnquiry/PropertyDetailsByAccountId", req.query as Record<string, string>);
