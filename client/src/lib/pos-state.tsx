@@ -1251,7 +1251,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 typeOfUseDesc: orig.typeOfUseDesc || '',
                 zoneDesc: orig.zoneDesc || '',
                 outStandingAmt: fullOutstanding,
-                billId: orig.billId ?? 0,
+                billId: orig.billId || null,
                 certificateNo: orig.certificateNo || '',
                 clearance_ID: orig.clearance_ID ?? 0,
                 clearanceAmount: orig.clearanceAmount ?? 0,
@@ -1385,6 +1385,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         cutOffAmount: acct.cutOffAmount ?? 0,
                         debtAmount: acct.debtAmount ?? 0,
                         sundryDebtorsId: acct.sundryDebtorsId ?? null,
+                        apiTransactionID: 0,
+                        isReconciled: 0,
+                        isCancelled: 0,
                     };
 
                     console.log(`[Priority 1 ${label}] Submitting consumer payment for account ${acct.account_ID} (${acct.name}), PAYMENT amount: R${itemPayment}, full outstanding: R${acctOutstanding}, requestModel.totalAmount: R${requestModel.totalAmount}, requestModel.outStandingAmount: R${requestModel.outStandingAmount}, paymentType: ${paymentTypeId}, cardNumber: "${requestModel.cardNumber}"`);

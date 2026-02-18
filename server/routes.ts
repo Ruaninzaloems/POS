@@ -635,9 +635,15 @@ export async function registerRoutes(
       const body = req.body;
       const acct = body?.account || {};
       const rm = body?.requestModel || {};
+
+      if (acct.billId === 0) acct.billId = null;
+      if (rm.apiTransactionID === undefined) rm.apiTransactionID = 0;
+      if (rm.isReconciled === undefined || rm.isReconciled === null) rm.isReconciled = 0;
+      if (rm.isCancelled === undefined || rm.isCancelled === null) rm.isCancelled = 0;
+
       console.log(`[submit-consumer-payment] userId=${userId}`);
       console.log(`[submit-consumer-payment] account: account_ID=${acct.account_ID}, accountNumber=${acct.accountNumber}, name=${acct.name}, outStandingAmt=${acct.outStandingAmt}, billId=${acct.billId}, cutOffID=${acct.cutOffID}, cutOffAmount=${acct.cutOffAmount}, debtAmount=${acct.debtAmount}, debtArrangementId=${acct.debtArrangementId}, sundryDebtorsId=${acct.sundryDebtorsId}, billingCycleId=${acct.billingCycleId}`);
-      console.log(`[submit-consumer-payment] requestModel: finYear=${rm.finYear}, receiptDate=${rm.receiptDate}, totalAmount=${rm.totalAmount}, tenderAmount=${rm.tenderAmount}, changeAmount=${rm.changeAmount}, paymentType=${rm.paymentType}, paymentOption=${rm.paymentOption}, outStandingAmount=${rm.outStandingAmount}, cutOffID=${rm.cutOffID}, cutOffAmount=${rm.cutOffAmount}, debtAmount=${rm.debtAmount}, debtArrangementId=${rm.debtArrangementId}, sundryDebtorsId=${rm.sundryDebtorsId}, cardNumber=${rm.cardNumber ? '***' : '(empty)'}`);
+      console.log(`[submit-consumer-payment] requestModel: finYear=${rm.finYear}, receiptDate=${rm.receiptDate}, totalAmount=${rm.totalAmount}, tenderAmount=${rm.tenderAmount}, changeAmount=${rm.changeAmount}, paymentType=${rm.paymentType}, paymentOption=${rm.paymentOption}, outStandingAmount=${rm.outStandingAmount}, cutOffID=${rm.cutOffID}, cutOffAmount=${rm.cutOffAmount}, debtAmount=${rm.debtAmount}, debtArrangementId=${rm.debtArrangementId}, sundryDebtorsId=${rm.sundryDebtorsId}, cardNumber=${rm.cardNumber ? '***' : '(empty)'}, apiTransactionID=${rm.apiTransactionID}, isReconciled=${rm.isReconciled}, isCancelled=${rm.isCancelled}`);
       console.log(`[submit-consumer-payment] full payload:`, JSON.stringify(body, null, 2));
       const data = await platinumPost(`/api/billing-payment/submit-consumer-payment/${userId}`, body);
       console.log(`[submit-consumer-payment] response:`, JSON.stringify(data));
