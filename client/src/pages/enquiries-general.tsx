@@ -248,31 +248,64 @@ function GeneralEnquiriesContent() {
     const accountName = selectedAccount.name || selectedAccount.surname_Company || 'Unknown';
     const accountNum = selectedAccount.accountNumber || selectedAccount.accountID || selectedAccount.account_ID;
 
-    const tabItems: { value: string; label: string; icon: React.ReactNode; color: string }[] = [
-      { value: 'account', label: 'Account', icon: <User className="w-4 h-4" />, color: 'blue' },
-      { value: 'name', label: 'Name', icon: <Users className="w-4 h-4" />, color: 'indigo' },
-      { value: 'balance', label: 'Balance/Debt', icon: <CreditCard className="w-4 h-4" />, color: 'red' },
-      { value: 'services', label: 'Services', icon: <Layers className="w-4 h-4" />, color: 'emerald' },
-      { value: 'property', label: 'Property', icon: <Home className="w-4 h-4" />, color: 'amber' },
-      { value: 'consumption', label: 'Consumption', icon: <Droplets className="w-4 h-4" />, color: 'cyan' },
-      { value: 'contact', label: 'Contact', icon: <Phone className="w-4 h-4" />, color: 'violet' },
-      { value: 'handover', label: 'Handover', icon: <ArrowRight className="w-4 h-4" />, color: 'orange' },
-      { value: 'incentives', label: 'Incentives', icon: <Gift className="w-4 h-4" />, color: 'pink' },
-      { value: 'deposits', label: 'Deposits', icon: <Banknote className="w-4 h-4" />, color: 'lime' },
-      { value: 'transactions', label: 'Receipts', icon: <Receipt className="w-4 h-4" />, color: 'blue' },
-      { value: 'txn-summary', label: 'Txn Summary', icon: <FileText className="w-4 h-4" />, color: 'slate' },
-      { value: 'txn-detailed', label: 'Txn Detail', icon: <Activity className="w-4 h-4" />, color: 'indigo' },
-      { value: 'services-meters', label: 'Meters', icon: <Gauge className="w-4 h-4" />, color: 'emerald' },
-      { value: 'payment-plans', label: 'Pay Plans', icon: <CalendarDays className="w-4 h-4" />, color: 'purple' },
-      { value: 'payment-extensions', label: 'Extensions', icon: <Clock className="w-4 h-4" />, color: 'amber' },
-      { value: 'debit-orders', label: 'Debit Orders', icon: <Landmark className="w-4 h-4" />, color: 'teal' },
-      { value: 'rates', label: 'Rates', icon: <Scale className="w-4 h-4" />, color: 'orange' },
-      { value: 'notifications', label: 'Notifications', icon: <AlertCircle className="w-4 h-4" />, color: 'yellow' },
-      { value: 'statements', label: 'Statements', icon: <FileText className="w-4 h-4" />, color: 'blue' },
-      { value: 'clearance', label: 'Clearance', icon: <Shield className="w-4 h-4" />, color: 'emerald' },
-      { value: 'debtor-notes', label: 'Debtor Notes', icon: <Briefcase className="w-4 h-4" />, color: 'red' },
-      { value: 'section129', label: 'Section 129', icon: <AlertTriangle className="w-4 h-4" />, color: 'rose' },
-      { value: 'occupiers', label: 'Occupiers', icon: <Users className="w-4 h-4" />, color: 'violet' },
+    type TabItem = { value: string; label: string; icon: React.ReactNode; color: string };
+    type TabGroup = { heading: string; tabs: TabItem[] };
+
+    const tabGroups: TabGroup[] = [
+      {
+        heading: 'ACCOUNT & PARTY',
+        tabs: [
+          { value: 'account', label: 'Account', icon: <User className="w-3.5 h-3.5" />, color: 'blue' },
+          { value: 'name', label: 'Name', icon: <Users className="w-3.5 h-3.5" />, color: 'indigo' },
+          { value: 'property', label: 'Property', icon: <Home className="w-3.5 h-3.5" />, color: 'amber' },
+          { value: 'occupiers', label: 'Occupiers', icon: <Users className="w-3.5 h-3.5" />, color: 'violet' },
+          { value: 'contact', label: 'Contact', icon: <Phone className="w-3.5 h-3.5" />, color: 'violet' },
+          { value: 'handover', label: 'Handover', icon: <ArrowRight className="w-3.5 h-3.5" />, color: 'orange' },
+        ],
+      },
+      {
+        heading: 'SERVICES & CONSUMPTION',
+        tabs: [
+          { value: 'services', label: 'Services', icon: <Layers className="w-3.5 h-3.5" />, color: 'emerald' },
+          { value: 'services-meters', label: 'Meters', icon: <Gauge className="w-3.5 h-3.5" />, color: 'emerald' },
+          { value: 'consumption', label: 'Consumption', icon: <Droplets className="w-3.5 h-3.5" />, color: 'cyan' },
+        ],
+      },
+      {
+        heading: 'FINANCIAL',
+        tabs: [
+          { value: 'balance', label: 'Balance / Debt', icon: <CreditCard className="w-3.5 h-3.5" />, color: 'red' },
+          { value: 'txn-detailed', label: 'Transaction Detail', icon: <Activity className="w-3.5 h-3.5" />, color: 'indigo' },
+          { value: 'txn-summary', label: 'Transaction Summary', icon: <FileText className="w-3.5 h-3.5" />, color: 'slate' },
+          { value: 'transactions', label: 'Receipts', icon: <Receipt className="w-3.5 h-3.5" />, color: 'blue' },
+          { value: 'deposits', label: 'Deposits', icon: <Banknote className="w-3.5 h-3.5" />, color: 'lime' },
+          { value: 'payment-plans', label: 'Payment Plans', icon: <CalendarDays className="w-3.5 h-3.5" />, color: 'purple' },
+          { value: 'payment-extensions', label: 'Extensions', icon: <Clock className="w-3.5 h-3.5" />, color: 'amber' },
+        ],
+      },
+      {
+        heading: 'BILLING & TARIFFS',
+        tabs: [
+          { value: 'rates', label: 'Rates', icon: <Scale className="w-3.5 h-3.5" />, color: 'orange' },
+          { value: 'debit-orders', label: 'Debit Orders', icon: <Landmark className="w-3.5 h-3.5" />, color: 'teal' },
+          { value: 'statements', label: 'Statements', icon: <FileText className="w-3.5 h-3.5" />, color: 'blue' },
+        ],
+      },
+      {
+        heading: 'COMPLIANCE & LEGAL',
+        tabs: [
+          { value: 'clearance', label: 'Clearance', icon: <Shield className="w-3.5 h-3.5" />, color: 'emerald' },
+          { value: 'debtor-notes', label: 'Debtor Notes', icon: <Briefcase className="w-3.5 h-3.5" />, color: 'red' },
+          { value: 'section129', label: 'Section 129', icon: <AlertTriangle className="w-3.5 h-3.5" />, color: 'rose' },
+        ],
+      },
+      {
+        heading: 'NOTIFICATIONS & INCENTIVES',
+        tabs: [
+          { value: 'notifications', label: 'Notifications', icon: <AlertCircle className="w-3.5 h-3.5" />, color: 'yellow' },
+          { value: 'incentives', label: 'Incentives', icon: <Gift className="w-3.5 h-3.5" />, color: 'pink' },
+        ],
+      },
     ];
 
     const tabColorMap: Record<string, { bg: string; border: string; text: string; iconBg: string; activeBg: string; activeBorder: string; activeText: string; activeIconBg: string }> = {
@@ -348,34 +381,41 @@ function GeneralEnquiriesContent() {
 
         <div className="flex-1 overflow-auto">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <div className="shrink-0 bg-gradient-to-b from-white to-slate-50/80 border-b border-slate-200 sticky top-0 z-20">
-              <div className="px-3 sm:px-4 py-2.5">
+            <div className="shrink-0 bg-white border-b border-slate-200 sticky top-0 z-20">
+              <div className="px-4 sm:px-5 py-3">
                 <TabsList className="h-auto bg-transparent p-0 w-full block">
-                  <div className="flex flex-wrap gap-1.5">
-                    {tabItems.map(tab => {
-                      const colors = tabColorMap[tab.color] || tabColorMap.blue;
-                      const isTabActive = activeTab === tab.value;
-                      return (
-                        <TabsTrigger
-                          key={tab.value}
-                          value={tab.value}
-                          className={`
-                            inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold
-                            transition-all duration-200 cursor-pointer shadow-sm
-                            ${isTabActive
-                              ? `${colors.activeBg} ${colors.activeBorder} ${colors.activeText} shadow-md`
-                              : `${colors.bg} ${colors.border} ${colors.text} hover:shadow-md hover:border-slate-300 hover:-translate-y-[1px]`
-                            }
-                          `}
-                          data-testid={`tab-${tab.value}`}
-                        >
-                          <span className={`shrink-0 w-5 h-5 rounded-md flex items-center justify-center transition-colors ${isTabActive ? colors.activeIconBg : colors.iconBg}`}>
-                            {tab.icon}
-                          </span>
-                          {tab.label}
-                        </TabsTrigger>
-                      );
-                    })}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+                    {tabGroups.map((group) => (
+                      <div key={group.heading}>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">{group.heading}</div>
+                        <div className="flex flex-wrap gap-1">
+                          {group.tabs.map(tab => {
+                            const colors = tabColorMap[tab.color] || tabColorMap.blue;
+                            const isTabActive = activeTab === tab.value;
+                            return (
+                              <TabsTrigger
+                                key={tab.value}
+                                value={tab.value}
+                                className={`
+                                  inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[11px] font-medium
+                                  transition-all duration-150 cursor-pointer
+                                  ${isTabActive
+                                    ? `${colors.activeBg} ${colors.activeBorder} ${colors.activeText} shadow-sm font-semibold`
+                                    : `${colors.bg} ${colors.border} ${colors.text} hover:border-slate-300 hover:bg-slate-50`
+                                  }
+                                `}
+                                data-testid={`tab-${tab.value}`}
+                              >
+                                <span className={`shrink-0 w-4.5 h-4.5 rounded flex items-center justify-center transition-colors ${isTabActive ? colors.activeIconBg : colors.iconBg}`}>
+                                  {tab.icon}
+                                </span>
+                                {tab.label}
+                              </TabsTrigger>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </TabsList>
               </div>
