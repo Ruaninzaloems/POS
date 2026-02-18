@@ -19,6 +19,7 @@ import {
 } from '@/lib/enquiries-service';
 import { LoadingSkeleton, EmptyState, ErrorState, PaginatedTable, FieldRow, getFinYearOptions } from './shared';
 import { generateStatementPdf } from '@/lib/statement-pdf';
+import { generateSection49Letter, generateSection78Letter, generateValuationCertificate } from '@/lib/property-letters-pdf';
 
 export function PropertyDetailsTab({ accountId }: { accountId: number }) {
   const [propData, setPropData] = useState<any>(null);
@@ -29,6 +30,7 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
   const [transfers, setTransfers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [generatingPdf, setGeneratingPdf] = useState<string | null>(null);
   const loaded = useRef(false);
 
   const load = useCallback(async () => {
@@ -129,6 +131,53 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
               <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">NT Property Category</span><div className="text-sm font-semibold text-slate-800">{(() => { const id = cu.ntPropertyCategoryID; if (id === null || id === undefined) return '-'; const catMap: Record<number, string> = { 1: 'Residential', 2: 'Commercial', 3: 'Industrial', 4: 'Agricultural', 5: 'Mining', 6: 'Government', 7: 'Municipal', 8: 'Public Service Infrastructure', 9: 'Public Benefit Organisation', 10: 'State Trust Land' }; return catMap[id] || cu.ntPropertyCategoryDescription || `Category ${id}`; })()}</div></div>
               <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Billing Cycle</span><div className="text-sm font-semibold text-slate-800">{cu.billingCycleID ?? '-'}</div></div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
+          <FileText className="w-4 h-4 text-white" />
+          <h3 className="text-sm font-semibold text-white tracking-wide">Property Letters & Certificates</h3>
+        </div>
+        <div className="p-5">
+          <div className="flex flex-wrap gap-4">
+            <button
+              data-testid="button-section49-letter"
+              disabled={generatingPdf !== null}
+              onClick={async () => {
+                setGeneratingPdf('section49');
+                try { await generateSection49Letter(accountId); } catch (e: any) { alert('Failed to generate Section 49 Letter: ' + (e.message || 'Unknown error')); } finally { setGeneratingPdf(null); }
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all text-sm font-medium text-slate-700 shadow-sm"
+            >
+              {generatingPdf === 'section49' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-slate-500" />}
+              View Section 49 Letter
+            </button>
+            <button
+              data-testid="button-section78-letter"
+              disabled={generatingPdf !== null}
+              onClick={async () => {
+                setGeneratingPdf('section78');
+                try { await generateSection78Letter(accountId); } catch (e: any) { alert('Failed to generate Section 78 Letter: ' + (e.message || 'Unknown error')); } finally { setGeneratingPdf(null); }
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all text-sm font-medium text-slate-700 shadow-sm"
+            >
+              {generatingPdf === 'section78' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-slate-500" />}
+              View Section 78 Letter
+            </button>
+            <button
+              data-testid="button-valuation-certificate"
+              disabled={generatingPdf !== null}
+              onClick={async () => {
+                setGeneratingPdf('valcert');
+                try { await generateValuationCertificate(accountId); } catch (e: any) { alert('Failed to generate Valuation Certificate: ' + (e.message || 'Unknown error')); } finally { setGeneratingPdf(null); }
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all text-sm font-medium text-slate-700 shadow-sm"
+            >
+              {generatingPdf === 'valcert' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-slate-500" />}
+              View Valuation Certificate
+            </button>
           </div>
         </div>
       </div>
