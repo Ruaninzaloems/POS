@@ -1246,23 +1246,30 @@ function ServiceBalanceTab({ accountId }: { accountId: number }) {
                       <td className="py-3 px-4 text-slate-600 whitespace-nowrap">{svc.tariffType || svc.serviceDesc || '-'}</td>
                       <td className="py-3 px-4 align-top">
                         {tariffInfo.intervals.length > 0 ? (
-                          <div>
+                          <div className="text-xs space-y-0.5">
                             <button
                               onClick={(e) => { e.stopPropagation(); toggleRate(i); }}
-                              className="text-blue-600 hover:text-blue-800 text-xs font-medium flex items-center gap-1"
+                              className="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
                               data-testid={`btn-tariff-rate-${i}`}
                             >
-                              <span>Interval :</span>
-                              <span>Cost:</span>
+                              <span>Interval</span>
+                              <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); toggleRate(i); }}
+                              className="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                              data-testid={`btn-tariff-cost-${i}`}
+                            >
+                              <span>Cost</span>
                               <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                             </button>
                             {isExpanded && (
-                              <div className="mt-2 bg-slate-50 rounded-lg border border-slate-200 p-3 text-xs space-y-1 min-w-[200px] shadow-sm">
-                                <div className="text-slate-500 font-medium mb-1.5 pb-1 border-b border-slate-200">
-                                  Start Date - End Date:
-                                  <div className="text-slate-700 font-normal">{tariffInfo.startDate} - {tariffInfo.endDate}</div>
+                              <div className="mt-1.5 bg-slate-50 rounded-lg border border-slate-200 p-2.5 space-y-1 min-w-[200px] shadow-sm">
+                                <div className="text-slate-500 font-medium pb-1 border-b border-slate-200 text-[10px]">
+                                  <span className="underline">Start Date - End Date:</span>
+                                  <div className="text-slate-700 font-normal mt-0.5">{tariffInfo.startDate} - {tariffInfo.endDate}</div>
                                 </div>
-                                <div className="text-slate-500 font-medium mb-1">Interval - Cost:</div>
+                                <div className="text-slate-500 font-medium text-[10px] underline mt-1">Interval - Cost:</div>
                                 {tariffInfo.intervals.map((iv, idx) => (
                                   <div key={idx} className="flex justify-between gap-4 text-slate-700 font-mono py-0.5">
                                     <span className="text-slate-600">{iv.interval}</span>
