@@ -1249,6 +1249,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 oldAccountCode: orig.oldAccountCode || '',
                 billingCycleId: orig.billingCycleId ?? 1,
                 id: orig.id ?? 1,
+                sundryDebtorsId: orig.sundryDebtorsId ?? null,
                 _userAmountToPay: item.amountToPay,
             };
         };
@@ -1355,6 +1356,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         bankBranchCode: '',
                         cutOffID: acct.cutOffID ?? 0,
                         debtArrangementId: acct.debtArrangementId ?? 0,
+                        cutOffAmount: acct.cutOffAmount ?? 0,
+                        debtAmount: acct.debtAmount ?? 0,
+                        sundryDebtorsId: acct.sundryDebtorsId ?? null,
                     };
 
                     console.log(`[Priority 1 ${label}] Submitting consumer payment for account ${acct.account_ID} (${acct.name}), PAYMENT amount: R${itemPayment}, full outstanding: R${acctOutstanding}, requestModel.totalAmount: R${requestModel.totalAmount}, requestModel.outStandingAmount: R${requestModel.outStandingAmount}, paymentType: ${paymentTypeId}, cardNumber: "${requestModel.cardNumber}"`);

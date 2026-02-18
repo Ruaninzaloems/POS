@@ -630,11 +630,19 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment/submit-consumer-payment/:userId", async (req, res) => {
     try {
-      console.log(`[submit-consumer-payment] userId=${req.params.userId}, payload:`, JSON.stringify(req.body, null, 2));
-      const data = await platinumPost(`/api/billing-payment/submit-consumer-payment/${req.params.userId}`, req.body);
+      const userId = req.params.userId;
+      const body = req.body;
+      const acct = body?.account || {};
+      const rm = body?.requestModel || {};
+      console.log(`[submit-consumer-payment] userId=${userId}`);
+      console.log(`[submit-consumer-payment] account: account_ID=${acct.account_ID}, accountNumber=${acct.accountNumber}, name=${acct.name}, outStandingAmt=${acct.outStandingAmt}, billId=${acct.billId}, cutOffID=${acct.cutOffID}, cutOffAmount=${acct.cutOffAmount}, debtAmount=${acct.debtAmount}, debtArrangementId=${acct.debtArrangementId}, sundryDebtorsId=${acct.sundryDebtorsId}, billingCycleId=${acct.billingCycleId}`);
+      console.log(`[submit-consumer-payment] requestModel: finYear=${rm.finYear}, receiptDate=${rm.receiptDate}, totalAmount=${rm.totalAmount}, tenderAmount=${rm.tenderAmount}, changeAmount=${rm.changeAmount}, paymentType=${rm.paymentType}, paymentOption=${rm.paymentOption}, outStandingAmount=${rm.outStandingAmount}, cutOffID=${rm.cutOffID}, cutOffAmount=${rm.cutOffAmount}, debtAmount=${rm.debtAmount}, debtArrangementId=${rm.debtArrangementId}, sundryDebtorsId=${rm.sundryDebtorsId}, cardNumber=${rm.cardNumber ? '***' : '(empty)'}`);
+      console.log(`[submit-consumer-payment] full payload:`, JSON.stringify(body, null, 2));
+      const data = await platinumPost(`/api/billing-payment/submit-consumer-payment/${userId}`, body);
       console.log(`[submit-consumer-payment] response:`, JSON.stringify(data));
       handlePlatinumResult(res, data);
     } catch (e: any) {
+      console.error(`[submit-consumer-payment] Error:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
