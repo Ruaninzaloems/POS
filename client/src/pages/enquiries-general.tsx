@@ -896,51 +896,255 @@ function BalanceDebtTab({ accountId }: { accountId: number }) {
 }
 
 function ServiceBalanceTab({ accountId }: { accountId: number }) {
-  const [data, setData] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
+  const [balanceData, setBalanceData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedService, setSelectedService] = useState<any | null>(null);
+  const [finYear, setFinYear] = useState(() => {
+    const now = new Date();
+    const y = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+    return `${y}/${y + 1}`;
+  });
   const loaded = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await getServiceTypeBalance(accountId);
-      setData(result);
+      const [svcResult, balResult] = await Promise.allSettled([
+        getAllServices(accountId),
+        getServiceTypeBalance(accountId, finYear),
+      ]);
+      if (svcResult.status === 'fulfilled') setServices(svcResult.value || []);
+      if (balResult.status === 'fulfilled') setBalanceData(balResult.value || []);
       loaded.current = true;
     } catch (e: any) {
-      setError(e.message || 'Failed to load service balances');
+      setError(e.message || 'Failed to load service data');
     } finally {
       setLoading(false);
     }
-  }, [accountId]);
+  }, [accountId, finYear]);
 
-  useEffect(() => { if (!loaded.current) load(); }, [load]);
+  useEffect(() => { load(); }, [load]);
+
+  const fmt = (v: any) => {
+    if (v === null || v === undefined || v === '') return '-';
+    const n = typeof v === 'number' ? v : parseFloat(v);
+    if (isNaN(n)) return String(v);
+    return n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
-  if (!data.length) return <EmptyState message="No service balance data available" />;
+
+  const yearOptions = Array.from({ length: 5 }, (_, i) => {
+    const now = new Date();
+    const y = (now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1) - i;
+    return `${y}/${y + 1}`;
+  });
+
+  if (selectedService) {
+    const svcDesc = selectedService.serviceDesc || selectedService.serviceDescription;
+    const svcTypeId = selectedService.tariffTypeID || selectedService.serviceTypeID || selectedService.serviceType_ID;
+    const detailRows = balanceData.filter((b: any) =>
+      (svcTypeId && b.serviceTypeID === svcTypeId) ||
+      (b.serviceDescription && svcDesc && b.serviceDescription.toLowerCase() === svcDesc.toLowerCase())
+    );
+
+    const monthOrder = ['July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March', 'April', 'May', 'June'];
+    const sorted = [...detailRows].sort((a, b) => {
+      const ai = monthOrder.indexOf(a.month);
+      const bi = monthOrder.indexOf(b.month);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+
+    const totals = sorted.reduce((acc: any, r: any) => ({
+      openingBalance: acc.openingBalance + (r.openingBalance || 0),
+      amount: acc.amount + (r.amount || 0),
+      vat: acc.vat + (r.vat || 0),
+      interestAmount: acc.interestAmount + (r.interestAmount || 0),
+      totalAmount: acc.totalAmount + (r.totalAmount || 0),
+      currentInterestAmount: acc.currentInterestAmount + (r.currentInterestAmount || 0),
+      currentCharge: acc.currentCharge + (r.currentCharge || 0),
+    }), { openingBalance: 0, amount: 0, vat: 0, interestAmount: 0, totalAmount: 0, currentInterestAmount: 0, currentCharge: 0 });
+
+    const chartData = sorted.filter(r => r.totalAmount > 0 || r.amount > 0).map(r => ({
+      month: r.month,
+      amount: r.totalAmount || r.amount || 0,
+    }));
+
+    return (
+      <div className="p-4 space-y-6" data-testid="service-balance-detail">
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-3">
+            <button onClick={() => setSelectedService(null)} className="text-white hover:text-blue-200 transition-colors" data-testid="button-back-services">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <h3 className="text-sm font-semibold text-white tracking-wide">Service Type Balance</h3>
+            <span className="text-xs text-blue-200">- {svcDesc}</span>
+            <div className="ml-auto">
+              <select value={finYear} onChange={e => setFinYear(e.target.value)} className="text-xs bg-white/20 text-white border border-white/30 rounded px-2 py-1 focus:outline-none" data-testid="select-fin-year-detail">
+                {yearOptions.map(y => <option key={y} value={y} className="text-slate-800">{y}</option>)}
+              </select>
+            </div>
+          </div>
+          {sorted.length === 0 ? (
+            <div className="p-6 text-center text-slate-400 text-sm">No billing data for this service in {finYear}</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" data-testid="table-service-detail">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service Description</th>
+                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Opening Balance</th>
+                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
+                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">VAT</th>
+                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Interest</th>
+                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Total Amount</th>
+                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Current Interest Charge</th>
+                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Current Charge</th>
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Month</th>
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Financial Year</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sorted.map((r: any, i: number) => (
+                    <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
+                      <td className="py-2 px-3 text-slate-700">{r.serviceDescription || svcDesc}</td>
+                      <td className="py-2 px-3 text-right font-mono">{fmt(r.openingBalance)}</td>
+                      <td className="py-2 px-3 text-right font-mono">{fmt(r.amount)}</td>
+                      <td className="py-2 px-3 text-right font-mono">{fmt(r.vat)}</td>
+                      <td className="py-2 px-3 text-right font-mono">{fmt(r.interestAmount)}</td>
+                      <td className="py-2 px-3 text-right font-mono font-semibold text-blue-700">{fmt(r.totalAmount)}</td>
+                      <td className="py-2 px-3 text-right font-mono">{fmt(r.currentInterestAmount)}</td>
+                      <td className="py-2 px-3 text-right font-mono">{fmt(r.currentCharge)}</td>
+                      <td className="py-2 px-3 text-slate-600">{r.month || '-'}</td>
+                      <td className="py-2 px-3 text-slate-600">{r.financialYear || '-'}</td>
+                    </tr>
+                  ))}
+                  <tr className="bg-slate-100 border-t-2 border-slate-300 font-bold">
+                    <td className="py-2.5 px-3 text-slate-800">Total</td>
+                    <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.openingBalance)}</td>
+                    <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.amount)}</td>
+                    <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.vat)}</td>
+                    <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.interestAmount)}</td>
+                    <td className="py-2.5 px-3 text-right font-mono text-blue-700">{fmt(totals.totalAmount)}</td>
+                    <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.currentInterestAmount)}</td>
+                    <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.currentCharge)}</td>
+                    <td className="py-2.5 px-3" colSpan={2}></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {chartData.length > 0 && (
+          <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700">
+              <h3 className="text-sm font-semibold text-white tracking-wide">Service Type Balance</h3>
+            </div>
+            <div className="p-4" style={{ height: 350 }}>
+              <ServiceBalanceChart data={chartData} />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
-    <div className="p-4 overflow-x-auto">
-      <table className="w-full text-sm" data-testid="table-service-balance">
-        <thead>
-          <tr className="border-b-2 border-slate-200">
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Service Type</th>
-            <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Balance</th>
-            <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">New Charge</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((item: any, i: number) => (
-            <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-              <td className="py-2 px-3 font-medium text-slate-700">{item.serviceType || item.serviceDescription || item.description || `Type ${i + 1}`}</td>
-              <td className="py-2 px-3 text-right font-mono font-semibold">{(item.balance ?? item.amount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-              <td className="py-2 px-3 text-right font-mono">{(item.newCharge ?? item.currentCharge ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-            </tr>
+    <div className="p-4 space-y-6" data-testid="service-balance-tab">
+      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+          <Layers className="w-4 h-4 text-white" />
+          <h3 className="text-sm font-semibold text-white tracking-wide">Service Type Balance</h3>
+          <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{services.length}</Badge>
+        </div>
+        {services.length === 0 ? (
+          <div className="p-6 text-center text-slate-400 text-sm">No services found for this account</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-service-list">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service Type</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Classification</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Tariff</th>
+                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Factor</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter No</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Physical Meter No</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Book</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Route</th>
+                </tr>
+              </thead>
+              <tbody>
+                {services.map((svc: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/40 cursor-pointer transition-colors" onClick={() => setSelectedService(svc)} data-testid={`row-service-${i}`}>
+                    <td className="py-2 px-3">
+                      <Badge variant={svc.statusDesc?.toLowerCase() === 'active' ? 'default' : 'secondary'} className={`text-[10px] ${svc.statusDesc?.toLowerCase() === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{svc.statusDesc || '-'}</Badge>
+                    </td>
+                    <td className="py-2 px-3 font-medium text-blue-700 underline decoration-dotted underline-offset-4">{svc.serviceDesc || '-'}</td>
+                    <td className="py-2 px-3 text-slate-600">{svc.meterClassificationDesc || '-'}</td>
+                    <td className="py-2 px-3 text-slate-600 text-xs">{svc.tariff || '-'}</td>
+                    <td className="py-2 px-3 text-right font-mono">{svc.tarifffactor != null ? Number(svc.tarifffactor).toFixed(2) : '-'}</td>
+                    <td className="py-2 px-3 font-mono text-slate-700">{svc.meterNo || '-'}</td>
+                    <td className="py-2 px-3 font-mono text-slate-700">{svc.physicalMeterNo || '-'}</td>
+                    <td className="py-2 px-3 text-slate-600">{svc.meterBookNo || '-'}</td>
+                    <td className="py-2 px-3 text-slate-600">{svc.routeFileName || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ServiceBalanceChart({ data }: { data: { month: string; amount: number }[] }) {
+  const maxVal = Math.max(...data.map(d => d.amount), 1);
+  const yTicks = Array.from({ length: 6 }, (_, i) => Math.round((maxVal / 5) * (5 - i)));
+  const barWidth = Math.min(80, Math.max(40, 600 / data.length));
+  return (
+    <div className="h-full flex flex-col">
+      <div className="flex items-center justify-center gap-2 mb-3">
+        <div className="w-4 h-3 bg-blue-600 rounded-sm" />
+        <span className="text-xs text-slate-600 font-medium">Current Billing Amount</span>
+      </div>
+      <div className="flex-1 flex">
+        <div className="flex flex-col justify-between pr-2 text-right" style={{ width: 60 }}>
+          {yTicks.map((tick, i) => (
+            <span key={i} className="text-[10px] text-slate-400 font-mono leading-none">{tick.toLocaleString('en-ZA')}</span>
           ))}
-        </tbody>
-      </table>
+        </div>
+        <div className="flex-1 border-l border-b border-slate-200 relative flex items-end justify-around px-2 gap-1">
+          {data.map((d, i) => {
+            const height = maxVal > 0 ? (d.amount / maxVal) * 100 : 0;
+            return (
+              <div key={i} className="flex flex-col items-center flex-1" style={{ maxWidth: barWidth }}>
+                <div className="w-full flex items-end justify-center" style={{ height: '100%', minHeight: 200 }}>
+                  <div className="w-full bg-blue-600 rounded-t-sm transition-all hover:bg-blue-500 relative group" style={{ height: `${height}%`, minHeight: d.amount > 0 ? 4 : 0 }} data-testid={`bar-${i}`}>
+                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                      R {d.amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="flex ml-[60px]">
+        {data.map((d, i) => (
+          <div key={i} className="flex-1 text-center text-[10px] text-slate-500 mt-1 font-medium" style={{ maxWidth: barWidth }}>{d.month}</div>
+        ))}
+      </div>
+      <div className="text-center text-xs text-slate-400 mt-2">Month</div>
+      <div className="absolute left-0 top-1/2 -translate-y-1/2 -rotate-90 text-xs text-slate-400 origin-center" style={{ transform: 'rotate(-90deg) translateX(-50%)', left: 10 }}>Billing Amount</div>
     </div>
   );
 }

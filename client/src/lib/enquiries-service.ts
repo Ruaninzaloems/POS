@@ -157,8 +157,9 @@ export async function getAccountBalance(accountId: number): Promise<any> {
   return fetchWithTimeout(`/api/platinum/billing-enquiry/total-balance-debt?accountId=${accountId}`);
 }
 
-export async function getServiceTypeBalance(accountId: number): Promise<any[]> {
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/service-type-balance?accountId=${accountId}`);
+export async function getServiceTypeBalance(accountId: number, financialYear?: string): Promise<any[]> {
+  const yr = financialYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/service-type-balance?accountId=${accountId}&financialYear=${encodeURIComponent(yr)}`);
   return normalizeArray(data);
 }
 
