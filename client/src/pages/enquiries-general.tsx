@@ -1498,25 +1498,38 @@ function PropertyDetailsTab({ accountId }: { accountId: number }) {
           <h3 className="text-sm font-semibold text-white tracking-wide">Property Information</h3>
         </div>
         <div className="p-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3">
-            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Property ID</span><div className="text-sm font-medium text-slate-800">{prop.propertyId || prop.property_ID || cu.unit_ID || '-'}</div></div>
-            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Erf Number</span><div className="text-sm font-medium text-slate-800">{prop.erfNumber || cu.erfNumber || '-'}</div></div>
-            <div><span className="text-[11px] uppercase text-slate-400 font-medium">SG Number</span><div className="text-sm font-medium text-slate-800">{prop.sgNumber || cu.sgNumber || '-'}</div></div>
-            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Street Address</span><div className="text-sm font-medium text-slate-800">{prop.streetNumber ? `${prop.streetNumber} ${prop.streetName}` : prop.streetName || cu.nonStandAddLine1 || '-'}</div></div>
-            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Suburb</span><div className="text-sm font-medium text-slate-800">{prop.subSuburb || prop.suburb || cu.nonStandAddSuburb || '-'}</div></div>
-            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Town</span><div className="text-sm font-medium text-slate-800">{prop.town || '-'}</div></div>
-            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Property Type / Zoning</span><div className="text-sm font-medium text-slate-800">{prop.typeofUse || prop.townPlanningZoneType || '-'}</div></div>
-            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Market Value</span><div className="text-sm font-bold text-blue-700 font-mono">{fmt(prop.marketValue || cu.marketValue)}</div></div>
-            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Stand Size (m²)</span><div className="text-sm font-medium text-slate-800">{fmtInt(prop.standSize || cu.standSize)}</div></div>
-            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Land Size (ha)</span><div className="text-sm font-medium text-slate-800">{prop.landSize ?? cu.landSize ?? '-'}</div></div>
-            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Rates Tariff</span><div className="text-sm font-medium text-slate-800">{prop.ratesTariff || '-'}</div></div>
-            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Owner</span><div className="text-sm font-medium text-slate-800">{prop.name || '-'}</div></div>
-            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Master Property</span><div className="text-sm font-medium text-slate-800">{prop.masterProperty || '-'}</div></div>
-            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Roll Number</span><div className="text-sm font-medium text-slate-800">{prop.rollNumber || '-'}</div></div>
-            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Roll Start Date</span><div className="text-sm font-medium text-slate-800">{fmtDate(prop.rollStartDate)}</div></div>
-            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Expected Expiry Date</span><div className="text-sm font-medium text-slate-800">{fmtDate(prop.expectedExpiryDate)}</div></div>
-            {prop.rdpOrReform && <div><span className="text-[11px] uppercase text-slate-400 font-medium">RDP / Reform</span><div className="text-sm font-medium text-slate-800">{prop.rdpOrReform}</div></div>}
-            {prop.complexName && <div><span className="text-[11px] uppercase text-slate-400 font-medium">Complex</span><div className="text-sm font-medium text-slate-800">{prop.complexName}</div></div>}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-4">
+            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Property ID</span><div className="text-sm font-semibold text-slate-800">{prop.propertyId || prop.property_ID || cu.unit_ID || '-'}</div></div>
+            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Erf Number</span><div className="text-sm font-semibold text-slate-800">{prop.erfNumber || cu.erfNumber || '-'}</div></div>
+            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">SG Number</span><div className="text-sm font-semibold text-slate-800">{prop.sgNumber || cu.sgNumber || '-'}</div></div>
+            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Street Address</span><div className="text-sm font-semibold text-slate-800">{prop.streetNumber ? `${prop.streetNumber} ${prop.streetName}` : prop.streetName || cu.nonStandAddLine1 || '-'}</div></div>
+            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Suburb</span><div className="text-sm font-semibold text-slate-800">{prop.subSuburb || prop.suburb || cu.nonStandAddSuburb || '-'}</div></div>
+            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Town</span><div className="text-sm font-semibold text-slate-800">{prop.town || '-'}</div></div>
+            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Property Type / Zoning</span><div className="text-sm font-semibold text-slate-800">{prop.typeofUse || prop.townPlanningZoneType || '-'}</div></div>
+            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Market Value</span><div className="text-sm font-bold text-blue-700 font-mono">{fmt(prop.marketValue || cu.marketValue)}</div></div>
+            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Stand Size (m²)</span><div className="text-sm font-semibold text-slate-800">{fmtInt(prop.standSize || cu.standSize)}</div></div>
+            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Land Size (ha)</span><div className="text-sm font-semibold text-slate-800">{prop.landSize ?? cu.landSize ?? '-'}</div></div>
+            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Rates Tariff</span><div className="text-sm font-semibold text-slate-800">{prop.ratesTariff || '-'}</div></div>
+            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Owner</span><div className="text-sm font-semibold text-slate-800">{prop.name || '-'}</div></div>
+            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Master Property</span><div className="text-sm font-semibold text-slate-800">{prop.masterProperty || '-'}</div></div>
+            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Roll Number</span><div className="text-sm font-semibold text-slate-800">{prop.rollNumber || '-'}</div></div>
+            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Roll Start Date</span><div className="text-sm font-semibold text-slate-800">{fmtDate(prop.rollStartDate)}</div></div>
+            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Expected Expiry Date</span><div className="text-sm font-semibold text-slate-800">{fmtDate(prop.expectedExpiryDate)}</div></div>
+            {prop.rdpOrReform && <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">RDP / Reform</span><div className="text-sm font-semibold text-slate-800">{prop.rdpOrReform}</div></div>}
+            {prop.complexName && <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Complex</span><div className="text-sm font-semibold text-slate-800">{prop.complexName}</div></div>}
+          </div>
+          <div className="mt-5 pt-4 border-t border-slate-100">
+            <div className="flex items-center gap-2 mb-3">
+              <Shield className="w-3.5 h-3.5 text-slate-500" />
+              <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Electoral & Classification Details</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-4">
+              <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Ward</span><div className="text-sm font-semibold text-slate-800">{cu.wardID ? `Ward ${cu.wardID}` : '-'}</div></div>
+              <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Polling Station</span><div className="text-sm font-semibold text-slate-800">{cu.pollingStationID ? `Station ${cu.pollingStationID}` : '-'}</div></div>
+              <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Magisterial District</span><div className="text-sm font-semibold text-slate-800">{cu.magisterialID ? `District ${cu.magisterialID}` : '-'}</div></div>
+              <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">NT Property Category</span><div className="text-sm font-semibold text-slate-800">{(() => { const id = cu.ntPropertyCategoryID; if (id === null || id === undefined) return '-'; const catMap: Record<number, string> = { 1: 'Residential', 2: 'Commercial', 3: 'Industrial', 4: 'Agricultural', 5: 'Mining', 6: 'Government', 7: 'Municipal', 8: 'Public Service Infrastructure', 9: 'Public Benefit Organisation', 10: 'State Trust Land' }; return catMap[id] || cu.ntPropertyCategoryDescription || `Category ${id}`; })()}</div></div>
+              <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Billing Cycle</span><div className="text-sm font-semibold text-slate-800">{cu.billingCycleID ?? '-'}</div></div>
+            </div>
           </div>
         </div>
       </div>
@@ -1571,75 +1584,42 @@ function PropertyDetailsTab({ accountId }: { accountId: number }) {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-4 py-3 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
-            <Gift className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Rebates & Levies</h3>
-          </div>
-          <div className="p-4">
-            {ratesDetails ? (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-amber-50/50 rounded-xl border border-amber-100">
-                  <span className="text-sm text-slate-700">Annual Property Rates</span>
-                  <span className="font-mono font-bold text-slate-800">{fmt(ratesDetails.annualPropertyRates)}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-amber-50/50 rounded-xl border border-amber-100">
-                  <span className="text-sm text-slate-700">Installment</span>
-                  <span className="font-mono font-bold text-slate-800">{fmt(ratesDetails.installment)}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-amber-50/50 rounded-xl border border-amber-100">
-                  <span className="text-sm text-slate-700">Frequency</span>
-                  <span className="font-medium text-slate-800">{ratesDetails.frequency || '-'}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-amber-50/50 rounded-xl border border-amber-100">
-                  <span className="text-sm text-slate-700">Remaining Installments</span>
-                  <span className="font-medium text-slate-800">{ratesDetails.remainingInstallments ?? '-'}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-amber-50/50 rounded-xl border border-amber-100">
-                  <span className="text-sm text-slate-700">Remaining Amount</span>
-                  <span className="font-mono font-bold text-slate-800">{fmt(ratesDetails.remaingAmount ?? ratesDetails.remainingAmount)}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-green-50/50 rounded-xl border border-green-200">
-                  <span className="text-sm text-green-800 font-medium">Rebate Amount</span>
-                  <span className="font-mono font-bold text-green-700">{fmt(ratesDetails.rebateAmount)}</span>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center text-slate-400 text-sm py-4">No rates/rebate data available</div>
-            )}
-          </div>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
+          <Gift className="w-4 h-4 text-white" />
+          <h3 className="text-sm font-semibold text-white tracking-wide">Rebates & Levies</h3>
         </div>
-
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-4 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center gap-2">
-            <Shield className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Election Information</h3>
-          </div>
-          <div className="p-4">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
-                <span className="text-sm text-slate-700">Ward</span>
-                <span className="font-medium text-indigo-800">{cu.wardID ? `Ward ${cu.wardID}` : '-'}</span>
+        <div className="p-5">
+          {ratesDetails ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="flex items-center justify-between p-3.5 bg-amber-50/50 rounded-xl border border-amber-100">
+                <span className="text-sm text-slate-600">Annual Property Rates</span>
+                <span className="font-mono font-bold text-slate-800">{fmt(ratesDetails.annualPropertyRates)}</span>
               </div>
-              <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
-                <span className="text-sm text-slate-700">Polling Station</span>
-                <span className="font-medium text-indigo-800">{cu.pollingStationID ? `Station ${cu.pollingStationID}` : '-'}</span>
+              <div className="flex items-center justify-between p-3.5 bg-amber-50/50 rounded-xl border border-amber-100">
+                <span className="text-sm text-slate-600">Installment</span>
+                <span className="font-mono font-bold text-slate-800">{fmt(ratesDetails.installment)}</span>
               </div>
-              <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
-                <span className="text-sm text-slate-700">Magisterial District</span>
-                <span className="font-medium text-indigo-800">{cu.magisterialID ? `District ${cu.magisterialID}` : '-'}</span>
+              <div className="flex items-center justify-between p-3.5 bg-amber-50/50 rounded-xl border border-amber-100">
+                <span className="text-sm text-slate-600">Frequency</span>
+                <span className="font-semibold text-slate-800">{ratesDetails.frequency || '-'}</span>
               </div>
-              <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
-                <span className="text-sm text-slate-700">NT Property Category</span>
-                <span className="font-medium text-indigo-800">{cu.ntPropertyCategoryID ?? '-'}</span>
+              <div className="flex items-center justify-between p-3.5 bg-amber-50/50 rounded-xl border border-amber-100">
+                <span className="text-sm text-slate-600">Remaining Installments</span>
+                <span className="font-semibold text-slate-800">{ratesDetails.remainingInstallments ?? '-'}</span>
               </div>
-              <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
-                <span className="text-sm text-slate-700">Billing Cycle</span>
-                <span className="font-medium text-indigo-800">{cu.billingCycleID ?? '-'}</span>
+              <div className="flex items-center justify-between p-3.5 bg-amber-50/50 rounded-xl border border-amber-100">
+                <span className="text-sm text-slate-600">Remaining Amount</span>
+                <span className="font-mono font-bold text-slate-800">{fmt(ratesDetails.remaingAmount ?? ratesDetails.remainingAmount)}</span>
+              </div>
+              <div className="flex items-center justify-between p-3.5 bg-green-50/60 rounded-xl border border-green-200">
+                <span className="text-sm text-green-800 font-medium">Rebate Amount</span>
+                <span className="font-mono font-bold text-green-700">{fmt(ratesDetails.rebateAmount)}</span>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="text-center text-slate-400 text-sm py-4">No rates/rebate data available</div>
+          )}
         </div>
       </div>
 
