@@ -29,6 +29,7 @@ import {
   getRepaymentPlanStatus, getPaymentExtensionSearchResults, getPaymentAmountByAccountIds,
   getDebitOrderDeductionByAccount, getDebitOrderDeduction,
   getAccountRatesDetails, getRatesRunHistory, getSectionalTitleScheme,
+  getPartitionDetails, getAccountDeliveryAddressDetail,
   getAccountNotifications, getPropertyNotification,
   getGeneratedStatements,
   getClearanceInquiries,
@@ -101,7 +102,7 @@ function InfoField({ label, value, isCurrency }: { label: string; value: any; is
     const numVal = typeof value === 'number' ? value : (currencyLabel ? parseFloat(String(value)) : NaN);
     if (typeof value === 'boolean') display = value ? 'Yes' : 'No';
     else if ((isCurrency || currencyLabel) && !isNaN(numVal)) display = `R ${numVal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
-    else display = String(value).replace(/\r\n/g, ', ');
+    else display = String(value).replace(/\r\n/g, ', ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/<[^>]*>/g, '');
   }
   return (
     <div className="flex items-baseline gap-2 py-1">
@@ -148,6 +149,10 @@ function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
   const [nameInfo, setNameInfo] = useState<any>(null);
   const [basicDetails, setBasicDetails] = useState<any>(null);
   const [acctInfoResult, setAcctInfoResult] = useState<any>(null);
+  const [partitionInfo, setPartitionInfo] = useState<any>(null);
+  const [deliveryAddr, setDeliveryAddr] = useState<any>(null);
+  const [handoverData, setHandoverData] = useState<any>(null);
+  const [depositData, setDepositData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const loaded = useRef(false);
 
@@ -161,12 +166,20 @@ function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
       getNameInfo(accountId).catch(() => null),
       getBasicAccountDetails(accountId).catch(() => null),
       getAccountInfoResult(accountId).catch(() => null),
-    ]).then(([ai, pi, ni, bd, air]) => {
+      getPartitionDetails(accountId).catch(() => null),
+      getAccountDeliveryAddressDetail(accountId).catch(() => null),
+      getHandoverInfo(accountId).catch(() => null),
+      getDeposits(accountId).catch(() => null),
+    ]).then(([ai, pi, ni, bd, air, part, delAddr, ho, dep]) => {
       setAcctInfo(ai);
       setPropInfo(Array.isArray(pi) ? pi[0] : pi);
       setNameInfo(ni);
       setBasicDetails(bd);
       setAcctInfoResult(air);
+      setPartitionInfo(Array.isArray(part) ? part[0] : part);
+      setDeliveryAddr(Array.isArray(delAddr) ? delAddr[0] : delAddr);
+      setHandoverData(Array.isArray(ho) ? ho[0] : ho);
+      setDepositData(Array.isArray(dep) ? dep : dep ? [dep] : []);
       setLoading(false);
     });
   }, [account.account_ID, account.accountID]);
@@ -174,7 +187,11 @@ function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
   const a = { ...(acctInfo || {}), ...(basicDetails || {}), ...(acctInfoResult || {}) };
   const p = propInfo || {};
   const n = nameInfo || {};
+  const part = partitionInfo || {};
+  const da = deliveryAddr || {};
+  const ho = handoverData || {};
   const s = account;
+  const totalDeposit = (depositData || []).reduce((sum: number, d: any) => sum + (d.depositAmount || d.amount || 0), 0);
 
   return (
     <div className="p-4 space-y-1" data-testid="account-info-panel">
@@ -185,22 +202,22 @@ function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
           <div>
             <InfoField label="Account Number" value={s.accountNumber || a.accountNumber} />
-            <InfoField label="Account Group" value={a.accountGroup || a.accountGroupDescription || s.accountDesc} />
-            <InfoField label="Payment Group" value={a.paymentGroup || a.paymentGroupDescription} />
-            <InfoField label="Account Type" value={a.accountType || a.accountTypeDescription || s.accountDesc} />
+            <InfoField label="Account Group" value={a.institutionDesc || a.accountGroup || a.accountGroupDesc || a.accountGroupDescription} />
+            <InfoField label="Payment Group" value={a.paymentGroupDesc || a.paymentGroup || a.groupCodeDesc || a.paymentGroupDescription} />
+            <InfoField label="Account Type" value={a.accountDesc || a.accountType || a.accountTypeDesc || s.accountDesc} />
             <InfoField label="Incentive Scheme Code" value={a.incentiveSchemeCode || a.incentiveScheme} />
-            <InfoField label="Email" value={n.email || n.emailAddress || s.email || a.email} />
-            <InfoField label="Paid Deposit Amount" value={a.paidDepositAmount ?? a.depositAmount} />
-            <InfoField label="Billing Cycle" value={a.billingCycle || a.billingCycleDescription} />
+            <InfoField label="Email" value={n.email || n.emailId || n.emailAddress || a.emailId || a.email || s.emailId || s.email} />
+            <InfoField label="Paid Deposit Amount" value={totalDeposit > 0 ? totalDeposit : (a.paidDepositAmount ?? a.depositAmount)} />
           </div>
           <div>
-            <InfoField label="Name" value={s.name || a.name || n.surname_Company} />
-            <InfoField label="Sub Account Group" value={a.subAccountGroup || a.subAccountGroupDescription} />
-            <InfoField label="Account Status" value={a.accountStatus || s.statusDesc} />
-            <InfoField label="Delivery Address" value={(a.deliveryAddress || s.deliveryAddress || '').replace(/\r\n/g, ', ')} />
-            <InfoField label="Contact Number" value={n.tel_Mobile || n.tel_Home || n.tel_Work || a.contactNumber} />
-            <InfoField label="Opening Date" value={a.openingDate ? new Date(a.openingDate).toLocaleDateString('en-ZA') : a.openDate} />
-            <InfoField label="Closing Date" value={a.closingDate ? new Date(a.closingDate).toLocaleDateString('en-ZA') : a.closeDate} />
+            <InfoField label="Name" value={s.name || a.fullNAME || a.name || n.surname_Company || n.fullName} />
+            <InfoField label="Sub Account Group" value={a.subAccountGroup || a.subAccountGroupDesc || a.subAccountGroupDescription} />
+            <InfoField label="Account Status" value={a.accountStatus || a.statusDesc || s.statusDesc || s.accountStatus} />
+            <InfoField label="Delivery Address" value={(() => {
+              const parts = [da.streetNumber, da.streetName, da.suburbName, da.town, da.postalCode].filter(Boolean).join(', ').replace(/,\s*,/g, ',').replace(/,\s*$/, '');
+              return (parts || a.deliveryAddress || s.deliveryAddress || '').replace(/\r\n/g, ', ');
+            })()} />
+            <InfoField label="Contact Number" value={n.contactNo || n.tel_Mobile || n.tel_Home || n.tel_Work || a.contactNo || a.contactNumber || s.contactNo} />
           </div>
         </div>
       )}
@@ -209,20 +226,15 @@ function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
       {loading ? <LoadingSkeleton /> : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
           <div>
-            <InfoField label="Interest Waiver Status" value={a.interestWaiverStatus || a.interestWaiver || 'N/A'} />
-            <InfoField label="Indigent Subsidy Status" value={a.indigentSubsidyStatus || a.indigentStatus} />
-            <InfoField label="Consumer RPP Status" value={a.consumerRPPStatus || a.consumerRPP || 'N/A'} />
-            <InfoField label="Departmental Account" value={a.departmentalAccount || a.isDepartmental} />
-            <InfoField label="Credit Rating" value={a.creditRating} />
-            <InfoField label="Payment Terms" value={a.paymentTerms} />
+            <InfoField label="Interest Waiver Status" value={a.interestWaiverStatus || a.interestWaiverStatusDesc || a.interestWaiver || 'N/A'} />
+            <InfoField label="Indigent Subsidy Status" value={a.indigentSubsidyStatus || a.indigentSubsidyStatusDesc || a.indigentStatus} />
+            <InfoField label="Consumer RPP Status" value={a.consumerRPPStatus || a.consumerRPPStatusDesc || a.consumerRPP || 'N/A'} />
+            <InfoField label="Departmental Account" value={a.departmentalAccount || a.isDepartmental || a.departmentalAccountDesc} />
           </div>
           <div>
-            <InfoField label="Rebate Status" value={a.rebateStatus || a.rebate || 'N/A'} />
-            <InfoField label="Handover Status" value={a.handoverStatus || a.handover || 'N/A'} />
-            <InfoField label="Loan RPP Status" value={a.loanRPPStatus || a.loanRPP || 'N/A'} />
-            <InfoField label="Meter Access" value={a.meterAccess} />
-            <InfoField label="Postal Code" value={a.postalCode} />
-            <InfoField label="Ward" value={a.ward || a.wardNumber} />
+            <InfoField label="Rebate Status" value={a.rebateStatus || a.rebateStatusDesc || a.rebate || 'N/A'} />
+            <InfoField label="Handover Status" value={ho.handoverStatus || ho.handoverStatusDesc || a.handoverStatus || a.handover || 'N/A'} />
+            <InfoField label="Loan RPP Status" value={a.loanRPPStatus || a.loanRPPStatusDesc || a.loanRPP || 'N/A'} />
           </div>
         </div>
       )}
@@ -232,22 +244,22 @@ function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
           <div>
             <InfoField label="SG Number" value={p.sgNumber || p.sg_Number || a.sgNumber} />
-            <InfoField label="Old Property Code" value={s.oldAccountCode || a.oldPropertyCode} />
-            <InfoField label="Billing Cycle" value={a.billingCycle || a.billingCycleDescription} />
-            <InfoField label="Sectional Title Scheme" value={p.sectionalTitleScheme || a.sectionalTitleScheme} />
-            <InfoField label="Location Address" value={(p.locationAddress || s.locationAddress || '').replace(/\r\n/g, ', ')} />
-            <InfoField label="Longitude" value={p.longitude} />
-            <InfoField label="Registration Status" value={p.registrationStatus} />
+            <InfoField label="Old Property Code" value={s.oldAccountCode || a.oldAccountCode || p.oldPropertyCode || a.oldPropertyCode} />
+            <InfoField label="Billing Cycle" value={a.cycleDescription || a.billingCycle || a.billingCycleDesc} />
+            <InfoField label="Sectional Title Scheme" value={p.masterProperty || p.sectionalTitleScheme || p.sectionalTitleSchemeDesc || a.sectionalTitleScheme} />
+            <InfoField label="Location Address" value={(a.fullAddress || a.propertyStreet || p.locationAddress || s.locationAddress || '').replace(/\r\n/g, ', ').replace(/&amp;/g, '&')} />
+            <InfoField label="Longitude" value={p.longitude || p.xCoordinate} />
+            <InfoField label="Registration Status" value={p.registrationStatus || p.registrationStatusDesc} />
           </div>
           <div>
-            <InfoField label="Property ID" value={p.property_ID || p.propertyId || p.propertyID} />
-            <InfoField label="Property Status" value={p.propertyStatus || p.status} />
-            <InfoField label="Allotment Area" value={p.allotmentArea || a.allotmentArea || s.allotmentArea} />
-            <InfoField label="Farm Name" value={p.farmName} />
-            <InfoField label="Property Type" value={p.propertyType || p.propertyDesc} />
-            <InfoField label="Latitude" value={p.latitude} />
-            <InfoField label="Magisterial District" value={p.magisterialDistrict || p.magDistrict} />
-            <InfoField label="Property Market Value" value={p.marketValue ?? p.propertyMarketValue} />
+            <InfoField label="Property ID" value={p.propertyId || p.property_ID || p.propertyID} />
+            <InfoField label="Property Status" value={p.propertyStatus || p.propertyStatusDesc || p.status} />
+            <InfoField label="Allotment Area" value={p.allotmentArea || p.allotmentAreaDesc || a.allotmentArea || s.allotmentArea} />
+            <InfoField label="Farm Name" value={p.farmName || p.farm} />
+            <InfoField label="Property Type" value={p.typeofUse || p.townPlanningZoneType || p.propertyType || p.propertyTypeDesc} />
+            <InfoField label="Latitude" value={p.latitude || p.yCoordinate} />
+            <InfoField label="Magisterial District" value={p.magisterialDistrict || p.magisterialDistrictDesc || p.magDistrict} />
+            <InfoField label="Property Market Value" value={p.marketValue ?? p.propertyMarketValue ?? p.market_Value} isCurrency />
           </div>
         </div>
       )}
@@ -256,14 +268,14 @@ function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
       {loading ? <LoadingSkeleton /> : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
           <div>
-            <InfoField label="Property Type of Use" value={p.propertyTypeOfUse || p.typeOfUse} />
-            <InfoField label="Property Category" value={p.propertyCategory || p.category} />
-            <InfoField label="Accountable Owner Name" value={p.accountableOwnerName || p.ownerName || s.name} />
+            <InfoField label="Property Type of Use" value={a.typeOfUseDesc || part.propertyTypeOfUse || part.typeOfUse || p.typeofUse || p.propertyTypeOfUse} />
+            <InfoField label="Property Category" value={part.propertyCategory || part.propertyCategoryDesc || p.propertyCategory || p.category || p.ratesTariff} />
+            <InfoField label="Accountable Owner Name" value={part.accountableOwnerName || part.ownerName || a.owner || p.name || s.name} />
           </div>
           <div>
-            <InfoField label="Valuation Category" value={p.valuationCategory} />
-            <InfoField label="Partition Description" value={p.partitionDescription || p.partition} />
-            <InfoField label="Partition Market Value" value={p.partitionMarketValue} />
+            <InfoField label="Valuation Category" value={part.valuationCategory || part.valuationCategoryDesc || p.valuationCategory} />
+            <InfoField label="Partition Description" value={part.partitionDescription || part.partitionDesc || part.partition || p.partitionDescription || p.partition} />
+            <InfoField label="Partition Market Value" value={part.partitionMarketValue ?? part.marketValue ?? p.partitionMarketValue} />
           </div>
         </div>
       )}
