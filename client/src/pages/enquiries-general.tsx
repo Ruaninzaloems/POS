@@ -2450,7 +2450,7 @@ function TransactionSummaryTab({ accountId }: { accountId: number }) {
     setLoading(true);
     setError(null);
     try {
-      const result = await getAllBillingPeriodTransactions(accountId, finYear);
+      const result = await getServiceTypeBalance(accountId, finYear);
       setData(Array.isArray(result) ? result : []);
     } catch (e: any) {
       setError(e.message || 'Failed to load transaction summary');
@@ -2469,25 +2469,62 @@ function TransactionSummaryTab({ accountId }: { accountId: number }) {
 
   const pivotData = useMemo(() => {
     const descMap = new Map<string, Record<string, number>>();
+    const monthTotals: Record<string, number> = {};
+    const monthOpeningBalance: Record<string, number> = {};
+    const monthInterest: Record<string, number> = {};
+    const monthReceipts: Record<string, number> = {};
+
     data.forEach((d: any) => {
-      const desc = d.description || d.transactionDescription || d.serviceDescription || 'Unknown';
-      const month = d.month || d.billingMonth || d.period || '';
-      const amount = d.amount ?? d.total ?? d.transactionAmount ?? 0;
-      if (!descMap.has(desc)) {
-        descMap.set(desc, {});
-      }
+      const desc = d.serviceDescription || d.description || 'Unknown';
+      const month = d.month || '';
+      const totalAmt = d.totalAmount ?? d.amount ?? 0;
+      const openBal = d.openingBalance ?? 0;
+      const interest = d.interestAmount ?? 0;
+      const currentCharge = d.currentCharge ?? 0;
+
+      if (!descMap.has(desc)) descMap.set(desc, {});
       const row = descMap.get(desc)!;
-      const mIdx = typeof month === 'number' ? month : parseInt(month);
-      const monthName = !isNaN(mIdx) && mIdx >= 1 && mIdx <= 12 ? MONTHS[(mIdx + 5) % 12] : month;
-      row[monthName] = (row[monthName] || 0) + amount;
+      row[month] = (row[month] || 0) + totalAmt;
+
+      monthTotals[month] = (monthTotals[month] || 0) + totalAmt;
+      monthOpeningBalance[month] = (monthOpeningBalance[month] || 0) + openBal;
+      monthInterest[month] = (monthInterest[month] || 0) + interest;
     });
-    return Array.from(descMap.entries()).map(([desc, months]) => ({ description: desc, ...months }));
+
+    const serviceRows = Array.from(descMap.entries()).map(([desc, months]) => ({
+      description: desc,
+      isSpecial: false,
+      ...months,
+    }));
+
+    const openingRow: any = { description: 'Opening Balance', isSpecial: true };
+    const totalRow: any = { description: 'Total', isSpecial: true, isBold: true };
+    const interestRow: any = { description: 'Interest', isSpecial: true };
+    const receiptsRow: any = { description: 'Receipts', isSpecial: true };
+    const closingRow: any = { description: 'Closing Balance', isSpecial: true, isBold: true };
+
+    MONTHS.forEach(m => {
+      openingRow[m] = monthOpeningBalance[m] || 0;
+      totalRow[m] = monthTotals[m] || 0;
+      interestRow[m] = monthInterest[m] || 0;
+      const closingVal = (monthOpeningBalance[m] || 0) + (monthTotals[m] || 0) + (monthInterest[m] || 0);
+      closingRow[m] = closingVal;
+      receiptsRow[m] = 0;
+    });
+
+    return [openingRow, ...serviceRows, interestRow, totalRow, receiptsRow, closingRow];
   }, [data]);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={() => load(selectedYear)} />;
 
-  const fmt = (v: number | undefined) => v !== undefined && v !== 0 ? v.toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : '0.00';
+  const hasData = data.length > 0;
+  const fmt = (v: number | undefined) => {
+    if (v === undefined) return '0.00';
+    const num = typeof v === 'number' ? v : 0;
+    if (num < 0) return `(${Math.abs(num).toLocaleString('en-ZA', { minimumFractionDigits: 2 })})`;
+    return num.toLocaleString('en-ZA', { minimumFractionDigits: 2 });
+  };
 
   return (
     <div className="p-4 space-y-4" data-testid="transaction-summary-panel">
@@ -2514,14 +2551,14 @@ function TransactionSummaryTab({ accountId }: { accountId: number }) {
             </tr>
           </thead>
           <tbody>
-            {pivotData.length === 0 ? (
+            {!hasData ? (
               <tr><td colSpan={14} className="text-center text-slate-400 py-4">No records to display</td></tr>
-            ) : pivotData.map((row, i) => (
-              <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
-                <td className="px-3 py-2 text-slate-700 whitespace-nowrap sticky left-0 bg-white font-medium">{row.description}</td>
+            ) : pivotData.map((row: any, i: number) => (
+              <tr key={i} className={`border-b border-slate-100 hover:bg-slate-50 ${row.isBold ? 'bg-slate-50 font-bold' : ''} ${row.isSpecial ? 'border-t border-slate-200' : ''}`}>
+                <td className={`px-3 py-2 whitespace-nowrap sticky left-0 ${row.isBold ? 'bg-slate-50 font-bold text-slate-900' : row.isSpecial ? 'bg-white text-slate-600 italic' : 'bg-white text-slate-700'}`}>{row.description}</td>
                 <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{selectedYear}</td>
                 {MONTHS.map(m => (
-                  <td key={m} className="px-3 py-2 text-right text-slate-700 whitespace-nowrap font-mono">{fmt(row[m])}</td>
+                  <td key={m} className={`px-3 py-2 text-right whitespace-nowrap font-mono ${row.isBold ? 'font-bold text-slate-900' : 'text-slate-700'} ${(row[m] || 0) < 0 ? 'text-red-600' : ''}`}>{fmt(row[m])}</td>
                 ))}
               </tr>
             ))}
@@ -2530,7 +2567,7 @@ function TransactionSummaryTab({ accountId }: { accountId: number }) {
       </div>
       <div className="flex items-center justify-end gap-2 text-xs text-slate-500">
         <span>Items per page: <span className="border rounded px-2 py-0.5">50</span></span>
-        <span>{pivotData.length === 0 ? '0 of 0' : `1 - ${pivotData.length} of ${pivotData.length}`}</span>
+        <span>{!hasData ? '0 of 0' : `1 - ${pivotData.length} of ${pivotData.length}`}</span>
       </div>
     </div>
   );
