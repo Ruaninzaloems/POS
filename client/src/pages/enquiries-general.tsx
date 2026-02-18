@@ -14,7 +14,7 @@ import {
   CircleDot, Wallet, Gauge as MeterIcon, CalendarCheck, Building2
 } from 'lucide-react';
 import {
-  searchAccounts, getAccountBalance, autocompleteSearch, getAutocompleteType,
+  searchAccounts, getAccountBalance, multiAutocompleteSearch, getAutocompleteType,
   type EnquirySearchCriteria, type EnquirySearchResult,
 } from '@/lib/enquiries-service';
 
@@ -166,23 +166,18 @@ function GeneralEnquiriesContent() {
     const token = ++quickSearchTokenRef.current;
     try {
       let data: EnquirySearchResult[];
-      const acType = getAutocompleteType(field);
-      if (acType) {
-        const [autocompleteData, enquiryData] = await Promise.allSettled([
-          autocompleteSearch(query.trim(), field),
-          searchAccounts({ [field]: query.trim() } as any),
-        ]);
-        if (quickSearchTokenRef.current !== token) return;
-        const acResults = autocompleteData.status === 'fulfilled' ? autocompleteData.value : [];
-        const eqResults = enquiryData.status === 'fulfilled' ? enquiryData.value : [];
-        const seen = new Set<number>();
-        data = [];
-        for (const r of [...eqResults, ...acResults]) {
-          const id = r.account_ID || r.accountID;
-          if (id && !seen.has(id)) { seen.add(id); data.push(r); }
-        }
-      } else {
-        data = await searchAccounts({ [field]: query.trim() } as any);
+      const [multiAcData, enquiryData] = await Promise.allSettled([
+        multiAutocompleteSearch(query.trim()),
+        searchAccounts({ [field]: query.trim() } as any),
+      ]);
+      if (quickSearchTokenRef.current !== token) return;
+      const acResults = multiAcData.status === 'fulfilled' ? multiAcData.value.results : [];
+      const eqResults = enquiryData.status === 'fulfilled' ? enquiryData.value : [];
+      const seen = new Set<number>();
+      data = [];
+      for (const r of [...eqResults, ...acResults]) {
+        const id = r.account_ID || r.accountID;
+        if (id && !seen.has(id)) { seen.add(id); data.push(r); }
       }
       if (quickSearchTokenRef.current !== token) return;
       setDropdownResults(data);
@@ -261,15 +256,13 @@ function GeneralEnquiriesContent() {
         searchCriteria = { ...searchCriteria, [field]: quickQuery.trim() };
       }
       let data: EnquirySearchResult[];
-      const quickField = hasQuick ? detectSearchType(quickQuery).field : null;
-      const acType = quickField && !hasAdvanced ? getAutocompleteType(quickField) : null;
-      if (hasQuick && acType) {
-        const [autocompleteData, enquiryData] = await Promise.allSettled([
-          autocompleteSearch(quickQuery.trim(), quickField!),
+      if (hasQuick && !hasAdvanced) {
+        const [multiAcData, enquiryData] = await Promise.allSettled([
+          multiAutocompleteSearch(quickQuery.trim()),
           searchAccounts(searchCriteria),
         ]);
         if (fullSearchTokenRef.current !== token) return;
-        const acResults = autocompleteData.status === 'fulfilled' ? autocompleteData.value : [];
+        const acResults = multiAcData.status === 'fulfilled' ? multiAcData.value.results : [];
         const eqResults = enquiryData.status === 'fulfilled' ? enquiryData.value : [];
         const seen = new Set<number>();
         data = [];

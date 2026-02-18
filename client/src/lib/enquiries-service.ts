@@ -201,6 +201,47 @@ export async function autocompleteSearch(search: string, searchField: string = '
   return all;
 }
 
+export function getAutocompleteTypesForQuery(query: string): string[] {
+  const trimmed = query.trim();
+  if (/^0\d{9}$/.test(trimmed)) return ['mobileNumber'];
+  if (/^\d{13}$/.test(trimmed)) return ['idRegistrationNumber'];
+  if (/^[A-Z]\d{3}\/\d{4}\/\d+\/\d+$/i.test(trimmed)) return ['erfNumber'];
+  if (/^\d+$/.test(trimmed)) return ['accountNumber', 'erfNumber', 'oldAccountCode', 'physicalMeterNumber'];
+  if (/@/.test(trimmed)) return ['email'];
+  return ['nameCompany', 'locationAddress'];
+}
+
+export async function multiAutocompleteSearch(search: string): Promise<{ suggestions: { displayItem: string; accountId: number; sourceType: string }[]; results: EnquirySearchResult[] }> {
+  const types = getAutocompleteTypesForQuery(search);
+  const allSuggestions = await Promise.allSettled(
+    types.map(async (t) => {
+      const items = await autocomplete(search, t);
+      return items.map(item => ({ ...item, sourceType: t }));
+    })
+  );
+  const suggestions: { displayItem: string; accountId: number; sourceType: string }[] = [];
+  for (const r of allSuggestions) {
+    if (r.status === 'fulfilled') suggestions.push(...r.value);
+  }
+  const validSuggestions = suggestions.filter(s => s.accountId && s.accountId > 0);
+  const seen = new Set<number>();
+  const unique = validSuggestions.filter(s => { if (seen.has(s.accountId)) return false; seen.add(s.accountId); return true; });
+  if (!unique.length) return { suggestions, results: [] };
+  const top = unique.slice(0, 10);
+  const lookups = await Promise.allSettled(
+    top.map(s =>
+      fetchWithTimeout('/api/platinum/billing-enquiry/enquiry-results', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountID: String(s.accountId) }),
+      }).then(normalizeArray)
+    )
+  );
+  const results: EnquirySearchResult[] = [];
+  lookups.forEach(r => { if (r.status === 'fulfilled') results.push(...r.value); });
+  return { suggestions, results };
+}
+
 // === CONFIG ===
 export async function getConfigSetting(keyName: string): Promise<any> {
   return fetchWithTimeout(`/api/platinum/billing-enquiry/get-config-setting?strKeyName=${encodeURIComponent(keyName)}`);

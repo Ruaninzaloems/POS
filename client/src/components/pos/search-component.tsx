@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Account } from '@/lib/mock-data';
 import { searchInstitutions, InstitutionSearchResult, fetchMiscPaymentGroups, fetchMiscPaymentScoaItems, MiscPaymentGroup, MiscPaymentScoaItem, platinumGetClearanceIds } from '@/lib/external-api';
-import { autocomplete } from '@/lib/enquiries-service';
+import { autocomplete, getAutocompleteTypesForQuery } from '@/lib/enquiries-service';
 
 export function parseMobileFromContactDetails(contactDetails: string | undefined | null): string {
     if (!contactDetails) return '';
@@ -140,19 +140,15 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
               finYear: finYear || null,
           };
 
-          let acType = 'accountNumber';
           if (/^\d+$/.test(query)) {
               searchBody.accountNo = query;
-              acType = 'accountNumber';
-          } else if (/@/.test(query)) {
-              searchBody.name = query;
-              acType = 'email';
           } else {
               searchBody.name = query;
-              acType = 'nameCompany';
           }
 
-          const [searchRes, institutionResults, clearanceResults, acSuggestions] = await Promise.all([
+          const acTypes = getAutocompleteTypesForQuery(query);
+
+          const [searchRes, institutionResults, clearanceResults, ...acResults] = await Promise.all([
               fetch(searchUrl, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -164,8 +160,10 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
               }),
               searchInstitutions(query),
               (scope === 'ALL' || scope === 'CLEARANCE') ? platinumGetClearanceIds({ clearanceId: query }).catch(() => []) : Promise.resolve([]),
-              autocomplete(query, acType).catch(() => []),
+              ...acTypes.map(t => autocomplete(query, t).catch(() => [])),
           ]);
+
+          const acSuggestions = (acResults as { displayItem: string; accountId: number }[][]).flat();
 
           clearTimeout(timeoutId);
 
