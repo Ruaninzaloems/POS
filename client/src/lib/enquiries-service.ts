@@ -36,6 +36,8 @@ export interface EnquirySearchCriteria {
   mobileNumber?: string;
   physicalMeterNumber?: string;
   emailAddress?: string;
+  sgNumber?: string;
+  erfNumber?: string;
 }
 
 export interface EnquirySearchResult {
@@ -81,6 +83,8 @@ export async function searchAccounts(criteria: EnquirySearchCriteria): Promise<E
   if (criteria.mobileNumber) body.mobileNumber = criteria.mobileNumber;
   if (criteria.physicalMeterNumber) body.physicalMeterNumber = criteria.physicalMeterNumber;
   if (criteria.emailAddress) body.emailAddress = criteria.emailAddress;
+  if (criteria.sgNumber) body.sgNumber = criteria.sgNumber;
+  if (criteria.erfNumber) body.erfNumber = criteria.erfNumber;
 
   const data = await fetchWithTimeout('/api/platinum/billing-enquiry/enquiry-results', {
     method: 'POST',
@@ -327,14 +331,26 @@ export async function getPrepaidRechargeDetailsForMeter(meterId: number): Promis
 }
 
 // === TRANSACTIONS ===
-export async function getDetailedTransactionResults(accountId: number): Promise<any[]> {
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/detailed-transaction-results?accountId=${accountId}`);
+export async function getDetailedTransactionResults(accountId: number, finYear: string): Promise<any[]> {
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/detailed-transaction-results?accountId=${accountId}&finYear=${encodeURIComponent(finYear)}`);
   return normalizeArray(data);
 }
 
-export async function getBillingPeriodTransactions(accountId: number): Promise<any[]> {
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/get-billing-period-transactions?accountId=${accountId}`);
+export async function getBillingPeriodTransactions(accountId: number, finYear: string, billingMonth: number): Promise<any[]> {
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/get-billing-period-transactions?accountId=${accountId}&finYear=${encodeURIComponent(finYear)}&billingMonth=${billingMonth}`);
   return normalizeArray(data);
+}
+
+export async function getAllBillingPeriodTransactions(accountId: number, finYear: string): Promise<any[]> {
+  const results: any[] = [];
+  const fetches = Array.from({ length: 12 }, (_, i) => i + 1).map(month =>
+    getBillingPeriodTransactions(accountId, finYear, month).catch(() => [])
+  );
+  const allResults = await Promise.allSettled(fetches);
+  allResults.forEach(r => {
+    if (r.status === 'fulfilled') results.push(...r.value);
+  });
+  return results;
 }
 
 export async function getReceiptTransactionDetail(primaryId: number): Promise<any> {

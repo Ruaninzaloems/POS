@@ -23,7 +23,7 @@ import {
   getDepartmentalAccountsById,
   getContactDetailsHistory, getDeliveryAddressHistory,
   getHandoverAccountEnquiry, getConsHandoverTransactionDetail,
-  getBillingPeriodTransactions, getDetailedTransactionResults,
+  getAllBillingPeriodTransactions, getDetailedTransactionResults,
   getAllServices, getMeteredServicesOnAccount, getAccountServiceMeterPerProperty,
   getUnitLinkedMeters, getMeterReadingHistory, getPrepaidMeterServicesForAccount,
   getPaymentPlansByAccountId, getPaymentPlanRemainingCapital,
@@ -2395,18 +2395,28 @@ function DepositsTab({ accountId }: { accountId: number }) {
 
 const MONTHS = ['July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March', 'April', 'May', 'June'];
 
+function getFinYearOptions(): string[] {
+  const now = new Date();
+  const currentStartYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+  return Array.from({ length: 5 }, (_, i) => {
+    const y = currentStartYear - i;
+    return `${y}/${y + 1}`;
+  });
+}
+
 function TransactionSummaryTab({ accountId }: { accountId: number }) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedYear, setSelectedYear] = useState('');
-  const prevAccountId = useRef<number | null>(null);
+  const years = useMemo(() => getFinYearOptions(), []);
+  const [selectedYear, setSelectedYear] = useState(years[0]);
+  const lastKey = useRef('');
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (finYear: string) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await getBillingPeriodTransactions(accountId);
+      const result = await getAllBillingPeriodTransactions(accountId, finYear);
       setData(Array.isArray(result) ? result : []);
     } catch (e: any) {
       setError(e.message || 'Failed to load transaction summary');
@@ -2416,32 +2426,16 @@ function TransactionSummaryTab({ accountId }: { accountId: number }) {
   }, [accountId]);
 
   useEffect(() => {
-    if (prevAccountId.current !== accountId) {
-      prevAccountId.current = accountId;
-      load();
+    const key = `${accountId}-${selectedYear}`;
+    if (lastKey.current !== key) {
+      lastKey.current = key;
+      load(selectedYear);
     }
-  }, [accountId, load]);
-
-  const years = useMemo(() => {
-    const ySet = new Set<string>();
-    data.forEach((d: any) => {
-      const fy = d.financialYear || d.finYear || d.financial_Year || '';
-      if (fy) ySet.add(fy);
-    });
-    return Array.from(ySet).sort().reverse();
-  }, [data]);
-
-  useEffect(() => {
-    if (years.length > 0 && !selectedYear) setSelectedYear(years[0]);
-  }, [years, selectedYear]);
+  }, [accountId, selectedYear, load]);
 
   const pivotData = useMemo(() => {
-    const filtered = data.filter((d: any) => {
-      const fy = d.financialYear || d.finYear || d.financial_Year || '';
-      return fy === selectedYear;
-    });
     const descMap = new Map<string, Record<string, number>>();
-    filtered.forEach((d: any) => {
+    data.forEach((d: any) => {
       const desc = d.description || d.transactionDescription || d.serviceDescription || 'Unknown';
       const month = d.month || d.billingMonth || d.period || '';
       const amount = d.amount ?? d.total ?? d.transactionAmount ?? 0;
@@ -2454,10 +2448,10 @@ function TransactionSummaryTab({ accountId }: { accountId: number }) {
       row[monthName] = (row[monthName] || 0) + amount;
     });
     return Array.from(descMap.entries()).map(([desc, months]) => ({ description: desc, ...months }));
-  }, [data, selectedYear]);
+  }, [data]);
 
   if (loading) return <LoadingSkeleton />;
-  if (error) return <ErrorState message={error} onRetry={load} />;
+  if (error) return <ErrorState message={error} onRetry={() => load(selectedYear)} />;
 
   const fmt = (v: number | undefined) => v !== undefined && v !== 0 ? v.toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : '0.00';
 
@@ -2472,7 +2466,6 @@ function TransactionSummaryTab({ accountId }: { accountId: number }) {
           data-testid="select-financial-year"
         >
           {years.map(y => <option key={y} value={y}>{y}</option>)}
-          {years.length === 0 && <option value="">No data</option>}
         </select>
       </div>
       <div className="overflow-x-auto border border-slate-200 rounded">
@@ -2513,19 +2506,20 @@ function DetailedTransactionListTab({ accountId }: { accountId: number }) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedYear, setSelectedYear] = useState('');
+  const years = useMemo(() => getFinYearOptions(), []);
+  const [selectedYear, setSelectedYear] = useState(years[0]);
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedTxn, setSelectedTxn] = useState<any>(null);
   const [txnDetail, setTxnDetail] = useState<any>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [showCreditMeterOnly, setShowCreditMeterOnly] = useState(false);
-  const prevAccountId = useRef<number | null>(null);
+  const lastKey = useRef('');
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (finYear: string) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await getDetailedTransactionResults(accountId);
+      const result = await getDetailedTransactionResults(accountId, finYear);
       setData(Array.isArray(result) ? result : []);
     } catch (e: any) {
       setError(e.message || 'Failed to load detailed transactions');
@@ -2535,34 +2529,21 @@ function DetailedTransactionListTab({ accountId }: { accountId: number }) {
   }, [accountId]);
 
   useEffect(() => {
-    if (prevAccountId.current !== accountId) {
-      prevAccountId.current = accountId;
-      load();
+    const key = `${accountId}-${selectedYear}`;
+    if (lastKey.current !== key) {
+      lastKey.current = key;
+      load(selectedYear);
     }
-  }, [accountId, load]);
-
-  const years = useMemo(() => {
-    const ySet = new Set<string>();
-    data.forEach((d: any) => {
-      const fy = d.financialYear || d.finYear || '';
-      if (fy) ySet.add(fy);
-    });
-    return Array.from(ySet).sort().reverse();
-  }, [data]);
+  }, [accountId, selectedYear, load]);
 
   const monthsAvailable = useMemo(() => {
     const mSet = new Set<string>();
-    data.filter((d: any) => (d.financialYear || d.finYear || '') === selectedYear)
-      .forEach((d: any) => {
-        const m = d.month || d.billingMonth || d.period || '';
-        if (m) mSet.add(String(m));
-      });
+    data.forEach((d: any) => {
+      const m = d.month || d.billingMonth || d.period || '';
+      if (m) mSet.add(String(m));
+    });
     return Array.from(mSet);
-  }, [data, selectedYear]);
-
-  useEffect(() => {
-    if (years.length > 0 && !selectedYear) setSelectedYear(years[0]);
-  }, [years, selectedYear]);
+  }, [data]);
 
   useEffect(() => {
     if (monthsAvailable.length > 0 && !monthsAvailable.includes(selectedMonth)) {
@@ -2572,17 +2553,15 @@ function DetailedTransactionListTab({ accountId }: { accountId: number }) {
 
   const filtered = useMemo(() => {
     return data.filter((d: any) => {
-      const fy = d.financialYear || d.finYear || '';
       const m = String(d.month || d.billingMonth || d.period || '');
-      const yearMatch = !selectedYear || fy === selectedYear;
       const monthMatch = !selectedMonth || m === selectedMonth;
       if (showCreditMeterOnly) {
         const desc = (d.transactionDescription || d.description || '').toLowerCase();
-        return yearMatch && monthMatch && desc.includes('credit meter');
+        return monthMatch && desc.includes('credit meter');
       }
-      return yearMatch && monthMatch;
+      return monthMatch;
     });
-  }, [data, selectedYear, selectedMonth, showCreditMeterOnly]);
+  }, [data, selectedMonth, showCreditMeterOnly]);
 
   const handleRowClick = async (txn: any) => {
     setSelectedTxn(txn);
@@ -2781,8 +2760,8 @@ function TransactionHistoryTab({ accountId, accountNumber }: { accountId: number
     try {
       const [receiptResult, billingResult, detailedResult] = await Promise.all([
         getTransactionHistory(accountNumber).catch(() => []),
-        getBillingPeriodTransactions(accountId).catch(() => []),
-        getDetailedTransactionResults(accountId).catch(() => []),
+        getAllBillingPeriodTransactions(accountId, getFinYearOptions()[0]).catch(() => []),
+        getDetailedTransactionResults(accountId, getFinYearOptions()[0]).catch(() => []),
       ]);
       setData(receiptResult);
       setBillingPeriodTxns(billingResult);
@@ -3896,6 +3875,8 @@ const SEARCH_FIELDS = [
   { key: 'locationAddress', label: 'Location / Erf Address', placeholder: 'Street, location or erf', icon: MapPin, smart: false },
   { key: 'mobileNumber', label: 'Mobile Number', placeholder: '0821234567', icon: Phone, smart: false },
   { key: 'passportNumber', label: 'Passport Number', placeholder: 'Passport number', icon: CreditCard, smart: false },
+  { key: 'sgNumber', label: 'SG Number', placeholder: 'e.g. C027/0002/00013110/00000', icon: Home, smart: false },
+  { key: 'erfNumber', label: 'ERF Number', placeholder: 'e.g. 13110', icon: Landmark, smart: false },
 ] as const;
 
 function detectSearchType(query: string): { field: string; label: string; unsupported?: boolean } {
