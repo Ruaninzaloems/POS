@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import {
   searchAccounts, getAccountBalance, multiAutocompleteSearch, getAutocompleteType,
+  autocomplete, getAutocompleteType as getAcType,
   type EnquirySearchCriteria, type EnquirySearchResult,
 } from '@/lib/enquiries-service';
 
@@ -25,6 +26,84 @@ import { TransactionSummaryTab, DetailedTransactionListTab, TransactionHistoryTa
 import { IncentivesTab, DepositsTab, PaymentPlansTab, PaymentExtensionHistoryTab, DebitOrdersTab, RatesValuationsTab } from './enquiries/financial-tabs';
 import { PropertyDetailsTab, ContactInfoTab, HandoverTab, NotificationsTab, StatementsTab, ClearanceTab, DebtorNotesTab, Section129Tab, OccupiersTab } from './enquiries/other-tabs';
 import { SEARCH_FIELDS, detectSearchType, SmartSearchDropdown, ExpandableResultRow } from './enquiries/search-components';
+
+function FieldAutocompleteInput({ fieldKey, placeholder, value, onChange, onSelectAndSearch, onEnter }: {
+  fieldKey: string; placeholder: string; value: string;
+  onChange: (key: string, val: string) => void;
+  onSelectAndSearch: (key: string, val: string, accountId: number) => void;
+  onEnter: () => void;
+}) {
+  const [suggestions, setSuggestions] = useState<{ displayItem: string; accountId: number }[]>([]);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const debRef = useRef<NodeJS.Timeout | null>(null);
+  const tokenRef = useRef(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleChange = (val: string) => {
+    onChange(fieldKey, val);
+    if (debRef.current) clearTimeout(debRef.current);
+    if (val.trim().length < 2) { setSuggestions([]); setOpen(false); return; }
+    const acType = getAutocompleteType(fieldKey);
+    if (!acType) return;
+    setLoading(true);
+    debRef.current = setTimeout(async () => {
+      const tok = ++tokenRef.current;
+      try {
+        const items = await autocomplete(val.trim(), acType);
+        if (tokenRef.current !== tok) return;
+        setSuggestions(items.filter(s => s.accountId && s.accountId > 0).slice(0, 20));
+        setOpen(true);
+      } catch {
+        if (tokenRef.current === tok) setSuggestions([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+  };
+
+  return (
+    <div ref={containerRef} className="relative">
+      <input
+        type="text"
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => handleChange(e.target.value)}
+        onFocus={() => { if (suggestions.length > 0) setOpen(true); }}
+        onKeyDown={(e) => { if (e.key === 'Enter') { setOpen(false); onEnter(); } if (e.key === 'Escape') setOpen(false); }}
+        className="w-full h-8 px-2 text-xs rounded border border-slate-300 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+        data-testid={`input-field-${fieldKey}`}
+      />
+      {loading && <Loader2 className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-blue-400 animate-spin" />}
+      {open && suggestions.length > 0 && (
+        <div className="absolute left-0 right-0 top-full mt-0.5 bg-white border border-slate-200 rounded shadow-lg z-50 max-h-[200px] overflow-y-auto">
+          {suggestions.map((s, i) => (
+            <button
+              key={`${s.accountId}-${i}`}
+              onClick={() => {
+                onChange(fieldKey, s.displayItem);
+                setOpen(false);
+                onSelectAndSearch(fieldKey, s.displayItem, s.accountId);
+              }}
+              className="w-full text-left px-2.5 py-1.5 text-xs text-slate-700 hover:bg-blue-50 transition-colors border-b border-slate-100 last:border-0"
+              data-testid={`suggestion-${fieldKey}-${i}`}
+            >
+              {s.displayItem}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function GeneralEnquiriesContent() {
   const [quickQuery, setQuickQuery] = useState('');
@@ -325,6 +404,28 @@ function GeneralEnquiriesContent() {
       }
     }, 500);
   }, [criteria, enrichWithBalances]);
+
+  const handleFieldSelect = useCallback(async (key: string, displayValue: string, accountId: number) => {
+    const token = ++fullSearchTokenRef.current;
+    setSearching(true);
+    setSearchError(null);
+    setHasSearched(true);
+    setShowDropdown(false);
+    try {
+      const data = await searchAccounts({ accountNo: String(accountId) });
+      if (fullSearchTokenRef.current !== token) return;
+      setResults(data);
+      setSearching(false);
+      enrichWithBalances(data, fullSearchTokenRef, token, setResults);
+    } catch (e: any) {
+      if (fullSearchTokenRef.current === token) {
+        setSearchError(e.message || 'Search failed');
+        setResults([]);
+      }
+    } finally {
+      setSearching(false);
+    }
+  }, [enrichWithBalances]);
 
   const handleClear = () => {
     setQuickQuery('');
@@ -703,15 +804,14 @@ function GeneralEnquiriesContent() {
                 { key: 'locationAddress', placeholder: 'Location Address' },
                 { key: 'sgNumber', placeholder: 'Erf/SG Number' },
               ].map(f => (
-                <input
+                <FieldAutocompleteInput
                   key={f.key}
-                  type="text"
+                  fieldKey={f.key}
                   placeholder={f.placeholder}
                   value={(criteria as any)[f.key] || ''}
-                  onChange={(e) => handleFieldChange(f.key, e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleFullSearch(); }}
-                  className="h-8 px-2 text-xs rounded border border-slate-300 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  data-testid={`input-field-${f.key}`}
+                  onChange={handleFieldChange}
+                  onSelectAndSearch={handleFieldSelect}
+                  onEnter={handleFullSearch}
                 />
               ))}
             </div>
