@@ -361,40 +361,51 @@ export async function getReceiptTransactionDetail(primaryId: number): Promise<an
   return fetchWithTimeout(`/api/platinum/billing-enquiry/receipt-transaction-detail?primaryId=${primaryId}`);
 }
 
-export async function getLevyTransactionDetail(primaryId: number): Promise<any[]> {
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/levy-transaction-detail?primaryId=${primaryId}`);
+function normalizeDetailResponse(data: any): any[] | string {
+  if (typeof data === 'string') {
+    const trimmed = data.trim();
+    if (trimmed.startsWith('<') || trimmed.includes('<table')) {
+      return trimmed;
+    }
+    try { data = JSON.parse(trimmed); } catch { return []; }
+  }
   return normalizeArray(data);
 }
 
-export async function getOpenBalanceDetail(primaryId: number | string, billingMonth?: number): Promise<any[]> {
+export async function getLevyTransactionDetail(primaryId: number): Promise<any[] | string> {
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/levy-transaction-detail?primaryId=${primaryId}`);
+  return normalizeDetailResponse(data);
+}
+
+export async function getOpenBalanceDetail(primaryId: number | string, billingMonth?: number): Promise<any[] | string> {
   const params = new URLSearchParams({ primaryId: String(primaryId) });
   if (billingMonth !== undefined) params.append('billingMonth', String(billingMonth));
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/open-balance-detail?${params.toString()}`);
-  return normalizeArray(data);
+  return normalizeDetailResponse(data);
 }
 
-export async function getCloseBalanceDetail(primaryId: number | string, billingMonth?: number): Promise<any[]> {
+export async function getCloseBalanceDetail(primaryId: number | string, billingMonth?: number): Promise<any[] | string> {
   const params = new URLSearchParams({ primaryId: String(primaryId) });
   if (billingMonth !== undefined) params.append('billingMonth', String(billingMonth));
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/close-balance-detail?${params.toString()}`);
-  return normalizeArray(data);
+  return normalizeDetailResponse(data);
 }
 
-export async function getJournalTransactionDetails(primaryId: number | string, accountId: number): Promise<any[]> {
+export async function getJournalTransactionDetails(primaryId: number | string, accountId: number): Promise<any[] | string> {
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/journal-transaction-details?primaryId=${primaryId}&accountId=${accountId}`);
-  return normalizeArray(data);
+  return normalizeDetailResponse(data);
 }
 
-export async function getRebateTransactionDetail(primaryId: number | string): Promise<any[]> {
+export async function getRebateTransactionDetail(primaryId: number | string): Promise<any[] | string> {
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/rebate-transaction-detail?primaryId=${primaryId}`);
-  return normalizeArray(data);
+  return normalizeDetailResponse(data);
 }
 
-export async function getInterestConsPaymentDetail(accountId: number, finYear?: string): Promise<any[]> {
+export async function getInterestConsPaymentDetail(accountId: number, finYear?: string): Promise<any[] | string> {
   const params = new URLSearchParams({ accountId: String(accountId) });
   if (finYear) params.append('finYear', finYear);
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/interest-cons-payment-detail?${params.toString()}`);
-  return normalizeArray(data);
+  return normalizeDetailResponse(data);
 }
 
 export async function getInterestLatePaymentDetail(accountId: number): Promise<any[]> {

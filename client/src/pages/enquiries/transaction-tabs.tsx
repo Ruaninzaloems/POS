@@ -256,7 +256,7 @@ export function DetailedTransactionListTab({ accountId }: { accountId: number })
   const [selectedYear, setSelectedYear] = useState(years[0]);
   const [selectedMonth, setSelectedMonth] = useState('January');
   const [selectedTxn, setSelectedTxn] = useState<any>(null);
-  const [txnDetailData, setTxnDetailData] = useState<any[] | null>(null);
+  const [txnDetailData, setTxnDetailData] = useState<any[] | string | null>(null);
   const [txnDetailLoading, setTxnDetailLoading] = useState(false);
   const [showCreditMeterOnly, setShowCreditMeterOnly] = useState(false);
   const lastKey = useRef('');
@@ -505,14 +505,16 @@ export function DetailedTransactionListTab({ accountId }: { accountId: number })
               <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
                 <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
                   <Layers className="w-3.5 h-3.5 text-slate-500" />
-                  <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Ledger Postings</h5>
+                  <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Transaction Detail & Ledger Postings</h5>
                 </div>
                 {txnDetailLoading ? (
                   <div className="p-8 flex items-center justify-center gap-2">
                     <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
-                    <span className="text-sm text-slate-500">Loading ledger postings...</span>
+                    <span className="text-sm text-slate-500">Loading detail...</span>
                   </div>
-                ) : txnDetailData && txnDetailData.length > 0 ? (
+                ) : typeof txnDetailData === 'string' && txnDetailData.length > 0 ? (
+                  <div className="p-4 overflow-x-auto platinum-detail-html" dangerouslySetInnerHTML={{ __html: txnDetailData }} />
+                ) : Array.isArray(txnDetailData) && txnDetailData.length > 0 ? (
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
                       <thead>
@@ -549,7 +551,7 @@ export function DetailedTransactionListTab({ accountId }: { accountId: number })
                 ) : txnDetailData !== null ? (
                   <div className="p-6 text-center text-slate-400 text-sm">
                     <Activity className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-                    No ledger posting data available for this transaction
+                    No detail data available for this transaction
                   </div>
                 ) : null}
               </div>

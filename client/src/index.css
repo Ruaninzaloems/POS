@@ -156,3 +156,68 @@
     display: none;
   }
 }
+
+.platinum-detail-html {
+  font-size: 0.8rem;
+  color: #334155;
+}
+
+.platinum-detail-html table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+
+.platinum-detail-html thead tr {
+  background: linear-gradient(to right, #0d9488, #0f766e);
+  color: white;
+}
+
+.platinum-detail-html thead th {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.platinum-detail-html tbody td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.78rem;
+  vertical-align: top;
+}
+
+.platinum-detail-html tbody tr:hover {
+  background-color: rgba(59, 130, 246, 0.04);
+}
+
+.platinum-detail-html .detail-header {
+  margin-top: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.platinum-detail-html .detail-header h3 {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-bottom: 0.25rem;
+  border-bottom: 2px solid #0d9488;
+  display: inline-block;
+}
+
+.platinum-detail-html td[style*="text-align:right"] {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.platinum-detail-html br {
+  line-height: 1.6;
+}
