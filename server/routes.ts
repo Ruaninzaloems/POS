@@ -2009,17 +2009,25 @@ export async function registerRoutes(
       const accountId = req.query.accountId as string;
       if (!accountId) return res.status(400).json({ message: "accountId is required" });
 
-      const unitData = await platinumGet("/api/BillingEnquiry/ConsUnitByAccountId", { AccountId: accountId });
-      if (!unitData || unitData._error) {
+      console.log(`[linked-accounts] Getting property details for accountId: ${accountId}`);
+      const propData = await platinumGet("/api/BillingEnquiry/PropertyDetailsByAccountId", { accountId });
+      if (!propData || propData._error) {
+        console.log(`[linked-accounts] PropertyDetailsByAccountId failed`);
         return res.json([]);
       }
-      const unitId = unitData.unit_ID || unitData.unitID;
-      if (!unitId) return res.json([]);
+      const propertyId = propData.propertyId || propData.unitID;
+      const ownerName = (propData.name || '').trim();
+      const sgNumber = propData.sgNumber || '';
 
-      const sgNumber = unitData.sgNumber || '';
+      console.log(`[linked-accounts] Property: ${propertyId}, owner: ${ownerName}, SG: ${sgNumber}`);
+
+      if (!ownerName) {
+        console.log(`[linked-accounts] No owner name found, returning empty`);
+        return res.json([]);
+      }
 
       const searchResults = await platinumPost("/api/BillingEnquiry/EnquiryResults", {
-        sgNumber: sgNumber,
+        companyName: ownerName,
       });
 
       let accounts: any[] = [];
@@ -2033,8 +2041,17 @@ export async function registerRoutes(
 
       const linkedAccounts = accounts.filter((a: any) => {
         const aId = String(a.account_ID || a.accountID || '');
-        return aId !== String(accountId);
+        if (aId === String(accountId)) return false;
+        if (propertyId && sgNumber) {
+          const aSg = a.sgNumber || '';
+          if (aSg === sgNumber) return true;
+          const aUnitId = a.unitID || a.unitPartitionID;
+          if (aUnitId && String(aUnitId) === String(propertyId)) return true;
+        }
+        return true;
       });
+
+      console.log(`[linked-accounts] Found ${linkedAccounts.length} linked accounts (out of ${accounts.length} total, filtered by owner: "${ownerName}")`);
 
       const enriched = await Promise.all(
         linkedAccounts.slice(0, 20).map(async (acct: any) => {
@@ -2052,6 +2069,7 @@ export async function registerRoutes(
 
       res.json(enriched);
     } catch (e: any) {
+      console.log(`[linked-accounts] Error: ${e.message}`);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
