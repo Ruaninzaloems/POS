@@ -44,6 +44,12 @@ import {
   getChequeFinalSearchList,
   getContactDetails,
   getReceiptTransactionDetail,
+  getLevyTransactionDetail,
+  getOpenBalanceDetail,
+  getCloseBalanceDetail,
+  getJournalTransactionDetails,
+  getRebateTransactionDetail,
+  getInterestConsPaymentDetail,
   getSupplementaryValuations,
   getTransferOwnership,
   type EnquirySearchCriteria, type EnquirySearchResult,
@@ -2832,6 +2838,8 @@ function DetailedTransactionListTab({ accountId }: { accountId: number }) {
   const [selectedYear, setSelectedYear] = useState(years[0]);
   const [selectedMonth, setSelectedMonth] = useState('January');
   const [selectedTxn, setSelectedTxn] = useState<any>(null);
+  const [txnDetailData, setTxnDetailData] = useState<any[] | null>(null);
+  const [txnDetailLoading, setTxnDetailLoading] = useState(false);
   const [showCreditMeterOnly, setShowCreditMeterOnly] = useState(false);
   const lastKey = useRef('');
 
@@ -3063,6 +3071,41 @@ function DetailedTransactionListTab({ accountId }: { accountId: number }) {
     return num.toLocaleString('en-ZA', { minimumFractionDigits: 2 });
   };
 
+  const handleRowClick = async (row: any) => {
+    setSelectedTxn(row);
+    setTxnDetailData(null);
+    setTxnDetailLoading(true);
+    try {
+      let detail: any[] = [];
+      if (row.isPayment && row.receiptId) {
+        const idMatch = row.documentNumber?.match(/98\/(\d+)/);
+        const primaryId = idMatch ? parseInt(idMatch[1]) : null;
+        if (primaryId) {
+          const result = await getReceiptTransactionDetail(primaryId);
+          detail = Array.isArray(result) ? result : result ? [result] : [];
+        }
+      } else if (row.isLevy) {
+        detail = await getLevyTransactionDetail(accountId);
+      } else if (row.isRebate) {
+        detail = await getRebateTransactionDetail(accountId);
+      } else if (row.isInterest) {
+        detail = await getInterestConsPaymentDetail(accountId);
+      } else if (row.description === 'Open Balance') {
+        detail = await getOpenBalanceDetail(accountId);
+      } else if (row.description === 'Closing Balance') {
+        detail = await getCloseBalanceDetail(accountId);
+      } else {
+        detail = await getJournalTransactionDetails(accountId);
+      }
+      setTxnDetailData(detail);
+    } catch (e) {
+      console.error('Failed to load transaction detail:', e);
+      setTxnDetailData([]);
+    } finally {
+      setTxnDetailLoading(false);
+    }
+  };
+
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={() => load(selectedYear)} />;
 
@@ -3105,8 +3148,8 @@ function DetailedTransactionListTab({ accountId }: { accountId: number }) {
             ) : detailedRows.map((row: any, i: number) => (
               <tr
                 key={i}
-                className={`border-b border-slate-100 ${row.isBold ? 'bg-slate-50 font-bold' : ''} ${row.isPayment ? 'cursor-pointer hover:bg-blue-50 text-red-600' : row.isLevy ? 'hover:bg-slate-50' : 'hover:bg-slate-50'}`}
-                onClick={() => row.isPayment && setSelectedTxn(row)}
+                className={`border-b border-slate-100 cursor-pointer ${row.isBold ? 'bg-slate-50 font-bold' : ''} ${row.isPayment ? 'hover:bg-blue-50 text-red-600' : 'hover:bg-slate-50'}`}
+                onClick={() => handleRowClick(row)}
                 data-testid={`detail-row-${i}`}
               >
                 <td className="px-3 py-2 text-slate-700 whitespace-nowrap">{row.transactionDate}</td>
@@ -3130,38 +3173,118 @@ function DetailedTransactionListTab({ accountId }: { accountId: number }) {
       </div>
 
       {selectedTxn && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setSelectedTxn(null)} data-testid="txn-detail-overlay">
-          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 bg-slate-50">
-              <h4 className="text-sm font-bold text-slate-700">Detailed Transaction List per Billing Period</h4>
-              <button onClick={() => setSelectedTxn(null)} className="text-slate-400 hover:text-slate-700 text-lg" data-testid="button-close-detail">&times;</button>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setSelectedTxn(null); setTxnDetailData(null); }} data-testid="txn-detail-overlay">
+          <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-xl">
+              <div className="flex items-center gap-3">
+                <FileText className="w-5 h-5 text-white" />
+                <div>
+                  <h4 className="text-sm font-bold text-white">Transaction Detail & Ledger Posting</h4>
+                  <p className="text-[11px] text-blue-200">{selectedTxn.description} — {selectedTxn.transactionDate}</p>
+                </div>
+              </div>
+              <button onClick={() => { setSelectedTxn(null); setTxnDetailData(null); }} className="text-white/70 hover:text-white text-xl font-bold w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors" data-testid="button-close-detail">&times;</button>
             </div>
+
             <div className="p-5 space-y-4">
-              <div className="border border-slate-200 rounded overflow-hidden">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="bg-teal-600 text-white">
-                      <th className="px-3 py-2 text-left font-semibold">Description</th>
-                      <th className="px-3 py-2 text-right font-semibold">Amount</th>
-                      <th className="px-3 py-2 text-right font-semibold">VAT</th>
-                      <th className="px-3 py-2 text-right font-semibold">Interest</th>
-                      <th className="px-3 py-2 text-right font-semibold">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border-b border-slate-100">
-                      <td className="px-3 py-2">{selectedTxn.description || ''}</td>
-                      <td className="px-3 py-2 text-right font-mono">{fmt(selectedTxn.amount)}</td>
-                      <td className="px-3 py-2 text-right font-mono">{fmt(selectedTxn.vat ?? 0)}</td>
-                      <td className="px-3 py-2 text-right font-mono">{fmt(selectedTxn.interest ?? 0)}</td>
-                      <td className="px-3 py-2 text-right font-mono font-semibold">{fmt(selectedTxn.total)}</td>
-                    </tr>
-                  </tbody>
-                </table>
+              <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+                <div className="px-4 py-2 bg-slate-50 border-b border-slate-200">
+                  <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Transaction Summary</h5>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Description</div>
+                    <div className="text-sm font-medium text-slate-800 mt-0.5">{selectedTxn.description || '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Date</div>
+                    <div className="text-sm font-mono text-slate-700 mt-0.5">{selectedTxn.transactionDate || '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Receipt / Doc ID</div>
+                    <div className="text-sm font-mono text-slate-700 mt-0.5">{selectedTxn.receiptId || selectedTxn.documentNumber || '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Tariff</div>
+                    <div className="text-sm text-slate-700 mt-0.5">{selectedTxn.tariff || '-'}</div>
+                  </div>
+                </div>
+                <div className="border-t border-slate-100">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-teal-600 to-teal-700 text-white">
+                        <th className="px-3 py-2 text-right font-semibold">Amount</th>
+                        <th className="px-3 py-2 text-right font-semibold">Interest</th>
+                        <th className="px-3 py-2 text-right font-semibold">VAT</th>
+                        <th className="px-3 py-2 text-right font-semibold">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b border-slate-100">
+                        <td className={`px-3 py-2.5 text-right font-mono font-semibold ${(selectedTxn.amount || 0) < 0 ? 'text-red-600' : 'text-slate-800'}`}>{fmt(selectedTxn.amount)}</td>
+                        <td className="px-3 py-2.5 text-right font-mono text-slate-700">{fmt(selectedTxn.interest ?? 0)}</td>
+                        <td className="px-3 py-2.5 text-right font-mono text-slate-700">{fmt(selectedTxn.vat ?? 0)}</td>
+                        <td className={`px-3 py-2.5 text-right font-mono font-bold ${(selectedTxn.total || 0) < 0 ? 'text-red-600' : 'text-blue-700'}`}>{fmt(selectedTxn.total)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
-              <div className="flex justify-center pt-2">
-                <button onClick={() => setSelectedTxn(null)} className="px-6 py-2 bg-slate-800 text-white text-sm rounded hover:bg-slate-700 transition-colors" data-testid="button-close-detail-bottom">Close</button>
+              <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+                <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
+                  <Layers className="w-3.5 h-3.5 text-slate-500" />
+                  <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Ledger Postings</h5>
+                </div>
+                {txnDetailLoading ? (
+                  <div className="p-8 flex items-center justify-center gap-2">
+                    <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                    <span className="text-sm text-slate-500">Loading ledger postings...</span>
+                  </div>
+                ) : txnDetailData && txnDetailData.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-slate-100 border-b border-slate-200">
+                          {Object.keys(txnDetailData[0]).filter(k => !k.startsWith('_') && k !== 'id').slice(0, 12).map(key => (
+                            <th key={key} className="text-left px-3 py-2 font-semibold text-slate-600 whitespace-nowrap text-[10px] uppercase tracking-wider">
+                              {key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim()}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {txnDetailData.map((row: any, ri: number) => {
+                          const keys = Object.keys(row).filter(k => !k.startsWith('_') && k !== 'id').slice(0, 12);
+                          return (
+                            <tr key={ri} className="border-b border-slate-100 hover:bg-blue-50/30">
+                              {keys.map(key => {
+                                const val = row[key];
+                                const isNum = typeof val === 'number';
+                                const isNeg = isNum && val < 0;
+                                const isDate = typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val);
+                                return (
+                                  <td key={key} className={`px-3 py-2 whitespace-nowrap ${isNum ? 'text-right font-mono' : ''} ${isNeg ? 'text-red-600' : 'text-slate-700'}`}>
+                                    {isDate ? new Date(val).toLocaleDateString('en-ZA') : isNum ? fmt(val) : val != null ? String(val) : '-'}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : txnDetailData !== null ? (
+                  <div className="p-6 text-center text-slate-400 text-sm">
+                    <Activity className="w-8 h-8 text-slate-200 mx-auto mb-2" />
+                    No ledger posting data available for this transaction
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button onClick={() => { setSelectedTxn(null); setTxnDetailData(null); }} className="px-6 py-2 bg-slate-800 text-white text-sm rounded-lg hover:bg-slate-700 transition-colors" data-testid="button-close-detail-bottom">Close</button>
               </div>
             </div>
           </div>
@@ -3226,19 +3349,8 @@ function TransactionHistoryTab({ accountId, accountNumber }: { accountId: number
       const params = new URLSearchParams({ receiptId: String(receiptId) });
       const res = await fetch(`/api/proxy/pos-multi-receipt-print?${params.toString()}`);
       if (res.ok) {
-        const receiptData = await res.json();
-        setReceiptPreview(receiptData);
-        setTimeout(() => {
-          const printContent = document.getElementById('enquiry-receipt-print');
-          if (printContent) {
-            const printWindow = window.open('', '_blank', 'width=400,height=600');
-            if (printWindow) {
-              printWindow.document.write(`<html><head><title>Receipt ${item.receiptNo || receiptId}</title><style>body{font-family:monospace;font-size:12px;padding:20px;max-width:350px;margin:0 auto}table{width:100%;border-collapse:collapse}td{padding:2px 4px}h2,h3{text-align:center;margin:4px 0}.divider{border-top:1px dashed #333;margin:8px 0}.right{text-align:right}.bold{font-weight:bold}@media print{body{padding:0}}</style></head><body>${printContent.innerHTML}<script>window.print();window.close();<\/script></body></html>`);
-              printWindow.document.close();
-            }
-          }
-          setReceiptPreview(null);
-        }, 500);
+        const rd = await res.json();
+        setReceiptPreview(rd);
       }
     } catch (e) {
       console.error('Failed to fetch receipt for printing:', e);
@@ -3247,25 +3359,102 @@ function TransactionHistoryTab({ accountId, accountNumber }: { accountId: number
     }
   };
 
+  const handlePrintWindow = () => {
+    if (!receiptPreview) return;
+    const services = Array.isArray(receiptPreview.services) ? receiptPreview.services : [];
+    const svcHtml = services.map((s: any) =>
+      `<tr><td style="padding:3px 4px">${s.serviceDescription || s.description || ''}</td><td style="padding:3px 4px;text-align:right">R ${(s.amount ?? 0).toFixed(2)}</td></tr>`
+    ).join('');
+    const html = `<!DOCTYPE html><html><head><title>Receipt ${receiptPreview.receiptNo || ''}</title>
+<style>body{font-family:'Courier New',monospace;font-size:12px;padding:20px;max-width:380px;margin:0 auto;color:#333}
+table{width:100%;border-collapse:collapse}td{padding:3px 4px}
+h2{text-align:center;margin:6px 0;font-size:14px}p{margin:3px 0}
+.divider{border-top:1px dashed #333;margin:10px 0}
+.right{text-align:right}.bold{font-weight:bold}
+.total-row td{border-top:1px solid #333;font-weight:bold;padding-top:6px}
+@media print{body{padding:0;margin:0}}</style></head><body>
+<h2>${receiptPreview.municipalityName || 'George Municipality'}</h2>
+<p style="text-align:center">${receiptPreview.address || ''}</p>
+<div class="divider"></div>
+<p><strong>Receipt:</strong> ${receiptPreview.receiptNo || receiptPreview.receiptNumber || ''}</p>
+<p><strong>Date:</strong> ${receiptPreview.receiptDate || ''}</p>
+<p><strong>Account:</strong> ${receiptPreview.accountNumber || accountNumber}</p>
+<p><strong>Consumer:</strong> ${receiptPreview.consumerName || ''}</p>
+<div class="divider"></div>
+<table>${svcHtml}
+<tr class="total-row"><td><strong>Total</strong></td><td style="text-align:right"><strong>R ${(receiptPreview.totalAmount ?? receiptPreview.amount ?? 0).toFixed(2)}</strong></td></tr></table>
+<div class="divider"></div>
+<p><strong>Payment:</strong> ${receiptPreview.paymentType || ''}</p>
+<p><strong>Cashier:</strong> ${receiptPreview.cashierName || ''}</p>
+<div class="divider"></div>
+<p style="text-align:center;font-size:10px;color:#666">Thank you for your payment</p>
+</body></html>`;
+    const printWindow = window.open('', '_blank', 'width=450,height=650,scrollbars=yes');
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.onload = () => {
+        setTimeout(() => {
+          printWindow.focus();
+          printWindow.print();
+        }, 300);
+      };
+    }
+  };
+
   return (
     <div className="p-5 space-y-5">
       {receiptPreview && (
-        <div id="enquiry-receipt-print" className="hidden">
-          <h2>{receiptPreview.municipalityName || 'George Municipality'}</h2>
-          <p style={{textAlign:'center'}}>{receiptPreview.address || ''}</p>
-          <div className="divider"></div>
-          <p><strong>Receipt:</strong> {receiptPreview.receiptNo || receiptPreview.receiptNumber || ''}</p>
-          <p><strong>Date:</strong> {receiptPreview.receiptDate || ''}</p>
-          <p><strong>Account:</strong> {receiptPreview.accountNumber || accountNumber}</p>
-          <p><strong>Consumer:</strong> {receiptPreview.consumerName || ''}</p>
-          <div className="divider"></div>
-          {receiptPreview.services && Array.isArray(receiptPreview.services) && receiptPreview.services.map((s: any, si: number) => (
-            <p key={si}>{s.serviceDescription || s.description}: R {(s.amount ?? 0).toFixed(2)}</p>
-          ))}
-          <div className="divider"></div>
-          <p className="bold">Total: R {(receiptPreview.totalAmount ?? receiptPreview.amount ?? 0).toFixed(2)}</p>
-          <p>Payment: {receiptPreview.paymentType || ''}</p>
-          <p>Cashier: {receiptPreview.cashierName || ''}</p>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setReceiptPreview(null)} data-testid="receipt-preview-overlay">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-xl flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Receipt className="w-4 h-4 text-white" />
+                <h4 className="text-sm font-bold text-white">Receipt Preview</h4>
+              </div>
+              <button onClick={() => setReceiptPreview(null)} className="text-white/70 hover:text-white text-xl font-bold w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center" data-testid="button-close-receipt-preview">&times;</button>
+            </div>
+            <div className="p-5 space-y-3 font-mono text-sm">
+              <div className="text-center">
+                <h3 className="font-bold text-slate-800">{receiptPreview.municipalityName || 'George Municipality'}</h3>
+                <p className="text-xs text-slate-500">{receiptPreview.address || ''}</p>
+              </div>
+              <div className="border-t border-dashed border-slate-300 my-2" />
+              <div className="grid grid-cols-2 gap-1 text-xs">
+                <span className="text-slate-500">Receipt:</span><span className="font-semibold text-slate-800">{receiptPreview.receiptNo || receiptPreview.receiptNumber || '-'}</span>
+                <span className="text-slate-500">Date:</span><span className="text-slate-700">{receiptPreview.receiptDate || '-'}</span>
+                <span className="text-slate-500">Account:</span><span className="text-slate-700">{receiptPreview.accountNumber || accountNumber}</span>
+                <span className="text-slate-500">Consumer:</span><span className="text-slate-700">{receiptPreview.consumerName || '-'}</span>
+              </div>
+              <div className="border-t border-dashed border-slate-300 my-2" />
+              {receiptPreview.services && Array.isArray(receiptPreview.services) && receiptPreview.services.length > 0 && (
+                <div className="space-y-1">
+                  {receiptPreview.services.map((s: any, si: number) => (
+                    <div key={si} className="flex justify-between text-xs">
+                      <span className="text-slate-600">{s.serviceDescription || s.description}</span>
+                      <span className="font-semibold text-slate-800">R {(s.amount ?? 0).toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="border-t border-dashed border-slate-300 my-2" />
+              <div className="flex justify-between font-bold text-sm">
+                <span>Total</span>
+                <span className="text-blue-700">R {(receiptPreview.totalAmount ?? receiptPreview.amount ?? 0).toFixed(2)}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-1 text-xs">
+                <span className="text-slate-500">Payment:</span><span className="text-slate-700">{receiptPreview.paymentType || '-'}</span>
+                <span className="text-slate-500">Cashier:</span><span className="text-slate-700">{receiptPreview.cashierName || '-'}</span>
+              </div>
+            </div>
+            <div className="px-5 py-3 border-t border-slate-200 flex items-center justify-end gap-2">
+              <button onClick={() => setReceiptPreview(null)} className="px-4 py-2 border border-slate-300 text-slate-600 text-xs font-semibold rounded-lg hover:bg-slate-50" data-testid="button-close-receipt">Close</button>
+              <button onClick={handlePrintWindow} className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-xs font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 flex items-center gap-1.5 shadow-sm" data-testid="button-print-receipt-confirm">
+                <FileText className="w-3.5 h-3.5" />
+                Print Receipt
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
