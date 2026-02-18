@@ -336,14 +336,15 @@ export async function getDetailedTransactionResults(accountId: number, finYear: 
   return normalizeArray(data);
 }
 
-export async function getBillingPeriodTransactions(accountId: number, finYear: string, billingMonth: number): Promise<any[]> {
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/get-billing-period-transactions?accountId=${accountId}&finYear=${encodeURIComponent(finYear)}&billingMonth=${billingMonth}`);
+export async function getBillingPeriodTransactions(accountId: number, finYear: string, billingMonth: string, balanceType: number = 3): Promise<any[]> {
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/get-billing-period-transactions?accountId=${accountId}&finYear=${encodeURIComponent(finYear)}&billingMonth=${encodeURIComponent(billingMonth)}&balanceType=${balanceType}`);
   return normalizeArray(data);
 }
 
 export async function getAllBillingPeriodTransactions(accountId: number, finYear: string): Promise<any[]> {
+  const months = ['July','August','September','October','November','December','January','February','March','April','May','June'];
   const results: any[] = [];
-  const fetches = Array.from({ length: 12 }, (_, i) => i + 1).map(month =>
+  const fetches = months.map(month =>
     getBillingPeriodTransactions(accountId, finYear, month).catch(() => [])
   );
   const allResults = await Promise.allSettled(fetches);

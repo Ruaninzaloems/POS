@@ -25,7 +25,7 @@ import {
   getDepartmentalAccountsById,
   getContactDetailsHistory, getDeliveryAddressHistory,
   getHandoverAccountEnquiry, getConsHandoverTransactionDetail,
-  getAllBillingPeriodTransactions, getDetailedTransactionResults,
+  getAllBillingPeriodTransactions, getDetailedTransactionResults, getBillingPeriodTransactions,
   getAllServices, getMeteredServicesOnAccount, getAccountServiceMeterPerProperty,
   getUnitLinkedMeters, getMeterReadingHistory, getPrepaidMeterServicesForAccount, getPrepaidRechargeDetailsForMeter,
   getPaymentPlansByAccountId, getPaymentPlanRemainingCapital,
@@ -2829,9 +2829,7 @@ function TransactionSummaryTab({ accountId, accountNumber }: { accountId: number
 }
 
 function DetailedTransactionListTab({ accountId }: { accountId: number }) {
-  const [detailedData, setDetailedData] = useState<any[]>([]);
-  const [serviceBalanceData, setServiceBalanceData] = useState<any[]>([]);
-  const [receiptData, setReceiptData] = useState<any[]>([]);
+  const [billingPeriodData, setBillingPeriodData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const years = useMemo(() => getFinYearOptions(), []);
@@ -2846,18 +2844,12 @@ function DetailedTransactionListTab({ accountId }: { accountId: number }) {
   const calendarMonths = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const finYearMonths = ['July','August','September','October','November','December','January','February','March','April','May','June'];
 
-  const load = useCallback(async (finYear: string) => {
+  const load = useCallback(async (finYear: string, monthName: string) => {
     setLoading(true);
     setError(null);
     try {
-      const [detResult, balResult, rcptResult] = await Promise.all([
-        getDetailedTransactionResults(accountId, finYear).catch(() => []),
-        getServiceTypeBalance(accountId, finYear).catch(() => []),
-        getTransactionHistory('', accountId).catch(() => []),
-      ]);
-      setDetailedData(Array.isArray(detResult) ? detResult : []);
-      setServiceBalanceData(Array.isArray(balResult) ? balResult : []);
-      setReceiptData(Array.isArray(rcptResult) ? rcptResult : []);
+      const result = await getBillingPeriodTransactions(accountId, finYear, monthName);
+      setBillingPeriodData(Array.isArray(result) ? result : []);
     } catch (e: any) {
       setError(e.message || 'Failed to load detailed transactions');
     } finally {
@@ -2866,202 +2858,51 @@ function DetailedTransactionListTab({ accountId }: { accountId: number }) {
   }, [accountId]);
 
   useEffect(() => {
-    const key = `${accountId}-${selectedYear}`;
+    const key = `${accountId}-${selectedYear}-${selectedMonth}`;
     if (lastKey.current !== key) {
       lastKey.current = key;
-      load(selectedYear);
+      load(selectedYear, selectedMonth);
     }
-  }, [accountId, selectedYear, load]);
-
-  const monthsWithData = useMemo(() => {
-    const mSet = new Set<string>();
-    detailedData.forEach((d: any) => {
-      finYearMonths.forEach(m => {
-        const key = m.toLowerCase();
-        if (d[key] && d[key] !== 0) mSet.add(m);
-      });
-    });
-    serviceBalanceData.forEach((d: any) => {
-      if (d.month) mSet.add(d.month);
-    });
-    return mSet;
-  }, [detailedData, serviceBalanceData]);
-
-  useEffect(() => {
-    if (monthsWithData.size > 0 && !monthsWithData.has(selectedMonth)) {
-      const lastWithData = finYearMonths.filter(m => monthsWithData.has(m));
-      if (lastWithData.length > 0) setSelectedMonth(lastWithData[lastWithData.length - 1]);
-    }
-  }, [monthsWithData]);
+  }, [accountId, selectedYear, selectedMonth, load]);
 
   const detailedRows = useMemo(() => {
-    if (!selectedMonth) return [];
-    const monthKey = selectedMonth.toLowerCase();
+    if (!billingPeriodData || billingPeriodData.length === 0) return [];
 
-    const yearParts = selectedYear.split('/');
-    const yearNum = parseInt(yearParts[0]);
-    const monthIdx = calendarMonths.indexOf(selectedMonth);
-    const calMonth = monthIdx >= 0 ? monthIdx + 1 : 1;
-    const dateYear = calMonth >= 7 ? yearNum : yearNum + 1;
-    const monthStart = `01/${String(calMonth).padStart(2, '0')}/${dateYear}`;
-    const billingDateStr = `${dateYear}/${String(calMonth).padStart(2, '0')}/23`;
+    return billingPeriodData.map((row: any) => {
+      const txDate = row.transactionDate ? new Date(row.transactionDate).toLocaleDateString('en-ZA', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+      const desc = row.description || '';
+      const drilldown = (row.drilldown || '').toLowerCase();
+      const descLower = desc.toLowerCase();
+      const isPayment = drilldown === 'receipt' || descLower.includes('payment');
+      const isLevy = drilldown === 'levy' || descLower.includes('levy');
+      const isRebate = drilldown === 'rebate' || descLower.includes('rebate');
+      const isInterest = drilldown === 'interest' || descLower.includes('interest');
+      const isOpen = descLower.includes('opening balance') || descLower.includes('open balance');
+      const isClose = descLower.includes('closing balance') || descLower.includes('close balance');
 
-    const rows: any[] = [];
-
-    const openRow = detailedData.find((d: any) => d.transGroup === 1);
-    const openVal = openRow ? (openRow[monthKey] || 0) : 0;
-    const interestRow = detailedData.find((d: any) => d.transGroup === 601);
-    const interestVal = interestRow ? (interestRow[monthKey] || 0) : 0;
-    const closingRow = detailedData.find((d: any) => d.transGroup === 990);
-    const closingVal = closingRow ? (closingRow[monthKey] || 0) : 0;
-    const totalRow = detailedData.find((d: any) => d.transGroup === 900);
-    const totalVal = totalRow ? (totalRow[monthKey] || 0) : 0;
-    const receiptsRow = detailedData.find((d: any) => d.transGroup === 915);
-    const receiptsVal = receiptsRow ? (receiptsRow[monthKey] || 0) : 0;
-
-    const monthBalData = serviceBalanceData.filter((d: any) => d.month === selectedMonth);
-    const totalInterestFromBal = monthBalData.reduce((s: number, d: any) => s + (d.interestAmount || 0), 0);
-    const totalVatFromBal = monthBalData.reduce((s: number, d: any) => s + (d.vat || 0), 0);
-    const openInterest = totalInterestFromBal;
-    const openVat = totalVatFromBal;
-
-    rows.push({
-      transactionDate: monthStart,
-      description: 'Open Balance',
-      receiptId: '',
-      documentNumber: '',
-      tariff: '',
-      amount: openVal,
-      interest: openInterest,
-      vat: openVat,
-      total: openVal + openInterest + openVat,
-      isSpecial: true,
-    });
-
-    const monthReceipts = receiptData.filter((r: any) => {
-      if (!r.receiptDate) return false;
-      const rd = new Date(r.receiptDate);
-      return rd.getMonth() === monthIdx && ((calMonth >= 7 && rd.getFullYear() === yearNum) || (calMonth < 7 && rd.getFullYear() === yearNum + 1));
-    });
-
-    monthReceipts.sort((a: any, b: any) => new Date(a.receiptDate).getTime() - new Date(b.receiptDate).getTime());
-    monthReceipts.forEach((r: any) => {
-      const rDate = r.receiptDate ? new Date(r.receiptDate) : null;
-      const dateStr = rDate ? `${rDate.getFullYear()}/${String(rDate.getMonth()+1).padStart(2,'0')}/${String(rDate.getDate()).padStart(2,'0')}` : '';
-      rows.push({
-        transactionDate: dateStr,
-        description: 'Payment',
-        receiptId: r.receiptNo || '',
-        documentNumber: r.receiptId ? `98/${r.receiptId}` : '',
-        tariff: '',
-        amount: -(r.amount || 0),
-        interest: 0,
-        vat: 0,
-        total: -(r.amount || 0),
-        isPayment: true,
-      });
-    });
-
-    const levyRows = detailedData.filter((d: any) => d.transGroup === 201 && d[monthKey] && d[monthKey] !== 0);
-    const serviceMap = new Map<number, any>();
-    monthBalData.forEach((sb: any) => {
-      if (sb.serviceTypeID) {
-        serviceMap.set(sb.serviceTypeID, sb);
-      }
-    });
-
-    const levyDescMap: Record<number, string> = {
-      1: 'Levy - Water Basic',
-      2: 'Levy - Water Metered',
-      5: 'Levy - Electricity Basic',
-      6: 'Levy - Electricity Metered',
-      9: 'Levy - Property Rates',
-      10: 'Levy - Waste Disposal',
-      11: 'Levy - Sanitation Basic',
-    };
-
-    levyRows.forEach((d: any) => {
-      const svcId = d.serviceTypeId;
-      const bal = serviceMap.get(svcId);
-      const levyAmount = bal ? (bal.currentCharge || 0) : (d[monthKey] || 0);
-      const levyVat = bal ? (bal.vat || 0) : 0;
-      const levyInterest = bal ? (bal.interestAmount || 0) : 0;
-      const total = d[monthKey] || 0;
-      const desc = levyDescMap[svcId] || `Levy - ${d.serviceDesc || 'Unknown'}`;
-
-      rows.push({
-        transactionDate: billingDateStr,
+      return {
+        transactionDate: txDate,
         description: desc,
-        receiptId: '',
-        documentNumber: '',
-        tariff: d.serviceDesc || '',
-        amount: levyAmount,
-        interest: levyInterest,
-        vat: levyVat,
-        total: total,
-        isLevy: true,
-      });
+        receiptId: row.transactionId || '',
+        documentNumber: row.documentNumber || '',
+        tariff: row.tariff || '',
+        amount: row.amount ?? 0,
+        interest: row.interestAmount ?? 0,
+        vat: row.vatAmount ?? 0,
+        total: row.totalAmount ?? 0,
+        isPayment,
+        isLevy,
+        isRebate,
+        isInterest,
+        isSpecial: isOpen || isClose,
+        isBold: isClose,
+        drilldown: row.drilldown || '',
+        primaryId: row.primaryId || '',
+        queryId: row.queryId,
+        _raw: row,
+      };
     });
-
-    const rebateRows = detailedData.filter((d: any) => (d.transGroup >= 301 && d.transGroup < 600) && d[monthKey] && d[monthKey] !== 0 && d.serviceDesc !== '0 301');
-    rebateRows.forEach((d: any) => {
-      rows.push({
-        transactionDate: billingDateStr,
-        description: `Rebate - ${d.serviceDesc || 'Residential'}`,
-        receiptId: '',
-        documentNumber: '',
-        tariff: '',
-        amount: d[monthKey] || 0,
-        interest: 0,
-        vat: 0,
-        total: d[monthKey] || 0,
-        isRebate: true,
-      });
-    });
-
-    if (interestVal && interestVal !== 0) {
-      rows.push({
-        transactionDate: billingDateStr,
-        description: 'Interest',
-        receiptId: '',
-        documentNumber: '',
-        tariff: '',
-        amount: 0,
-        interest: interestVal,
-        vat: 0,
-        total: interestVal,
-        isInterest: true,
-      });
-    }
-
-    rows.sort((a: any, b: any) => {
-      if (a.isSpecial && a.description === 'Open Balance') return -1;
-      if (b.isSpecial && b.description === 'Open Balance') return 1;
-      const dateA = a.transactionDate || '';
-      const dateB = b.transactionDate || '';
-      if (dateA !== dateB) return dateA.localeCompare(dateB);
-      const typeOrder = (r: any) => r.isPayment ? 0 : r.isLevy ? 1 : r.isRebate ? 2 : r.isInterest ? 3 : 4;
-      return typeOrder(a) - typeOrder(b);
-    });
-
-    const closingInterest = openInterest;
-    const closingVat = openVat;
-    rows.push({
-      transactionDate: billingDateStr,
-      description: 'Closing Balance',
-      receiptId: '',
-      documentNumber: '',
-      tariff: '',
-      amount: closingVal,
-      interest: closingInterest,
-      vat: closingVat,
-      total: closingVal,
-      isSpecial: true,
-      isBold: true,
-    });
-
-    return rows;
-  }, [detailedData, serviceBalanceData, receiptData, selectedMonth, selectedYear]);
+  }, [billingPeriodData]);
 
   const fmt = (v: any) => {
     if (v === undefined || v === null || v === '') return '';
@@ -3077,22 +2918,25 @@ function DetailedTransactionListTab({ accountId }: { accountId: number }) {
     setTxnDetailLoading(true);
     try {
       let detail: any[] = [];
-      if (row.isPayment && row.receiptId) {
-        const idMatch = row.documentNumber?.match(/98\/(\d+)/);
-        const primaryId = idMatch ? parseInt(idMatch[1]) : null;
-        if (primaryId) {
-          const result = await getReceiptTransactionDetail(primaryId);
-          detail = Array.isArray(result) ? result : result ? [result] : [];
-        }
-      } else if (row.isLevy) {
-        detail = await getLevyTransactionDetail(accountId);
-      } else if (row.isRebate) {
-        detail = await getRebateTransactionDetail(accountId);
-      } else if (row.isInterest) {
-        detail = await getInterestConsPaymentDetail(accountId);
-      } else if (row.description === 'Open Balance') {
+      const drilldown = (row.drilldown || '').toLowerCase();
+      const pId = row.primaryId ? parseInt(row.primaryId) : null;
+
+      if (drilldown === 'openbalance') {
         detail = await getOpenBalanceDetail(accountId);
-      } else if (row.description === 'Closing Balance') {
+      } else if (drilldown === 'closebalance') {
+        detail = await getCloseBalanceDetail(accountId);
+      } else if (drilldown === 'receipt' && pId) {
+        const result = await getReceiptTransactionDetail(pId);
+        detail = Array.isArray(result) ? result : result ? [result] : [];
+      } else if (drilldown === 'levy') {
+        detail = await getLevyTransactionDetail(accountId);
+      } else if (drilldown === 'rebate') {
+        detail = await getRebateTransactionDetail(accountId);
+      } else if (drilldown === 'interest') {
+        detail = await getInterestConsPaymentDetail(accountId);
+      } else if (row.isSpecial && row.description?.toLowerCase().includes('open')) {
+        detail = await getOpenBalanceDetail(accountId);
+      } else if (row.isSpecial && row.description?.toLowerCase().includes('clos')) {
         detail = await getCloseBalanceDetail(accountId);
       } else {
         detail = await getJournalTransactionDetails(accountId);
@@ -3107,7 +2951,7 @@ function DetailedTransactionListTab({ accountId }: { accountId: number }) {
   };
 
   if (loading) return <LoadingSkeleton />;
-  if (error) return <ErrorState message={error} onRetry={() => load(selectedYear)} />;
+  if (error) return <ErrorState message={error} onRetry={() => load(selectedYear, selectedMonth)} />;
 
   return (
     <div className="p-5 space-y-5" data-testid="detailed-transaction-panel">
