@@ -605,7 +605,7 @@ function GeneralEnquiriesContent() {
 
           <div className="flex items-center justify-between mt-1.5">
             <p className="text-[11px] text-slate-400">
-              Search by Account, Name, ID, Phone, Email. Results appear as you type.
+              Search by Account, Name, ID, Phone, Email, SG Number. Results appear as you type.
             </p>
             <button
               onClick={() => setShowFiltersPanel(prev => !prev)}

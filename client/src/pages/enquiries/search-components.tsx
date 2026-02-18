@@ -34,6 +34,7 @@ export function detectSearchType(query: string): { field: string; label: string;
   const trimmed = query.trim();
   if (/^0\d{9}$/.test(trimmed)) return { field: 'mobileNumber', label: 'Mobile Number' };
   if (/^\d{13}$/.test(trimmed)) return { field: 'idNo', label: 'ID Number' };
+  if (/^[A-Z]\d{3}\/\d{4}\/\d+\/\d+$/i.test(trimmed)) return { field: 'sgNumber', label: 'SG Number' };
   if (/^\d{6,15}$/.test(trimmed)) return { field: 'accountNo', label: 'Account Number' };
   if (/^\d{1,5}$/.test(trimmed)) return { field: 'accountNo', label: 'Account Number' };
   if (/@/.test(trimmed) || /\.(com|co\.za|org|net|gov|ac\.za)$/i.test(trimmed) || /^(gmail|yahoo|outlook|hotmail|webmail|mail)/i.test(trimmed)) {

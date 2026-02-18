@@ -1184,14 +1184,108 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-enquiry/enquiry-results", async (req, res) => {
     try {
-      const unsupportedFields = ['erfNumber', 'deliveryAddress', 'trading', 'allotmentArea', 'sgNumber'];
+      const sgNumber = req.body.sgNumber ? String(req.body.sgNumber).trim() : '';
+      const erfNumber = req.body.erfNumber ? String(req.body.erfNumber).trim() : '';
+
+      const unsupportedFields = ['deliveryAddress', 'trading', 'allotmentArea'];
       const cleanBody: Record<string, any> = {};
       for (const [k, v] of Object.entries(req.body)) {
         if (!unsupportedFields.includes(k) && v !== undefined && v !== null && String(v).trim() !== '') {
           cleanBody[k] = v;
         }
       }
-      if (Object.keys(cleanBody).length === 0) {
+
+      if (sgNumber || erfNumber) {
+        console.log(`[enquiry-results] SG/ERF search — sgNumber: "${sgNumber}", erfNumber: "${erfNumber}"`);
+
+        const scanConsUnits = async (targetSg: string, maxUnits: number = 2000): Promise<number | null> => {
+          const batchSize = 20;
+          for (let start = 1; start <= maxUnits; start += batchSize) {
+            const ids = Array.from({ length: Math.min(batchSize, maxUnits - start + 1) }, (_, i) => start + i);
+            const checks = ids.map(async (unitId) => {
+              try {
+                const unitData = await proxyGet(`${EXTERNAL_API_BASE}/api/cons-units/${unitId}`);
+                if (unitData && !unitData.error && unitData.sgNumber === targetSg) {
+                  return unitId;
+                }
+              } catch { }
+              return null;
+            });
+            const results = await Promise.all(checks);
+            const match = results.find(r => r !== null);
+            if (match) return match;
+          }
+          return null;
+        };
+
+        if (sgNumber) {
+          console.log(`[enquiry-results] Scanning Sebata cons-units for SG match...`);
+          const matchedUnitId = await scanConsUnits(sgNumber);
+          if (matchedUnitId !== null) {
+            console.log(`[enquiry-results] Found SG match at cons-unit ${matchedUnitId}, looking up property...`);
+            try {
+              const propData = await platinumGet("/api/BillingEnquiry/PropertyDetailsByAccountId", { accountId: String(matchedUnitId) });
+              if (propData && !propData._error) {
+                const accData = await platinumPost("/api/BillingEnquiry/EnquiryResults", { accountID: matchedUnitId });
+                if (Array.isArray(accData) && accData.length > 0) {
+                  console.log(`[enquiry-results] SG search returned ${accData.length} account(s)`);
+                  return res.json(accData);
+                }
+                if (accData && !accData._error) {
+                  return res.json([accData]);
+                }
+              }
+            } catch (lookupErr: any) {
+              console.log(`[enquiry-results] Account lookup for unit ${matchedUnitId} failed: ${lookupErr.message}`);
+            }
+          } else {
+            console.log(`[enquiry-results] No SG match found in cons-units scan`);
+          }
+        }
+
+        if (erfNumber && !sgNumber) {
+          console.log(`[enquiry-results] ERF search not supported by Platinum API, scanning properties...`);
+          const matchedAccounts: any[] = [];
+          const batchSize = 10;
+          for (let start = 1; start <= 200 && matchedAccounts.length === 0; start += batchSize) {
+            const ids = Array.from({ length: batchSize }, (_, i) => start + i);
+            const checks = ids.map(async (accId) => {
+              try {
+                const propData = await platinumGet("/api/BillingEnquiry/PropertyDetailsByAccountId", { accountId: String(accId) });
+                if (propData && !propData._error) {
+                  const propErf = String(propData.erfNumber || '').replace(/^0+/, '');
+                  if (propErf === erfNumber) return accId;
+                }
+              } catch { }
+              return null;
+            });
+            const results = await Promise.all(checks);
+            for (const accId of results.filter(Boolean)) {
+              try {
+                const accData = await platinumPost("/api/BillingEnquiry/EnquiryResults", { accountID: accId });
+                if (Array.isArray(accData)) matchedAccounts.push(...accData);
+                else if (accData && !accData._error) matchedAccounts.push(accData);
+              } catch { }
+            }
+          }
+          if (matchedAccounts.length > 0) {
+            console.log(`[enquiry-results] ERF search found ${matchedAccounts.length} matching accounts`);
+            return res.json(matchedAccounts);
+          }
+        }
+
+        const otherFields = { ...cleanBody };
+        delete otherFields.sgNumber;
+        delete otherFields.erfNumber;
+        if (Object.keys(otherFields).length === 0) {
+          return res.json([]);
+        }
+      }
+
+      const searchBody = { ...cleanBody };
+      delete searchBody.sgNumber;
+      delete searchBody.erfNumber;
+      if (Object.keys(searchBody).length === 0) {
         return res.json([]);
       }
       console.log(`[enquiry-results] Search body:`, JSON.stringify(cleanBody));
