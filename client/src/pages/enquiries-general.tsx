@@ -25,7 +25,7 @@ import {
   getHandoverAccountEnquiry, getConsHandoverTransactionDetail,
   getBillingPeriodTransactions, getDetailedTransactionResults,
   getAllServices, getMeteredServicesOnAccount, getAccountServiceMeterPerProperty,
-  getUnitLinkedMeters, getPrepaidMeterServicesForAccount,
+  getUnitLinkedMeters, getMeterReadingHistory, getPrepaidMeterServicesForAccount,
   getPaymentPlansByAccountId, getPaymentPlanRemainingCapital,
   getRepaymentPlanStatus, getPaymentExtensionSearchResults, getPaymentAmountByAccountIds,
   getDebitOrderDeductionByAccount, getDebitOrderDeduction,
@@ -1505,9 +1505,93 @@ function PropertyDetailsTab({ accountId }: { accountId: number }) {
   );
 }
 
+function ConsumptionChart({ readings }: { readings: any[] }) {
+  if (!readings.length) return null;
+
+  const sorted = [...readings].sort((a, b) => {
+    const parseDate = (d: string) => {
+      if (!d) return 0;
+      const parts = d.split('/');
+      if (parts.length === 3) return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime();
+      return new Date(d).getTime();
+    };
+    return parseDate(a.reading1Date) - parseDate(b.reading1Date);
+  });
+
+  const recent = sorted.slice(-12);
+  const maxVal = Math.max(...recent.map(r => r.consumption || 0), 1);
+  const yTicks: number[] = [];
+  const step = Math.ceil(maxVal / 5);
+  for (let i = 0; i <= maxVal + step; i += step) yTicks.push(i);
+
+  const getBarColor = (item: any) => {
+    const flag = (item.flag || item.levyStatus || '').toLowerCase();
+    if (flag.includes('reversed') || flag.includes('cancel')) return { bg: 'bg-red-500', label: 'Reversed' };
+    if (flag.includes('estimate') || flag.includes('levy')) return { bg: 'bg-gray-400', label: 'Levy Estimate' };
+    return { bg: 'bg-blue-500', label: 'Actual' };
+  };
+
+  const formatMonth = (item: any) => {
+    const month = item.billingmonth || item.billingMonth || '';
+    const fy = item.financialYear || '';
+    if (month && fy) {
+      const years = fy.split('/');
+      const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      const monthIdx = monthNames.findIndex(m => m.toLowerCase() === month.toLowerCase());
+      if (monthIdx >= 0) {
+        const year = monthIdx >= 6 ? years[0] : years[1];
+        return `${month.substring(0, 3)}-${year}`;
+      }
+    }
+    if (month === 'Current Open Period') return 'Current';
+    return month.substring(0, 3) || '?';
+  };
+
+  return (
+    <div className="mt-4">
+      <div className="flex items-center justify-center gap-6 mb-4 text-xs">
+        <div className="flex items-center gap-1.5"><div className="w-4 h-3 bg-blue-500 rounded-sm" /><span className="text-slate-600">Actual</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-4 h-3 bg-gray-400 rounded-sm" /><span className="text-slate-600">Levy Estimate</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-4 h-3 bg-red-500 rounded-sm" /><span className="text-slate-600">Reversed</span></div>
+      </div>
+      <div className="flex">
+        <div className="flex flex-col justify-between items-end pr-2 text-[10px] text-slate-400 font-mono" style={{ height: 200 }}>
+          {[...yTicks].reverse().map((t, i) => <span key={i}>{t}</span>)}
+        </div>
+        <div className="flex-1 relative border-l border-b border-slate-300" style={{ height: 200 }}>
+          <div className="absolute inset-0 flex items-end justify-around px-1 gap-1">
+            {recent.map((item, i) => {
+              const pct = maxVal > 0 ? ((item.consumption || 0) / (yTicks[yTicks.length - 1] || maxVal)) * 100 : 0;
+              const color = getBarColor(item);
+              return (
+                <div key={i} className="flex flex-col items-center flex-1 min-w-0" style={{ height: '100%', justifyContent: 'flex-end' }}>
+                  <span className="text-[9px] font-mono text-slate-600 mb-0.5">{item.consumption || 0}</span>
+                  <div className={`w-full max-w-[40px] ${color.bg} rounded-t-sm transition-all`} style={{ height: `${Math.max(pct, 1)}%` }} title={`${formatMonth(item)}: ${item.consumption || 0} (${color.label})`} />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+      <div className="flex ml-8 mt-1">
+        <div className="flex-1 flex justify-around px-1 gap-1">
+          {recent.map((item, i) => (
+            <div key={i} className="flex-1 min-w-0 text-center">
+              <span className="text-[9px] text-slate-500 block leading-tight" style={{ transform: 'rotate(-30deg)', transformOrigin: 'top center', whiteSpace: 'nowrap' }}>{formatMonth(item)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ConsumptionTab({ accountId }: { accountId: number }) {
-  const [data, setData] = useState<any[]>([]);
+  const [meters, setMeters] = useState<any[]>([]);
+  const [selectedMeter, setSelectedMeter] = useState<any | null>(null);
+  const [readingHistory, setReadingHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const loaded = useRef(false);
 
@@ -1515,8 +1599,8 @@ function ConsumptionTab({ accountId }: { accountId: number }) {
     setLoading(true);
     setError(null);
     try {
-      const result = await getConsumptionUnits(accountId);
-      setData(result);
+      const result = await getMeteredServicesOnAccount(accountId);
+      setMeters(result);
       loaded.current = true;
     } catch (e: any) {
       setError(e.message || 'Failed to load consumption data');
@@ -1527,36 +1611,180 @@ function ConsumptionTab({ accountId }: { accountId: number }) {
 
   useEffect(() => { if (!loaded.current) load(); }, [load]);
 
+  const loadHistory = useCallback(async (meter: any) => {
+    setSelectedMeter(meter);
+    setHistoryLoading(true);
+    try {
+      const meterNo = (meter.meterNo || meter.meterNumber || '').replace(/^0+/, '');
+      const history = await getMeterReadingHistory(accountId, meterNo);
+      setReadingHistory(history);
+    } catch {
+      setReadingHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [accountId]);
+
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
-  if (!data.length) return <EmptyState message="No consumption data available" />;
+  if (!meters.length) return <EmptyState message="No metered services found for this account" />;
+
+  const meterCols = [
+    { key: 'serviceDesc', label: 'Service Type' },
+    { key: 'meterClassificationDesc', label: 'Meter Classification' },
+    { key: 'tariff', label: 'Tariff' },
+    { key: 'combinationMeterPhysicalNumber', label: 'Combination Meter No' },
+    { key: 'connectionSizeDesc', label: 'Meter Connection Size' },
+    { key: 'tarifffactor', label: 'Factor' },
+    { key: 'dwellingIntervalMultiplier', label: 'Dwelling Unit Interval Multiplier' },
+    { key: 'meterNo', label: 'Meter No' },
+    { key: 'meterPhase', label: 'Meter Phase' },
+    { key: 'physicalMeterNo', label: 'Physical Meter No' },
+    { key: 'meterBookNo', label: 'Meter Book' },
+    { key: 'routeFileName', label: 'Route' },
+    { key: 'serviceStatus', label: 'Service Status' },
+    { key: 'numberofDials', label: 'Number of Dials' },
+  ];
+
+  const historyCols = [
+    { key: 'serviceDesc', label: 'Service Type' },
+    { key: 'meterClassificationDesc', label: 'Meter Classification', fallback: () => selectedMeter?.meterClassificationDesc || '' },
+    { key: 'tariff', label: 'Tariff', fallback: () => selectedMeter?.tariff || '' },
+    { key: 'combinationMeterNo', label: 'Combination Meter No' },
+    { key: 'tarifffactor', label: 'Factor', fallback: () => selectedMeter?.tarifffactor },
+    { key: 'meterNo', label: 'Meter No' },
+    { key: 'physicalMeterNo', label: 'Physical Meter No', fallback: () => selectedMeter?.physicalMeterNo || '' },
+    { key: 'billingmonth', label: 'Billing Month' },
+    { key: 'meterBookNo', label: 'Meter Book', fallback: () => selectedMeter?.meterBookNo || '' },
+    { key: 'routeFileName', label: 'Route' },
+    { key: 'reading1Date', label: 'Old Reading Date' },
+    { key: 'reading1', label: 'Old Reading' },
+    { key: 'reading2Date', label: 'New Reading Date' },
+    { key: 'reading2', label: 'New Reading' },
+    { key: 'readingdays', label: 'Reading Days' },
+    { key: 'consumption', label: 'Consumption' },
+    { key: 'flag', label: 'Levy Status' },
+  ];
+
+  const sortedHistory = [...readingHistory].sort((a, b) => {
+    const parseDate = (d: string) => {
+      if (!d) return 0;
+      const parts = d.split('/');
+      if (parts.length === 3) return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime();
+      return new Date(d).getTime();
+    };
+    return parseDate(b.reading1Date) - parseDate(a.reading1Date);
+  });
 
   return (
-    <div className="p-4 overflow-x-auto">
-      <table className="w-full text-sm" data-testid="table-consumption">
-        <thead>
-          <tr className="border-b-2 border-slate-200">
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Meter / Unit</th>
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Service Type</th>
-            <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Previous Reading</th>
-            <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Current Reading</th>
-            <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Consumption</th>
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Read Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((item: any, i: number) => (
-            <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-              <td className="py-2 px-3 font-medium text-slate-700">{item.meterNumber || item.physicalMeterNumber || item.consUnit || `Unit ${i + 1}`}</td>
-              <td className="py-2 px-3">{item.serviceType || item.serviceDescription || '-'}</td>
-              <td className="py-2 px-3 text-right font-mono">{item.previousReading ?? '-'}</td>
-              <td className="py-2 px-3 text-right font-mono">{item.currentReading ?? '-'}</td>
-              <td className="py-2 px-3 text-right font-mono font-semibold">{item.consumption ?? '-'}</td>
-              <td className="py-2 px-3 text-slate-500">{item.readDate ? new Date(item.readDate).toLocaleDateString('en-ZA') : '-'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="p-4 space-y-6" data-testid="consumption-tab">
+      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+          <Zap className="w-4 h-4 text-white" />
+          <h3 className="text-sm font-semibold text-white tracking-wide">Consumption</h3>
+          <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{meters.length} meter{meters.length !== 1 ? 's' : ''}</Badge>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm" data-testid="table-consumption-meters">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="w-8 py-2 px-2"></th>
+                {meterCols.map(col => (
+                  <th key={col.key} className="text-left py-2 px-2 text-[10px] uppercase tracking-wider text-slate-500 font-semibold whitespace-nowrap">{col.label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {meters.map((meter: any, i: number) => {
+                const isSelected = selectedMeter && (selectedMeter.meterNo === meter.meterNo && selectedMeter.serviceDesc === meter.serviceDesc);
+                return (
+                  <tr
+                    key={i}
+                    onClick={() => loadHistory(meter)}
+                    className={`border-b border-slate-100 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 ring-1 ring-blue-300' : 'hover:bg-slate-50'}`}
+                    data-testid={`row-meter-${i}`}
+                  >
+                    <td className="py-2 px-2 text-center">
+                      <div className={`w-3.5 h-3.5 rounded-full border-2 ${isSelected ? 'border-blue-600 bg-blue-600' : 'border-slate-300'}`}>
+                        {isSelected && <div className="w-full h-full flex items-center justify-center"><div className="w-1.5 h-1.5 bg-white rounded-full" /></div>}
+                      </div>
+                    </td>
+                    {meterCols.map(col => (
+                      <td key={col.key} className="py-2 px-2 text-[12px] text-slate-700 whitespace-nowrap">{meter[col.key] ?? '-'}</td>
+                    ))}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {selectedMeter && (
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 bg-gradient-to-r from-slate-100 to-white border-b border-slate-200">
+            <h3 className="text-sm font-bold text-slate-800">Meter Reading History Chart</h3>
+          </div>
+          <div className="p-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-4 gap-y-2 mb-4 border border-slate-200 rounded-lg p-3 bg-slate-50">
+              <div><span className="text-[10px] text-slate-400 block">Service Type</span><span className="text-xs font-medium text-slate-700">{selectedMeter.serviceDesc || '-'}</span></div>
+              <div><span className="text-[10px] text-slate-400 block">Meter Classification</span><span className="text-xs font-medium text-slate-700">{selectedMeter.meterClassificationDesc || '-'}</span></div>
+              <div><span className="text-[10px] text-slate-400 block">Tariff</span><span className="text-xs font-medium text-slate-700 break-words">{selectedMeter.tariff || '-'}</span></div>
+              <div><span className="text-[10px] text-slate-400 block">Factor</span><span className="text-xs font-medium text-slate-700">{selectedMeter.tarifffactor ?? '-'}</span></div>
+              <div><span className="text-[10px] text-slate-400 block">Physical Meter No</span><span className="text-xs font-medium text-slate-700">{selectedMeter.physicalMeterNo || '-'}</span></div>
+              <div><span className="text-[10px] text-slate-400 block">Route File</span><span className="text-xs font-medium text-slate-700">{selectedMeter.routeFileName || '-'}</span></div>
+            </div>
+
+            {historyLoading ? (
+              <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-500" /><span className="ml-2 text-sm text-slate-500">Loading meter reading history...</span></div>
+            ) : readingHistory.length > 0 ? (
+              <ConsumptionChart readings={readingHistory} />
+            ) : (
+              <div className="text-center py-8 text-slate-400 text-sm">No reading history available for this meter</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {selectedMeter && !historyLoading && readingHistory.length > 0 && (
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Meter Reading History</h3>
+            <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{readingHistory.length} records</Badge>
+          </div>
+          <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+            <table className="w-full text-sm" data-testid="table-meter-reading-history">
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  {historyCols.map(col => (
+                    <th key={col.key} className="text-left py-2 px-2 text-[10px] uppercase tracking-wider text-slate-500 font-semibold whitespace-nowrap">{col.label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {sortedHistory.map((item: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
+                    {historyCols.map(col => {
+                      let val = item[col.key];
+                      if ((val === undefined || val === null || val === '') && (col as any).fallback) val = (col as any).fallback();
+                      if (col.key === 'consumption') {
+                        return <td key={col.key} className="py-1.5 px-2 text-[12px] font-mono font-bold text-blue-700 whitespace-nowrap">{val ?? '-'}</td>;
+                      }
+                      if (col.key === 'flag') {
+                        const f = String(val || '').toLowerCase();
+                        const color = f.includes('reversed') || f.includes('cancel') ? 'text-red-600' : f.includes('estimate') || f.includes('levy') ? 'text-amber-600' : 'text-green-700';
+                        return <td key={col.key} className={`py-1.5 px-2 text-[12px] font-medium whitespace-nowrap ${color}`}>{val || '-'}</td>;
+                      }
+                      return <td key={col.key} className="py-1.5 px-2 text-[12px] text-slate-700 whitespace-nowrap">{val ?? '-'}</td>;
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

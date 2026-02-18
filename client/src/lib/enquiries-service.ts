@@ -232,13 +232,13 @@ export async function getUnitLinkedMeters(unitId: number): Promise<any[]> {
   return normalizeArray(data);
 }
 
-export async function getMeterReadingHistory(meterId: number): Promise<any[]> {
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/meter-reading-history?meterId=${meterId}`);
+export async function getMeterReadingHistory(accountId: number, meterNo: string): Promise<any[]> {
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/meter-reading-history?accountId=${accountId}&meterNo=${meterNo}`);
   return normalizeArray(data);
 }
 
-export async function getMeterReadingHistoryBarchart(meterId: number): Promise<any[]> {
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/meter-reading-history-barchart?meterId=${meterId}`);
+export async function getMeterReadingHistoryBarchart(accountId: number, meterNo: string): Promise<any[]> {
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/meter-reading-history-barchart?accountId=${accountId}&meterNo=${meterNo}`);
   return normalizeArray(data);
 }
 
