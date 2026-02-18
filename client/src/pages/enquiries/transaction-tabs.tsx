@@ -445,7 +445,7 @@ export function DetailedTransactionListTab({ accountId }: { accountId: number })
 
       {selectedTxn && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setSelectedTxn(null); setTxnDetailData(null); }} data-testid="txn-detail-overlay">
-          <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-[95vw] w-full max-h-[95vh] overflow-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-xl">
               <div className="flex items-center gap-3">
                 <FileText className="w-5 h-5 text-white" />
