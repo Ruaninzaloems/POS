@@ -570,6 +570,8 @@ export function ConsumptionTab({ accountId }: { accountId: number }) {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const loaded = useRef(false);
+  const finYears = useMemo(() => getFinYearOptions(), []);
+  const [selectedFinYear, setSelectedFinYear] = useState(finYears[0]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -654,26 +656,72 @@ export function ConsumptionTab({ accountId }: { accountId: number }) {
     { key: 'supportingDocument', label: 'Supporting Document' },
   ];
 
-  const sortedHistory = (() => {
-    const parseDate = (d: string) => {
-      if (!d) return 0;
-      const parts = d.split('/');
-      if (parts.length === 3) return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime();
-      return new Date(d).getTime();
-    };
+  const parseDate = useCallback((d: string) => {
+    if (!d) return 0;
+    const parts = d.split('/');
+    if (parts.length === 3) return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime();
+    return new Date(d).getTime();
+  }, []);
 
+  const getRecordFinYear = useCallback((item: any): string => {
+    if (item.finYear) return item.finYear;
+    if (item.financialYear) return item.financialYear;
+    const dateStr = item.reading2Date || item.reading1Date || '';
+    if (!dateStr) return '';
+    const ts = parseDate(dateStr);
+    if (!ts) return '';
+    const d = new Date(ts);
+    const month = d.getMonth();
+    const year = d.getFullYear();
+    const startYear = month >= 6 ? year : year - 1;
+    return `${startYear}/${startYear + 1}`;
+  }, [parseDate]);
+
+  const filteredHistory = useMemo(() => {
     const sorted = [...readingHistory].sort((a, b) => parseDate(b.reading1Date) - parseDate(a.reading1Date));
 
     const seenKeys = new Set<string>();
-    return sorted.filter(item => {
+    const deduped = sorted.filter(item => {
       const bm = (item.billingmonth || item.billingMonth || '').trim();
-      const finYear = item.finYear || item.financialYear || '';
-      const key = `${finYear}__${bm.toLowerCase()}`;
+      const fy = getRecordFinYear(item);
+      const key = `${fy}__${bm.toLowerCase()}`;
       if (seenKeys.has(key)) return false;
       seenKeys.add(key);
       return true;
     });
-  })();
+
+    return deduped.filter(item => {
+      const fy = getRecordFinYear(item);
+      return fy === selectedFinYear;
+    });
+  }, [readingHistory, selectedFinYear, parseDate, getRecordFinYear]);
+
+  const availableFinYears = useMemo(() => {
+    const years = new Set<string>();
+    readingHistory.forEach(item => {
+      const fy = getRecordFinYear(item);
+      if (fy) years.add(fy);
+    });
+    const allYears = [...new Set([...finYears, ...years])];
+    allYears.sort((a, b) => {
+      const ya = parseInt(a.split('/')[0]);
+      const yb = parseInt(b.split('/')[0]);
+      return yb - ya;
+    });
+    return allYears;
+  }, [readingHistory, finYears, getRecordFinYear]);
+
+  const openMonthsCount = useMemo(() => {
+    const [startYearStr] = selectedFinYear.split('/');
+    const startYear = parseInt(startYearStr);
+    const now = new Date();
+    const finStart = new Date(startYear, 6, 1);
+    const finEnd = new Date(startYear + 1, 5, 30);
+    if (now < finStart) return 0;
+    const end = now > finEnd ? finEnd : now;
+    const months = (end.getFullYear() - finStart.getFullYear()) * 12 + (end.getMonth() - finStart.getMonth()) + 1;
+    return Math.min(Math.max(months, 0), 12);
+  }, [selectedFinYear]);
 
   return (
     <div className="p-5 space-y-5" data-testid="consumption-tab">
@@ -721,8 +769,9 @@ export function ConsumptionTab({ accountId }: { accountId: number }) {
 
       {selectedMeter && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-4 py-3 bg-gradient-to-r from-slate-100 to-white border-b border-slate-200">
+          <div className="px-4 py-3 bg-gradient-to-r from-slate-100 to-white border-b border-slate-200 flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-800">Meter Reading History Chart</h3>
+            <span className="text-xs text-slate-500 font-medium">{selectedFinYear} ({filteredHistory.length} of {openMonthsCount} months)</span>
           </div>
           <div className="p-4">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-4 gap-y-2 mb-4 border border-slate-200 rounded-xl p-3 bg-slate-50">
@@ -737,7 +786,7 @@ export function ConsumptionTab({ accountId }: { accountId: number }) {
             {historyLoading ? (
               <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-500" /><span className="ml-2 text-sm text-slate-500">Loading meter reading history...</span></div>
             ) : readingHistory.length > 0 ? (
-              <ConsumptionChart readings={readingHistory} />
+              <ConsumptionChart readings={filteredHistory} />
             ) : (
               <div className="text-center py-8 text-slate-400 text-sm">No reading history available for this meter</div>
             )}
@@ -750,12 +799,28 @@ export function ConsumptionTab({ accountId }: { accountId: number }) {
           <div className="px-4 py-3 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
             <FileText className="w-4 h-4 text-white" />
             <h3 className="text-sm font-semibold text-white tracking-wide">Meter Reading History</h3>
-            <div className="ml-auto flex items-center gap-2">
-              <Badge variant="outline" className="bg-white/20 text-white border-white/30 text-[10px]">{readingHistory.length} records</Badge>
+            <div className="ml-auto flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <label className="text-[10px] text-white/70 font-medium uppercase tracking-wider">Financial Year</label>
+                <select
+                  value={selectedFinYear}
+                  onChange={e => setSelectedFinYear(e.target.value)}
+                  className="bg-white/20 text-white text-xs border border-white/30 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-white/50 appearance-none cursor-pointer"
+                  data-testid="select-meter-finyear"
+                  style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")", backgroundRepeat: 'no-repeat', backgroundPosition: 'right 6px center', paddingRight: '22px' }}
+                >
+                  {availableFinYears.map(fy => (
+                    <option key={fy} value={fy} className="text-slate-800 bg-white">{fy}</option>
+                  ))}
+                </select>
+              </div>
+              <Badge variant="outline" className="bg-white/20 text-white border-white/30 text-[10px]">
+                {filteredHistory.length} of {openMonthsCount} months
+              </Badge>
               <button
                 onClick={() => {
                   const headers = historyCols.map(c => c.label);
-                  const rows = sortedHistory.map((item: any) =>
+                  const rows = filteredHistory.map((item: any) =>
                     historyCols.map(col => {
                       let val = item[col.key];
                       if ((val === undefined || val === null || val === '') && (col as any).fallback) val = (col as any).fallback();
@@ -767,7 +832,7 @@ export function ConsumptionTab({ accountId }: { accountId: number }) {
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement('a');
                   a.href = url;
-                  a.download = `meter-reading-history-${selectedMeter?.physicalMeterNo || selectedMeter?.meterNo || 'export'}.csv`;
+                  a.download = `meter-reading-history-${selectedFinYear}-${selectedMeter?.physicalMeterNo || selectedMeter?.meterNo || 'export'}.csv`;
                   a.click();
                   URL.revokeObjectURL(url);
                 }}
@@ -779,7 +844,7 @@ export function ConsumptionTab({ accountId }: { accountId: number }) {
               </button>
             </div>
           </div>
-          <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+          <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
             <table className="w-full text-sm" data-testid="table-meter-reading-history">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-slate-50 border-b border-slate-200">
@@ -789,7 +854,13 @@ export function ConsumptionTab({ accountId }: { accountId: number }) {
                 </tr>
               </thead>
               <tbody>
-                {sortedHistory.map((item: any, i: number) => (
+                {filteredHistory.length === 0 ? (
+                  <tr>
+                    <td colSpan={historyCols.length} className="py-8 text-center text-slate-400 text-sm">
+                      No meter readings found for {selectedFinYear}
+                    </td>
+                  </tr>
+                ) : filteredHistory.map((item: any, i: number) => (
                   <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
                     {historyCols.map(col => {
                       let val = item[col.key];
