@@ -1,0 +1,40 @@
+Service Type
+Meter Classification
+Tariff
+Combination Meter No
+Factor
+Meter No
+Physical Meter No
+Billing Month
+Meter Book
+Route
+Old Reading Date
+Old Reading
+New Reading Date
+New Reading
+Reading Days
+Consumption
+Levy Status
+Test Reading Date
+Test Reading
+Decline Reason
+Meter Error Code
+Import Status
+Meter Change
+Meter Status
+Service Status
+Reading Status
+Disconnection Status
+Disconnection Reading
+Disconnection Date
+Contractor Remarks
+Disconnection Letter
+Supporting Document
+Water Metered	Normal Water	WATER/CONS/1402-Business/Industries		1	6427	63640039	July	GRG0101	Smart Meters: Ontec	01/06/2025	718	01/07/2025	762	30	44	Actual					Import		Active	Active	Billed						No Document Upload
+Water Metered	Normal Water	WATER/CONS/1402-Business/Industries		1	6427	63640039	August	GRG0101	Smart Meters: Ontec	01/07/2025	762	01/08/2025	811	31	49	Actual					Import		Active	Active	Billed						No Document Upload
+Water Metered	Normal Water	WATER/CONS/1402-Business/Industries		1	6427	63640039	September	GRG0101	Smart Meters: Ontec	01/08/2025	811	01/09/2025	858	31	47	Actual					Import		Active	Active	Billed						No Document Upload
+Water Metered	Normal Water	WATER/CONS/1402-Business/Industries		1	6427	63640039	October	GRG0101	Smart Meters: Ontec	01/09/2025	858	01/10/2025	903	30	45	Actual					Import		Active	Active	Billed						No Document Upload
+Water Metered	Normal Water	WATER/CONS/1402-Business/Industries		1	6427	63640039	November	GRG0101	Smart Meters: Ontec	01/10/2025	903	01/11/2025	947	31	44	Actual					Import		Active	Active	Billed						No Document Upload
+Water Metered	Normal Water	WATER/CONS/1402-Business/Industries		1	6427	63640039	December	GRG0101	Smart Meters: Ontec	01/11/2025	947	02/12/2025	995	31	48	Actual					Import		Active	Active	Billed						No Document Upload
+Water Metered	Normal Water	WATER/CONS/1402-Business/Industries		1	6427	63640039	January	GRG0101	Smart Meters: Ontec	02/12/2025	995	31/12/2025	1007	29	12	Actual					Import		Active	Active	Billed						No Document Upload
+Water Metered	Normal Water	WATER/CONS/1402-Reduce water consumption by >20% - 30% (Level 3) - George		1	6427	63640039	Current Open Period	GRG0101	Smart Meters: Ontec	31/12/2025	1007	28/02/2026	1035	59	28	Levy Estimate					System Estimated		Active	Active	Awaiting Billing						No Document Upload

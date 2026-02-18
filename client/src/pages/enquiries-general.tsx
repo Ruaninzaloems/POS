@@ -607,7 +607,9 @@ function NameTab({ accountId }: { accountId: number }) {
 }
 
 function BalanceDebtTab({ accountId }: { accountId: number }) {
-  const [data, setData] = useState<any>(null);
+  const [balanceData, setBalanceData] = useState<any[]>([]);
+  const [txnHistory, setTxnHistory] = useState<any[]>([]);
+  const [capitalData, setCapitalData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const loaded = useRef(false);
@@ -616,8 +618,17 @@ function BalanceDebtTab({ accountId }: { accountId: number }) {
     setLoading(true);
     setError(null);
     try {
-      const result = await getAccountBalance(accountId);
-      setData(result);
+      const [balResult, txnResult, capResult] = await Promise.allSettled([
+        getAccountBalance(accountId),
+        getTransactionHistory(String(accountId).padStart(12, '0')),
+        getPaymentPlanRemainingCapital(accountId),
+      ]);
+      if (balResult.status === 'fulfilled') {
+        const d = balResult.value;
+        setBalanceData(Array.isArray(d) ? d : (d?.results || d?.value || (d ? [d] : [])));
+      }
+      if (txnResult.status === 'fulfilled') setTxnHistory(Array.isArray(txnResult.value) ? txnResult.value : []);
+      if (capResult.status === 'fulfilled' && capResult.value && !capResult.value._error) setCapitalData(capResult.value);
       loaded.current = true;
     } catch (e: any) {
       setError(e.message || 'Failed to load balance data');
@@ -630,53 +641,254 @@ function BalanceDebtTab({ accountId }: { accountId: number }) {
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
-  if (!data) return <EmptyState message="No balance data available" />;
 
-  const items = Array.isArray(data) ? data : (data?.results || data?.value || [data]);
-  if (items.length === 0) return <EmptyState message="No balance data available" />;
+  const fmt = (v: any) => {
+    const n = typeof v === 'number' ? v : parseFloat(v) || 0;
+    return n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+  const fmtDash = (v: any) => {
+    if (v === '-' || v === null || v === undefined) return '-';
+    const n = typeof v === 'number' ? v : parseFloat(v);
+    if (isNaN(n) || n === 0) return '-';
+    return n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+  const sumField = (arr: any[], ...keys: string[]) => arr.reduce((s, item) => {
+    for (const k of keys) { const v = item[k]; if (v !== undefined && v !== null && v !== '-') return s + (typeof v === 'number' ? v : parseFloat(v) || 0); }
+    return s;
+  }, 0);
+
+  const agingCols = [
+    { label: 'CURRENT', keys: ['current', 'currentAccount'] },
+    { label: '30 DAYS', keys: ['days30', '30days'] },
+    { label: '60 DAYS', keys: ['days60', '60days'] },
+    { label: '90 DAYS', keys: ['days90', '90days'] },
+    { label: '120 DAYS', keys: ['days120', '120days'] },
+    { label: '150 DAYS', keys: ['days150', '150days'] },
+    { label: '180+ DAYS', keys: ['untill360', 'days180Plus'] },
+  ];
+  const getVal = (item: any, keys: string[]) => { for (const k of keys) { if (item[k] !== undefined && item[k] !== null) return item[k]; } return 0; };
+
+  const payments = txnHistory.filter((t: any) => {
+    const type = (t.transactionType || t.receiptType || t.type || '').toLowerCase();
+    return type.includes('payment') || type.includes('receipt') || type.includes('pay');
+  });
+  const refunds = txnHistory.filter((t: any) => {
+    const type = (t.transactionType || t.receiptType || t.type || '').toLowerCase();
+    return type.includes('refund');
+  });
+  const reversals = txnHistory.filter((t: any) => {
+    const type = (t.transactionType || t.receiptType || t.type || '').toLowerCase();
+    return type.includes('reversal') || type.includes('reversed') || type.includes('cancel');
+  });
+
+  const propertyRatesItems = balanceData.filter((it: any) =>
+    (it.serviceDescription || '').toLowerCase().includes('property') ||
+    (it.serviceDescription || '').toLowerCase().includes('rate')
+  );
 
   return (
-    <div className="p-4 overflow-x-auto">
-      <table className="w-full text-sm" data-testid="table-balance-debt">
-        <thead>
-          <tr className="border-b-2 border-slate-200">
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Service</th>
-            <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Total Outstanding</th>
-            <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Current</th>
-            <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">30 Days</th>
-            <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">60 Days</th>
-            <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">90 Days</th>
-            <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">120 Days</th>
-            <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">150+ Days</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item: any, i: number) => (
-            <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-              <td className="py-2 px-3 font-medium text-slate-700">{item.serviceDescription || item.serviceType || item.description || `Service ${i + 1}`}</td>
-              <td className="py-2 px-3 text-right font-mono text-red-600 font-semibold">{(item.totalOutStanding ?? item.totalOutstandingAmount ?? item.totalOutstanding ?? item.outstandingAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-              <td className="py-2 px-3 text-right font-mono">{(item.currentAccount ?? item.current ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-              <td className="py-2 px-3 text-right font-mono">{(item.days30 ?? item['30days'] ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-              <td className="py-2 px-3 text-right font-mono">{(item.days60 ?? item['60days'] ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-              <td className="py-2 px-3 text-right font-mono">{(item.days90 ?? item['90days'] ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-              <td className="py-2 px-3 text-right font-mono">{(item.days120 ?? item['120days'] ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-              <td className="py-2 px-3 text-right font-mono">{(item.days150 ?? item['150days'] ?? item.days150Plus ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-            </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr className="border-t-2 border-slate-300 bg-slate-50 font-bold">
-            <td className="py-2 px-3 text-slate-800">Total</td>
-            <td className="py-2 px-3 text-right font-mono text-red-700">{items.reduce((s: number, item: any) => s + (item.totalOutStanding ?? item.totalOutstandingAmount ?? item.totalOutstanding ?? item.outstandingAmount ?? 0), 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-            <td className="py-2 px-3 text-right font-mono">{items.reduce((s: number, item: any) => s + (item.currentAccount ?? item.current ?? 0), 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-            <td className="py-2 px-3 text-right font-mono">{items.reduce((s: number, item: any) => s + (item.days30 ?? item['30days'] ?? 0), 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-            <td className="py-2 px-3 text-right font-mono">{items.reduce((s: number, item: any) => s + (item.days60 ?? item['60days'] ?? 0), 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-            <td className="py-2 px-3 text-right font-mono">{items.reduce((s: number, item: any) => s + (item.days90 ?? item['90days'] ?? 0), 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-            <td className="py-2 px-3 text-right font-mono">{items.reduce((s: number, item: any) => s + (item.days120 ?? item['120days'] ?? 0), 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-            <td className="py-2 px-3 text-right font-mono">{items.reduce((s: number, item: any) => s + (item.days150 ?? item['150days'] ?? item.days150Plus ?? item.untill360 ?? 0), 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-          </tr>
-        </tfoot>
-      </table>
+    <div className="p-4 space-y-6" data-testid="balance-debt-tab">
+      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+          <Landmark className="w-4 h-4 text-white" />
+          <h3 className="text-sm font-semibold text-white tracking-wide">Total Balance / Debt Inquiry</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm" data-testid="table-balance-debt">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="text-left py-2.5 px-3 text-[11px] uppercase tracking-wider text-slate-600 font-bold w-[220px] min-w-[180px]">Service</th>
+                <th className="text-right py-2.5 px-3 text-[11px] uppercase tracking-wider text-red-600 font-bold min-w-[120px]">Total Outstanding</th>
+                {agingCols.map(col => (
+                  <th key={col.label} className="text-right py-2.5 px-3 text-[11px] uppercase tracking-wider text-slate-600 font-bold min-w-[90px]">{col.label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {balanceData.length === 0 ? (
+                <tr><td colSpan={9} className="py-6 text-center text-slate-400 text-sm">No balance data available</td></tr>
+              ) : balanceData.map((item: any, i: number) => (
+                <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors group">
+                  <td className="py-2.5 px-3 font-medium text-slate-800 text-[13px]">{item.serviceDescription || `Service ${i + 1}`}</td>
+                  <td className="py-2.5 px-3 text-right font-mono text-red-600 font-bold text-[13px]">{fmt(item.totalOutStanding ?? item.totalOutstandingAmount ?? 0)}</td>
+                  {agingCols.map(col => {
+                    const v = getVal(item, col.keys);
+                    return <td key={col.label} className="py-2.5 px-3 text-right font-mono text-slate-600 text-[13px]">{fmtDash(v)}</td>;
+                  })}
+                </tr>
+              ))}
+            </tbody>
+            {balanceData.length > 0 && (
+              <tfoot>
+                <tr className="border-t-2 border-blue-200 bg-blue-50/50">
+                  <td className="py-2.5 px-3 font-bold text-slate-900 text-[13px]">Total</td>
+                  <td className="py-2.5 px-3 text-right font-mono text-red-700 font-bold text-[13px]">{fmt(sumField(balanceData, 'totalOutStanding', 'totalOutstandingAmount'))}</td>
+                  {agingCols.map(col => (
+                    <td key={col.label} className="py-2.5 px-3 text-right font-mono font-bold text-slate-800 text-[13px]">{fmtDash(sumField(balanceData, ...col.keys))}</td>
+                  ))}
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      </div>
+
+      {propertyRatesItems.length > 0 && (
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
+            <Home className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Property Rates Section</h3>
+          </div>
+          <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {propertyRatesItems.map((item: any, i: number) => (
+              <div key={i} className="bg-gradient-to-br from-slate-50 to-white rounded-lg border border-slate-200 p-4 space-y-3">
+                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{item.serviceDescription}</div>
+                <div className="text-2xl font-bold text-red-600 font-mono">{fmt(item.totalOutStanding ?? 0)}</div>
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex justify-between"><span className="text-slate-500">Current:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['current', 'currentAccount']))}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">30 Days:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['days30']))}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">60 Days:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['days60']))}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">90 Days:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['days90']))}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">120 Days:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['days120']))}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">150 Days:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['days150']))}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">180+ Days:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['untill360']))}</span></div>
+                  <div className="flex justify-between border-t pt-1.5 mt-1"><span className="text-slate-500">Deposit:</span><span className="font-mono font-medium">{fmtDash(item.deposit)}</span></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Payments Received</h3>
+            <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{payments.length}</Badge>
+          </div>
+          <div className="max-h-[300px] overflow-y-auto">
+            {payments.length === 0 ? (
+              <div className="p-6 text-center text-slate-400 text-sm">No payments found in recent history</div>
+            ) : (
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-slate-50 z-10">
+                  <tr className="border-b border-slate-200">
+                    <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Date</th>
+                    <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Receipt #</th>
+                    <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Type</th>
+                    <th className="text-right py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.slice(0, 20).map((p: any, i: number) => (
+                    <tr key={i} className="border-b border-slate-50 hover:bg-green-50/50">
+                      <td className="py-1.5 px-3 text-slate-600">{p.receiptDate ? new Date(p.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
+                      <td className="py-1.5 px-3 font-mono text-slate-700">{p.receiptNumber || p.receiptNo || '-'}</td>
+                      <td className="py-1.5 px-3 text-slate-500">{p.receiptType || p.transactionType || '-'}</td>
+                      <td className="py-1.5 px-3 text-right font-mono font-medium text-green-700">{fmt(p.amount || p.receiptAmount || 0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
+            <RefreshCw className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Refunds</h3>
+            <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{refunds.length}</Badge>
+          </div>
+          <div className="max-h-[300px] overflow-y-auto">
+            {refunds.length === 0 ? (
+              <div className="p-6 text-center text-slate-400 text-sm">No refunds found in recent history</div>
+            ) : (
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-slate-50 z-10">
+                  <tr className="border-b border-slate-200">
+                    <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Date</th>
+                    <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Receipt #</th>
+                    <th className="text-right py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {refunds.slice(0, 20).map((r: any, i: number) => (
+                    <tr key={i} className="border-b border-slate-50 hover:bg-amber-50/50">
+                      <td className="py-1.5 px-3 text-slate-600">{r.receiptDate ? new Date(r.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
+                      <td className="py-1.5 px-3 font-mono text-slate-700">{r.receiptNumber || r.receiptNo || '-'}</td>
+                      <td className="py-1.5 px-3 text-right font-mono font-medium text-amber-700">{fmt(r.amount || r.receiptAmount || 0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Payment Reversals</h3>
+            <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{reversals.length}</Badge>
+          </div>
+          <div className="max-h-[300px] overflow-y-auto">
+            {reversals.length === 0 ? (
+              <div className="p-6 text-center text-slate-400 text-sm">No payment reversals found in recent history</div>
+            ) : (
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-slate-50 z-10">
+                  <tr className="border-b border-slate-200">
+                    <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Date</th>
+                    <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Receipt #</th>
+                    <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Type</th>
+                    <th className="text-right py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reversals.slice(0, 20).map((rv: any, i: number) => (
+                    <tr key={i} className="border-b border-slate-50 hover:bg-red-50/50">
+                      <td className="py-1.5 px-3 text-slate-600">{rv.receiptDate ? new Date(rv.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
+                      <td className="py-1.5 px-3 font-mono text-slate-700">{rv.receiptNumber || rv.receiptNo || '-'}</td>
+                      <td className="py-1.5 px-3 text-slate-500">{rv.receiptType || rv.transactionType || '-'}</td>
+                      <td className="py-1.5 px-3 text-right font-mono font-medium text-red-700">{fmt(rv.amount || rv.receiptAmount || 0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
+            <Layers className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Debtors - Remaining Capital Amounts</h3>
+          </div>
+          <div className="p-4">
+            {capitalData ? (
+              <div className="space-y-3">
+                {Array.isArray(capitalData) ? capitalData.map((cap: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between p-3 bg-purple-50/50 rounded-lg border border-purple-100">
+                    <span className="text-sm text-slate-700 font-medium">{cap.description || cap.serviceDescription || `Item ${i + 1}`}</span>
+                    <span className="font-mono font-bold text-purple-700 text-sm">{fmt(cap.amount || cap.remainingCapital || cap.capitalAmount || 0)}</span>
+                  </div>
+                )) : (
+                  <div className="flex items-center justify-between p-3 bg-purple-50/50 rounded-lg border border-purple-100">
+                    <span className="text-sm text-slate-700 font-medium">Remaining Capital</span>
+                    <span className="font-mono font-bold text-purple-700 text-sm">{fmt(capitalData.amount || capitalData.remainingCapital || capitalData.capitalAmount || capitalData.totalAmount || 0)}</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center text-slate-400 text-sm py-4">No remaining capital data available</div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
