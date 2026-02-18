@@ -2146,11 +2146,14 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-enquiry/generate-statement", async (req, res) => {
     try {
-      const { accountId, statementType } = req.body;
+      const { accountId, statementType, financialYear, month } = req.body;
       const endpoint = statementType === 'detailed'
         ? "/api/BillingEnquiry/getDetailBillingTemplate"
         : "/api/BillingEnquiry/getBillingTemplate";
-      const data = await platinumGet(endpoint, { accountId: String(accountId) });
+      const params: Record<string, string> = { accountId: String(accountId) };
+      if (financialYear) params.financialYear = financialYear;
+      if (month) params.month = month;
+      const data = await platinumGet(endpoint, params);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2164,8 +2167,20 @@ export async function registerRoutes(
         return res.status(400).json({ message: "fileUrl is required" });
       }
       const platinumApiUrl = getPlatinumApiUrl();
+      const fullUrl = fileUrl.startsWith('/') ? `${platinumApiUrl}${fileUrl}` : fileUrl;
+      const allowedHosts = [
+        'georgeplatinumuatapi.azurewebsites.net',
+        'george-uat-ems-billing-api.azurewebsites.net',
+      ];
+      try {
+        const parsedUrl = new URL(fullUrl);
+        if (!allowedHosts.some(h => parsedUrl.hostname === h || parsedUrl.hostname.endsWith(`.${h}`))) {
+          return res.status(403).json({ message: "Download URL not allowed" });
+        }
+      } catch {
+        return res.status(400).json({ message: "Invalid file URL" });
+      }
       const token = await getPlatinumToken();
-      const fullUrl = fileUrl.startsWith('http') ? fileUrl : `${platinumApiUrl}${fileUrl}`;
       const response = await fetch(fullUrl, {
         headers: { Authorization: `Bearer ${token}` }
       });

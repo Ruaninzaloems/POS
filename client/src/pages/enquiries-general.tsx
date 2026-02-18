@@ -4181,7 +4181,7 @@ function StatementsTab({ accountId }: { accountId: number }) {
       const res = await fetch('/api/platinum/billing-enquiry/generate-statement', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountId, statementType }),
+        body: JSON.stringify({ accountId, statementType, financialYear: modalYear, month: modalMonth || undefined }),
       });
       const result = await res.json();
       setGenerateResult(result);
