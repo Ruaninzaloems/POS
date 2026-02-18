@@ -662,7 +662,7 @@ function GeneralEnquiriesContent() {
                 More Fields
               </button>
             </div>
-            <div className="grid grid-cols-7 gap-1.5">
+            <div className="grid grid-cols-8 gap-1.5">
               {[
                 { key: 'accountNo', placeholder: 'Account No.' },
                 { key: 'name', placeholder: 'Name / Company' },
@@ -671,6 +671,7 @@ function GeneralEnquiriesContent() {
                 { key: 'oldAccountCode', placeholder: 'Old Account Code' },
                 { key: 'idNo', placeholder: 'ID / Reg. Number' },
                 { key: 'locationAddress', placeholder: 'Location Address' },
+                { key: 'sgNumber', placeholder: 'Erf/SG Number' },
               ].map(f => (
                 <input
                   key={f.key}
