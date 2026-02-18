@@ -643,27 +643,66 @@ function GeneralEnquiriesContent() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between mt-1.5">
-            <p className="text-[11px] text-slate-400">
-              Search by Account, Name, ID, Phone, Email, SG Number. Results appear as you type.
-            </p>
-            <button
-              onClick={() => setShowFiltersPanel(prev => !prev)}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors border
-                ${showFiltersPanel || activeFilterCount > 0
-                  ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
-                  : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-700'}`}
-              data-testid="button-toggle-advanced"
-              aria-label={`Advanced Filters${activeFilterCount > 0 ? `, ${activeFilterCount} active` : ''}`}
-            >
-              <SlidersHorizontal className="w-3 h-3" />
-              Advanced Filters
+          <div className="mt-2 border border-slate-200 rounded-lg bg-slate-50/50 p-2">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Filter className="w-3 h-3 text-slate-400" />
+              <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Billing Enquiry Search</span>
               {activeFilterCount > 0 && (
-                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold" data-testid="badge-filter-count">
-                  {activeFilterCount}
-                </span>
+                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold">{activeFilterCount}</span>
               )}
-            </button>
+              {activeFilterCount > 0 && (
+                <button onClick={() => setCriteria({})} className="text-[10px] text-blue-600 hover:text-blue-800 underline underline-offset-2 ml-auto" data-testid="button-clear-field-filters">Clear</button>
+              )}
+              <button
+                onClick={() => setShowFiltersPanel(prev => !prev)}
+                className="ml-auto text-[10px] text-slate-500 hover:text-slate-700 flex items-center gap-1"
+                data-testid="button-toggle-advanced"
+              >
+                <SlidersHorizontal className="w-3 h-3" />
+                More Fields
+              </button>
+            </div>
+            <div className="grid grid-cols-7 gap-1.5">
+              {[
+                { key: 'accountNo', placeholder: 'Account No.' },
+                { key: 'name', placeholder: 'Name / Company' },
+                { key: 'emailAddress', placeholder: 'Email Address' },
+                { key: 'physicalMeterNumber', placeholder: 'Meter Number' },
+                { key: 'oldAccountCode', placeholder: 'Old Account Code' },
+                { key: 'idNo', placeholder: 'ID / Reg. Number' },
+                { key: 'locationAddress', placeholder: 'Location Address' },
+              ].map(f => (
+                <input
+                  key={f.key}
+                  type="text"
+                  placeholder={f.placeholder}
+                  value={(criteria as any)[f.key] || ''}
+                  onChange={(e) => setCriteria(prev => ({ ...prev, [f.key]: e.target.value }))}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleFullSearch(); }}
+                  className="h-8 px-2 text-xs rounded border border-slate-300 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  data-testid={`input-field-${f.key}`}
+                />
+              ))}
+            </div>
+            <p className="text-[10px] text-red-500 mt-1.5 font-medium">** At Least One Search Parameter Must Be Entered</p>
+            <div className="flex items-center gap-2 mt-1.5">
+              <button
+                onClick={handleFullSearch}
+                disabled={searching || (quickQuery.trim().length < 2 && !Object.values(criteria).some(v => v && String(v).trim()))}
+                className="h-7 px-3 rounded bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white flex items-center gap-1.5 text-[11px] font-medium transition-colors"
+                data-testid="button-field-search"
+              >
+                {searching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
+                Search
+              </button>
+              <button
+                onClick={() => { setCriteria({}); setQuickQuery(''); setResults([]); setHasSearched(false); setSearchError(null); }}
+                className="h-7 px-3 rounded bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-medium transition-colors"
+                data-testid="button-field-clear"
+              >
+                Clear
+              </button>
+            </div>
           </div>
 
           <div className="flex items-center gap-1.5 mt-2 flex-wrap" role="group" aria-label="Quick filters">
