@@ -257,19 +257,29 @@ function GeneralEnquiriesContent() {
       }
       let data: EnquirySearchResult[];
       if (hasQuick && !hasAdvanced) {
-        const [multiAcData, enquiryData] = await Promise.allSettled([
-          multiAutocompleteSearch(quickQuery.trim()),
-          searchAccounts(searchCriteria),
-        ]);
+        const mainPromise = searchAccounts(searchCriteria);
+        const acPromise = multiAutocompleteSearch(quickQuery.trim());
+        const mainResults = await mainPromise;
         if (fullSearchTokenRef.current !== token) return;
-        const acResults = multiAcData.status === 'fulfilled' ? multiAcData.value.results : [];
-        const eqResults = enquiryData.status === 'fulfilled' ? enquiryData.value : [];
-        const seen = new Set<number>();
-        data = [];
-        for (const r of [...eqResults, ...acResults]) {
-          const id = r.account_ID || r.accountID;
-          if (id && !seen.has(id)) { seen.add(id); data.push(r); }
-        }
+        setResults(mainResults);
+        setSearching(false);
+        enrichWithBalances(mainResults, fullSearchTokenRef, token, setResults);
+        try {
+          const acData = await acPromise;
+          if (fullSearchTokenRef.current !== token) return;
+          const acResults = acData.results || [];
+          if (acResults.length > 0) {
+            const seen = new Set<number>();
+            data = [];
+            for (const r of [...mainResults, ...acResults]) {
+              const id = r.account_ID || r.accountID;
+              if (id && !seen.has(id)) { seen.add(id); data.push(r); }
+            }
+            setResults(data);
+            enrichWithBalances(data, fullSearchTokenRef, token, setResults);
+          }
+        } catch {}
+        return;
       } else {
         data = await searchAccounts(searchCriteria);
       }
@@ -823,7 +833,14 @@ function GeneralEnquiriesContent() {
           </div>
         )}
 
-        {hasSearched && !searchError && filteredResults.length === 0 && (
+        {searching && (
+          <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-400 mb-3" />
+            <p className="text-sm text-slate-500">Searching...</p>
+          </div>
+        )}
+
+        {hasSearched && !searching && !searchError && filteredResults.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-slate-400 px-8">
             <Search className="w-10 h-10 mb-3 opacity-20" />
             <p className="text-sm font-semibold text-slate-600 mb-2">No results found</p>

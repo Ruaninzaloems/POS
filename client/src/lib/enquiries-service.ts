@@ -227,7 +227,7 @@ export async function multiAutocompleteSearch(search: string): Promise<{ suggest
   const seen = new Set<number>();
   const unique = validSuggestions.filter(s => { if (seen.has(s.accountId)) return false; seen.add(s.accountId); return true; });
   if (!unique.length) return { suggestions, results: [] };
-  const top = unique.slice(0, 10);
+  const top = unique.slice(0, 5);
   const lookups = await Promise.allSettled(
     top.map(s =>
       fetchWithTimeout('/api/platinum/billing-enquiry/enquiry-results', {
