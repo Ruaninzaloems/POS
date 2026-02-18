@@ -27,7 +27,7 @@ import {
   getHandoverAccountEnquiry, getConsHandoverTransactionDetail,
   getAllBillingPeriodTransactions, getDetailedTransactionResults,
   getAllServices, getMeteredServicesOnAccount, getAccountServiceMeterPerProperty,
-  getUnitLinkedMeters, getMeterReadingHistory, getPrepaidMeterServicesForAccount,
+  getUnitLinkedMeters, getMeterReadingHistory, getPrepaidMeterServicesForAccount, getPrepaidRechargeDetailsForMeter,
   getPaymentPlansByAccountId, getPaymentPlanRemainingCapital,
   getRepaymentPlanStatus, getPaymentExtensionSearchResults, getPaymentAmountByAccountIds,
   getDebitOrderDeductionByAccount, getDebitOrderDeduction,
@@ -3385,6 +3385,10 @@ function ServicesMetersTab({ accountId, unitId }: { accountId: number; unitId?: 
   const [meterPerProperty, setMeterPerProperty] = useState<any[]>([]);
   const [unitLinkedMeters, setUnitLinkedMeters] = useState<any[]>([]);
   const [prepaidMeters, setPrepaidMeters] = useState<any[]>([]);
+  const [showPrepaidSales, setShowPrepaidSales] = useState(false);
+  const [selectedPrepaidMeter, setSelectedPrepaidMeter] = useState<any>(null);
+  const [prepaidRechargeDetails, setPrepaidRechargeDetails] = useState<any[]>([]);
+  const [loadingRecharge, setLoadingRecharge] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const loaded = useRef(false);
@@ -3557,10 +3561,20 @@ function ServicesMetersTab({ accountId, unitId }: { accountId: number; unitId?: 
 
       {prepaidMeters.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
-            <Zap className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Prepaid Meter Services</h3>
-            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{prepaidMeters.length}</Badge>
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-white" />
+              <h3 className="text-sm font-semibold text-white tracking-wide">Prepaid Meter Services</h3>
+              <Badge className="bg-white/20 text-white border-white/30 text-[10px]">{prepaidMeters.length}</Badge>
+            </div>
+            <button
+              onClick={() => { setShowPrepaidSales(true); setSelectedPrepaidMeter(null); setPrepaidRechargeDetails([]); }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold rounded-lg transition-all border border-white/30"
+              data-testid="button-open-prepaid-sales"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              Prepaid Sales
+            </button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-prepaid-meters">
@@ -3574,15 +3588,183 @@ function ServicesMetersTab({ accountId, unitId }: { accountId: number; unitId?: 
               </thead>
               <tbody>
                 {prepaidMeters.map((m: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
-                    <td className="py-2 px-3 font-mono font-medium">{m.meterNumber || m.physicalMeterNumber || '-'}</td>
+                  <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors cursor-pointer" onClick={() => { setShowPrepaidSales(true); setSelectedPrepaidMeter(null); setPrepaidRechargeDetails([]); }} data-testid={`prepaid-meter-row-${i}`}>
+                    <td className="py-2 px-3 font-mono font-medium text-blue-700">{m.meterNumber || m.physicalMeterNumber || '-'}</td>
                     <td className="py-2 px-3">{m.serviceType || m.serviceDescription || '-'}</td>
-                    <td className="py-2 px-3">{m.status || m.meterStatus || '-'}</td>
+                    <td className="py-2 px-3">
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.meterStatus || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                        {m.status || m.meterStatus || '-'}
+                      </span>
+                    </td>
                     <td className="py-2 px-3 text-right font-mono">{m.lastRechargeDate ? new Date(m.lastRechargeDate).toLocaleDateString('en-ZA') : (m.lastRechargeAmount ?? '-')}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {showPrepaidSales && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowPrepaidSales(false)} data-testid="prepaid-sales-modal-overlay">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-emerald-700 to-emerald-800 rounded-t-2xl flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap className="w-5 h-5 text-white" />
+                <h4 className="text-base font-bold text-white">Prepaid Sales</h4>
+              </div>
+              {selectedPrepaidMeter && (
+                <button
+                  onClick={() => { setSelectedPrepaidMeter(null); setPrepaidRechargeDetails([]); }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition-all"
+                  data-testid="button-prepaid-back"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  Back
+                </button>
+              )}
+            </div>
+            <div className="p-6">
+              {!selectedPrepaidMeter ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm" data-testid="table-prepaid-sales">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200">
+                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service Type</th>
+                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter No</th>
+                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Phase</th>
+                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Tariff</th>
+                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Physical Meter No</th>
+                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Connection Size</th>
+                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Status</th>
+                        <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Factor</th>
+                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Classification</th>
+                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">STS Code</th>
+                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Supplier Group Code</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {prepaidMeters.length === 0 ? (
+                        <tr><td colSpan={11} className="text-center text-slate-400 py-6">No prepaid meters found</td></tr>
+                      ) : prepaidMeters.map((m: any, i: number) => (
+                        <tr
+                          key={i}
+                          className="border-b border-slate-100 hover:bg-emerald-50/40 transition-colors cursor-pointer"
+                          onClick={async () => {
+                            setSelectedPrepaidMeter(m);
+                            setLoadingRecharge(true);
+                            setPrepaidRechargeDetails([]);
+                            try {
+                              const meterId = m.meterId || m.meter_id || m.id;
+                              if (meterId) {
+                                const details = await getPrepaidRechargeDetailsForMeter(meterId);
+                                setPrepaidRechargeDetails(Array.isArray(details) ? details : []);
+                              }
+                            } catch (e) {
+                              console.error('Failed to load recharge details:', e);
+                            } finally {
+                              setLoadingRecharge(false);
+                            }
+                          }}
+                          data-testid={`prepaid-sales-row-${i}`}
+                        >
+                          <td className="py-2.5 px-3 font-medium">{m.serviceType || m.serviceDescription || 'Electricity Pre-Paid'}</td>
+                          <td className="py-2.5 px-3 font-mono text-blue-700 font-semibold">{m.meterNumber || m.meterNo || '-'}</td>
+                          <td className="py-2.5 px-3">{m.meterPhase || m.phase || '-'}</td>
+                          <td className="py-2.5 px-3 text-xs">{m.tariff || m.tariffDescription || '-'}</td>
+                          <td className="py-2.5 px-3 font-mono text-xs">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</td>
+                          <td className="py-2.5 px-3">{m.meterConnectionSize || m.connectionSize || '-'}</td>
+                          <td className="py-2.5 px-3">
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.meterStatus || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                              {m.status || m.meterStatus || '-'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono">{m.factor ?? '-'}</td>
+                          <td className="py-2.5 px-3">{m.meterClassification || m.classification || '-'}</td>
+                          <td className="py-2.5 px-3 font-mono">{m.stsCode ?? '-'}</td>
+                          <td className="py-2.5 px-3 font-mono">{m.supplierGroupCode ?? '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Service Type</span>
+                        <p className="font-medium text-slate-800 mt-0.5">{selectedPrepaidMeter.serviceType || selectedPrepaidMeter.serviceDescription || 'Electricity Pre-Paid'}</p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Meter No</span>
+                        <p className="font-mono font-bold text-blue-700 mt-0.5">{selectedPrepaidMeter.meterNumber || selectedPrepaidMeter.meterNo || '-'}</p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Physical Meter</span>
+                        <p className="font-mono text-slate-800 mt-0.5">{selectedPrepaidMeter.physicalMeterNumber || selectedPrepaidMeter.physicalMeterNo || '-'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {loadingRecharge ? (
+                    <div className="flex items-center justify-center py-8 gap-2 text-slate-500">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span className="text-sm">Loading recharge details...</span>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm" data-testid="table-prepaid-recharge-details">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200">
+                            <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Receipt Date</th>
+                            <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Receipt No</th>
+                            <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
+                            <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Vat Amount</th>
+                            <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Total</th>
+                            <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Prepaid Unit</th>
+                            <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Type</th>
+                            <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Prepaid Token No</th>
+                            <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Cancelled Status</th>
+                            <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reason For Cancel</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {prepaidRechargeDetails.length === 0 ? (
+                            <tr><td colSpan={10} className="text-center text-slate-400 py-6">No recharge details found for this meter</td></tr>
+                          ) : prepaidRechargeDetails.map((r: any, i: number) => (
+                            <tr key={i} className="border-b border-slate-100 hover:bg-emerald-50/30 transition-colors" data-testid={`recharge-detail-row-${i}`}>
+                              <td className="py-2.5 px-3 text-slate-600">{r.receiptDate ? new Date(r.receiptDate).toLocaleDateString('en-ZA') : r.rechargeDate ? new Date(r.rechargeDate).toLocaleDateString('en-ZA') : '-'}</td>
+                              <td className="py-2.5 px-3 font-mono text-blue-700 font-semibold text-xs">{r.receiptNo || r.receiptNumber || '-'}</td>
+                              <td className="py-2.5 px-3 text-right font-mono">{(r.amount ?? r.rechargeAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                              <td className="py-2.5 px-3 text-right font-mono">{(r.vatAmount ?? r.vat ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                              <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">{(r.total ?? r.totalAmount ?? ((r.amount ?? 0) + (r.vatAmount ?? 0))).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                              <td className="py-2.5 px-3 text-right font-mono">{r.prepaidUnit ?? r.units ?? r.kwhUnits ?? '-'}</td>
+                              <td className="py-2.5 px-3">{r.type || r.rechargeType || r.transactionType || '-'}</td>
+                              <td className="py-2.5 px-3 font-mono text-xs">{r.prepaidTokenNo || r.tokenNumber || r.token || '-'}</td>
+                              <td className="py-2.5 px-3">
+                                {r.isCancelled || r.cancelledStatus === 'Yes' ? (
+                                  <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 border border-red-200">Yes</span>
+                                ) : (
+                                  <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">No</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 text-slate-500 text-xs">{r.reasonForCancel || r.cancelReason || '-'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-center pt-4">
+                <button onClick={() => setShowPrepaidSales(false)} className="inline-flex items-center gap-1.5 px-6 py-2.5 bg-gradient-to-r from-slate-700 to-slate-800 text-white text-sm font-semibold rounded-lg hover:from-slate-800 hover:to-slate-900 transition-all shadow-md" data-testid="button-close-prepaid-sales">
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
