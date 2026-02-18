@@ -651,6 +651,7 @@ function BalanceDebtTab({ accountId }: { accountId: number }) {
   const [capitalData, setCapitalData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showExtended, setShowExtended] = useState(false);
   const loaded = useRef(false);
 
   const load = useCallback(async () => {
@@ -696,15 +697,18 @@ function BalanceDebtTab({ accountId }: { accountId: number }) {
     return s;
   }, 0);
 
-  const agingCols = [
+  const baseCols = [
     { label: 'CURRENT', keys: ['current', 'currentAccount'] },
     { label: '30 DAYS', keys: ['days30', '30days'] },
     { label: '60 DAYS', keys: ['days60', '60days'] },
     { label: '90 DAYS', keys: ['days90', '90days'] },
     { label: '120 DAYS', keys: ['days120', '120days'] },
     { label: '150 DAYS', keys: ['days150', '150days'] },
+  ];
+  const extendedCols = [
     { label: '180+ DAYS', keys: ['untill360', 'days180Plus'] },
   ];
+  const agingCols = showExtended ? [...baseCols, ...extendedCols] : baseCols;
   const getVal = (item: any, keys: string[]) => { for (const k of keys) { if (item[k] !== undefined && item[k] !== null) return item[k]; } return 0; };
 
   const payments = txnHistory.filter((t: any) => {
@@ -731,6 +735,14 @@ function BalanceDebtTab({ accountId }: { accountId: number }) {
         <div className="px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
           <Landmark className="w-4 h-4 text-white" />
           <h3 className="text-sm font-semibold text-white tracking-wide">Total Balance / Debt Inquiry</h3>
+          <button
+            onClick={() => setShowExtended(!showExtended)}
+            className="ml-auto flex items-center gap-1.5 text-[10px] font-medium text-white/90 hover:text-white bg-white/15 hover:bg-white/25 rounded-md px-2.5 py-1 transition-colors"
+            data-testid="toggle-extended-aging"
+          >
+            {showExtended ? <ChevronLeft className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+            {showExtended ? 'Show up to 150 Days' : 'Show 180+ Days'}
+          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm" data-testid="table-balance-debt">
@@ -745,7 +757,7 @@ function BalanceDebtTab({ accountId }: { accountId: number }) {
             </thead>
             <tbody>
               {balanceData.length === 0 ? (
-                <tr><td colSpan={9} className="py-6 text-center text-slate-400 text-sm">No balance data available</td></tr>
+                <tr><td colSpan={agingCols.length + 2} className="py-6 text-center text-slate-400 text-sm">No balance data available</td></tr>
               ) : balanceData.map((item: any, i: number) => (
                 <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors group">
                   <td className="py-2.5 px-3 font-medium text-slate-800 text-[13px]">{item.serviceDescription || `Service ${i + 1}`}</td>
@@ -790,7 +802,9 @@ function BalanceDebtTab({ accountId }: { accountId: number }) {
                   <div className="flex justify-between"><span className="text-slate-500">90 Days:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['days90']))}</span></div>
                   <div className="flex justify-between"><span className="text-slate-500">120 Days:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['days120']))}</span></div>
                   <div className="flex justify-between"><span className="text-slate-500">150 Days:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['days150']))}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">180+ Days:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['untill360']))}</span></div>
+                  {showExtended && (
+                    <div className="flex justify-between"><span className="text-slate-500">180+ Days:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['untill360']))}</span></div>
+                  )}
                   <div className="flex justify-between border-t pt-1.5 mt-1"><span className="text-slate-500">Deposit:</span><span className="font-mono font-medium">{fmtDash(item.deposit)}</span></div>
                 </div>
               </div>
