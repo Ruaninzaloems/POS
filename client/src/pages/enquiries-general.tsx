@@ -40,6 +40,7 @@ import {
   getAdditionalBillingSearchResults,
   getChequeFinalSearchList,
   getContactDetails,
+  getReceiptTransactionDetail,
   type EnquirySearchCriteria, type EnquirySearchResult,
 } from '@/lib/enquiries-service';
 
@@ -147,7 +148,7 @@ function GenericTable({ data, columns, testId }: { data: any[]; columns: { key: 
   );
 }
 
-function PaginatedTable({ data, columns, itemsPerPage = 50, tableId }: { data: any[]; columns: { key: string; label: string; render?: (row: any) => React.ReactNode }[]; itemsPerPage?: number; tableId?: string }) {
+function PaginatedTable({ data, columns, itemsPerPage = 50, tableId, onRowClick }: { data: any[]; columns: { key: string; label: string; render?: (row: any) => React.ReactNode }[]; itemsPerPage?: number; tableId?: string; onRowClick?: (row: any) => void }) {
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(data.length / itemsPerPage));
   const paged = data.slice((page - 1) * itemsPerPage, page * itemsPerPage);
@@ -168,7 +169,7 @@ function PaginatedTable({ data, columns, itemsPerPage = 50, tableId }: { data: a
             {paged.length === 0 ? (
               <tr><td colSpan={columns.length} className="text-center text-slate-400 py-4" data-testid={`${tid}-empty`}>No records to display</td></tr>
             ) : paged.map((row, i) => (
-              <tr key={i} className="border-b border-slate-100 hover:bg-slate-50" data-testid={`${tid}-row-${i}`}>
+              <tr key={i} className={`border-b border-slate-100 hover:bg-slate-50 ${onRowClick ? 'cursor-pointer' : ''}`} onClick={() => onRowClick?.(row)} data-testid={`${tid}-row-${i}`}>
                 {columns.map((c) => (
                   <td key={c.key} className="px-3 py-2 text-slate-700 whitespace-nowrap" data-testid={`${tid}-cell-${c.key}-${i}`}>
                     {c.render ? c.render(row) : (row[c.key] ?? '')}
@@ -1142,6 +1143,379 @@ function DepositsTab({ accountId }: { accountId: number }) {
         </table>
       ) : (
         <EmptyState message="No deposit records found" />
+      )}
+    </div>
+  );
+}
+
+const MONTHS = ['July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March', 'April', 'May', 'June'];
+
+function TransactionSummaryTab({ accountId }: { accountId: number }) {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedYear, setSelectedYear] = useState('');
+  const prevAccountId = useRef<number | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getBillingPeriodTransactions(accountId);
+      setData(Array.isArray(result) ? result : []);
+    } catch (e: any) {
+      setError(e.message || 'Failed to load transaction summary');
+    } finally {
+      setLoading(false);
+    }
+  }, [accountId]);
+
+  useEffect(() => {
+    if (prevAccountId.current !== accountId) {
+      prevAccountId.current = accountId;
+      load();
+    }
+  }, [accountId, load]);
+
+  const years = useMemo(() => {
+    const ySet = new Set<string>();
+    data.forEach((d: any) => {
+      const fy = d.financialYear || d.finYear || d.financial_Year || '';
+      if (fy) ySet.add(fy);
+    });
+    return Array.from(ySet).sort().reverse();
+  }, [data]);
+
+  useEffect(() => {
+    if (years.length > 0 && !selectedYear) setSelectedYear(years[0]);
+  }, [years, selectedYear]);
+
+  const pivotData = useMemo(() => {
+    const filtered = data.filter((d: any) => {
+      const fy = d.financialYear || d.finYear || d.financial_Year || '';
+      return fy === selectedYear;
+    });
+    const descMap = new Map<string, Record<string, number>>();
+    filtered.forEach((d: any) => {
+      const desc = d.description || d.transactionDescription || d.serviceDescription || 'Unknown';
+      const month = d.month || d.billingMonth || d.period || '';
+      const amount = d.amount ?? d.total ?? d.transactionAmount ?? 0;
+      if (!descMap.has(desc)) {
+        descMap.set(desc, {});
+      }
+      const row = descMap.get(desc)!;
+      const mIdx = typeof month === 'number' ? month : parseInt(month);
+      const monthName = !isNaN(mIdx) && mIdx >= 1 && mIdx <= 12 ? MONTHS[(mIdx + 5) % 12] : month;
+      row[monthName] = (row[monthName] || 0) + amount;
+    });
+    return Array.from(descMap.entries()).map(([desc, months]) => ({ description: desc, ...months }));
+  }, [data, selectedYear]);
+
+  if (loading) return <LoadingSkeleton />;
+  if (error) return <ErrorState message={error} onRetry={load} />;
+
+  const fmt = (v: number | undefined) => v !== undefined && v !== 0 ? v.toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : '0.00';
+
+  return (
+    <div className="p-4 space-y-4" data-testid="transaction-summary-panel">
+      <h3 className="text-base font-bold text-slate-800">Transaction Summary List per Fin-Year/Billing Period</h3>
+      <div className="flex items-center gap-3">
+        <select
+          value={selectedYear}
+          onChange={e => setSelectedYear(e.target.value)}
+          className="border border-slate-300 rounded px-3 py-1.5 text-sm bg-white"
+          data-testid="select-financial-year"
+        >
+          {years.map(y => <option key={y} value={y}>{y}</option>)}
+          {years.length === 0 && <option value="">No data</option>}
+        </select>
+      </div>
+      <div className="overflow-x-auto border border-slate-200 rounded">
+        <table className="w-full text-xs" data-testid="transaction-summary-grid">
+          <thead>
+            <tr className="bg-slate-100 border-b border-slate-200">
+              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap sticky left-0 bg-slate-100 min-w-[180px]">Description</th>
+              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap">Financial Year</th>
+              {MONTHS.map(m => (
+                <th key={m} className="text-right px-3 py-2 font-semibold text-slate-700 whitespace-nowrap">{m}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {pivotData.length === 0 ? (
+              <tr><td colSpan={14} className="text-center text-slate-400 py-4">No records to display</td></tr>
+            ) : pivotData.map((row, i) => (
+              <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
+                <td className="px-3 py-2 text-slate-700 whitespace-nowrap sticky left-0 bg-white font-medium">{row.description}</td>
+                <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{selectedYear}</td>
+                {MONTHS.map(m => (
+                  <td key={m} className="px-3 py-2 text-right text-slate-700 whitespace-nowrap font-mono">{fmt(row[m])}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex items-center justify-end gap-2 text-xs text-slate-500">
+        <span>Items per page: <span className="border rounded px-2 py-0.5">50</span></span>
+        <span>{pivotData.length === 0 ? '0 of 0' : `1 - ${pivotData.length} of ${pivotData.length}`}</span>
+      </div>
+    </div>
+  );
+}
+
+function DetailedTransactionListTab({ accountId }: { accountId: number }) {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedYear, setSelectedYear] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [selectedTxn, setSelectedTxn] = useState<any>(null);
+  const [txnDetail, setTxnDetail] = useState<any>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [showCreditMeterOnly, setShowCreditMeterOnly] = useState(false);
+  const prevAccountId = useRef<number | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getDetailedTransactionResults(accountId);
+      setData(Array.isArray(result) ? result : []);
+    } catch (e: any) {
+      setError(e.message || 'Failed to load detailed transactions');
+    } finally {
+      setLoading(false);
+    }
+  }, [accountId]);
+
+  useEffect(() => {
+    if (prevAccountId.current !== accountId) {
+      prevAccountId.current = accountId;
+      load();
+    }
+  }, [accountId, load]);
+
+  const years = useMemo(() => {
+    const ySet = new Set<string>();
+    data.forEach((d: any) => {
+      const fy = d.financialYear || d.finYear || '';
+      if (fy) ySet.add(fy);
+    });
+    return Array.from(ySet).sort().reverse();
+  }, [data]);
+
+  const monthsAvailable = useMemo(() => {
+    const mSet = new Set<string>();
+    data.filter((d: any) => (d.financialYear || d.finYear || '') === selectedYear)
+      .forEach((d: any) => {
+        const m = d.month || d.billingMonth || d.period || '';
+        if (m) mSet.add(String(m));
+      });
+    return Array.from(mSet);
+  }, [data, selectedYear]);
+
+  useEffect(() => {
+    if (years.length > 0 && !selectedYear) setSelectedYear(years[0]);
+  }, [years, selectedYear]);
+
+  useEffect(() => {
+    if (monthsAvailable.length > 0 && !monthsAvailable.includes(selectedMonth)) {
+      setSelectedMonth(monthsAvailable[0]);
+    }
+  }, [monthsAvailable, selectedMonth]);
+
+  const filtered = useMemo(() => {
+    return data.filter((d: any) => {
+      const fy = d.financialYear || d.finYear || '';
+      const m = String(d.month || d.billingMonth || d.period || '');
+      const yearMatch = !selectedYear || fy === selectedYear;
+      const monthMatch = !selectedMonth || m === selectedMonth;
+      if (showCreditMeterOnly) {
+        const desc = (d.transactionDescription || d.description || '').toLowerCase();
+        return yearMatch && monthMatch && desc.includes('credit meter');
+      }
+      return yearMatch && monthMatch;
+    });
+  }, [data, selectedYear, selectedMonth, showCreditMeterOnly]);
+
+  const handleRowClick = async (txn: any) => {
+    setSelectedTxn(txn);
+    setTxnDetail(null);
+    setDetailLoading(true);
+    try {
+      const primaryId = txn.primaryId || txn.primary_ID || txn.transactionId || txn.id;
+      if (primaryId) {
+        const detail = await getReceiptTransactionDetail(primaryId);
+        setTxnDetail(detail);
+      }
+    } catch {
+      setTxnDetail(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const formatDate = (v: any) => {
+    if (!v) return '';
+    try { const d = new Date(v); return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString('en-ZA'); } catch { return String(v); }
+  };
+  const fmt = (v: any) => typeof v === 'number' ? v.toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : (v || '');
+  const getMonthName = (m: string) => {
+    const idx = parseInt(m);
+    if (!isNaN(idx) && idx >= 1 && idx <= 12) {
+      return ['January','February','March','April','May','June','July','August','September','October','November','December'][idx - 1];
+    }
+    return m;
+  };
+
+  if (loading) return <LoadingSkeleton />;
+  if (error) return <ErrorState message={error} onRetry={load} />;
+
+  return (
+    <div className="p-4 space-y-4" data-testid="detailed-transaction-panel">
+      <h3 className="text-base font-bold text-slate-800">Detailed Transaction List per Billing Period</h3>
+
+      <div className="flex items-center gap-4 flex-wrap">
+        <label className="flex items-center gap-2 text-xs text-slate-600">
+          <input type="checkbox" checked={showCreditMeterOnly} onChange={e => setShowCreditMeterOnly(e.target.checked)} className="rounded" data-testid="checkbox-credit-meter" />
+          Show Credit Meter Consumption Journal only
+        </label>
+        <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)} className="border border-slate-300 rounded px-3 py-1.5 text-sm bg-white" data-testid="select-detail-year">
+          {years.map(y => <option key={y} value={y}>{y}</option>)}
+          {years.length === 0 && <option value="">No data</option>}
+        </select>
+        <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="border border-slate-300 rounded px-3 py-1.5 text-sm bg-white" data-testid="select-detail-month">
+          {monthsAvailable.map(m => <option key={m} value={m}>{getMonthName(m)}</option>)}
+          {monthsAvailable.length === 0 && <option value="">No data</option>}
+        </select>
+      </div>
+
+      <PaginatedTable
+        data={filtered}
+        tableId="detailed-transactions"
+        onRowClick={handleRowClick}
+        columns={[
+          { key: 'transactionDate', label: 'Transaction Date', render: (r: any) => formatDate(r.transactionDate || r.date) },
+          { key: 'transactionDescription', label: 'Transaction Description', render: (r: any) => r.transactionDescription || r.description || '' },
+          { key: 'receiptId', label: 'Receipt ID/ Doc Transaction ID', render: (r: any) => r.receiptId || r.receiptID || r.docTransactionId || r.primaryId || '' },
+          { key: 'documentNumber', label: 'Document Number', render: (r: any) => r.documentNumber || r.documentNo || r.docNo || '' },
+          { key: 'tariff', label: 'Tariff', render: (r: any) => r.tariff || r.tariffDescription || r.tariffDesc || '' },
+          { key: 'amount', label: 'Amount', render: (r: any) => <span className="font-mono">{fmt(r.amount ?? r.transactionAmount)}</span> },
+          { key: 'interest', label: 'Interest', render: (r: any) => <span className="font-mono">{fmt(r.interest ?? r.interestAmount ?? 0)}</span> },
+          { key: 'vat', label: 'VAT', render: (r: any) => <span className="font-mono">{fmt(r.vat ?? r.vatAmount ?? 0)}</span> },
+          { key: 'total', label: 'Total', render: (r: any) => <span className="font-mono font-semibold">{fmt(r.total ?? r.totalAmount ?? ((r.amount || 0) + (r.interest || 0) + (r.vat || 0)))}</span> },
+        ]}
+      />
+
+      {selectedTxn && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setSelectedTxn(null)} data-testid="txn-detail-overlay">
+          <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 bg-slate-50">
+              <h4 className="text-sm font-bold text-slate-700">Detailed Transaction List per Billing Period</h4>
+              <button onClick={() => setSelectedTxn(null)} className="text-slate-400 hover:text-slate-700 text-lg" data-testid="button-close-detail">&times;</button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="border border-slate-200 rounded overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-teal-600 text-white">
+                      <th className="px-3 py-2 text-left font-semibold">Transaction</th>
+                      <th className="px-3 py-2 text-left font-semibold">Physical Meter + Meter Code</th>
+                      <th className="px-3 py-2 text-left font-semibold">Tariff Type</th>
+                      <th className="px-3 py-2 text-left font-semibold">Tariff</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-slate-100">
+                      <td className="px-3 py-2">{selectedTxn.transactionDescription || selectedTxn.description || ''}</td>
+                      <td className="px-3 py-2">{selectedTxn.physicalMeterNo || selectedTxn.meterNo || '-'}</td>
+                      <td className="px-3 py-2">{selectedTxn.tariffType || selectedTxn.tariffTypeDesc || 'Stepped Rate'}</td>
+                      <td className="px-3 py-2">{selectedTxn.tariff || selectedTxn.tariffDescription || ''}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="border border-slate-200 rounded overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-teal-600 text-white">
+                      <th className="px-3 py-2 text-left font-semibold">Description</th>
+                      <th className="px-3 py-2 text-right font-semibold">Amount</th>
+                      <th className="px-3 py-2 text-right font-semibold">VAT</th>
+                      <th className="px-3 py-2 text-right font-semibold">Interest</th>
+                      <th className="px-3 py-2 text-right font-semibold">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detailLoading ? (
+                      <tr><td colSpan={5} className="text-center py-4 text-slate-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading...</td></tr>
+                    ) : txnDetail ? (
+                      <>
+                        {(Array.isArray(txnDetail) ? txnDetail : [txnDetail]).map((d: any, i: number) => (
+                          <tr key={i} className="border-b border-slate-100">
+                            <td className="px-3 py-2 whitespace-pre-wrap max-w-xs">{d.description || d.transactionDescription || selectedTxn.transactionDescription || ''}</td>
+                            <td className="px-3 py-2 text-right font-mono">{fmt(d.amount ?? d.transactionAmount)}</td>
+                            <td className="px-3 py-2 text-right font-mono">{fmt(d.vat ?? d.vatAmount ?? 0)}</td>
+                            <td className="px-3 py-2 text-right font-mono">{fmt(d.interest ?? d.interestAmount ?? 0)}</td>
+                            <td className="px-3 py-2 text-right font-mono font-semibold">{fmt(d.total ?? d.totalAmount ?? ((d.amount || 0) + (d.vat || 0) + (d.interest || 0)))}</td>
+                          </tr>
+                        ))}
+                      </>
+                    ) : (
+                      <tr className="border-b border-slate-100">
+                        <td className="px-3 py-2">{selectedTxn.transactionDescription || selectedTxn.description || ''}</td>
+                        <td className="px-3 py-2 text-right font-mono">{fmt(selectedTxn.amount)}</td>
+                        <td className="px-3 py-2 text-right font-mono">{fmt(selectedTxn.vat ?? 0)}</td>
+                        <td className="px-3 py-2 text-right font-mono">{fmt(selectedTxn.interest ?? 0)}</td>
+                        <td className="px-3 py-2 text-right font-mono font-semibold">{fmt(selectedTxn.total ?? ((selectedTxn.amount || 0) + (selectedTxn.vat || 0) + (selectedTxn.interest || 0)))}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {(txnDetail?.generalLedgerDetails || txnDetail?.glDetails || selectedTxn.debitAmount !== undefined) && (
+                <>
+                  <h5 className="text-sm font-bold text-slate-700">General Ledger Details</h5>
+                  <div className="border border-slate-200 rounded overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-teal-600 text-white">
+                          <th className="px-3 py-2 text-right font-semibold">Debit Amount</th>
+                          <th className="px-3 py-2 text-right font-semibold">Credit Amount</th>
+                          <th className="px-3 py-2 text-left font-semibold">Debit Vote</th>
+                          <th className="px-3 py-2 text-left font-semibold">Credit Vote</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(() => {
+                          const gl = txnDetail?.generalLedgerDetails || txnDetail?.glDetails || [];
+                          const glArr = Array.isArray(gl) ? gl : [gl];
+                          return glArr.length > 0 ? glArr.map((g: any, i: number) => (
+                            <tr key={i} className="border-b border-slate-100">
+                              <td className="px-3 py-2 text-right font-mono">{fmt(g.debitAmount ?? g.debit)}</td>
+                              <td className="px-3 py-2 text-right font-mono">{fmt(g.creditAmount ?? g.credit)}</td>
+                              <td className="px-3 py-2 text-[10px]">{g.debitVote || g.debitAccountCode || ''}</td>
+                              <td className="px-3 py-2 text-[10px]">{g.creditVote || g.creditAccountCode || ''}</td>
+                            </tr>
+                          )) : (
+                            <tr><td colSpan={4} className="text-center text-slate-400 py-3">No GL details available</td></tr>
+                          );
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              <div className="flex justify-center pt-2">
+                <button onClick={() => setSelectedTxn(null)} className="px-6 py-2 bg-slate-800 text-white text-sm rounded hover:bg-slate-700 transition-colors" data-testid="button-close-detail-bottom">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -2826,6 +3200,8 @@ function GeneralEnquiriesContent() {
                 <TabsTrigger value="incentives" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-incentives">Incentives</TabsTrigger>
                 <TabsTrigger value="deposits" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-deposits">Deposits</TabsTrigger>
                 <TabsTrigger value="transactions" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-transactions">Transactions</TabsTrigger>
+                <TabsTrigger value="txn-summary" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-txn-summary">Txn Summary</TabsTrigger>
+                <TabsTrigger value="txn-detailed" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-txn-detailed">Detailed Txn List</TabsTrigger>
                 <TabsTrigger value="services-meters" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-services-meters">Services & Meters</TabsTrigger>
                 <TabsTrigger value="payment-plans" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-payment-plans">Payment Plans</TabsTrigger>
                 <TabsTrigger value="payment-extensions" className="text-xs sm:text-sm data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 rounded-none px-3 py-2.5 whitespace-nowrap" data-testid="tab-payment-extensions">Payment Extension History</TabsTrigger>
@@ -2851,6 +3227,8 @@ function GeneralEnquiriesContent() {
               <TabsContent value="incentives" className="m-0"><IncentivesTab accountId={accountId} /></TabsContent>
               <TabsContent value="deposits" className="m-0"><DepositsTab accountId={accountId} /></TabsContent>
               <TabsContent value="transactions" className="m-0"><TransactionHistoryTab accountId={accountId} accountNumber={selectedAccount.accountNumber || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabsContent>
+              <TabsContent value="txn-summary" className="m-0"><TransactionSummaryTab accountId={accountId} /></TabsContent>
+              <TabsContent value="txn-detailed" className="m-0"><DetailedTransactionListTab accountId={accountId} /></TabsContent>
               <TabsContent value="services-meters" className="m-0"><ServicesMetersTab accountId={accountId} unitId={unitId} /></TabsContent>
               <TabsContent value="payment-plans" className="m-0"><PaymentPlansTab accountId={accountId} /></TabsContent>
               <TabsContent value="payment-extensions" className="m-0"><PaymentExtensionHistoryTab accountId={accountId} /></TabsContent>
