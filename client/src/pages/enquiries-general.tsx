@@ -4363,77 +4363,109 @@ function GeneralEnquiriesContent() {
     const accountId = selectedAccount.account_ID || selectedAccount.accountID;
     const propertyId = selectedAccount.propertyID ? Number(selectedAccount.propertyID) : (selectedAccount.unitID || selectedAccount.unitPartitionID || undefined);
     const unitId = selectedAccount.unitID || undefined;
+    const isActive = (selectedAccount.accountStatus || selectedAccount.statusDesc)?.toLowerCase() === 'active';
+    const accountName = selectedAccount.name || selectedAccount.surname_Company || 'Unknown';
+    const accountNum = selectedAccount.accountNumber || selectedAccount.accountID || selectedAccount.account_ID;
+
+    const tabItems = [
+      { value: 'account', label: 'Account' },
+      { value: 'name', label: 'Name' },
+      { value: 'balance', label: 'Balance/Debt' },
+      { value: 'services', label: 'Services' },
+      { value: 'property', label: 'Property' },
+      { value: 'consumption', label: 'Consumption' },
+      { value: 'contact', label: 'Contact' },
+      { value: 'handover', label: 'Handover' },
+      { value: 'incentives', label: 'Incentives' },
+      { value: 'deposits', label: 'Deposits' },
+      { value: 'transactions', label: 'Receipts' },
+      { value: 'txn-summary', label: 'Txn Summary' },
+      { value: 'txn-detailed', label: 'Txn Detail' },
+      { value: 'services-meters', label: 'Meters' },
+      { value: 'payment-plans', label: 'Pay Plans' },
+      { value: 'payment-extensions', label: 'Extensions' },
+      { value: 'debit-orders', label: 'Debit Orders' },
+      { value: 'rates', label: 'Rates' },
+      { value: 'notifications', label: 'Notifications' },
+      { value: 'statements', label: 'Statements' },
+      { value: 'clearance', label: 'Clearance' },
+      { value: 'debtor-notes', label: 'Debtor Notes' },
+      { value: 'section129', label: 'Section 129' },
+      { value: 'occupiers', label: 'Occupiers' },
+    ];
+
     return (
-      <div className="flex flex-col h-full overflow-hidden">
-        <div className="shrink-0 bg-white border-b px-4 sm:px-6 py-3 flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => setSelectedAccount(null)} className="gap-1.5" data-testid="button-back-to-results">
-            <ChevronLeft className="w-4 h-4" />
-            Back
-          </Button>
-          <div className="h-5 w-px bg-slate-200" />
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="shrink-0 h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-sm font-bold">
-              {(selectedAccount.name || selectedAccount.surname_Company || '?').charAt(0).toUpperCase()}
+      <div className="flex flex-col h-full overflow-hidden bg-slate-50/80">
+        <div className="shrink-0 bg-white border-b border-slate-200 shadow-sm">
+          <div className="px-4 sm:px-6 py-3 flex items-center gap-3">
+            <button
+              onClick={() => setSelectedAccount(null)}
+              className="inline-flex items-center gap-1 text-slate-500 hover:text-blue-600 text-sm font-medium transition-colors group"
+              data-testid="button-back-to-results"
+            >
+              <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+              <span>Back</span>
+            </button>
+
+            <div className="h-8 w-px bg-slate-200" />
+
+            <div className="shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
+              {accountName.charAt(0).toUpperCase()}
             </div>
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-slate-800 truncate" data-testid="text-selected-account-name">{selectedAccount.name || selectedAccount.surname_Company}</div>
-              <div className="text-xs text-slate-500">
-                Acc: {selectedAccount.accountNumber || selectedAccount.accountID || selectedAccount.account_ID}
-                {selectedAccount.oldAccountCode && ` | Old: ${selectedAccount.oldAccountCode}`}
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-[15px] font-bold text-slate-900 truncate" data-testid="text-selected-account-name">
+                  {accountName}
+                </h2>
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${isActive ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200'}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                  {selectedAccount.accountStatus || selectedAccount.statusDesc || 'Unknown'}
+                </span>
+                {(selectedAccount.accountType || selectedAccount.accountDesc) && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 ring-1 ring-blue-200" data-testid="badge-account-type">
+                    {selectedAccount.accountType || selectedAccount.accountDesc}
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-slate-500 mt-0.5 font-mono">
+                Acc: {accountNum}
+                {selectedAccount.oldAccountCode && <span className="text-slate-400"> | Old: {selectedAccount.oldAccountCode}</span>}
               </div>
             </div>
-            <Badge variant={(selectedAccount.accountStatus || selectedAccount.statusDesc)?.toLowerCase() === 'active' ? 'default' : 'secondary'} className="ml-2 shrink-0">
-              {selectedAccount.accountStatus || selectedAccount.statusDesc || 'Unknown'}
-            </Badge>
-            {(selectedAccount.accountType || selectedAccount.accountDesc) && (
-              <Badge variant="outline" className="shrink-0 text-[10px] border-blue-200 text-blue-700 bg-blue-50" data-testid="badge-account-type">
-                {selectedAccount.accountType || selectedAccount.accountDesc}
-              </Badge>
-            )}
-          </div>
-          <div className="shrink-0 ml-auto text-right" data-testid="header-balance-section">
-            <div className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">Outstanding Balance</div>
-            {headerBalance !== null ? (
-              <div className={`text-base font-bold font-mono ${headerBalance > 0 ? 'text-red-600' : headerBalance < 0 ? 'text-green-600' : 'text-slate-800'}`} data-testid="text-header-balance">
-                R {headerBalance.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-            ) : (
-              <div className="text-xs text-slate-400 animate-pulse">Loading...</div>
-            )}
+
+            <div className="shrink-0 ml-auto text-right pl-4" data-testid="header-balance-section">
+              <div className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold mb-0.5">Outstanding Balance</div>
+              {headerBalance !== null ? (
+                <div className={`text-xl font-bold font-mono tracking-tight ${headerBalance > 0 ? 'text-red-600' : headerBalance < 0 ? 'text-emerald-600' : 'text-slate-800'}`} data-testid="text-header-balance">
+                  R {headerBalance.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              ) : (
+                <div className="h-6 w-24 bg-slate-100 rounded animate-pulse" />
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto bg-slate-50">
+        <div className="flex-1 overflow-auto">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <div className="shrink-0 bg-white border-b px-2 sm:px-3 py-1.5">
-              <TabsList className="h-auto flex flex-wrap gap-0.5 bg-transparent p-0 justify-start">
-                <TabsTrigger value="account" className="text-[11px] data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md px-2 py-1 hover:bg-slate-100 transition-colors" data-testid="tab-account-info">Account</TabsTrigger>
-                <TabsTrigger value="name" className="text-[11px] data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md px-2 py-1 hover:bg-slate-100 transition-colors" data-testid="tab-name">Name</TabsTrigger>
-                <TabsTrigger value="balance" className="text-[11px] data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md px-2 py-1 hover:bg-slate-100 transition-colors" data-testid="tab-balance">Balance/Debt</TabsTrigger>
-                <TabsTrigger value="services" className="text-[11px] data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md px-2 py-1 hover:bg-slate-100 transition-colors" data-testid="tab-services">Services</TabsTrigger>
-                <TabsTrigger value="property" className="text-[11px] data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md px-2 py-1 hover:bg-slate-100 transition-colors" data-testid="tab-property">Property</TabsTrigger>
-                <TabsTrigger value="consumption" className="text-[11px] data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md px-2 py-1 hover:bg-slate-100 transition-colors" data-testid="tab-consumption">Consumption</TabsTrigger>
-                <TabsTrigger value="contact" className="text-[11px] data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md px-2 py-1 hover:bg-slate-100 transition-colors" data-testid="tab-contact">Contact</TabsTrigger>
-                <TabsTrigger value="handover" className="text-[11px] data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md px-2 py-1 hover:bg-slate-100 transition-colors" data-testid="tab-handover">Handover</TabsTrigger>
-                <TabsTrigger value="incentives" className="text-[11px] data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md px-2 py-1 hover:bg-slate-100 transition-colors" data-testid="tab-incentives">Incentives</TabsTrigger>
-                <TabsTrigger value="deposits" className="text-[11px] data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md px-2 py-1 hover:bg-slate-100 transition-colors" data-testid="tab-deposits">Deposits</TabsTrigger>
-                <TabsTrigger value="transactions" className="text-[11px] data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md px-2 py-1 hover:bg-slate-100 transition-colors" data-testid="tab-transactions">Receipts</TabsTrigger>
-                <TabsTrigger value="txn-summary" className="text-[11px] data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md px-2 py-1 hover:bg-slate-100 transition-colors" data-testid="tab-txn-summary">Txn Summary</TabsTrigger>
-                <TabsTrigger value="txn-detailed" className="text-[11px] data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md px-2 py-1 hover:bg-slate-100 transition-colors" data-testid="tab-txn-detailed">Txn Detail</TabsTrigger>
-                <TabsTrigger value="services-meters" className="text-[11px] data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md px-2 py-1 hover:bg-slate-100 transition-colors" data-testid="tab-services-meters">Meters</TabsTrigger>
-                <TabsTrigger value="payment-plans" className="text-[11px] data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md px-2 py-1 hover:bg-slate-100 transition-colors" data-testid="tab-payment-plans">Pay Plans</TabsTrigger>
-                <TabsTrigger value="payment-extensions" className="text-[11px] data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md px-2 py-1 hover:bg-slate-100 transition-colors" data-testid="tab-payment-extensions">Extensions</TabsTrigger>
-                <TabsTrigger value="debit-orders" className="text-[11px] data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md px-2 py-1 hover:bg-slate-100 transition-colors" data-testid="tab-debit-orders">Debit Orders</TabsTrigger>
-                <TabsTrigger value="rates" className="text-[11px] data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md px-2 py-1 hover:bg-slate-100 transition-colors" data-testid="tab-rates">Rates</TabsTrigger>
-                <TabsTrigger value="notifications" className="text-[11px] data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md px-2 py-1 hover:bg-slate-100 transition-colors" data-testid="tab-notifications">Notifications</TabsTrigger>
-                <TabsTrigger value="statements" className="text-[11px] data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md px-2 py-1 hover:bg-slate-100 transition-colors" data-testid="tab-statements">Statements</TabsTrigger>
-                <TabsTrigger value="clearance" className="text-[11px] data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md px-2 py-1 hover:bg-slate-100 transition-colors" data-testid="tab-clearance">Clearance</TabsTrigger>
-                <TabsTrigger value="debtor-notes" className="text-[11px] data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md px-2 py-1 hover:bg-slate-100 transition-colors" data-testid="tab-debtor-notes">Debtor Notes</TabsTrigger>
-                <TabsTrigger value="section129" className="text-[11px] data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md px-2 py-1 hover:bg-slate-100 transition-colors" data-testid="tab-section129">Section 129</TabsTrigger>
-                <TabsTrigger value="occupiers" className="text-[11px] data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-md px-2 py-1 hover:bg-slate-100 transition-colors" data-testid="tab-occupiers">Occupiers</TabsTrigger>
-              </TabsList>
+            <div className="shrink-0 bg-white border-b border-slate-200 sticky top-0 z-20">
+              <div className="px-3 sm:px-4">
+                <TabsList className="h-auto flex flex-nowrap gap-0 bg-transparent p-0 overflow-x-auto scrollbar-hide -mb-px">
+                  {tabItems.map(tab => (
+                    <TabsTrigger
+                      key={tab.value}
+                      value={tab.value}
+                      className="relative text-[12px] font-medium whitespace-nowrap px-3 py-2.5 rounded-none border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50/80 transition-all data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-700 data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:shadow-none"
+                      data-testid={`tab-${tab.value}`}
+                    >
+                      {tab.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
             </div>
-            <div className="flex-1 overflow-auto">
+            <div className="flex-1 overflow-auto bg-slate-50/50">
               <TabsContent value="account" className="m-0"><AccountInfoTab account={selectedAccount} /></TabsContent>
               <TabsContent value="name" className="m-0"><NameTab accountId={accountId} /></TabsContent>
               <TabsContent value="balance" className="m-0"><BalanceDebtTab accountId={accountId} /></TabsContent>

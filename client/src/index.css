@@ -147,4 +147,12 @@
   .input-field {
     @apply h-11 transition-all focus:ring-2 focus:ring-primary/20;
   }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
