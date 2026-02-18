@@ -159,6 +159,15 @@ export async function getConfigSetting(keyName: string): Promise<any> {
   return fetchWithTimeout(`/api/platinum/billing-enquiry/get-config-setting?strKeyName=${encodeURIComponent(keyName)}`);
 }
 
+export async function getAppSetting(key: string): Promise<any> {
+  return fetchWithTimeout(`/api/platinum/billing-enquiry/get-app-setting?key=${encodeURIComponent(key)}`);
+}
+
+export async function checkFileExists(params: Record<string, string>): Promise<any> {
+  const qs = new URLSearchParams(params).toString();
+  return fetchWithTimeout(`/api/platinum/billing-enquiry/check-file-exists?${qs}`);
+}
+
 // === ACCOUNT INFO ===
 export async function getBasicAccountDetails(accountId: number): Promise<any> {
   return fetchWithTimeout(`/api/platinum/billing-enquiry/basic-account-details?accountId=${accountId}`);
