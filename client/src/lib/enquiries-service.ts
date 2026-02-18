@@ -413,9 +413,9 @@ export async function getRatesRunHistory(accountId: number): Promise<any[]> {
   return normalizeArray(data);
 }
 
-export async function getAccountRatesDetails(accountId: number): Promise<any[]> {
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/account-rates-details?accountId=${accountId}`);
-  return normalizeArray(data);
+export async function getAccountRatesDetails(accountId: number, finYear?: string): Promise<any> {
+  const yr = finYear || new Date().getFullYear().toString();
+  return fetchWithTimeout(`/api/platinum/billing-enquiry/account-rates-details?accountId=${accountId}&finYear=${encodeURIComponent(yr)}`);
 }
 
 // === CHEQUES ===

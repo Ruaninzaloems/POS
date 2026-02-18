@@ -42,6 +42,8 @@ import {
   getChequeFinalSearchList,
   getContactDetails,
   getReceiptTransactionDetail,
+  getSupplementaryValuations,
+  getTransferOwnership,
   type EnquirySearchCriteria, type EnquirySearchResult,
 } from '@/lib/enquiries-service';
 
@@ -944,7 +946,12 @@ function ServiceBalanceTab({ accountId }: { accountId: number }) {
 }
 
 function PropertyDetailsTab({ accountId }: { accountId: number }) {
-  const [data, setData] = useState<any>(null);
+  const [propData, setPropData] = useState<any>(null);
+  const [consUnit, setConsUnit] = useState<any>(null);
+  const [valuations, setValuations] = useState<any[]>([]);
+  const [ratesDetails, setRatesDetails] = useState<any>(null);
+  const [meters, setMeters] = useState<any[]>([]);
+  const [transfers, setTransfers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const loaded = useRef(false);
@@ -953,8 +960,29 @@ function PropertyDetailsTab({ accountId }: { accountId: number }) {
     setLoading(true);
     setError(null);
     try {
-      const result = await getPropertyDetails(accountId);
-      setData(result);
+      const [propResult, consResult] = await Promise.allSettled([
+        getPropertyDetails(accountId),
+        getConsumptionUnits(accountId),
+      ]);
+      let propVal = propResult.status === 'fulfilled' ? propResult.value : null;
+      if (Array.isArray(propVal)) propVal = propVal[0] || null;
+      setPropData(propVal);
+      const cu = consResult.status === 'fulfilled' ? consResult.value : null;
+      const cuData = Array.isArray(cu) ? cu[0] : cu;
+      setConsUnit(cuData);
+
+      const propertyId = propVal?.propertyId || propVal?.property_ID || cuData?.unit_ID;
+
+      const [valResult, ratesResult, meterResult, transferResult] = await Promise.allSettled([
+        propertyId ? getSupplementaryValuations(propertyId).catch(() => []) : Promise.resolve([]),
+        getAccountRatesDetails(accountId).catch(() => null),
+        getMeteredServicesOnAccount(accountId).catch(() => []),
+        getTransferOwnership(accountId).catch(() => []),
+      ]);
+      if (valResult.status === 'fulfilled') setValuations(Array.isArray(valResult.value) ? valResult.value : valResult.value ? [valResult.value] : []);
+      if (ratesResult.status === 'fulfilled') setRatesDetails(ratesResult.value);
+      if (meterResult.status === 'fulfilled') setMeters(Array.isArray(meterResult.value) ? meterResult.value : []);
+      if (transferResult.status === 'fulfilled') setTransfers(Array.isArray(transferResult.value) ? transferResult.value : []);
       loaded.current = true;
     } catch (e: any) {
       setError(e.message || 'Failed to load property details');
@@ -967,30 +995,257 @@ function PropertyDetailsTab({ accountId }: { accountId: number }) {
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
-  if (!data) return <EmptyState message="No property details available" />;
+  if (!propData && !consUnit) return <EmptyState message="No property details available" />;
 
-  const items = Array.isArray(data) ? data : [data];
+  const prop = propData || {};
+  const cu = consUnit || {};
+  const fmt = (v: any) => {
+    if (v === null || v === undefined || v === '') return '-';
+    const n = typeof v === 'number' ? v : parseFloat(v);
+    if (isNaN(n)) return String(v);
+    return n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+  const fmtDate = (v: any) => {
+    if (!v) return '-';
+    try { return new Date(v).toLocaleDateString('en-ZA'); } catch { return String(v); }
+  };
+  const fmtInt = (v: any) => {
+    if (v === null || v === undefined || v === '') return '-';
+    return typeof v === 'number' ? v.toLocaleString('en-ZA') : String(v);
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4">
-      {items.map((prop: any, i: number) => (
-        <Card key={i}>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-slate-600 flex items-center gap-2"><Building2 className="w-4 h-4" /> Property {items.length > 1 ? i + 1 : ''}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-0">
-            <FieldRow label="Property ID" value={prop.property_ID || prop.propertyId} icon={<Hash className="w-3.5 h-3.5" />} />
-            <FieldRow label="Erf Number" value={prop.erfNumber || prop.erf_Number} />
-            <FieldRow label="SG Number" value={prop.sgNumber || prop.sg_Number} />
-            <FieldRow label="Street" value={prop.streetName || prop.street} />
-            <FieldRow label="Town" value={prop.town} />
-            <FieldRow label="Suburb" value={prop.suburb} />
-            <FieldRow label="Zoning" value={prop.zoning} />
-            <FieldRow label="Property Type" value={prop.propertyType || prop.propertyDesc} />
-            <FieldRow label="Market Value" value={prop.marketValue} />
-            <FieldRow label="Extent (m²)" value={prop.extent || prop.extentM2} />
-          </CardContent>
-        </Card>
-      ))}
+    <div className="p-4 space-y-6" data-testid="property-details-tab">
+      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+          <Building2 className="w-4 h-4 text-white" />
+          <h3 className="text-sm font-semibold text-white tracking-wide">Property Information</h3>
+        </div>
+        <div className="p-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3">
+            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Property ID</span><div className="text-sm font-medium text-slate-800">{prop.propertyId || prop.property_ID || cu.unit_ID || '-'}</div></div>
+            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Erf Number</span><div className="text-sm font-medium text-slate-800">{prop.erfNumber || cu.erfNumber || '-'}</div></div>
+            <div><span className="text-[11px] uppercase text-slate-400 font-medium">SG Number</span><div className="text-sm font-medium text-slate-800">{prop.sgNumber || cu.sgNumber || '-'}</div></div>
+            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Street Address</span><div className="text-sm font-medium text-slate-800">{prop.streetNumber ? `${prop.streetNumber} ${prop.streetName}` : prop.streetName || cu.nonStandAddLine1 || '-'}</div></div>
+            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Suburb</span><div className="text-sm font-medium text-slate-800">{prop.subSuburb || prop.suburb || cu.nonStandAddSuburb || '-'}</div></div>
+            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Town</span><div className="text-sm font-medium text-slate-800">{prop.town || '-'}</div></div>
+            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Property Type / Zoning</span><div className="text-sm font-medium text-slate-800">{prop.typeofUse || prop.townPlanningZoneType || '-'}</div></div>
+            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Market Value</span><div className="text-sm font-bold text-blue-700 font-mono">{fmt(prop.marketValue || cu.marketValue)}</div></div>
+            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Stand Size (m²)</span><div className="text-sm font-medium text-slate-800">{fmtInt(prop.standSize || cu.standSize)}</div></div>
+            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Land Size (ha)</span><div className="text-sm font-medium text-slate-800">{prop.landSize ?? cu.landSize ?? '-'}</div></div>
+            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Rates Tariff</span><div className="text-sm font-medium text-slate-800">{prop.ratesTariff || '-'}</div></div>
+            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Owner</span><div className="text-sm font-medium text-slate-800">{prop.name || '-'}</div></div>
+            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Master Property</span><div className="text-sm font-medium text-slate-800">{prop.masterProperty || '-'}</div></div>
+            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Roll Number</span><div className="text-sm font-medium text-slate-800">{prop.rollNumber || '-'}</div></div>
+            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Roll Start Date</span><div className="text-sm font-medium text-slate-800">{fmtDate(prop.rollStartDate)}</div></div>
+            <div><span className="text-[11px] uppercase text-slate-400 font-medium">Expected Expiry Date</span><div className="text-sm font-medium text-slate-800">{fmtDate(prop.expectedExpiryDate)}</div></div>
+            {prop.rdpOrReform && <div><span className="text-[11px] uppercase text-slate-400 font-medium">RDP / Reform</span><div className="text-sm font-medium text-slate-800">{prop.rdpOrReform}</div></div>}
+            {prop.complexName && <div><span className="text-[11px] uppercase text-slate-400 font-medium">Complex</span><div className="text-sm font-medium text-slate-800">{prop.complexName}</div></div>}
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
+          <Landmark className="w-4 h-4 text-white" />
+          <h3 className="text-sm font-semibold text-white tracking-wide">General Valuations</h3>
+          <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{valuations.length}</Badge>
+        </div>
+        {valuations.length === 0 ? (
+          <div className="p-6 text-center text-slate-400 text-sm">No valuation records found</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Type</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Fin Year</th>
+                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Market Value</th>
+                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Improvement</th>
+                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Stand Size (m²)</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Roll Number</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Roll Date</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Tariff</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Zoning / Use</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reason</th>
+                </tr>
+              </thead>
+              <tbody>
+                {valuations.map((v: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-emerald-50/30 transition-colors">
+                    <td className="py-2 px-3 font-medium text-slate-800">{v.type || '-'}</td>
+                    <td className="py-2 px-3">
+                      <Badge variant={v.valuationStatus === 'Active' ? 'default' : 'secondary'} className={`text-[10px] ${v.valuationStatus === 'Active' ? 'bg-green-100 text-green-800' : ''}`}>{v.valuationStatus || '-'}</Badge>
+                    </td>
+                    <td className="py-2 px-3 text-slate-600">{v.financialYear || '-'}</td>
+                    <td className="py-2 px-3 text-right font-mono font-semibold text-blue-700">{fmt(v.standMarketValue)}</td>
+                    <td className="py-2 px-3 text-right font-mono">{fmt(v.improvementValue)}</td>
+                    <td className="py-2 px-3 text-right font-mono">{fmtInt(v.standSize)}</td>
+                    <td className="py-2 px-3 text-slate-600">{v.rollNumber || '-'}</td>
+                    <td className="py-2 px-3 text-slate-600">{fmtDate(v.rollDate)}</td>
+                    <td className="py-2 px-3 text-slate-600 text-xs">{v.ratesTariffCode || '-'}</td>
+                    <td className="py-2 px-3 text-slate-600">{v.zoneDesc || v.typeOfUseDesc || '-'}</td>
+                    <td className="py-2 px-3 text-slate-600">{v.reason || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
+            <Gift className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Rebates & Levies</h3>
+          </div>
+          <div className="p-4">
+            {ratesDetails ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-amber-50/50 rounded-lg border border-amber-100">
+                  <span className="text-sm text-slate-700">Annual Property Rates</span>
+                  <span className="font-mono font-bold text-slate-800">{fmt(ratesDetails.annualPropertyRates)}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-amber-50/50 rounded-lg border border-amber-100">
+                  <span className="text-sm text-slate-700">Installment</span>
+                  <span className="font-mono font-bold text-slate-800">{fmt(ratesDetails.installment)}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-amber-50/50 rounded-lg border border-amber-100">
+                  <span className="text-sm text-slate-700">Frequency</span>
+                  <span className="font-medium text-slate-800">{ratesDetails.frequency || '-'}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-amber-50/50 rounded-lg border border-amber-100">
+                  <span className="text-sm text-slate-700">Remaining Installments</span>
+                  <span className="font-medium text-slate-800">{ratesDetails.remainingInstallments ?? '-'}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-amber-50/50 rounded-lg border border-amber-100">
+                  <span className="text-sm text-slate-700">Remaining Amount</span>
+                  <span className="font-mono font-bold text-slate-800">{fmt(ratesDetails.remaingAmount ?? ratesDetails.remainingAmount)}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-green-50/50 rounded-lg border border-green-200">
+                  <span className="text-sm text-green-800 font-medium">Rebate Amount</span>
+                  <span className="font-mono font-bold text-green-700">{fmt(ratesDetails.rebateAmount)}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center text-slate-400 text-sm py-4">No rates/rebate data available</div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center gap-2">
+            <Shield className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Election Information</h3>
+          </div>
+          <div className="p-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
+                <span className="text-sm text-slate-700">Ward</span>
+                <span className="font-medium text-indigo-800">{cu.wardID ? `Ward ${cu.wardID}` : '-'}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
+                <span className="text-sm text-slate-700">Polling Station</span>
+                <span className="font-medium text-indigo-800">{cu.pollingStationID ? `Station ${cu.pollingStationID}` : '-'}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
+                <span className="text-sm text-slate-700">Magisterial District</span>
+                <span className="font-medium text-indigo-800">{cu.magisterialID ? `District ${cu.magisterialID}` : '-'}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
+                <span className="text-sm text-slate-700">NT Property Category</span>
+                <span className="font-medium text-indigo-800">{cu.ntPropertyCategoryID ?? '-'}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
+                <span className="text-sm text-slate-700">Billing Cycle</span>
+                <span className="font-medium text-indigo-800">{cu.billingCycleID ?? '-'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 bg-gradient-to-r from-cyan-600 to-cyan-700 flex items-center gap-2">
+          <Zap className="w-4 h-4 text-white" />
+          <h3 className="text-sm font-semibold text-white tracking-wide">Meters</h3>
+          <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{meters.length}</Badge>
+        </div>
+        {meters.length === 0 ? (
+          <div className="p-6 text-center text-slate-400 text-sm">No meters linked to this property</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Number</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Type</th>
+                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Last Reading</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Read Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {meters.map((m: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-cyan-50/30 transition-colors">
+                    <td className="py-2 px-3 font-mono font-medium text-slate-800">{m.meterNumber || m.physicalMeterNumber || m.meter_Number || '-'}</td>
+                    <td className="py-2 px-3 text-slate-600">{m.serviceType || m.serviceDescription || m.service || '-'}</td>
+                    <td className="py-2 px-3">
+                      <Badge variant={m.status === 'Active' || m.isActive ? 'default' : 'secondary'} className={`text-[10px] ${m.status === 'Active' || m.isActive ? 'bg-green-100 text-green-800' : ''}`}>{m.status || (m.isActive ? 'Active' : 'Inactive') || '-'}</Badge>
+                    </td>
+                    <td className="py-2 px-3 text-slate-600">{m.meterType || m.type || '-'}</td>
+                    <td className="py-2 px-3 text-right font-mono">{m.lastReading ?? m.currentReading ?? '-'}</td>
+                    <td className="py-2 px-3 text-slate-600">{fmtDate(m.readDate || m.lastReadDate)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
+          <ArrowRight className="w-4 h-4 text-white" />
+          <h3 className="text-sm font-semibold text-white tracking-wide">Transfer of Ownership History</h3>
+          <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{transfers.length}</Badge>
+        </div>
+        {transfers.length === 0 ? (
+          <div className="p-6 text-center text-slate-400 text-sm">No transfer of ownership records found</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Date</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">From</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">To</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Type</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reference</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transfers.map((t: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-purple-50/30 transition-colors">
+                    <td className="py-2 px-3 text-slate-600">{fmtDate(t.transferDate || t.dateOfTransfer || t.date)}</td>
+                    <td className="py-2 px-3 font-medium text-slate-800">{t.fromOwner || t.previousOwner || t.from || '-'}</td>
+                    <td className="py-2 px-3 font-medium text-slate-800">{t.toOwner || t.newOwner || t.to || '-'}</td>
+                    <td className="py-2 px-3 text-slate-600">{t.transferType || t.type || '-'}</td>
+                    <td className="py-2 px-3 font-mono text-slate-600">{t.reference || t.referenceNumber || '-'}</td>
+                    <td className="py-2 px-3">
+                      <Badge variant="outline" className="text-[10px]">{t.status || t.transferStatus || '-'}</Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
