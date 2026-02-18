@@ -649,6 +649,7 @@ function BalanceDebtTab({ accountId }: { accountId: number }) {
   const [balanceData, setBalanceData] = useState<any[]>([]);
   const [txnHistory, setTxnHistory] = useState<any[]>([]);
   const [capitalData, setCapitalData] = useState<any>(null);
+  const [ratesData, setRatesData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showExtended, setShowExtended] = useState(false);
@@ -658,10 +659,11 @@ function BalanceDebtTab({ accountId }: { accountId: number }) {
     setLoading(true);
     setError(null);
     try {
-      const [balResult, txnResult, capResult] = await Promise.allSettled([
+      const [balResult, txnResult, capResult, ratesResult] = await Promise.allSettled([
         getAccountBalance(accountId),
         getTransactionHistory(String(accountId).padStart(12, '0')),
         getPaymentPlanRemainingCapital(accountId),
+        getAccountRatesDetails(accountId, '2025/2026'),
       ]);
       if (balResult.status === 'fulfilled') {
         const d = balResult.value;
@@ -669,6 +671,7 @@ function BalanceDebtTab({ accountId }: { accountId: number }) {
       }
       if (txnResult.status === 'fulfilled') setTxnHistory(Array.isArray(txnResult.value) ? txnResult.value : []);
       if (capResult.status === 'fulfilled' && capResult.value && !capResult.value._error) setCapitalData(capResult.value);
+      if (ratesResult.status === 'fulfilled' && ratesResult.value && !ratesResult.value._error) setRatesData(ratesResult.value);
       loaded.current = true;
     } catch (e: any) {
       setError(e.message || 'Failed to load balance data');
@@ -784,31 +787,58 @@ function BalanceDebtTab({ accountId }: { accountId: number }) {
         </div>
       </div>
 
-      {propertyRatesItems.length > 0 && (
+      {(propertyRatesItems.length > 0 || ratesData) && (
         <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-4 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
             <Home className="w-4 h-4 text-white" />
             <h3 className="text-sm font-semibold text-white tracking-wide">Property Rates Section</h3>
           </div>
-          <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {propertyRatesItems.map((item: any, i: number) => (
-              <div key={i} className="bg-gradient-to-br from-slate-50 to-white rounded-lg border border-slate-200 p-4 space-y-3">
-                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{item.serviceDescription}</div>
-                <div className="text-2xl font-bold text-red-600 font-mono">{fmt(item.totalOutStanding ?? 0)}</div>
-                <div className="space-y-1.5 text-xs">
-                  <div className="flex justify-between"><span className="text-slate-500">Current:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['current', 'currentAccount']))}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">30 Days:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['days30']))}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">60 Days:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['days60']))}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">90 Days:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['days90']))}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">120 Days:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['days120']))}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">150 Days:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['days150']))}</span></div>
-                  {showExtended && (
-                    <div className="flex justify-between"><span className="text-slate-500">180+ Days:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['untill360']))}</span></div>
-                  )}
-                  <div className="flex justify-between border-t pt-1.5 mt-1"><span className="text-slate-500">Deposit:</span><span className="font-mono font-medium">{fmtDash(item.deposit)}</span></div>
+          <div className="p-4 space-y-4">
+            {ratesData && (
+              <div className="bg-slate-50 rounded-lg border border-slate-200 p-4">
+                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Property Rates:</h4>
+                <div className="space-y-2.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-semibold text-slate-700">Annual Property Rates Amount:</span>
+                    <span className="text-sm font-mono font-bold text-slate-800">R {fmt(ratesData.annualPropertyRates ?? 0)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-semibold text-slate-700">Frequency:</span>
+                    <span className="text-sm font-mono font-bold text-slate-800">{ratesData.frequency ?? '-'}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-semibold text-slate-700">Instalment:</span>
+                    <span className="text-sm font-mono font-bold text-slate-800">R {fmt(ratesData.installment ?? 0)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-semibold text-slate-700">Remaining Instalments:</span>
+                    <span className="text-sm font-mono font-bold text-slate-800">{ratesData.remainingInstallments ?? '-'}</span>
+                  </div>
                 </div>
               </div>
-            ))}
+            )}
+            {propertyRatesItems.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {propertyRatesItems.map((item: any, i: number) => (
+                  <div key={i} className="bg-gradient-to-br from-slate-50 to-white rounded-lg border border-slate-200 p-4 space-y-3">
+                    <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{item.serviceDescription}</div>
+                    <div className="text-2xl font-bold text-red-600 font-mono">{fmt(item.totalOutStanding ?? 0)}</div>
+                    <div className="space-y-1.5 text-xs">
+                      <div className="flex justify-between"><span className="text-slate-500">Current:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['current', 'currentAccount']))}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-500">30 Days:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['days30']))}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-500">60 Days:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['days60']))}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-500">90 Days:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['days90']))}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-500">120 Days:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['days120']))}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-500">150 Days:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['days150']))}</span></div>
+                      {showExtended && (
+                        <div className="flex justify-between"><span className="text-slate-500">180+ Days:</span><span className="font-mono font-medium">{fmtDash(getVal(item, ['untill360']))}</span></div>
+                      )}
+                      <div className="flex justify-between border-t pt-1.5 mt-1"><span className="text-slate-500">Deposit:</span><span className="font-mono font-medium">{fmtDash(item.deposit)}</span></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
