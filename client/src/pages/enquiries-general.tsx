@@ -3488,12 +3488,15 @@ const SEARCH_FIELDS = [
   { key: 'passportNumber', label: 'Passport Number', placeholder: 'Passport number', icon: CreditCard, smart: false },
 ] as const;
 
-function detectSearchType(query: string): { field: string; label: string } {
+function detectSearchType(query: string): { field: string; label: string; unsupported?: boolean } {
   const trimmed = query.trim();
   if (/^0\d{9}$/.test(trimmed)) return { field: 'mobileNumber', label: 'Mobile Number' };
   if (/^\d{13}$/.test(trimmed)) return { field: 'idNo', label: 'ID Number' };
   if (/^\d{6,15}$/.test(trimmed)) return { field: 'accountNo', label: 'Account Number' };
   if (/^\d{1,5}$/.test(trimmed)) return { field: 'accountNo', label: 'Account Number' };
+  if (/@/.test(trimmed) || /\.(com|co\.za|org|net|gov|ac\.za)$/i.test(trimmed) || /^(gmail|yahoo|outlook|hotmail|webmail|mail)/i.test(trimmed)) {
+    return { field: 'name', label: 'Email (not supported)', unsupported: true };
+  }
   return { field: 'name', label: 'Name / Company' };
 }
 
@@ -4273,12 +4276,17 @@ function GeneralEnquiriesContent() {
         </div>
 
         {quickQuery.trim().length >= 2 && !showDropdown && (
-          <div className="mt-2 flex items-center gap-2">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider">Detected:</span>
-            <Badge variant="outline" className="text-[10px] gap-1 h-5">
-              <Filter className="w-2.5 h-2.5" />
-              {detectedType.label}
-            </Badge>
+          <div className="mt-2 flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-slate-400 uppercase tracking-wider">Detected:</span>
+              <Badge variant="outline" className={`text-[10px] gap-1 h-5 ${detectedType.unsupported ? 'border-amber-400 text-amber-600 bg-amber-50' : ''}`}>
+                {detectedType.unsupported ? <AlertTriangle className="w-2.5 h-2.5" /> : <Filter className="w-2.5 h-2.5" />}
+                {detectedType.label}
+              </Badge>
+            </div>
+            {detectedType.unsupported && (
+              <p className="text-[10px] text-amber-600">Try searching by account number, name, ID number, address, or mobile number instead</p>
+            )}
           </div>
         )}
 
@@ -4354,8 +4362,15 @@ function GeneralEnquiriesContent() {
         {hasSearched && !searchError && results.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-slate-400 p-8">
             <FileText className="w-12 h-12 mb-3 opacity-30" />
-            <p className="text-sm font-medium">No results found</p>
-            <p className="text-xs mt-1">Try adjusting your search criteria or use the Filters button</p>
+            <p className="text-sm font-medium">No accounts found</p>
+            {detectedType.unsupported ? (
+              <div className="text-center mt-2">
+                <p className="text-xs text-amber-600 font-medium">Email search is not supported by the API</p>
+                <p className="text-xs mt-1.5 text-slate-500">Search by: Account Number, Name, ID Number, Address, Mobile Number, Passport, Old Account Code, or Meter Number</p>
+              </div>
+            ) : (
+              <p className="text-xs mt-1">Try a different search term or use advanced filters</p>
+            )}
           </div>
         )}
 
