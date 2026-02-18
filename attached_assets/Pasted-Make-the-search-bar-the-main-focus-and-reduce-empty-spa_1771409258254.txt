@@ -1,0 +1,21 @@
+Make the search bar the main focus and reduce empty space above the fold.
+Move the Search button inside the input as a trailing icon button, and keep Enter as the primary action.
+Add a clear “X” clear-input button inside the search field.
+Show a short helper line under the search field: “Search by Account, Name, ID, Phone, Email.”
+Auto-detect input type and show a small chip on the right like “Detected: Account Number / ID / Phone / Email / Name”.
+Start searching after 2–3 characters with debouncing (300–400ms) and show results in a dropdown below the input.
+Keep the current full-page empty state only before typing, then swap to results immediately.
+Add keyboard support: Arrow Up/Down to move in results, Enter to open selected account, Esc to close dropdown.
+Add a “Recent Searches” dropdown when the field is focused and empty, limited to the last 8.
+Add “Pinned Accounts” (star icon) so cashiers can quick-open frequent accounts.
+Change Filters to “Advanced Filters” and show a count badge when active, like “Filters (2)”.
+Make Filters a right-side slide-over panel instead of a separate view, and keep the search field visible.
+Add quick filter chips under the search bar: “Active”, “Owner/Occupier”, “In Arrears”, “Has Meter”, “Has Pay Plan”.
+Replace the 3 “Try:” pills with clickable examples that paste into the field, and add one for phone/email formats.
+Show result rows with consistent hierarchy: Account Number, Name, Property Address, Status tags, Outstanding Balance.
+Highlight the matched text in results (bold) and show a subtle “Searching…” loader inside the input.
+Show “No results” with suggestions: “Check spelling”, “Try fewer words”, “Search by account number”.
+Add a persistent “Scan ID / Barcode” optional icon button if scanners are used in your environment.
+Improve accessibility: visible focus states, tab order, and ARIA labels for input, buttons, and results list.
+Add performance protection: cap dropdown results to 20, with “View all results” link for more.
+Keep the page title smaller and move the description into the helper text under the input to reduce clutter
