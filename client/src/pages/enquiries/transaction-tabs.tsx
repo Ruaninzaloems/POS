@@ -339,27 +339,34 @@ export function DetailedTransactionListTab({ accountId }: { accountId: number })
     try {
       let detail: any[] = [];
       const drilldown = (row.drilldown || '').toLowerCase();
-      const pId = row.primaryId ? parseInt(row.primaryId) : null;
+      const pId = row.primaryId != null ? String(row.primaryId) : null;
+      const pIdNum = pId ? parseInt(pId) : 0;
+      const bMonth = row.billingMonth ?? row.billingmonth;
+      const bMonthNum = bMonth != null ? parseInt(bMonth) : undefined;
 
-      if (drilldown === 'openbalance') {
-        detail = await getOpenBalanceDetail(accountId);
-      } else if (drilldown === 'closebalance') {
-        detail = await getCloseBalanceDetail(accountId);
-      } else if (drilldown === 'receipt' && pId) {
-        const result = await getReceiptTransactionDetail(pId);
+      if (drilldown === 'openbalance' && pId) {
+        detail = await getOpenBalanceDetail(pId, bMonthNum);
+      } else if (drilldown === 'closebalance' && pId) {
+        detail = await getCloseBalanceDetail(pId, bMonthNum);
+      } else if (drilldown === 'receipt' && pIdNum) {
+        const result = await getReceiptTransactionDetail(pIdNum);
         detail = Array.isArray(result) ? result : result ? [result] : [];
-      } else if (drilldown === 'levy') {
-        detail = await getLevyTransactionDetail(accountId);
-      } else if (drilldown === 'rebate') {
-        detail = await getRebateTransactionDetail(accountId);
+      } else if (drilldown === 'levy' && pIdNum) {
+        detail = await getLevyTransactionDetail(pIdNum);
+      } else if (drilldown === 'rebate' && pId) {
+        detail = await getRebateTransactionDetail(pId);
       } else if (drilldown === 'interest') {
-        detail = await getInterestConsPaymentDetail(accountId);
-      } else if (row.isSpecial && row.description?.toLowerCase().includes('open')) {
-        detail = await getOpenBalanceDetail(accountId);
-      } else if (row.isSpecial && row.description?.toLowerCase().includes('clos')) {
-        detail = await getCloseBalanceDetail(accountId);
+        detail = await getInterestConsPaymentDetail(accountId, selectedYear);
+      } else if (drilldown === 'journal' && pId) {
+        detail = await getJournalTransactionDetails(pId, accountId);
+      } else if (row.isSpecial && row.description?.toLowerCase().includes('open') && pId) {
+        detail = await getOpenBalanceDetail(pId, bMonthNum);
+      } else if (row.isSpecial && row.description?.toLowerCase().includes('clos') && pId) {
+        detail = await getCloseBalanceDetail(pId, bMonthNum);
+      } else if (pId) {
+        detail = await getJournalTransactionDetails(pId, accountId);
       } else {
-        detail = await getJournalTransactionDetails(accountId);
+        detail = [];
       }
       setTxnDetailData(detail);
     } catch (e) {
