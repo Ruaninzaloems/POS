@@ -831,8 +831,30 @@ export function LinkedAccountsTab({ accountId, onSelectAccount }: { accountId: n
     setLoading(true);
     setError(null);
     try {
-      const data = await getLinkedAccountsOnProperty(accountId);
-      setLinkedAccounts(data);
+      const [data, acctLookup] = await Promise.all([
+        getLinkedAccountsOnProperty(accountId),
+        fetch(`/api/platinum/billing-enquiry/enquiry-results`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accountID: String(accountId) }),
+        }).then(r => r.ok ? r.json() : null).catch(() => null),
+      ]);
+      const allAccounts = Array.isArray(data) ? data : [];
+      let currentUnitId: number | undefined;
+      const acctResult = Array.isArray(acctLookup) ? acctLookup[0] : acctLookup;
+      if (acctResult) {
+        currentUnitId = acctResult.unitID || acctResult.unit_ID;
+      }
+      if (!currentUnitId) {
+        const inList = allAccounts.find((a: any) => (a.account_ID || a.accountID) === accountId);
+        currentUnitId = inList?.unitID || inList?.unit_ID;
+      }
+      if (currentUnitId) {
+        const filtered = allAccounts.filter((a: any) => (a.unitID || a.unit_ID) === currentUnitId);
+        setLinkedAccounts(filtered);
+      } else {
+        setLinkedAccounts(allAccounts);
+      }
     } catch (e: any) {
       setError(e.message || 'Failed to load linked accounts');
     } finally {

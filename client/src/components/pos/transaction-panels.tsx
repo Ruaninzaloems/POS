@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Account, ClearanceCostSchedule, DirectIncomeItem } from '@/lib/mock-data';
-import { User, MapPin, Phone, Mail, FileCheck, Zap, Trash2, Droplets, Upload, Search, Info, Download, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { User, MapPin, Phone, Mail, FileCheck, Zap, Trash2, Droplets, Upload, Search, Info, Download, FileText, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { AccountEnquiryView } from '@/components/pos/account-enquiry-view';
@@ -297,75 +297,138 @@ export function TransactionPanels() {
       document.body.removeChild(link);
   };
 
+  const [importingCSV, setImportingCSV] = useState(false);
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const text = e.target?.result as string;
-      const lines = text.split('\n');
-      let addedCount = 0;
-      let failedCount = 0;
-      
-      lines.forEach((line, index) => {
-        if (!line.trim()) return;
-        
-        // Skip header if detected
-        if (index === 0 && line.toLowerCase().includes('account number')) return;
+      const csvLines = text.split('\n');
+      const entries: { receiptDate: string; accNo: string; amount: number }[] = [];
 
-        // Expected format: Date, Account, Amount (or just Account, Amount for backward compat)
+      csvLines.forEach((line, index) => {
+        if (!line.trim()) return;
+        if (index === 0 && line.toLowerCase().includes('account number')) return;
         const parts = line.split(',').map(s => s.trim());
-        
+
         let receiptDate = '';
         let accNo = '';
         let amountStr = '';
 
         if (parts.length >= 3) {
-            [receiptDate, accNo, amountStr] = parts;
+          [receiptDate, accNo, amountStr] = parts;
         } else if (parts.length === 2) {
-            [accNo, amountStr] = parts;
-            receiptDate = new Date().toISOString().split('T')[0];
+          [accNo, amountStr] = parts;
+          receiptDate = new Date().toISOString().split('T')[0];
         } else {
-            return;
+          return;
         }
-        
+
         if (!accNo) return;
-        
-        if (accNo) {
-            const amount = parseFloat(amountStr) || 0;
-            
-            addItem({
-                id: crypto.randomUUID(),
-                type: 'CONSUMER_SERVICES',
-                description: `Account ${accNo} (Import)`,
-                reference: accNo,
-                amountDue: amount,
-                amountToPay: amount, 
-                originalData: { accountNo: accNo },
-                notes: `CSV Import. Receipt Date: ${receiptDate}`
-            }, true); // Allow duplicates
-            addedCount++;
-        } else {
-            failedCount++;
-        }
+        entries.push({ receiptDate, accNo, amount: parseFloat(amountStr) || 0 });
       });
 
-      if (addedCount > 0) {
-          toast({
-              title: "CSV Import Successful",
-              description: `Added ${addedCount} transactions to basket. ${failedCount > 0 ? `(${failedCount} failed)` : ''}`,
-              variant: "default"
-          });
-          setIsImportOpen(false);
-      } else {
-          toast({
-              title: "Import Failed",
-              description: "No matching accounts found in CSV.",
-              variant: "destructive"
-          });
+      if (entries.length === 0) {
+        toast({ title: "Import Failed", description: "No valid rows found in CSV.", variant: "destructive" });
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
       }
-      
+
+      setImportingCSV(true);
+      let addedCount = 0;
+      let failedCount = 0;
+      const BATCH = 5;
+
+      try {
+        for (let i = 0; i < entries.length; i += BATCH) {
+          const batch = entries.slice(i, i + BATCH);
+          const results = await Promise.allSettled(
+            batch.map(async (entry) => {
+              const res = await fetch('/api/platinum/billing-enquiry/enquiry-results', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ accountID: entry.accNo }),
+              });
+              if (!res.ok) throw new Error('API error');
+              const data = await res.json();
+              const items = Array.isArray(data) ? data : data && !data._error ? [data] : [];
+              if (items.length === 0) throw new Error('Not found');
+              const item = items[0];
+              return { entry, item };
+            })
+          );
+
+          for (const result of results) {
+            if (result.status === 'fulfilled') {
+              const { entry, item } = result.value;
+              const accountData: Account = {
+                accountNo: item.accountNumber || item.oldAccountCode || `${item.account_ID}`,
+                name: item.name || 'Unknown',
+                idNo: '-',
+                address: item.deliveryAddress || item.streetName || '',
+                outstandingAmount: item.outStandingAmt || 0,
+                status: item.statusDesc || 'Active',
+                email: '',
+                mobile: '',
+                accountType: item.typeOfUseDesc || 'Consumer',
+                sgNo: item.erfNumber || '',
+                oldCode: item.oldAccountCode || '',
+                prepaidMeterNo: item.physicalMeterNo || '',
+                unitId: '',
+                apiId: item.account_ID,
+                deliveryAddress: item.deliveryAddress || '',
+                locationAddress: item.streetName || '',
+                town: item.town || '',
+                account_ID: item.account_ID,
+                accountNumber: item.accountNumber,
+                outStandingAmt: item.outStandingAmt,
+                billId: item.billId,
+                cutOffID: item.cutOffID,
+                debtArrangementId: item.debtArrangementId,
+                clearance_ID: item.clearance_ID,
+                clearanceAmount: item.clearanceAmount,
+                billingCycleId: item.billingCycleId,
+                _rawSearchResult: item,
+              } as Account;
+
+              addItem({
+                id: crypto.randomUUID(),
+                type: 'CONSUMER_SERVICES',
+                description: `Account ${item.accountNumber || entry.accNo} - ${item.name || 'Unknown'}`,
+                reference: item.accountNumber || entry.accNo,
+                amountDue: entry.amount,
+                amountToPay: entry.amount,
+                originalData: accountData,
+                notes: `CSV Import. Receipt Date: ${entry.receiptDate}`
+              }, true);
+              addedCount++;
+            } else {
+              failedCount++;
+            }
+          }
+        }
+      } finally {
+        setImportingCSV(false);
+      }
+
+      if (addedCount > 0) {
+        toast({
+          title: "CSV Import Successful",
+          description: `Added ${addedCount} transactions to basket.${failedCount > 0 ? ` ${failedCount} account(s) not found.` : ''}`,
+          variant: "default"
+        });
+        setIsImportOpen(false);
+      } else {
+        toast({
+          title: "Import Failed",
+          description: "No matching accounts found in CSV.",
+          variant: "destructive"
+        });
+      }
+
       if (fileInputRef.current) fileInputRef.current.value = '';
     };
     reader.readAsText(file);
@@ -432,9 +495,12 @@ export function TransactionPanels() {
                              <Download className="w-4 h-4" />
                              Download Template
                          </Button>
-                         <Button onClick={() => fileInputRef.current?.click()} className="gap-2">
-                             <FileText className="w-4 h-4" />
-                             Select File
+                         <Button onClick={() => fileInputRef.current?.click()} className="gap-2" disabled={importingCSV}>
+                             {importingCSV ? (
+                               <><Loader2 className="w-4 h-4 animate-spin" /> Importing...</>
+                             ) : (
+                               <><FileText className="w-4 h-4" /> Select File</>
+                             )}
                          </Button>
                     </DialogFooter>
                  </DialogContent>
@@ -502,9 +568,12 @@ export function TransactionPanels() {
                                          <Download className="w-4 h-4" />
                                          Download Template
                                      </Button>
-                                     <Button onClick={() => fileInputRef.current?.click()} className="gap-2">
-                                         <FileText className="w-4 h-4" />
-                                         Select File
+                                     <Button onClick={() => fileInputRef.current?.click()} className="gap-2" disabled={importingCSV}>
+                                         {importingCSV ? (
+                                           <><Loader2 className="w-4 h-4 animate-spin" /> Importing...</>
+                                         ) : (
+                                           <><FileText className="w-4 h-4" /> Select File</>
+                                         )}
                                      </Button>
                                 </DialogFooter>
                              </DialogContent>
