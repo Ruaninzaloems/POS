@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { platinumGetBankReconPosItemList, platinumCheckSelectedItemProcessed } from '@/lib/external-api';
+import { platinumGetBankReconPosItemList, platinumCheckSelectedItemProcessed, platinumSearchAccountsPayment, fetchActiveFinYear } from '@/lib/external-api';
 import { usePos } from '@/lib/pos-state';
 import { useToast } from '@/hooks/use-toast';
 
@@ -154,12 +154,8 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
 
   for (const accNum of clues.accountNumbers.slice(0, 3)) {
     searchPromises.push(
-      fetch('/api/platinum/billing-payment/search-accounts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountNo: accNum }),
-      })
-        .then(r => r.ok ? r.json() : [])
+      platinumSearchAccountsPayment({ accountNo: accNum })
+        .catch(() => [])
         .then(data => {
           const items = Array.isArray(data) ? data : data?.value || [];
           for (const item of items.slice(0, 3)) {
@@ -187,12 +183,8 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
 
   for (const accNum of clues.accountNumbers.slice(0, 2)) {
     searchPromises.push(
-      fetch('/api/platinum/billing-payment/search-accounts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ oldAccountCode: accNum }),
-      })
-        .then(r => r.ok ? r.json() : [])
+      platinumSearchAccountsPayment({ oldAccountCode: accNum })
+        .catch(() => [])
         .then(data => {
           const items = Array.isArray(data) ? data : data?.value || [];
           for (const item of items.slice(0, 2)) {
@@ -222,12 +214,8 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
 
     for (const erfSearch of erfSearches) {
       searchPromises.push(
-        fetch('/api/platinum/billing-payment/search-accounts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: erfSearch }),
-        })
-          .then(r => r.ok ? r.json() : [])
+        platinumSearchAccountsPayment({ name: erfSearch })
+          .catch(() => [])
           .then(data => {
             const items = Array.isArray(data) ? data : data?.value || [];
             for (const item of items.slice(0, 3)) {
@@ -259,12 +247,8 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
   if (clues.keywords.length > 0 && clues.erfNumbers.length === 0 && clues.accountNumbers.length === 0) {
     for (const keyword of clues.keywords.slice(0, 2)) {
       searchPromises.push(
-        fetch('/api/platinum/billing-payment/search-accounts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: keyword }),
-        })
-          .then(r => r.ok ? r.json() : [])
+        platinumSearchAccountsPayment({ name: keyword })
+          .catch(() => [])
           .then(data => {
             const items = Array.isArray(data) ? data : data?.value || [];
             for (const item of items.slice(0, 2)) {
@@ -380,8 +364,7 @@ export default function UnmatchedQueue() {
     try {
       let finYear = '2025/2026';
       try {
-        const res = await fetch('/api/platinum/active-fin-year');
-        if (res.ok) finYear = await res.json();
+        finYear = await fetchActiveFinYear();
       } catch {}
 
       const checkUserId = currentUser?.id ? Number(currentUser.id) : -1;

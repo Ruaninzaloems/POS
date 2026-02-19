@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { platinumSearchAccountsPayment, platinumGetContactDetails, platinumGetNameInfoByAccount, fetchAdditionalEmailsByAccountId } from '@/lib/external-api';
 import {
   Mail,
   MessageSquare,
@@ -172,35 +173,25 @@ export default function ClientCommunications() {
         searchBody.name = query;
       }
 
-      const res = await fetch('/api/platinum/billing-payment/search-accounts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(searchBody),
+      const data = await platinumSearchAccountsPayment(searchBody).catch(() => []);
+      const items = Array.isArray(data) ? data : (data?.value || []);
+      const results = items.slice(0, 20);
+      setSearchResults(results);
+      setSearchDropdownOpen(results.length > 0);
+
+      results.forEach((item: any) => {
+        const accId = item.account_ID || item.accountID || item.id;
+        if (accId && !contactIndicators[accId]) {
+          setContactIndicators(prev => ({ ...prev, [accId]: { email: false, mobile: false, loading: true } }));
+          Promise.all([
+            platinumGetContactDetails({ accountId: String(accId) }).catch(() => null),
+            platinumGetNameInfoByAccount(accId).catch(() => null),
+          ]).then(([contactRes, nameRes]) => {
+            const { email, mobile } = extractContactInfo(contactRes, nameRes);
+            setContactIndicators(prev => ({ ...prev, [accId]: { email: !!email, mobile: !!mobile, loading: false } }));
+          });
+        }
       });
-
-      if (res.ok) {
-        const data = await res.json();
-        const items = Array.isArray(data) ? data : (data?.value || []);
-        const results = items.slice(0, 20);
-        setSearchResults(results);
-        setSearchDropdownOpen(results.length > 0);
-
-        results.forEach((item: any) => {
-          const accId = item.account_ID || item.accountID || item.id;
-          if (accId && !contactIndicators[accId]) {
-            setContactIndicators(prev => ({ ...prev, [accId]: { email: false, mobile: false, loading: true } }));
-            Promise.all([
-              fetch(`/api/platinum/billing-account-management/get-contact-details?accountId=${accId}`).then(r => r.ok ? r.json() : null).catch(() => null),
-              fetch(`/api/platinum/billing-enquiry/name-info-by-account?accountId=${accId}`).then(r => r.ok ? r.json() : null).catch(() => null),
-            ]).then(([contactRes, nameRes]) => {
-              const { email, mobile } = extractContactInfo(contactRes, nameRes);
-              setContactIndicators(prev => ({ ...prev, [accId]: { email: !!email, mobile: !!mobile, loading: false } }));
-            });
-          }
-        });
-      } else {
-        setSearchResults([]);
-      }
     } catch {
       setSearchResults([]);
     } finally {
@@ -224,9 +215,9 @@ export default function ClientCommunications() {
 
     try {
       const [contactRes, nameRes, addEmailRes] = await Promise.all([
-        fetch(`/api/platinum/billing-account-management/get-contact-details?accountId=${accountId}`).then(r => r.ok ? r.json() : null).catch(() => null),
-        fetch(`/api/platinum/billing-enquiry/name-info-by-account?accountId=${accountId}`).then(r => r.ok ? r.json() : null).catch(() => null),
-        fetch(`/api/platinum/billing-account-management/get-additional-emails?accountId=${accountId}`).then(r => r.ok ? r.json() : null).catch(() => null),
+        platinumGetContactDetails({ accountId: String(accountId) }).catch(() => null),
+        platinumGetNameInfoByAccount(accountId).catch(() => null),
+        fetchAdditionalEmailsByAccountId(accountId),
       ]);
 
       const { email, mobile } = extractContactInfo(contactRes, nameRes);
@@ -329,13 +320,8 @@ export default function ClientCommunications() {
 
         const searchPromises = batch.map(async (accNo) => {
           try {
-            const res = await fetch('/api/platinum/billing-payment/search-accounts', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ accountNo: accNo }),
-            });
-            if (res.ok) {
-              const data = await res.json();
+            const data = await platinumSearchAccountsPayment({ accountNo: accNo }).catch(() => []);
+            {
               const items = Array.isArray(data) ? data : (data?.value || []);
               return items.find((i: any) => {
                 const itemAccNo = String(i.accountNumber || i.accountNo || i.account_ID || i.accountID || i.id || '');

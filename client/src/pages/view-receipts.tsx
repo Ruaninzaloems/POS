@@ -21,7 +21,7 @@ import {
     ViewReceiptCashier,
     ViewReceiptItem,
     ReceiptSearchQuery,
-    platinumPrintReceipt,
+    platinumPrintReceiptRaw,
 } from '@/lib/external-api';
 import { useToast } from '@/hooks/use-toast';
 import { usePos } from '@/lib/pos-state';
@@ -207,12 +207,7 @@ export default function ViewReceipts() {
         }
         setIsPrinting(true);
         try {
-            const res = await fetch('/api/platinum/billing-payment/print-receipt', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify([Number(serialNo)]),
-            });
-
+            const res = await platinumPrintReceiptRaw([Number(serialNo)]);
             if (!res.ok) {
                 const errText = await res.text().catch(() => '');
                 let errMsg = `HTTP ${res.status}`;
@@ -224,7 +219,6 @@ export default function ViewReceipts() {
                 }
                 throw new Error(errMsg);
             }
-
             const contentType = res.headers.get('content-type') || '';
             if (contentType.includes('application/pdf')) {
                 const blob = await res.blob();

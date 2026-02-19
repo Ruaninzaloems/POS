@@ -2,7 +2,8 @@ import React, { createContext, useContext, useState, useMemo, useEffect, useRef,
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, CashOffice } from './mock-data';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange, fetchActiveCashierByUserId, fetchPosMultiReceiptPrintByCashier, platinumValidateCashier, fetchActiveFinYear, platinumAuthDayEndCancelReceipt } from './external-api';
+import { getAccountBalance as enquiryGetAccountBalance } from './enquiries-service';
 
 if (import.meta.hot) {
   import.meta.hot.accept(() => {
@@ -328,13 +329,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!platinumUser) return;
     const checkActiveSession = async () => {
       try {
-        const res = await fetch(`/api/platinum/auth/active-cashier-by-userid?userid=${platinumUser.user_ID}&finYear=${encodeURIComponent(platinumUser.finYear || '2025/2026')}`);
-        if (!res.ok) {
+        const res = await fetchActiveCashierByUserId(platinumUser.user_ID, platinumUser.finYear || '2025/2026').catch(() => null);
+        if (!res) {
           setCashierRegistered(false);
           setSessionLoading(false);
           return;
         }
-        const data = await res.json();
+        const data = res;
         setCashierRegistered(data.cashierRegistered === true);
         const receiptCashierId = data.details?.id || data.cashierId || null;
         console.log(`[Session] Platinum cashier IDs — top-level cashierId: ${data.cashierId}, details.id: ${data.details?.id}, using for receipts: ${receiptCashierId}`);
@@ -471,14 +472,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.log(`[Transactions] Running discovery scan for cashier: ${platinumUser.firstName} ${platinumUser.lastName}`);
         try {
           const cashierName = `${platinumUser.firstName} ${platinumUser.lastName}`;
-          const params = new URLSearchParams({ cashierName, scanCount: '100' });
-          const discoverRes = await fetch(`/api/proxy/pos-multi-receipt-print/by-cashier?${params}`);
-          if (discoverRes.ok) {
-            const discovered = await discoverRes.json();
-            if (Array.isArray(discovered) && discovered.length > 0) {
-              results = discovered.map((d: any) => ({ receiptId: d._receiptId, data: d }));
-              console.log(`[Transactions] Discovered ${results.length} receipts via API scan`);
-            }
+          const discovered = await fetchPosMultiReceiptPrintByCashier(cashierName, 100);
+          if (Array.isArray(discovered) && discovered.length > 0) {
+            results = discovered.map((d: any) => ({ receiptId: d._receiptId, data: d }));
+            console.log(`[Transactions] Discovered ${results.length} receipts via API scan`);
           }
         } catch (e) {
           console.warn(`[Transactions] Discovery scan failed:`, e);
@@ -710,9 +707,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const userId = platinumUser.user_ID;
       const finYear = platinumUser.finYear || '2025/2026';
-      const res = await fetch(`/api/platinum/receipt-prepaid/validate-cashier?userId=${userId}&finYear=${encodeURIComponent(finYear)}`);
-      if (!res.ok) {
-        console.error(`[SessionEnforcement] validate-cashier API returned ${res.status} — ending session`);
+      let result: any;
+      try {
+        result = await platinumValidateCashier(userId, finYear);
+      } catch (e: any) {
+        console.error(`[SessionEnforcement] validate-cashier API failed — ending session`, e);
         setActiveSession(false);
         setSessionDetails(undefined);
         toast({
@@ -722,7 +721,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
         return;
       }
-      const result = await res.json();
       const isActive = result?.cashier?.isActive === true;
       setApiSessionActive(isActive);
       if (!isActive) {
@@ -886,11 +884,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let resolvedFinYear = platinumUser?.finYear || '2025/2026';
     if (!resolvedFinYear || resolvedFinYear === '2025/2026') {
         try {
-            const fyRes = await fetch('/api/platinum/active-fin-year');
-            if (fyRes.ok) {
-                const apiFy = await fyRes.json();
-                if (apiFy) resolvedFinYear = apiFy;
-            }
+            resolvedFinYear = await fetchActiveFinYear();
         } catch (e) {
             console.warn("[Payment] Failed to fetch active fin year for receipt range validation, using default");
         }
@@ -1015,9 +1009,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     try {
         const finYear = platinumUser?.finYear || '2025/2026';
-        const sessionCheck = await fetch(`/api/platinum/receipt-prepaid/validate-cashier?userId=${sessionUserId}&finYear=${encodeURIComponent(finYear)}`);
-        if (sessionCheck.ok) {
-            const sessionResult = await sessionCheck.json();
+        const sessionResult = await platinumValidateCashier(sessionUserId, finYear).catch(() => null);
+        if (sessionResult) {
             const isStillActive = sessionResult?.cashier?.isActive === true;
             console.log(`[Payment] validate-cashier pre-payment check — isActive: ${isStillActive} (POS_Cashier.IsActive=${sessionResult?.cashier?.isActive})`);
             if (!isStillActive) {
@@ -1035,7 +1028,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 return;
             }
         } else {
-            console.error(`[Payment] validate-cashier returned ${sessionCheck.status} — BLOCKING payment (cannot verify session)`);
+            console.error(`[Payment] validate-cashier returned null — BLOCKING payment (cannot verify session)`);
             toast({
                 title: "Session Verification Failed",
                 description: "Unable to verify your session with the billing system. Please try again.",
@@ -1095,27 +1088,24 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         if (!serviceBalanceMap.has(String(acctId))) {
             try {
-                const balRes = await fetch(`/api/platinum/billing-enquiry/total-balance-debt?accountId=${acctId}`);
-                if (balRes.ok) {
-                    const balData = await balRes.json();
-                    let rows: any[] = [];
-                    if (Array.isArray(balData)) rows = balData;
-                    else if (balData?.results && Array.isArray(balData.results)) rows = balData.results;
-                    else if (balData && typeof balData === 'object') rows = [balData];
-                    const balances: ServiceBalance[] = rows
-                        .filter((row: any) => Math.abs(row.totalOutStanding || row.totalOutstanding || 0) >= 0.01)
-                        .map((row: any) => ({
-                            serviceDescription: row.serviceDescription || row.description || 'Unknown',
-                            amount: row.totalOutStanding || row.totalOutstanding || 0,
-                            vat: 0,
-                            totalAmount: row.totalOutStanding || row.totalOutstanding || 0,
-                            currentCharge: 0,
-                            openingBalance: 0,
-                        }));
-                    if (balances.length > 0) {
-                        serviceBalanceMap.set(String(acctId), balances);
-                        console.log(`[Priority 1] Pre-payment service balances for ${acctId} (from API):`, balances.map(b => `${b.serviceDescription}: ${b.totalAmount}`));
-                    }
+                const balData = await enquiryGetAccountBalance(acctId);
+                let rows: any[] = [];
+                if (Array.isArray(balData)) rows = balData;
+                else if (balData?.results && Array.isArray(balData.results)) rows = balData.results;
+                else if (balData && typeof balData === 'object') rows = [balData];
+                const balances: ServiceBalance[] = rows
+                    .filter((row: any) => Math.abs(row.totalOutStanding || row.totalOutstanding || 0) >= 0.01)
+                    .map((row: any) => ({
+                        serviceDescription: row.serviceDescription || row.description || 'Unknown',
+                        amount: row.totalOutStanding || row.totalOutstanding || 0,
+                        vat: 0,
+                        totalAmount: row.totalOutStanding || row.totalOutstanding || 0,
+                        currentCharge: 0,
+                        openingBalance: 0,
+                    }));
+                if (balances.length > 0) {
+                    serviceBalanceMap.set(String(acctId), balances);
+                    console.log(`[Priority 1] Pre-payment service balances for ${acctId} (from API):`, balances.map(b => `${b.serviceDescription}: ${b.totalAmount}`));
                 }
             } catch (e) {
                 console.warn(`[Priority 1] Failed to fetch pre-payment service balances for ${acctId}`, e);
@@ -1534,9 +1524,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 const prePaymentBalances = serviceBalanceMap.get(String(accountId));
                 if (prePaymentBalances && prePaymentBalances.length > 0) {
                     try {
-                        const balanceRes = await fetch(`/api/platinum/billing-enquiry/total-balance-debt?accountId=${accountId}`);
-                        if (balanceRes.ok) {
-                            const balanceData = await balanceRes.json();
+                        const balanceData = await enquiryGetAccountBalance(accountId);
+                        {
                             let rows: any[] = [];
                             if (Array.isArray(balanceData)) rows = balanceData;
                             else if (balanceData?.results && Array.isArray(balanceData.results)) rows = balanceData.results;
@@ -1881,15 +1870,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (receiptId) {
           try {
-              const res = await fetch('/api/platinum/auth-day-end/cancel-receipt', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ receiptId: Number(receiptId), reason }),
-              });
-              if (!res.ok) {
-                  const errData = await res.json().catch(() => null);
-                  throw new Error(errData?.message || `HTTP ${res.status}`);
-              }
+              await platinumAuthDayEndCancelReceipt({ receiptId: Number(receiptId), reason });
               console.log(`[CancelTransaction] Receipt ${receiptId} cancelled via Platinum API`);
           } catch (e: any) {
               console.error('[CancelTransaction] API cancel failed:', e);

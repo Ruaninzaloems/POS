@@ -8,7 +8,7 @@ import { AllocationLine } from '@/lib/direct-deposits-data';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { Account, ClearanceCostSchedule } from '@/lib/mock-data';
-import { platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, platinumLoadDetailsPaymentGrouping, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, fetchMiscPaymentGroups, rebuildFullAccount } from '@/lib/external-api';
+import { platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, platinumLoadDetailsPaymentGrouping, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, fetchMiscPaymentGroups, rebuildFullAccount, platinumSearchAccountsPayment, fetchActiveFinYear, fetchPlatinumUserInfo } from '@/lib/external-api';
 
 interface BankReconPosItem {
   posItem_ID: number;
@@ -121,19 +121,11 @@ export default function AllocateTransaction() {
         }
 
         const searches: Promise<any>[] = [
-          fetch('/api/platinum/billing-payment/search-accounts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(searchBody),
-          }).then(r => r.ok ? r.json() : []).catch(() => []),
+          platinumSearchAccountsPayment(searchBody).catch(() => []),
         ];
         if (isNumeric) {
           searches.push(
-            fetch('/api/platinum/billing-payment/search-accounts', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ oldAccountCode: query }),
-            }).then(r => r.ok ? r.json() : []).catch(() => [])
+            platinumSearchAccountsPayment({ oldAccountCode: query }).catch(() => [])
           );
         }
 
@@ -439,21 +431,13 @@ export default function AllocateTransaction() {
       try {
           let finYear = '2025/2026';
           try {
-              const res = await fetch('/api/platinum/active-fin-year');
-              if (res.ok) {
-                  const data = await res.json();
-                  if (typeof data === 'string') finYear = data;
-                  else if (data?.financialYear) finYear = data.financialYear;
-              }
+              finYear = await fetchActiveFinYear();
           } catch {}
 
           let userId = -1;
           try {
-              const userRes = await fetch('/api/platinum/auth/user-info');
-              if (userRes.ok) {
-                  const userInfo = await userRes.json();
-                  if (userInfo?.user_ID) userId = userInfo.user_ID;
-              }
+              const userInfo = await fetchPlatinumUserInfo();
+              if (userInfo?.user_ID) userId = userInfo.user_ID;
           } catch {}
 
           if (userId <= 0) {

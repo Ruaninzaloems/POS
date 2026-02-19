@@ -12,6 +12,7 @@ import {
   getOpenBalanceDetail, getCloseBalanceDetail, getJournalTransactionDetails,
   getRebateTransactionDetail, getInterestConsPaymentDetail,
 } from '@/lib/enquiries-service';
+import { fetchPosMultiReceiptPrint } from '@/lib/external-api';
 import { LoadingSkeleton, EmptyState, ErrorState, PaginatedTable, getFinYearOptions, MONTHS } from './shared';
 
 export function TransactionSummaryTab({ accountId, accountNumber }: { accountId: number; accountNumber?: string }) {
@@ -629,12 +630,8 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
     if (!receiptId) return;
     setPrintingId(String(receiptId));
     try {
-      const params = new URLSearchParams({ receiptId: String(receiptId) });
-      const res = await fetch(`/api/proxy/pos-multi-receipt-print?${params.toString()}`);
-      if (res.ok) {
-        const rd = await res.json();
-        setReceiptPreview(rd);
-      }
+      const rd = await fetchPosMultiReceiptPrint(receiptId);
+      if (rd) setReceiptPreview(rd);
     } catch (e) {
       console.error('Failed to fetch receipt for printing:', e);
     } finally {

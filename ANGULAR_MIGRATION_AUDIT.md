@@ -13,7 +13,7 @@
 | POS State Management | NEEDS RESTRUCTURE | 1,994 | High (split into 4-5 services) |
 | Backend (Express proxy) | STAYS AS-IS or port | 3,602 | N/A |
 | PDF Generators | READY - Copy/paste | 745 | None |
-| Inline fetch() calls across pages | NEEDS EXTRACTION | 37 calls | Medium |
+| Inline fetch() calls across pages | COMPLETED - All extracted | 0 remaining | Done |
 
 ---
 

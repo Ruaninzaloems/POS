@@ -9,7 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { useLocation } from 'wouter';
 import { Loader2, AlertTriangle, CheckCircle2, Circle, ShieldCheck, CreditCard, Banknote, XCircle, RefreshCw } from 'lucide-react';
-import { platinumGetCashOffices, fetchCashierPaymentOptions, fetchCashierPaymentTypes, validateReceiptRange, CashierPaymentOption, CashierPaymentType, ReceiptRangeValidation } from '@/lib/external-api';
+import { platinumGetCashOffices, fetchCashierPaymentOptions, fetchCashierPaymentTypes, validateReceiptRange, CashierPaymentOption, CashierPaymentType, ReceiptRangeValidation, fetchActiveCashierByUserId, fetchPlatinumUserInfo, platinumSubmitCashierSetup } from '@/lib/external-api';
 
 interface CashOfficeViewModel {
     cashOffice_ID: number;
@@ -79,11 +79,7 @@ export default function CashierSetup() {
 
             try {
                 console.log(`[CashierSetup] Step 1: Validate cashier registration — userId=${userId}`);
-                const res = await fetch(`/api/platinum/auth/active-cashier-by-userid?userid=${userId}&finYear=${encodeURIComponent(finYear)}`);
-                if (!res.ok) {
-                    throw new Error('Failed to check cashier registration');
-                }
-                const data = await res.json();
+                const data = await fetchActiveCashierByUserId(userId, finYear);
                 console.log(`[CashierSetup] Step 1 response:`, JSON.stringify(data));
 
                 if (data.cashierRegistered === true && data.cashierId) {
@@ -110,12 +106,9 @@ export default function CashierSetup() {
                         setFloatInput(String(data.cashFloat));
                     } else {
                         try {
-                            const userInfoRes = await fetch('/api/platinum/auth/user-info');
-                            if (userInfoRes.ok) {
-                                const userInfo = await userInfoRes.json();
-                                if (userInfo?.cashFloat != null && userInfo.cashFloat > 0) {
-                                    setFloatInput(String(userInfo.cashFloat));
-                                }
+                            const userInfo = await fetchPlatinumUserInfo();
+                            if (userInfo?.cashFloat != null && userInfo.cashFloat > 0) {
+                                setFloatInput(String(userInfo.cashFloat));
                             }
                         } catch {}
                     }
@@ -279,18 +272,8 @@ export default function CashierSetup() {
             console.log(`[CashierSetup] Step 3: submit-cashier-setup POST — userId=${userId}, officeId=${selectedOffice.cashOffice_ID}`);
             console.log(`[CashierSetup] Step 3 payload:`, JSON.stringify(payload));
 
-            const res = await fetch('/api/platinum/receipt-prepaid/submit-cashier-setup', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-
-            const responseData = await res.json().catch(() => null);
+            const responseData = await platinumSubmitCashierSetup(payload);
             console.log(`[CashierSetup] Step 3 submit response:`, JSON.stringify(responseData));
-
-            if (!res.ok) {
-                throw new Error(responseData?.detail || responseData?.message || `HTTP ${res.status}`);
-            }
 
             const apiMessage = responseData?.message || '';
             console.log(`[CashierSetup] Platinum submit message: "${apiMessage}"`);

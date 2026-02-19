@@ -730,6 +730,14 @@ export async function platinumSearchAccountsPayment(data: any): Promise<any[]> {
     });
 }
 
+export async function platinumPrintReceiptRaw(data: any): Promise<Response> {
+    return fetch(`/api/platinum/billing-payment/print-receipt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
 export async function platinumPrintReceipt(data: any): Promise<any> {
     return platinumFetch(`/api/platinum/billing-payment/print-receipt`, {
         method: 'POST',
@@ -1721,4 +1729,66 @@ export async function fetchMunicipalityInfo(): Promise<MunicipalityInfo> {
         console.warn('Failed to fetch municipality info, using fallback:', e);
         return FALLBACK_MUNICIPALITY;
     }
+}
+
+// --- Utility / Session Functions ---
+
+export async function fetchActiveFinYear(): Promise<string> {
+    try {
+        const res = await fetch('/api/platinum/active-fin-year');
+        if (res.ok) {
+            const data = await res.json();
+            if (data) return data;
+        }
+    } catch (e) {
+        console.warn('Failed to fetch active fin year', e);
+    }
+    return `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
+}
+
+export async function fetchActiveCashierByUserId(userId: number, finYear: string): Promise<any> {
+    const res = await fetch(`/api/platinum/auth/active-cashier-by-userid?userid=${userId}&finYear=${encodeURIComponent(finYear)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
+export async function fetchAdditionalEmailsByAccountId(accountId: number): Promise<any> {
+    try {
+        const res = await fetch(`/api/platinum/billing-account-management/get-additional-emails?accountId=${accountId}`);
+        if (res.ok) return res.json();
+    } catch (e) {
+        console.warn(`Failed to fetch additional emails for account ${accountId}`, e);
+    }
+    return null;
+}
+
+export async function fetchPosMultiReceiptPrintByCashier(cashierName: string, scanCount: number = 100): Promise<any[]> {
+    try {
+        const params = new URLSearchParams({ cashierName, scanCount: String(scanCount) });
+        const res = await fetch(`/api/proxy/pos-multi-receipt-print/by-cashier?${params}`);
+        if (res.ok) return res.json();
+    } catch (e) {
+        console.warn('Failed to fetch receipts by cashier', e);
+    }
+    return [];
+}
+
+export async function generateStatement(payload: any): Promise<any> {
+    const res = await fetch('/api/platinum/billing-enquiry/generate-statement', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
+export async function fetchEnquiryResults(payload: any): Promise<any> {
+    const res = await fetch('/api/platinum/billing-enquiry/enquiry-results', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
 }

@@ -825,12 +825,8 @@ export function StatementsTab({ accountId }: { accountId: number }) {
     setGenerating(true);
     setGenerateResult(null);
     try {
-      const res = await fetch('/api/platinum/billing-enquiry/generate-statement', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountId, statementType, financialYear: modalYear, month: modalMonth || undefined }),
-      });
-      const result = await res.json();
+      const { generateStatement } = await import('@/lib/external-api');
+      const result = await generateStatement({ accountId, statementType, financialYear: modalYear, month: modalMonth || undefined });
       setGenerateResult(result);
       await load();
     } catch (e: any) {
@@ -1270,9 +1266,10 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
   const handleProofOfResidence = async () => {
     setProofLoading(true);
     try {
+      const { getPropertyDetails, getNameInfo } = await import('@/lib/enquiries-service');
       const [propResp, nameResp] = await Promise.all([
-        fetch(`/api/platinum/billing-enquiry/property-details-by-account?accountId=${accountId}`).then(r => r.json()).catch(() => null),
-        fetch(`/api/platinum/billing-enquiry/name-info-by-account?accountId=${accountId}`).then(r => r.json()).catch(() => null),
+        getPropertyDetails(accountId).catch(() => null),
+        getNameInfo(accountId).catch(() => null),
       ]);
       setProofData({ property: propResp, nameInfo: nameResp });
       setShowProofModal(true);

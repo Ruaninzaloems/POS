@@ -831,13 +831,10 @@ export function LinkedAccountsTab({ accountId, onSelectAccount }: { accountId: n
     setLoading(true);
     setError(null);
     try {
+      const { fetchEnquiryResults } = await import('@/lib/external-api');
       const [data, acctLookup] = await Promise.all([
         getLinkedAccountsOnProperty(accountId),
-        fetch(`/api/platinum/billing-enquiry/enquiry-results`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ accountID: String(accountId) }),
-        }).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetchEnquiryResults({ accountID: String(accountId) }).catch(() => null),
       ]);
       const allAccounts = Array.isArray(data) ? data : [];
       let currentUnitId: number | undefined;

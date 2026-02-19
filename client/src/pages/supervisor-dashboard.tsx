@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { platinumGetAuthDayEndCashierList, platinumGetAuthDayEndCashierDetails, platinumGetAuthDayEndCashierReconcile } from '@/lib/external-api';
 import { 
   LayoutDashboard, 
   Users, 
@@ -220,9 +221,7 @@ export default function SupervisorDashboard() {
   const loadCashierList = useCallback(async () => {
     setIsLoadingShifts(true);
     try {
-      const res = await fetch('/api/platinum/auth-day-end/cashier-list');
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
-      const data = await res.json();
+      const data = await platinumGetAuthDayEndCashierList();
       console.log('[Supervisor] Cashier list raw response:', data);
       const items = extractItems(data);
       console.log('[Supervisor] Cashier list items:', items.length, JSON.stringify(items).substring(0, 1000));
@@ -285,8 +284,8 @@ export default function SupervisorDashboard() {
     setReviewTab('cash');
     try {
       const [detailsRes, reconcileRes, cashRes, cardRes, chequeRes, postalRes, dropboxRes, sysVsCashierRes] = await Promise.all([
-        fetch(`/api/platinum/auth-day-end/cashier-details?cashierId=${cashierId}`).then(r => r.ok ? r.json() : null).catch(() => null),
-        fetch(`/api/platinum/auth-day-end/cashier-reconcile-by-cashierid?cashierId=${cashierId}`).then(r => r.ok ? r.json() : null).catch(() => null),
+        platinumGetAuthDayEndCashierDetails({ cashierId }).catch(() => null),
+        platinumGetAuthDayEndCashierReconcile({ cashierId }).catch(() => null),
         apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-cash-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch(() => []),
         apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-card-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch(() => []),
         apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-cheque-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch(() => []),
