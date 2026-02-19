@@ -127,10 +127,19 @@ export default function AllocateTransaction() {
         }
         const [ddAccountRes, ddOldAccountRes] = await Promise.all(ddSearches);
 
+        const isValidDDResponse = (res: any): any[] | null => {
+          if (!res || res._error || res.error || res.status >= 400) return null;
+          const items = parseResults(res);
+          return items.length > 0 ? items : null;
+        };
+
+        const ddAccountItems = isValidDDResponse(ddAccountRes);
+        const ddOldAccountItems = isValidDDResponse(ddOldAccountRes);
         let usedDDEndpoint = false;
-        if (Array.isArray(ddAccountRes) && ddAccountRes.length > 0) {
+
+        if (ddAccountItems) {
           usedDDEndpoint = true;
-          for (const item of ddAccountRes) {
+          for (const item of ddAccountItems) {
             const accId = item.account_ID || item.accountId || item.id;
             if (accId && !seen.has(accId)) {
               seen.add(accId);
@@ -146,9 +155,9 @@ export default function AllocateTransaction() {
             }
           }
         }
-        if (Array.isArray(ddOldAccountRes) && ddOldAccountRes.length > 0) {
+        if (ddOldAccountItems) {
           usedDDEndpoint = true;
-          for (const item of ddOldAccountRes) {
+          for (const item of ddOldAccountItems) {
             const accId = item.account_ID || item.accountId || item.id;
             if (accId && !seen.has(accId)) {
               seen.add(accId);
