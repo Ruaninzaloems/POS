@@ -304,6 +304,10 @@ export async function getNameInfo(accountId: number): Promise<any> {
   return fetchWithTimeout(`/api/platinum/billing-enquiry/name-info-by-account?accountId=${accountId}`);
 }
 
+export async function getAccountsByNameId(accountId: number): Promise<{ nameId: number | null; accounts: any[] }> {
+  return fetchWithTimeout(`/api/proxy/accounts-by-name-id?accountId=${accountId}`);
+}
+
 export async function getContactDetails(accountId: number): Promise<any> {
   return fetchWithTimeout(`/api/platinum/billing-account-management/get-contact-details?accountId=${accountId}`);
 }

@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import {
   searchAccounts, getAccountBalance, getServiceTypeBalance,
-  getPropertyDetails, getConsumptionUnits, getNameInfo,
+  getPropertyDetails, getConsumptionUnits, getNameInfo, getAccountsByNameId,
   getHandoverInfo, getPaymentIncentive, getDeposits, getDepositAmount,
   getTransactionHistory, getAccountInformation,
   getBasicAccountDetails, getAccountInfoResult, getUnitPartitionOwner,
@@ -414,44 +414,12 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
     setRelatedLoading(true);
     setRelatedSearched(true);
     try {
-      const results: EnquirySearchResult[] = [];
-      const seen = new Set<number>();
-      seen.add(accountId);
-
-      const idNo = data.idNo_RegistrationNo;
-      if (idNo && idNo !== '-' && idNo.trim()) {
-        try {
-          const idResults = await searchAccounts({ idNo });
-          if (Array.isArray(idResults)) {
-            for (const r of idResults) {
-              const aid = r.account_ID || r.accountID;
-              if (aid && !seen.has(aid)) {
-                seen.add(aid);
-                results.push(r);
-              }
-            }
-          }
-        } catch {}
+      const result = await getAccountsByNameId(accountId);
+      if (result && Array.isArray(result.accounts)) {
+        setRelatedAccounts(result.accounts as EnquirySearchResult[]);
+      } else {
+        setRelatedAccounts([]);
       }
-
-      const fullName = [data.firstNames, data.surname_Company].filter(Boolean).join(' ').trim();
-      const searchName = data.surname_Company || fullName;
-      if (searchName && searchName !== '-' && searchName.trim()) {
-        try {
-          const nameResults = await searchAccounts({ name: searchName });
-          if (Array.isArray(nameResults)) {
-            for (const r of nameResults) {
-              const aid = r.account_ID || r.accountID;
-              if (aid && !seen.has(aid)) {
-                seen.add(aid);
-                results.push(r);
-              }
-            }
-          }
-        } catch {}
-      }
-
-      setRelatedAccounts(results);
     } catch {
       setRelatedAccounts([]);
     } finally {
@@ -572,9 +540,7 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
               <Layers className="w-8 h-8 text-slate-300 mx-auto mb-2" />
               <p className="text-sm text-muted-foreground mb-1">Search for all accounts linked to this person</p>
               <p className="text-xs text-muted-foreground">
-                {n.idNo_RegistrationNo && n.idNo_RegistrationNo !== '-'
-                  ? `Will search by ID Number (${n.idNo_RegistrationNo}) and Name (${[n.firstNames, n.surname_Company].filter(Boolean).join(' ').trim() || '-'})`
-                  : `Will search by Name (${[n.firstNames, n.surname_Company].filter(Boolean).join(' ').trim() || '-'})`}
+                Uses the person's Name ID to find only accounts belonging to the same person record
               </p>
             </div>
           )}

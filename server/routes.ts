@@ -2706,6 +2706,45 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/proxy/accounts-by-name-id", async (req, res) => {
+    try {
+      const accountId = req.query.accountId as string;
+      if (!accountId) {
+        return res.status(400).json({ message: "accountId is required" });
+      }
+
+      const accountData = await proxyGet(`${EXTERNAL_API_BASE}/api/cons-accounts/${accountId}`);
+      if (accountData.error || !accountData) {
+        return res.status(404).json({ message: "Account not found" });
+      }
+
+      const nameId = accountData.nameId;
+      if (!nameId) {
+        return res.json({ nameId: null, accounts: [] });
+      }
+
+      const searchData = await proxyGet(`${EXTERNAL_API_BASE}/api/cons-accounts/search?nameId=${nameId}`);
+      let accounts: any[] = [];
+      if (Array.isArray(searchData)) {
+        accounts = searchData;
+      } else if (searchData?.value && Array.isArray(searchData.value)) {
+        accounts = searchData.value;
+      } else if (searchData && !searchData.error) {
+        accounts = [searchData];
+      }
+
+      accounts = accounts.filter((a: any) => {
+        const aid = a.id || a.accountId || a.account_ID;
+        return aid && String(aid) !== String(accountId);
+      });
+
+      res.json({ nameId, accounts });
+    } catch (e: any) {
+      console.error(`[accounts-by-name-id] Error:`, e.message);
+      res.status(502).json({ message: "External API unreachable", detail: e.message });
+    }
+  });
+
   app.get("/api/proxy/cons-names/:id", async (req, res) => {
     try {
       const data = await proxyGet(`${EXTERNAL_API_BASE}/api/cons-names/${req.params.id}`);
