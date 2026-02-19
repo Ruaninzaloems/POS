@@ -31,6 +31,57 @@
 
 ---
 
+## WEB COMPONENT / CUSTOM ELEMENT INTEGRATION
+
+The React app is wrapped as a Custom Element (`<pos-app>`) for embedding in Angular or any parent application.
+
+### Files
+| File | Purpose |
+|------|---------|
+| `client/src/web-component.tsx` | Custom Element class with Shadow DOM, style scoping via `adoptedStyleSheets` |
+| `client/src/mount.ts` | `render(container, props)` function for Angular to manually mount |
+| `vite.config.lib.ts` | Library build config producing `pos-app.es.js` (ES) and `pos-app.umd.js` (UMD) |
+
+### Angular Usage
+```typescript
+// In Angular component
+import { render } from './pos-app.es.js';
+
+@Component({ template: '<div #posContainer></div>' })
+export class PosHostComponent implements AfterViewInit, OnDestroy {
+  @ViewChild('posContainer') container!: ElementRef;
+  private handle: any;
+
+  ngAfterViewInit() {
+    this.handle = render(this.container.nativeElement, {
+      apiBaseUrl: environment.apiBaseUrl
+    });
+  }
+
+  ngOnDestroy() {
+    this.handle?.destroy();
+  }
+}
+```
+
+### Style Scoping
+- All CSS (Tailwind + custom) is inlined into the Shadow DOM via `adoptedStyleSheets`
+- No styles leak to or from the parent Angular application
+- CSS variables are scoped within the shadow root
+
+### Build Command
+```bash
+npx vite build --config vite.config.lib.ts
+```
+Output: `dist/lib/pos-app.es.js` (~4MB) and `dist/lib/pos-app.umd.js` (~2.8MB)
+
+### Local Database Status
+- `server/storage.ts` and `server/db.ts` exist but are **dead code** — never imported or called
+- Zero `storage.` references in `routes.ts` or any client file
+- All data persistence goes through Platinum API exclusively
+
+---
+
 ## SECTION 1: ANGULAR-READY (No changes needed)
 
 ### 1A. Pure TypeScript Types & Interfaces

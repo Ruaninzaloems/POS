@@ -84,3 +84,10 @@ Preferred communication style: Simple, everyday language.
 -   `esbuild`: Server bundler.
 -   `tsx`: TypeScript execution for development.
 -   `drizzle-kit`: Database schema management (for the unused local database).
+
+### Web Component / Angular Integration
+-   `client/src/web-component.tsx`: Custom Element (`<pos-app>`) wrapping the React App with Shadow DOM for style isolation.
+-   `client/src/mount.ts`: Exports `render(container, props)` function for Angular to mount the app into any DOM element.
+-   `vite.config.lib.ts`: Library build config producing single-file ES and UMD bundles with inlined CSS.
+-   Build command: `npx vite build --config vite.config.lib.ts` → output in `dist/lib/`.
+-   Local database (`storage.ts`, `db.ts`) is dead code — never called from routes or client. All persistence uses Platinum API.
