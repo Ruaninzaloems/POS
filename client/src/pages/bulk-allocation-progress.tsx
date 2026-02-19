@@ -664,7 +664,7 @@ export default function BulkAllocationProgress() {
                 {renderDetailField('Allocated Amount', detailData.allocatedAmount != null
                   ? `R ${Number(detailData.allocatedAmount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : null)}
                 {renderDetailField('Payment Type', detailData.paymentTypeID != null
-                  ? (detailData.paymentTypeID === 1 ? 'Cash' : detailData.paymentTypeID === 3 ? 'Credit Card' : detailData.paymentTypeID === 2 ? 'Cheque' : `Type ${detailData.paymentTypeID}`)
+                  ? (detailData.paymentTypeID === 4 ? 'EFT' : `EFT (Type ${detailData.paymentTypeID})`)
                   : null)}
                 {renderDetailField('Cashier', detailData.cashierID != null
                   ? (resolveCashierName(detailData.cashierID) || `ID: ${detailData.cashierID}`)
