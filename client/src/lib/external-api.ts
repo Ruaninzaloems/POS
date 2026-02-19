@@ -1076,6 +1076,18 @@ export async function platinumLoadDetailsConsumerServices(data: any, queryParams
     });
 }
 
+export async function platinumDDAccountAutocomplete(searchTerm: string): Promise<any[]> {
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/get-account-autocomplete?searchTerm=${encodeURIComponent(searchTerm)}`);
+}
+
+export async function platinumDDOldAccountAutocomplete(searchTerm: string): Promise<any[]> {
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/get-old-account-autocomplete?searchTerm=${encodeURIComponent(searchTerm)}`);
+}
+
+export async function platinumDDClearanceAutocomplete(searchTerm: string): Promise<any[]> {
+    return platinumFetch(`/api/platinum/direct-deposit-allocation/get-clearance-autocomplete?searchTerm=${encodeURIComponent(searchTerm)}`);
+}
+
 export async function platinumLoadDetailsClearance(data: any): Promise<any> {
     return platinumFetch(`/api/platinum/direct-deposit-allocation/load-details-clearance`, {
         method: 'POST',

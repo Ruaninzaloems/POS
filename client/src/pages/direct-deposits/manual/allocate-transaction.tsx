@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { PosLayout } from '@/components/layout/pos-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Save, Plus, Trash2, CheckCircle, AlertCircle, Upload, Filter, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, CheckCircle, AlertCircle, Upload, Filter, X, Loader2, Search } from 'lucide-react';
 import { AllocationLine } from '@/lib/direct-deposits-data';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { Account, ClearanceCostSchedule } from '@/lib/mock-data';
-import { platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, platinumLoadDetailsConsumerServices, platinumLoadDetailsClearance, platinumLoadDetailsPaymentGrouping, platinumGetConsumerDetailsData, platinumGetClearanceDetailsInfo, platinumLoadConfirmPaymentDetails, rebuildFullAccount } from '@/lib/external-api';
+import { platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, platinumLoadDetailsPaymentGrouping, platinumLoadConfirmPaymentDetails, rebuildFullAccount, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, fetchMiscPaymentGroups, fetchMiscPaymentScoaItems } from '@/lib/external-api';
 
 interface BankReconPosItem {
   posItem_ID: number;
@@ -28,8 +28,19 @@ interface BankReconPosItem {
   billingAllocated: boolean;
   dateAllocated: string | null;
 }
-import { UnifiedSearch as SearchComponent, SearchResult } from '@/components/pos/search-component';
-import { validateAllocationAmount, calculateAllocationTotals, mapSearchResultToAllocationTarget } from '@/lib/allocation-logic';
+
+interface DDSearchResult {
+  accountId: number;
+  accountNo: string;
+  name: string;
+  oldAccountCode?: string;
+  outstandingAmount?: number;
+  type: 'ACCOUNT' | 'CLEARANCE' | 'DIRECT';
+  description?: string;
+  rawData?: any;
+}
+
+import { validateAllocationAmount, calculateAllocationTotals } from '@/lib/allocation-logic';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -45,15 +56,25 @@ export default function AllocateTransaction() {
   const [posting, setPosting] = useState(false);
   const [lines, setLines] = useState<AllocationLine[]>([]);
   
-  const [searchScope, setSearchScope] = useState<'ALL' | 'ACCOUNT' | 'PREPAID' | 'DIRECT' | 'GROUP' | 'CLEARANCE'>('ALL');
+  const [searchScope, setSearchScope] = useState<'ALL' | 'ACCOUNT' | 'CLEARANCE' | 'DIRECT'>('ALL');
   
-  const [selectedAccount, setSelectedAccount] = useState<{accountNo: string, name: string, description?: string} | null>(null);
+  const [selectedAccount, setSelectedAccount] = useState<{accountNo: string, name: string, description?: string, accountId?: number, allocationType?: string} | null>(null);
   const [newLineAmount, setNewLineAmount] = useState('');
 
   const [selectedClearance, setSelectedClearance] = useState<ClearanceCostSchedule | null>(null);
   const [clearanceAllocations, setClearanceAllocations] = useState<Record<string, number>>({});
   
-  const inputRef = React.useRef<HTMLInputElement>(null);
+  const [ddSearchQuery, setDdSearchQuery] = useState('');
+  const [ddSearchResults, setDdSearchResults] = useState<DDSearchResult[]>([]);
+  const [ddSearching, setDdSearching] = useState(false);
+  const [ddDropdownOpen, setDdDropdownOpen] = useState(false);
+  const ddSearchRef = useRef<HTMLDivElement>(null);
+  const ddSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  const [miscGroups, setMiscGroups] = useState<any[]>([]);
+  const [miscGroupsLoaded, setMiscGroupsLoaded] = useState(false);
+  
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (selectedAccount && inputRef.current) {
@@ -63,6 +84,175 @@ export default function AllocateTransaction() {
         }, 10);
     }
   }, [selectedAccount]);
+
+  useEffect(() => {
+    fetchMiscPaymentGroups()
+      .then(groups => { setMiscGroups(groups); setMiscGroupsLoaded(true); })
+      .catch(() => setMiscGroupsLoaded(true));
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ddSearchRef.current && !ddSearchRef.current.contains(e.target as Node)) {
+        setDdDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const performDDSearch = useCallback(async (query: string) => {
+    if (query.length < 2) {
+      setDdSearchResults([]);
+      return;
+    }
+    setDdSearching(true);
+    try {
+      const results: DDSearchResult[] = [];
+      const isNumeric = /^\d+$/.test(query);
+
+      if (searchScope === 'ALL' || searchScope === 'ACCOUNT') {
+        const searches: Promise<any>[] = [
+          platinumDDAccountAutocomplete(query).catch(() => []),
+        ];
+        if (isNumeric) {
+          searches.push(platinumDDOldAccountAutocomplete(query).catch(() => []));
+        }
+
+        const [accountResults, oldAccountResults] = await Promise.all(searches);
+
+        const seen = new Set<number>();
+        if (Array.isArray(accountResults)) {
+          for (const item of accountResults) {
+            const accId = item.account_ID || item.accountId || item.id;
+            if (accId && !seen.has(accId)) {
+              seen.add(accId);
+              results.push({
+                accountId: accId,
+                accountNo: item.accountNumber || item.accountNo || String(accId),
+                name: item.name || item.displayItem || 'Unknown',
+                oldAccountCode: item.oldAccountCode || '',
+                outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
+                type: 'ACCOUNT',
+                rawData: item,
+              });
+            }
+          }
+        }
+        if (Array.isArray(oldAccountResults)) {
+          for (const item of oldAccountResults) {
+            const accId = item.account_ID || item.accountId || item.id;
+            if (accId && !seen.has(accId)) {
+              seen.add(accId);
+              results.push({
+                accountId: accId,
+                accountNo: item.accountNumber || item.accountNo || String(accId),
+                name: item.name || item.displayItem || 'Unknown',
+                oldAccountCode: item.oldAccountCode || query,
+                outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
+                type: 'ACCOUNT',
+                description: `Found via old account code: ${query}`,
+                rawData: item,
+              });
+            }
+          }
+        }
+      }
+
+      if (searchScope === 'ALL' || searchScope === 'CLEARANCE') {
+        try {
+          const clearanceResults = await platinumDDClearanceAutocomplete(query);
+          if (Array.isArray(clearanceResults)) {
+            for (const item of clearanceResults) {
+              results.push({
+                accountId: item.account_ID || item.accountId || item.id || 0,
+                accountNo: item.accountNumber || item.certificateNo || String(item.id || ''),
+                name: item.name || item.displayItem || 'Clearance',
+                type: 'CLEARANCE',
+                rawData: item,
+              });
+            }
+          }
+        } catch {}
+      }
+
+      if (searchScope === 'ALL' || searchScope === 'DIRECT') {
+        if (miscGroupsLoaded && miscGroups.length > 0) {
+          const q = query.toLowerCase();
+          const matchedGroups = miscGroups.filter(g => 
+            g.name && g.name.toLowerCase().includes(q)
+          ).slice(0, 5);
+          for (const g of matchedGroups) {
+            results.push({
+              accountId: 0,
+              accountNo: `MISC-${g.id}`,
+              name: g.name,
+              type: 'DIRECT',
+              description: g.name,
+              rawData: g,
+            });
+          }
+        }
+      }
+
+      setDdSearchResults(results.slice(0, 15));
+      setDdDropdownOpen(results.length > 0);
+    } catch (err) {
+      console.error('DD search error:', err);
+      setDdSearchResults([]);
+    } finally {
+      setDdSearching(false);
+    }
+  }, [searchScope, miscGroups, miscGroupsLoaded]);
+
+  const handleDDSearchInput = (value: string) => {
+    setDdSearchQuery(value);
+    if (ddSearchTimerRef.current) clearTimeout(ddSearchTimerRef.current);
+    if (value.length >= 2) {
+      ddSearchTimerRef.current = setTimeout(() => performDDSearch(value), 400);
+    } else {
+      setDdSearchResults([]);
+      setDdDropdownOpen(false);
+    }
+  };
+
+  const handleSelectDDResult = (result: DDSearchResult) => {
+    setDdDropdownOpen(false);
+    setDdSearchQuery('');
+    setDdSearchResults([]);
+
+    if (result.type === 'ACCOUNT') {
+      setSelectedAccount({
+        accountNo: result.accountNo,
+        name: result.name,
+        description: result.oldAccountCode ? `${result.name} (Old: ${result.oldAccountCode})` : result.name,
+        accountId: result.accountId,
+        allocationType: 'ACCOUNT',
+      });
+      setNewLineAmount("0.00");
+      setSelectedClearance(null);
+    } else if (result.type === 'DIRECT') {
+      setSelectedAccount({
+        accountNo: result.accountNo,
+        name: result.name,
+        description: result.description || result.name,
+        accountId: 0,
+        allocationType: 'DIRECT',
+      });
+      setNewLineAmount("0.00");
+      setSelectedClearance(null);
+    } else if (result.type === 'CLEARANCE') {
+      setSelectedAccount({
+        accountNo: result.accountNo,
+        name: result.name,
+        description: `Clearance: ${result.name}`,
+        accountId: result.accountId,
+        allocationType: 'CLEARANCE',
+      });
+      setNewLineAmount("0.00");
+      setSelectedClearance(null);
+    }
+  };
 
   useEffect(() => {
     if (params?.id) {
@@ -91,36 +281,8 @@ export default function AllocateTransaction() {
     ? calculateAllocationTotals(lines, transaction.amount)
     : { allocatedTotal: 0, remaining: 0, isFullyAllocated: false };
 
-  const handleSearchResult = (result: SearchResult) => {
-    if (result.type === 'CLEARANCE') {
-        const clearance = result.data as ClearanceCostSchedule;
-        setSelectedClearance(clearance);
-        setSelectedAccount(null); // Clear account selection if any
-        
-        // Initialize allocations with defaults
-        const defaults: Record<string, number> = {};
-        
-        clearance.section118_1_Breakdown.forEach((item, idx) => {
-             defaults[`118_1_${item.accountNo}_${idx}`] = item.amount;
-        });
-        
-        clearance.section118_3_Breakdown.forEach((item, idx) => {
-             defaults[`118_3_${item.accountNo}_${idx}`] = item.amount;
-        });
-        
-        setClearanceAllocations(defaults);
-        return;
-    }
-
-    const target = mapSearchResultToAllocationTarget(result);
-    
-    if (target) {
-        setSelectedAccount(target);
-        setNewLineAmount("0.00");
-        setSelectedClearance(null); // Clear clearance selection if any
-    } else {
-        toast({ title: "Unsupported Type", description: "This item type cannot be allocated to directly.", variant: "destructive" });
-    }
+  const handleSearchResult = (result: DDSearchResult) => {
+    handleSelectDDResult(result);
   };
 
   const handleReturnToCashbook = () => {
@@ -158,11 +320,8 @@ export default function AllocateTransaction() {
           accountNo: selectedAccount.accountNo,
           amount: amount,
           description: selectedAccount.description || `Payment to ${selectedAccount.name}`,
-          allocationType: (selectedAccount as any).allocationType || 'ACCOUNT',
-          accountId: (selectedAccount as any).accountId,
-          groupId: (selectedAccount as any).groupId,
-          miscPaymentGroupId: (selectedAccount as any).miscPaymentGroupId,
-          scoaItemId: (selectedAccount as any).scoaItemId,
+          allocationType: selectedAccount.allocationType || 'ACCOUNT',
+          accountId: selectedAccount.accountId,
       }]);
       
       setSelectedAccount(null);
@@ -292,41 +451,10 @@ export default function AllocateTransaction() {
                   billType = 'ClearancePayment';
               }
 
-              const pagerBody = { page: 1, pageSize: 100, orderby: null, shortDirection: null };
               const accountIdStr = line.accountId ? String(line.accountId) : '';
 
-              let costScheduleId = '0';
               try {
-                  if (allocType === 'ACCOUNT' || allocType === 'PREPAID') {
-                      console.log(`[Direct Deposit] Step 1: load-details-consumer-services for account ${accountIdStr}`);
-                      const consumerList = await platinumLoadDetailsConsumerServices(pagerBody, { accountId: accountIdStr, OldAccountNumber: '' });
-
-                      if (Array.isArray(consumerList) && consumerList.length > 0) {
-                          const matched = consumerList.find((c: any) => String(c.account_ID) === accountIdStr);
-                          const entry = matched || consumerList[0];
-                          costScheduleId = String(entry.id || entry.costScheduleID || '0');
-                          console.log(`[Direct Deposit] Found cost schedule ID: ${costScheduleId} for account ${accountIdStr}`);
-                      }
-
-                      console.log(`[Direct Deposit] Step 2: get-consumer-details-data for account ${accountIdStr}, costSchedule ${costScheduleId}`);
-                      await platinumGetConsumerDetailsData({
-                          costScheduleID: costScheduleId,
-                          accountID: accountIdStr,
-                          posItemID: transaction.posItem_ID,
-                          transactionAmount: line.amount,
-                      });
-                  } else if (allocType === 'CLEARANCE') {
-                      console.log(`[Direct Deposit] Step 1: load-details-clearance for ${line.accountNo}`);
-                      await platinumLoadDetailsClearance(pagerBody);
-
-                      console.log(`[Direct Deposit] Step 2: get-clearance-details-info for ${line.accountNo}`);
-                      await platinumGetClearanceDetailsInfo({
-                          costScheduleID: line.accountNo || '',
-                          accountID: accountIdStr,
-                          posItemID: transaction.posItem_ID,
-                          transactionAmount: line.amount,
-                      });
-                  } else if (allocType === 'DIRECT' || allocType === 'GROUP') {
+                  if (allocType === 'DIRECT' || allocType === 'GROUP') {
                       console.log(`[Direct Deposit] Step 1: load-details-payment-grouping`);
                       await platinumLoadDetailsPaymentGrouping({
                           amount: line.amount,
@@ -345,7 +473,7 @@ export default function AllocateTransaction() {
               }
 
               try {
-                  console.log(`[Direct Deposit] Step 3: load-confirm-payment-details for ${billType}, account ${accountIdStr}`);
+                  console.log(`[Direct Deposit] load-confirm-payment-details for ${billType}, account ${accountIdStr}`);
                   await platinumLoadConfirmPaymentDetails({}, {
                       billType,
                       accountID: accountIdStr,
@@ -362,15 +490,15 @@ export default function AllocateTransaction() {
                   reconId: transaction.bankReconID || 0,
                   posItemId: transaction.posItem_ID,
                   billType,
-                  accountId: (allocType === 'ACCOUNT' || allocType === 'PREPAID') ? (line.accountId || 0) : 0,
+                  accountId: allocType === 'ACCOUNT' ? (line.accountId || 0) : 0,
                   masterId: 0,
                   userId,
                   description: line.description || transaction.note || '',
-                  groupId: allocType === 'GROUP' ? (line.groupId || 0) : 0,
+                  groupId: 0,
                   initials: '',
                   lastName: '',
                   financialYear: finYear,
-                  miscPaymentGroupId: allocType === 'DIRECT' ? (line.miscPaymentGroupId || 0) : 0,
+                  miscPaymentGroupId: 0,
                   amount: line.amount,
                   vatAmount: 0,
                   totalAmount: line.amount,
@@ -380,7 +508,7 @@ export default function AllocateTransaction() {
                   vatPercentage: 0,
               };
 
-              console.log('[Direct Deposit] Step 4: submit-details-data:', submitData);
+              console.log('[Direct Deposit] submit-details-data:', submitData);
               const result = await platinumSubmitDirectDepositAllocation(submitData);
               console.log('[Direct Deposit] Submit result:', result);
 
@@ -524,26 +652,79 @@ export default function AllocateTransaction() {
                         <CardTitle className="text-lg">Allocation Lines</CardTitle>
                     </CardHeader>
                     
-                    {/* Unified Search Bar Area */}
                     <div className="px-3 sm:px-6 pb-4 sm:pb-6 border-b">
                         <div className="flex gap-2">
-                            <div className="flex-1 min-w-0">
-                                <SearchComponent 
-                                    onSelect={handleSearchResult} 
-                                    placeholder={
-                                        searchScope === 'ALL' ? "Search Account / Group..." : 
-                                        `Search ${searchScope.charAt(0) + searchScope.slice(1).toLowerCase()}...`
-                                    }
-                                    className="max-w-full"
-                                    scope={searchScope}
-                                />
+                            <div className="flex-1 min-w-0 relative" ref={ddSearchRef}>
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                    <Input
+                                        data-testid="input-dd-search"
+                                        placeholder={
+                                            searchScope === 'ALL' ? "Search account number, name, or old code..." : 
+                                            searchScope === 'ACCOUNT' ? "Search account number or name..." :
+                                            searchScope === 'CLEARANCE' ? "Search clearance certificate..." :
+                                            "Search direct income item..."
+                                        }
+                                        className="h-10 sm:h-12 pl-10 pr-8"
+                                        value={ddSearchQuery}
+                                        onChange={e => handleDDSearchInput(e.target.value)}
+                                        onFocus={() => { if (ddSearchResults.length > 0) setDdDropdownOpen(true); }}
+                                    />
+                                    {ddSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />}
+                                    {ddSearchQuery && !ddSearching && (
+                                        <button className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => { setDdSearchQuery(''); setDdSearchResults([]); setDdDropdownOpen(false); }}>
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
+                                {ddDropdownOpen && ddSearchResults.length > 0 && (
+                                    <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-80 overflow-y-auto">
+                                        {ddSearchResults.map((result, idx) => (
+                                            <button
+                                                key={`${result.type}-${result.accountId}-${idx}`}
+                                                data-testid={`dd-result-${result.type}-${result.accountId}`}
+                                                className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-100 last:border-b-0 flex items-center gap-3"
+                                                onClick={() => handleSelectDDResult(result)}
+                                            >
+                                                <Badge variant="outline" className={`shrink-0 text-xs ${
+                                                    result.type === 'ACCOUNT' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                                    result.type === 'CLEARANCE' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                                    'bg-green-50 text-green-700 border-green-200'
+                                                }`}>
+                                                    {result.type === 'ACCOUNT' ? 'ACC' : result.type === 'CLEARANCE' ? 'CLR' : 'INC'}
+                                                </Badge>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="font-medium text-sm truncate">
+                                                        {result.accountNo} - {result.name}
+                                                    </div>
+                                                    {result.oldAccountCode && (
+                                                        <div className="text-xs text-muted-foreground">Old Code: {result.oldAccountCode}</div>
+                                                    )}
+                                                    {result.description && !result.oldAccountCode && (
+                                                        <div className="text-xs text-muted-foreground truncate">{result.description}</div>
+                                                    )}
+                                                </div>
+                                                {result.outstandingAmount != null && result.outstandingAmount !== 0 && (
+                                                    <span className="text-xs font-mono text-muted-foreground shrink-0">
+                                                        R {result.outstandingAmount.toFixed(2)}
+                                                    </span>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                                {ddDropdownOpen && ddSearchResults.length === 0 && !ddSearching && ddSearchQuery.length >= 2 && (
+                                    <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg p-4 text-center text-sm text-muted-foreground">
+                                        No results found for "{ddSearchQuery}"
+                                    </div>
+                                )}
                             </div>
                             
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <Button variant="outline" className={`h-10 sm:h-12 border-slate-200 shrink-0 ${searchScope !== 'ALL' ? 'bg-slate-100 border-slate-300' : ''}`}>
                                         <Filter className="w-4 h-4 sm:mr-2" /> 
-                                        <span className="hidden sm:inline">{searchScope === 'ALL' ? 'Filter' : searchScope.charAt(0) + searchScope.slice(1).toLowerCase()}</span>
+                                        <span className="hidden sm:inline">{searchScope === 'ALL' ? 'Filter' : searchScope}</span>
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-64 p-4" align="end">
@@ -569,14 +750,6 @@ export default function AllocateTransaction() {
                                             <div className="flex items-center space-x-2">
                                                 <RadioGroupItem value="ACCOUNT" id="scope-account" />
                                                 <Label htmlFor="scope-account">Consumer Accounts</Label>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                <RadioGroupItem value="PREPAID" id="scope-prepaid" />
-                                                <Label htmlFor="scope-prepaid">Prepaid Meters</Label>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                <RadioGroupItem value="GROUP" id="scope-group" />
-                                                <Label htmlFor="scope-group">Groups</Label>
                                             </div>
                                             <div className="flex items-center space-x-2">
                                                 <RadioGroupItem value="CLEARANCE" id="scope-clearance" />
