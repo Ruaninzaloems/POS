@@ -13,6 +13,7 @@ Key capabilities include:
 - Supervisor dashboard for transaction oversight and approvals.
 - Direct deposit allocation (manual and bulk).
 - Receipt management (print, email, SMS) and permit/certificate generation.
+- Client Communications module for custom email/SMS sending with account search, contact detail pulling, file attachments (schema only — no actual sending; ready for Angular migration with Mimecast integration).
 - Integration with Platinum Inzalo EMS API and legacy Sebata Billing microservices for live account data.
 
 ## User Preferences
