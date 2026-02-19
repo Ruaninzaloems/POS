@@ -120,13 +120,14 @@ export default function AllocateTransaction() {
             const autocompleteData = await autocompleteRes.json();
             const items = parseResults(autocompleteData);
             for (const item of items) {
-              const accId = item.account_ID || item.accountId || item.id;
+              const accId = item.accountId || item.account_ID || item.id;
+              const accNo = item.displayItem || item.accountNumber || item.accountNo || String(accId);
               if (accId && !seen.has(accId)) {
                 seen.add(accId);
                 results.push({
                   accountId: accId,
-                  accountNo: item.accountNumber || item.accountNo || String(accId),
-                  name: item.name || item.displayItem || 'Unknown',
+                  accountNo: String(accNo).padStart(12, '0'),
+                  name: item.name || `Account ${accNo}`,
                   oldAccountCode: item.oldAccountCode || '',
                   outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
                   type: 'ACCOUNT',
@@ -253,23 +254,45 @@ export default function AllocateTransaction() {
     setDdSearchQuery(value);
     if (ddSearchTimerRef.current) clearTimeout(ddSearchTimerRef.current);
     if (value.length >= 2) {
-      ddSearchTimerRef.current = setTimeout(() => performDDSearch(value), 400);
+      ddSearchTimerRef.current = setTimeout(() => performDDSearch(value), 250);
     } else {
       setDdSearchResults([]);
       setDdDropdownOpen(false);
     }
   };
 
-  const handleSelectDDResult = (result: DDSearchResult) => {
+  const handleSelectDDResult = async (result: DDSearchResult) => {
     setDdDropdownOpen(false);
     setDdSearchQuery('');
     setDdSearchResults([]);
 
     if (result.type === 'ACCOUNT') {
+      let name = result.name;
+      let outstandingAmount = result.outstandingAmount || 0;
+      let oldAccountCode = result.oldAccountCode || '';
+      if (name.startsWith('Account ')) {
+        try {
+          const detailRes = await fetch('/api/platinum/billing-payment/search-accounts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accountNo: String(result.accountId) }),
+          });
+          if (detailRes.ok) {
+            const detailData = await detailRes.json();
+            const items = Array.isArray(detailData) ? detailData : (detailData?.value || []);
+            const match = items.find((i: any) => (i.account_ID || i.id) === result.accountId);
+            if (match) {
+              name = [match.initials, match.lastName].filter(Boolean).join(' ') || match.name || name;
+              outstandingAmount = match.outStandingAmt || match.outstandingAmount || outstandingAmount;
+              oldAccountCode = match.oldAccountCode || oldAccountCode;
+            }
+          }
+        } catch {}
+      }
       setSelectedAccount({
         accountNo: result.accountNo,
-        name: result.name,
-        description: result.oldAccountCode ? `${result.name} (Old: ${result.oldAccountCode})` : result.name,
+        name,
+        description: oldAccountCode ? `${name} (Old: ${oldAccountCode})` : name,
         accountId: result.accountId,
         allocationType: 'ACCOUNT',
       });
