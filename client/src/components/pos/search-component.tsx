@@ -148,7 +148,14 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
 
           const acTypes = getAutocompleteTypesForQuery(query);
 
-          const [searchRes, institutionResults, clearanceResults, ...acResults] = await Promise.all([
+          const oldAccSearchPromise = /^\d+$/.test(query) ? fetch(searchUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId: userId || null, finYear: finYear || null, oldAccountCode: query }),
+              signal: controller.signal,
+          }).catch(() => null) : Promise.resolve(null);
+
+          const [searchRes, oldAccRes, institutionResults, clearanceResults, ...acResults] = await Promise.all([
               fetch(searchUrl, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -158,6 +165,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                   if (err.name === 'AbortError') return null;
                   throw err;
               }),
+              oldAccSearchPromise,
               searchInstitutions(query),
               (scope === 'ALL' || scope === 'CLEARANCE') ? platinumGetClearanceIds({ clearanceId: query }).catch(() => []) : Promise.resolve([]),
               ...acTypes.map(t => autocomplete(query, t).catch(() => [])),
@@ -168,6 +176,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
           clearTimeout(timeoutId);
 
           let allAccountData: any[] = [];
+          const oldAccMatchedIds = new Set<number>();
           if (searchRes && searchRes.ok) {
               const data = await searchRes.json();
               if (Array.isArray(data)) {
@@ -175,6 +184,26 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
               } else if (data?.value && Array.isArray(data.value)) {
                   allAccountData = data.value;
               }
+          }
+
+          if (oldAccRes && oldAccRes.ok) {
+              try {
+                  const oldData = await oldAccRes.json();
+                  const oldItems = Array.isArray(oldData) ? oldData : (oldData?.value && Array.isArray(oldData.value) ? oldData.value : []);
+                  const existingPrimaryIds = new Set(allAccountData.map((item: any) => item.account_ID || item.accountID));
+                  for (const item of oldItems) {
+                      const itemId = item.account_ID || item.accountID;
+                      oldAccMatchedIds.add(itemId);
+                      if (itemId && !existingPrimaryIds.has(itemId)) {
+                          item._foundViaOldCode = true;
+                          allAccountData.push(item);
+                          existingPrimaryIds.add(itemId);
+                      } else {
+                          const existing = allAccountData.find((a: any) => (a.account_ID || a.accountID) === itemId);
+                          if (existing) existing._foundViaOldCode = true;
+                      }
+                  }
+              } catch {}
           }
 
           const acAccountIds = (acSuggestions || []).filter((s: any) => s.accountId && s.accountId > 0).map((s: any) => s.accountId);
@@ -207,27 +236,20 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
           }
 
           if (allAccountData.length === 0 && /^\d+$/.test(query)) {
-              const altSearches = [
-                  { userId: userId || null, finYear: finYear || null, oldAccountCode: query },
-                  { userId: userId || null, finYear: finYear || null, physicalMeterNo: query },
-              ];
-              for (const altBody of altSearches) {
-                  if (allAccountData.length > 0) break;
-                  try {
-                      const altRes = await fetch(searchUrl, {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify(altBody),
-                          signal: controller.signal,
-                      });
-                      if (altRes.ok) {
-                          const altData = await altRes.json();
-                          if (Array.isArray(altData) && altData.length > 0) {
-                              allAccountData = altData;
-                          }
+              try {
+                  const meterRes = await fetch(searchUrl, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ userId: userId || null, finYear: finYear || null, physicalMeterNo: query }),
+                      signal: controller.signal,
+                  });
+                  if (meterRes.ok) {
+                      const meterData = await meterRes.json();
+                      if (Array.isArray(meterData) && meterData.length > 0) {
+                          allAccountData = meterData;
                       }
-                  } catch {}
-              }
+                  }
+              } catch {}
           }
 
           const uniqueAccounts = Array.from(new Map(allAccountData.map(item => [item.account_ID, item])).values());
@@ -236,7 +258,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
               return {
                   type: 'ACCOUNT' as const,
                   data: {
-                      accountNo: item.accountNumber || item.oldAccountCode || `${item.account_ID}`,
+                      accountNo: item.accountNumber || (item._foundViaOldCode ? `${item.account_ID}` : item.oldAccountCode) || `${item.account_ID}`,
                       name: item.name || 'Unknown',
                       idNo: '-',
                       address: item.deliveryAddress || item.streetName || '',
@@ -264,7 +286,9 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                       billingCycleId: item.billingCycleId,
                       _rawSearchResult: item,
                   } as Account,
-                  label: `${item.accountNumber || item.oldAccountCode || item.account_ID} - ${item.name || 'Unknown'}`
+                  label: item._foundViaOldCode && item.accountNumber && item.oldAccountCode && item.accountNumber !== item.oldAccountCode
+                      ? `${item.accountNumber} - ${item.name || 'Unknown'} (Old: ${item.oldAccountCode})`
+                      : `${item.accountNumber || item.oldAccountCode || item.account_ID} - ${item.name || 'Unknown'}`
               };
           });
 
