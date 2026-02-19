@@ -16,6 +16,7 @@ import {
   Monitor,
   Smartphone,
   ChevronRight,
+  MessageSquareMore,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -28,6 +29,7 @@ const menuItems = [
   { label: 'Bulk Allocation Progress', href: '/bulk-allocation', icon: FileBarChart, description: 'View bulk allocation progress and errors' },
   { label: 'View Receipts', href: '/view-receipts', icon: FileSearch, description: 'Search and view transaction receipts' },
   { label: 'General Enquiries', href: '/enquiries/general', icon: Search, description: 'Search and view account details' },
+  { label: 'Client Communications', href: '/communications', icon: MessageSquareMore, description: 'Send custom emails and SMS to account holders' },
   { label: 'System Settings', href: '/settings', icon: Settings, description: 'Configure system preferences' },
   { label: 'Supervisor', href: '/supervisor', icon: ShieldCheck, description: 'Supervisor dashboard and approvals' },
 ];

@@ -21,7 +21,8 @@ import {
   Home,
   Calculator,
   BarChart3,
-  AlertTriangle
+  AlertTriangle,
+  MessageSquareMore
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link, useLocation } from "wouter";
@@ -119,6 +120,7 @@ export function PosLayout({ children }: PosLayoutProps) {
     if (path.startsWith('/cashier-day-end')) return 'Day-End Reconciliation';
     if (path.startsWith('/billing-dashboard')) return 'Billing Dashboard';
     if (path.startsWith('/enquiries')) return 'Enquiries';
+    if (path.startsWith('/communications')) return 'Client Communications';
     if (path.startsWith('/supervisor')) return 'Supervisor';
     return 'Menu';
   };
@@ -147,6 +149,7 @@ export function PosLayout({ children }: PosLayoutProps) {
             { label: 'General Enquiries', href: '/enquiries/general', icon: FileSearch },
         ]
     },
+    { label: 'Client Communications', href: '/communications', icon: MessageSquareMore },
     { label: 'System Settings', href: '/settings', icon: Settings },
     { label: 'Supervisor', href: '/supervisor', icon: ShieldCheck },
   ];

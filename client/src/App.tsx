@@ -23,6 +23,7 @@ import SettingsPage from "@/pages/settings";
 import CashierDayEnd from "@/pages/cashier-day-end";
 import BillingDashboard from "@/pages/billing-dashboard";
 import GeneralEnquiries from "@/pages/enquiries-general";
+import ClientCommunications from "@/pages/client-communications";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   constructor(props: { children: ReactNode }) {
@@ -91,6 +92,7 @@ function Router() {
       <Route path="/cashier-day-end" component={CashierDayEnd} />
       <Route path="/billing-dashboard" component={BillingDashboard} />
       <Route path="/enquiries/general" component={GeneralEnquiries} />
+      <Route path="/communications" component={ClientCommunications} />
       <Route path="/enquiries">
         <Redirect to="/enquiries/general" />
       </Route>
