@@ -1845,7 +1845,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/direct-deposit-allocation/load-confirm-payment-details", async (req, res) => {
     try {
+      console.log('[DD Confirm] Query params:', JSON.stringify(req.query), 'Body:', JSON.stringify(req.body));
       const data = await platinumPost("/api/billing-direct-deposit-allocation/load-confirm-payment-details", req.body, req.query as Record<string, string>);
+      console.log('[DD Confirm] API response:', JSON.stringify(data));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1854,7 +1856,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/direct-deposit-allocation/submit-details-data", async (req, res) => {
     try {
+      console.log('[DD Submit] Request body:', JSON.stringify(req.body));
       const data = await platinumPost("/api/billing-direct-deposit-allocation/submit-details-data", req.body);
+      console.log('[DD Submit] API response:', JSON.stringify(data));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });

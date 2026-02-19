@@ -578,11 +578,12 @@ export default function AllocateTransaction() {
 
               try {
                   console.log(`[Direct Deposit] load-confirm-payment-details for ${billType}, account ${accountIdStr}`);
-                  await platinumLoadConfirmPaymentDetails({}, {
+                  const confirmResponse = await platinumLoadConfirmPaymentDetails({}, {
                       billType,
                       accountID: accountIdStr,
                       posItem: String(transaction.posItem_ID),
                   });
+                  console.log('[Direct Deposit] load-confirm-payment-details RESPONSE:', JSON.stringify(confirmResponse));
               } catch (confirmErr) {
                   console.warn(`[Direct Deposit] Confirm step warning (non-blocking):`, confirmErr);
               }
