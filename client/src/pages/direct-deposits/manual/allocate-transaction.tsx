@@ -10,7 +10,7 @@ import { AllocationLine } from '@/lib/direct-deposits-data';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { Account, ClearanceCostSchedule } from '@/lib/mock-data';
-import { platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, platinumLoadDetailsPaymentGrouping, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, rebuildFullAccount, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, fetchMiscPaymentGroups, fetchMiscPaymentScoaItems } from '@/lib/external-api';
+import { platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, platinumLoadDetailsPaymentGrouping, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, platinumDDClearanceAutocomplete, fetchMiscPaymentGroups, rebuildFullAccount } from '@/lib/external-api';
 
 interface BankReconPosItem {
   posItem_ID: number;
@@ -112,42 +112,64 @@ export default function AllocateTransaction() {
       const isNumeric = /^\d+$/.test(query);
 
       if (searchScope === 'ALL' || searchScope === 'ACCOUNT') {
+        const searchBody: Record<string, any> = {};
+        if (isNumeric) {
+          searchBody.accountNo = query;
+        } else {
+          searchBody.name = query;
+        }
+
         const searches: Promise<any>[] = [
-          platinumDDAccountAutocomplete(query).catch(() => []),
+          fetch('/api/platinum/billing-payment/search-accounts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(searchBody),
+          }).then(r => r.ok ? r.json() : []).catch(() => []),
         ];
         if (isNumeric) {
-          searches.push(platinumDDOldAccountAutocomplete(query).catch(() => []));
+          searches.push(
+            fetch('/api/platinum/billing-payment/search-accounts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ oldAccountCode: query }),
+            }).then(r => r.ok ? r.json() : []).catch(() => [])
+          );
         }
 
         const [accountResults, oldAccountResults] = await Promise.all(searches);
 
         const seen = new Set<number>();
-        if (Array.isArray(accountResults)) {
-          for (const item of accountResults) {
-            const accId = item.account_ID || item.accountId || item.id;
-            if (accId && !seen.has(accId)) {
-              seen.add(accId);
-              results.push({
-                accountId: accId,
-                accountNo: item.accountNumber || item.accountNo || String(accId),
-                name: item.name || item.displayItem || 'Unknown',
-                oldAccountCode: item.oldAccountCode || '',
-                outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
-                type: 'ACCOUNT',
-                rawData: item,
-              });
-            }
+        const parseResults = (data: any) => {
+          if (Array.isArray(data)) return data;
+          if (data?.value && Array.isArray(data.value)) return data.value;
+          return [];
+        };
+
+        for (const item of parseResults(accountResults)) {
+          const accId = item.account_ID || item.accountID || item.id;
+          if (accId && !seen.has(accId)) {
+            seen.add(accId);
+            results.push({
+              accountId: accId,
+              accountNo: item.accountNumber || item.accountNo || String(accId),
+              name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown',
+              oldAccountCode: item.oldAccountCode || '',
+              outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
+              type: 'ACCOUNT',
+              rawData: item,
+            });
           }
         }
-        if (Array.isArray(oldAccountResults)) {
-          for (const item of oldAccountResults) {
-            const accId = item.account_ID || item.accountId || item.id;
+
+        if (oldAccountResults) {
+          for (const item of parseResults(oldAccountResults)) {
+            const accId = item.account_ID || item.accountID || item.id;
             if (accId && !seen.has(accId)) {
               seen.add(accId);
               results.push({
                 accountId: accId,
                 accountNo: item.accountNumber || item.accountNo || String(accId),
-                name: item.name || item.displayItem || 'Unknown',
+                name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown',
                 oldAccountCode: item.oldAccountCode || query,
                 outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
                 type: 'ACCOUNT',
@@ -321,7 +343,7 @@ export default function AllocateTransaction() {
           accountNo: selectedAccount.accountNo,
           amount: amount,
           description: selectedAccount.description || `Payment to ${selectedAccount.name}`,
-          allocationType: selectedAccount.allocationType || 'ACCOUNT',
+          allocationType: (selectedAccount.allocationType || 'ACCOUNT') as AllocationLine['allocationType'],
           accountId: selectedAccount.accountId,
           miscPaymentGroupId: selectedAccount.miscPaymentGroupId,
       }]);

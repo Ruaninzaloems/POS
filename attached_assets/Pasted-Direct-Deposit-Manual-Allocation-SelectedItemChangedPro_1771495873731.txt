@@ -1,0 +1,17 @@
+Direct Deposit Manual Allocation	SelectedItemChangedProcessed	GET	/api/billing-direct-deposit-allocation/check-selected-item-processed	Checks if a POS item has already been processed
+Direct Deposit Manual Allocation	getBankReconPOSItemDetails	GET	/api/billing-direct-deposit-allocation/get-pos-item-details	Retrieves detailed information for a specific POS item
+Direct Deposit Manual Allocation	getVatRate	GET	/api/billing-direct-deposit-allocation/get-vat-rate	Retrieves current VAT percentage rate
+Direct Deposit Manual Allocation	getGroupPaymentDetails	GET	/api/billing-direct-deposit-allocation/get-group-payment-details	Retrieves account groups for payment grouping
+Direct Deposit Manual Allocation	getMISCPaymentGroup	GET	/api/billing-direct-deposit-allocation/get-misc-payment-group	Retrieves miscellaneous payment groups
+Direct Deposit Manual Allocation	getMISCVoteIDFromScoaItemID	GET	/api/billing-direct-deposit-allocation/get-misc-vote-id-by-group	Retrieves SCOA items/votes for a specific MISC payment group
+Direct Deposit Manual Allocation	GetVoteDetails	GET	/api/billing-direct-deposit-allocation/vote-details	Retrieves vote details including Vatable status
+Direct Deposit Manual Allocation	GetAccountAutoComplete	GET	/api/billing-direct-deposit-allocation/get-account-autocomplete	Autocomplete for account numbers
+Direct Deposit Manual Allocation	GetOldAccountAutoComplete	GET	/api/billing-direct-deposit-allocation/get-old-account-autocomplete	Autocomplete for old account numbers
+Direct Deposit Manual Allocation	GetClearenceAutoComplete	GET	/api/billing-direct-deposit-allocation/get-clearence-autocomplete	Autocomplete for clearance IDs
+Direct Deposit Manual Allocation	getPaymentGroupingLoadDetails	POST	/api/billing-direct-deposit-allocation/load-details-payment-grouping	Loads payment grouping details
+Direct Deposit Manual Allocation	getConsumerServiceLoadDetails	POST	/api/billing-direct-deposit-allocation/load-details-consumer-services	Loads consumer service accounts by account/old account number
+Direct Deposit Manual Allocation	getClearanceLoadDetails	POST	/api/billing-direct-deposit-allocation/load-details-clearance	Loads clearance data based on clearance ID
+Direct Deposit Manual Allocation	accountGroupingInstitution	POST	/api/billing-direct-deposit-allocation/load-details-payment-grouping-institution-data	Loads institution data for selected account group
+Direct Deposit Manual Allocation	getClearanceDetailsInfo	POST	/api/billing-direct-deposit-allocation/get-clearance-details-info	Retrieves detailed information for a specific clearance
+Direct Deposit Manual Allocation	submitData	POST	/api/billing-direct-deposit-allocation/submit-details-data	Submits confirmation data for payment processing
+Direct Deposit Manual Allocation	GetMiscReceiptData	GET	/api/billing-direct-deposit-allocation/get-misc-receipt-data	Retrieves receipt data for display
