@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, CreditCard, Users, Zap, FileText, Layers, Info, Filter, Loader2, Building, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Account } from '@/lib/mock-data';
-import { searchInstitutions, InstitutionSearchResult, fetchMiscPaymentGroups, fetchMiscPaymentScoaItems, MiscPaymentGroup, MiscPaymentScoaItem, platinumGetClearanceIds } from '@/lib/external-api';
+import { Account, searchInstitutions, InstitutionSearchResult, fetchMiscPaymentGroups, fetchMiscPaymentScoaItems, MiscPaymentGroup, MiscPaymentScoaItem, platinumGetClearanceIds, platinumSearchAccountsWithSignal, fetchEnquiryResultsWithSignal } from '@/lib/external-api';
 import { autocomplete, getAutocompleteTypesForQuery } from '@/lib/enquiries-service';
 
 export function parseMobileFromContactDetails(contactDetails: string | undefined | null): string {
@@ -131,7 +130,6 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
       if (query.length < 3) return;
       setIsSearchingExternal(true);
       try {
-          const searchUrl = '/api/platinum/billing-payment/search-accounts';
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 35000);
 
@@ -148,20 +146,12 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
 
           const acTypes = getAutocompleteTypesForQuery(query);
 
-          const oldAccSearchPromise = /^\d+$/.test(query) ? fetch(searchUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId: userId || null, finYear: finYear || null, oldAccountCode: query }),
-              signal: controller.signal,
-          }).catch(() => null) : Promise.resolve(null);
+          const oldAccSearchPromise = /^\d+$/.test(query)
+              ? platinumSearchAccountsWithSignal({ userId: userId || null, finYear: finYear || null, oldAccountCode: query }, controller.signal).catch(() => null)
+              : Promise.resolve(null);
 
-          const [searchRes, oldAccRes, institutionResults, clearanceResults, ...acResults] = await Promise.all([
-              fetch(searchUrl, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(searchBody),
-                  signal: controller.signal,
-              }).catch(err => {
+          const [searchData, oldAccData, institutionResults, clearanceResults, ...acResults] = await Promise.all([
+              platinumSearchAccountsWithSignal(searchBody, controller.signal).catch((err: any) => {
                   if (err.name === 'AbortError') return null;
                   throw err;
               }),
@@ -177,19 +167,17 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
 
           let allAccountData: any[] = [];
           const oldAccMatchedIds = new Set<number>();
-          if (searchRes && searchRes.ok) {
-              const data = await searchRes.json();
-              if (Array.isArray(data)) {
-                  allAccountData = data;
-              } else if (data?.value && Array.isArray(data.value)) {
-                  allAccountData = data.value;
+          if (searchData) {
+              if (Array.isArray(searchData)) {
+                  allAccountData = searchData;
+              } else if (searchData?.value && Array.isArray(searchData.value)) {
+                  allAccountData = searchData.value;
               }
           }
 
-          if (oldAccRes && oldAccRes.ok) {
+          if (oldAccData) {
               try {
-                  const oldData = await oldAccRes.json();
-                  const oldItems = Array.isArray(oldData) ? oldData : (oldData?.value && Array.isArray(oldData.value) ? oldData.value : []);
+                  const oldItems = Array.isArray(oldAccData) ? oldAccData : (oldAccData?.value && Array.isArray(oldAccData.value) ? oldAccData.value : []);
                   const existingPrimaryIds = new Set(allAccountData.map((item: any) => item.account_ID || item.accountID));
                   for (const item of oldItems) {
                       const itemId = item.account_ID || item.accountID;
@@ -213,12 +201,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
           if (missingAcIds.length > 0) {
               const acLookups = await Promise.allSettled(
                   missingAcIds.map((id: number) =>
-                      fetch('/api/platinum/billing-enquiry/enquiry-results', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ accountID: String(id) }),
-                          signal: controller.signal,
-                      }).then(r => r.ok ? r.json() : null)
+                      fetchEnquiryResultsWithSignal({ accountID: String(id) }, controller.signal)
                   )
               );
               for (const r of acLookups) {
@@ -237,17 +220,12 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
 
           if (allAccountData.length === 0 && /^\d+$/.test(query)) {
               try {
-                  const meterRes = await fetch(searchUrl, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ userId: userId || null, finYear: finYear || null, physicalMeterNo: query }),
-                      signal: controller.signal,
-                  });
-                  if (meterRes.ok) {
-                      const meterData = await meterRes.json();
-                      if (Array.isArray(meterData) && meterData.length > 0) {
-                          allAccountData = meterData;
-                      }
+                  const meterData = await platinumSearchAccountsWithSignal(
+                      { userId: userId || null, finYear: finYear || null, physicalMeterNo: query },
+                      controller.signal
+                  );
+                  if (Array.isArray(meterData) && meterData.length > 0) {
+                      allAccountData = meterData;
                   }
               } catch {}
           }

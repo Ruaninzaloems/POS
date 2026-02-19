@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Account, ClearanceCostSchedule, DirectIncomeItem } from '@/lib/mock-data';
+import { Account, ClearanceCostSchedule, DirectIncomeItem, fetchEnquiryResults } from '@/lib/external-api';
 import { User, MapPin, Phone, Mail, FileCheck, Zap, Trash2, Droplets, Upload, Search, Info, Download, FileText, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -347,13 +347,7 @@ export function TransactionPanels() {
           const batch = entries.slice(i, i + BATCH);
           const results = await Promise.allSettled(
             batch.map(async (entry) => {
-              const res = await fetch('/api/platinum/billing-enquiry/enquiry-results', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ accountID: entry.accNo }),
-              });
-              if (!res.ok) throw new Error('API error');
-              const data = await res.json();
+              const data = await fetchEnquiryResults({ accountID: entry.accNo });
               const items = Array.isArray(data) ? data : data && !data._error ? [data] : [];
               if (items.length === 0) throw new Error('Not found');
               const item = items[0];

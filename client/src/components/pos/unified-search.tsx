@@ -4,8 +4,7 @@ import { ConsumerSearchForm } from './consumer-search-form';
 import { UnifiedSearch as SearchComponent, SearchResult, parseMobileFromContactDetails } from './search-component';
 import { Filter, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Account } from '@/lib/mock-data';
-import { fetchAccounts, fetchBillingStagePrepaidRecharge, fetchBillingStagePrepaidRecovery, searchInstitutions, fetchAccountsByGroup, platinumGetAccountsForClearance, platinumGetClearanceData, enrichAccountData } from '@/lib/external-api';
+import { Account, fetchAccounts, fetchBillingStagePrepaidRecharge, fetchBillingStagePrepaidRecovery, searchInstitutions, fetchAccountsByGroup, platinumGetAccountsForClearance, platinumGetClearanceData, enrichAccountData } from '@/lib/external-api';
 import {
   AlertDialog,
   AlertDialogAction,

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Globe } from 'lucide-react';
 import { EasyPayModal } from '@/components/pos/easy-pay-modal';
 import { usePos } from '@/lib/pos-state';
-import { EasyPayBill } from '@/lib/mock-data';
+import { EasyPayBill } from '@/lib/external-api';
 
 function PosPageContent() {
   const [isEasyPayOpen, setIsEasyPayOpen] = useState(false);

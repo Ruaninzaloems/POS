@@ -1,4 +1,200 @@
-import { CashOffice } from "./mock-data";
+const LOG_ENABLED = true;
+function apiLog(tag: string, ...args: unknown[]): void {
+    if (LOG_ENABLED) console.log(`[${tag}]`, ...args);
+}
+
+export interface EasyPayBill {
+  id: string;
+  reference: string;
+  billerName: string;
+  accountName: string;
+  amount: number;
+  dueDate: string;
+  status: "unpaid" | "paid";
+}
+
+export interface Account {
+  accountNo: string;
+  name: string;
+  idNo: string;
+  sgNo: string;
+  address: string;
+  outstandingAmount: number;
+  prepaidMeterNo?: string;
+  prepaidType?: "Electricity" | "Water";
+  email: string;
+  mobile: string;
+  linkedToClearance?: string;
+  unitId?: string;
+  oldCode?: string;
+  accountType?: string;
+  status?: string;
+  deliveryAddress?: string;
+  valuationCategory?: string;
+  marketValue?: number;
+  agingBreakdown?: AgingItem[];
+  prepaidBlocked?: boolean;
+  prepaidBlockReason?: string;
+  blockedServices?: string[];
+  apiId?: number;
+  accountGroup?: string;
+  subAccountGroup?: string;
+  paymentGroup?: string;
+  locationAddress?: string;
+  propertyId?: string;
+  addName?: string;
+  contactDetails?: string;
+  unitPartitionId?: number;
+  paidDepositAmount?: number;
+  billingCycle?: string;
+  firstName?: string;
+  surname?: string;
+  nameId?: number;
+  oldPropertyCode?: string;
+  registrationStatus?: string;
+  allotmentArea?: string;
+  propertyType?: string;
+  magisterialDistrict?: string;
+  propertyTypeOfUse?: string;
+  propertyCategory?: string;
+  partitionDescription?: string;
+  interestWaiverStatus?: string;
+  indigentSubsidyStatus?: string;
+  consumerRppStatus?: string;
+  departmentalAccount?: string;
+  rebateStatus?: string;
+  handoverStatus?: string;
+  loanRppStatus?: string;
+  incentiveSchemeCode?: string;
+  sectionalTitleScheme?: string;
+  farmName?: string;
+  propertyStatus?: string;
+  accountableOwnerName?: string;
+  partitionMarketValue?: number;
+}
+
+export interface AgingItem {
+  serviceDescription: string;
+  totalOutstanding: number;
+  newCharge: number;
+  currentAccount: number;
+  days30: number;
+  days60: number;
+  days90: number;
+  days120: number;
+  days150: number;
+  days180Plus: number;
+}
+
+export interface DirectIncomeItem {
+  id: string;
+  groupName: string;
+  description: string;
+  scoaItem: string;
+  vatRate: number;
+  price?: number;
+}
+
+export interface AccountGroup {
+  id: string;
+  name: string;
+  memberAccountNos: string[];
+}
+
+export interface ClearanceCostSchedule {
+  scheduleNo: string;
+  status: string;
+  totalDue: number;
+  linkedAccounts: Account[];
+  section118_1_Breakdown: { item: string; amount: number; accountNo: string }[];
+  section118_3_Breakdown: { item: string; amount: number; accountNo: string }[];
+}
+
+export interface CashOffice {
+  id: string;
+  name: string;
+  ledgerVote: string;
+  maxTransactionLimit: number;
+}
+
+export interface CashierProfile {
+  id: string;
+  name: string;
+  role: string;
+  cashOffice: string;
+  float: number;
+}
+
+export interface BankTransaction {
+  id: string;
+  transactionDate: string;
+  description: string;
+  amount: number;
+  reference: string;
+  status: 'UNMATCHED' | 'DRAFT' | 'ALLOCATED' | 'REVERSED' | 'PROCESSING' | 'ERROR';
+  allocatedAmount: number;
+  bankAccount: string;
+}
+
+export interface AllocationLine {
+  id: string;
+  accountNo: string;
+  amount: number;
+  description: string;
+  allocationType?: 'ACCOUNT' | 'PREPAID' | 'DIRECT' | 'GROUP' | 'CLEARANCE' | 'CASHBOOK';
+  accountId?: number;
+  groupId?: number;
+  miscPaymentGroupId?: number;
+  scoaItemId?: number;
+  voteId?: number;
+}
+
+export interface AllocationDraft {
+  transactionId: string;
+  lines: AllocationLine[];
+  status: 'DRAFT' | 'POSTED' | 'PROCESSING';
+  updatedAt: string;
+  method: 'MANUAL' | 'BULK';
+  allocatedBy: string;
+  allocationDate: string;
+  bulkJobStatus?: 'Processing' | 'Performing rebuilds' | 'Completing reconciliation' | 'Bulk allocations complete' | 'Error';
+  allocationType?: 'DIRECT_PAYMENT' | 'CLEARANCE_PAYMENT' | 'ACCOUNT_PAYMENT' | 'ELECTRICITY_RECHARGE' | 'WATER_RECHARGE' | 'CSV_FILE';
+  fileName?: string;
+  fileUrl?: string;
+}
+
+export type PlatinumApiPayload = Record<string, unknown>;
+export type PlatinumApiResponse = Record<string, unknown>;
+
+export interface AccountSearchCriteria {
+    accountNo?: string;
+    name?: string;
+    idNumber?: string;
+    street?: string;
+    allotmentArea?: string;
+    erfNumber?: string;
+    emailAddress?: string;
+    mobileNumber?: string;
+    physicalMeterNumber?: string;
+    trading?: string;
+}
+
+export interface PaymentSubmission {
+    paymentType: number;
+    paymentOption: number;
+    accountId: number;
+    amount: number;
+    receiptNo?: string;
+    cashierId?: number;
+    userId?: number;
+}
+
+export interface DayEndReconcileData {
+    userId: number;
+    cashierId: number;
+    cashCount?: Record<string, number>;
+    note?: string;
+}
 
 export interface PlatinumUserInfo {
     user_ID: number;
@@ -166,10 +362,10 @@ export async function fetchCashierPaymentOptions(
         const res = await fetch(`/api/platinum/receipt-prepaid/cashier-payment-options?${params.toString()}`);
         if (res.ok) {
             const result = await res.json();
-            console.log(`[PaymentOptions] Loaded for cashier ${cashierId}, userId=${userId}, officeId=${cashofficeId}, officeOnly=${officeOnly} (source: ${result.source}):`, result.data?.length, 'options');
+            apiLog('PaymentOptions', `Loaded for cashier ${cashierId}, userId=${userId}, officeId=${cashofficeId}, officeOnly=${officeOnly} (source: ${result.source}):`, result.data?.length, 'options');
             if (result.data) {
                 result.data.forEach((opt: CashierPaymentOption) => {
-                    console.log(`[PaymentOptions]   ${opt.posPaymentOption_ID}: ${opt.posPaymentOptionDesc} — isTicked=${opt.isTicked}, enabled=${opt.enabled}`);
+                    apiLog('PaymentOptions', `  ${opt.posPaymentOption_ID}: ${opt.posPaymentOptionDesc} — isTicked=${opt.isTicked}, enabled=${opt.enabled}`);
                 });
             }
             return result;
@@ -198,10 +394,10 @@ export async function fetchCashierPaymentTypes(
         const res = await fetch(`/api/platinum/receipt-prepaid/cashier-payment-types?${params.toString()}`);
         if (res.ok) {
             const result = await res.json();
-            console.log(`[PaymentTypes] Loaded for cashier ${cashierId}, userId=${userId}, officeId=${cashofficeId}, officeOnly=${officeOnly} (source: ${result.source}):`, result.data?.length, 'types');
+            apiLog('PaymentTypes', `Loaded for cashier ${cashierId}, userId=${userId}, officeId=${cashofficeId}, officeOnly=${officeOnly} (source: ${result.source}):`, result.data?.length, 'types');
             if (result.data) {
                 result.data.forEach((t: CashierPaymentType) => {
-                    console.log(`[PaymentTypes]   ${t.posPaymentType_ID}: ${t.posPaymentTypeDesc} — isTicked=${t.isTicked}, enabled=${t.enabled}`);
+                    apiLog('PaymentTypes', `  ${t.posPaymentType_ID}: ${t.posPaymentTypeDesc} — isTicked=${t.isTicked}, enabled=${t.enabled}`);
                 });
             }
             return result;
@@ -237,7 +433,7 @@ export async function validateReceiptRange(
         const res = await fetch(`/api/platinum/receipt-prepaid/validate-receipt-range?${params.toString()}`);
         if (res.ok) {
             const result = await res.json();
-            console.log(`[ReceiptRange] Validation result for userId=${userId}:`, result);
+            apiLog('ReceiptRange', `Validation result for userId=${userId}:`, result);
             return result;
         }
         console.warn(`[ReceiptRange] API returned ${res.status}`);
@@ -536,7 +732,7 @@ export async function enrichAccountData(account: any): Promise<any> {
             if (contactDetails.tel_Mobile) enriched.mobile = contactDetails.tel_Mobile;
         }
 
-        console.log(`[Enrich] Account ${accountId} enriched: email=${enriched.email}, oldCode=${enriched.oldCode}, outstanding=${enriched.outstandingAmount}`);
+        apiLog('Enrich', `Account ${accountId} enriched: email=${enriched.email}, oldCode=${enriched.oldCode}, outstanding=${enriched.outstandingAmount}`);
     } catch (e) {
         console.warn(`[Enrich] Failed to enrich account ${accountId}:`, e);
     }
@@ -1660,7 +1856,7 @@ export async function searchSebataReceipts(filters: {
 export async function getReceiptTransactionDetail(primaryId: number): Promise<any> {
     try {
         const data = await platinumFetch(`/api/platinum/billing-enquiry/receipt-transaction-detail?primaryId=${primaryId}`);
-        console.log(`[getReceiptTransactionDetail] primaryId=${primaryId}, response:`, data);
+        apiLog('getReceiptTransactionDetail', `primaryId=${primaryId}, response:`, data);
         return data;
     } catch (e) {
         console.warn(`Failed to fetch receipt transaction detail for primaryId=${primaryId}`, e);
@@ -1790,5 +1986,52 @@ export async function fetchEnquiryResults(payload: any): Promise<any> {
         body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
+export async function loginUser(username: string, password: string, dbName: string): Promise<{ success: boolean; user?: any; error?: string }> {
+    const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, dbName }),
+    });
+    return res.json();
+}
+
+export async function logoutUser(): Promise<void> {
+    await fetch('/api/auth/logout', { method: 'POST' });
+}
+
+export async function queryEasyPay(reference: string): Promise<any> {
+    const res = await fetch(`/api/easypay/query?reference=${encodeURIComponent(reference)}`);
+    if (!res.ok) throw new Error('EasyPay query failed');
+    return res.json();
+}
+
+export async function fetchTotalBalanceDebt(accountId: number): Promise<any> {
+    const res = await fetch(`/api/platinum/billing-enquiry/total-balance-debt?accountId=${accountId}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
+export async function platinumSearchAccountsWithSignal(data: any, signal?: AbortSignal): Promise<any> {
+    const res = await fetch('/api/platinum/billing-payment/search-accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        signal,
+    });
+    if (!res.ok) return null;
+    return res.json();
+}
+
+export async function fetchEnquiryResultsWithSignal(payload: any, signal?: AbortSignal): Promise<any> {
+    const res = await fetch('/api/platinum/billing-enquiry/enquiry-results', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal,
+    });
+    if (!res.ok) return null;
     return res.json();
 }

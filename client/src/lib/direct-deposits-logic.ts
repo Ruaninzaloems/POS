@@ -1,4 +1,4 @@
-import { BankTransaction } from './direct-deposits-data';
+import { BankTransaction } from './external-api';
 
 /**
  * Filters unmatched transactions based on a search term

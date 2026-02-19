@@ -1,6 +1,5 @@
 import { SearchResult } from '@/components/pos/search-component';
-import { Account } from '@/lib/mock-data';
-import { BankTransaction, AllocationLine } from '@/lib/direct-deposits-data';
+import { Account, BankTransaction, AllocationLine } from '@/lib/external-api';
 
 /**
  * Validates if an allocation amount is valid.

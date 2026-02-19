@@ -7,13 +7,27 @@
 
 | Category | Status | Lines | Angular Effort |
 |----------|--------|-------|----------------|
-| Types & Interfaces (30 total) | READY - Copy/paste | ~250 | None |
+| Types & Interfaces (45+ total) | READY - Copy/paste | ~400 | None |
 | Pure Business Logic (6 functions) | READY - Copy/paste | 245 | None |
-| API Service Layer (260 functions) | READY - Wrap in @Injectable | 2,500 | Low (swap fetch→HttpClient) |
-| POS State Management | NEEDS RESTRUCTURE | 1,994 | High (split into 4-5 services) |
+| API Service Layer (270+ functions) | READY - Wrap in @Injectable | 2,040 | Low (swap fetch→HttpClient) |
+| POS State Management | NEEDS RESTRUCTURE | 1,976 | High (split into 4-5 services) |
 | Backend (Express proxy) | STAYS AS-IS or port | 3,602 | N/A |
 | PDF Generators | READY - Copy/paste | 745 | None |
-| Inline fetch() calls across pages | COMPLETED - All extracted | 0 remaining | Done |
+| Inline fetch() calls (pages + components) | COMPLETED - All extracted | 0 remaining | Done |
+| Mock data files | COMPLETED - Consolidated | Re-exports only | Done |
+| Console logging | COMPLETED - Centralized apiLog() | Single swap point | Done |
+
+### Migration Readiness Checklist (all pass)
+- [x] Zero inline fetch() calls in pages or components
+- [x] Zero localStorage / sessionStorage usage
+- [x] Zero React hooks or imports in service layer files
+- [x] All types consolidated in external-api.ts (no mock-data.ts dependency)
+- [x] mock-data.ts and direct-deposits-data.ts reduced to re-export stubs
+- [x] Centralized apiLog() utility replaces all console.log in service layer
+- [x] Typed interfaces for common API patterns (AccountSearchCriteria, PaymentSubmission, etc.)
+- [x] AbortSignal-aware variants for search functions (platinumSearchAccountsWithSignal, fetchEnquiryResultsWithSignal)
+- [x] Raw Response variants for PDF handling (platinumPrintReceiptRaw)
+- [x] Zero LSP errors across entire codebase
 
 ---
 

@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Loader2, LogIn } from 'lucide-react';
+import { loginUser } from '@/lib/external-api';
 
 interface LoginProps {
     onLoginSuccess: (user: any) => void;
@@ -27,13 +28,7 @@ export default function LoginPage({ onLoginSuccess }: LoginProps) {
 
         setLoading(true);
         try {
-            const res = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: username.trim(), password: password || '', dbName: dbName.trim() }),
-            });
-
-            const data = await res.json();
+            const data = await loginUser(username.trim(), password || '', dbName.trim());
 
             if (data.success && data.user) {
                 onLoginSuccess(data.user);

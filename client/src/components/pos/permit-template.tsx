@@ -1,8 +1,7 @@
 import React from 'react';
 import { TransactionItem } from '@/lib/pos-state';
-import { DirectIncomeItem } from '@/lib/mock-data';
+import { DirectIncomeItem, MunicipalityInfo, fetchMunicipalityInfo } from '@/lib/external-api';
 import { format } from 'date-fns';
-import { MunicipalityInfo, fetchMunicipalityInfo } from '@/lib/external-api';
 
 interface PermitTemplateProps {
   transaction: any;

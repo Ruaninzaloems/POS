@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { BankTransaction, AllocationDraft, AllocationLine } from '@/lib/direct-deposits-data';
-import { Account } from '@/lib/mock-data';
-import { MunicipalityInfo, fetchMunicipalityInfo } from '@/lib/external-api';
+import { BankTransaction, AllocationDraft, AllocationLine, Account, MunicipalityInfo, fetchMunicipalityInfo } from '@/lib/external-api';
 
 interface ReceiptTemplateProps {
   transaction: BankTransaction;

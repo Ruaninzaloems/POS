@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ArrowLeft, Eye, Printer, FileText, Search, User, FileSpreadsheet, FileIcon, Filter, X, RotateCcw, AlertCircle, File, Download } from 'lucide-react';
 import { Link } from 'wouter';
-import { MOCK_BANK_TRANSACTIONS, MOCK_ALLOCATIONS, BankTransaction } from '@/lib/direct-deposits-data';
+import { BankTransaction, AllocationDraft } from '@/lib/external-api';
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay, isValid } from 'date-fns';
 import { ReceiptTemplate } from '@/components/pos/receipt-template';
 import { Loader2 } from 'lucide-react';
@@ -35,12 +35,13 @@ export default function AllocationHistory() {
   const [txnDateTo, setTxnDateTo] = useState<Date | undefined>();
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   
-  // Get all allocated and processing transactions
-  const allocatedTxns = MOCK_BANK_TRANSACTIONS.filter(t => t.status === 'ALLOCATED' || t.status === 'PROCESSING' || t.status === 'ERROR');
+  const bankTransactions: BankTransaction[] = [];
+  const allocations: AllocationDraft[] = [];
+
+  const allocatedTxns = bankTransactions.filter((t: BankTransaction) => t.status === 'ALLOCATED' || t.status === 'PROCESSING' || t.status === 'ERROR');
   
-  // Enrich with allocation details
-  const historyData = allocatedTxns.map(tx => {
-      const details = MOCK_ALLOCATIONS.find(a => a.transactionId === tx.id);
+  const historyData = allocatedTxns.map((tx: BankTransaction) => {
+      const details = allocations.find((a: AllocationDraft) => a.transactionId === tx.id);
       return {
           ...tx,
           details
@@ -102,7 +103,7 @@ export default function AllocationHistory() {
   const [selectedTx, setSelectedTx] = useState<BankTransaction | null>(null);
   const receiptRef = useRef<HTMLDivElement>(null);
 
-  const selectedAllocation = selectedTx ? MOCK_ALLOCATIONS.find(a => a.transactionId === selectedTx.id) : null;
+  const selectedAllocation = selectedTx ? allocations.find((a: AllocationDraft) => a.transactionId === selectedTx.id) : null;
 
   const handlePrint = useReactToPrint({
     contentRef: receiptRef,

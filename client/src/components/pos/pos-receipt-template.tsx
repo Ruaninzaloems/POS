@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TransactionRecord, TransactionItem, ReceiptAllocation, SplitReceipt } from '@/lib/pos-state';
-import { Account, DirectIncomeItem } from '@/lib/mock-data';
-import { MunicipalityInfo, fetchMunicipalityInfo } from '@/lib/external-api';
+import { Account, DirectIncomeItem, MunicipalityInfo, fetchMunicipalityInfo } from '@/lib/external-api';
 
 interface PosReceiptTemplateProps {
   transaction: TransactionRecord;

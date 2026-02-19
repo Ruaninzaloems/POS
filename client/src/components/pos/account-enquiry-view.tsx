@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Account, AgingItem } from '@/lib/mock-data';
+import { Account, AgingItem } from '@/lib/external-api';
 import { usePos, TransactionItem } from '@/lib/pos-state';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,6 +17,7 @@ import {
   platinumGetNameInfoByAccount,
   platinumGetHandoverByAccount,
   platinumGetPaymentIncentiveByAccount,
+  fetchTotalBalanceDebt,
 } from '@/lib/external-api';
 
 function formatPropertyId(propId: string | number | undefined): string {
@@ -267,13 +268,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
     setBalanceLoading(true);
     setBalanceError(null);
     try {
-      const res = await fetch(`/api/platinum/billing-enquiry/total-balance-debt?accountId=${baseAccount.apiId}`);
-      if (!res.ok) {
-        setBalanceError('Failed to load balance data');
-        return;
-      }
-      const data = await res.json();
-      console.log('Balance Data Response:', data); // Debug logging
+      const data = await fetchTotalBalanceDebt(baseAccount.apiId);
 
       // Handle both formats: array of rows or single object with results
       let rows = [];

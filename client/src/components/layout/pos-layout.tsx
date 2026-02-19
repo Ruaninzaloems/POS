@@ -27,6 +27,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Link, useLocation } from "wouter";
 import { usePos } from '@/lib/pos-state';
+import { logoutUser } from '@/lib/external-api';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -267,7 +268,7 @@ export function PosLayout({ children }: PosLayoutProps) {
                  variant="ghost"
                  size="sm"
                  className="h-8 text-xs text-muted-foreground hover:text-destructive"
-                 onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.reload(); }}
+                 onClick={async () => { await logoutUser(); window.location.reload(); }}
                  title="Sign out and switch user"
                  data-testid="button-sign-out"
                >
@@ -285,7 +286,7 @@ export function PosLayout({ children }: PosLayoutProps) {
                  variant="ghost"
                  size="sm"
                  className="h-8 text-xs text-muted-foreground hover:text-destructive"
-                 onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.reload(); }}
+                 onClick={async () => { await logoutUser(); window.location.reload(); }}
                  title="Sign out and switch user"
                  data-testid="button-sign-out-no-session"
                >
