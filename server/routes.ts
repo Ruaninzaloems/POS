@@ -230,7 +230,15 @@ export async function registerRoutes(
       const cashierId = cashier?.id || cashier?.user_Id || (hasReceiptRangeData ? Number(userId) : null);
       const activeOfficeId = cashOffice?.cashOffice_ID || cashier?.officeId || null;
       const activeOfficeName = cashOffice?.cashOfficeDesc || null;
-      const cashFloat = cashier?.cashFloat ?? 0;
+      let cashFloat = cashier?.cashFloat ?? 0;
+      if (cashFloat === 0) {
+        try {
+          const userInfo = await platinumGet("/api/auth/user-info", {});
+          if (userInfo?.cashFloat != null && userInfo.cashFloat > 0) {
+            cashFloat = userInfo.cashFloat;
+          }
+        } catch {}
+      }
       const cashOnHandLimit = cashOffice?.cashOnHandLimit || 999999;
 
       console.log(`[active-cashier] validate-cashier result — registered: ${isCashierRegistered}, isActive: ${isSessionActive} (POS_Cashier.IsActive=${cashier?.isActive}), cashierId: ${cashierId}, officeId: ${activeOfficeId}, officeName: ${activeOfficeName}`);
