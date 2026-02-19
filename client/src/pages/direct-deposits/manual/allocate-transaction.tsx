@@ -254,7 +254,20 @@ export default function AllocateTransaction() {
               }
           } catch {}
 
-          const userId = -1;
+          let userId = -1;
+          try {
+              const userRes = await fetch('/api/platinum/auth/user-info');
+              if (userRes.ok) {
+                  const userInfo = await userRes.json();
+                  if (userInfo?.user_ID) userId = userInfo.user_ID;
+              }
+          } catch {}
+
+          if (userId <= 0) {
+              toast({ title: 'User Session Error', description: 'Could not determine your user ID. Please log in again and retry.', variant: 'destructive' });
+              setPosting(false);
+              return;
+          }
 
           const now = new Date();
           const saFormatter = new Intl.DateTimeFormat('en-ZA', {
@@ -289,6 +302,7 @@ export default function AllocateTransaction() {
 
                       console.log(`[Direct Deposit] Step 2: get-consumer-details-data for account ${accountIdStr}`);
                       await platinumGetConsumerDetailsData({
+                          costScheduleID: '',
                           accountID: accountIdStr,
                           posItemID: transaction.posItem_ID,
                           transactionAmount: line.amount,
@@ -306,7 +320,17 @@ export default function AllocateTransaction() {
                       });
                   } else if (allocType === 'DIRECT' || allocType === 'GROUP') {
                       console.log(`[Direct Deposit] Step 1: load-details-payment-grouping`);
-                      await platinumLoadDetailsPaymentGrouping(pagerBody);
+                      await platinumLoadDetailsPaymentGrouping({
+                          amount: line.amount,
+                          dateOfTransaction: transactionDate,
+                          cashbookID: transaction.cashbookTransactionID || null,
+                          posItemId: transaction.posItem_ID,
+                          paymentTypeID: 3,
+                          userId,
+                          finYear,
+                          page: 1,
+                          pageSize: 100,
+                      });
                   }
               } catch (prepErr) {
                   console.warn(`[Direct Deposit] Preparation step warning (non-blocking):`, prepErr);
@@ -324,33 +348,29 @@ export default function AllocateTransaction() {
               }
 
               const submitData: any = {
-                  outstandingAmount: transaction.amount,
+                  outstandingAmount: line.amount,
                   paidAmount: line.amount,
                   transactionDate,
                   reconId: transaction.bankReconID,
                   posItemId: transaction.posItem_ID,
                   billType,
+                  accountId: (allocType === 'ACCOUNT' || allocType === 'PREPAID') ? (line.accountId || null) : null,
+                  masterId: null,
                   userId,
-                  financialYear: finYear,
                   description: line.description || transaction.note,
+                  groupId: allocType === 'GROUP' ? (line.groupId || null) : null,
+                  initials: null,
+                  lastName: null,
+                  financialYear: finYear,
+                  miscPaymentGroupId: allocType === 'DIRECT' ? (line.miscPaymentGroupId || null) : null,
                   amount: line.amount,
-                  totalAmount: line.amount,
                   vatAmount: 0,
+                  totalAmount: line.amount,
                   receiptDate,
                   paymentTypeId: 3,
+                  vatableVote: null,
+                  vatPercentage: null,
               };
-
-              if (allocType === 'ACCOUNT' || allocType === 'PREPAID') {
-                  submitData.accountId = line.accountId || null;
-                  submitData.accountNo = line.accountNo || null;
-              }
-              if (allocType === 'DIRECT') {
-                  submitData.scoaItemId = line.scoaItemId || null;
-                  submitData.miscPaymentGroupId = line.miscPaymentGroupId || null;
-              }
-              if (allocType === 'GROUP') {
-                  submitData.groupId = line.groupId || null;
-              }
 
               console.log('[Direct Deposit] Step 4: submit-details-data:', submitData);
               const result = await platinumSubmitDirectDepositAllocation(submitData);
