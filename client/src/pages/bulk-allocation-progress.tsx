@@ -307,6 +307,7 @@ export default function BulkAllocationProgress() {
 
   return (
     <PosLayout>
+      <div className="flex-1 overflow-y-auto w-full">
       <div className="p-3 sm:p-4 md:p-6 space-y-3 sm:space-y-4 max-w-[1400px] mx-auto" data-testid="bulk-allocation-progress-page">
         <div className="flex items-center gap-2 sm:gap-3 mb-2">
           <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg">
@@ -732,6 +733,7 @@ export default function BulkAllocationProgress() {
             )}
           </DialogContent>
         </Dialog>
+      </div>
       </div>
     </PosLayout>
   );
