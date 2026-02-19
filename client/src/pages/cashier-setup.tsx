@@ -106,8 +106,18 @@ export default function CashierSetup() {
                         console.log(`[CashierSetup] Pre-selected default office ID ${currentOfficeId} from Platinum record`);
                     }
 
-                    if (data.cashFloat != null) {
+                    if (data.cashFloat != null && data.cashFloat > 0) {
                         setFloatInput(String(data.cashFloat));
+                    } else {
+                        try {
+                            const userInfoRes = await fetch('/api/platinum/auth/user-info');
+                            if (userInfoRes.ok) {
+                                const userInfo = await userInfoRes.json();
+                                if (userInfo?.cashFloat != null && userInfo.cashFloat > 0) {
+                                    setFloatInput(String(userInfo.cashFloat));
+                                }
+                            }
+                        } catch {}
                     }
                 } else {
                     setIsCashierRegistered(false);
@@ -157,12 +167,12 @@ export default function CashierSetup() {
             setConfigError('');
             const officeId = Number(selectedOfficeId);
 
-            console.log(`[CashierSetup] Loading office-level config for officeId=${officeId} (cashierId=0 to get office payment functions)`);
+            console.log(`[CashierSetup] Loading cashier config for officeId=${officeId}, cashierId=${cashierId}`);
 
             try {
                 const [optionsResult, typesResult, rangeResult] = await Promise.all([
-                    fetchCashierPaymentOptions(cashierId, userId, officeId, true),
-                    fetchCashierPaymentTypes(cashierId, userId, officeId, true),
+                    fetchCashierPaymentOptions(cashierId, userId, officeId, false),
+                    fetchCashierPaymentTypes(cashierId, userId, officeId, false),
                     validateReceiptRange(userId, cashierId, finYear || undefined, officeId)
                 ]);
 
@@ -171,7 +181,7 @@ export default function CashierSetup() {
                 let optionsSource = optionsResult.source || '';
                 let typesSource = typesResult.source || '';
 
-                console.log(`[CashierSetup] Office ${officeId} payment config loaded — ${finalOptions.filter(o => o.isTicked).length}/${finalOptions.length} options enabled, ${finalTypes.filter(t => t.isTicked).length}/${finalTypes.length} types enabled`);
+                console.log(`[CashierSetup] Cashier ${cashierId} at office ${officeId} payment config loaded — ${finalOptions.filter(o => o.isTicked).length}/${finalOptions.length} options enabled, ${finalTypes.filter(t => t.isTicked).length}/${finalTypes.length} types enabled`);
 
                 setPaymentOptions(finalOptions);
                 setPaymentOptionsSource(optionsSource);
