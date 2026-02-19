@@ -407,7 +407,7 @@ export default function AllocateTransaction() {
       return [];
     };
 
-    const BATCH_SIZE = 6;
+    const BATCH_SIZE = 20;
     for (let batchStart = 0; batchStart < results.length; batchStart += BATCH_SIZE) {
       const batchEnd = Math.min(batchStart + BATCH_SIZE, results.length);
       const batchIndices: number[] = [];
