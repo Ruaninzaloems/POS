@@ -104,70 +104,59 @@ export default function AllocateTransaction() {
     setDdSearching(true);
     try {
       const results: DDSearchResult[] = [];
+      const seen = new Set<number>();
       const isNumeric = /^\d+$/.test(query);
+      const parseResults = (data: any) => {
+        if (Array.isArray(data)) return data;
+        if (data?.value && Array.isArray(data.value)) return data.value;
+        return [];
+      };
 
       if (searchScope === 'ALL' || searchScope === 'ACCOUNT') {
-        const seen = new Set<number>();
-        const parseResults = (data: any) => {
-          if (Array.isArray(data)) return data;
-          if (data?.value && Array.isArray(data.value)) return data.value;
-          return [];
-        };
-
-        try {
-          const autocompleteRes = await fetch(`/api/platinum/billing-enquiry/autocomplete?type=accountNumber&search=${encodeURIComponent(query)}`);
-          if (autocompleteRes.ok) {
-            const autocompleteData = await autocompleteRes.json();
-            const items = parseResults(autocompleteData);
-            for (const item of items) {
-              const accId = item.accountId || item.account_ID || item.id;
-              const accNo = item.displayItem || item.accountNumber || item.accountNo || String(accId);
-              if (accId && !seen.has(accId)) {
-                seen.add(accId);
-                results.push({
-                  accountId: accId,
-                  accountNo: String(accNo).padStart(12, '0'),
-                  name: item.name || `Account ${accNo}`,
-                  oldAccountCode: item.oldAccountCode || '',
-                  outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
-                  type: 'ACCOUNT',
-                  rawData: item,
-                });
-              }
-            }
-          }
-        } catch (err) {
-          console.warn('[DD Search] BillingEnquiry/Autocomplete failed, falling back:', err);
+        const searchBody: Record<string, any> = {};
+        if (isNumeric) {
+          searchBody.accountNo = query;
+        } else {
+          searchBody.name = query;
         }
 
-        if (results.length === 0) {
-          const searchBody: Record<string, any> = {};
-          if (isNumeric) {
-            searchBody.accountNo = query;
-          } else {
-            searchBody.name = query;
-          }
-
-          const fallbackSearches: Promise<any>[] = [
+        const searches: Promise<any>[] = [
+          fetch('/api/platinum/billing-payment/search-accounts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(searchBody),
+          }).then(r => r.ok ? r.json() : []).catch(() => []),
+        ];
+        if (isNumeric) {
+          searches.push(
             fetch('/api/platinum/billing-payment/search-accounts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(searchBody),
-            }).then(r => r.ok ? r.json() : []).catch(() => []),
-          ];
-          if (isNumeric) {
-            fallbackSearches.push(
-              fetch('/api/platinum/billing-payment/search-accounts', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ oldAccountCode: query }),
-              }).then(r => r.ok ? r.json() : []).catch(() => [])
-            );
+              body: JSON.stringify({ oldAccountCode: query }),
+            }).then(r => r.ok ? r.json() : []).catch(() => [])
+          );
+        }
+
+        const [accountResults, oldAccountResults] = await Promise.all(searches);
+
+        for (const item of parseResults(accountResults)) {
+          const accId = item.account_ID || item.accountID || item.id;
+          if (accId && !seen.has(accId)) {
+            seen.add(accId);
+            results.push({
+              accountId: accId,
+              accountNo: item.accountNumber || item.accountNo || String(accId),
+              name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown',
+              oldAccountCode: item.oldAccountCode || '',
+              outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
+              type: 'ACCOUNT',
+              rawData: item,
+            });
           }
+        }
 
-          const [fbAccountResults, fbOldAccountResults] = await Promise.all(fallbackSearches);
-
-          for (const item of parseResults(fbAccountResults)) {
+        if (oldAccountResults) {
+          for (const item of parseResults(oldAccountResults)) {
             const accId = item.account_ID || item.accountID || item.id;
             if (accId && !seen.has(accId)) {
               seen.add(accId);
@@ -175,36 +164,18 @@ export default function AllocateTransaction() {
                 accountId: accId,
                 accountNo: item.accountNumber || item.accountNo || String(accId),
                 name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown',
-                oldAccountCode: item.oldAccountCode || '',
+                oldAccountCode: item.oldAccountCode || query,
                 outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
                 type: 'ACCOUNT',
+                description: `Found via old account code: ${query}`,
                 rawData: item,
               });
-            }
-          }
-
-          if (fbOldAccountResults) {
-            for (const item of parseResults(fbOldAccountResults)) {
-              const accId = item.account_ID || item.accountID || item.id;
-              if (accId && !seen.has(accId)) {
-                seen.add(accId);
-                results.push({
-                  accountId: accId,
-                  accountNo: item.accountNumber || item.accountNo || String(accId),
-                  name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown',
-                  oldAccountCode: item.oldAccountCode || query,
-                  outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
-                  type: 'ACCOUNT',
-                  description: `Found via old account code: ${query}`,
-                  rawData: item,
-                });
-              }
             }
           }
         }
       }
 
-      if (searchScope === 'ALL' || searchScope === 'CLEARANCE') {
+      if (searchScope === 'CLEARANCE') {
         try {
           const clearanceResults = await platinumDDClearanceAutocomplete(query);
           if (Array.isArray(clearanceResults)) {
@@ -261,38 +232,16 @@ export default function AllocateTransaction() {
     }
   };
 
-  const handleSelectDDResult = async (result: DDSearchResult) => {
+  const handleSelectDDResult = (result: DDSearchResult) => {
     setDdDropdownOpen(false);
     setDdSearchQuery('');
     setDdSearchResults([]);
 
     if (result.type === 'ACCOUNT') {
-      let name = result.name;
-      let outstandingAmount = result.outstandingAmount || 0;
-      let oldAccountCode = result.oldAccountCode || '';
-      if (name.startsWith('Account ')) {
-        try {
-          const detailRes = await fetch('/api/platinum/billing-payment/search-accounts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ accountNo: String(result.accountId) }),
-          });
-          if (detailRes.ok) {
-            const detailData = await detailRes.json();
-            const items = Array.isArray(detailData) ? detailData : (detailData?.value || []);
-            const match = items.find((i: any) => (i.account_ID || i.id) === result.accountId);
-            if (match) {
-              name = [match.initials, match.lastName].filter(Boolean).join(' ') || match.name || name;
-              outstandingAmount = match.outStandingAmt || match.outstandingAmount || outstandingAmount;
-              oldAccountCode = match.oldAccountCode || oldAccountCode;
-            }
-          }
-        } catch {}
-      }
       setSelectedAccount({
         accountNo: result.accountNo,
-        name,
-        description: oldAccountCode ? `${name} (Old: ${oldAccountCode})` : name,
+        name: result.name,
+        description: result.oldAccountCode ? `${result.name} (Old: ${result.oldAccountCode})` : result.name,
         accountId: result.accountId,
         allocationType: 'ACCOUNT',
       });
