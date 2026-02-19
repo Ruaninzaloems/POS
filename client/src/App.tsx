@@ -25,6 +25,7 @@ import CashierDayEnd from "@/pages/cashier-day-end";
 import BillingDashboard from "@/pages/billing-dashboard";
 import GeneralEnquiries from "@/pages/enquiries-general";
 import ClientCommunications from "@/pages/client-communications";
+import BulkAllocationProgress from "@/pages/bulk-allocation-progress";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   constructor(props: { children: ReactNode }) {
@@ -86,9 +87,7 @@ function Router() {
       <Route path="/utilipay">
         <PlaceholderPage title="Utilipay Distribution" description="Utility payment distribution management" />
       </Route>
-      <Route path="/bulk-allocation">
-        <PlaceholderPage title="Bulk Allocation Progress" description="Consolidated view of bulk allocation progress and errors" />
-      </Route>
+      <Route path="/bulk-allocation" component={BulkAllocationProgress} />
       <Route path="/view-receipts" component={ViewReceipts} />
       <Route path="/cashier-day-end" component={CashierDayEnd} />
       <Route path="/billing-dashboard" component={BillingDashboard} />

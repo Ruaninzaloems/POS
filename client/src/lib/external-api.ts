@@ -2049,3 +2049,52 @@ export async function fetchEnquiryResultsWithSignal(payload: any, signal?: Abort
     if (!res.ok) return null;
     return res.json();
 }
+
+// --- Bulk Progress ---
+
+export interface BulkProgressSearchQuery {
+    financialYear: string | null;
+    process: string | null;
+    billingMonth: number | null;
+    orderby: string | null;
+    page: number;
+    pageSize: number;
+    shortDirection: string | null;
+}
+
+export async function fetchBulkProgressFinancialYears(): Promise<any[]> {
+    const res = await apiFetch('/api/platinum/bulk-progress/get-financial-years');
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : data?.value ?? [];
+}
+
+export async function fetchBulkProgressMonthList(): Promise<any[]> {
+    const res = await apiFetch('/api/platinum/bulk-progress/get-month-list');
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : data?.value ?? [];
+}
+
+export async function fetchBulkProgressProcessList(): Promise<any[]> {
+    const res = await apiFetch('/api/platinum/bulk-progress/get-process-list');
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : data?.value ?? [];
+}
+
+export async function fetchBulkAllocationList(query: BulkProgressSearchQuery): Promise<any> {
+    const res = await apiFetch('/api/platinum/bulk-progress/get-bulk-allocation-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(query),
+    });
+    if (!res.ok) return { data: [], totalCount: 0 };
+    return res.json();
+}
+
+export async function fetchBulkProgressDirectDeposit(jobId: number): Promise<any> {
+    const res = await apiFetch(`/api/platinum/bulk-progress/direct-deposit/${jobId}`);
+    if (!res.ok) return null;
+    return res.json();
+}

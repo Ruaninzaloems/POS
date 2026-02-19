@@ -1934,6 +1934,33 @@ export async function registerRoutes(
 
   // --- Bulk Progress ---
 
+  app.get("/api/platinum/bulk-progress/get-financial-years", async (_req, res) => {
+    try {
+      const data = await platinumGet("/api/BulkProgress/get-financial-years");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/bulk-progress/get-month-list", async (_req, res) => {
+    try {
+      const data = await platinumGet("/api/BulkProgress/get-month-list");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/bulk-progress/get-process-list", async (_req, res) => {
+    try {
+      const data = await platinumGet("/api/BulkProgress/get-process-list");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.post("/api/platinum/bulk-progress/get-bulk-allocation-list", async (req, res) => {
     try {
       const data = await platinumPost("/api/BulkProgress/get-bulk-allocation-list", req.body);
