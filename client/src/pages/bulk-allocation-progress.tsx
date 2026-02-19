@@ -77,6 +77,8 @@ export default function BulkAllocationProgress() {
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailData, setDetailData] = useState<any>(null);
@@ -237,6 +239,7 @@ export default function BulkAllocationProgress() {
     setSortField('');
     setSortDirection('desc');
     setPage(1);
+    setStatusFilter(null);
     setAllocationData([]);
     setTotalCount(0);
     setHasSearched(false);
@@ -259,18 +262,41 @@ export default function BulkAllocationProgress() {
     return (j.job_Status || j.status || j.jobStatus || '').toLowerCase();
   }
 
-  const completedCount = allocationData.filter(j => {
-    const s = getJobStatus(j);
-    return s.includes('complete') || s === 'success' || s === 'done';
-  }).length;
-  const errorCount = allocationData.filter(j => {
-    const s = getJobStatus(j);
-    return s.includes('fail') || s.includes('error');
-  }).length;
-  const inProgressCount = allocationData.filter(j => {
-    const s = getJobStatus(j);
-    return s.includes('progress') || s.includes('processing') || s.includes('running') || s.includes('busy') || s.includes('pending');
-  }).length;
+  function getStatusCategory(s: string): string {
+    if (s.includes('rebuild')) return 'rebuilds';
+    if (s.includes('recon') || s.includes('reconcil')) return 'recon';
+    if (s.includes('complete') || s === 'success' || s === 'done') return 'completed';
+    if (s.includes('fail') || s.includes('error')) return 'failed';
+    if (s.includes('progress') || s.includes('processing') || s.includes('running') || s.includes('busy')) return 'in_progress';
+    if (s.includes('pending') || s.includes('queued') || s.includes('waiting')) return 'pending';
+    if (s.includes('cancel')) return 'cancelled';
+    return 'other';
+  }
+
+  const statusCounts = allocationData.reduce((acc, j) => {
+    const cat = getStatusCategory(getJobStatus(j));
+    acc[cat] = (acc[cat] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const filteredByStatus = statusFilter
+    ? allocationData.filter(j => getStatusCategory(getJobStatus(j)) === statusFilter)
+    : allocationData;
+
+  function toggleStatusFilter(cat: string) {
+    setStatusFilter(prev => prev === cat ? null : cat);
+  }
+
+  const statusCards = [
+    { key: 'all', label: 'Total Jobs', count: allocationData.length, icon: Activity, color: 'blue', textColor: 'text-blue-700' },
+    { key: 'rebuilds', label: 'Performing Rebuilds', count: statusCounts.rebuilds || 0, icon: RotateCcw, color: 'orange', textColor: 'text-orange-700' },
+    { key: 'recon', label: 'Completing Recon', count: statusCounts.recon || 0, icon: Activity, color: 'purple', textColor: 'text-purple-700' },
+    { key: 'in_progress', label: 'In Progress', count: statusCounts.in_progress || 0, icon: Clock, color: 'blue', textColor: 'text-blue-700' },
+    { key: 'completed', label: 'Completed', count: statusCounts.completed || 0, icon: CheckCircle2, color: 'green', textColor: 'text-green-700' },
+    { key: 'pending', label: 'Pending', count: statusCounts.pending || 0, icon: Clock, color: 'yellow', textColor: 'text-yellow-700' },
+    { key: 'failed', label: 'Failed', count: statusCounts.failed || 0, icon: XCircle, color: 'red', textColor: 'text-red-700' },
+    { key: 'cancelled', label: 'Cancelled', count: statusCounts.cancelled || 0, icon: XCircle, color: 'gray', textColor: 'text-gray-600' },
+  ];
 
   function SortableHeader({ field, label }: { field: string; label: string }) {
     const isActive = sortField === field;
@@ -399,43 +425,57 @@ export default function BulkAllocationProgress() {
         </Card>
 
         {hasSearched && allocationData.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="summary-cards">
-            <Card className="p-3">
-              <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4 text-blue-500" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Total Jobs</p>
-                  <p className="text-lg font-bold" data-testid="text-total-count">{formatNumber(totalCount)}</p>
-                </div>
+          <div data-testid="summary-cards">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+              {statusCards.filter(c => c.key === 'all' || c.count > 0).map((card) => {
+                const IconComp = card.icon;
+                const isActive = (card.key === 'all' && statusFilter === null) || statusFilter === card.key;
+                const colorMap: Record<string, string> = {
+                  blue: 'bg-blue-50 border-blue-200 text-blue-500',
+                  green: 'bg-green-50 border-green-200 text-green-500',
+                  red: 'bg-red-50 border-red-200 text-red-500',
+                  orange: 'bg-orange-50 border-orange-200 text-orange-500',
+                  purple: 'bg-purple-50 border-purple-200 text-purple-500',
+                  yellow: 'bg-yellow-50 border-yellow-200 text-yellow-500',
+                  gray: 'bg-gray-50 border-gray-200 text-gray-500',
+                };
+                const ringMap: Record<string, string> = {
+                  blue: 'ring-blue-400', green: 'ring-green-400', red: 'ring-red-400',
+                  orange: 'ring-orange-400', purple: 'ring-purple-400', yellow: 'ring-yellow-400', gray: 'ring-gray-400',
+                };
+                return (
+                  <Card
+                    key={card.key}
+                    className={`p-2.5 sm:p-3 cursor-pointer transition-all hover:shadow-md ${isActive ? `ring-2 ${ringMap[card.color]} shadow-md` : 'hover:ring-1 hover:ring-gray-200'}`}
+                    onClick={() => card.key === 'all' ? setStatusFilter(null) : toggleStatusFilter(card.key)}
+                    data-testid={`card-status-${card.key}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className={`p-1.5 rounded-md ${colorMap[card.color]}`}>
+                        <IconComp className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{card.label}</p>
+                        <p className={`text-base sm:text-lg font-bold ${card.textColor}`}>{card.count}</p>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+            {statusFilter && (
+              <div className="flex items-center gap-2 mt-2">
+                <Badge variant="secondary" className="gap-1 text-xs">
+                  Filtered: {statusCards.find(c => c.key === statusFilter)?.label}
+                  <button onClick={() => setStatusFilter(null)} className="ml-1 hover:text-red-500">
+                    <XCircle className="w-3 h-3" />
+                  </button>
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  Showing {filteredByStatus.length} of {allocationData.length} jobs
+                </span>
               </div>
-            </Card>
-            <Card className="p-3">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Completed</p>
-                  <p className="text-lg font-bold text-green-700" data-testid="text-completed-count">{completedCount}</p>
-                </div>
-              </div>
-            </Card>
-            <Card className="p-3">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-blue-500" />
-                <div>
-                  <p className="text-xs text-muted-foreground">In Progress</p>
-                  <p className="text-lg font-bold text-blue-700" data-testid="text-progress-count">{inProgressCount}</p>
-                </div>
-              </div>
-            </Card>
-            <Card className="p-3">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-red-500" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Errors</p>
-                  <p className="text-lg font-bold text-red-700" data-testid="text-error-count">{errorCount}</p>
-                </div>
-              </div>
-            </Card>
+            )}
           </div>
         )}
 
@@ -462,11 +502,20 @@ export default function BulkAllocationProgress() {
                 <p className="font-semibold text-gray-700">No Results Found</p>
                 <p className="text-sm text-muted-foreground mt-1">Try adjusting your filter criteria</p>
               </div>
+            ) : filteredByStatus.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16">
+                <div className="p-3 bg-gray-50 rounded-full mb-3">
+                  <Filter className="w-8 h-8 text-gray-400" />
+                </div>
+                <p className="font-semibold text-gray-700">No Jobs Match This Status</p>
+                <p className="text-sm text-muted-foreground mt-1">Click a different status card or clear the filter</p>
+                <Button variant="outline" size="sm" className="mt-3" onClick={() => setStatusFilter(null)}>Show All Jobs</Button>
+              </div>
             ) : (
               <>
                 {/* Mobile card view */}
                 <div className="block sm:hidden divide-y" data-testid="mobile-job-list">
-                  {allocationData.map((job, idx) => {
+                  {filteredByStatus.map((job, idx) => {
                     const jobId = job.directDepositJob_ID ?? job.jobId ?? job.id ?? idx;
                     const process = job.process ?? '—';
                     const reference = job.paymentReference ?? '—';
@@ -541,7 +590,7 @@ export default function BulkAllocationProgress() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {allocationData.map((job, idx) => {
+                      {filteredByStatus.map((job, idx) => {
                         const jobId = job.directDepositJob_ID ?? job.jobId ?? job.id ?? idx;
                         const process = job.process ?? '—';
                         const reference = job.paymentReference ?? '—';
@@ -604,7 +653,10 @@ export default function BulkAllocationProgress() {
 
                 <div className="flex flex-col sm:flex-row items-center justify-between px-3 sm:px-4 py-3 border-t gap-2" data-testid="pagination">
                   <p className="text-xs sm:text-sm text-muted-foreground">
-                    {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, totalCount)} of {formatNumber(totalCount)}
+                    {statusFilter
+                      ? `${filteredByStatus.length} of ${allocationData.length} jobs`
+                      : `${((page - 1) * pageSize) + 1}–${Math.min(page * pageSize, totalCount)} of ${formatNumber(totalCount)}`
+                    }
                   </p>
                   <div className="flex items-center gap-1">
                     <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page <= 1} onClick={() => handlePageChange(1)} data-testid="button-first-page">
