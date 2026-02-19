@@ -10,7 +10,7 @@ import { AllocationLine } from '@/lib/direct-deposits-data';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { Account, ClearanceCostSchedule } from '@/lib/mock-data';
-import { platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, platinumLoadDetailsPaymentGrouping, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, platinumDDClearanceAutocomplete, fetchMiscPaymentGroups, rebuildFullAccount } from '@/lib/external-api';
+import { platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, platinumLoadDetailsPaymentGrouping, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, fetchMiscPaymentGroups, rebuildFullAccount } from '@/lib/external-api';
 
 interface BankReconPosItem {
   posItem_ID: number;
@@ -112,32 +112,6 @@ export default function AllocateTransaction() {
       const isNumeric = /^\d+$/.test(query);
 
       if (searchScope === 'ALL' || searchScope === 'ACCOUNT') {
-        const searchBody: Record<string, any> = {};
-        if (isNumeric) {
-          searchBody.accountNo = query;
-        } else {
-          searchBody.name = query;
-        }
-
-        const searches: Promise<any>[] = [
-          fetch('/api/platinum/billing-payment/search-accounts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(searchBody),
-          }).then(r => r.ok ? r.json() : []).catch(() => []),
-        ];
-        if (isNumeric) {
-          searches.push(
-            fetch('/api/platinum/billing-payment/search-accounts', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ oldAccountCode: query }),
-            }).then(r => r.ok ? r.json() : []).catch(() => [])
-          );
-        }
-
-        const [accountResults, oldAccountResults] = await Promise.all(searches);
-
         const seen = new Set<number>();
         const parseResults = (data: any) => {
           if (Array.isArray(data)) return data;
@@ -145,24 +119,81 @@ export default function AllocateTransaction() {
           return [];
         };
 
-        for (const item of parseResults(accountResults)) {
-          const accId = item.account_ID || item.accountID || item.id;
-          if (accId && !seen.has(accId)) {
-            seen.add(accId);
-            results.push({
-              accountId: accId,
-              accountNo: item.accountNumber || item.accountNo || String(accId),
-              name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown',
-              oldAccountCode: item.oldAccountCode || '',
-              outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
-              type: 'ACCOUNT',
-              rawData: item,
-            });
+        const ddSearches: Promise<any>[] = [
+          platinumDDAccountAutocomplete(query).catch(() => null),
+        ];
+        if (isNumeric) {
+          ddSearches.push(platinumDDOldAccountAutocomplete(query).catch(() => null));
+        }
+        const [ddAccountRes, ddOldAccountRes] = await Promise.all(ddSearches);
+
+        let usedDDEndpoint = false;
+        if (Array.isArray(ddAccountRes) && ddAccountRes.length > 0) {
+          usedDDEndpoint = true;
+          for (const item of ddAccountRes) {
+            const accId = item.account_ID || item.accountId || item.id;
+            if (accId && !seen.has(accId)) {
+              seen.add(accId);
+              results.push({
+                accountId: accId,
+                accountNo: item.accountNumber || item.accountNo || String(accId),
+                name: item.name || item.displayItem || 'Unknown',
+                oldAccountCode: item.oldAccountCode || '',
+                outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
+                type: 'ACCOUNT',
+                rawData: item,
+              });
+            }
+          }
+        }
+        if (Array.isArray(ddOldAccountRes) && ddOldAccountRes.length > 0) {
+          usedDDEndpoint = true;
+          for (const item of ddOldAccountRes) {
+            const accId = item.account_ID || item.accountId || item.id;
+            if (accId && !seen.has(accId)) {
+              seen.add(accId);
+              results.push({
+                accountId: accId,
+                accountNo: item.accountNumber || item.accountNo || String(accId),
+                name: item.name || item.displayItem || 'Unknown',
+                oldAccountCode: item.oldAccountCode || query,
+                outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
+                type: 'ACCOUNT',
+                description: `Found via old account code: ${query}`,
+                rawData: item,
+              });
+            }
           }
         }
 
-        if (oldAccountResults) {
-          for (const item of parseResults(oldAccountResults)) {
+        if (!usedDDEndpoint) {
+          const searchBody: Record<string, any> = {};
+          if (isNumeric) {
+            searchBody.accountNo = query;
+          } else {
+            searchBody.name = query;
+          }
+
+          const fallbackSearches: Promise<any>[] = [
+            fetch('/api/platinum/billing-payment/search-accounts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(searchBody),
+            }).then(r => r.ok ? r.json() : []).catch(() => []),
+          ];
+          if (isNumeric) {
+            fallbackSearches.push(
+              fetch('/api/platinum/billing-payment/search-accounts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ oldAccountCode: query }),
+              }).then(r => r.ok ? r.json() : []).catch(() => [])
+            );
+          }
+
+          const [fbAccountResults, fbOldAccountResults] = await Promise.all(fallbackSearches);
+
+          for (const item of parseResults(fbAccountResults)) {
             const accId = item.account_ID || item.accountID || item.id;
             if (accId && !seen.has(accId)) {
               seen.add(accId);
@@ -170,12 +201,30 @@ export default function AllocateTransaction() {
                 accountId: accId,
                 accountNo: item.accountNumber || item.accountNo || String(accId),
                 name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown',
-                oldAccountCode: item.oldAccountCode || query,
+                oldAccountCode: item.oldAccountCode || '',
                 outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
                 type: 'ACCOUNT',
-                description: `Found via old account code: ${query}`,
                 rawData: item,
               });
+            }
+          }
+
+          if (fbOldAccountResults) {
+            for (const item of parseResults(fbOldAccountResults)) {
+              const accId = item.account_ID || item.accountID || item.id;
+              if (accId && !seen.has(accId)) {
+                seen.add(accId);
+                results.push({
+                  accountId: accId,
+                  accountNo: item.accountNumber || item.accountNo || String(accId),
+                  name: [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown',
+                  oldAccountCode: item.oldAccountCode || query,
+                  outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
+                  type: 'ACCOUNT',
+                  description: `Found via old account code: ${query}`,
+                  rawData: item,
+                });
+              }
             }
           }
         }
