@@ -794,35 +794,41 @@ export async function registerRoutes(
 
   app.get("/api/platinum/view-receipt/get-cashiers", async (req, res) => {
     try {
-      console.log(`[view-receipt/get-cashiers] Calling ViewReceipt/get-cashiers`);
-      const data = await platinumGet("/api/ViewReceipt/get-cashiers");
-      console.log(`[view-receipt/get-cashiers] Response:`, JSON.stringify(data).substring(0, 500));
+      console.log(`[view-receipt/get-cashiers] Calling cashier-list (POS cashiers only)`);
+      const data = await platinumGet("/api/billing/auth-day-end-reconcile/cashier-list");
 
-      if (data && !data._error) {
-        let cashiers: any[] = [];
-        if (Array.isArray(data)) {
-          cashiers = data;
-        } else if (data.data && Array.isArray(data.data)) {
-          cashiers = data.data;
-        } else if (data.value && Array.isArray(data.value)) {
-          cashiers = data.value;
-        } else if (data.cashiers && Array.isArray(data.cashiers)) {
-          cashiers = data.cashiers;
-        }
-
-        const normalized = cashiers.map((c: any) => ({
-          id: c.id ?? c.userId ?? c.user_Id ?? c.cashierId ?? 0,
-          name: c.name ?? c.cashierName ?? c.userName ?? c.fullName ?? `Cashier ${c.id || c.userId || ''}`,
+      if (data && !data._error && Array.isArray(data) && data.length > 0) {
+        const normalized = data.map((c: any) => ({
+          id: c.id ?? c.userId ?? c.cashierId ?? 0,
+          name: c.name ?? c.cashierName ?? c.userName ?? c.fullName ?? `Cashier ${c.id || ''}`,
           cashierId: c.cashierId ?? c.id ?? c.userId ?? 0,
         }));
-
-        console.log(`[view-receipt/get-cashiers] Returning ${normalized.length} cashiers`);
+        console.log(`[view-receipt/get-cashiers] Returning ${normalized.length} POS cashiers from cashier-list`);
         return res.json(normalized);
       }
 
-      console.warn(`[view-receipt/get-cashiers] ViewReceipt API failed, trying day-end-reconcile fallback`);
-      const fallback = await platinumGet("/api/billing/auth-day-end-reconcile/cashier-list");
-      handlePlatinumResult(res, fallback);
+      console.warn(`[view-receipt/get-cashiers] cashier-list returned no data, falling back to ViewReceipt/get-cashiers`);
+      const fallbackData = await platinumGet("/api/ViewReceipt/get-cashiers");
+      if (fallbackData && !fallbackData._error) {
+        let cashiers: any[] = [];
+        if (Array.isArray(fallbackData)) {
+          cashiers = fallbackData;
+        } else if (fallbackData.data && Array.isArray(fallbackData.data)) {
+          cashiers = fallbackData.data;
+        } else if (fallbackData.value && Array.isArray(fallbackData.value)) {
+          cashiers = fallbackData.value;
+        }
+
+        const normalized = cashiers.map((c: any) => ({
+          id: c.id ?? c.userId ?? c.cashierId ?? 0,
+          name: c.name ?? c.cashierName ?? c.userName ?? c.fullName ?? `Cashier ${c.id || ''}`,
+          cashierId: c.cashierId ?? c.id ?? c.userId ?? 0,
+        }));
+        console.log(`[view-receipt/get-cashiers] Returning ${normalized.length} cashiers from ViewReceipt fallback`);
+        return res.json(normalized);
+      }
+
+      res.json([]);
     } catch (e: any) {
       console.error(`[view-receipt/get-cashiers] Error:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
