@@ -3,7 +3,8 @@ import { PosLayout } from '@/components/layout/pos-layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Plus, Trash2, CheckCircle, AlertCircle, Upload, X, Loader2, Search, Banknote, Building2, FileCheck, Receipt, CreditCard, RotateCcw } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { ArrowLeft, Plus, Trash2, CheckCircle, AlertCircle, Upload, X, Loader2, Search, Banknote, Building2, FileCheck, Receipt, CreditCard, RotateCcw, FileSpreadsheet, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { AllocationLine, Account, ClearanceCostSchedule, platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, platinumLoadDetailsPaymentGrouping, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, fetchMiscPaymentGroups, rebuildFullAccount, platinumSearchAccountsPayment, fetchActiveFinYear, fetchPlatinumUserInfo } from '@/lib/external-api';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
@@ -66,6 +67,14 @@ export default function AllocateTransaction() {
   
   const [miscGroups, setMiscGroups] = useState<any[]>([]);
   const [miscGroupsLoaded, setMiscGroupsLoaded] = useState(false);
+
+  const [csvDialogOpen, setCsvDialogOpen] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvParsedRows, setCsvParsedRows] = useState<{ accountNo: string; amount: number; raw: string }[]>([]);
+  const [csvLookupResults, setCsvLookupResults] = useState<{ accountNo: string; amount: number; status: 'pending' | 'loading' | 'found' | 'not_found' | 'error'; name?: string; accountId?: number; outstandingAmount?: number; errorMsg?: string }[]>([]);
+  const [csvProcessing, setCsvProcessing] = useState(false);
+  const [csvStep, setCsvStep] = useState<'upload' | 'preview' | 'lookup' | 'done'>('upload');
+  const csvFileInputRef = useRef<HTMLInputElement>(null);
   
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -306,6 +315,178 @@ export default function AllocateTransaction() {
 
   const handleSearchResult = (result: DDSearchResult) => {
     handleSelectDDResult(result);
+  };
+
+  const handleCsvFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCsvFile(file);
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      if (!text) return;
+      const rawLines = text.split(/\r?\n/).filter(l => l.trim());
+      if (rawLines.length === 0) {
+        toast({ title: 'Empty File', description: 'The CSV file appears to be empty.', variant: 'destructive' });
+        return;
+      }
+
+      const sampleLines = rawLines.slice(0, Math.min(5, rawLines.length));
+      const countChar = (lines: string[], ch: string) => lines.reduce((sum, l) => sum + (l.split(ch).length - 1), 0);
+      const semiCount = countChar(sampleLines, ';');
+      const tabCount = countChar(sampleLines, '\t');
+      const delimiter = semiCount >= sampleLines.length ? ';' : tabCount >= sampleLines.length ? '\t' : ',';
+
+      const firstCols = rawLines[0].split(delimiter).map(c => c.trim().replace(/^["']|["']$/g, ''));
+      const hasHeader = firstCols.length >= 2
+        && firstCols.some(c => /^(account|acc|accno|account.?n)/i.test(c))
+        && firstCols.some(c => /^(amount|amt|value|total)/i.test(c));
+      const dataLines = hasHeader ? rawLines.slice(1) : rawLines;
+
+      const parsed: { accountNo: string; amount: number; raw: string }[] = [];
+      for (const line of dataLines) {
+        if (!line.trim()) continue;
+        const cols = line.split(delimiter).map(c => c.trim().replace(/^["']|["']$/g, ''));
+        if (cols.length < 2) continue;
+
+        let accountNo = '';
+        let amount = 0;
+        
+        const numericFirst = parseFloat(cols[0].replace(/\s/g, ''));
+        const numericSecond = parseFloat(cols[1].replace(/\s/g, ''));
+
+        if (!isNaN(numericSecond) && numericSecond > 0 && cols[0].length > 0) {
+          accountNo = cols[0].replace(/\s/g, '');
+          amount = numericSecond;
+        } else if (!isNaN(numericFirst) && numericFirst > 0 && cols.length >= 2) {
+          if (cols[1] && /[a-zA-Z]/.test(cols[1])) {
+            accountNo = cols[0].replace(/\s/g, '');
+            const amtCol = cols.find((c, i) => i >= 2 && !isNaN(parseFloat(c.replace(/\s/g, ''))));
+            amount = amtCol ? parseFloat(amtCol.replace(/\s/g, '')) : 0;
+          } else {
+            accountNo = cols[0].replace(/\s/g, '');
+            amount = numericSecond;
+          }
+        }
+
+        if (accountNo && amount > 0) {
+          parsed.push({ accountNo, amount, raw: line });
+        }
+      }
+
+      if (parsed.length === 0) {
+        toast({ title: 'No Valid Data', description: 'Could not find any rows with account numbers and amounts. Ensure your CSV has at least 2 columns: Account Number and Amount.', variant: 'destructive' });
+        return;
+      }
+
+      setCsvParsedRows(parsed);
+      setCsvStep('preview');
+    };
+    reader.readAsText(file);
+  };
+
+  const handleCsvLookup = async () => {
+    if (csvParsedRows.length === 0) return;
+    setCsvStep('lookup');
+    setCsvProcessing(true);
+
+    type CsvLookupRow = typeof csvLookupResults[number];
+    const results: CsvLookupRow[] = csvParsedRows.map(row => ({
+      accountNo: row.accountNo,
+      amount: row.amount,
+      status: 'pending' as const,
+    }));
+    setCsvLookupResults([...results]);
+
+    const parseResults = (data: any) => {
+      if (Array.isArray(data)) return data;
+      if (data?.value && Array.isArray(data.value)) return data.value;
+      return [];
+    };
+
+    for (let i = 0; i < results.length; i++) {
+      results[i] = { ...results[i], status: 'loading' };
+      setCsvLookupResults([...results]);
+
+      try {
+        const searchBody: Record<string, any> = { accountNo: results[i].accountNo };
+        const apiResult = await platinumSearchAccountsPayment(searchBody);
+        const items = parseResults(apiResult);
+
+        if (items.length > 0) {
+          const item = items[0];
+          const accId = item.account_ID || item.accountID || item.id;
+          const name = [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown';
+          const outstanding = item.outStandingAmt || item.outstandingAmount || 0;
+          results[i] = { ...results[i], status: 'found', name, accountId: accId, outstandingAmount: outstanding };
+        } else {
+          results[i] = { ...results[i], status: 'not_found', errorMsg: 'Account not found' };
+        }
+      } catch (err: any) {
+        results[i] = { ...results[i], status: 'error', errorMsg: err.message || 'Lookup failed' };
+      }
+
+      setCsvLookupResults([...results]);
+    }
+
+    setCsvProcessing(false);
+    setCsvStep('done');
+  };
+
+  const handleCsvAddToLines = () => {
+    if (!transaction) return;
+    const found = csvLookupResults.filter(r => r.status === 'found' && r.accountId);
+    let currentTotal = allocatedTotal;
+
+    const newLines: AllocationLine[] = [];
+    const skipped: string[] = [];
+
+    for (const row of found) {
+      const validation = validateAllocationAmount(row.amount, currentTotal, transaction.amount);
+      if (!validation.valid) {
+        skipped.push(`${row.accountNo} (R ${row.amount.toFixed(2)}) - ${validation.error}`);
+        continue;
+      }
+      newLines.push({
+        id: Math.random().toString(36).substr(2, 9),
+        accountNo: row.accountNo,
+        amount: row.amount,
+        description: `CSV Import: ${row.name || row.accountNo}`,
+        allocationType: 'ACCOUNT',
+        accountId: row.accountId,
+      });
+      currentTotal += row.amount;
+    }
+
+    if (newLines.length > 0) {
+      setLines(prev => [...prev, ...newLines]);
+    }
+
+    if (skipped.length > 0) {
+      toast({
+        title: `${newLines.length} Added, ${skipped.length} Skipped`,
+        description: skipped.slice(0, 3).join('; ') + (skipped.length > 3 ? `... and ${skipped.length - 3} more` : ''),
+        variant: 'destructive',
+      });
+    } else {
+      toast({ title: 'CSV Import Complete', description: `${newLines.length} allocation line(s) added from CSV.` });
+    }
+
+    setCsvDialogOpen(false);
+    setCsvFile(null);
+    setCsvParsedRows([]);
+    setCsvLookupResults([]);
+    setCsvStep('upload');
+  };
+
+  const handleCsvDialogClose = () => {
+    if (csvProcessing) return;
+    setCsvDialogOpen(false);
+    setCsvFile(null);
+    setCsvParsedRows([]);
+    setCsvLookupResults([]);
+    setCsvStep('upload');
   };
 
   const handleReturnToCashbook = () => {
@@ -742,7 +923,7 @@ export default function AllocateTransaction() {
                 <div className="px-5 py-4 border-b bg-gradient-to-r from-white to-slate-50/50">
                     <div className="flex items-center justify-between mb-3">
                         <h2 className="text-base font-semibold tracking-tight">Allocation Lines</h2>
-                        <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 border-slate-200">
+                        <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 border-slate-200" data-testid="button-import-csv" onClick={() => setCsvDialogOpen(true)}>
                             <Upload className="w-3.5 h-3.5" /> Import CSV
                         </Button>
                     </div>
@@ -1083,6 +1264,178 @@ export default function AllocateTransaction() {
           </div>
         </div>
       </div>
+
+      <Dialog open={csvDialogOpen} onOpenChange={(open) => { if (!csvProcessing) { if (!open) handleCsvDialogClose(); } }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="w-5 h-5 text-blue-600" />
+              Import CSV
+            </DialogTitle>
+            <DialogDescription>
+              {csvStep === 'upload' && 'Upload a CSV file with account numbers and amounts to bulk-add allocation lines.'}
+              {csvStep === 'preview' && `${csvParsedRows.length} row(s) parsed from the file. Review and proceed to look up accounts.`}
+              {csvStep === 'lookup' && 'Looking up account information from Platinum API...'}
+              {csvStep === 'done' && 'Lookup complete. Add the found accounts to your allocation lines.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto min-h-0">
+            {csvStep === 'upload' && (
+              <div className="flex flex-col items-center justify-center py-12 px-6">
+                <input
+                  ref={csvFileInputRef}
+                  type="file"
+                  accept=".csv,.txt"
+                  className="hidden"
+                  onChange={handleCsvFileSelect}
+                  data-testid="input-csv-file"
+                />
+                <div
+                  className="w-full max-w-md border-2 border-dashed border-slate-200 rounded-xl p-10 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all"
+                  onClick={() => csvFileInputRef.current?.click()}
+                  data-testid="csv-dropzone"
+                >
+                  <Upload className="w-10 h-10 text-slate-300 mx-auto mb-4" />
+                  <p className="text-sm font-medium text-slate-700 mb-1">Click to select a CSV file</p>
+                  <p className="text-xs text-muted-foreground">Supported formats: .csv, .txt</p>
+                </div>
+                <div className="mt-6 w-full max-w-md bg-slate-50 rounded-lg p-4 text-xs text-muted-foreground space-y-1.5">
+                  <p className="font-medium text-slate-600 text-sm mb-2">Expected CSV format:</p>
+                  <p className="font-mono bg-white px-2 py-1 rounded border text-[11px]">AccountNumber, Amount</p>
+                  <p className="font-mono bg-white px-2 py-1 rounded border text-[11px]">100234, 500.00</p>
+                  <p className="font-mono bg-white px-2 py-1 rounded border text-[11px]">100567, 1200.50</p>
+                  <p className="mt-2">Headers are auto-detected. Comma, semicolon, and tab delimiters are supported.</p>
+                </div>
+              </div>
+            )}
+
+            {csvStep === 'preview' && (
+              <div className="space-y-3 p-1">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-sm font-medium text-slate-700">{csvParsedRows.length} row(s) from <span className="font-mono text-xs bg-slate-100 px-1.5 py-0.5 rounded">{csvFile?.name}</span></span>
+                  <Button variant="ghost" size="sm" className="text-xs text-slate-500 gap-1" onClick={() => { setCsvStep('upload'); setCsvParsedRows([]); setCsvFile(null); }}>
+                    <X className="w-3 h-3" /> Change file
+                  </Button>
+                </div>
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-slate-50 border-b">
+                        <th className="text-left px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider w-8">#</th>
+                        <th className="text-left px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Account No</th>
+                        <th className="text-right px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {csvParsedRows.slice(0, 50).map((row, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50/50">
+                          <td className="px-4 py-2 text-xs text-muted-foreground">{idx + 1}</td>
+                          <td className="px-4 py-2 font-mono text-sm">{row.accountNo}</td>
+                          <td className="px-4 py-2 text-right font-mono text-sm font-medium">R {row.amount.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                      {csvParsedRows.length > 50 && (
+                        <tr><td colSpan={3} className="px-4 py-2 text-center text-xs text-muted-foreground">... and {csvParsedRows.length - 50} more rows</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="bg-blue-50 rounded-lg p-3 flex items-center gap-2 text-xs text-blue-700">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>Total import amount: <span className="font-bold font-mono">R {csvParsedRows.reduce((s, r) => s + r.amount, 0).toFixed(2)}</span> | Remaining to allocate: <span className="font-bold font-mono">R {remaining.toFixed(2)}</span></span>
+                </div>
+              </div>
+            )}
+
+            {(csvStep === 'lookup' || csvStep === 'done') && (
+              <div className="space-y-3 p-1">
+                {csvProcessing && (
+                  <div className="flex items-center gap-2 text-sm text-blue-700 bg-blue-50 rounded-lg p-3">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Looking up accounts... {csvLookupResults.filter(r => r.status === 'found' || r.status === 'not_found' || r.status === 'error').length} / {csvLookupResults.length}</span>
+                  </div>
+                )}
+                {csvStep === 'done' && (
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="bg-emerald-50 rounded-lg p-3 text-center">
+                      <div className="text-lg font-bold text-emerald-700">{csvLookupResults.filter(r => r.status === 'found').length}</div>
+                      <div className="text-[11px] text-emerald-600">Found</div>
+                    </div>
+                    <div className="bg-red-50 rounded-lg p-3 text-center">
+                      <div className="text-lg font-bold text-red-700">{csvLookupResults.filter(r => r.status === 'not_found').length}</div>
+                      <div className="text-[11px] text-red-600">Not Found</div>
+                    </div>
+                    <div className="bg-amber-50 rounded-lg p-3 text-center">
+                      <div className="text-lg font-bold text-amber-700">{csvLookupResults.filter(r => r.status === 'error').length}</div>
+                      <div className="text-[11px] text-amber-600">Errors</div>
+                    </div>
+                  </div>
+                )}
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-slate-50 border-b">
+                        <th className="text-left px-3 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider w-8">#</th>
+                        <th className="text-left px-3 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Account</th>
+                        <th className="text-left px-3 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Name</th>
+                        <th className="text-right px-3 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Amount</th>
+                        <th className="text-center px-3 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider w-20">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {csvLookupResults.slice(0, 100).map((row, idx) => (
+                        <tr key={idx} className={`${row.status === 'not_found' || row.status === 'error' ? 'bg-red-50/30' : row.status === 'found' ? 'bg-emerald-50/20' : ''}`}>
+                          <td className="px-3 py-2 text-xs text-muted-foreground">{idx + 1}</td>
+                          <td className="px-3 py-2 font-mono text-xs">{row.accountNo}</td>
+                          <td className="px-3 py-2 text-xs truncate max-w-[180px]">{row.name || row.errorMsg || '-'}</td>
+                          <td className="px-3 py-2 text-right font-mono text-xs font-medium">R {row.amount.toFixed(2)}</td>
+                          <td className="px-3 py-2 text-center">
+                            {row.status === 'pending' && <span className="text-xs text-slate-400">Pending</span>}
+                            {row.status === 'loading' && <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500 mx-auto" />}
+                            {row.status === 'found' && <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" />}
+                            {row.status === 'not_found' && <AlertTriangle className="w-4 h-4 text-red-400 mx-auto" />}
+                            {row.status === 'error' && <AlertCircle className="w-4 h-4 text-amber-500 mx-auto" />}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="border-t pt-4 mt-2 gap-2">
+            {csvStep === 'upload' && (
+              <Button variant="outline" onClick={handleCsvDialogClose}>Cancel</Button>
+            )}
+            {csvStep === 'preview' && (
+              <>
+                <Button variant="outline" onClick={handleCsvDialogClose}>Cancel</Button>
+                <Button onClick={handleCsvLookup} className="bg-blue-600 hover:bg-blue-700 gap-1.5">
+                  <Search className="w-3.5 h-3.5" /> Look Up Accounts
+                </Button>
+              </>
+            )}
+            {csvStep === 'lookup' && (
+              <Button variant="outline" disabled>
+                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> Processing...
+              </Button>
+            )}
+            {csvStep === 'done' && (
+              <>
+                <Button variant="outline" onClick={handleCsvDialogClose}>Cancel</Button>
+                {csvLookupResults.filter(r => r.status === 'found').length > 0 && (
+                  <Button onClick={handleCsvAddToLines} className="bg-emerald-600 hover:bg-emerald-700 gap-1.5">
+                    <Plus className="w-3.5 h-3.5" /> Add {csvLookupResults.filter(r => r.status === 'found').length} Account(s)
+                  </Button>
+                )}
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PosLayout>
   );
 }
