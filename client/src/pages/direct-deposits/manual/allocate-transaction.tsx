@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { ArrowLeft, Plus, Trash2, CheckCircle, AlertCircle, Upload, X, Loader2, Search, Banknote, Building2, FileCheck, Receipt, CreditCard, RotateCcw, FileSpreadsheet, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, CheckCircle, AlertCircle, Upload, X, Loader2, Search, Banknote, Building2, FileCheck, Receipt, CreditCard, RotateCcw, FileSpreadsheet, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AllocationLine, Account, ClearanceCostSchedule, platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, platinumLoadDetailsPaymentGrouping, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, fetchMiscPaymentGroups, rebuildFullAccount, platinumSearchAccountsPayment, fetchActiveFinYear, fetchPlatinumUserInfo } from '@/lib/external-api';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
@@ -49,6 +49,8 @@ export default function AllocateTransaction() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
   const [lines, setLines] = useState<AllocationLine[]>([]);
+  const [linesPage, setLinesPage] = useState(1);
+  const LINES_PER_PAGE = 10;
   
   const [searchScope, setSearchScope] = useState<'ALL' | 'ACCOUNT' | 'CLEARANCE' | 'DIRECT'>('ALL');
   
@@ -1150,10 +1152,15 @@ export default function AllocateTransaction() {
                                 </Button>
                             )}
                         </div>
-                    ) : (
+                    ) : (() => {
+                        const totalPages = Math.ceil(lines.length / LINES_PER_PAGE);
+                        const safePage = Math.min(linesPage, totalPages);
+                        const startIdx = (safePage - 1) * LINES_PER_PAGE;
+                        const pageLines = lines.slice(startIdx, startIdx + LINES_PER_PAGE);
+                        return (
                         <>
                             <div className="sm:hidden divide-y">
-                                {lines.map((line, idx) => (
+                                {pageLines.map((line, idx) => (
                                     <div key={line.id} className="px-4 py-3 flex items-center gap-3 hover:bg-slate-50/50 transition-colors">
                                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold ${
                                             line.allocationType === 'CASHBOOK' ? 'bg-orange-50 text-orange-600' :
@@ -1161,7 +1168,7 @@ export default function AllocateTransaction() {
                                             line.allocationType === 'DIRECT' || line.allocationType === 'GROUP' ? 'bg-emerald-50 text-emerald-600' :
                                             'bg-blue-50 text-blue-600'
                                         }`}>
-                                            {idx + 1}
+                                            {startIdx + idx + 1}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="text-sm font-medium text-slate-700 truncate">{line.description || line.accountNo}</div>
@@ -1187,10 +1194,10 @@ export default function AllocateTransaction() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {lines.map((line, idx) => (
+                                    {pageLines.map((line, idx) => (
                                         <tr key={line.id} className="hover:bg-slate-50/50 transition-colors group">
                                             <td className="px-5 py-3">
-                                                <span className="text-xs text-muted-foreground">{idx + 1}</span>
+                                                <span className="text-xs text-muted-foreground">{startIdx + idx + 1}</span>
                                             </td>
                                             <td className="px-5 py-3">
                                                 <span className="font-mono text-sm text-slate-700">{line.accountNo}</span>
@@ -1222,8 +1229,38 @@ export default function AllocateTransaction() {
                                     ))}
                                 </tbody>
                             </table>
+
+                            {totalPages > 1 && (
+                                <div className="flex items-center justify-between px-5 py-3 border-t bg-slate-50/30">
+                                    <span className="text-xs text-muted-foreground">
+                                        Showing {startIdx + 1}–{Math.min(startIdx + LINES_PER_PAGE, lines.length)} of {lines.length} lines
+                                    </span>
+                                    <div className="flex items-center gap-1">
+                                        <Button variant="outline" size="icon" className="h-7 w-7" disabled={safePage <= 1} onClick={() => setLinesPage(p => Math.max(1, p - 1))} data-testid="button-lines-prev-page">
+                                            <ChevronLeft className="w-3.5 h-3.5" />
+                                        </Button>
+                                        {(() => {
+                                            const pages: number[] = [];
+                                            const maxButtons = 5;
+                                            let start = Math.max(1, safePage - Math.floor(maxButtons / 2));
+                                            let end = Math.min(totalPages, start + maxButtons - 1);
+                                            if (end - start + 1 < maxButtons) start = Math.max(1, end - maxButtons + 1);
+                                            for (let i = start; i <= end; i++) pages.push(i);
+                                            return pages.map(p => (
+                                                <Button key={p} variant={p === safePage ? 'default' : 'outline'} size="icon" className={`h-7 w-7 text-xs ${p === safePage ? 'bg-slate-800 text-white' : ''}`} onClick={() => setLinesPage(p)} data-testid={`button-lines-page-${p}`}>
+                                                    {p}
+                                                </Button>
+                                            ));
+                                        })()}
+                                        <Button variant="outline" size="icon" className="h-7 w-7" disabled={safePage >= totalPages} onClick={() => setLinesPage(p => Math.min(totalPages, p + 1))} data-testid="button-lines-next-page">
+                                            <ChevronRight className="w-3.5 h-3.5" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
                         </>
-                    )}
+                        );
+                    })()}
                 </div>
 
                 {lines.length > 0 && (
