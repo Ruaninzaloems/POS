@@ -295,8 +295,8 @@ export default function ViewReceipts() {
 
     return (
         <PosLayout>
-            <div className="flex-1 flex flex-col h-full bg-slate-100 overflow-y-auto min-h-0">
-                <div className="bg-white border-b shadow-sm shrink-0">
+            <div className="w-full h-full bg-slate-100 overflow-y-auto">
+                <div className="bg-white border-b shadow-sm">
                     <div className="px-3 sm:px-6 py-3 sm:py-4 border-b">
                         <h1 className="text-lg sm:text-xl font-bold text-slate-800" data-testid="text-page-title">View Receipts</h1>
                     </div>
@@ -446,7 +446,7 @@ export default function ViewReceipts() {
                     </div>
                 </div>
 
-                <div className="flex-1 p-3 sm:p-6 min-h-0 flex flex-col">
+                <div className="p-3 sm:p-6">
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3 sm:mb-4">
                         <div className="text-xs font-bold text-slate-500 uppercase tracking-wider border-l-2 border-slate-500 pl-2 flex items-center gap-2">
                             Receipt Information {totalCount > 0 && <span className="text-blue-600">({totalCount} records)</span>}
@@ -487,7 +487,7 @@ export default function ViewReceipts() {
                     </div>
 
                     {/* Mobile card view for receipts */}
-                    <div className="sm:hidden flex-1 overflow-auto space-y-2">
+                    <div className="sm:hidden space-y-2">
                         {isLoading ? (
                             <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
                                 <Loader2 className="w-5 h-5 animate-spin" /> Loading receipts...
