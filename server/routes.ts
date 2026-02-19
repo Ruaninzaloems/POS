@@ -857,7 +857,8 @@ export async function registerRoutes(
       params.PageSize = String(body.pageSize ?? body.PageSize ?? 50);
       if (body.orderby || body.Orderby) params.Orderby = body.orderby || body.Orderby;
       if (body.shortDirection || body.ShortDirection) params.ShortDirection = body.shortDirection || body.ShortDirection;
-      if (body.cashierId || body.CashierId) params.CashierId = String(body.cashierId || body.CashierId);
+      if (body.cashierId !== undefined && body.cashierId !== null && body.cashierId !== '') params.CashierId = String(body.cashierId);
+      else if (body.CashierId !== undefined && body.CashierId !== null && body.CashierId !== '') params.CashierId = String(body.CashierId);
       if (body.accountNumber || body.AccountNumber) params.AccountNumber = body.accountNumber || body.AccountNumber;
       if (body.receiptNo || body.ReceiptNo) params.ReceiptNo = body.receiptNo || body.ReceiptNo;
 

@@ -112,10 +112,10 @@ export default function ViewReceipts() {
     }, []);
 
     const handleSearch = async (page: number = 1) => {
-        if (!cashierFilter) {
+        if (!cashierFilter && !accountFilter && !receiptFilter) {
             toast({
-                title: "Cashier Required",
-                description: "Please select a cashier to search receipts.",
+                title: "Filter Required",
+                description: "Please select a cashier, or enter an account number or receipt number.",
                 variant: "destructive",
             });
             return;
@@ -129,7 +129,7 @@ export default function ViewReceipts() {
                 pageSize,
                 orderby: 'receiptDate',
                 shortDirection: 'desc',
-                cashierId: cashierFilter,
+                cashierId: cashierFilter || '0',
             };
             if (accountFilter) {
                 query.accountNumber = accountFilter;
@@ -297,12 +297,13 @@ export default function ViewReceipts() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4 sm:gap-y-6">
                                 <div className="space-y-3 sm:space-y-4">
                                     <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] items-start sm:items-center gap-1 sm:gap-4">
-                                        <label className="text-sm font-medium text-left sm:text-right text-slate-600">Cashier Name <span className="text-red-500">*</span></label>
+                                        <label className="text-sm font-medium text-left sm:text-right text-slate-600">Cashier Name</label>
                                         <Select value={cashierFilter} onValueChange={setCashierFilter}>
                                             <SelectTrigger className="h-9" data-testid="select-cashier-filter">
                                                 <SelectValue placeholder={loadingCashiers ? "Loading..." : "Select a cashier..."} />
                                             </SelectTrigger>
                                             <SelectContent className="max-h-[250px]">
+                                                <SelectItem value="0">All Cashiers</SelectItem>
                                                 {cashiers.map(c => (
                                                     <SelectItem key={c.id} value={String(c.cashierId || c.id)}>
                                                         {getCashierDisplayName(c)}
