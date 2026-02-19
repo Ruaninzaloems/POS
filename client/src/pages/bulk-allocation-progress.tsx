@@ -18,6 +18,8 @@ import {
   fetchBulkProgressProcessList,
   fetchBulkAllocationList,
   fetchBulkProgressDirectDeposit,
+  fetchViewReceiptCashiers,
+  platinumGetPosItemDetails,
   type BulkProgressSearchQuery,
 } from '@/lib/external-api';
 import { useToast } from '@/hooks/use-toast';
@@ -154,11 +156,36 @@ export default function BulkAllocationProgress() {
     }
   }, [selectedYear, selectedProcess, selectedMonth, sortField, sortDirection, page, pageSize, toast]);
 
+  const cashierCacheRef = React.useRef<Map<number, string>>(new Map());
+  const [cashierCacheLoaded, setCashierCacheLoaded] = React.useState(false);
+
+  const loadCashierCache = useCallback(async () => {
+    if (cashierCacheLoaded) return;
+    try {
+      const cashiers = await fetchViewReceiptCashiers();
+      if (Array.isArray(cashiers)) {
+        cashiers.forEach((c: any) => {
+          const id = c.id ?? c.cashierId ?? c.userId;
+          const name = c.name ?? c.cashierName ?? c.userName ?? c.fullName;
+          if (id && name) cashierCacheRef.current.set(Number(id), name);
+        });
+      }
+      setCashierCacheLoaded(true);
+    } catch {}
+  }, [cashierCacheLoaded]);
+
+  function resolveCashierName(id: number | null | undefined): string | null {
+    if (id == null) return null;
+    return cashierCacheRef.current.get(Number(id)) || null;
+  }
+
   async function viewJobDetail(job: any) {
     setSelectedJob(job);
     setDetailOpen(true);
     setDetailLoading(true);
     setDetailData(null);
+
+    loadCashierCache();
 
     const jobId = job.directDepositJob_ID ?? job.jobId ?? job.id ?? job.bulkAllocationId;
     if (!jobId) {
@@ -168,8 +195,18 @@ export default function BulkAllocationProgress() {
     }
 
     try {
-      const data = await fetchBulkProgressDirectDeposit(jobId);
-      setDetailData(data || job);
+      const [data, posItemData] = await Promise.all([
+        fetchBulkProgressDirectDeposit(jobId),
+        job.posItemID ? platinumGetPosItemDetails(job.posItemID).catch(() => null) : Promise.resolve(null),
+      ]);
+
+      const enriched = { ...(data || job) };
+      if (posItemData && posItemData.posItem_ID) {
+        enriched._posItemNote = posItemData.note || posItemData.description || posItemData.reference || null;
+        enriched._posItemAmount = posItemData.amount;
+        enriched._posItemDate = posItemData.dateOfTransaction || posItemData.dateCaptured;
+      }
+      setDetailData(enriched);
     } catch {
       setDetailData(job);
     } finally {
@@ -565,17 +602,28 @@ export default function BulkAllocationProgress() {
                 {renderDetailField('Records', detailData.records ?? detailData.totalRecords)}
                 {renderDetailField('Allocated Amount', detailData.allocatedAmount != null
                   ? `R ${Number(detailData.allocatedAmount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : null)}
-                {renderDetailField('Payment Type ID', detailData.paymentTypeID)}
-                {renderDetailField('Cashier ID', detailData.cashierID)}
-                {renderDetailField('Capturer ID', detailData.capturerID)}
+                {renderDetailField('Payment Type', detailData.paymentTypeID != null
+                  ? (detailData.paymentTypeID === 1 ? 'Cash' : detailData.paymentTypeID === 3 ? 'Credit Card' : detailData.paymentTypeID === 2 ? 'Cheque' : `Type ${detailData.paymentTypeID}`)
+                  : null)}
+                {renderDetailField('Cashier', detailData.cashierID != null
+                  ? (resolveCashierName(detailData.cashierID) || `ID: ${detailData.cashierID}`)
+                  : null)}
+                {renderDetailField('Capturer', detailData.capturerID != null
+                  ? (resolveCashierName(detailData.capturerID) || `ID: ${detailData.capturerID}`)
+                  : null)}
                 {renderDetailField('Group ID', detailData.groupID)}
-                {renderDetailField('POS Item ID', detailData.posItemID)}
+                {renderDetailField('POS Item', detailData.posItemID != null
+                  ? (detailData._posItemNote
+                    ? `#${detailData.posItemID} - ${detailData._posItemNote}${detailData._posItemAmount != null ? ` (R ${Number(detailData._posItemAmount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })})` : ''}`
+                    : `#${detailData.posItemID}`)
+                  : null)}
 
                 {Object.entries(detailData).map(([key, value]) => {
                   const knownKeys = ['directDepositJob_ID', 'jobId', 'id', 'process', 'paymentReference',
                     'financialYear', 'billPeriodId', 'job_Status', 'status', 'fileName', 'filePath',
                     'fileDate', 'dateCaptured', 'records', 'totalRecords', 'allocatedAmount',
-                    'paymentTypeID', 'cashierID', 'capturerID', 'groupID', 'posItemID'];
+                    'paymentTypeID', 'cashierID', 'capturerID', 'groupID', 'posItemID',
+                    '_posItemNote', '_posItemAmount', '_posItemDate'];
                   if (knownKeys.includes(key)) return null;
                   if (value == null || value === '' || typeof value === 'object') return null;
                   const label = key
