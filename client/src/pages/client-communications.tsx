@@ -1,10 +1,11 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { PosLayout } from '@/components/layout/pos-layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   Mail,
   MessageSquare,
@@ -57,17 +58,32 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / 1048576).toFixed(1)} MB`;
 }
 
-function formatCurrency(amt: number): string {
-  return `R ${amt.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+function isValidMobile(val: any): boolean {
+  if (typeof val !== 'string') return false;
+  const cleaned = val.replace(/[\s\-()]/g, '');
+  if (/^0[6-8]\d{8}$/.test(cleaned)) return true;
+  if (/^\+27[6-8]\d{8}$/.test(cleaned)) return true;
+  if (/^27[6-8]\d{8}$/.test(cleaned)) return true;
+  if (/^0\d{9}$/.test(cleaned)) return true;
+  return false;
+}
+
+function normalizeMobile(val: string): string {
+  const cleaned = val.replace(/[\s\-()]/g, '');
+  if (/^\+27\d{9}$/.test(cleaned)) return '0' + cleaned.slice(3);
+  if (/^27\d{9}$/.test(cleaned)) return '0' + cleaned.slice(2);
+  return cleaned;
+}
+
+function isValidEmail(val: any): boolean {
+  if (typeof val !== 'string') return false;
+  const trimmed = val.trim();
+  return trimmed.length > 3 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
 }
 
 function downloadCsvTemplate() {
   const header = 'AccountNumber';
-  const sample = [
-    '000000001234',
-    '000000005678',
-    '000000009012',
-  ];
+  const sample = ['000000001234', '000000005678', '000000009012'];
   const csv = [header, ...sample].join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
@@ -77,6 +93,9 @@ function downloadCsvTemplate() {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+const BATCH_SIZE = 20;
+const CONTACT_BATCH_SIZE = 10;
 
 export default function ClientCommunications() {
   const { toast } = useToast();
@@ -97,7 +116,12 @@ export default function ClientCommunications() {
   const csvInputRef = useRef<HTMLInputElement>(null);
 
   const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0, added: 0 });
+  const [contactEnriching, setContactEnriching] = useState(false);
+  const [contactEnrichProgress, setContactEnrichProgress] = useState({ current: 0, total: 0 });
   const [showPreview, setShowPreview] = useState(false);
+
+  const recipientListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -108,6 +132,30 @@ export default function ClientCommunications() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const extractContactInfo = (contactRes: any, nameRes: any) => {
+    let email = '';
+    let mobile = '';
+
+    const pickEmail = (...vals: any[]) => vals.find(v => isValidEmail(v))?.trim() || '';
+    const pickMobile = (...vals: any[]) => {
+      const found = vals.find(v => isValidMobile(v));
+      return found ? normalizeMobile(found.trim()) : '';
+    };
+
+    if (contactRes && !contactRes._error) {
+      const c = Array.isArray(contactRes) ? contactRes[0] : contactRes;
+      email = pickEmail(c?.email, c?.eMail, c?.emailAddress, c?.Email);
+      mobile = pickMobile(c?.cellphone, c?.cellPhone, c?.mobile, c?.mobileNumber, c?.CellPhone);
+    }
+    if (nameRes && !nameRes._error) {
+      const n = Array.isArray(nameRes) ? nameRes[0] : nameRes;
+      if (!email) email = pickEmail(n?.email, n?.eMail, n?.emailAddress);
+      if (!mobile) mobile = pickMobile(n?.cellphone, n?.cellPhone, n?.mobile);
+    }
+
+    return { email, mobile };
+  };
 
   const performSearch = useCallback(async (query: string) => {
     if (query.length < 2) {
@@ -133,7 +181,7 @@ export default function ClientCommunications() {
       if (res.ok) {
         const data = await res.json();
         const items = Array.isArray(data) ? data : (data?.value || []);
-        const results = items.slice(0, 15);
+        const results = items.slice(0, 20);
         setSearchResults(results);
         setSearchDropdownOpen(results.length > 0);
 
@@ -141,25 +189,12 @@ export default function ClientCommunications() {
           const accId = item.account_ID || item.accountID || item.id;
           if (accId && !contactIndicators[accId]) {
             setContactIndicators(prev => ({ ...prev, [accId]: { email: false, mobile: false, loading: true } }));
-            const validStr = (v: any) => typeof v === 'string' && v.trim().length > 1;
-            const validEmail = (v: any) => validStr(v) && v.includes('@');
             Promise.all([
               fetch(`/api/platinum/billing-account-management/get-contact-details?accountId=${accId}`).then(r => r.ok ? r.json() : null).catch(() => null),
               fetch(`/api/platinum/billing-enquiry/name-info-by-account?accountId=${accId}`).then(r => r.ok ? r.json() : null).catch(() => null),
             ]).then(([contactRes, nameRes]) => {
-              let hasEmail = false;
-              let hasMobile = false;
-              if (contactRes && !contactRes._error) {
-                const c = Array.isArray(contactRes) ? contactRes[0] : contactRes;
-                hasEmail = validEmail(c?.email) || validEmail(c?.eMail) || validEmail(c?.emailAddress) || validEmail(c?.Email);
-                hasMobile = validStr(c?.cellphone) || validStr(c?.cellPhone) || validStr(c?.mobile) || validStr(c?.mobileNumber) || validStr(c?.CellPhone);
-              }
-              if (nameRes && !nameRes._error) {
-                const n = Array.isArray(nameRes) ? nameRes[0] : nameRes;
-                if (!hasEmail) hasEmail = validEmail(n?.email) || validEmail(n?.eMail) || validEmail(n?.emailAddress);
-                if (!hasMobile) hasMobile = validStr(n?.cellphone) || validStr(n?.cellPhone) || validStr(n?.mobile);
-              }
-              setContactIndicators(prev => ({ ...prev, [accId]: { email: hasEmail, mobile: hasMobile, loading: false } }));
+              const { email, mobile } = extractContactInfo(contactRes, nameRes);
+              setContactIndicators(prev => ({ ...prev, [accId]: { email: !!email, mobile: !!mobile, loading: false } }));
             });
           }
         });
@@ -185,13 +220,7 @@ export default function ClientCommunications() {
   };
 
   const fetchContactDetails = async (accountId: number): Promise<{ email: string; mobile: string; additionalEmails: string[] }> => {
-    let email = '';
-    let mobile = '';
     let additionalEmails: string[] = [];
-
-    const clean = (v: any) => (typeof v === 'string' ? v.trim() : '');
-    const pickEmail = (...vals: any[]) => vals.map(clean).find(v => v.length > 1 && v.includes('@')) || '';
-    const pickPhone = (...vals: any[]) => vals.map(clean).find(v => v.length > 1) || '';
 
     try {
       const [contactRes, nameRes, addEmailRes] = await Promise.all([
@@ -200,42 +229,33 @@ export default function ClientCommunications() {
         fetch(`/api/platinum/billing-account-management/get-additional-emails?accountId=${accountId}`).then(r => r.ok ? r.json() : null).catch(() => null),
       ]);
 
-      if (contactRes && !contactRes._error) {
-        const c = Array.isArray(contactRes) ? contactRes[0] : contactRes;
-        email = pickEmail(c?.email, c?.eMail, c?.emailAddress, c?.Email);
-        mobile = pickPhone(c?.cellphone, c?.cellPhone, c?.mobile, c?.mobileNumber, c?.CellPhone);
-      }
-
-      if (nameRes && !nameRes._error) {
-        const n = Array.isArray(nameRes) ? nameRes[0] : nameRes;
-        if (!email) email = pickEmail(n?.email, n?.eMail, n?.emailAddress);
-        if (!mobile) mobile = pickPhone(n?.cellphone, n?.cellPhone, n?.mobile);
-      }
+      const { email, mobile } = extractContactInfo(contactRes, nameRes);
 
       if (addEmailRes && !addEmailRes._error) {
         const emails = Array.isArray(addEmailRes) ? addEmailRes : (addEmailRes?.value || addEmailRes?.emails || []);
         additionalEmails = emails
           .map((e: any) => e?.email || e?.emailAddress || e?.Email || (typeof e === 'string' ? e : ''))
-          .filter((e: string) => e && e.trim().length > 1 && e.includes('@'));
+          .filter((e: string) => isValidEmail(e));
       }
-    } catch {}
 
-    return { email, mobile, additionalEmails };
+      return { email, mobile, additionalEmails };
+    } catch {
+      return { email: '', mobile: '', additionalEmails: [] };
+    }
   };
 
-  const addRecipient = async (item: any) => {
-    const accId = item.account_ID || item.accountID || item.id;
-    if (recipients.some(r => r.accountId === accId)) {
-      toast({ title: 'Already added', description: `Account ${accId} is already in the recipient list.` });
-      return;
-    }
+  const recipientSetRef = useRef(new Set<number>());
 
+  const addRecipientDirect = (item: any): Recipient => {
+    const accId = item.account_ID || item.accountID || item.id;
     const accNo = item.accountNumber || item.accountNo || String(accId);
     const name = [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown';
     const address = item.deliveryAddress?.replace(/\r?\n/g, ', ') || '';
     const outstanding = item.outStandingAmt || item.outstandingAmount || 0;
 
-    const newRecipient: Recipient = {
+    recipientSetRef.current.add(accId);
+
+    return {
       id: `r-${Date.now()}-${accId}`,
       accountId: accId,
       accountNo: accNo,
@@ -249,7 +269,16 @@ export default function ClientCommunications() {
       contactLoading: true,
       contactLoaded: false,
     };
+  };
 
+  const addRecipient = async (item: any) => {
+    const accId = item.account_ID || item.accountID || item.id;
+    if (recipientSetRef.current.has(accId)) {
+      toast({ title: 'Already added', description: `Account ${accId} is already in the recipient list.` });
+      return;
+    }
+
+    const newRecipient = addRecipientDirect(item);
     setRecipients(prev => [...prev, newRecipient]);
     setSearchQuery('');
     setSearchResults([]);
@@ -263,8 +292,127 @@ export default function ClientCommunications() {
     ));
   };
 
+  const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportProgress({ current: 0, total: 0, added: 0 });
+
+    try {
+      const text = await file.text();
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      const accountNos: string[] = [];
+
+      for (const line of lines) {
+        const parts = line.split(/[,;\t]/).map(p => p.trim().replace(/"/g, ''));
+        for (const part of parts) {
+          const cleaned = part.replace(/\D/g, '');
+          if (cleaned.length >= 2 && cleaned.length <= 15) {
+            accountNos.push(cleaned);
+          }
+        }
+      }
+
+      const unique = Array.from(new Set(accountNos));
+      if (unique.length === 0) {
+        toast({ title: 'No new accounts found', description: 'Could not find any new valid account numbers in the file.', variant: 'destructive' });
+        setImporting(false);
+        return;
+      }
+
+      setImportProgress({ current: 0, total: unique.length, added: 0 });
+      let totalAdded = 0;
+      const pendingContactIds: number[] = [];
+
+      for (let batchStart = 0; batchStart < unique.length; batchStart += BATCH_SIZE) {
+        const batch = unique.slice(batchStart, batchStart + BATCH_SIZE);
+
+        const searchPromises = batch.map(async (accNo) => {
+          try {
+            const res = await fetch('/api/platinum/billing-payment/search-accounts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ accountNo: accNo }),
+            });
+            if (res.ok) {
+              const data = await res.json();
+              const items = Array.isArray(data) ? data : (data?.value || []);
+              return items.find((i: any) => {
+                const itemAccNo = String(i.accountNumber || i.accountNo || i.account_ID || i.accountID || i.id || '');
+                return itemAccNo === accNo || itemAccNo.replace(/^0+/, '') === accNo.replace(/^0+/, '');
+              }) || (items.length > 0 ? items[0] : null);
+            }
+          } catch {}
+          return null;
+        });
+
+        const foundItems = await Promise.all(searchPromises);
+        const validItems = foundItems.filter((item): item is any => {
+          if (!item) return false;
+          const accId = item.account_ID || item.accountID || item.id;
+          return accId && !recipientSetRef.current.has(accId);
+        });
+
+        if (validItems.length > 0) {
+          const newRecipients = validItems.map(item => addRecipientDirect(item));
+          setRecipients(prev => [...prev, ...newRecipients]);
+          totalAdded += validItems.length;
+          pendingContactIds.push(...validItems.map(item => item.account_ID || item.accountID || item.id));
+        }
+
+        setImportProgress({ current: Math.min(batchStart + BATCH_SIZE, unique.length), total: unique.length, added: totalAdded });
+      }
+
+      toast({
+        title: 'Import Complete',
+        description: `Added ${totalAdded} account(s). ${pendingContactIds.length > 0 ? 'Loading contact details in the background...' : ''}`,
+      });
+
+      setImporting(false);
+      setImportProgress({ current: 0, total: 0, added: 0 });
+
+      if (pendingContactIds.length > 0) {
+        setContactEnriching(true);
+        setContactEnrichProgress({ current: 0, total: pendingContactIds.length });
+
+        for (let ci = 0; ci < pendingContactIds.length; ci += CONTACT_BATCH_SIZE) {
+          const contactBatch = pendingContactIds.slice(ci, ci + CONTACT_BATCH_SIZE);
+          const contactResults = await Promise.all(
+            contactBatch.map(async (accId: number) => {
+              const info = await fetchContactDetails(accId);
+              return { accId, info };
+            })
+          );
+
+          setRecipients(prev => {
+            const updates = new Map(contactResults.map(cr => [cr.accId, cr.info]));
+            return prev.map(r => {
+              const info = updates.get(r.accountId);
+              return info ? { ...r, ...info, contactLoading: false, contactLoaded: true } : r;
+            });
+          });
+
+          setContactEnrichProgress({ current: Math.min(ci + CONTACT_BATCH_SIZE, pendingContactIds.length), total: pendingContactIds.length });
+        }
+
+        setContactEnriching(false);
+        toast({ title: 'Contact Details Loaded', description: `Loaded contact info for ${pendingContactIds.length} account(s).` });
+      }
+    } catch {
+      toast({ title: 'Import Failed', description: 'Could not read the file.', variant: 'destructive' });
+    } finally {
+      setImporting(false);
+      setImportProgress({ current: 0, total: 0, added: 0 });
+      if (csvInputRef.current) csvInputRef.current.value = '';
+    }
+  };
+
   const removeRecipient = (id: string) => {
-    setRecipients(prev => prev.filter(r => r.id !== id));
+    setRecipients(prev => {
+      const removed = prev.find(r => r.id === id);
+      if (removed) recipientSetRef.current.delete(removed.accountId);
+      return prev.filter(r => r.id !== id);
+    });
   };
 
   const toggleRecipient = (id: string) => {
@@ -281,12 +429,7 @@ export default function ClientCommunications() {
     const newAttachments: Attachment[] = [];
     for (let i = 0; i < files.length; i++) {
       const f = files[i];
-      newAttachments.push({
-        id: `att-${Date.now()}-${i}`,
-        file: f,
-        name: f.name,
-        size: f.size,
-      });
+      newAttachments.push({ id: `att-${Date.now()}-${i}`, file: f, name: f.name, size: f.size });
     }
     setAttachments(prev => [...prev, ...newAttachments]);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -296,72 +439,10 @@ export default function ClientCommunications() {
     setAttachments(prev => prev.filter(a => a.id !== id));
   };
 
-  const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImporting(true);
-
-    try {
-      const text = await file.text();
-      const lines = text.split(/\r?\n/).filter(l => l.trim());
-      const accountNos: string[] = [];
-
-      for (const line of lines) {
-        const parts = line.split(/[,;\t]/).map(p => p.trim().replace(/"/g, ''));
-        for (const part of parts) {
-          const cleaned = part.replace(/\D/g, '');
-          if (cleaned.length >= 2 && cleaned.length <= 12) {
-            accountNos.push(cleaned);
-          }
-        }
-      }
-
-      const unique = Array.from(new Set(accountNos));
-      if (unique.length === 0) {
-        toast({ title: 'No accounts found', description: 'Could not find any valid account numbers in the file.', variant: 'destructive' });
-        setImporting(false);
-        return;
-      }
-
-      let added = 0;
-      for (const accNo of unique.slice(0, 100)) {
-        try {
-          const res = await fetch('/api/platinum/billing-payment/search-accounts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ accountNo: accNo }),
-          });
-          if (res.ok) {
-            const data = await res.json();
-            const items = Array.isArray(data) ? data : (data?.value || []);
-            const exact = items.find((i: any) => {
-              const id = String(i.account_ID || i.accountID || i.id || '');
-              return id === accNo;
-            });
-            if (exact && !recipients.some(r => r.accountId === (exact.account_ID || exact.accountID || exact.id))) {
-              await addRecipient(exact);
-              added++;
-            }
-          }
-        } catch {}
-      }
-
-      toast({
-        title: 'Import Complete',
-        description: `Added ${added} account(s) from ${unique.length} found in file.`,
-      });
-    } catch {
-      toast({ title: 'Import Failed', description: 'Could not read the file.', variant: 'destructive' });
-    } finally {
-      setImporting(false);
-      if (csvInputRef.current) csvInputRef.current.value = '';
-    }
-  };
-
-  const selectedRecipients = recipients.filter(r => r.selected);
-  const validEmailRecipients = selectedRecipients.filter(r => r.email || r.additionalEmails.length > 0);
-  const validSmsRecipients = selectedRecipients.filter(r => r.mobile);
-  const totalEmailAddresses = validEmailRecipients.reduce((sum, r) => sum + (r.email ? 1 : 0) + r.additionalEmails.length, 0);
+  const selectedRecipients = useMemo(() => recipients.filter(r => r.selected), [recipients]);
+  const validEmailRecipients = useMemo(() => selectedRecipients.filter(r => r.email || r.additionalEmails.length > 0), [selectedRecipients]);
+  const validSmsRecipients = useMemo(() => selectedRecipients.filter(r => r.mobile), [selectedRecipients]);
+  const totalEmailAddresses = useMemo(() => validEmailRecipients.reduce((sum, r) => sum + (r.email ? 1 : 0) + r.additionalEmails.length, 0), [validEmailRecipients]);
 
   const handleSend = () => {
     if (mode === 'email') {
@@ -410,6 +491,17 @@ export default function ClientCommunications() {
 
   const selectAll = () => setRecipients(prev => prev.map(r => ({ ...r, selected: true })));
   const deselectAll = () => setRecipients(prev => prev.map(r => ({ ...r, selected: false })));
+  const clearAll = () => {
+    recipientSetRef.current.clear();
+    setRecipients([]);
+  };
+
+  const rowVirtualizer = useVirtualizer({
+    count: recipients.length,
+    getScrollElement: () => recipientListRef.current,
+    estimateSize: () => 80,
+    overscan: 15,
+  });
 
   return (
     <PosLayout>
@@ -449,25 +541,20 @@ export default function ClientCommunications() {
 
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
               <div className="lg:col-span-2 space-y-4">
-                <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-                  <div className="px-4 py-3 border-b bg-gradient-to-r from-slate-50 to-white">
+                <div className="bg-white rounded-xl border shadow-sm overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 220px)' }}>
+                  <div className="px-4 py-3 border-b bg-gradient-to-r from-slate-50 to-white shrink-0">
                     <div className="flex items-center justify-between">
                       <h2 className="font-semibold text-sm text-slate-800 flex items-center gap-2">
                         <Users className="w-4 h-4 text-blue-600" />
                         Recipients
                         {recipients.length > 0 && (
-                          <span className="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded-full font-bold">{selectedRecipients.length}/{recipients.length}</span>
+                          <span className="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded-full font-bold">
+                            {recipients.length > 999 ? `${(recipients.length / 1000).toFixed(1)}k` : `${selectedRecipients.length}/${recipients.length}`}
+                          </span>
                         )}
                       </h2>
                       <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-xs h-7 px-2 text-slate-500 hover:text-blue-600"
-                          onClick={downloadCsvTemplate}
-                          data-testid="button-download-template"
-                          title="Download CSV template"
-                        >
+                        <Button variant="ghost" size="sm" className="text-xs h-7 px-2 text-slate-500 hover:text-blue-600" onClick={downloadCsvTemplate} data-testid="button-download-template" title="Download CSV template">
                           <Download className="w-3 h-3 mr-1" />
                           Template
                         </Button>
@@ -475,15 +562,34 @@ export default function ClientCommunications() {
                           {importing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Upload className="w-3 h-3 mr-1" />}
                           Import
                         </Button>
-                        <input
-                          ref={csvInputRef}
-                          type="file"
-                          accept=".csv,.txt,.xlsx"
-                          className="hidden"
-                          onChange={handleCsvImport}
-                        />
+                        <input ref={csvInputRef} type="file" accept=".csv,.txt,.xlsx" className="hidden" onChange={handleCsvImport} />
                       </div>
                     </div>
+
+                    {importing && importProgress.total > 0 && (
+                      <div className="mt-2">
+                        <div className="flex items-center justify-between text-[10px] text-slate-500 mb-1">
+                          <span>Importing {importProgress.current} of {importProgress.total}...</span>
+                          <span className="font-medium text-blue-600">{importProgress.added} added</span>
+                        </div>
+                        <div className="w-full bg-slate-200 rounded-full h-1.5">
+                          <div className="bg-blue-600 h-1.5 rounded-full transition-all duration-300" style={{ width: `${Math.round((importProgress.current / importProgress.total) * 100)}%` }} />
+                        </div>
+                      </div>
+                    )}
+
+                    {contactEnriching && contactEnrichProgress.total > 0 && (
+                      <div className="mt-2">
+                        <div className="flex items-center justify-between text-[10px] text-slate-500 mb-1">
+                          <span>Loading contacts {contactEnrichProgress.current} of {contactEnrichProgress.total}...</span>
+                          <span className="font-medium text-emerald-600">{Math.round((contactEnrichProgress.current / contactEnrichProgress.total) * 100)}%</span>
+                        </div>
+                        <div className="w-full bg-slate-200 rounded-full h-1.5">
+                          <div className="bg-emerald-500 h-1.5 rounded-full transition-all duration-300" style={{ width: `${Math.round((contactEnrichProgress.current / contactEnrichProgress.total) * 100)}%` }} />
+                        </div>
+                      </div>
+                    )}
+
                     <div className="mt-2.5 relative" ref={searchContainerRef}>
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
@@ -503,7 +609,7 @@ export default function ClientCommunications() {
                             const accId = item.account_ID || item.accountID || item.id;
                             const accNo = item.accountNumber || item.accountNo || String(accId);
                             const name = [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown';
-                            const alreadyAdded = recipients.some(r => r.accountId === accId);
+                            const alreadyAdded = recipientSetRef.current.has(accId);
                             const ci = contactIndicators[accId];
                             return (
                               <button
@@ -550,7 +656,20 @@ export default function ClientCommunications() {
                     </div>
                   </div>
 
-                  <div className="max-h-[400px] overflow-auto">
+                  {recipients.length > 0 && (
+                    <div className="flex items-center justify-between px-3 py-1.5 border-b bg-slate-50/80 text-[11px] text-slate-500 shrink-0">
+                      <span className="font-medium">{selectedRecipients.length} of {recipients.length} selected</span>
+                      <div className="flex gap-2">
+                        <button onClick={selectAll} className="text-blue-600 hover:underline font-medium">All</button>
+                        <button onClick={deselectAll} className="text-slate-400 hover:underline">None</button>
+                        {recipients.length > 0 && (
+                          <button onClick={clearAll} className="text-red-400 hover:text-red-600 hover:underline">Clear</button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div ref={recipientListRef} className="flex-1 overflow-auto" style={{ minHeight: 0 }}>
                     {recipients.length === 0 ? (
                       <div className="p-8 text-center">
                         <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
@@ -558,86 +677,79 @@ export default function ClientCommunications() {
                         </div>
                         <p className="text-sm font-medium text-slate-500">No recipients added</p>
                         <p className="text-xs text-slate-400 mt-1">Search for accounts above or import from CSV</p>
-                        <button
-                          onClick={downloadCsvTemplate}
-                          className="mt-3 inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 hover:underline"
-                          data-testid="button-download-template-empty"
-                        >
+                        <button onClick={downloadCsvTemplate} className="mt-3 inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 hover:underline" data-testid="button-download-template-empty">
                           <Download className="w-3 h-3" />
                           Download import template
                         </button>
                       </div>
                     ) : (
-                      <>
-                        <div className="flex items-center justify-between px-3 py-1.5 border-b bg-slate-50/80 text-[11px] text-slate-500">
-                          <span className="font-medium">{selectedRecipients.length} of {recipients.length} selected</span>
-                          <div className="flex gap-2">
-                            <button onClick={selectAll} className="text-blue-600 hover:underline font-medium">Select All</button>
-                            <button onClick={deselectAll} className="text-slate-400 hover:underline">None</button>
-                          </div>
-                        </div>
-                        {recipients.map(r => (
-                          <div key={r.id} className={`flex items-start gap-2.5 px-3 py-2.5 border-b border-slate-100 last:border-b-0 transition-colors ${r.selected ? 'bg-white' : 'bg-slate-50/60 opacity-60'}`}>
-                            <input
-                              type="checkbox"
-                              checked={r.selected}
-                              onChange={() => toggleRecipient(r.id)}
-                              className="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                              data-testid={`checkbox-recipient-${r.accountId}`}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-mono text-[10px] text-blue-600 bg-blue-50 px-1 py-0.5 rounded">{r.accountNo}</span>
-                                <span className="text-xs font-semibold text-slate-800 truncate">{r.name}</span>
-                                {r.contactLoading && <Loader2 className="w-3 h-3 animate-spin text-slate-400" />}
-                              </div>
-                              {r.contactLoaded && (
-                                <div className="mt-1.5 flex flex-col gap-1">
+                      <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
+                        {rowVirtualizer.getVirtualItems().map(virtualRow => {
+                          const r = recipients[virtualRow.index];
+                          return (
+                            <div
+                              key={r.id}
+                              data-index={virtualRow.index}
+                              ref={rowVirtualizer.measureElement}
+                              style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                transform: `translateY(${virtualRow.start}px)`,
+                              }}
+                            >
+                              <div className={`flex items-start gap-2.5 px-3 py-2.5 border-b border-slate-100 transition-colors ${r.selected ? 'bg-white' : 'bg-slate-50/60 opacity-60'}`}>
+                                <input
+                                  type="checkbox"
+                                  checked={r.selected}
+                                  onChange={() => toggleRecipient(r.id)}
+                                  className="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                  data-testid={`checkbox-recipient-${r.accountId}`}
+                                />
+                                <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-1.5">
-                                    <Mail className={`w-3 h-3 shrink-0 ${r.email ? 'text-emerald-500' : 'text-red-300'}`} />
-                                    {r.email ? (
-                                      <input
-                                        type="email"
-                                        value={r.email}
-                                        onChange={e => updateRecipientField(r.id, 'email', e.target.value)}
-                                        className="text-[11px] text-slate-600 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 outline-none py-0 w-full"
-                                      />
-                                    ) : (
-                                      <span className="text-[11px] text-red-400 italic">No email on file</span>
-                                    )}
+                                    <span className="font-mono text-[10px] text-blue-600 bg-blue-50 px-1 py-0.5 rounded">{r.accountNo}</span>
+                                    <span className="text-xs font-semibold text-slate-800 truncate">{r.name}</span>
+                                    {r.contactLoading && <Loader2 className="w-3 h-3 animate-spin text-slate-400" />}
                                   </div>
-                                  {r.additionalEmails.length > 0 && (
-                                    <div className="text-[10px] text-slate-400 pl-[18px]">
-                                      +{r.additionalEmails.length} more: {r.additionalEmails.join(', ')}
+                                  {r.contactLoaded && (
+                                    <div className="mt-1.5 flex flex-col gap-1">
+                                      <div className="flex items-center gap-1.5">
+                                        <Mail className={`w-3 h-3 shrink-0 ${r.email ? 'text-emerald-500' : 'text-red-300'}`} />
+                                        {r.email ? (
+                                          <span className="text-[11px] text-slate-600 truncate">{r.email}</span>
+                                        ) : (
+                                          <span className="text-[11px] text-red-400 italic">No email on file</span>
+                                        )}
+                                      </div>
+                                      {r.additionalEmails.length > 0 && (
+                                        <div className="text-[10px] text-slate-400 pl-[18px]">+{r.additionalEmails.length} more</div>
+                                      )}
+                                      <div className="flex items-center gap-1.5">
+                                        <Phone className={`w-3 h-3 shrink-0 ${r.mobile ? 'text-emerald-500' : 'text-red-300'}`} />
+                                        {r.mobile ? (
+                                          <span className="text-[11px] text-slate-600">{r.mobile}</span>
+                                        ) : (
+                                          <span className="text-[11px] text-red-400 italic">No mobile on file</span>
+                                        )}
+                                      </div>
                                     </div>
                                   )}
-                                  <div className="flex items-center gap-1.5">
-                                    <Phone className={`w-3 h-3 shrink-0 ${r.mobile ? 'text-emerald-500' : 'text-red-300'}`} />
-                                    {r.mobile ? (
-                                      <input
-                                        type="tel"
-                                        value={r.mobile}
-                                        onChange={e => updateRecipientField(r.id, 'mobile', e.target.value)}
-                                        className="text-[11px] text-slate-600 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 outline-none py-0 w-full"
-                                      />
-                                    ) : (
-                                      <span className="text-[11px] text-red-400 italic">No mobile on file</span>
-                                    )}
-                                  </div>
                                 </div>
-                              )}
+                                <button onClick={() => removeRecipient(r.id)} className="text-slate-300 hover:text-red-500 mt-0.5 transition-colors" data-testid={`button-remove-recipient-${r.accountId}`}>
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </div>
-                            <button onClick={() => removeRecipient(r.id)} className="text-slate-300 hover:text-red-500 mt-0.5 transition-colors" data-testid={`button-remove-recipient-${r.accountId}`}>
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ))}
-                      </>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
 
                   {recipients.length > 0 && (
-                    <div className="px-3 py-2 border-t bg-gradient-to-r from-slate-50 to-white rounded-b-xl">
+                    <div className="px-3 py-2 border-t bg-gradient-to-r from-slate-50 to-white shrink-0">
                       <div className="flex items-center justify-between text-[11px]">
                         <span className="flex items-center gap-1 text-slate-500">
                           <Mail className="w-3 h-3" />
@@ -670,13 +782,7 @@ export default function ClientCommunications() {
                     {mode === 'email' && (
                       <div>
                         <Label className="text-xs font-medium text-slate-600 mb-1.5 block">Subject</Label>
-                        <Input
-                          value={subject}
-                          onChange={e => setSubject(e.target.value)}
-                          placeholder="Enter email subject..."
-                          className="h-9 text-sm"
-                          data-testid="input-subject"
-                        />
+                        <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Enter email subject..." className="h-9 text-sm" data-testid="input-subject" />
                       </div>
                     )}
 
@@ -715,13 +821,7 @@ export default function ClientCommunications() {
                             <Plus className="w-3 h-3 mr-1" />
                             Add Files
                           </Button>
-                          <input
-                            ref={fileInputRef}
-                            type="file"
-                            multiple
-                            className="hidden"
-                            onChange={handleFileUpload}
-                          />
+                          <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileUpload} />
                         </div>
                         {attachments.length > 0 ? (
                           <div className="space-y-1.5">
@@ -735,14 +835,10 @@ export default function ClientCommunications() {
                                 </button>
                               </div>
                             ))}
-                            <p className="text-[10px] text-slate-400 pl-1">
-                              Total: {formatFileSize(attachments.reduce((s, a) => s + a.size, 0))}
-                            </p>
+                            <p className="text-[10px] text-slate-400 pl-1">Total: {formatFileSize(attachments.reduce((s, a) => s + a.size, 0))}</p>
                           </div>
                         ) : (
-                          <div className="border-2 border-dashed border-slate-200 rounded-lg p-5 text-center cursor-pointer hover:border-blue-300 hover:bg-blue-50/20 transition-all"
-                            onClick={() => fileInputRef.current?.click()}
-                          >
+                          <div className="border-2 border-dashed border-slate-200 rounded-lg p-5 text-center cursor-pointer hover:border-blue-300 hover:bg-blue-50/20 transition-all" onClick={() => fileInputRef.current?.click()}>
                             <Upload className="w-5 h-5 mx-auto text-slate-300 mb-1.5" />
                             <p className="text-xs text-slate-400">Click to upload or drag and drop</p>
                             <p className="text-[10px] text-slate-300 mt-0.5">PDF, DOCX, XLSX, images, etc.</p>
