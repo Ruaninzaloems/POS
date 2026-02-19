@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   MapPin, Phone, Clock, Download, FileText, Shield, ArrowRight,
   ChevronDown, ChevronUp, Building2, Loader2, Landmark, Gift, Zap,
-  Receipt, AlertCircle, X, CalendarDays, Hash, Scale, Banknote
+  Receipt, AlertCircle, X, CalendarDays, Hash, Scale, Banknote,
+  Mail, MessageSquare, Send, CheckCircle2, Eye, Paperclip, RefreshCw
 } from 'lucide-react';
 import {
   getPropertyDetails, getConsumptionUnits, getSupplementaryValuations,
@@ -15,7 +16,7 @@ import {
   getConsHandoverTransactionDetail, getAccountNotifications,
   getPropertyNotification, getGeneratedStatements,
   getClearanceInquiries, getDebtorNoteLists, getSection129AccountEnquiry,
-  getOccupiers, addOccupier, deleteOccupier,
+  getOccupiers, addOccupier, deleteOccupier, getAdditionalEmails,
 } from '@/lib/enquiries-service';
 import { LoadingSkeleton, EmptyState, ErrorState, PaginatedTable, FieldRow, getFinYearOptions } from './shared';
 import { generateStatementPdf } from '@/lib/statement-pdf';
@@ -1435,6 +1436,636 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
             <div className="flex justify-center pb-5">
               <button onClick={() => setShowProofModal(false)} className="px-6 py-2 bg-slate-800 text-white text-sm rounded hover:bg-slate-700" data-testid="button-close-proof">Close</button>
             </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+type SendMode = 'email' | 'sms';
+interface EmailTarget {
+  address: string;
+  selected: boolean;
+  type: 'primary' | 'additional';
+}
+
+export function SendStatementsTab({ accountId }: { accountId: number }) {
+  const years = useMemo(() => getFinYearOptions(), []);
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  const [mode, setMode] = useState<SendMode>('email');
+  const [fromYear, setFromYear] = useState(years[0]);
+  const [fromMonth, setFromMonth] = useState(months[0]);
+  const [toYear, setToYear] = useState(years[0]);
+  const [toMonth, setToMonth] = useState(months[new Date().getMonth()]);
+  const [statementType, setStatementType] = useState<'account' | 'detailed'>('account');
+
+  const [contactLoading, setContactLoading] = useState(true);
+  const [contactError, setContactError] = useState<string | null>(null);
+  const [primaryEmail, setPrimaryEmail] = useState('');
+  const [additionalEmails, setAdditionalEmails] = useState<string[]>([]);
+  const [mobile, setMobile] = useState('');
+  const [accountHolder, setAccountHolder] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+
+  const [emailTargets, setEmailTargets] = useState<EmailTarget[]>([]);
+  const [smsSelected, setSmsSelected] = useState(true);
+
+  const [customMessage, setCustomMessage] = useState('');
+  const [includeStatementPdf, setIncludeStatementPdf] = useState(true);
+  const [includeTemplateLink, setIncludeTemplateLink] = useState(false);
+
+  const [showPreview, setShowPreview] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  const loadedRef = useRef(false);
+
+  const loadContactInfo = useCallback(async () => {
+    setContactLoading(true);
+    setContactError(null);
+    try {
+      const [nameResult, contactResult] = await Promise.all([
+        getNameInfo(accountId).catch(() => null),
+        getContactDetails(accountId).catch(() => null),
+      ]);
+
+      const n = nameResult || {};
+      const c = Array.isArray(contactResult) ? contactResult[0] : (contactResult || {});
+
+      const name = [n.initials, n.surname || n.lastName].filter(Boolean).join(' ') || c.name || '';
+      setAccountHolder(name);
+      setAccountNumber(String(accountId).padStart(12, '0'));
+
+      const email = c.email || c.eMail || c.emailAddress || c.Email || n.email || n.eMail || '';
+      setPrimaryEmail(email);
+
+      const mob = c.cellphone || c.cellPhone || c.mobile || c.mobileNumber || c.tel_Mobile || n.tel_Mobile || n.cellphone || '';
+      setMobile(mob);
+
+      let addEmails: string[] = [];
+      if (email) {
+        try {
+          const addResult = await getAdditionalEmails(email);
+          addEmails = (Array.isArray(addResult) ? addResult : [])
+            .map((e: any) => e?.email || e?.emailAddress || e?.Email || (typeof e === 'string' ? e : ''))
+            .filter((e: string) => e && e.includes('@') && e !== email);
+        } catch {}
+      }
+      setAdditionalEmails(addEmails);
+
+      const targets: EmailTarget[] = [];
+      if (email) targets.push({ address: email, selected: true, type: 'primary' });
+      addEmails.forEach(ae => targets.push({ address: ae, selected: false, type: 'additional' }));
+      setEmailTargets(targets);
+
+      loadedRef.current = true;
+    } catch (e: any) {
+      setContactError(e.message || 'Failed to load contact information');
+    } finally {
+      setContactLoading(false);
+    }
+  }, [accountId]);
+
+  useEffect(() => {
+    if (!loadedRef.current || accountId) {
+      loadedRef.current = false;
+      loadContactInfo();
+    }
+  }, [accountId, loadContactInfo]);
+
+  const toggleEmailTarget = (idx: number) => {
+    setEmailTargets(prev => prev.map((t, i) => i === idx ? { ...t, selected: !t.selected } : t));
+  };
+
+  const selectedEmails = emailTargets.filter(t => t.selected);
+
+  const getSelectedPeriods = (): string[] => {
+    const periods: string[] = [];
+    const fmIdx = months.indexOf(fromMonth);
+    const tmIdx = months.indexOf(toMonth);
+
+    const sortedYears = [...years].sort();
+    const fyPos = sortedYears.indexOf(fromYear);
+    const tyPos = sortedYears.indexOf(toYear);
+
+    const startYPos = Math.min(fyPos, tyPos);
+    const endYPos = Math.max(fyPos, tyPos);
+
+    for (let yi = startYPos; yi <= endYPos; yi++) {
+      const yr = sortedYears[yi];
+      const startM = yi === Math.min(fyPos, tyPos)
+        ? (fyPos <= tyPos ? fmIdx : tmIdx)
+        : 0;
+      const endM = yi === Math.max(fyPos, tyPos)
+        ? (fyPos <= tyPos ? tmIdx : fmIdx)
+        : 11;
+      for (let mi = startM; mi <= endM; mi++) {
+        periods.push(`${yr} - ${months[mi]}`);
+      }
+    }
+    return periods.length > 0 ? periods : [`${fromYear} - ${fromMonth}`];
+  };
+
+  const handleSend = () => {
+    setSending(true);
+    setSendResult(null);
+
+    const payload = {
+      mode,
+      accountId,
+      accountNumber,
+      accountHolder,
+      statementType,
+      periodFrom: `${fromYear} - ${fromMonth}`,
+      periodTo: `${toYear} - ${toMonth}`,
+      periods: getSelectedPeriods(),
+      includeStatementPdf,
+      includeTemplateLink,
+      customMessage: customMessage || undefined,
+      ...(mode === 'email' ? {
+        emailRecipients: selectedEmails.map(e => e.address),
+        service: 'mimecast',
+      } : {
+        smsRecipient: mobile,
+        service: 'sms-gateway',
+        templateLinkEnabled: true,
+      }),
+    };
+
+    console.log('[SendStatements] DISPATCH payload (not sent):', JSON.stringify(payload, null, 2));
+
+    setTimeout(() => {
+      setSending(false);
+      setSendResult({
+        success: true,
+        message: mode === 'email'
+          ? `Statement delivery queued for ${selectedEmails.length} email address(es). Service: Mimecast (not yet connected).`
+          : `SMS statement link queued for ${mobile}. Service: SMS Gateway (not yet connected).`,
+      });
+    }, 1200);
+  };
+
+  const canSend = mode === 'email'
+    ? selectedEmails.length > 0
+    : (smsSelected && !!mobile);
+
+  if (contactLoading) return <LoadingSkeleton />;
+  if (contactError) return <ErrorState message={contactError} onRetry={loadContactInfo} />;
+
+  return (
+    <div className="p-5 space-y-5" data-testid="send-statements-panel">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-bold text-slate-800">Send Account Statements</h3>
+          <p className="text-xs text-slate-500 mt-0.5">Generate and deliver statements via email or SMS</p>
+        </div>
+        <div className="flex bg-white rounded-lg border shadow-sm p-0.5">
+          <button
+            onClick={() => setMode('email')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${mode === 'email' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}
+            data-testid="button-send-mode-email"
+          >
+            <Mail className="w-3.5 h-3.5" />
+            Email
+          </button>
+          <button
+            onClick={() => setMode('sms')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${mode === 'sms' ? 'bg-green-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}
+            data-testid="button-send-mode-sms"
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            SMS
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <div className="xl:col-span-2 space-y-4">
+
+          <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+            <div className="px-4 py-2.5 bg-gradient-to-r from-slate-700 to-slate-800 flex items-center gap-2">
+              <CalendarDays className="w-4 h-4 text-white" />
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Statement Period & Type</h4>
+            </div>
+            <div className="p-4">
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Account</span>
+                  <span className="text-sm font-mono font-bold text-blue-800">{accountNumber}</span>
+                </div>
+                {accountHolder && (
+                  <div className="text-sm font-medium text-slate-700">{accountHolder}</div>
+                )}
+              </div>
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 block mb-1.5">From Period</label>
+                  <div className="flex gap-2">
+                    <select value={fromYear} onChange={e => setFromYear(e.target.value)} className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" data-testid="select-from-year">
+                      {years.map(y => <option key={y} value={y}>{y}</option>)}
+                    </select>
+                    <select value={fromMonth} onChange={e => setFromMonth(e.target.value)} className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" data-testid="select-from-month">
+                      {months.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 block mb-1.5">To Period</label>
+                  <div className="flex gap-2">
+                    <select value={toYear} onChange={e => setToYear(e.target.value)} className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" data-testid="select-to-year">
+                      {years.map(y => <option key={y} value={y}>{y}</option>)}
+                    </select>
+                    <select value={toMonth} onChange={e => setToMonth(e.target.value)} className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" data-testid="select-to-month">
+                      {months.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 flex items-center gap-5 bg-slate-50 rounded-lg p-3 border border-slate-200">
+                <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Type:</span>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="radio" name="sendStmtType" checked={statementType === 'account'} onChange={() => setStatementType('account')} className="w-3.5 h-3.5 text-blue-600" data-testid="radio-send-account" />
+                  <span className={`font-medium ${statementType === 'account' ? 'text-blue-700' : 'text-slate-500'}`}>Account Statement</span>
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="radio" name="sendStmtType" checked={statementType === 'detailed'} onChange={() => setStatementType('detailed')} className="w-3.5 h-3.5 text-blue-600" data-testid="radio-send-detailed" />
+                  <span className={`font-medium ${statementType === 'detailed' ? 'text-blue-700' : 'text-slate-500'}`}>Detailed Statement</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {mode === 'email' && (
+            <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+              <div className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+                <Paperclip className="w-4 h-4 text-white" />
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider">Delivery Options</h4>
+              </div>
+              <div className="p-4 space-y-3">
+                <label className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 cursor-pointer transition-all">
+                  <input
+                    type="checkbox"
+                    checked={includeStatementPdf}
+                    onChange={e => setIncludeStatementPdf(e.target.checked)}
+                    className="mt-0.5 rounded border-slate-300 text-blue-600"
+                    data-testid="checkbox-include-pdf"
+                  />
+                  <div>
+                    <div className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-orange-500" />
+                      Generate & Attach Statement PDF
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">Generate the statement as a PDF and attach it to the email. Uses the reports service to render the official statement template.</p>
+                  </div>
+                </label>
+                <label className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 cursor-pointer transition-all">
+                  <input
+                    type="checkbox"
+                    checked={includeTemplateLink}
+                    onChange={e => setIncludeTemplateLink(e.target.checked)}
+                    className="mt-0.5 rounded border-slate-300 text-blue-600"
+                    data-testid="checkbox-include-link"
+                  />
+                  <div>
+                    <div className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                      <ArrowRight className="w-4 h-4 text-blue-500" />
+                      Include Statement Link
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">Include a secure link in the email body that opens the statement in the browser. Useful for large statements or when PDF delivery isn't preferred.</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {mode === 'sms' && (
+            <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+              <div className="px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-white" />
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider">SMS Delivery</h4>
+              </div>
+              <div className="p-4 space-y-3">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <p className="text-sm text-green-800">
+                    A secure template link will be generated and sent via SMS. The recipient can open this link to view their statement in the browser.
+                  </p>
+                </div>
+                <label className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 hover:border-green-300 hover:bg-green-50/30 cursor-pointer transition-all">
+                  <input
+                    type="checkbox"
+                    checked={includeTemplateLink}
+                    onChange={e => setIncludeTemplateLink(e.target.checked)}
+                    className="mt-0.5 rounded border-slate-300 text-green-600"
+                    data-testid="checkbox-sms-link"
+                  />
+                  <div>
+                    <div className="text-sm font-semibold text-slate-800">Include Secure Statement Link</div>
+                    <p className="text-xs text-slate-500 mt-0.5">Generate a time-limited secure link for the recipient to view their statement online.</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+            <div className="px-4 py-2.5 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-white" />
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Custom Message (Optional)</h4>
+            </div>
+            <div className="p-4">
+              <textarea
+                value={customMessage}
+                onChange={e => setCustomMessage(e.target.value)}
+                placeholder={mode === 'email' ? "Add a custom message to include in the email body (optional)..." : "Add a custom message to include in the SMS (optional, keep it short)..."}
+                className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                rows={mode === 'email' ? 4 : 2}
+                maxLength={mode === 'sms' ? 120 : undefined}
+                data-testid="textarea-custom-message"
+              />
+              {mode === 'sms' && (
+                <p className="text-[10px] text-slate-400 mt-1">{customMessage.length}/120 characters (remaining space reserved for statement link)</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+            <div className={`px-4 py-2.5 flex items-center justify-between ${mode === 'email' ? 'bg-gradient-to-r from-blue-600 to-blue-700' : 'bg-gradient-to-r from-green-600 to-green-700'}`}>
+              <div className="flex items-center gap-2">
+                {mode === 'email' ? <Mail className="w-4 h-4 text-white" /> : <Phone className="w-4 h-4 text-white" />}
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                  {mode === 'email' ? 'Email Recipients' : 'SMS Recipient'}
+                </h4>
+              </div>
+              <button
+                onClick={loadContactInfo}
+                className="w-6 h-6 rounded-md bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+                title="Refresh contact details"
+                data-testid="button-refresh-contacts"
+              >
+                <RefreshCw className="w-3 h-3 text-white" />
+              </button>
+            </div>
+
+            {mode === 'email' ? (
+              <div className="p-3 space-y-1.5">
+                {emailTargets.length === 0 ? (
+                  <div className="py-6 text-center">
+                    <Mail className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                    <p className="text-sm text-slate-400 font-medium">No email address on file</p>
+                    <p className="text-xs text-slate-400 mt-1">Update the account's contact details to add email</p>
+                  </div>
+                ) : (
+                  emailTargets.map((target, idx) => (
+                    <label
+                      key={idx}
+                      className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-all ${
+                        target.selected
+                          ? 'border-blue-300 bg-blue-50/50 shadow-sm'
+                          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={target.selected}
+                        onChange={() => toggleEmailTarget(idx)}
+                        className="rounded border-slate-300 text-blue-600"
+                        data-testid={`checkbox-email-${idx}`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm text-slate-800 truncate font-medium">{target.address}</div>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                            target.type === 'primary'
+                              ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                              : 'bg-slate-100 text-slate-600 border border-slate-200'
+                          }`}>
+                            {target.type === 'primary' ? 'Default' : 'Additional'}
+                          </span>
+                        </div>
+                      </div>
+                      {target.selected && <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />}
+                    </label>
+                  ))
+                )}
+                <div className="pt-2 border-t border-slate-100 mt-2">
+                  <div className="flex items-center justify-between text-xs text-slate-500">
+                    <span>{selectedEmails.length} of {emailTargets.length} selected</span>
+                    <button
+                      onClick={() => setEmailTargets(prev => prev.map(t => ({ ...t, selected: true })))}
+                      className="text-blue-600 hover:underline text-xs"
+                    >
+                      Select All
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3">
+                {mobile ? (
+                  <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                    smsSelected
+                      ? 'border-green-300 bg-green-50/50 shadow-sm'
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={smsSelected}
+                      onChange={e => setSmsSelected(e.target.checked)}
+                      className="rounded border-slate-300 text-green-600"
+                      data-testid="checkbox-sms-mobile"
+                    />
+                    <div className="flex-1">
+                      <div className="text-sm font-mono font-bold text-slate-800">{mobile}</div>
+                      <span className="inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-green-100 text-green-700 border border-green-200 mt-1">
+                        Mobile
+                      </span>
+                    </div>
+                    {smsSelected && <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />}
+                  </label>
+                ) : (
+                  <div className="py-6 text-center">
+                    <Phone className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                    <p className="text-sm text-slate-400 font-medium">No mobile number on file</p>
+                    <p className="text-xs text-slate-400 mt-1">Update the account's contact details to add a mobile number</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+            <div className="px-4 py-2.5 bg-gradient-to-r from-slate-500 to-slate-600 flex items-center gap-2">
+              <Eye className="w-4 h-4 text-white" />
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Delivery Summary</h4>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Account</span>
+                  <span className="font-mono font-bold text-slate-800">{accountNumber}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Type</span>
+                  <span className="font-medium text-slate-700">{statementType === 'account' ? 'Account' : 'Detailed'}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Period</span>
+                  <span className="font-medium text-slate-700 text-right text-xs">{fromYear} {fromMonth}<br/>→ {toYear} {toMonth}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Channel</span>
+                  <Badge className={mode === 'email' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-green-100 text-green-700 border-green-200'}>
+                    {mode === 'email' ? 'Email (Mimecast)' : 'SMS Gateway'}
+                  </Badge>
+                </div>
+                {mode === 'email' && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Recipients</span>
+                    <span className="font-bold text-blue-700">{selectedEmails.length} address(es)</span>
+                  </div>
+                )}
+                {mode === 'email' && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Attach PDF</span>
+                    <span className={includeStatementPdf ? 'text-green-600 font-semibold' : 'text-slate-400'}>
+                      {includeStatementPdf ? 'Yes' : 'No'}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 space-y-2">
+                <button
+                  onClick={() => setShowPreview(!showPreview)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition-all"
+                  data-testid="button-stmt-preview"
+                >
+                  <Eye className="w-4 h-4" />
+                  {showPreview ? 'Hide Preview' : 'Preview Message'}
+                </button>
+                <button
+                  onClick={handleSend}
+                  disabled={!canSend || sending}
+                  className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 text-white text-sm font-bold rounded-lg transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed ${
+                    mode === 'email'
+                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
+                      : 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800'
+                  }`}
+                  data-testid="button-send-statement"
+                >
+                  {sending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      {mode === 'email' ? 'Send Email' : 'Send SMS'}
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {sendResult && (
+                <div className={`p-3 rounded-lg text-sm flex items-start gap-2 ${
+                  sendResult.success
+                    ? 'bg-green-50 text-green-700 border border-green-200'
+                    : 'bg-red-50 text-red-700 border border-red-200'
+                }`}>
+                  {sendResult.success ? <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" /> : <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />}
+                  <span>{sendResult.message}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+            <p className="text-xs text-amber-700 font-medium flex items-start gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <span>
+                Statement delivery services are not yet connected. Email will use <strong>Mimecast</strong> and SMS will use the <strong>SMS Gateway</strong> when integrated. Payloads are logged for migration to Angular.
+              </span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {showPreview && (
+        <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+          <div className="px-4 py-2.5 bg-gradient-to-r from-slate-700 to-slate-800 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-white" />
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Message Preview</h4>
+            </div>
+            <button onClick={() => setShowPreview(false)} className="w-6 h-6 rounded-md bg-white/20 hover:bg-white/30 flex items-center justify-center" data-testid="button-close-preview">
+              <X className="w-3.5 h-3.5 text-white" />
+            </button>
+          </div>
+          <div className="p-5">
+            {mode === 'email' ? (
+              <div className="space-y-3 text-sm">
+                <div className="flex gap-3">
+                  <span className="text-slate-500 w-20 shrink-0 text-right">To:</span>
+                  <span className="text-slate-700 font-medium">{selectedEmails.map(e => e.address).join('; ') || '(none selected)'}</span>
+                </div>
+                <div className="flex gap-3">
+                  <span className="text-slate-500 w-20 shrink-0 text-right">Subject:</span>
+                  <span className="text-slate-700 font-medium">
+                    Account Statement - {accountNumber} ({fromMonth} {fromYear} to {toMonth} {toYear})
+                  </span>
+                </div>
+                {includeStatementPdf && (
+                  <div className="flex gap-3">
+                    <span className="text-slate-500 w-20 shrink-0 text-right">Attach:</span>
+                    <span className="flex items-center gap-1.5 text-orange-600">
+                      <FileText className="w-3.5 h-3.5" />
+                      Statement_{accountNumber}_{fromMonth}_{toMonth}.pdf
+                    </span>
+                  </div>
+                )}
+                <div className="mt-3 bg-slate-50 rounded-lg p-4 border whitespace-pre-wrap text-slate-700">
+                  <p>Dear {accountHolder || 'Account Holder'},</p>
+                  <br />
+                  <p>Please find your {statementType === 'detailed' ? 'detailed ' : ''}account statement for the period {fromMonth} {fromYear} to {toMonth} {toYear}.</p>
+                  {customMessage && (
+                    <>
+                      <br />
+                      <p>{customMessage}</p>
+                    </>
+                  )}
+                  {includeTemplateLink && (
+                    <>
+                      <br />
+                      <p className="text-blue-600 underline">[View Statement Online →]</p>
+                    </>
+                  )}
+                  <br />
+                  <p>Kind regards,</p>
+                  <p className="font-medium">George Municipality</p>
+                  <p className="text-xs text-slate-500">This is an automated statement from the Municipal Billing System.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex gap-3 text-sm">
+                  <span className="text-slate-500 w-12 shrink-0">To:</span>
+                  <span className="font-mono font-bold text-slate-800">{mobile || '(no number)'}</span>
+                </div>
+                <div className="bg-green-50 rounded-lg p-4 border border-green-200 text-sm text-slate-700">
+                  <p>George Municipality: Your {statementType === 'detailed' ? 'detailed ' : ''}account statement ({fromMonth} - {toMonth} {toYear}) is ready.</p>
+                  {customMessage && <p className="mt-1">{customMessage}</p>}
+                  {includeTemplateLink && (
+                    <p className="mt-1 text-blue-600 underline">[https://statements.george.gov.za/view/...]</p>
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-400">SMS will be delivered via SMS Gateway service (not yet connected)</p>
+              </div>
+            )}
           </div>
         </div>
       )}

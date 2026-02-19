@@ -11,7 +11,7 @@ import {
   AlertTriangle, Clock, ArrowRight, Loader2, SlidersHorizontal,
   Layers, Home, Activity, Users, Receipt, CalendarDays, Banknote, Scale,
   Gauge, Filter, AlertCircle, Briefcase, Star, ScanBarcode, CheckCircle2,
-  CircleDot, Wallet, Gauge as MeterIcon, CalendarCheck, Building2
+  CircleDot, Wallet, Gauge as MeterIcon, CalendarCheck, Building2, Send
 } from 'lucide-react';
 import {
   searchAccounts, getAccountBalance, multiAutocompleteSearch, getAutocompleteType,
@@ -24,7 +24,7 @@ import { AccountInfoTab, NameTab, BalanceDebtTab, LinkedAccountsTab } from './en
 import { ServiceBalanceTab, ConsumptionTab, ServicesMetersTab } from './enquiries/service-tabs';
 import { TransactionSummaryTab, DetailedTransactionListTab, TransactionHistoryTab } from './enquiries/transaction-tabs';
 import { IncentivesTab, DepositsTab, PaymentPlansTab, PaymentExtensionHistoryTab, DebitOrdersTab, RatesValuationsTab } from './enquiries/financial-tabs';
-import { PropertyDetailsTab, ContactInfoTab, HandoverTab, NotificationsTab, StatementsTab, ClearanceTab, DebtorNotesTab, Section129Tab, OccupiersTab } from './enquiries/other-tabs';
+import { PropertyDetailsTab, ContactInfoTab, HandoverTab, NotificationsTab, StatementsTab, ClearanceTab, DebtorNotesTab, Section129Tab, OccupiersTab, SendStatementsTab } from './enquiries/other-tabs';
 import { SEARCH_FIELDS, detectSearchType, SmartSearchDropdown, ExpandableResultRow } from './enquiries/search-components';
 
 function FieldAutocompleteInput({ fieldKey, placeholder, value, onChange, onSelectAllLinked, onSelectByFieldValue, onEnter, onAutoResults }: {
@@ -580,6 +580,7 @@ function GeneralEnquiriesContent() {
           { value: 'rates', label: 'Rates', icon: <Scale className="w-3.5 h-3.5" />, color: 'orange' },
           { value: 'debit-orders', label: 'Debit Orders', icon: <Landmark className="w-3.5 h-3.5" />, color: 'teal' },
           { value: 'statements', label: 'Statements', icon: <FileText className="w-3.5 h-3.5" />, color: 'blue' },
+          { value: 'send-statements', label: 'Send Statements', icon: <Send className="w-3.5 h-3.5" />, color: 'indigo' },
         ],
       },
       {
@@ -732,6 +733,7 @@ function GeneralEnquiriesContent() {
               <TabsContent value="rates" className="m-0"><RatesValuationsTab accountId={accountId} propertyId={propertyId} /></TabsContent>
               <TabsContent value="notifications" className="m-0"><NotificationsTab accountId={accountId} /></TabsContent>
               <TabsContent value="statements" className="m-0"><StatementsTab accountId={accountId} /></TabsContent>
+              <TabsContent value="send-statements" className="m-0"><SendStatementsTab accountId={accountId} /></TabsContent>
               <TabsContent value="clearance" className="m-0"><ClearanceTab accountId={accountId} /></TabsContent>
               <TabsContent value="debtor-notes" className="m-0"><DebtorNotesTab accountId={accountId} /></TabsContent>
               <TabsContent value="section129" className="m-0"><Section129Tab accountId={accountId} /></TabsContent>
