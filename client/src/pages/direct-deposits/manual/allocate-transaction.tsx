@@ -407,28 +407,37 @@ export default function AllocateTransaction() {
       return [];
     };
 
-    for (let i = 0; i < results.length; i++) {
-      results[i] = { ...results[i], status: 'loading' };
+    const BATCH_SIZE = 6;
+    for (let batchStart = 0; batchStart < results.length; batchStart += BATCH_SIZE) {
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, results.length);
+      const batchIndices: number[] = [];
+      for (let i = batchStart; i < batchEnd; i++) {
+        results[i] = { ...results[i], status: 'loading' };
+        batchIndices.push(i);
+      }
       setCsvLookupResults([...results]);
 
-      try {
-        const searchBody: Record<string, any> = { accountNo: results[i].accountNo };
-        const apiResult = await platinumSearchAccountsPayment(searchBody);
-        const items = parseResults(apiResult);
+      const batchPromises = batchIndices.map(async (i) => {
+        try {
+          const searchBody: Record<string, any> = { accountNo: results[i].accountNo };
+          const apiResult = await platinumSearchAccountsPayment(searchBody);
+          const items = parseResults(apiResult);
 
-        if (items.length > 0) {
-          const item = items[0];
-          const accId = item.account_ID || item.accountID || item.id;
-          const name = [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown';
-          const outstanding = item.outStandingAmt || item.outstandingAmount || 0;
-          results[i] = { ...results[i], status: 'found', name, accountId: accId, outstandingAmount: outstanding };
-        } else {
-          results[i] = { ...results[i], status: 'not_found', errorMsg: 'Account not found' };
+          if (items.length > 0) {
+            const item = items[0];
+            const accId = item.account_ID || item.accountID || item.id;
+            const name = [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown';
+            const outstanding = item.outStandingAmt || item.outstandingAmount || 0;
+            results[i] = { ...results[i], status: 'found', name, accountId: accId, outstandingAmount: outstanding };
+          } else {
+            results[i] = { ...results[i], status: 'not_found', errorMsg: 'Account not found' };
+          }
+        } catch (err: any) {
+          results[i] = { ...results[i], status: 'error', errorMsg: err.message || 'Lookup failed' };
         }
-      } catch (err: any) {
-        results[i] = { ...results[i], status: 'error', errorMsg: err.message || 'Lookup failed' };
-      }
+      });
 
+      await Promise.all(batchPromises);
       setCsvLookupResults([...results]);
     }
 
