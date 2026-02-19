@@ -1387,6 +1387,17 @@ export async function registerRoutes(
     }
   });
 
+  // --- Billing Enquiry - Autocomplete ---
+
+  app.get("/api/platinum/billing-enquiry/autocomplete", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/BillingEnquiry/Autocomplete", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   // --- Billing Enquiry - Rebuild ---
 
   app.get("/api/platinum/billing-enquiry/rebuild-full-account", async (req, res) => {

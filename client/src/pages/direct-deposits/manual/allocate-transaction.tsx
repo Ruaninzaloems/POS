@@ -114,63 +114,32 @@ export default function AllocateTransaction() {
           return [];
         };
 
-        const ddSearches: Promise<any>[] = [
-          platinumDDAccountAutocomplete(query).catch(() => null),
-        ];
-        if (isNumeric) {
-          ddSearches.push(platinumDDOldAccountAutocomplete(query).catch(() => null));
-        }
-        const [ddAccountRes, ddOldAccountRes] = await Promise.all(ddSearches);
-
-        const isValidDDResponse = (res: any): any[] | null => {
-          if (!res || res._error || res.error || res.status >= 400) return null;
-          const items = parseResults(res);
-          return items.length > 0 ? items : null;
-        };
-
-        const ddAccountItems = isValidDDResponse(ddAccountRes);
-        const ddOldAccountItems = isValidDDResponse(ddOldAccountRes);
-        let usedDDEndpoint = false;
-
-        if (ddAccountItems) {
-          usedDDEndpoint = true;
-          for (const item of ddAccountItems) {
-            const accId = item.account_ID || item.accountId || item.id;
-            if (accId && !seen.has(accId)) {
-              seen.add(accId);
-              results.push({
-                accountId: accId,
-                accountNo: item.accountNumber || item.accountNo || String(accId),
-                name: item.name || item.displayItem || 'Unknown',
-                oldAccountCode: item.oldAccountCode || '',
-                outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
-                type: 'ACCOUNT',
-                rawData: item,
-              });
+        try {
+          const autocompleteRes = await fetch(`/api/platinum/billing-enquiry/autocomplete?type=accountNumber&search=${encodeURIComponent(query)}`);
+          if (autocompleteRes.ok) {
+            const autocompleteData = await autocompleteRes.json();
+            const items = parseResults(autocompleteData);
+            for (const item of items) {
+              const accId = item.account_ID || item.accountId || item.id;
+              if (accId && !seen.has(accId)) {
+                seen.add(accId);
+                results.push({
+                  accountId: accId,
+                  accountNo: item.accountNumber || item.accountNo || String(accId),
+                  name: item.name || item.displayItem || 'Unknown',
+                  oldAccountCode: item.oldAccountCode || '',
+                  outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
+                  type: 'ACCOUNT',
+                  rawData: item,
+                });
+              }
             }
           }
-        }
-        if (ddOldAccountItems) {
-          usedDDEndpoint = true;
-          for (const item of ddOldAccountItems) {
-            const accId = item.account_ID || item.accountId || item.id;
-            if (accId && !seen.has(accId)) {
-              seen.add(accId);
-              results.push({
-                accountId: accId,
-                accountNo: item.accountNumber || item.accountNo || String(accId),
-                name: item.name || item.displayItem || 'Unknown',
-                oldAccountCode: item.oldAccountCode || query,
-                outstandingAmount: item.outStandingAmt || item.outstandingAmount || 0,
-                type: 'ACCOUNT',
-                description: `Found via old account code: ${query}`,
-                rawData: item,
-              });
-            }
-          }
+        } catch (err) {
+          console.warn('[DD Search] BillingEnquiry/Autocomplete failed, falling back:', err);
         }
 
-        if (!usedDDEndpoint) {
+        if (results.length === 0) {
           const searchBody: Record<string, any> = {};
           if (isNumeric) {
             searchBody.accountNo = query;
@@ -555,7 +524,7 @@ export default function AllocateTransaction() {
                           cashbookID: transaction.cashbookTransactionID || 0,
                           posItemId: transaction.posItem_ID,
                           paymentTypeID: 3,
-                          userId,
+                          userId: -3,
                           finYear,
                           page: 1,
                           pageSize: 100,
@@ -598,7 +567,7 @@ export default function AllocateTransaction() {
                   billType,
                   accountId: (allocType === 'ACCOUNT' || allocType === 'CLEARANCE') ? (line.accountId || 0) : 0,
                   masterId: 0,
-                  userId,
+                  userId: -3,
                   description: line.description || transaction.note || '',
                   groupId: 0,
                   initials: '',
