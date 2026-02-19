@@ -295,14 +295,22 @@ export default function AllocateTransaction() {
               const pagerBody = { page: 1, pageSize: 100, orderby: null, shortDirection: null };
               const accountIdStr = line.accountId ? String(line.accountId) : '';
 
+              let costScheduleId = '0';
               try {
                   if (allocType === 'ACCOUNT' || allocType === 'PREPAID') {
                       console.log(`[Direct Deposit] Step 1: load-details-consumer-services for account ${accountIdStr}`);
-                      await platinumLoadDetailsConsumerServices(pagerBody, { accountId: accountIdStr, OldAccountNumber: line.accountNo || '' });
+                      const consumerList = await platinumLoadDetailsConsumerServices(pagerBody, { accountId: accountIdStr, OldAccountNumber: '' });
 
-                      console.log(`[Direct Deposit] Step 2: get-consumer-details-data for account ${accountIdStr}`);
+                      if (Array.isArray(consumerList) && consumerList.length > 0) {
+                          const matched = consumerList.find((c: any) => String(c.account_ID) === accountIdStr);
+                          const entry = matched || consumerList[0];
+                          costScheduleId = String(entry.id || entry.costScheduleID || '0');
+                          console.log(`[Direct Deposit] Found cost schedule ID: ${costScheduleId} for account ${accountIdStr}`);
+                      }
+
+                      console.log(`[Direct Deposit] Step 2: get-consumer-details-data for account ${accountIdStr}, costSchedule ${costScheduleId}`);
                       await platinumGetConsumerDetailsData({
-                          costScheduleID: '',
+                          costScheduleID: costScheduleId,
                           accountID: accountIdStr,
                           posItemID: transaction.posItem_ID,
                           transactionAmount: line.amount,
@@ -323,7 +331,7 @@ export default function AllocateTransaction() {
                       await platinumLoadDetailsPaymentGrouping({
                           amount: line.amount,
                           dateOfTransaction: transactionDate,
-                          cashbookID: transaction.cashbookTransactionID || null,
+                          cashbookID: transaction.cashbookTransactionID || 0,
                           posItemId: transaction.posItem_ID,
                           paymentTypeID: 3,
                           userId,
@@ -351,25 +359,25 @@ export default function AllocateTransaction() {
                   outstandingAmount: line.amount,
                   paidAmount: line.amount,
                   transactionDate,
-                  reconId: transaction.bankReconID,
+                  reconId: transaction.bankReconID || 0,
                   posItemId: transaction.posItem_ID,
                   billType,
-                  accountId: (allocType === 'ACCOUNT' || allocType === 'PREPAID') ? (line.accountId || null) : null,
-                  masterId: null,
+                  accountId: (allocType === 'ACCOUNT' || allocType === 'PREPAID') ? (line.accountId || 0) : 0,
+                  masterId: 0,
                   userId,
-                  description: line.description || transaction.note,
-                  groupId: allocType === 'GROUP' ? (line.groupId || null) : null,
-                  initials: null,
-                  lastName: null,
+                  description: line.description || transaction.note || '',
+                  groupId: allocType === 'GROUP' ? (line.groupId || 0) : 0,
+                  initials: '',
+                  lastName: '',
                   financialYear: finYear,
-                  miscPaymentGroupId: allocType === 'DIRECT' ? (line.miscPaymentGroupId || null) : null,
+                  miscPaymentGroupId: allocType === 'DIRECT' ? (line.miscPaymentGroupId || 0) : 0,
                   amount: line.amount,
                   vatAmount: 0,
                   totalAmount: line.amount,
                   receiptDate,
                   paymentTypeId: 3,
-                  vatableVote: null,
-                  vatPercentage: null,
+                  vatableVote: 0,
+                  vatPercentage: 0,
               };
 
               console.log('[Direct Deposit] Step 4: submit-details-data:', submitData);
