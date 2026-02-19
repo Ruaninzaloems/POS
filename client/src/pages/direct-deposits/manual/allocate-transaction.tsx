@@ -76,6 +76,8 @@ export default function AllocateTransaction() {
   const [csvLookupResults, setCsvLookupResults] = useState<{ accountNo: string; amount: number; status: 'pending' | 'loading' | 'found' | 'not_found' | 'error'; name?: string; accountId?: number; outstandingAmount?: number; errorMsg?: string }[]>([]);
   const [csvProcessing, setCsvProcessing] = useState(false);
   const [csvStep, setCsvStep] = useState<'upload' | 'preview' | 'lookup' | 'done'>('upload');
+  const [csvPage, setCsvPage] = useState(1);
+  const CSV_PAGE_SIZE = 20;
   const csvFileInputRef = useRef<HTMLInputElement>(null);
   
   const inputRef = useRef<HTMLInputElement>(null);
@@ -391,6 +393,7 @@ export default function AllocateTransaction() {
   const handleCsvLookup = async () => {
     if (csvParsedRows.length === 0) return;
     setCsvStep('lookup');
+    setCsvPage(1);
     setCsvProcessing(true);
 
     type CsvLookupRow = typeof csvLookupResults[number];
@@ -498,6 +501,7 @@ export default function AllocateTransaction() {
     setCsvParsedRows([]);
     setCsvLookupResults([]);
     setCsvStep('upload');
+    setCsvPage(1);
   };
 
   const handleReturnToCashbook = () => {
@@ -1374,19 +1378,36 @@ export default function AllocateTransaction() {
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {csvParsedRows.slice(0, 50).map((row, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50/50">
-                          <td className="px-4 py-2 text-xs text-muted-foreground">{idx + 1}</td>
-                          <td className="px-4 py-2 font-mono text-sm">{row.accountNo}</td>
-                          <td className="px-4 py-2 text-right font-mono text-sm font-medium">R {row.amount.toFixed(2)}</td>
-                        </tr>
-                      ))}
-                      {csvParsedRows.length > 50 && (
-                        <tr><td colSpan={3} className="px-4 py-2 text-center text-xs text-muted-foreground">... and {csvParsedRows.length - 50} more rows</td></tr>
-                      )}
+                      {(() => {
+                        const totalPg = Math.ceil(csvParsedRows.length / CSV_PAGE_SIZE);
+                        const pg = Math.min(csvPage, totalPg || 1);
+                        const start = (pg - 1) * CSV_PAGE_SIZE;
+                        return csvParsedRows.slice(start, start + CSV_PAGE_SIZE).map((row, idx) => (
+                          <tr key={start + idx} className="hover:bg-slate-50/50">
+                            <td className="px-4 py-2 text-xs text-muted-foreground">{start + idx + 1}</td>
+                            <td className="px-4 py-2 font-mono text-sm">{row.accountNo}</td>
+                            <td className="px-4 py-2 text-right font-mono text-sm font-medium">R {row.amount.toFixed(2)}</td>
+                          </tr>
+                        ));
+                      })()}
                     </tbody>
                   </table>
                 </div>
+                {csvParsedRows.length > CSV_PAGE_SIZE && (() => {
+                  const totalPg = Math.ceil(csvParsedRows.length / CSV_PAGE_SIZE);
+                  const pg = Math.min(csvPage, totalPg);
+                  const start = (pg - 1) * CSV_PAGE_SIZE;
+                  return (
+                    <div className="flex items-center justify-between px-1">
+                      <span className="text-xs text-muted-foreground">Showing {start + 1}–{Math.min(start + CSV_PAGE_SIZE, csvParsedRows.length)} of {csvParsedRows.length}</span>
+                      <div className="flex items-center gap-1">
+                        <Button variant="outline" size="icon" className="h-7 w-7" disabled={pg <= 1} onClick={() => setCsvPage(p => Math.max(1, p - 1))}><ChevronLeft className="w-3.5 h-3.5" /></Button>
+                        <span className="text-xs text-muted-foreground px-2">Page {pg} of {totalPg}</span>
+                        <Button variant="outline" size="icon" className="h-7 w-7" disabled={pg >= totalPg} onClick={() => setCsvPage(p => p + 1)}><ChevronRight className="w-3.5 h-3.5" /></Button>
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div className="bg-blue-50 rounded-lg p-3 flex items-center gap-2 text-xs text-blue-700">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>Total import amount: <span className="font-bold font-mono">R {csvParsedRows.reduce((s, r) => s + r.amount, 0).toFixed(2)}</span> | Remaining to allocate: <span className="font-bold font-mono">R {remaining.toFixed(2)}</span></span>
@@ -1430,24 +1451,44 @@ export default function AllocateTransaction() {
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {csvLookupResults.slice(0, 100).map((row, idx) => (
-                        <tr key={idx} className={`${row.status === 'not_found' || row.status === 'error' ? 'bg-red-50/30' : row.status === 'found' ? 'bg-emerald-50/20' : ''}`}>
-                          <td className="px-3 py-2 text-xs text-muted-foreground">{idx + 1}</td>
-                          <td className="px-3 py-2 font-mono text-xs">{row.accountNo}</td>
-                          <td className="px-3 py-2 text-xs truncate max-w-[180px]">{row.name || row.errorMsg || '-'}</td>
-                          <td className="px-3 py-2 text-right font-mono text-xs font-medium">R {row.amount.toFixed(2)}</td>
-                          <td className="px-3 py-2 text-center">
-                            {row.status === 'pending' && <span className="text-xs text-slate-400">Pending</span>}
-                            {row.status === 'loading' && <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500 mx-auto" />}
-                            {row.status === 'found' && <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" />}
-                            {row.status === 'not_found' && <AlertTriangle className="w-4 h-4 text-red-400 mx-auto" />}
-                            {row.status === 'error' && <AlertCircle className="w-4 h-4 text-amber-500 mx-auto" />}
-                          </td>
-                        </tr>
-                      ))}
+                      {(() => {
+                        const totalPg = Math.ceil(csvLookupResults.length / CSV_PAGE_SIZE) || 1;
+                        const pg = Math.min(csvPage, totalPg);
+                        const start = (pg - 1) * CSV_PAGE_SIZE;
+                        return csvLookupResults.slice(start, start + CSV_PAGE_SIZE).map((row, idx) => (
+                          <tr key={start + idx} className={`${row.status === 'not_found' || row.status === 'error' ? 'bg-red-50/30' : row.status === 'found' ? 'bg-emerald-50/20' : ''}`}>
+                            <td className="px-3 py-2 text-xs text-muted-foreground">{start + idx + 1}</td>
+                            <td className="px-3 py-2 font-mono text-xs">{row.accountNo}</td>
+                            <td className="px-3 py-2 text-xs truncate max-w-[180px]">{row.name || row.errorMsg || '-'}</td>
+                            <td className="px-3 py-2 text-right font-mono text-xs font-medium">R {row.amount.toFixed(2)}</td>
+                            <td className="px-3 py-2 text-center">
+                              {row.status === 'pending' && <span className="text-xs text-slate-400">Pending</span>}
+                              {row.status === 'loading' && <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500 mx-auto" />}
+                              {row.status === 'found' && <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" />}
+                              {row.status === 'not_found' && <AlertTriangle className="w-4 h-4 text-red-400 mx-auto" />}
+                              {row.status === 'error' && <AlertCircle className="w-4 h-4 text-amber-500 mx-auto" />}
+                            </td>
+                          </tr>
+                        ));
+                      })()}
                     </tbody>
                   </table>
                 </div>
+                {csvLookupResults.length > CSV_PAGE_SIZE && (() => {
+                  const totalPg = Math.ceil(csvLookupResults.length / CSV_PAGE_SIZE);
+                  const pg = Math.min(csvPage, totalPg);
+                  const start = (pg - 1) * CSV_PAGE_SIZE;
+                  return (
+                    <div className="flex items-center justify-between px-1">
+                      <span className="text-xs text-muted-foreground">Showing {start + 1}–{Math.min(start + CSV_PAGE_SIZE, csvLookupResults.length)} of {csvLookupResults.length}</span>
+                      <div className="flex items-center gap-1">
+                        <Button variant="outline" size="icon" className="h-7 w-7" disabled={pg <= 1} onClick={() => setCsvPage(p => Math.max(1, p - 1))}><ChevronLeft className="w-3.5 h-3.5" /></Button>
+                        <span className="text-xs text-muted-foreground px-2">Page {pg} of {totalPg}</span>
+                        <Button variant="outline" size="icon" className="h-7 w-7" disabled={pg >= totalPg} onClick={() => setCsvPage(p => p + 1)}><ChevronRight className="w-3.5 h-3.5" /></Button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
