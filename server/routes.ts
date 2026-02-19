@@ -850,21 +850,20 @@ export async function registerRoutes(
   app.post("/api/platinum/view-receipt/get-receipt-list", async (req, res) => {
     try {
       const body = req.body;
-      const payload: Record<string, any> = {
-        fromDate: body.fromDate || body.FromDate,
-        toDate: body.toDate || body.ToDate,
-        page: body.page ?? body.Page ?? 1,
-        pageSize: body.pageSize ?? body.PageSize ?? 50,
-        orderby: body.orderby || body.Orderby || 'receiptDate',
-        shortDirection: body.shortDirection || body.ShortDirection || 'desc',
-      };
-      if (body.cashierId || body.CashierId) payload.cashierId = body.cashierId || body.CashierId;
-      if (body.accountNumber || body.AccountNumber) payload.accountNumber = body.accountNumber || body.AccountNumber;
-      if (body.receiptNo || body.ReceiptNo) payload.receiptNo = body.receiptNo || body.ReceiptNo;
+      const params: Record<string, string> = {};
+      if (body.fromDate || body.FromDate) params.FromDate = body.fromDate || body.FromDate;
+      if (body.toDate || body.ToDate) params.ToDate = body.toDate || body.ToDate;
+      params.Page = String(body.page ?? body.Page ?? 1);
+      params.PageSize = String(body.pageSize ?? body.PageSize ?? 50);
+      if (body.orderby || body.Orderby) params.Orderby = body.orderby || body.Orderby;
+      if (body.shortDirection || body.ShortDirection) params.ShortDirection = body.shortDirection || body.ShortDirection;
+      if (body.cashierId || body.CashierId) params.CashierId = String(body.cashierId || body.CashierId);
+      if (body.accountNumber || body.AccountNumber) params.AccountNumber = body.accountNumber || body.AccountNumber;
+      if (body.receiptNo || body.ReceiptNo) params.ReceiptNo = body.receiptNo || body.ReceiptNo;
 
-      console.log(`[get-receipt-list] Request payload:`, JSON.stringify(payload));
+      console.log(`[get-receipt-list] Request params (GET):`, JSON.stringify(params));
 
-      const data = await platinumPost("/api/ViewReceipt/get-receipt-list", payload);
+      const data = await platinumGet("/api/ViewReceipt/get-receipt-list", params);
 
       console.log(`[get-receipt-list] Response type: ${typeof data}, isArray: ${Array.isArray(data)}, keys: ${data && typeof data === 'object' ? Object.keys(data).join(',') : 'N/A'}`);
       if (data && typeof data === 'object' && '_error' in data) {

@@ -30,7 +30,8 @@ export default function ViewReceipts() {
     const { toast } = useToast();
 
     const [cashiers, setCashiers] = useState<ViewReceiptCashier[]>([]);
-    const [cashierFilter, setCashierFilter] = useState("ALL");
+    const { platinumCashierId } = usePos();
+    const [cashierFilter, setCashierFilter] = useState("");
     const [fromDate, setFromDate] = useState<Date | undefined>(() => {
         const d = new Date();
         d.setMonth(d.getMonth() - 1);
@@ -64,6 +65,9 @@ export default function ViewReceipts() {
             try {
                 const data = await fetchViewReceiptCashiers();
                 setCashiers(data);
+                if (!cashierFilter && platinumCashierId) {
+                    setCashierFilter(String(platinumCashierId));
+                }
             } catch (e) {
                 console.warn('Failed to load cashiers', e);
             } finally {
@@ -108,6 +112,14 @@ export default function ViewReceipts() {
     }, []);
 
     const handleSearch = async (page: number = 1) => {
+        if (!cashierFilter) {
+            toast({
+                title: "Cashier Required",
+                description: "Please select a cashier to search receipts.",
+                variant: "destructive",
+            });
+            return;
+        }
         setIsLoading(true);
         try {
             const query: ReceiptSearchQuery = {
@@ -117,11 +129,8 @@ export default function ViewReceipts() {
                 pageSize,
                 orderby: 'receiptDate',
                 shortDirection: 'desc',
+                cashierId: cashierFilter,
             };
-
-            if (cashierFilter && cashierFilter !== "ALL") {
-                query.cashierId = cashierFilter;
-            }
             if (accountFilter) {
                 query.accountNumber = accountFilter;
             }
@@ -182,7 +191,7 @@ export default function ViewReceipts() {
     };
 
     const handleClear = () => {
-        setCashierFilter("ALL");
+        setCashierFilter(platinumCashierId ? String(platinumCashierId) : "");
         const d = new Date();
         d.setMonth(d.getMonth() - 1);
         setFromDate(d);
@@ -291,10 +300,9 @@ export default function ViewReceipts() {
                                         <label className="text-sm font-medium text-left sm:text-right text-slate-600">Cashier Name <span className="text-red-500">*</span></label>
                                         <Select value={cashierFilter} onValueChange={setCashierFilter}>
                                             <SelectTrigger className="h-9" data-testid="select-cashier-filter">
-                                                <SelectValue placeholder={loadingCashiers ? "Loading..." : "-- All --"} />
+                                                <SelectValue placeholder={loadingCashiers ? "Loading..." : "Select a cashier..."} />
                                             </SelectTrigger>
                                             <SelectContent className="max-h-[250px]">
-                                                <SelectItem value="ALL">-- All --</SelectItem>
                                                 {cashiers.map(c => (
                                                     <SelectItem key={c.id} value={String(c.cashierId || c.id)}>
                                                         {getCashierDisplayName(c)}
@@ -475,15 +483,17 @@ export default function ViewReceipts() {
                                 No receipts found. Use the filters above and click Load.
                             </div>
                         ) : receipts.map((receipt, idx) => {
-                            const isCancelled = receipt.isCancelled === 1 || (receipt as any).is_cancelled === 1 || (receipt as any).isCancelled === true;
-                            const acctNo = receipt.accountNumber || (receipt as any).accountNo || '';
-                            const receiptNo = receipt.receiptNo || (receipt as any).receipt_no || '';
-                            const payType = receipt.paymentType || (receipt as any).payment_type || '';
-                            const dateStr = receipt.receiptDate || (receipt as any).receipt_date || '';
-                            const amount = receipt.amount ?? 0;
-                            const cashier = receipt.cashierName || (receipt as any).cashier_name || '';
+                            const r = receipt as any;
+                            const cancelField = r.cancel || '';
+                            const isCancelled = receipt.isCancelled === 1 || r.is_cancelled === 1 || r.isCancelled === true || cancelField.toLowerCase().includes('cancel');
+                            const acctNo = receipt.accountNumber || r.accountNo || r.accountID || '';
+                            const receiptNo = receipt.receiptNo || r.receipt_no || '';
+                            const payType = receipt.paymentType || r.payment_type || '';
+                            const dateStr = receipt.receiptDate || r.receipt_date || '';
+                            const amount = receipt.amount ?? r.receiptAmount ?? 0;
+                            const cashier = receipt.cashierName || r.cashier_name || r.cashier || '';
                             return (
-                                <Card key={receipt.receiptId || idx} className={cn("p-3", isCancelled && "border-red-200 bg-red-50/30")} data-testid={`card-receipt-${idx}`}>
+                                <Card key={r.serialNo || receipt.receiptId || idx} className={cn("p-3", isCancelled && "border-red-200 bg-red-50/30")} data-testid={`card-receipt-${idx}`}>
                                     <div className="flex justify-between items-start gap-2 mb-1.5">
                                         <div className="min-w-0">
                                             <div className="font-mono text-sm font-medium text-blue-700">{receiptNo || '-'}</div>
@@ -556,24 +566,27 @@ export default function ViewReceipts() {
                                     </TableRow>
                                 ) : (
                                     receipts.map((receipt, idx) => {
-                                        const isCancelled = receipt.isCancelled === 1 || (receipt as any).is_cancelled === 1 || (receipt as any).isCancelled === true;
-                                        const acctNo = receipt.accountNumber || (receipt as any).accountNo || (receipt as any).account_number || '';
-                                        const receiptNo = receipt.receiptNo || (receipt as any).receipt_no || '';
-                                        const payType = receipt.paymentType || (receipt as any).payment_type || (receipt as any).payMode || '';
-                                        const payOption = receipt.paymentOption || (receipt as any).payment_option || (receipt as any).billType || '';
-                                        const dateStr = receipt.receiptDate || (receipt as any).receipt_date || '';
-                                        const staged = receipt.isStaged ?? (receipt as any).is_staged ?? (receipt as any).staged ?? false;
-                                        const amount = receipt.amount ?? 0;
-                                        const tender = receipt.tenderAmount ?? (receipt as any).tender_amount ?? 0;
-                                        const change = receipt.changeAmount ?? (receipt as any).change_amount ?? 0;
-                                        const cashier = receipt.cashierName || (receipt as any).cashier_name || '';
-                                        const cashBook = receipt.cashBook || (receipt as any).cash_book || (receipt as any).cashOfficeName || '';
-                                        const cashOffice = receipt.cashOffice || (receipt as any).cash_office || (receipt as any).cashOfficeName || '';
-                                        const cancelReason = receipt.cancellationReason || (receipt as any).cancellation_reason || '';
+                                        const r = receipt as any;
+                                        const cancelField = r.cancel || '';
+                                        const isCancelled = receipt.isCancelled === 1 || r.is_cancelled === 1 || r.isCancelled === true || cancelField.toLowerCase().includes('cancel');
+                                        const acctNo = receipt.accountNumber || r.accountNo || r.accountID || r.account_number || '';
+                                        const receiptNo = receipt.receiptNo || r.receipt_no || '';
+                                        const payType = receipt.paymentType || r.payment_type || r.payMode || '';
+                                        const payOption = receipt.paymentOption || r.payment_option || r.billType || '';
+                                        const dateStr = receipt.receiptDate || r.receipt_date || '';
+                                        const staged = receipt.isStaged ?? r.is_staged ?? r.staged ?? false;
+                                        const stagedStr = typeof staged === 'string' ? staged : (staged ? 'Yes' : 'No');
+                                        const amount = receipt.amount ?? r.receiptAmount ?? 0;
+                                        const tender = receipt.tenderAmount ?? r.tender_amount ?? 0;
+                                        const change = receipt.changeAmount ?? r.change_amount ?? 0;
+                                        const cashier = receipt.cashierName || r.cashier_name || r.cashier || '';
+                                        const cashBook = receipt.cashBook || r.cash_book || r.cashOfficeName || r.cashBook || '';
+                                        const cashOffice = receipt.cashOffice || r.cash_office || r.cashOfficeName || r.cashierOffice || '';
+                                        const cancelReason = receipt.cancellationReason || r.cancellation_reason || r.reasonForCancel || '';
 
                                         return (
                                             <TableRow
-                                                key={receipt.receiptId || idx}
+                                                key={r.serialNo || receipt.receiptId || idx}
                                                 className={cn(
                                                     isCancelled && 'bg-red-50/50',
                                                     'hover:bg-slate-50 cursor-pointer'
@@ -587,10 +600,10 @@ export default function ViewReceipts() {
                                                 <TableCell className="text-xs">{payOption}</TableCell>
                                                 <TableCell className="text-xs whitespace-nowrap">{formatReceiptDate(dateStr)}</TableCell>
                                                 <TableCell className="text-xs">
-                                                    {staged ? (
+                                                    {(stagedStr === 'Yes' || staged === true) ? (
                                                         <Badge variant="outline" className="text-[10px] px-1 py-0 text-green-700 border-green-300 bg-green-50">Yes</Badge>
                                                     ) : (
-                                                        <span className="text-muted-foreground">No</span>
+                                                        <span className="text-muted-foreground">{stagedStr || 'No'}</span>
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-right font-mono font-medium text-xs">
@@ -633,7 +646,7 @@ export default function ViewReceipts() {
                                                             )}
                                                         </div>
                                                     ) : (
-                                                        <Badge variant="outline" className="rounded-sm px-1.5 py-0.5 text-[10px] text-green-700 border-green-300 bg-green-50">Completed</Badge>
+                                                        <Badge variant="outline" className="rounded-sm px-1.5 py-0.5 text-[10px] text-green-700 border-green-300 bg-green-50">{cancelField || 'Active'}</Badge>
                                                     )}
                                                 </TableCell>
                                             </TableRow>
