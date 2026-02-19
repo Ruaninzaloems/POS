@@ -470,7 +470,7 @@ export default function UnmatchedQueue() {
 
   return (
     <PosLayout>
-      <div className="flex-1 flex flex-col h-full bg-gradient-to-br from-slate-50 to-slate-100/80">
+      <div className="flex-1 flex flex-col h-full bg-gradient-to-br from-slate-50 to-slate-100/80 overflow-hidden">
         <div className="px-4 sm:px-6 py-3 sm:py-4 border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3">
             <div>

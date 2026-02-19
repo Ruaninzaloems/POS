@@ -186,7 +186,7 @@ export default function AllocationHistory() {
 
   return (
     <PosLayout>
-       <div className="flex-1 flex flex-col h-full bg-slate-50/50">
+       <div className="flex-1 flex flex-col h-full bg-slate-50/50 overflow-y-auto">
         <div className="p-3 sm:p-6 border-b bg-white flex flex-col gap-3 sm:gap-4">
              {/* Header Row */}
              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">

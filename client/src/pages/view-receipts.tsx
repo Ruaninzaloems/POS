@@ -273,7 +273,7 @@ export default function ViewReceipts() {
 
     return (
         <PosLayout>
-            <div className="flex-1 flex flex-col h-full bg-slate-100 overflow-hidden">
+            <div className="flex-1 flex flex-col h-full bg-slate-100 overflow-y-auto">
                 <div className="bg-white border-b shadow-sm">
                     <div className="px-3 sm:px-6 py-3 sm:py-4 border-b">
                         <h1 className="text-lg sm:text-xl font-bold text-slate-800" data-testid="text-page-title">View Receipts</h1>

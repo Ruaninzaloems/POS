@@ -879,7 +879,7 @@ export default function AllocateTransaction() {
 
   return (
     <PosLayout>
-      <div className="flex-1 flex flex-col h-full bg-gradient-to-br from-slate-50 to-slate-100/80">
+      <div className="flex-1 flex flex-col h-full bg-gradient-to-br from-slate-50 to-slate-100/80 overflow-hidden">
         <div className="px-3 sm:px-8 py-3 sm:py-5 border-b bg-white/80 backdrop-blur-sm flex items-center gap-2 sm:gap-4 sticky top-0 z-20">
              <Link href="/direct-deposits/manual">
                 <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9 rounded-full hover:bg-slate-100" data-testid="button-back">
