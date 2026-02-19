@@ -33,9 +33,8 @@ export default function ViewReceipts() {
     const { platinumCashierId } = usePos();
     const [cashierFilter, setCashierFilter] = useState("");
     const [fromDate, setFromDate] = useState<Date | undefined>(() => {
-        const d = new Date();
-        d.setDate(d.getDate() - 7);
-        return d;
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth() >= 6 ? 6 : 0, 1);
     });
     const [toDate, setToDate] = useState<Date | undefined>(new Date());
     const [accountFilter, setAccountFilter] = useState("");
@@ -120,7 +119,8 @@ export default function ViewReceipts() {
             });
             return;
         }
-        if ((!cashierFilter || cashierFilter === '0') && !accountFilter && !receiptFilter) {
+        const hasSpecificFilter = !!accountFilter || !!receiptFilter;
+        if ((!cashierFilter || cashierFilter === '0') && !hasSpecificFilter) {
             const from = fromDate || new Date();
             const to = toDate || new Date();
             const diffDays = Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
@@ -133,10 +133,11 @@ export default function ViewReceipts() {
                 return;
             }
         }
+        const effectiveFromDate = fromDate || new Date();
         setIsLoading(true);
         try {
             const query: ReceiptSearchQuery = {
-                fromDate: fromDate ? format(fromDate, "yyyy-MM-dd'T'00:00:00") : format(new Date(), "yyyy-MM-dd'T'00:00:00"),
+                fromDate: format(effectiveFromDate, "yyyy-MM-dd'T'00:00:00"),
                 toDate: toDate ? format(toDate, "yyyy-MM-dd'T'23:59:59") : undefined,
                 page,
                 pageSize,
@@ -205,9 +206,8 @@ export default function ViewReceipts() {
 
     const handleClear = () => {
         setCashierFilter("0");
-        const d = new Date();
-        d.setDate(d.getDate() - 7);
-        setFromDate(d);
+        const now = new Date();
+        setFromDate(new Date(now.getFullYear(), now.getMonth() >= 6 ? 6 : 0, 1));
         setToDate(new Date());
         setAccountFilter("");
         setReceiptFilter("");
