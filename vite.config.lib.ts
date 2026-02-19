@@ -19,19 +19,19 @@ export default defineConfig({
   },
   root: path.resolve(import.meta.dirname, "client"),
   build: {
-    outDir: path.resolve(import.meta.dirname, "dist/lib"),
-    emptyOutDir: true,
+    outDir: path.resolve(import.meta.dirname, "dist"),
+    emptyOutDir: false,
     lib: {
       entry: path.resolve(import.meta.dirname, "client/src/mount.ts"),
       name: "PosApp",
-      fileName: (format) => `pos-app.${format}.js`,
-      formats: ["es", "umd"],
+      fileName: () => "bundle.js",
+      formats: ["es"],
     },
     rollupOptions: {
       output: {
         exports: "named",
         inlineDynamicImports: true,
-        assetFileNames: "pos-app.[ext]",
+        assetFileNames: "bundle.[ext]",
       },
     },
     cssCodeSplit: false,

@@ -2,6 +2,8 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import path from "path";
+import { existsSync } from "fs";
 
 const app = express();
 const httpServer = createServer(app);
@@ -59,6 +61,30 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  app.get("/dist/bundle.js", (req: Request, res: Response) => {
+    res.set({
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Content-Type": "application/javascript; charset=utf-8",
+      "Cache-Control": "public, max-age=3600",
+    });
+    const bundlePath = path.resolve(import.meta.dirname, "..", "dist", "bundle.js");
+    if (!existsSync(bundlePath)) {
+      return res.status(404).json({ message: "Bundle not built. Run: npm run build:lib" });
+    }
+    return res.sendFile(bundlePath);
+  });
+
+  app.options("/dist/bundle.js", (_req: Request, res: Response) => {
+    res.set({
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    });
+    return res.sendStatus(204);
+  });
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
