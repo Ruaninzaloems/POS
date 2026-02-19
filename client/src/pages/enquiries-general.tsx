@@ -714,7 +714,7 @@ function GeneralEnquiriesContent() {
             </div>
             <div className="flex-1 overflow-auto bg-gradient-to-b from-slate-50/80 to-slate-100/50">
               <TabsContent value="account" className="m-0"><AccountInfoTab account={selectedAccount} /></TabsContent>
-              <TabsContent value="name" className="m-0"><NameTab accountId={accountId} /></TabsContent>
+              <TabsContent value="name" className="m-0"><NameTab accountId={accountId} onNavigateToAccount={(acct) => { setSelectedAccount(acct); setActiveTab('account'); }} /></TabsContent>
               <TabsContent value="balance" className="m-0"><BalanceDebtTab accountId={accountId} /></TabsContent>
               <TabsContent value="services" className="m-0"><ServiceBalanceTab accountId={accountId} /></TabsContent>
               <TabsContent value="property" className="m-0"><PropertyDetailsTab accountId={accountId} /></TabsContent>

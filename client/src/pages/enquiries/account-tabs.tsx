@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import {
   User, Building2, MapPin, Phone, CreditCard, FileText, Shield,
   Gift, Landmark, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
-  RefreshCw, AlertTriangle,
+  RefreshCw, AlertTriangle, Search, Eye,
   Briefcase, Heart, Users, Receipt, Banknote, Scale, Gauge,
   Home, Layers
 } from 'lucide-react';
@@ -24,6 +24,7 @@ import {
   getPaymentPlanRemainingCapital, getAccountRatesDetails,
   getLinkedAccountsOnProperty,
   type EnquirySearchResult,
+  type EnquirySearchCriteria,
 } from '@/lib/enquiries-service';
 import { LoadingSkeleton, EmptyState, ErrorState, InfoField, SectionHeader, PaginatedTable, FieldRow, TabCard, getFinYearOptions } from './shared';
 
@@ -377,15 +378,20 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
   );
 }
 
-export function NameTab({ accountId }: { accountId: number }) {
+export function NameTab({ accountId, onNavigateToAccount }: { accountId: number; onNavigateToAccount?: (account: EnquirySearchResult) => void }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const prevAccountId = useRef<number | null>(null);
+  const [relatedAccounts, setRelatedAccounts] = useState<EnquirySearchResult[]>([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
+  const [relatedSearched, setRelatedSearched] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setRelatedAccounts([]);
+    setRelatedSearched(false);
     try {
       const result = await getNameInfo(accountId);
       setData(result);
@@ -402,6 +408,56 @@ export function NameTab({ accountId }: { accountId: number }) {
       load();
     }
   }, [accountId, load]);
+
+  const searchRelatedAccounts = useCallback(async () => {
+    if (!data) return;
+    setRelatedLoading(true);
+    setRelatedSearched(true);
+    try {
+      const results: EnquirySearchResult[] = [];
+      const seen = new Set<number>();
+      seen.add(accountId);
+
+      const idNo = data.idNo_RegistrationNo;
+      if (idNo && idNo !== '-' && idNo.trim()) {
+        try {
+          const idResults = await searchAccounts({ idNo });
+          if (Array.isArray(idResults)) {
+            for (const r of idResults) {
+              const aid = r.account_ID || r.accountID;
+              if (aid && !seen.has(aid)) {
+                seen.add(aid);
+                results.push(r);
+              }
+            }
+          }
+        } catch {}
+      }
+
+      const fullName = [data.firstNames, data.surname_Company].filter(Boolean).join(' ').trim();
+      const searchName = data.surname_Company || fullName;
+      if (searchName && searchName !== '-' && searchName.trim()) {
+        try {
+          const nameResults = await searchAccounts({ name: searchName });
+          if (Array.isArray(nameResults)) {
+            for (const r of nameResults) {
+              const aid = r.account_ID || r.accountID;
+              if (aid && !seen.has(aid)) {
+                seen.add(aid);
+                results.push(r);
+              }
+            }
+          }
+        } catch {}
+      }
+
+      setRelatedAccounts(results);
+    } catch {
+      setRelatedAccounts([]);
+    } finally {
+      setRelatedLoading(false);
+    }
+  }, [data, accountId]);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
@@ -489,6 +545,99 @@ export function NameTab({ accountId }: { accountId: number }) {
               <InfoField label="Telephone (Mobile)" value={n.kinMobile} />
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2 justify-between">
+          <div className="flex items-center gap-2">
+            <Layers className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">All Accounts for This Person</h3>
+          </div>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="h-7 text-xs bg-white/20 text-white hover:bg-white/30 border-0 gap-1.5"
+            onClick={searchRelatedAccounts}
+            disabled={relatedLoading}
+            data-testid="button-find-related-accounts"
+          >
+            {relatedLoading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
+            {relatedLoading ? 'Searching...' : relatedSearched ? 'Refresh' : 'Find Accounts'}
+          </Button>
+        </div>
+        <div className="p-5">
+          {!relatedSearched && !relatedLoading && (
+            <div className="text-center py-6">
+              <Layers className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground mb-1">Search for all accounts linked to this person</p>
+              <p className="text-xs text-muted-foreground">
+                {n.idNo_RegistrationNo && n.idNo_RegistrationNo !== '-'
+                  ? `Will search by ID Number (${n.idNo_RegistrationNo}) and Name (${[n.firstNames, n.surname_Company].filter(Boolean).join(' ').trim() || '-'})`
+                  : `Will search by Name (${[n.firstNames, n.surname_Company].filter(Boolean).join(' ').trim() || '-'})`}
+              </p>
+            </div>
+          )}
+          {relatedLoading && (
+            <div className="flex items-center justify-center py-8 gap-2 text-sm text-muted-foreground">
+              <RefreshCw className="w-4 h-4 animate-spin text-purple-500" />
+              Searching for related accounts...
+            </div>
+          )}
+          {relatedSearched && !relatedLoading && relatedAccounts.length === 0 && (
+            <div className="text-center py-6">
+              <AlertTriangle className="w-6 h-6 text-slate-300 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No other accounts found for this person</p>
+            </div>
+          )}
+          {relatedSearched && !relatedLoading && relatedAccounts.length > 0 && (
+            <div>
+              <div className="text-xs text-muted-foreground mb-3">{relatedAccounts.length} other account(s) found</div>
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 border-b">
+                      <th className="text-left px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Account No</th>
+                      <th className="text-left px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Name</th>
+                      <th className="text-left px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">ID Number</th>
+                      <th className="text-left px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Address</th>
+                      <th className="text-left px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                      <th className="px-4 py-2 w-16"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {relatedAccounts.map((acc, idx) => {
+                      const aid = acc.account_ID || acc.accountID;
+                      return (
+                        <tr key={`${aid}-${idx}`} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-2.5 font-mono text-xs font-medium text-slate-700">{acc.accountNumber || acc.oldAccountCode || String(aid)}</td>
+                          <td className="px-4 py-2.5 text-xs text-slate-700">{acc.name || [acc.initials, acc.surname_Company].filter(Boolean).join(' ') || '-'}</td>
+                          <td className="px-4 py-2.5 font-mono text-xs text-slate-500">{acc.idRegistrationNumber || '-'}</td>
+                          <td className="px-4 py-2.5 text-xs text-slate-500 max-w-[200px] truncate">{acc.locationAddress || acc.deliveryAddress || acc.address || '-'}</td>
+                          <td className="px-4 py-2.5">
+                            <Badge variant="secondary" className={`text-[10px] ${
+                              acc.accountStatus?.toLowerCase() === 'active' ? 'bg-green-50 text-green-700' :
+                              acc.accountStatus?.toLowerCase() === 'closed' || acc.accountStatus?.toLowerCase() === 'inactive' ? 'bg-red-50 text-red-700' :
+                              'bg-slate-100 text-slate-600'
+                            }`}>
+                              {acc.accountStatus || '-'}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-2.5">
+                            {onNavigateToAccount && (
+                              <Button variant="ghost" size="sm" className="h-6 text-[10px] text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2" onClick={() => onNavigateToAccount(acc)} data-testid={`button-view-account-${aid}`}>
+                                <Eye className="w-3 h-3 mr-1" /> View
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
