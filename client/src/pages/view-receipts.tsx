@@ -424,7 +424,7 @@ export default function ViewReceipts() {
                     </div>
                 </div>
 
-                <div className="flex-1 p-3 sm:p-6 overflow-hidden flex flex-col">
+                <div className="flex-1 p-3 sm:p-6 min-h-0 flex flex-col">
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3 sm:mb-4">
                         <div className="text-xs font-bold text-slate-500 uppercase tracking-wider border-l-2 border-slate-500 pl-2 flex items-center gap-2">
                             Receipt Information {totalCount > 0 && <span className="text-blue-600">({totalCount} records)</span>}

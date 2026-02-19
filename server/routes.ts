@@ -849,9 +849,22 @@ export async function registerRoutes(
 
   app.post("/api/platinum/view-receipt/get-receipt-list", async (req, res) => {
     try {
-      console.log(`[get-receipt-list] Request payload:`, JSON.stringify(req.body));
+      const body = req.body;
+      const payload: Record<string, any> = {
+        fromDate: body.fromDate || body.FromDate,
+        toDate: body.toDate || body.ToDate,
+        page: body.page ?? body.Page ?? 1,
+        pageSize: body.pageSize ?? body.PageSize ?? 50,
+        orderby: body.orderby || body.Orderby || 'receiptDate',
+        shortDirection: body.shortDirection || body.ShortDirection || 'desc',
+      };
+      if (body.cashierId || body.CashierId) payload.cashierId = body.cashierId || body.CashierId;
+      if (body.accountNumber || body.AccountNumber) payload.accountNumber = body.accountNumber || body.AccountNumber;
+      if (body.receiptNo || body.ReceiptNo) payload.receiptNo = body.receiptNo || body.ReceiptNo;
 
-      const data = await platinumPost("/api/ViewReceipt/get-receipt-list", req.body);
+      console.log(`[get-receipt-list] Request payload:`, JSON.stringify(payload));
+
+      const data = await platinumPost("/api/ViewReceipt/get-receipt-list", payload);
 
       console.log(`[get-receipt-list] Response type: ${typeof data}, isArray: ${Array.isArray(data)}, keys: ${data && typeof data === 'object' ? Object.keys(data).join(',') : 'N/A'}`);
       if (data && typeof data === 'object' && '_error' in data) {
