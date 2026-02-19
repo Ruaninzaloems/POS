@@ -1,10 +1,18 @@
+import { resolveApiUrl, getAuthHeaders } from "./pos-config-context";
+
 const TIMEOUT_MS = 30000;
 
 async function fetchWithTimeout(url: string, options?: RequestInit): Promise<any> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(url, { ...options, signal: controller.signal });
+    const resolved = resolveApiUrl(url);
+    const authHeaders = getAuthHeaders();
+    const mergedHeaders = {
+      ...authHeaders,
+      ...(options?.headers as Record<string, string> || {}),
+    };
+    const res = await fetch(resolved, { ...options, headers: mergedHeaders, credentials: "include", signal: controller.signal });
     clearTimeout(timeoutId);
     if (!res.ok) throw new Error(`API error: ${res.status}`);
     const data = await res.json();

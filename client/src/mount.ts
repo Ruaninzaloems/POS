@@ -3,6 +3,7 @@ import { COMPONENT_TAG, type PosAppElement } from "./web-component";
 
 export interface PosAppProps {
   apiBaseUrl?: string;
+  authToken?: string;
   [key: string]: any;
 }
 
@@ -20,6 +21,9 @@ export function render(
 
   if (props.apiBaseUrl) {
     el.setAttribute("api-base-url", props.apiBaseUrl);
+  }
+  if (props.authToken) {
+    el.setAttribute("auth-token", props.authToken);
   }
 
   container.appendChild(el);

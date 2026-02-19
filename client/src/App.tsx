@@ -1,4 +1,5 @@
 import { Component, type ReactNode, useState, useEffect } from "react";
+import { resolveApiUrl, getAuthHeaders } from "@/lib/pos-config-context";
 import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -108,7 +109,10 @@ function App() {
   const [authKey, setAuthKey] = useState(0);
 
   useEffect(() => {
-    fetch('/api/auth/status')
+    fetch(resolveApiUrl('/api/auth/status'), {
+      credentials: "include",
+      headers: { ...getAuthHeaders() },
+    })
       .then(res => res.json())
       .then(data => {
         setAuthenticated(data.authenticated === true);

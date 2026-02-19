@@ -24,7 +24,7 @@ class PosAppElement extends HTMLElement {
   private _props: Record<string, any> = {};
 
   static get observedAttributes() {
-    return ["api-base-url"];
+    return ["api-base-url", "auth-token"];
   }
 
   async connectedCallback() {
@@ -82,7 +82,13 @@ class PosAppElement extends HTMLElement {
   private _buildConfig(): PosAppConfig {
     const apiBaseUrl =
       this.getAttribute("api-base-url") || this._props.apiBaseUrl;
-    return { ...this._props, ...(apiBaseUrl ? { apiBaseUrl } : {}) };
+    const authToken =
+      this.getAttribute("auth-token") || this._props.authToken;
+    return {
+      ...this._props,
+      ...(apiBaseUrl ? { apiBaseUrl } : {}),
+      ...(authToken ? { authToken } : {}),
+    };
   }
 
   private _renderApp() {

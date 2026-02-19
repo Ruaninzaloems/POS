@@ -91,3 +91,13 @@ Preferred communication style: Simple, everyday language.
 -   `vite.config.lib.ts`: Library build config producing single-file ES and UMD bundles with inlined CSS.
 -   Build command: `npx vite build --config vite.config.lib.ts` → output in `dist/lib/`.
 -   Local database (`storage.ts`, `db.ts`) is dead code — never called from routes or client. All persistence uses Platinum API.
+
+### MANDATORY Development Rules (Web Component / Angular Embedding)
+All new code MUST follow these rules to keep the app embeddable in Angular:
+1.  **ReactDOM.createRoot in connectedCallback()** — The Custom Element creates the React root inside `connectedCallback()`. Never call `createRoot` outside the web component lifecycle.
+2.  **HTML Attributes as Props** — `api-base-url` and `auth-token` are accepted as HTML attributes on `<pos-app>`, mapped into `PosConfigProvider` context, and consumed by all API calls via `resolveApiUrl()` and `getAuthHeaders()`.
+3.  **Single File Build** — `vite.config.lib.ts` uses `inlineDynamicImports: true` and `cssCodeSplit: false` to produce exactly ONE `pos-app.es.js` and ONE `pos-app.umd.js` with no chunks.
+4.  **CSS Scoped via Shadow DOM** — All styles (Tailwind + custom) are loaded via `?inline` import and applied to the Shadow DOM using `adoptedStyleSheets`. No global `:root` or `body` styles leak to the Angular parent.
+5.  **All fetch() calls go through `apiFetch()` or `resolveApiUrl()`** — Every API call in `external-api.ts`, `enquiries-service.ts`, `queryClient.ts`, and `App.tsx` uses the centralized URL resolver and auth header injector. Raw `fetch('/api/...')` calls are prohibited.
+6.  **No localStorage / sessionStorage** — All state comes from APIs.
+7.  **No local database writes** — `storage.ts` and `db.ts` are dead code. All persistence goes through Platinum API.
