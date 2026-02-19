@@ -10,7 +10,7 @@ import { AllocationLine } from '@/lib/direct-deposits-data';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { Account, ClearanceCostSchedule } from '@/lib/mock-data';
-import { platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, platinumLoadDetailsPaymentGrouping, platinumLoadConfirmPaymentDetails, rebuildFullAccount, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, fetchMiscPaymentGroups, fetchMiscPaymentScoaItems } from '@/lib/external-api';
+import { platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, platinumLoadDetailsPaymentGrouping, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, rebuildFullAccount, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, fetchMiscPaymentGroups, fetchMiscPaymentScoaItems } from '@/lib/external-api';
 
 interface BankReconPosItem {
   posItem_ID: number;
@@ -58,7 +58,7 @@ export default function AllocateTransaction() {
   
   const [searchScope, setSearchScope] = useState<'ALL' | 'ACCOUNT' | 'CLEARANCE' | 'DIRECT'>('ALL');
   
-  const [selectedAccount, setSelectedAccount] = useState<{accountNo: string, name: string, description?: string, accountId?: number, allocationType?: string} | null>(null);
+  const [selectedAccount, setSelectedAccount] = useState<{accountNo: string, name: string, description?: string, accountId?: number, allocationType?: string, miscPaymentGroupId?: number} | null>(null);
   const [newLineAmount, setNewLineAmount] = useState('');
 
   const [selectedClearance, setSelectedClearance] = useState<ClearanceCostSchedule | null>(null);
@@ -238,6 +238,7 @@ export default function AllocateTransaction() {
         description: result.description || result.name,
         accountId: 0,
         allocationType: 'DIRECT',
+        miscPaymentGroupId: result.rawData?.id || 0,
       });
       setNewLineAmount("0.00");
       setSelectedClearance(null);
@@ -322,6 +323,7 @@ export default function AllocateTransaction() {
           description: selectedAccount.description || `Payment to ${selectedAccount.name}`,
           allocationType: selectedAccount.allocationType || 'ACCOUNT',
           accountId: selectedAccount.accountId,
+          miscPaymentGroupId: selectedAccount.miscPaymentGroupId,
       }]);
       
       setSelectedAccount(null);
@@ -467,6 +469,18 @@ export default function AllocateTransaction() {
                           page: 1,
                           pageSize: 100,
                       });
+                  } else if (allocType === 'CLEARANCE') {
+                      console.log(`[Direct Deposit] Step 1: load-details-clearance`);
+                      const pagerBody = { page: 1, pageSize: 100, orderby: null, shortDirection: null };
+                      await platinumLoadDetailsClearance(pagerBody);
+
+                      console.log(`[Direct Deposit] Step 2: get-clearance-details-info for ${accountIdStr}`);
+                      await platinumGetClearanceDetailsInfo({
+                          costScheduleID: accountIdStr,
+                          accountID: accountIdStr,
+                          posItemID: transaction.posItem_ID,
+                          transactionAmount: line.amount,
+                      });
                   }
               } catch (prepErr) {
                   console.warn(`[Direct Deposit] Preparation step warning (non-blocking):`, prepErr);
@@ -490,7 +504,7 @@ export default function AllocateTransaction() {
                   reconId: transaction.bankReconID || 0,
                   posItemId: transaction.posItem_ID,
                   billType,
-                  accountId: allocType === 'ACCOUNT' ? (line.accountId || 0) : 0,
+                  accountId: (allocType === 'ACCOUNT' || allocType === 'CLEARANCE') ? (line.accountId || 0) : 0,
                   masterId: 0,
                   userId,
                   description: line.description || transaction.note || '',
@@ -498,7 +512,7 @@ export default function AllocateTransaction() {
                   initials: '',
                   lastName: '',
                   financialYear: finYear,
-                  miscPaymentGroupId: 0,
+                  miscPaymentGroupId: (allocType === 'DIRECT' || allocType === 'GROUP') ? (line.miscPaymentGroupId || 0) : 0,
                   amount: line.amount,
                   vatAmount: 0,
                   totalAmount: line.amount,
