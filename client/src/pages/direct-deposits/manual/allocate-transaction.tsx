@@ -79,6 +79,7 @@ export default function AllocateTransaction() {
   const [csvPage, setCsvPage] = useState(1);
   const CSV_PAGE_SIZE = 20;
   const csvFileInputRef = useRef<HTMLInputElement>(null);
+  const csvCancelRef = useRef(false);
   
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -422,6 +423,7 @@ export default function AllocateTransaction() {
     setCsvStep('lookup');
     setCsvPage(1);
     setCsvProcessing(true);
+    csvCancelRef.current = false;
 
     type CsvLookupRow = typeof csvLookupResults[number];
     const results: CsvLookupRow[] = csvParsedRows.map(row => ({
@@ -439,6 +441,8 @@ export default function AllocateTransaction() {
 
     const BATCH_SIZE = 50;
     for (let batchStart = 0; batchStart < results.length; batchStart += BATCH_SIZE) {
+      if (csvCancelRef.current) break;
+
       const batchEnd = Math.min(batchStart + BATCH_SIZE, results.length);
       const batchIndices: number[] = [];
       for (let i = batchStart; i < batchEnd; i++) {
@@ -448,6 +452,7 @@ export default function AllocateTransaction() {
       setCsvLookupResults([...results]);
 
       const batchPromises = batchIndices.map(async (i) => {
+        if (csvCancelRef.current) return;
         try {
           const searchBody: Record<string, any> = { accountNo: results[i].accountNo };
           const apiResult = await platinumSearchAccountsPayment(searchBody);
@@ -471,8 +476,21 @@ export default function AllocateTransaction() {
       setCsvLookupResults([...results]);
     }
 
+    if (csvCancelRef.current) {
+      for (let i = 0; i < results.length; i++) {
+        if (results[i].status === 'loading' || results[i].status === 'pending') {
+          results[i] = { ...results[i], status: 'error', errorMsg: 'Cancelled' };
+        }
+      }
+      setCsvLookupResults([...results]);
+    }
+
     setCsvProcessing(false);
     setCsvStep('done');
+  };
+
+  const handleCsvCancelLookup = () => {
+    csvCancelRef.current = true;
   };
 
   const handleCsvAddToLines = () => {
@@ -1444,12 +1462,28 @@ export default function AllocateTransaction() {
 
             {(csvStep === 'lookup' || csvStep === 'done') && (
               <div className="space-y-3 p-1">
-                {csvProcessing && (
-                  <div className="flex items-center gap-2 text-sm text-blue-700 bg-blue-50 rounded-lg p-3">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Looking up accounts... {csvLookupResults.filter(r => r.status === 'found' || r.status === 'not_found' || r.status === 'error').length} / {csvLookupResults.length}</span>
-                  </div>
-                )}
+                {csvProcessing && (() => {
+                  const done = csvLookupResults.filter(r => r.status === 'found' || r.status === 'not_found' || r.status === 'error').length;
+                  const total = csvLookupResults.length;
+                  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                  return (
+                    <div className="bg-blue-50 rounded-lg p-4 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm text-blue-700">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Looking up accounts... {done} / {total}</span>
+                        </div>
+                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1 text-red-600 border-red-200 hover:bg-red-50" onClick={handleCsvCancelLookup} data-testid="button-cancel-lookup">
+                          <X className="w-3 h-3" /> Stop
+                        </Button>
+                      </div>
+                      <div className="w-full bg-blue-200/50 rounded-full h-3 overflow-hidden">
+                        <div className="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out" style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="text-right text-xs font-semibold text-blue-700">{pct}%</div>
+                    </div>
+                  );
+                })()}
                 {csvStep === 'done' && (
                   <div className="grid grid-cols-3 gap-2">
                     <div className="bg-emerald-50 rounded-lg p-3 text-center">
@@ -1533,8 +1567,8 @@ export default function AllocateTransaction() {
               </>
             )}
             {csvStep === 'lookup' && (
-              <Button variant="outline" disabled>
-                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> Processing...
+              <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 gap-1.5" onClick={handleCsvCancelLookup}>
+                <X className="w-3.5 h-3.5" /> Stop Lookup
               </Button>
             )}
             {csvStep === 'done' && (
