@@ -374,7 +374,7 @@ export default function UnmatchedQueue() {
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  const handleAllocateClick = async (posItemId: number, e?: React.MouseEvent) => {
+  const handleAllocateClick = async (posItemId: number, e?: React.MouseEvent, preselectedAccount?: SuggestedMatch) => {
     if (e) e.stopPropagation();
     setCheckingItemId(posItemId);
     try {
@@ -401,10 +401,26 @@ export default function UnmatchedQueue() {
         });
         return;
       }
-      setLocation(`/direct-deposits/manual/allocate/${posItemId}`);
+      let url = `/direct-deposits/manual/allocate/${posItemId}`;
+      if (preselectedAccount) {
+        const params = new URLSearchParams();
+        params.set('accountId', String(preselectedAccount.accountId));
+        params.set('accountNo', preselectedAccount.accountNo);
+        params.set('name', preselectedAccount.name);
+        url += `?${params.toString()}`;
+      }
+      setLocation(url);
     } catch (e: any) {
       console.error("Failed to check item processed status", e);
-      setLocation(`/direct-deposits/manual/allocate/${posItemId}`);
+      let url = `/direct-deposits/manual/allocate/${posItemId}`;
+      if (preselectedAccount) {
+        const params = new URLSearchParams();
+        params.set('accountId', String(preselectedAccount.accountId));
+        params.set('accountNo', preselectedAccount.accountNo);
+        params.set('name', preselectedAccount.name);
+        url += `?${params.toString()}`;
+      }
+      setLocation(url);
     } finally {
       setCheckingItemId(null);
     }
@@ -461,15 +477,15 @@ export default function UnmatchedQueue() {
     }
   };
 
-  const unmatchedCount = filtered.filter(i => !i.billingAllocated).length;
-  const allocatedCount = filtered.filter(i => i.billingAllocated).length;
-  const totalAmount = filtered.reduce((sum, i) => sum + (i.amount || 0), 0);
+  const pageUnmatchedCount = filtered.filter(i => !i.billingAllocated).length;
+  const pageAllocatedCount = filtered.filter(i => i.billingAllocated).length;
+  const pageTotalAmount = filtered.reduce((sum, i) => sum + (i.amount || 0), 0);
 
   return (
     <PosLayout>
       <div className="flex-1 flex flex-col h-full bg-gradient-to-br from-slate-50 to-slate-100/80">
-        <div className="px-4 sm:px-8 py-4 sm:py-5 border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3">
             <div>
               <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-slate-900" data-testid="text-page-title">Direct Deposits: Manual Allocation</h1>
               <p className="text-xs text-muted-foreground mt-0.5">Bank Recon POS Items <span className="font-mono font-medium">({totalCount.toLocaleString()} total)</span></p>
@@ -580,28 +596,31 @@ export default function UnmatchedQueue() {
           <div className="flex items-center gap-3 mt-3 text-xs">
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <div className="w-2 h-2 rounded-full bg-amber-400" />
-              <span>{unmatchedCount} unmatched</span>
+              <span>{pageUnmatchedCount} unmatched</span>
             </div>
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <div className="w-2 h-2 rounded-full bg-emerald-400" />
-              <span>{allocatedCount} allocated</span>
+              <span>{pageAllocatedCount} allocated</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <span className="text-slate-400">on this page ({filtered.length} of {totalCount.toLocaleString()})</span>
             </div>
             <div className="hidden sm:flex items-center gap-1.5 text-muted-foreground ml-auto">
               <Banknote className="w-3 h-3" />
-              <span>Total: <span className="font-mono font-medium text-slate-700">R {totalAmount.toFixed(2)}</span></span>
+              <span>Page total: <span className="font-mono font-medium text-slate-700">R {pageTotalAmount.toFixed(2)}</span></span>
             </div>
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
+        <div className="flex-1 overflow-auto px-4 sm:px-6 py-3">
           {error && (
-            <Alert variant="destructive" className="mb-4 rounded-xl">
+            <Alert variant="destructive" className="mb-3 rounded-xl">
               <AlertTitle>Error loading data</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
-          <div className="max-w-[1400px] mx-auto">
+          <div className="h-full flex flex-col">
             {/* Mobile card view */}
             <div className="sm:hidden space-y-2">
               {loading ? (
@@ -656,7 +675,7 @@ export default function UnmatchedQueue() {
                       loading={loadingSuggestions.has(tx.posItem_ID)}
                       getConfidenceColor={getConfidenceColor}
                       getMatchIcon={getMatchIcon}
-                      onAllocate={(posId) => handleAllocateClick(posId)}
+                      onAllocate={(posId, account) => handleAllocateClick(posId, undefined, account)}
                     />
                   )}
                 </div>
@@ -664,17 +683,18 @@ export default function UnmatchedQueue() {
             </div>
 
             {/* Desktop table view */}
-            <div className="hidden sm:block rounded-xl border bg-white shadow-sm overflow-hidden">
+            <div className="hidden sm:flex sm:flex-col flex-1 min-h-0 rounded-xl border bg-white shadow-sm overflow-hidden">
+              <div className="flex-1 min-h-0 overflow-auto">
               <table className="w-full">
-                <thead>
-                  <tr className="border-b bg-slate-50/80">
-                    <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-5 py-3 w-14">ID</th>
-                    <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-5 py-3 w-28">Date</th>
-                    <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Description</th>
-                    <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-5 py-3 w-24">Reference</th>
-                    <th className="text-right text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-5 py-3 w-32">Amount</th>
-                    <th className="text-center text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-5 py-3 w-28">Status</th>
-                    <th className="text-right text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-5 py-3 w-40">Action</th>
+                <thead className="sticky top-0 z-[1]">
+                  <tr className="border-b bg-slate-50">
+                    <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5 w-14">ID</th>
+                    <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5 w-24">Date</th>
+                    <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5">Description</th>
+                    <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5 w-20">Ref</th>
+                    <th className="text-right text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5 w-28">Amount</th>
+                    <th className="text-center text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5 w-24">Status</th>
+                    <th className="text-right text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5 w-36">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -701,30 +721,27 @@ export default function UnmatchedQueue() {
                         className={`transition-colors ${!tx.billingAllocated ? 'cursor-pointer hover:bg-slate-50/80' : ''} ${expandedSuggestion === tx.posItem_ID ? 'bg-amber-50/30' : ''}`}
                         onClick={() => !tx.billingAllocated && checkingItemId === null && handleAllocateClick(tx.posItem_ID)}
                       >
-                        <td className="px-5 py-3.5 font-mono text-xs text-muted-foreground">{tx.posItem_ID}</td>
-                        <td className="px-5 py-3.5 whitespace-nowrap text-xs text-slate-600">
-                          <div className="flex items-center gap-1.5">
-                            <Calendar className="w-3 h-3 text-slate-400" />
-                            <span className="font-mono">{tx.dateOfTransaction ? new Date(tx.dateOfTransaction).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}</span>
-                          </div>
+                        <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{tx.posItem_ID}</td>
+                        <td className="px-4 py-2.5 whitespace-nowrap text-xs text-slate-600">
+                          <span className="font-mono">{tx.dateOfTransaction ? new Date(tx.dateOfTransaction).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}</span>
                         </td>
-                        <td className="px-5 py-3.5">
-                          <div className="text-sm text-slate-700 truncate max-w-[400px]" title={tx.note}>{tx.note || '-'}</div>
+                        <td className="px-4 py-2.5">
+                          <div className="text-xs text-slate-700 truncate max-w-[400px]" title={tx.note}>{tx.note || '-'}</div>
                         </td>
-                        <td className="px-5 py-3.5">
-                          <Badge variant="secondary" className="font-mono text-[10px] bg-slate-100">{tx.reference || '-'}</Badge>
+                        <td className="px-4 py-2.5">
+                          <span className="font-mono text-[10px] text-slate-500">{tx.reference || '-'}</span>
                         </td>
-                        <td className="px-5 py-3.5 text-right">
-                          <span className="font-mono text-sm font-semibold text-slate-800">R {(tx.amount || 0).toFixed(2)}</span>
+                        <td className="px-4 py-2.5 text-right">
+                          <span className="font-mono text-xs font-semibold text-slate-800">R {(tx.amount || 0).toFixed(2)}</span>
                         </td>
-                        <td className="px-5 py-3.5 text-center">
+                        <td className="px-4 py-2.5 text-center">
                           {tx.billingAllocated ? (
                             <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]">Allocated</Badge>
                           ) : (
                             <Badge variant="secondary" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px]">Unmatched</Badge>
                           )}
                         </td>
-                        <td className="px-5 py-3.5 text-right">
+                        <td className="px-4 py-2.5 text-right">
                           {!tx.billingAllocated && (
                             <div className="flex items-center justify-end gap-1">
                               <Button
@@ -766,7 +783,7 @@ export default function UnmatchedQueue() {
                               loading={loadingSuggestions.has(tx.posItem_ID)}
                               getConfidenceColor={getConfidenceColor}
                               getMatchIcon={getMatchIcon}
-                              onAllocate={(posId) => handleAllocateClick(posId)}
+                              onAllocate={(posId, account) => handleAllocateClick(posId, undefined, account)}
                             />
                           </td>
                         </tr>
@@ -775,6 +792,7 @@ export default function UnmatchedQueue() {
                   ))}
                 </tbody>
               </table>
+              </div>
 
               {totalPages > 1 && (
                 <div className="flex items-center justify-between px-5 py-3.5 border-t bg-slate-50/50">
@@ -820,7 +838,7 @@ function SuggestionPanel({ posItemId, suggestions, loading, getConfidenceColor, 
   loading: boolean;
   getConfidenceColor: (c: number) => string;
   getMatchIcon: (t: SuggestedMatch['matchType']) => React.ReactNode;
-  onAllocate: (posId: number) => void;
+  onAllocate: (posId: number, account?: SuggestedMatch) => void;
 }) {
   return (
     <div className="bg-gradient-to-r from-amber-50/50 to-orange-50/30 border-t border-amber-100 px-5 py-3.5 animate-in fade-in slide-in-from-top-1 duration-200">
@@ -865,11 +883,10 @@ function SuggestionPanel({ posItemId, suggestions, loading, getConfidenceColor, 
               )}
               <Button
                 size="sm"
-                variant="ghost"
-                className="h-7 text-[10px] text-blue-600 hover:text-blue-700 hover:bg-blue-50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 px-2"
-                onClick={(e) => { e.stopPropagation(); onAllocate(posItemId); }}
+                className="h-7 text-[10px] bg-blue-600 hover:bg-blue-700 text-white shrink-0 px-2.5 gap-1"
+                onClick={(e) => { e.stopPropagation(); onAllocate(posItemId, s); }}
               >
-                Allocate <ArrowRight className="w-3 h-3 ml-1" />
+                Allocate <ArrowRight className="w-3 h-3" />
               </Button>
             </div>
           ))}

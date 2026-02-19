@@ -350,6 +350,21 @@ export default function AllocateTransaction() {
             setLoadError(e.message || "Failed to load POS item details from Platinum API.");
           })
           .finally(() => setLoadingTx(false));
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const preAccountId = urlParams.get('accountId');
+        const preAccountNo = urlParams.get('accountNo');
+        const preName = urlParams.get('name');
+        if (preAccountId && preAccountNo) {
+          setSelectedAccount({
+            accountNo: preAccountNo,
+            name: preName || 'Unknown',
+            description: preName || preAccountNo,
+            accountId: parseInt(preAccountId, 10),
+            allocationType: 'ACCOUNT',
+          });
+          setNewLineAmount("0.00");
+        }
     }
   }, [params?.id]);
 
