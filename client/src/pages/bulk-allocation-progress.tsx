@@ -298,23 +298,23 @@ export default function BulkAllocationProgress() {
       (typeof value === 'string' && (value.includes('T') || value.includes('Z')) && !isNaN(Date.parse(value)))
         ? formatDate(value) : String(value);
     return (
-      <div className="flex justify-between py-1.5 border-b border-gray-100 last:border-0">
-        <span className="text-sm text-muted-foreground font-medium">{label}</span>
-        <span className="text-sm font-mono text-right max-w-[60%] break-words">{display}</span>
+      <div className="flex flex-col sm:flex-row sm:justify-between py-1.5 border-b border-gray-100 last:border-0 gap-0.5 sm:gap-2">
+        <span className="text-xs sm:text-sm text-muted-foreground font-medium">{label}</span>
+        <span className="text-sm font-mono sm:text-right max-w-full sm:max-w-[60%] break-words">{display}</span>
       </div>
     );
   }
 
   return (
     <PosLayout>
-      <div className="p-4 md:p-6 space-y-4 max-w-[1400px] mx-auto" data-testid="bulk-allocation-progress-page">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <FileBarChart className="w-5 h-5 text-blue-600" />
+      <div className="p-3 sm:p-4 md:p-6 space-y-3 sm:space-y-4 max-w-[1400px] mx-auto" data-testid="bulk-allocation-progress-page">
+        <div className="flex items-center gap-2 sm:gap-3 mb-2">
+          <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg">
+            <FileBarChart className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900" data-testid="text-page-title">Bulk Allocation Progress</h1>
-            <p className="text-sm text-muted-foreground">Monitor and track bulk allocation jobs, progress, and errors</p>
+            <h1 className="text-lg sm:text-xl font-bold text-gray-900" data-testid="text-page-title">Bulk Allocation Progress</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">Monitor and track bulk allocation jobs, progress, and errors</p>
           </div>
         </div>
 
@@ -369,21 +369,21 @@ export default function BulkAllocationProgress() {
                 </Select>
               </div>
             </div>
-            <div className="flex items-center gap-2 pt-1">
+            <div className="flex flex-wrap items-center gap-2 pt-1">
               <Button
                 onClick={() => { setPage(1); searchAllocations(1); }}
                 disabled={loading || loadingFilters}
-                className="gap-1.5"
+                className="gap-1.5 flex-1 sm:flex-none"
                 data-testid="button-search"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                 Search
               </Button>
-              <Button variant="outline" onClick={resetFilters} className="gap-1.5" data-testid="button-reset">
+              <Button variant="outline" onClick={resetFilters} className="gap-1.5 flex-1 sm:flex-none" data-testid="button-reset">
                 <RotateCcw className="w-4 h-4" /> Reset
               </Button>
               <div className="ml-auto flex items-center gap-2">
-                <Label className="text-xs text-muted-foreground">Per page:</Label>
+                <Label className="text-xs text-muted-foreground hidden sm:inline">Per page:</Label>
                 <Select value={String(pageSize)} onValueChange={v => { setPageSize(parseInt(v, 10)); setPage(1); }} data-testid="select-page-size">
                   <SelectTrigger className="w-20 h-8" data-testid="trigger-page-size">
                     <SelectValue />
@@ -463,7 +463,67 @@ export default function BulkAllocationProgress() {
               </div>
             ) : (
               <>
-                <div className="overflow-x-auto">
+                {/* Mobile card view */}
+                <div className="block sm:hidden divide-y" data-testid="mobile-job-list">
+                  {allocationData.map((job, idx) => {
+                    const jobId = job.directDepositJob_ID ?? job.jobId ?? job.id ?? idx;
+                    const process = job.process ?? '—';
+                    const reference = job.paymentReference ?? '—';
+                    const status = job.job_Status ?? job.status ?? '';
+                    const dateCaptured = job.dateCaptured ?? job.fileDate ?? '';
+                    const records = job.records ?? job.totalRecords;
+                    const amount = job.allocatedAmount;
+
+                    return (
+                      <div
+                        key={jobId}
+                        className="p-3 active:bg-muted/40 transition-colors cursor-pointer"
+                        onClick={() => viewJobDetail(job)}
+                        data-testid={`card-job-${jobId}`}
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-1.5">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="font-mono text-sm font-semibold">#{jobId}</span>
+                              {getStatusBadge(status)}
+                            </div>
+                            <p className="text-sm text-muted-foreground truncate">{process}</p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 shrink-0"
+                            onClick={(e) => { e.stopPropagation(); viewJobDetail(job); }}
+                            data-testid={`button-view-mobile-${jobId}`}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                          <div>
+                            <span className="text-muted-foreground">Ref: </span>
+                            <span className="font-medium truncate">{reference}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Records: </span>
+                            <span className="font-medium">{formatNumber(records)}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Amount: </span>
+                            <span className="font-semibold">{amount != null ? `R ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '—'}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Date: </span>
+                            <span className="font-medium">{formatDate(dateCaptured)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Desktop table view */}
+                <div className="hidden sm:block overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/30">
@@ -541,9 +601,9 @@ export default function BulkAllocationProgress() {
                   </Table>
                 </div>
 
-                <div className="flex items-center justify-between px-4 py-3 border-t" data-testid="pagination">
-                  <p className="text-sm text-muted-foreground">
-                    Showing {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, totalCount)} of {formatNumber(totalCount)} results
+                <div className="flex flex-col sm:flex-row items-center justify-between px-3 sm:px-4 py-3 border-t gap-2" data-testid="pagination">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, totalCount)} of {formatNumber(totalCount)}
                   </p>
                   <div className="flex items-center gap-1">
                     <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page <= 1} onClick={() => handlePageChange(1)} data-testid="button-first-page">
@@ -552,8 +612,8 @@ export default function BulkAllocationProgress() {
                     <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page <= 1} onClick={() => handlePageChange(page - 1)} data-testid="button-prev-page">
                       <ChevronLeft className="w-4 h-4" />
                     </Button>
-                    <span className="text-sm px-3 font-medium">
-                      Page {page} of {totalPages}
+                    <span className="text-xs sm:text-sm px-2 sm:px-3 font-medium">
+                      {page}/{totalPages}
                     </span>
                     <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page >= totalPages} onClick={() => handlePageChange(page + 1)} data-testid="button-next-page">
                       <ChevronRight className="w-4 h-4" />
@@ -569,7 +629,7 @@ export default function BulkAllocationProgress() {
         </Card>
 
         <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-          <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto" data-testid="dialog-job-detail">
+          <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-job-detail">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Eye className="w-5 h-5 text-blue-500" />
