@@ -22,6 +22,7 @@ import {
   CheckCircle2,
   ChevronDown,
   Eye,
+  Phone,
 } from 'lucide-react';
 
 interface Recipient {
@@ -66,6 +67,7 @@ export default function ClientCommunications() {
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
+  const [contactIndicators, setContactIndicators] = useState<Record<number, { email: boolean; mobile: boolean; loading: boolean }>>({});
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
@@ -112,8 +114,34 @@ export default function ClientCommunications() {
       if (res.ok) {
         const data = await res.json();
         const items = Array.isArray(data) ? data : (data?.value || []);
-        setSearchResults(items.slice(0, 15));
-        setSearchDropdownOpen(items.length > 0);
+        const results = items.slice(0, 15);
+        setSearchResults(results);
+        setSearchDropdownOpen(results.length > 0);
+
+        results.forEach((item: any) => {
+          const accId = item.account_ID || item.accountID || item.id;
+          if (accId && !contactIndicators[accId]) {
+            setContactIndicators(prev => ({ ...prev, [accId]: { email: false, mobile: false, loading: true } }));
+            Promise.all([
+              fetch(`/api/platinum/billing-account-management/get-contact-details?accountId=${accId}`).then(r => r.ok ? r.json() : null).catch(() => null),
+              fetch(`/api/platinum/billing-enquiry/name-info-by-account?accountId=${accId}`).then(r => r.ok ? r.json() : null).catch(() => null),
+            ]).then(([contactRes, nameRes]) => {
+              let hasEmail = false;
+              let hasMobile = false;
+              if (contactRes && !contactRes._error) {
+                const c = Array.isArray(contactRes) ? contactRes[0] : contactRes;
+                hasEmail = !!(c?.email || c?.eMail || c?.emailAddress || c?.Email);
+                hasMobile = !!(c?.cellphone || c?.cellPhone || c?.mobile || c?.mobileNumber || c?.CellPhone);
+              }
+              if (nameRes && !nameRes._error) {
+                const n = Array.isArray(nameRes) ? nameRes[0] : nameRes;
+                if (!hasEmail) hasEmail = !!(n?.email || n?.eMail || n?.emailAddress);
+                if (!hasMobile) hasMobile = !!(n?.cellphone || n?.cellPhone || n?.mobile);
+              }
+              setContactIndicators(prev => ({ ...prev, [accId]: { email: hasEmail, mobile: hasMobile, loading: false } }));
+            });
+          }
+        });
       } else {
         setSearchResults([]);
       }
@@ -122,7 +150,7 @@ export default function ClientCommunications() {
     } finally {
       setSearching(false);
     }
-  }, []);
+  }, [contactIndicators]);
 
   const handleSearchInput = (value: string) => {
     setSearchQuery(value);
@@ -440,6 +468,7 @@ export default function ClientCommunications() {
                             const accNo = item.accountNumber || item.accountNo || String(accId);
                             const name = [item.initials, item.lastName].filter(Boolean).join(' ') || item.name || 'Unknown';
                             const alreadyAdded = recipients.some(r => r.accountId === accId);
+                            const ci = contactIndicators[accId];
                             return (
                               <button
                                 key={idx}
@@ -449,9 +478,20 @@ export default function ClientCommunications() {
                                 data-testid={`button-add-recipient-${accId}`}
                               >
                                 <div className="flex items-center justify-between">
-                                  <div>
+                                  <div className="flex items-center gap-1.5">
                                     <span className="font-mono text-xs text-blue-600">{accNo}</span>
-                                    <span className="text-sm text-slate-800 ml-2">{name}</span>
+                                    <span className="text-sm text-slate-800">{name}</span>
+                                    {ci && !ci.loading && (
+                                      <span className="flex items-center gap-1 ml-1">
+                                        <span title={ci.email ? 'Email available' : 'No email'} className={`inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[10px] font-medium ${ci.email ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-400'}`}>
+                                          <Mail className="w-3 h-3" />
+                                        </span>
+                                        <span title={ci.mobile ? 'Mobile available' : 'No mobile'} className={`inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[10px] font-medium ${ci.mobile ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-400'}`}>
+                                          <Phone className="w-3 h-3" />
+                                        </span>
+                                      </span>
+                                    )}
+                                    {ci?.loading && <Loader2 className="w-3 h-3 animate-spin text-slate-300 ml-1" />}
                                   </div>
                                   {alreadyAdded ? (
                                     <span className="text-xs text-green-600">Added</span>
