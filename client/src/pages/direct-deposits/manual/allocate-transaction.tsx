@@ -355,6 +355,7 @@ export default function AllocateTransaction() {
         const preAccountId = urlParams.get('accountId');
         const preAccountNo = urlParams.get('accountNo');
         const preName = urlParams.get('name');
+        const preAmount = urlParams.get('amount');
         if (preAccountId && preAccountNo) {
           setSelectedAccount({
             accountNo: preAccountNo,
@@ -363,7 +364,7 @@ export default function AllocateTransaction() {
             accountId: parseInt(preAccountId, 10),
             allocationType: 'ACCOUNT',
           });
-          setNewLineAmount("0.00");
+          setNewLineAmount(preAmount && parseFloat(preAmount) > 0 ? parseFloat(preAmount).toFixed(2) : "0.00");
         }
     }
   }, [params?.id]);

@@ -407,6 +407,8 @@ export default function UnmatchedQueue() {
         params.set('accountId', String(preselectedAccount.accountId));
         params.set('accountNo', preselectedAccount.accountNo);
         params.set('name', preselectedAccount.name);
+        const txItem = items.find(i => i.posItem_ID === posItemId);
+        if (txItem?.amount) params.set('amount', String(txItem.amount));
         url += `?${params.toString()}`;
       }
       setLocation(url);
@@ -418,6 +420,8 @@ export default function UnmatchedQueue() {
         params.set('accountId', String(preselectedAccount.accountId));
         params.set('accountNo', preselectedAccount.accountNo);
         params.set('name', preselectedAccount.name);
+        const txItem = items.find(i => i.posItem_ID === posItemId);
+        if (txItem?.amount) params.set('amount', String(txItem.amount));
         url += `?${params.toString()}`;
       }
       setLocation(url);
