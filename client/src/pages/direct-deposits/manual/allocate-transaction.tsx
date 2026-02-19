@@ -321,73 +321,100 @@ export default function AllocateTransaction() {
     handleSelectDDResult(result);
   };
 
+  const parseRowsFromColumns = (rows: string[][], sourceLabel: string) => {
+    if (rows.length === 0) {
+      toast({ title: 'Empty File', description: `The ${sourceLabel} file appears to be empty.`, variant: 'destructive' });
+      return;
+    }
+
+    const firstCols = rows[0].map(c => String(c).trim());
+    const hasHeader = firstCols.length >= 2
+      && firstCols.some(c => /^(account|acc|accno|account.?n)/i.test(c))
+      && firstCols.some(c => /^(amount|amt|value|total)/i.test(c));
+    const dataRows = hasHeader ? rows.slice(1) : rows;
+
+    const parsed: { accountNo: string; amount: number; raw: string }[] = [];
+    for (const cols of dataRows) {
+      if (cols.length < 2) continue;
+      const c0 = String(cols[0]).trim().replace(/^["']|["']$/g, '');
+      const c1 = String(cols[1]).trim().replace(/^["']|["']$/g, '');
+      if (!c0) continue;
+
+      let accountNo = '';
+      let amount = 0;
+
+      const numericFirst = parseFloat(c0.replace(/\s/g, ''));
+      const numericSecond = parseFloat(c1.replace(/\s/g, ''));
+
+      if (!isNaN(numericSecond) && numericSecond > 0 && c0.length > 0) {
+        accountNo = c0.replace(/\s/g, '');
+        amount = numericSecond;
+      } else if (!isNaN(numericFirst) && numericFirst > 0 && cols.length >= 2) {
+        if (c1 && /[a-zA-Z]/.test(c1)) {
+          accountNo = c0.replace(/\s/g, '');
+          const amtCol = cols.find((c, i) => i >= 2 && !isNaN(parseFloat(String(c).trim().replace(/\s/g, ''))));
+          amount = amtCol ? parseFloat(String(amtCol).trim().replace(/\s/g, '')) : 0;
+        } else {
+          accountNo = c0.replace(/\s/g, '');
+          amount = numericSecond;
+        }
+      }
+
+      if (accountNo && amount > 0) {
+        parsed.push({ accountNo, amount, raw: cols.map(c => String(c)).join(', ') });
+      }
+    }
+
+    if (parsed.length === 0) {
+      toast({ title: 'No Valid Data', description: `Could not find any rows with account numbers and amounts. Ensure your file has at least 2 columns: Account Number and Amount.`, variant: 'destructive' });
+      return;
+    }
+
+    setCsvParsedRows(parsed);
+    setCsvStep('preview');
+  };
+
   const handleCsvFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setCsvFile(file);
 
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      if (!text) return;
-      const rawLines = text.split(/\r?\n/).filter(l => l.trim());
-      if (rawLines.length === 0) {
-        toast({ title: 'Empty File', description: 'The CSV file appears to be empty.', variant: 'destructive' });
-        return;
-      }
+    const isExcel = /\.(xlsx?|xls)$/i.test(file.name);
 
-      const sampleLines = rawLines.slice(0, Math.min(5, rawLines.length));
-      const countChar = (lines: string[], ch: string) => lines.reduce((sum, l) => sum + (l.split(ch).length - 1), 0);
-      const semiCount = countChar(sampleLines, ';');
-      const tabCount = countChar(sampleLines, '\t');
-      const delimiter = semiCount >= sampleLines.length ? ';' : tabCount >= sampleLines.length ? '\t' : ',';
-
-      const firstCols = rawLines[0].split(delimiter).map(c => c.trim().replace(/^["']|["']$/g, ''));
-      const hasHeader = firstCols.length >= 2
-        && firstCols.some(c => /^(account|acc|accno|account.?n)/i.test(c))
-        && firstCols.some(c => /^(amount|amt|value|total)/i.test(c));
-      const dataLines = hasHeader ? rawLines.slice(1) : rawLines;
-
-      const parsed: { accountNo: string; amount: number; raw: string }[] = [];
-      for (const line of dataLines) {
-        if (!line.trim()) continue;
-        const cols = line.split(delimiter).map(c => c.trim().replace(/^["']|["']$/g, ''));
-        if (cols.length < 2) continue;
-
-        let accountNo = '';
-        let amount = 0;
-        
-        const numericFirst = parseFloat(cols[0].replace(/\s/g, ''));
-        const numericSecond = parseFloat(cols[1].replace(/\s/g, ''));
-
-        if (!isNaN(numericSecond) && numericSecond > 0 && cols[0].length > 0) {
-          accountNo = cols[0].replace(/\s/g, '');
-          amount = numericSecond;
-        } else if (!isNaN(numericFirst) && numericFirst > 0 && cols.length >= 2) {
-          if (cols[1] && /[a-zA-Z]/.test(cols[1])) {
-            accountNo = cols[0].replace(/\s/g, '');
-            const amtCol = cols.find((c, i) => i >= 2 && !isNaN(parseFloat(c.replace(/\s/g, ''))));
-            amount = amtCol ? parseFloat(amtCol.replace(/\s/g, '')) : 0;
-          } else {
-            accountNo = cols[0].replace(/\s/g, '');
-            amount = numericSecond;
-          }
+    if (isExcel) {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        try {
+          const XLSX = await import('xlsx');
+          const data = new Uint8Array(ev.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonRows: any[][] = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+          const filtered = jsonRows.filter(r => r.some((c: any) => String(c).trim()));
+          parseRowsFromColumns(filtered.map(r => r.map((c: any) => String(c))), 'Excel');
+        } catch (err: any) {
+          toast({ title: 'Excel Parse Error', description: err.message || 'Failed to read Excel file.', variant: 'destructive' });
         }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const text = ev.target?.result as string;
+        if (!text) return;
+        const rawLines = text.split(/\r?\n/).filter(l => l.trim());
 
-        if (accountNo && amount > 0) {
-          parsed.push({ accountNo, amount, raw: line });
-        }
-      }
+        const sampleLines = rawLines.slice(0, Math.min(5, rawLines.length));
+        const countChar = (lines: string[], ch: string) => lines.reduce((sum, l) => sum + (l.split(ch).length - 1), 0);
+        const semiCount = countChar(sampleLines, ';');
+        const tabCount = countChar(sampleLines, '\t');
+        const delimiter = semiCount >= sampleLines.length ? ';' : tabCount >= sampleLines.length ? '\t' : ',';
 
-      if (parsed.length === 0) {
-        toast({ title: 'No Valid Data', description: 'Could not find any rows with account numbers and amounts. Ensure your CSV has at least 2 columns: Account Number and Amount.', variant: 'destructive' });
-        return;
-      }
-
-      setCsvParsedRows(parsed);
-      setCsvStep('preview');
-    };
-    reader.readAsText(file);
+        const rows = rawLines.map(line => line.split(delimiter).map(c => c.trim().replace(/^["']|["']$/g, '')));
+        parseRowsFromColumns(rows, 'CSV');
+      };
+      reader.readAsText(file);
+    }
   };
 
   const handleCsvLookup = async () => {
@@ -939,7 +966,7 @@ export default function AllocateTransaction() {
                     <div className="flex items-center justify-between mb-3">
                         <h2 className="text-base font-semibold tracking-tight">Allocation Lines</h2>
                         <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 border-slate-200" data-testid="button-import-csv" onClick={() => setCsvDialogOpen(true)}>
-                            <Upload className="w-3.5 h-3.5" /> Import CSV
+                            <Upload className="w-3.5 h-3.5" /> Import File
                         </Button>
                     </div>
 
@@ -1320,10 +1347,10 @@ export default function AllocateTransaction() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileSpreadsheet className="w-5 h-5 text-blue-600" />
-              Import CSV
+              Import File
             </DialogTitle>
             <DialogDescription>
-              {csvStep === 'upload' && 'Upload a CSV file with account numbers and amounts to bulk-add allocation lines.'}
+              {csvStep === 'upload' && 'Upload a CSV or Excel file with account numbers and amounts to bulk-add allocation lines.'}
               {csvStep === 'preview' && `${csvParsedRows.length} row(s) parsed from the file. Review and proceed to look up accounts.`}
               {csvStep === 'lookup' && 'Looking up account information from Platinum API...'}
               {csvStep === 'done' && 'Lookup complete. Add the found accounts to your allocation lines.'}
@@ -1336,7 +1363,7 @@ export default function AllocateTransaction() {
                 <input
                   ref={csvFileInputRef}
                   type="file"
-                  accept=".csv,.txt"
+                  accept=".csv,.txt,.xlsx,.xls"
                   className="hidden"
                   onChange={handleCsvFileSelect}
                   data-testid="input-csv-file"
@@ -1347,15 +1374,15 @@ export default function AllocateTransaction() {
                   data-testid="csv-dropzone"
                 >
                   <Upload className="w-10 h-10 text-slate-300 mx-auto mb-4" />
-                  <p className="text-sm font-medium text-slate-700 mb-1">Click to select a CSV file</p>
-                  <p className="text-xs text-muted-foreground">Supported formats: .csv, .txt</p>
+                  <p className="text-sm font-medium text-slate-700 mb-1">Click to select a file</p>
+                  <p className="text-xs text-muted-foreground">Supported formats: .csv, .txt, .xlsx, .xls</p>
                 </div>
                 <div className="mt-6 w-full max-w-md bg-slate-50 rounded-lg p-4 text-xs text-muted-foreground space-y-1.5">
-                  <p className="font-medium text-slate-600 text-sm mb-2">Expected CSV format:</p>
+                  <p className="font-medium text-slate-600 text-sm mb-2">Expected file format:</p>
                   <p className="font-mono bg-white px-2 py-1 rounded border text-[11px]">AccountNumber, Amount</p>
                   <p className="font-mono bg-white px-2 py-1 rounded border text-[11px]">100234, 500.00</p>
                   <p className="font-mono bg-white px-2 py-1 rounded border text-[11px]">100567, 1200.50</p>
-                  <p className="mt-2">Headers are auto-detected. Comma, semicolon, and tab delimiters are supported.</p>
+                  <p className="mt-2">Headers are auto-detected. CSV supports comma, semicolon, and tab delimiters. Excel files use the first sheet.</p>
                 </div>
               </div>
             )}
