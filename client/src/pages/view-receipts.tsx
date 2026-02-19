@@ -34,7 +34,7 @@ export default function ViewReceipts() {
     const [cashierFilter, setCashierFilter] = useState("");
     const [fromDate, setFromDate] = useState<Date | undefined>(() => {
         const d = new Date();
-        d.setMonth(d.getMonth() - 1);
+        d.setDate(d.getDate() - 7);
         return d;
     });
     const [toDate, setToDate] = useState<Date | undefined>(new Date());
@@ -120,6 +120,19 @@ export default function ViewReceipts() {
             });
             return;
         }
+        if ((!cashierFilter || cashierFilter === '0') && !accountFilter && !receiptFilter) {
+            const from = fromDate || new Date();
+            const to = toDate || new Date();
+            const diffDays = Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
+            if (diffDays > 7) {
+                toast({
+                    title: "Date Range Too Wide",
+                    description: "When searching all cashiers without an account or receipt number, please use a date range of 7 days or less.",
+                    variant: "destructive",
+                });
+                return;
+            }
+        }
         setIsLoading(true);
         try {
             const query: ReceiptSearchQuery = {
@@ -191,9 +204,9 @@ export default function ViewReceipts() {
     };
 
     const handleClear = () => {
-        setCashierFilter(platinumCashierId ? String(platinumCashierId) : "");
+        setCashierFilter("0");
         const d = new Date();
-        d.setMonth(d.getMonth() - 1);
+        d.setDate(d.getDate() - 7);
         setFromDate(d);
         setToDate(new Date());
         setAccountFilter("");

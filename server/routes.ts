@@ -864,7 +864,7 @@ export async function registerRoutes(
 
       console.log(`[get-receipt-list] Request params (GET):`, JSON.stringify(params));
 
-      const data = await platinumGet("/api/ViewReceipt/get-receipt-list", params);
+      const data = await platinumGet("/api/ViewReceipt/get-receipt-list", params, { timeoutMs: 90000 });
 
       console.log(`[get-receipt-list] Response type: ${typeof data}, isArray: ${Array.isArray(data)}, keys: ${data && typeof data === 'object' ? Object.keys(data).join(',') : 'N/A'}`);
       if (data && typeof data === 'object' && '_error' in data) {

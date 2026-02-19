@@ -333,8 +333,9 @@ export async function getPosCashierId(): Promise<number | null> {
   return null;
 }
 
-export async function platinumGet(path: string, params?: Record<string, string>): Promise<any> {
+export async function platinumGet(path: string, params?: Record<string, string>, options?: { timeoutMs?: number }): Promise<any> {
   const token = await getPlatinumToken();
+  const timeoutMs = options?.timeoutMs || 30000;
 
   const actualUserId = String(cachedUserData?.user_ID || 1);
   if (path === "/api/ReceiptPrepaid/cashier-detailsById" && params?.cashierId && params.cashierId !== actualUserId) {
@@ -348,7 +349,7 @@ export async function platinumGet(path: string, params?: Record<string, string>)
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       headers: {
@@ -392,7 +393,7 @@ export async function platinumGet(path: string, params?: Record<string, string>)
     try { return text ? JSON.parse(text) : null; } catch { return text; }
   } catch (e: any) {
     if (e.name === 'AbortError') {
-      console.error(`[PlatinumGET] ${path} timed out after 30s`);
+      console.error(`[PlatinumGET] ${path} timed out after ${timeoutMs/1000}s`);
       return { _error: true, status: 408, statusText: 'Request Timeout' };
     }
     throw e;
