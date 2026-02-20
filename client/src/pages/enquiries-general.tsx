@@ -738,7 +738,7 @@ function GeneralEnquiriesContent() {
               <TabsContent value="notifications" className="m-0"><NotificationsTab accountId={accountId} /></TabsContent>
               <TabsContent value="statements" className="m-0"><StatementsTab accountId={accountId} /></TabsContent>
               <TabsContent value="send-statements" className="m-0"><SendStatementsTab accountId={accountId} /></TabsContent>
-              <TabsContent value="clearance" className="m-0"><ClearanceTab accountId={accountId} /></TabsContent>
+              <TabsContent value="clearance" className="m-0"><ClearanceTab accountId={accountId} propertyId={propertyId} /></TabsContent>
               <TabsContent value="debtor-notes" className="m-0"><DebtorNotesTab accountId={accountId} /></TabsContent>
               <TabsContent value="section129" className="m-0"><Section129Tab accountId={accountId} /></TabsContent>
               <TabsContent value="linked-accounts" className="m-0"><LinkedAccountsTab accountId={accountId} onSelectAccount={(acct) => { setSelectedAccount(acct); setActiveTab('account'); }} /></TabsContent>

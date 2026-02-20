@@ -1308,7 +1308,7 @@ export function StatementsTab({ accountId }: { accountId: number }) {
   );
 }
 
-export function ClearanceTab({ accountId }: { accountId: number }) {
+export function ClearanceTab({ accountId, propertyId }: { accountId: number; propertyId?: number }) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1318,7 +1318,7 @@ export function ClearanceTab({ accountId }: { accountId: number }) {
     setLoading(true);
     setError(null);
     try {
-      const result = await getClearanceInquiries(accountId);
+      const result = await getClearanceInquiries(accountId, propertyId);
       setData(result);
       loaded.current = true;
     } catch (e: any) {
@@ -1326,7 +1326,7 @@ export function ClearanceTab({ accountId }: { accountId: number }) {
     } finally {
       setLoading(false);
     }
-  }, [accountId]);
+  }, [accountId, propertyId]);
 
   useEffect(() => { if (!loaded.current) load(); }, [load]);
 

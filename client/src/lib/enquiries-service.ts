@@ -675,7 +675,11 @@ export async function getBilledVsPaidAmounts(accountId: number, financialYear?: 
 }
 
 // === CLEARANCE ===
-export async function getClearanceInquiries(accountId: number): Promise<any[]> {
+export async function getClearanceInquiries(accountId: number, propertyId?: number): Promise<any[]> {
+  if (propertyId) {
+    const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/clearance-inquiries?propertyId=${propertyId}`);
+    return normalizeArray(data);
+  }
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/clearance-inquiries?accountId=${accountId}`);
   return normalizeArray(data);
 }
