@@ -196,7 +196,7 @@ export function DepositsTab({ accountId }: { accountId: number }) {
 export function PaymentPlansTab({ accountId }: { accountId: number }) {
   const [plans, setPlans] = useState<any[]>([]);
   const [remainingCapital, setRemainingCapital] = useState<any>(null);
-  const [repaymentStatus, setRepaymentStatus] = useState<any>(null);
+  const [repaymentStatus, setRepaymentStatus] = useState<any[]>([]);
   const [extensions, setExtensions] = useState<any[]>([]);
   const [paymentAmounts, setPaymentAmounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -210,15 +210,16 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
       const [pl, rc, rs, ext, pa] = await Promise.all([
         getPaymentPlansByAccountId(accountId).catch(() => []),
         getPaymentPlanRemainingCapital(accountId).catch(() => null),
-        getRepaymentPlanStatus(accountId).catch(() => null),
+        getRepaymentPlanStatus(accountId).catch(() => []),
         getPaymentExtensionSearchResults(accountId).catch(() => []),
         getPaymentAmountByAccountIds(accountId).catch(() => []),
       ]);
-      setPlans(pl);
+      setPlans(Array.isArray(pl) ? pl : pl ? [pl] : []);
       setRemainingCapital(rc);
-      setRepaymentStatus(rs);
-      setExtensions(ext);
-      setPaymentAmounts(pa);
+      const statusArr = Array.isArray(rs) ? rs : rs ? [rs] : [];
+      setRepaymentStatus(statusArr);
+      setExtensions(Array.isArray(ext) ? ext : ext ? [ext] : []);
+      setPaymentAmounts(Array.isArray(pa) ? pa : pa ? [pa] : []);
       loaded.current = true;
     } catch (e: any) {
       setError(e.message || 'Failed to load payment plans');
@@ -232,89 +233,128 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
 
-  const hasData = plans.length || remainingCapital || repaymentStatus || extensions.length || paymentAmounts.length;
-  if (!hasData) return <EmptyState message="No payment plan data available" />;
+  const repaymentLabels = ['Interest Waiver', 'Rebate'];
+  const hasRepaymentData = repaymentStatus.length > 0;
+  const hasPlans = plans.length > 0;
+  const hasExtensions = extensions.length > 0;
+  const hasPaymentAmounts = paymentAmounts.length > 0;
+  const hasCapital = remainingCapital && (typeof remainingCapital !== 'object' || Object.values(remainingCapital).some((v: any) => v != null && v !== 0));
 
   return (
     <div className="p-5 space-y-5">
-      {(remainingCapital || repaymentStatus) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {remainingCapital && (
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
-                <Banknote className="w-4 h-4 text-white" />
-                <h3 className="text-sm font-semibold text-white tracking-wide">Remaining Capital</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
+            <Shield className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Repayment Plan Status</h3>
+          </div>
+          <div className="p-5">
+            {hasRepaymentData ? (
+              <div className="space-y-3">
+                {repaymentStatus.map((item: any, i: number) => {
+                  const label = repaymentLabels[i] || `Status ${i + 1}`;
+                  const value = typeof item === 'string' ? item : item?.status || item?.description || JSON.stringify(item);
+                  const isActive = value && value !== 'N/A' && value !== 'None' && value !== '';
+                  return (
+                    <div key={i} className="flex items-center justify-between py-2.5 px-4 rounded-lg bg-slate-50 border border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-2.5 h-2.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                        <span className="text-sm font-medium text-slate-700">{label}</span>
+                      </div>
+                      <Badge variant={isActive ? 'default' : 'secondary'} className={`text-[11px] ${isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>{value}</Badge>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="p-5">
-                {typeof remainingCapital === 'object' ? (
-                  Object.entries(remainingCapital).filter(([k]) => !k.startsWith('_')).map(([key, val]) => (
-                    <FieldRow key={key} label={key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())} value={val as any} />
-                  ))
-                ) : (
-                  <FieldRow label="Remaining Capital" value={remainingCapital} />
-                )}
+            ) : (
+              <div className="py-6 text-center">
+                <Shield className="w-8 h-8 text-slate-200 mx-auto mb-2" />
+                <p className="text-xs text-slate-400">No repayment plan status available</p>
               </div>
-            </div>
-          )}
-          {repaymentStatus && (
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
-                <Shield className="w-4 h-4 text-white" />
-                <h3 className="text-sm font-semibold text-white tracking-wide">Repayment Plan Status</h3>
-              </div>
-              <div className="p-5">
-                {typeof repaymentStatus === 'object' ? (
-                  Object.entries(repaymentStatus).filter(([k]) => !k.startsWith('_')).map(([key, val]) => (
-                    <FieldRow key={key} label={key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())} value={val as any} />
-                  ))
-                ) : (
-                  <FieldRow label="Status" value={repaymentStatus} />
-                )}
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      )}
 
-      {plans.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+            <Banknote className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Remaining Capital</h3>
+          </div>
+          <div className="p-5">
+            {hasCapital ? (
+              typeof remainingCapital === 'object' ? (
+                Object.entries(remainingCapital).filter(([k, v]) => !k.startsWith('_') && v != null && v !== 0).map(([key, val]) => (
+                  <FieldRow key={key} label={key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())} value={val as any} />
+                ))
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-2xl font-bold text-blue-700">R {Number(remainingCapital).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</p>
+                  <p className="text-xs text-slate-400 mt-1">Outstanding Capital Balance</p>
+                </div>
+              )
+            ) : (
+              <div className="py-6 text-center">
+                <Banknote className="w-8 h-8 text-slate-200 mx-auto mb-2" />
+                <p className="text-xs text-slate-400">No remaining capital on account</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {hasPlans ? (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
             <CreditCard className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Payment Plans</h3>
+            <h3 className="text-sm font-semibold text-white tracking-wide">Active Payment Plans</h3>
             <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{plans.length}</Badge>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-payment-plans">
               <thead>
-                <tr className="border-b-2 border-slate-200">
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Plan ID</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Type</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Start Date</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">End Date</th>
-                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Instalment</th>
-                  <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Total Amount</th>
-                  <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
+                <tr className="bg-slate-50 border-b-2 border-slate-200">
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Plan ID</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Type</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Start Date</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">End Date</th>
+                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Instalment</th>
+                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Total</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {plans.map((p: any, i: number) => (
                   <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                    <td className="py-2 px-3 font-mono">{p.planId || p.paymentPlanId || p.plan_ID || '-'}</td>
-                    <td className="py-2 px-3">{p.planType || p.paymentPlanType || '-'}</td>
-                    <td className="py-2 px-3 text-slate-600">{p.startDate ? new Date(p.startDate).toLocaleDateString('en-ZA') : '-'}</td>
-                    <td className="py-2 px-3 text-slate-600">{p.endDate ? new Date(p.endDate).toLocaleDateString('en-ZA') : '-'}</td>
-                    <td className="py-2 px-3 text-right font-mono">{(p.instalmentAmount ?? p.instalment ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                    <td className="py-2 px-3 text-right font-mono font-semibold">{(p.totalAmount ?? p.amount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                    <td className="py-2 px-3"><Badge variant={p.status === 'Active' ? 'default' : 'secondary'} className="text-[10px]">{p.status || p.planStatus || '-'}</Badge></td>
+                    <td className="py-2.5 px-3 font-mono text-xs">{p.planId || p.paymentPlanId || p.id || '-'}</td>
+                    <td className="py-2.5 px-3 font-medium">{p.planType || p.paymentPlanType || p.description || '-'}</td>
+                    <td className="py-2.5 px-3 text-slate-600">{p.startDate ? new Date(p.startDate).toLocaleDateString('en-ZA') : p.effectiveDate ? new Date(p.effectiveDate).toLocaleDateString('en-ZA') : '-'}</td>
+                    <td className="py-2.5 px-3 text-slate-600">{p.endDate ? new Date(p.endDate).toLocaleDateString('en-ZA') : p.expiryDate ? new Date(p.expiryDate).toLocaleDateString('en-ZA') : '-'}</td>
+                    <td className="py-2.5 px-3 text-right font-mono">{(p.instalmentAmount ?? p.instalment ?? p.monthlyAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    <td className="py-2.5 px-3 text-right font-mono font-semibold">{(p.totalAmount ?? p.amount ?? p.capitalAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    <td className="py-2.5 px-3"><Badge variant={p.status === 'Active' || p.isActive ? 'default' : 'secondary'} className="text-[10px]">{p.status || p.planStatus || (p.isActive ? 'Active' : 'Inactive')}</Badge></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Active Payment Plans</h3>
+          </div>
+          <div className="py-10 px-5 flex flex-col items-center justify-center text-center">
+            <div className="w-14 h-14 rounded-full bg-slate-50 flex items-center justify-center mb-4">
+              <CreditCard className="w-7 h-7 text-slate-300" />
+            </div>
+            <p className="text-sm font-medium text-slate-500">No Active Payment Plans</p>
+            <p className="text-xs text-slate-400 mt-1">There are no payment or repayment plans currently active on this account</p>
+          </div>
+        </div>
       )}
 
-      {extensions.length > 0 && (
+      {hasExtensions && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
             <CalendarDays className="w-4 h-4 text-white" />
@@ -334,10 +374,10 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
               <tbody>
                 {extensions.map((ext: any, i: number) => (
                   <tr key={i} className="border-b border-slate-100 hover:bg-amber-50/30 transition-colors">
-                    <td className="py-2 px-3">{ext.extensionDate ? new Date(ext.extensionDate).toLocaleDateString('en-ZA') : ext.date || '-'}</td>
-                    <td className="py-2 px-3">{ext.extensionType || ext.type || '-'}</td>
-                    <td className="py-2 px-3 text-right font-mono">{(ext.amount ?? ext.extensionAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                    <td className="py-2 px-3">{ext.status || '-'}</td>
+                    <td className="py-2.5 px-3">{ext.extensionDate ? new Date(ext.extensionDate).toLocaleDateString('en-ZA') : ext.date || '-'}</td>
+                    <td className="py-2.5 px-3">{ext.extensionType || ext.type || ext.description || '-'}</td>
+                    <td className="py-2.5 px-3 text-right font-mono">{(ext.amount ?? ext.extensionAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    <td className="py-2.5 px-3"><Badge variant="outline" className="text-[10px]">{ext.status || '-'}</Badge></td>
                   </tr>
                 ))}
               </tbody>
@@ -346,35 +386,54 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
         </div>
       )}
 
-      {paymentAmounts.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center gap-2">
-            <Banknote className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Payment Amounts</h3>
-            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{paymentAmounts.length}</Badge>
-          </div>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center gap-2">
+          <Banknote className="w-4 h-4 text-white" />
+          <h3 className="text-sm font-semibold text-white tracking-wide">Payment History</h3>
+          {hasPaymentAmounts && <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{paymentAmounts.length}</Badge>}
+        </div>
+        {hasPaymentAmounts ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-payment-amounts">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Description</th>
-                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Receipt No</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Date</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Payment Type</th>
+                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Cashier</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Cash Book</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Card/Cheque</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Cancel Reason</th>
                 </tr>
               </thead>
               <tbody>
                 {paymentAmounts.map((pa: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-indigo-50/30 transition-colors">
-                    <td className="py-2 px-3">{pa.description || pa.paymentDescription || '-'}</td>
-                    <td className="py-2 px-3 text-right font-mono font-semibold">{(pa.amount ?? pa.paymentAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                    <td className="py-2 px-3 text-slate-500">{pa.paymentDate ? new Date(pa.paymentDate).toLocaleDateString('en-ZA') : '-'}</td>
+                  <tr key={i} className={`border-b border-slate-100 hover:bg-indigo-50/30 transition-colors ${pa.cancelReson ? 'bg-red-50/30' : ''}`}>
+                    <td className="py-2.5 px-3 font-mono text-xs font-medium">{pa.receiptNo || '-'}</td>
+                    <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{pa.receiptDate ? new Date(pa.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
+                    <td className="py-2.5 px-3">
+                      <Badge variant="outline" className={`text-[10px] ${pa.paymentType === 'Cash' ? 'bg-green-50 text-green-700 border-green-200' : pa.paymentType === 'Credit Card' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                        {pa.paymentType || '-'}
+                      </Badge>
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-mono font-semibold">{(pa.amount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    <td className="py-2.5 px-3 text-slate-600 text-xs">{pa.cashier || '-'}</td>
+                    <td className="py-2.5 px-3 text-slate-500 text-xs">{pa.cashBook || '-'}</td>
+                    <td className="py-2.5 px-3 text-slate-500 text-xs font-mono">{pa.cardChequeDetail || '-'}</td>
+                    <td className="py-2.5 px-3 text-xs">{pa.cancelReson ? <span className="text-red-600 font-medium">{pa.cancelReson}</span> : '-'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="py-8 px-5 flex flex-col items-center justify-center text-center">
+            <Banknote className="w-8 h-8 text-slate-200 mb-2" />
+            <p className="text-xs text-slate-400">No payment records found</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
