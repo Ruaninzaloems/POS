@@ -48,6 +48,10 @@ export default function AllocateTransaction() {
   const [loadingTx, setLoadingTx] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
+  const [postingStatus, setPostingStatus] = useState('');
+  const [postingStep, setPostingStep] = useState(0);
+  const [postingTotalSteps, setPostingTotalSteps] = useState(0);
+  const [postingErrors, setPostingErrors] = useState<string[]>([]);
   const [lines, setLines] = useState<AllocationLine[]>([]);
   const [linesPage, setLinesPage] = useState(1);
   const LINES_PER_PAGE = 10;
@@ -705,13 +709,30 @@ export default function AllocateTransaction() {
       if (!transaction) return;
 
       setPosting(true);
+      setPostingErrors([]);
+      setPostingStep(0);
+      setPostingStatus('Initializing...');
 
       try {
+          const activeLines = lines.filter(l => l.accountNo !== 'CASHBOOK-RTN' && l.allocationType !== 'CASHBOOK');
+          const stepsPerLine = 3;
+          const totalSteps = 2 + (activeLines.length * stepsPerLine) + 1;
+          setPostingTotalSteps(totalSteps);
+          let currentStep = 0;
+
+          const updateProgress = (status: string) => {
+              currentStep++;
+              setPostingStep(currentStep);
+              setPostingStatus(status);
+          };
+
+          updateProgress('Fetching financial year...');
           let finYear = '2025/2026';
           try {
               finYear = await fetchActiveFinYear();
           } catch {}
 
+          updateProgress('Verifying user session...');
           let userId = -1;
           try {
               const userInfo = await fetchPlatinumUserInfo();
@@ -721,6 +742,7 @@ export default function AllocateTransaction() {
           if (userId <= 0) {
               toast({ title: 'User Session Error', description: 'Could not determine your user ID. Please log in again and retry.', variant: 'destructive' });
               setPosting(false);
+              setPostingStatus('');
               return;
           }
 
@@ -753,10 +775,13 @@ export default function AllocateTransaction() {
           console.log('[Direct Deposit] Processing order:', sortedLines.map(l => `${l.allocationType}:${l.accountNo}:R${l.amount}`));
 
           let submittedCount = 0;
+          let lineIdx = 0;
           for (const line of sortedLines) {
               if (line.accountNo === 'CASHBOOK-RTN' || line.allocationType === 'CASHBOOK') continue;
+              lineIdx++;
 
               const allocType = line.allocationType || 'ACCOUNT';
+              const lineLabel = `${allocType} ${line.accountNo || ''} (R ${line.amount.toFixed(2)})`;
 
               let billType = '1';
               if (allocType === 'GROUP') {
@@ -769,6 +794,7 @@ export default function AllocateTransaction() {
 
               const accountIdStr = line.accountId ? String(line.accountId) : '';
 
+              updateProgress(`Line ${lineIdx}/${activeLines.length}: Preparing ${lineLabel}...`);
               try {
                   if (allocType === 'ACCOUNT' || allocType === 'PREPAID') {
                       console.log(`[Direct Deposit] Prep: load-details-consumer-services (billType 1) for account ${accountIdStr}`);
@@ -820,10 +846,12 @@ export default function AllocateTransaction() {
                           }
                       );
                   }
-              } catch (prepErr) {
+              } catch (prepErr: any) {
                   console.warn(`[Direct Deposit] Preparation step warning (non-blocking):`, prepErr);
+                  setPostingErrors(prev => [...prev, `Prep warning for ${lineLabel}: ${prepErr?.message || 'unknown'}`]);
               }
 
+              updateProgress(`Line ${lineIdx}/${activeLines.length}: Confirming ${lineLabel}...`);
               try {
                   console.log(`[Direct Deposit] load-confirm-payment-details for billType=${billType}, account ${accountIdStr}`);
                   const confirmResponse = await platinumLoadConfirmPaymentDetails({}, {
@@ -832,9 +860,12 @@ export default function AllocateTransaction() {
                       posItem: String(transaction.posItem_ID),
                   });
                   console.log('[Direct Deposit] load-confirm-payment-details RESPONSE:', JSON.stringify(confirmResponse));
-              } catch (confirmErr) {
+              } catch (confirmErr: any) {
                   console.warn(`[Direct Deposit] Confirm step warning (non-blocking):`, confirmErr);
+                  setPostingErrors(prev => [...prev, `Confirm warning for ${lineLabel}: ${confirmErr?.message || 'unknown'}`]);
               }
+
+              updateProgress(`Line ${lineIdx}/${activeLines.length}: Submitting ${lineLabel}...`);
 
               const submitData: any = {
                   posItemId: transaction.posItem_ID,
@@ -884,6 +915,7 @@ export default function AllocateTransaction() {
                       variant: 'destructive',
                   });
                   setPosting(false);
+                  setPostingStatus('');
                   return;
               }
               submittedCount++;
@@ -894,6 +926,8 @@ export default function AllocateTransaction() {
               && l.accountNo && l.accountNo !== 'CASHBOOK-RTN'
           );
           const uniqueAccountNos = Array.from(new Set(accountLines.map(l => l.accountNo)));
+
+          updateProgress(uniqueAccountNos.length > 0 ? `Rebuilding ${uniqueAccountNos.length} account(s)...` : 'Finalizing...');
 
           if (uniqueAccountNos.length > 0) {
               console.log('[Direct Deposit] Running account rebuilds for:', uniqueAccountNos);
@@ -937,6 +971,7 @@ export default function AllocateTransaction() {
           });
       } finally {
           setPosting(false);
+          setPostingStatus('');
       }
   };
 
@@ -1080,23 +1115,46 @@ export default function AllocateTransaction() {
               </div>
 
               <div className="space-y-2">
-                {remaining > 0.005 && (
+                {posting && (
+                  <div className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-4 space-y-3" data-testid="posting-progress-panel">
+                    <div className="flex items-center gap-2 text-sm font-medium text-indigo-800">
+                      <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                      Posting Allocation
+                    </div>
+                    <div className="h-2 bg-indigo-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-indigo-600 rounded-full transition-all duration-300 ease-out"
+                        style={{ width: `${postingTotalSteps > 0 ? Math.round((postingStep / postingTotalSteps) * 100) : 0}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] text-indigo-700 truncate flex-1 mr-2">{postingStatus}</p>
+                      <span className="text-[11px] text-indigo-500 font-mono whitespace-nowrap">{postingStep}/{postingTotalSteps}</span>
+                    </div>
+                    {postingErrors.length > 0 && (
+                      <div className="mt-1 space-y-0.5">
+                        {postingErrors.map((err, i) => (
+                          <p key={i} className="text-[10px] text-amber-700 bg-amber-50 rounded px-2 py-0.5 truncate" title={err}>{err}</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {!posting && remaining > 0.005 && (
                   <Button variant="outline" onClick={handleReturnToCashbook} className="w-full justify-center gap-2 h-10 text-sm text-orange-700 border-orange-200 hover:bg-orange-50 hover:border-orange-300">
                       <RotateCcw className="w-3.5 h-3.5" /> Return R {remaining.toFixed(2)} to Cashbook
                   </Button>
                 )}
-                <Button
+                {!posting && (
+                  <Button
                     className={`w-full justify-center gap-2 h-11 text-sm font-medium transition-all ${isFullyAllocated ? 'bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
                     disabled={!isFullyAllocated || posting}
                     onClick={handlePost}
-                >
-                    {posting ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                        <CheckCircle className="w-4 h-4" />
-                    )}
-                    {posting ? 'Posting...' : 'Post Allocation'}
-                </Button>
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    Post Allocation
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -1476,20 +1534,38 @@ export default function AllocateTransaction() {
           </div>
         </div>
 
-        <div className="lg:hidden sticky bottom-0 z-10 bg-white border-t shadow-[0_-4px_12px_rgba(0,0,0,0.06)] px-4 py-3 flex items-center gap-2">
-          {remaining > 0.005 && (
-            <Button variant="outline" size="sm" onClick={handleReturnToCashbook} className="text-orange-700 border-orange-200 hover:bg-orange-50 text-xs gap-1.5 h-10">
-              <RotateCcw className="w-3.5 h-3.5" /> Cashbook
-            </Button>
+        <div className="lg:hidden sticky bottom-0 z-10 bg-white border-t shadow-[0_-4px_12px_rgba(0,0,0,0.06)] px-4 py-3">
+          {posting ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium text-indigo-800">
+                <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                <span className="truncate flex-1">{postingStatus}</span>
+                <span className="text-[11px] text-indigo-500 font-mono">{postingStep}/{postingTotalSteps}</span>
+              </div>
+              <div className="h-2 bg-indigo-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-indigo-600 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${postingTotalSteps > 0 ? Math.round((postingStep / postingTotalSteps) * 100) : 0}%` }}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              {remaining > 0.005 && (
+                <Button variant="outline" size="sm" onClick={handleReturnToCashbook} className="text-orange-700 border-orange-200 hover:bg-orange-50 text-xs gap-1.5 h-10">
+                  <RotateCcw className="w-3.5 h-3.5" /> Cashbook
+                </Button>
+              )}
+              <Button
+                className={`flex-1 h-10 text-sm font-medium gap-1.5 ${isFullyAllocated ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+                disabled={!isFullyAllocated || posting}
+                onClick={handlePost}
+              >
+                <CheckCircle className="w-4 h-4" />
+                Post Allocation
+              </Button>
+            </div>
           )}
-          <Button
-            className={`flex-1 h-10 text-sm font-medium gap-1.5 ${isFullyAllocated ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
-            disabled={!isFullyAllocated || posting}
-            onClick={handlePost}
-          >
-            {posting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-            {posting ? 'Posting...' : 'Post Allocation'}
-          </Button>
         </div>
       </div>
 
