@@ -715,8 +715,7 @@ export default function AllocateTransaction() {
 
       try {
           const activeLines = lines.filter(l => l.accountNo !== 'CASHBOOK-RTN' && l.allocationType !== 'CASHBOOK');
-          const stepsPerLine = 3;
-          const totalSteps = 2 + (activeLines.length * stepsPerLine) + 1;
+          const totalSteps = 2 + activeLines.length + 1;
           setPostingTotalSteps(totalSteps);
           let currentStep = 0;
 
@@ -794,77 +793,6 @@ export default function AllocateTransaction() {
               }
 
               const accountIdStr = line.accountId ? String(line.accountId) : '';
-
-              updateProgress(`Line ${lineIdx}/${activeLines.length}: Preparing ${lineLabel}...`);
-              try {
-                  if (allocType === 'ACCOUNT' || allocType === 'PREPAID') {
-                      console.log(`[Direct Deposit] Prep: load-details-consumer-services (billType 1) for account ${accountIdStr}`);
-                      await platinumLoadDetailsConsumerServices(
-                          { page: 1, pageSize: 100, orderby: null, shortDirection: null },
-                          {
-                              posItemId: String(transaction.posItem_ID),
-                              finYear: finYear,
-                              userId: String(userId),
-                          }
-                      );
-
-                      console.log(`[Direct Deposit] Prep: get-consumer-details-data for account ${accountIdStr}`);
-                      await platinumGetConsumerDetailsData({
-                          accountID: accountIdStr,
-                          posItemID: transaction.posItem_ID,
-                          transactionAmount: line.amount,
-                      });
-                  } else if (allocType === 'GROUP') {
-                      console.log(`[Direct Deposit] Prep: load-details-payment-grouping (billType 3) for group`);
-                      await platinumLoadDetailsPaymentGrouping(
-                          { page: 1, pageSize: 100, orderby: null, shortDirection: null },
-                          {
-                              posItemId: String(transaction.posItem_ID),
-                              finYear: finYear,
-                              userId: String(userId),
-                          }
-                      );
-                  } else if (allocType === 'CLEARANCE') {
-                      console.log(`[Direct Deposit] Prep: load-details-clearance (billType 6)`);
-                      const pagerBody = { page: 1, pageSize: 100, orderby: null, shortDirection: null };
-                      await platinumLoadDetailsClearance(pagerBody);
-
-                      console.log(`[Direct Deposit] Prep: get-clearance-details-info for ${accountIdStr}`);
-                      await platinumGetClearanceDetailsInfo({
-                          costScheduleID: line.clearanceId ? String(line.clearanceId) : accountIdStr,
-                          accountID: accountIdStr,
-                          posItemID: transaction.posItem_ID,
-                          transactionAmount: line.amount,
-                      });
-                  } else if (allocType === 'DIRECT') {
-                      console.log(`[Direct Deposit] Prep: load-details-payment-grouping for misc (billType 4)`);
-                      await platinumLoadDetailsPaymentGrouping(
-                          { page: 1, pageSize: 100, orderby: null, shortDirection: null },
-                          {
-                              posItemId: String(transaction.posItem_ID),
-                              finYear: finYear,
-                              userId: String(userId),
-                          }
-                      );
-                  }
-              } catch (prepErr: any) {
-                  console.warn(`[Direct Deposit] Preparation step warning (non-blocking):`, prepErr);
-                  setPostingErrors(prev => [...prev, `Prep warning for ${lineLabel}: ${prepErr?.message || 'unknown'}`]);
-              }
-
-              updateProgress(`Line ${lineIdx}/${activeLines.length}: Confirming ${lineLabel}...`);
-              try {
-                  console.log(`[Direct Deposit] load-confirm-payment-details for billType=${billType}, account ${accountIdStr}`);
-                  const confirmResponse = await platinumLoadConfirmPaymentDetails({}, {
-                      billType,
-                      accountID: accountIdStr,
-                      posItem: String(transaction.posItem_ID),
-                  });
-                  console.log('[Direct Deposit] load-confirm-payment-details RESPONSE:', JSON.stringify(confirmResponse));
-              } catch (confirmErr: any) {
-                  console.warn(`[Direct Deposit] Confirm step warning (non-blocking):`, confirmErr);
-                  setPostingErrors(prev => [...prev, `Confirm warning for ${lineLabel}: ${confirmErr?.message || 'unknown'}`]);
-              }
 
               updateProgress(`Line ${lineIdx}/${activeLines.length}: Submitting ${lineLabel}...`);
 
