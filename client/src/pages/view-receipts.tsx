@@ -27,12 +27,30 @@ import { usePos } from '@/lib/pos-state';
 type SortField = 'receiptNo' | 'accountNumber' | 'amount' | 'receiptDate' | 'cashierName' | 'paymentType' | 'paymentOption';
 type SortDir = 'asc' | 'desc';
 
+function inferPaymentMethod(receipt: ViewReceiptItem): string {
+    const r = receipt as any;
+    const cardNo = r.cardNo || r.card_no || r.cardNumber || '';
+    const chequeNo = r.chequeNo || r.cheque_no || r.chequeNumber || '';
+    const nameOnCheque = r.nameOnCheque || r.name_on_cheque || '';
+    const payType = (receipt.paymentType || r.payment_type || r.payMode || '').toLowerCase();
+
+    if (cardNo && cardNo.trim()) return 'Credit Card';
+    if ((chequeNo && chequeNo.trim()) || (nameOnCheque && nameOnCheque.trim())) return 'Cheque';
+    if (payType.includes('eft')) return 'EFT';
+    if (payType.includes('postal')) return 'Postal Order';
+    if (payType.includes('credit') || payType.includes('card')) return 'Credit Card';
+    if (payType.includes('cheque')) return 'Cheque';
+    if (payType.includes('cash') && !payType.includes('cashier')) return 'Cash';
+    return 'Cash';
+}
+
 function getReceiptField(receipt: ViewReceiptItem, field: string): any {
     const r = receipt as any;
     switch (field) {
         case 'accountNumber': return receipt.accountNumber || r.accountNo || r.accountID || r.account_number || '';
         case 'receiptNo': return receipt.receiptNo || r.receipt_no || '';
         case 'paymentType': return receipt.paymentType || r.payment_type || r.payMode || '';
+        case 'paymentMethod': return inferPaymentMethod(receipt);
         case 'paymentOption': return receipt.paymentOption || r.payment_option || r.billType || '';
         case 'receiptDate': return receipt.receiptDate || r.receipt_date || '';
         case 'amount': return receipt.amount ?? r.receiptAmount ?? 0;
@@ -89,6 +107,7 @@ export default function ViewReceipts() {
     const [dataSource, setDataSource] = useState<'none' | 'platinum' | 'sebata'>('none');
 
     const [quickSearch, setQuickSearch] = useState('');
+    const [filterPaymentMethod, setFilterPaymentMethod] = useState('__all__');
     const [filterPaymentType, setFilterPaymentType] = useState('__all__');
     const [filterPaymentOption, setFilterPaymentOption] = useState('__all__');
     const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'cancelled'>('all');
@@ -174,6 +193,7 @@ export default function ViewReceipts() {
         const effectiveFromDate = fromDate || new Date();
         setIsLoading(true);
         setQuickSearch('');
+        setFilterPaymentMethod('__all__');
         setFilterPaymentType('__all__');
         setFilterPaymentOption('__all__');
         setFilterStatus('all');
@@ -259,6 +279,7 @@ export default function ViewReceipts() {
         setCurrentPage(1);
         setDataSource('none');
         setQuickSearch('');
+        setFilterPaymentMethod('__all__');
         setFilterPaymentType('__all__');
         setFilterPaymentOption('__all__');
         setFilterStatus('all');
@@ -341,6 +362,15 @@ export default function ViewReceipts() {
         return `Cashier ${c.id}`;
     };
 
+    const uniquePaymentMethods = useMemo(() => {
+        const set = new Set<string>();
+        receipts.forEach(r => {
+            const v = getReceiptField(r, 'paymentMethod');
+            if (v) set.add(v);
+        });
+        return Array.from(set).sort();
+    }, [receipts]);
+
     const uniquePaymentTypes = useMemo(() => {
         const set = new Set<string>();
         receipts.forEach(r => {
@@ -362,6 +392,9 @@ export default function ViewReceipts() {
     const filteredReceipts = useMemo(() => {
         let result = receipts;
 
+        if (filterPaymentMethod !== '__all__') {
+            result = result.filter(r => getReceiptField(r, 'paymentMethod') === filterPaymentMethod);
+        }
         if (filterPaymentType !== '__all__') {
             result = result.filter(r => getReceiptField(r, 'paymentType') === filterPaymentType);
         }
@@ -412,9 +445,10 @@ export default function ViewReceipts() {
         }
 
         return result;
-    }, [receipts, filterPaymentType, filterPaymentOption, filterStatus, quickSearch, sortField, sortDir]);
+    }, [receipts, filterPaymentMethod, filterPaymentType, filterPaymentOption, filterStatus, quickSearch, sortField, sortDir]);
 
     const activeFilterCount = [
+        filterPaymentMethod !== '__all__',
         filterPaymentType !== '__all__',
         filterPaymentOption !== '__all__',
         filterStatus !== 'all',
@@ -423,6 +457,7 @@ export default function ViewReceipts() {
 
     const clearAllFilters = () => {
         setQuickSearch('');
+        setFilterPaymentMethod('__all__');
         setFilterPaymentType('__all__');
         setFilterPaymentOption('__all__');
         setFilterStatus('all');
@@ -707,7 +742,21 @@ export default function ViewReceipts() {
 
                             {showFilters && (
                                 <div className="p-2 sm:p-3 bg-blue-50/30 border-b">
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+                                        <div>
+                                            <label className="text-[11px] font-medium text-slate-500 uppercase tracking-wider mb-1 block">Payment Method</label>
+                                            <Select value={filterPaymentMethod} onValueChange={setFilterPaymentMethod}>
+                                                <SelectTrigger className="h-8 text-xs bg-white" data-testid="select-filter-payment-method">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="__all__">All Methods</SelectItem>
+                                                    {uniquePaymentMethods.map(t => (
+                                                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
                                         <div>
                                             <label className="text-[11px] font-medium text-slate-500 uppercase tracking-wider mb-1 block">Payment Type</label>
                                             <Select value={filterPaymentType} onValueChange={setFilterPaymentType}>
@@ -761,6 +810,11 @@ export default function ViewReceipts() {
                                             Search: "{quickSearch}" <X className="w-2.5 h-2.5" />
                                         </Badge>
                                     )}
+                                    {filterPaymentMethod !== '__all__' && (
+                                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 gap-1 bg-sky-100 text-sky-800 border-sky-200 hover:bg-sky-200 cursor-pointer" onClick={() => setFilterPaymentMethod('__all__')}>
+                                            Method: {filterPaymentMethod} <X className="w-2.5 h-2.5" />
+                                        </Badge>
+                                    )}
                                     {filterPaymentType !== '__all__' && (
                                         <Badge variant="secondary" className="text-[10px] px-1.5 py-0 gap-1 bg-violet-100 text-violet-800 border-violet-200 hover:bg-violet-200 cursor-pointer" onClick={() => setFilterPaymentType('__all__')}>
                                             Type: {filterPaymentType} <X className="w-2.5 h-2.5" />
@@ -809,6 +863,7 @@ export default function ViewReceipts() {
                             const acctNo = getReceiptField(receipt, 'accountNumber');
                             const receiptNo = getReceiptField(receipt, 'receiptNo');
                             const payType = getReceiptField(receipt, 'paymentType');
+                            const payMethod = getReceiptField(receipt, 'paymentMethod');
                             const payOption = getReceiptField(receipt, 'paymentOption');
                             const dateStr = getReceiptField(receipt, 'receiptDate');
                             const amount = getReceiptField(receipt, 'amount');
@@ -831,6 +886,7 @@ export default function ViewReceipts() {
                                         </div>
                                     </div>
                                     <div className="flex flex-wrap gap-1 mb-1.5">
+                                        {payMethod && <Badge variant="outline" className="text-[9px] px-1 py-0 text-sky-700 border-sky-200 bg-sky-50">{payMethod}</Badge>}
                                         {payType && <Badge variant="outline" className="text-[9px] px-1 py-0 text-slate-600 border-slate-200 bg-slate-50">{payType}</Badge>}
                                         {payOption && <Badge variant="outline" className="text-[9px] px-1 py-0 text-violet-600 border-violet-200 bg-violet-50">{payOption}</Badge>}
                                     </div>
@@ -864,6 +920,9 @@ export default function ViewReceipts() {
                                     <TableHead className="min-w-[140px] font-bold text-slate-700 cursor-pointer select-none hover:text-blue-700" onClick={() => handleSort('receiptNo')}>
                                         <span className="inline-flex items-center">Receipt No <SortIcon field="receiptNo" /></span>
                                     </TableHead>
+                                    <TableHead className="min-w-[100px] font-bold text-slate-700">
+                                        <span className="inline-flex items-center">Method</span>
+                                    </TableHead>
                                     <TableHead className="min-w-[100px] font-bold text-slate-700 cursor-pointer select-none hover:text-blue-700" onClick={() => handleSort('paymentType')}>
                                         <span className="inline-flex items-center">Payment Type <SortIcon field="paymentType" /></span>
                                     </TableHead>
@@ -891,7 +950,7 @@ export default function ViewReceipts() {
                             <TableBody>
                                 {isLoading ? (
                                     <TableRow>
-                                        <TableCell colSpan={15} className="h-24 text-center text-muted-foreground">
+                                        <TableCell colSpan={16} className="h-24 text-center text-muted-foreground">
                                             <div className="flex items-center justify-center gap-2">
                                                 <Loader2 className="w-5 h-5 animate-spin" />
                                                 Loading receipts from billing system...
@@ -900,13 +959,13 @@ export default function ViewReceipts() {
                                     </TableRow>
                                 ) : filteredReceipts.length === 0 && receipts.length > 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={15} className="h-24 text-center text-muted-foreground">
+                                        <TableCell colSpan={16} className="h-24 text-center text-muted-foreground">
                                             No receipts match the current filters. Try adjusting your filters above.
                                         </TableCell>
                                     </TableRow>
                                 ) : filteredReceipts.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={15} className="h-24 text-center text-muted-foreground">
+                                        <TableCell colSpan={16} className="h-24 text-center text-muted-foreground">
                                             No receipts found. Use the filters above and click Load.
                                         </TableCell>
                                     </TableRow>
@@ -916,6 +975,7 @@ export default function ViewReceipts() {
                                         const acctNo = getReceiptField(receipt, 'accountNumber');
                                         const receiptNo = getReceiptField(receipt, 'receiptNo');
                                         const payType = getReceiptField(receipt, 'paymentType');
+                                        const payMethod = getReceiptField(receipt, 'paymentMethod');
                                         const payOption = getReceiptField(receipt, 'paymentOption');
                                         const dateStr = getReceiptField(receipt, 'receiptDate');
                                         const staged = getReceiptField(receipt, 'staged');
@@ -941,6 +1001,15 @@ export default function ViewReceipts() {
                                                 <TableCell className="text-xs">{(currentPage - 1) * pageSize + idx + 1}</TableCell>
                                                 <TableCell className="font-mono text-xs">{acctNo}</TableCell>
                                                 <TableCell className="font-mono text-xs font-medium text-blue-700">{receiptNo}</TableCell>
+                                                <TableCell className="text-xs">
+                                                    <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 font-medium",
+                                                        payMethod === 'Cash' && "text-green-700 border-green-300 bg-green-50",
+                                                        payMethod === 'Credit Card' && "text-blue-700 border-blue-300 bg-blue-50",
+                                                        payMethod === 'EFT' && "text-purple-700 border-purple-300 bg-purple-50",
+                                                        payMethod === 'Cheque' && "text-amber-700 border-amber-300 bg-amber-50",
+                                                        payMethod === 'Postal Order' && "text-orange-700 border-orange-300 bg-orange-50",
+                                                    )}>{payMethod}</Badge>
+                                                </TableCell>
                                                 <TableCell className="text-xs">{payType}</TableCell>
                                                 <TableCell className="text-xs">{payOption}</TableCell>
                                                 <TableCell className="text-xs whitespace-nowrap">{formatReceiptDate(dateStr)}</TableCell>
