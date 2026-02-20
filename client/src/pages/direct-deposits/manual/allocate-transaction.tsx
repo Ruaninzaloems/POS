@@ -776,6 +776,7 @@ export default function AllocateTransaction() {
 
           let submittedCount = 0;
           let lineIdx = 0;
+          const lineErrors: string[] = [];
           for (const line of sortedLines) {
               if (line.accountNo === 'CASHBOOK-RTN' || line.allocationType === 'CASHBOOK') continue;
               lineIdx++;
@@ -904,21 +905,37 @@ export default function AllocateTransaction() {
                   submitData.vatPercentage = line.vatPercentage ?? 0;
               }
 
-              console.log(`[Direct Deposit] submit-details-data (${allocType}, billType=${billType}):`, submitData);
-              const result = await platinumSubmitDirectDepositAllocation(submitData);
-              console.log('[Direct Deposit] Submit result:', result);
+              try {
+                  console.log(`[Direct Deposit] submit-details-data (${allocType}, billType=${billType}):`, submitData);
+                  const result = await platinumSubmitDirectDepositAllocation(submitData);
+                  console.log('[Direct Deposit] Submit result:', result);
 
-              if (result && result.success === false) {
-                  toast({
-                      title: 'Submission Failed',
-                      description: result.message || `Failed to submit allocation for ${line.accountNo}. ${submittedCount} line(s) were already submitted.`,
-                      variant: 'destructive',
-                  });
-                  setPosting(false);
-                  setPostingStatus('');
-                  return;
+                  if (result && result.success === false) {
+                      const errMsg = result.message || `Failed to submit line ${lineIdx} for ${line.accountNo}`;
+                      lineErrors.push(errMsg);
+                      setPostingErrors(prev => [...prev, `Submit failed for ${lineLabel}: ${errMsg}`]);
+                      console.error(`[Direct Deposit] Submit returned success=false for ${lineLabel}:`, errMsg);
+                      continue;
+                  }
+                  submittedCount++;
+              } catch (submitErr: any) {
+                  const errMsg = submitErr?.message || 'Unknown submit error';
+                  lineErrors.push(`${lineLabel}: ${errMsg}`);
+                  setPostingErrors(prev => [...prev, `Submit error for ${lineLabel}: ${errMsg}`]);
+                  console.error(`[Direct Deposit] Submit exception for ${lineLabel}:`, submitErr);
+                  continue;
               }
-              submittedCount++;
+          }
+
+          if (submittedCount === 0 && lineErrors.length > 0) {
+              toast({
+                  title: 'Allocation Failed',
+                  description: `No lines could be submitted. ${lineErrors[0]}`,
+                  variant: 'destructive',
+              });
+              setPosting(false);
+              setPostingStatus('');
+              return;
           }
 
           const accountLines = lines.filter(l =>
@@ -943,21 +960,19 @@ export default function AllocateTransaction() {
               const failures = rebuildResults.filter(r => r.status === 'rejected');
               if (failures.length > 0) {
                   console.warn('[Direct Deposit] Some rebuilds failed:', failures);
-                  toast({
-                      title: "Allocation Posted - Rebuild Warning",
-                      description: `Allocation successful. ${failures.length} of ${uniqueAccountNos.length} account rebuild(s) could not complete. These will be retried automatically.`,
-                      variant: "default",
-                  });
-              } else {
-                  toast({
-                      title: "Allocation Posted Successfully",
-                      description: `POS Item #${transaction.posItem_ID} allocated (R ${transaction.amount.toFixed(2)}). ${uniqueAccountNos.length} account(s) rebuilt.`,
-                  });
               }
+          }
+
+          if (lineErrors.length > 0) {
+              toast({
+                  title: `Allocation Partially Complete`,
+                  description: `${submittedCount} of ${activeLines.length} line(s) submitted. ${lineErrors.length} failed: ${lineErrors[0]}`,
+                  variant: 'destructive',
+              });
           } else {
               toast({
                   title: "Allocation Posted Successfully",
-                  description: `POS Item #${transaction.posItem_ID} allocated (R ${transaction.amount.toFixed(2)}).`,
+                  description: `POS Item #${transaction.posItem_ID} allocated (R ${transaction.amount.toFixed(2)}).${uniqueAccountNos.length > 0 ? ` ${uniqueAccountNos.length} account(s) rebuilt.` : ''}`,
               });
           }
 

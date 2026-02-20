@@ -1872,16 +1872,19 @@ export async function registerRoutes(
 
   app.post("/api/platinum/direct-deposit-allocation/load-details-payment-grouping", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-details-payment-grouping", req.body, req.query as Record<string, string>);
+      console.log('[DD Prep] load-details-payment-grouping — body:', JSON.stringify(req.body), 'query:', JSON.stringify(req.query));
+      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-details-payment-grouping", req.body, req.query as Record<string, string>, { timeout: 55000 });
+      console.log('[DD Prep] load-details-payment-grouping — response status:', data?._error ? 'ERROR' : 'OK');
       handlePlatinumResult(res, data);
     } catch (e: any) {
+      console.error('[DD Prep] load-details-payment-grouping — EXCEPTION:', e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
   app.post("/api/platinum/direct-deposit-allocation/load-details-payment-grouping-institution-data", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-details-payment-grouping-institution-data", req.body, req.query as Record<string, string>);
+      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-details-payment-grouping-institution-data", req.body, req.query as Record<string, string>, { timeout: 55000 });
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1890,16 +1893,20 @@ export async function registerRoutes(
 
   app.post("/api/platinum/direct-deposit-allocation/load-details-consumer-services", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-details-consumer-services", req.body, req.query as Record<string, string>);
+      console.log('[DD Prep] load-details-consumer-services — body:', JSON.stringify(req.body), 'query:', JSON.stringify(req.query));
+      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-details-consumer-services", req.body, req.query as Record<string, string>, { timeout: 55000 });
+      console.log('[DD Prep] load-details-consumer-services — response status:', data?._error ? 'ERROR' : 'OK');
       handlePlatinumResult(res, data);
     } catch (e: any) {
+      console.error('[DD Prep] load-details-consumer-services — EXCEPTION:', e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
   app.post("/api/platinum/direct-deposit-allocation/load-details-clearance", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-details-clearance", req.body);
+      console.log('[DD Prep] load-details-clearance — body:', JSON.stringify(req.body));
+      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-details-clearance", req.body, undefined, { timeout: 55000 });
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1908,7 +1915,7 @@ export async function registerRoutes(
 
   app.post("/api/platinum/direct-deposit-allocation/get-clearance-details-info", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing-direct-deposit-allocation/get-clearance-details-info", req.body);
+      const data = await platinumPost("/api/billing-direct-deposit-allocation/get-clearance-details-info", req.body, undefined, { timeout: 55000 });
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1917,9 +1924,12 @@ export async function registerRoutes(
 
   app.post("/api/platinum/direct-deposit-allocation/get-consumer-details-data", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing-direct-deposit-allocation/get-consumer-details-data", req.body);
+      console.log('[DD Prep] get-consumer-details-data — body:', JSON.stringify(req.body));
+      const data = await platinumPost("/api/billing-direct-deposit-allocation/get-consumer-details-data", req.body, undefined, { timeout: 55000 });
+      console.log('[DD Prep] get-consumer-details-data — response status:', data?._error ? 'ERROR' : 'OK');
       handlePlatinumResult(res, data);
     } catch (e: any) {
+      console.error('[DD Prep] get-consumer-details-data — EXCEPTION:', e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
@@ -1927,10 +1937,11 @@ export async function registerRoutes(
   app.post("/api/platinum/direct-deposit-allocation/load-confirm-payment-details", async (req, res) => {
     try {
       console.log('[DD Confirm] Query params:', JSON.stringify(req.query), 'Body:', JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-confirm-payment-details", req.body, req.query as Record<string, string>);
-      console.log('[DD Confirm] API response:', JSON.stringify(data));
+      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-confirm-payment-details", req.body, req.query as Record<string, string>, { timeout: 55000 });
+      console.log('[DD Confirm] API response:', data?._error ? `ERROR: ${JSON.stringify(data)}` : 'OK');
       handlePlatinumResult(res, data);
     } catch (e: any) {
+      console.error('[DD Confirm] EXCEPTION:', e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
@@ -1938,10 +1949,11 @@ export async function registerRoutes(
   app.post("/api/platinum/direct-deposit-allocation/submit-details-data", async (req, res) => {
     try {
       console.log('[DD Submit] Request body:', JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing-direct-deposit-allocation/submit-details-data", req.body);
-      console.log('[DD Submit] API response:', JSON.stringify(data));
+      const data = await platinumPost("/api/billing-direct-deposit-allocation/submit-details-data", req.body, undefined, { timeout: 55000 });
+      console.log('[DD Submit] API response:', data?._error ? `ERROR: ${JSON.stringify(data)}` : 'OK');
       handlePlatinumResult(res, data);
     } catch (e: any) {
+      console.error('[DD Submit] EXCEPTION:', e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });

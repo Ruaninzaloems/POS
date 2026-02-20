@@ -812,13 +812,36 @@ export async function updateTransactionStatusApi(id: string, status: string, rea
 // PLATINUM API FUNCTIONS
 // =====================================================
 
-async function platinumFetch(url: string, options?: RequestInit): Promise<any> {
-    const res = await apiFetch(url, options);
-    if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Platinum API error (${res.status}): ${text}`);
+async function platinumFetch(url: string, options?: RequestInit & { timeoutMs?: number }): Promise<any> {
+    const timeout = options?.timeoutMs || 60000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    try {
+        const { timeoutMs: _, ...fetchOpts } = options || {};
+        const mergedSignal = options?.signal
+            ? options.signal
+            : controller.signal;
+        const res = await apiFetch(url, { ...fetchOpts, signal: mergedSignal });
+        if (!res.ok) {
+            let text = '';
+            try { text = await res.text(); } catch {}
+            let detail = text;
+            try {
+                const parsed = JSON.parse(text);
+                detail = parsed.detail || parsed.message || text;
+            } catch {}
+            throw new Error(detail || `Platinum API error (${res.status})`);
+        }
+        return res.json();
+    } catch (e: any) {
+        if (e.name === 'AbortError') {
+            throw new Error(`Request timed out after ${timeout / 1000}s. The API server may be under heavy load — please try again.`);
+        }
+        throw e;
+    } finally {
+        clearTimeout(timeoutId);
     }
-    return res.json();
 }
 
 export async function platinumValidateCashier(userId: number, finYear: string): Promise<any> {
