@@ -1582,27 +1582,9 @@ export function LinkedAccountsTab({ accountId, onSelectAccount }: { accountId: n
     setLoading(true);
     setError(null);
     try {
-      const { fetchEnquiryResults } = await import('@/lib/external-api');
-      const [data, acctLookup] = await Promise.all([
-        getLinkedAccountsOnProperty(accountId),
-        fetchEnquiryResults({ accountID: String(accountId) }).catch(() => null),
-      ]);
+      const data = await getLinkedAccountsOnProperty(accountId);
       const allAccounts = Array.isArray(data) ? data : [];
-      let currentUnitId: number | undefined;
-      const acctResult = Array.isArray(acctLookup) ? acctLookup[0] : acctLookup;
-      if (acctResult) {
-        currentUnitId = acctResult.unitID || acctResult.unit_ID;
-      }
-      if (!currentUnitId) {
-        const inList = allAccounts.find((a: any) => (a.account_ID || a.accountID) === accountId);
-        currentUnitId = inList?.unitID || inList?.unit_ID;
-      }
-      if (currentUnitId) {
-        const filtered = allAccounts.filter((a: any) => (a.unitID || a.unit_ID) === currentUnitId);
-        setLinkedAccounts(filtered);
-      } else {
-        setLinkedAccounts(allAccounts);
-      }
+      setLinkedAccounts(allAccounts);
     } catch (e: any) {
       setError(e.message || 'Failed to load linked accounts');
     } finally {

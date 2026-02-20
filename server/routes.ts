@@ -2304,37 +2304,93 @@ export async function registerRoutes(
 
       console.log(`[linked-accounts] Property: ${propertyId}, owner: ${ownerName}, SG: ${sgNumber}`);
 
-      if (!ownerName) {
-        console.log(`[linked-accounts] No owner name found, returning empty`);
+      if (!ownerName && !sgNumber && !propertyId) {
+        console.log(`[linked-accounts] No owner name, SG number, or property ID found, returning empty`);
         return res.json([]);
       }
 
-      const searchResults = await platinumPost("/api/BillingEnquiry/EnquiryResults", {
-        companyName: ownerName,
-      });
-
       let accounts: any[] = [];
-      if (Array.isArray(searchResults)) {
-        accounts = searchResults;
-      } else if (searchResults && searchResults.results) {
-        accounts = searchResults.results;
-      } else if (searchResults && !searchResults._error) {
-        accounts = [searchResults];
+      const seenIds = new Set<string>();
+
+      if (sgNumber) {
+        console.log(`[linked-accounts] Searching by sgNumber via autocomplete: ${sgNumber}`);
+        const sgParts = sgNumber.match(/\d+/g) || [];
+        const erfDigits = sgParts.length >= 3 ? sgParts[2].replace(/^0+/, '') : '';
+        const searchTerms = new Set<string>();
+        if (erfDigits) searchTerms.add(erfDigits);
+        sgParts.forEach((p: string) => { const d = p.replace(/^0+/, ''); if (d && d.length >= 3) searchTerms.add(d); });
+
+        const matchedAccountIds = new Set<number>();
+        for (const term of searchTerms) {
+          try {
+            const acResults = await platinumGet("/api/BillingEnquiry/Autocomplete", { search: term, type: 'erfNumber' });
+            const acArr = Array.isArray(acResults) ? acResults : [];
+            for (const item of acArr) {
+              if (item.displayItem === sgNumber && item.accountId) {
+                matchedAccountIds.add(item.accountId);
+              }
+            }
+          } catch (e: any) {
+            console.log(`[linked-accounts] Autocomplete for "${term}" failed: ${e.message}`);
+          }
+          if (matchedAccountIds.size > 0) break;
+        }
+
+        if (matchedAccountIds.size > 0) {
+          console.log(`[linked-accounts] Found ${matchedAccountIds.size} account(s) via SG autocomplete: ${Array.from(matchedAccountIds).join(', ')}`);
+          const lookups = await Promise.allSettled(
+            Array.from(matchedAccountIds).map(id =>
+              platinumPost("/api/BillingEnquiry/EnquiryResults", { accountID: String(id) })
+            )
+          );
+          for (const r of lookups) {
+            if (r.status === 'fulfilled') {
+              const data = r.value;
+              const arr = Array.isArray(data) ? data : (data && !data._error ? [data] : []);
+              for (const acct of arr) {
+                const id = String(acct.account_ID || acct.accountID || '');
+                if (id && !seenIds.has(id)) { seenIds.add(id); accounts.push(acct); }
+              }
+            }
+          }
+        }
+      }
+
+      if (accounts.length <= 1 && ownerName) {
+        console.log(`[linked-accounts] Trying owner name search: ${ownerName}`);
+        const nameResults = await platinumPost("/api/BillingEnquiry/EnquiryResults", {
+          companyName: ownerName,
+        });
+        let nameAccounts: any[] = [];
+        if (Array.isArray(nameResults)) {
+          nameAccounts = nameResults;
+        } else if (nameResults && nameResults.results) {
+          nameAccounts = nameResults.results;
+        } else if (nameResults && !nameResults._error) {
+          nameAccounts = [nameResults];
+        }
+        for (const na of nameAccounts) {
+          const naId = String(na.account_ID || na.accountID || '');
+          if (naId && !seenIds.has(naId)) {
+            seenIds.add(naId);
+            accounts.push(na);
+          }
+        }
       }
 
       const linkedAccounts = accounts.filter((a: any) => {
         const aId = String(a.account_ID || a.accountID || '');
         if (aId === String(accountId)) return false;
-        if (propertyId && sgNumber) {
-          const aSg = a.sgNumber || '';
-          if (aSg === sgNumber) return true;
-          const aUnitId = a.unitID || a.unitPartitionID;
-          if (aUnitId && String(aUnitId) === String(propertyId)) return true;
-        }
-        return true;
+        const aSg = a.sgNumber || '';
+        const aUnitId = String(a.unitID || a.unitPartitionID || '');
+        const aPropId = String(a.propertyID || '').replace(/^0+/, '');
+        const propIdClean = String(propertyId || '');
+        if (sgNumber && aSg === sgNumber) return true;
+        if (propIdClean && (aUnitId === propIdClean || aPropId === propIdClean)) return true;
+        return false;
       });
 
-      console.log(`[linked-accounts] Found ${linkedAccounts.length} linked accounts (out of ${accounts.length} total, filtered by owner: "${ownerName}")`);
+      console.log(`[linked-accounts] Found ${linkedAccounts.length} linked accounts (out of ${accounts.length} total, property: ${propertyId}, SG: ${sgNumber})`);
 
       const enriched = await Promise.all(
         linkedAccounts.slice(0, 20).map(async (acct: any) => {

@@ -446,7 +446,7 @@ export async function platinumPut(path: string, body: any, params?: Record<strin
   try { return text ? JSON.parse(text) : null; } catch { return text; }
 }
 
-export async function platinumPost(path: string, body: any, params?: Record<string, string>): Promise<any> {
+export async function platinumPost(path: string, body: any, params?: Record<string, string>, options?: { timeout?: number }): Promise<any> {
   const token = await getPlatinumToken();
   let url = `${PLATINUM_API_URL}${path}`;
   if (params) {
@@ -454,8 +454,9 @@ export async function platinumPost(path: string, body: any, params?: Record<stri
     if (qs) url += `?${qs}`;
   }
 
+  const timeoutMs = options?.timeout || 30000;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -473,7 +474,7 @@ export async function platinumPost(path: string, body: any, params?: Record<stri
       tokenExpiry = 0;
       const retryToken = await getPlatinumToken();
       const retryController = new AbortController();
-      const retryTimeout = setTimeout(() => retryController.abort(), 30000);
+      const retryTimeout = setTimeout(() => retryController.abort(), timeoutMs);
       try {
         const retryRes = await fetch(url, {
           method: "POST",
@@ -505,7 +506,7 @@ export async function platinumPost(path: string, body: any, params?: Record<stri
     try { return text ? JSON.parse(text) : null; } catch { return text; }
   } catch (e: any) {
     if (e.name === 'AbortError') {
-      console.error(`[PlatinumPOST] ${path} timed out after 30s`);
+      console.error(`[PlatinumPOST] ${path} timed out after ${timeoutMs / 1000}s`);
       return { _error: true, status: 408, statusText: 'Request Timeout' };
     }
     throw e;
