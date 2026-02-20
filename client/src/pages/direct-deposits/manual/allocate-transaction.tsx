@@ -786,10 +786,12 @@ export default function AllocateTransaction() {
                   paidAmount: line.amount,
                   billType,
                   accountId: (allocType === 'ACCOUNT' || allocType === 'PREPAID' || allocType === 'CLEARANCE') ? (line.accountId || 0) : 0,
+                  paymentTypeId: line.paymentTypeId ?? 5,
                   description: line.description || transaction.note || '',
                   reference: line.reference || transaction.reference || '',
                   note: line.note || transaction.note || '',
                   outstandingAmount: line.outstandingAmount ?? line.amount,
+                  receiptDate: receiptDate,
               };
 
               if (allocType === 'CLEARANCE') {
@@ -803,8 +805,6 @@ export default function AllocateTransaction() {
                   submitData.amount = line.amount;
                   submitData.vatAmount = line.vatAmount ?? 0;
                   submitData.totalAmount = line.amount;
-                  submitData.receiptDate = receiptDate;
-                  submitData.paymentTypeId = line.paymentTypeId ?? 3;
                   submitData.vatableVote = line.vatableVote ?? 0;
                   submitData.vatPercentage = line.vatPercentage ?? 0;
               }
