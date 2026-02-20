@@ -386,7 +386,7 @@ export default function AllocateTransaction() {
       const reader = new FileReader();
       reader.onload = async (ev) => {
         try {
-          const XLSX = await import('xlsx');
+          const XLSX = await import('xlsx-js-style');
           const data = new Uint8Array(ev.target?.result as ArrayBuffer);
           const workbook = XLSX.read(data, { type: 'array' });
           const firstSheet = workbook.Sheets[workbook.SheetNames[0]];

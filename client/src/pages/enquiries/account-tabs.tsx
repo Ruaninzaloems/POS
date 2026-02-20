@@ -6,7 +6,7 @@ import {
   Gift, Landmark, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
   RefreshCw, AlertTriangle, Search, Eye,
   Briefcase, Heart, Users, Receipt, Banknote, Scale, Gauge,
-  Home, Layers, Download, Printer
+  Home, Layers, Download, Printer, FileSpreadsheet
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -31,6 +31,7 @@ import {
 import { platinumPrintReceiptRaw, fetchPosMultiReceiptPrint } from '@/lib/external-api';
 import { openSlipPrintWindow, ReceiptPrintData } from '@/lib/receipt-print';
 import { LoadingSkeleton, EmptyState, ErrorState, InfoField, SectionHeader, PaginatedTable, FieldRow, TabCard, getFinYearOptions } from './shared';
+import { downloadExcel } from '@/lib/excel-export';
 
 export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
   const [loading, setLoading] = useState(true);
@@ -741,18 +742,7 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
   );
 }
 
-function downloadCsvFromRows(headers: string[], rows: string[][], filename: string, infoRows?: string[][]) {
-  const escape = (v: string) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const infoPart = infoRows ? infoRows.map(r => r.map(escape).join(',')).join('\n') + '\n\n' : '';
-  const csv = infoPart + [headers.map(escape).join(','), ...rows.map(r => r.map(escape).join(','))].join('\n');
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
-}
-
-function SectionDownloadBtn({ onClick, label = 'CSV' }: { onClick: () => void; label?: string }) {
+function SectionDownloadBtn({ onClick, label = 'Excel' }: { onClick: () => void; label?: string }) {
   return (
     <button
       onClick={onClick}
@@ -760,7 +750,7 @@ function SectionDownloadBtn({ onClick, label = 'CSV' }: { onClick: () => void; l
       title={`Download ${label}`}
       data-testid={`btn-download-${label.toLowerCase().replace(/\s/g, '-')}`}
     >
-      <Download className="w-3 h-3" /> {label}
+      <FileSpreadsheet className="w-3 h-3" /> {label}
     </button>
   );
 }
@@ -1204,19 +1194,28 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
           <h3 className="text-sm font-semibold text-white tracking-wide">Total Balance / Debt Inquiry</h3>
           <div className="ml-auto flex items-center gap-2">
             {balanceData.length > 0 && (
-              <SectionDownloadBtn label="CSV" onClick={() => {
-                const headers = ['Service', 'Total Outstanding', ...agingCols.map(c => c.label)];
-                const rows = balanceData.map(item => [
+              <SectionDownloadBtn onClick={() => {
+                const hdrs = ['Service', 'Total Outstanding', ...agingCols.map(c => c.label)];
+                const dataRows = balanceData.map(item => [
                   item.serviceDescription || '-',
-                  String(item.totalOutStanding ?? item.totalOutstandingAmount ?? 0),
-                  ...agingCols.map(col => String(getVal(item, col.keys) ?? '')),
+                  item.totalOutStanding ?? item.totalOutstandingAmount ?? 0,
+                  ...agingCols.map(col => getVal(item, col.keys) ?? 0),
                 ]);
                 const acctLabel = accountNumber || String(accountId);
-                downloadCsvFromRows(headers, rows, `Balance_Debt_${acctLabel}_${new Date().toISOString().slice(0, 10)}.csv`, [
-                  ['Account Number:', acctLabel],
-                  ['Report:', 'Total Balance / Debt Inquiry'],
-                  ['Date:', new Date().toLocaleDateString('en-ZA')],
-                ]);
+                const currCols = Array.from({ length: agingCols.length + 1 }, (_, i) => i + 1);
+                downloadExcel({
+                  filename: `Balance_Debt_${acctLabel}_${new Date().toISOString().slice(0, 10)}`,
+                  sheetName: 'Balance Debt',
+                  title: 'Total Balance / Debt Inquiry',
+                  infoRows: [
+                    { label: 'Account Number:', value: acctLabel },
+                    { label: 'Date:', value: new Date().toLocaleDateString('en-ZA') },
+                  ],
+                  headers: hdrs,
+                  rows: dataRows,
+                  currencyColumns: currCols,
+                  headerColor: '1565C0',
+                });
               }} />
             )}
             <button
@@ -1275,22 +1274,30 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
           <h3 className="text-sm font-semibold text-white tracking-wide">Debtors - Remaining Capital Amounts</h3>
           <div className="ml-auto flex items-center gap-2">
             {capitalPlans.length > 0 && (
-              <SectionDownloadBtn label="CSV" onClick={() => {
-                const headers = ['Service Description', 'Capital Amount', 'Remaining Capital Amount', 'Instalment Amount', 'Repayment Period', 'Remaining Period'];
-                const rows = capitalPlans.map(p => [
+              <SectionDownloadBtn onClick={() => {
+                const hdrs = ['Service Description', 'Capital Amount', 'Remaining Capital Amount', 'Instalment Amount', 'Repayment Period', 'Remaining Period'];
+                const dataRows = capitalPlans.map(p => [
                   p.serviceDescription || p.description || '-',
-                  String(p.capitalAmount ?? 0),
-                  String(p.remainingCapitalAmount ?? p.remainingCapital ?? 0),
-                  String(p.instalmentAmount ?? p.installmentAmount ?? 0),
+                  p.capitalAmount ?? 0,
+                  p.remainingCapitalAmount ?? p.remainingCapital ?? 0,
+                  p.instalmentAmount ?? p.installmentAmount ?? 0,
                   String(p.repaymentPeriod ?? '-'),
                   String(p.remainingPeriod ?? '-'),
                 ]);
                 const acctLabel2 = accountNumber || String(accountId);
-                downloadCsvFromRows(headers, rows, `Capital_Amounts_${acctLabel2}_${new Date().toISOString().slice(0, 10)}.csv`, [
-                  ['Account Number:', acctLabel2],
-                  ['Report:', 'Debtors - Remaining Capital Amounts'],
-                  ['Date:', new Date().toLocaleDateString('en-ZA')],
-                ]);
+                downloadExcel({
+                  filename: `Capital_Amounts_${acctLabel2}_${new Date().toISOString().slice(0, 10)}`,
+                  sheetName: 'Capital Amounts',
+                  title: 'Debtors - Remaining Capital Amounts',
+                  infoRows: [
+                    { label: 'Account Number:', value: acctLabel2 },
+                    { label: 'Date:', value: new Date().toLocaleDateString('en-ZA') },
+                  ],
+                  headers: hdrs,
+                  rows: dataRows,
+                  currencyColumns: [1, 2, 3],
+                  headerColor: '7B1FA2',
+                });
               }} />
             )}
             {capitalPlans.length > 0 && (
@@ -1421,23 +1428,31 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
           <h3 className="text-sm font-semibold text-white tracking-wide">Payments Received</h3>
           <div className="ml-auto flex items-center gap-2">
             {payments.length > 0 && (
-              <SectionDownloadBtn label="CSV" onClick={() => {
-                const headers = ['Receipt No', 'Payment Type', 'Date', 'Amount', 'Cashier', 'Cash Book', 'Cancellation Reason'];
-                const rows = payments.map(p => [
+              <SectionDownloadBtn onClick={() => {
+                const hdrs = ['Receipt No', 'Payment Type', 'Date', 'Amount', 'Cashier', 'Cash Book', 'Cancellation Reason'];
+                const dataRows = payments.map(p => [
                   p.receiptNumber || p.receiptNo || '-',
                   p.paymentType || p.receiptType || p.transactionType || '-',
                   p.receiptDate ? new Date(p.receiptDate).toLocaleDateString('en-ZA') : '-',
-                  String(p.amount || p.receiptAmount || 0),
+                  p.amount || p.receiptAmount || 0,
                   p.cashierName || p.cashier || '-',
                   p.cashBook || p.cashBookName || '-',
                   p.cancellationReason || p.reasonForCancellation || '',
                 ]);
                 const acctLabel3 = accountNumber || String(accountId);
-                downloadCsvFromRows(headers, rows, `Payments_Received_${acctLabel3}_${new Date().toISOString().slice(0, 10)}.csv`, [
-                  ['Account Number:', acctLabel3],
-                  ['Report:', 'Payments Received'],
-                  ['Date:', new Date().toLocaleDateString('en-ZA')],
-                ]);
+                downloadExcel({
+                  filename: `Payments_Received_${acctLabel3}_${new Date().toISOString().slice(0, 10)}`,
+                  sheetName: 'Payments Received',
+                  title: 'Payments Received',
+                  infoRows: [
+                    { label: 'Account Number:', value: acctLabel3 },
+                    { label: 'Date:', value: new Date().toLocaleDateString('en-ZA') },
+                  ],
+                  headers: hdrs,
+                  rows: dataRows,
+                  currencyColumns: [3],
+                  headerColor: '2E7D32',
+                });
               }} />
             )}
             <Badge variant="outline" className="bg-white/20 text-white border-white/30 text-[10px]">{payments.length}</Badge>
@@ -1498,20 +1513,28 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
           <h3 className="text-sm font-semibold text-white tracking-wide">Payment Reversals</h3>
           <div className="ml-auto flex items-center gap-2">
             {reversals.length > 0 && (
-              <SectionDownloadBtn label="CSV" onClick={() => {
-                const headers = ['Date', 'Receipt #', 'Type', 'Amount'];
-                const rows = reversals.map(rv => [
+              <SectionDownloadBtn onClick={() => {
+                const hdrs = ['Date', 'Receipt #', 'Type', 'Amount'];
+                const dataRows = reversals.map(rv => [
                   rv.receiptDate ? new Date(rv.receiptDate).toLocaleDateString('en-ZA') : '-',
                   rv.receiptNumber || rv.receiptNo || '-',
                   rv.receiptType || rv.transactionType || '-',
-                  String(rv.amount || rv.receiptAmount || 0),
+                  rv.amount || rv.receiptAmount || 0,
                 ]);
                 const acctLabel4 = accountNumber || String(accountId);
-                downloadCsvFromRows(headers, rows, `Payment_Reversals_${acctLabel4}_${new Date().toISOString().slice(0, 10)}.csv`, [
-                  ['Account Number:', acctLabel4],
-                  ['Report:', 'Payment Reversals'],
-                  ['Date:', new Date().toLocaleDateString('en-ZA')],
-                ]);
+                downloadExcel({
+                  filename: `Payment_Reversals_${acctLabel4}_${new Date().toISOString().slice(0, 10)}`,
+                  sheetName: 'Payment Reversals',
+                  title: 'Payment Reversals',
+                  infoRows: [
+                    { label: 'Account Number:', value: acctLabel4 },
+                    { label: 'Date:', value: new Date().toLocaleDateString('en-ZA') },
+                  ],
+                  headers: hdrs,
+                  rows: dataRows,
+                  currencyColumns: [3],
+                  headerColor: 'C62828',
+                });
               }} />
             )}
             <Badge variant="outline" className="bg-white/20 text-white border-white/30 text-[10px]">{reversals.length}</Badge>

@@ -17,6 +17,7 @@ import {
 import { fetchPosMultiReceiptPrint, platinumPrintReceiptRaw } from '@/lib/external-api';
 import { openSlipPrintWindow, ReceiptPrintData } from '@/lib/receipt-print';
 import { LoadingSkeleton, EmptyState, ErrorState, PaginatedTable, getFinYearOptions, MONTHS } from './shared';
+import { downloadSummaryExcel, downloadTransactionExcel, downloadExcel } from '@/lib/excel-export';
 
 function extractServiceType(desc: string): string {
   const levyMatch = desc.match(/^Levy\s*-\s*(.+)/i);
@@ -219,43 +220,28 @@ export function TransactionSummaryTab({ accountId, accountNumber }: { accountId:
       : [currentPeriod];
 
     const headers = ['Account Number', 'Description', 'Financial Year', ...MONTHS];
-    const escapeCsv = (v: any) => {
-      const s = String(v);
-      if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g, '""')}"`;
-      return s;
-    };
+    const currCols = MONTHS.map((_, i) => i + 3);
+    const yearGroups = periodsToExport
+      .filter(p => p.hasData)
+      .map(period => ({
+        year: period.year,
+        rows: period.pivotData.map((row: any) => [
+          accNum,
+          row.description || '',
+          period.year,
+          ...MONTHS.map(m => row[m] ?? 0),
+        ]),
+      }));
 
-    const yearLabel = multiView ? selectedYears.join(', ') : selectedYear;
-    const allRows: string[] = [
-      `Account Number:,${escapeCsv(accNum)}`,
-      `Report:,Transaction Summary`,
-      `Financial Year:,${escapeCsv(yearLabel)}`,
-      '',
-      headers.map(escapeCsv).join(','),
-    ];
-    for (const period of periodsToExport) {
-      if (!period.hasData) continue;
-      period.pivotData.forEach((row: any) => {
-        const vals = MONTHS.map(m => {
-          const v = row[m];
-          return v === undefined ? '0.00' : (typeof v === 'number' ? v.toFixed(2) : '0.00');
-        });
-        allRows.push([escapeCsv(accNum), escapeCsv(row.description), escapeCsv(period.year), ...vals].join(','));
-      });
-      allRows.push('');
-    }
-
-    const bom = '\uFEFF';
-    const blob = new Blob([bom + allRows.join('\r\n')], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
     const fileYearLabel = multiView ? selectedYears.map(y => y.replace('/', '-')).join('_') : selectedYear.replace('/', '-');
-    a.download = `Transaction_Summary_${accNum}_${fileYearLabel}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    downloadSummaryExcel({
+      filename: `Transaction_Summary_${accNum}_${fileYearLabel}`,
+      accountNumber: accNum,
+      financialYears: multiView ? selectedYears : [selectedYear],
+      headers,
+      yearGroups,
+      currencyColumns: currCols,
+    });
   };
 
   const toggleExpanded = (year: string) => {
@@ -561,46 +547,33 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
     }
   };
 
-  const generateCsvContent = (rows: any[], monthLabel: string, year: string) => {
-    const acctLabel = accountNumber || String(accountId);
-    const headers = ['Transaction Date','Transaction Description','Receipt ID / Doc Transaction ID','Document Number','Tariff','Amount','Interest','VAT','Total'];
-    const csvRows = [`Account Number:,${acctLabel}`, `Period:,"${monthLabel} ${year}"`, '', headers.join(',')];
-    rows.forEach((row: any) => {
-      const txDate = row.transactionDate ? new Date(row.transactionDate).toLocaleDateString('en-ZA') : '';
-      const desc = (row.description || '').replace(/"/g, '""');
-      const tariff = (row.tariff || '').replace(/"/g, '""');
-      csvRows.push([
-        txDate,
-        `"${desc}"`,
-        row.transactionId || '',
-        row.documentNumber || '',
-        `"${tariff}"`,
-        (row.amount ?? 0).toFixed(2),
-        (row.interestAmount ?? 0).toFixed(2),
-        (row.vatAmount ?? 0).toFixed(2),
-        (row.totalAmount ?? 0).toFixed(2),
-      ].join(','));
-    });
-    return csvRows.join('\n');
-  };
+  const txnHeaders = ['Transaction Date', 'Transaction Description', 'Receipt ID / Doc Transaction ID', 'Document Number', 'Tariff', 'Amount', 'Interest', 'VAT', 'Total'];
+  const txnCurrencyCols = [5, 6, 7, 8];
 
-  const downloadCsv = (content: string, filename: string) => {
-    const bom = '\uFEFF';
-    const blob = new Blob([bom + content], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
+  const mapTxnRows = (rows: any[]) => rows.map((row: any) => [
+    row.transactionDate ? new Date(row.transactionDate).toLocaleDateString('en-ZA') : '',
+    row.description || '',
+    row.transactionId || '',
+    row.documentNumber || '',
+    row.tariff || '',
+    row.amount ?? 0,
+    row.interestAmount ?? 0,
+    row.vatAmount ?? 0,
+    row.totalAmount ?? 0,
+  ]);
 
   const handleDownloadCurrentMonth = () => {
-    const csv = generateCsvContent(billingPeriodData, selectedMonth, selectedYear);
     const acctLabel = accountNumber || String(accountId);
-    downloadCsv(csv, `DetailedTransactions_${acctLabel}_${selectedYear.replace('/', '-')}_${selectedMonth}.csv`);
+    downloadTransactionExcel({
+      filename: `DetailedTransactions_${acctLabel}_${selectedYear.replace('/', '-')}_${selectedMonth}`,
+      accountNumber: acctLabel,
+      reportName: 'Detailed Transactions',
+      financialYear: selectedYear,
+      period: selectedMonth,
+      headers: txnHeaders,
+      monthGroups: [{ month: `${selectedMonth} ${selectedYear}`, rows: mapTxnRows(billingPeriodData) }],
+      currencyColumns: txnCurrencyCols,
+    });
   };
 
   const handleDownloadRange = async () => {
@@ -611,9 +584,8 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
 
     setDownloading(true);
     const monthsToFetch = finYearMonths.slice(fromIdx, toIdx + 1);
-    const allCsvParts: string[] = [];
     const acctLabel = accountNumber || String(accountId);
-    const headers = 'Transaction Date,Transaction Description,Receipt ID / Doc Transaction ID,Document Number,Tariff,Amount,Interest,VAT,Total';
+    const monthGroups: { month: string; rows: (string | number)[][] }[] = [];
 
     try {
       for (let i = 0; i < monthsToFetch.length; i++) {
@@ -621,39 +593,21 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
         setDownloadProgress(`Fetching ${month} (${i + 1} of ${monthsToFetch.length})...`);
         const result = await getBillingPeriodTransactions(accountId, downloadYear, month);
         const rows = Array.isArray(result) ? result : [];
-        if (i === 0) {
-          allCsvParts.push(`Account Number:,${acctLabel}`);
-          allCsvParts.push(`Report:,Detailed Transactions`);
-          allCsvParts.push(`Financial Year:,${downloadYear}`);
-          allCsvParts.push(`Period:,"${downloadFromMonth} to ${downloadToMonth}"`);
-          allCsvParts.push('');
-          allCsvParts.push(headers);
-        }
-        allCsvParts.push(`\n"--- ${month} ${downloadYear} ---"`);
-        rows.forEach((row: any) => {
-          const txDate = row.transactionDate ? new Date(row.transactionDate).toLocaleDateString('en-ZA') : '';
-          const desc = (row.description || '').replace(/"/g, '""');
-          const tariff = (row.tariff || '').replace(/"/g, '""');
-          allCsvParts.push([
-            txDate,
-            `"${desc}"`,
-            row.transactionId || '',
-            row.documentNumber || '',
-            `"${tariff}"`,
-            (row.amount ?? 0).toFixed(2),
-            (row.interestAmount ?? 0).toFixed(2),
-            (row.vatAmount ?? 0).toFixed(2),
-            (row.totalAmount ?? 0).toFixed(2),
-          ].join(','));
-        });
-        if (rows.length === 0) {
-          allCsvParts.push('"No transactions for this period"');
-        }
+        monthGroups.push({ month: `${month} ${downloadYear}`, rows: mapTxnRows(rows) });
       }
       setDownloadProgress('Preparing download...');
       const fromLabel = downloadFromMonth.slice(0, 3);
       const toLabel = downloadToMonth.slice(0, 3);
-      downloadCsv(allCsvParts.join('\n'), `DetailedTransactions_${acctLabel}_${downloadYear.replace('/', '-')}_${fromLabel}-${toLabel}.csv`);
+      downloadTransactionExcel({
+        filename: `DetailedTransactions_${acctLabel}_${downloadYear.replace('/', '-')}_${fromLabel}-${toLabel}`,
+        accountNumber: acctLabel,
+        reportName: 'Detailed Transactions',
+        financialYear: downloadYear,
+        period: `${downloadFromMonth} to ${downloadToMonth}`,
+        headers: txnHeaders,
+        monthGroups,
+        currencyColumns: txnCurrencyCols,
+      });
       setShowDownloadModal(false);
     } catch (e: any) {
       setDownloadProgress(`Error: ${e.message || 'Download failed'}`);
@@ -822,7 +776,7 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
                 <Button variant="outline" className="flex-1" onClick={() => setShowDownloadModal(false)} disabled={downloading} data-testid="button-cancel-download">Cancel</Button>
                 <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white gap-2" onClick={handleDownloadRange} disabled={downloading || !downloadFromMonth || !downloadToMonth} data-testid="button-confirm-download">
                   {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                  {downloading ? 'Downloading...' : 'Download CSV'}
+                  {downloading ? 'Downloading...' : 'Download Excel'}
                 </Button>
               </div>
             </div>

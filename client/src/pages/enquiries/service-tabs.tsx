@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   Droplets, Zap, ChevronDown, ChevronUp, RefreshCw,
   Activity, Gauge, Eye, Layers, Hash,
-  ChevronLeft, Building2, Scale, Home, FileText, Download, Loader2, Link2
+  ChevronLeft, Building2, Scale, Home, FileText, Download, FileSpreadsheet, Loader2, Link2
 } from 'lucide-react';
 import {
   getServiceTypeBalance, getMeteredServicesOnAccount, getAccountServiceMeterPerProperty,
@@ -13,6 +13,7 @@ import {
   getServicesSearchResults,
 } from '@/lib/enquiries-service';
 import { LoadingSkeleton, EmptyState, ErrorState, InfoField, SectionHeader, PaginatedTable, TabCard, getFinYearOptions, MONTHS } from './shared';
+import { downloadExcel } from '@/lib/excel-export';
 
 interface TariffBlock {
   startDate: string;
@@ -819,37 +820,35 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
               </Badge>
               <button
                 onClick={() => {
-                  const headers = historyCols.map(c => c.label);
-                  const rows = filteredHistory.map((item: any) =>
+                  const hdrs = historyCols.map(c => c.label);
+                  const dataRows = filteredHistory.map((item: any) =>
                     historyCols.map(col => {
                       let val = item[col.key];
                       if ((val === undefined || val === null || val === '') && (col as any).fallback) val = (col as any).fallback();
-                      return String(val ?? '').replace(/"/g, '""');
+                      return val ?? '';
                     })
                   );
                   const acctLabel = accountNumber || String(accountId);
                   const meterLabel = selectedMeter?.physicalMeterNo || selectedMeter?.meterNo || 'N/A';
-                  const infoRows = [
-                    `"Account Number:","${acctLabel}"`,
-                    `"Report:","Meter Reading History"`,
-                    `"Meter No:","${meterLabel}"`,
-                    `"Financial Year:","${selectedFinYear}"`,
-                    '',
-                  ].join('\n');
-                  const csv = infoRows + '\n' + [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n');
-                  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `MeterReadingHistory_${acctLabel}_${selectedFinYear}_${meterLabel || 'export'}.csv`;
-                  a.click();
-                  URL.revokeObjectURL(url);
+                  downloadExcel({
+                    filename: `MeterReadingHistory_${acctLabel}_${selectedFinYear}_${meterLabel || 'export'}`,
+                    sheetName: 'Meter Readings',
+                    title: 'Meter Reading History',
+                    infoRows: [
+                      { label: 'Account Number:', value: acctLabel },
+                      { label: 'Meter No:', value: meterLabel },
+                      { label: 'Financial Year:', value: selectedFinYear },
+                    ],
+                    headers: hdrs,
+                    rows: dataRows,
+                    headerColor: '00695C',
+                  });
                 }}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/20 hover:bg-white/30 text-white text-[11px] font-medium rounded-md transition-colors border border-white/20"
                 data-testid="btn-download-meter-history"
               >
-                <Download className="w-3.5 h-3.5" />
-                Download
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                Excel
               </button>
             </div>
           </div>
