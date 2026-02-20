@@ -647,14 +647,21 @@ export async function getSupplementaryValuations(propertyId: number): Promise<an
   return normalizeArray(data);
 }
 
-export async function getRatesRunHistory(accountId: number): Promise<any[]> {
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/rates-run-history?accountId=${accountId}`);
+export async function getRatesRunHistory(accountId: number, finYear?: string): Promise<any[]> {
+  const yr = finYear || getCurrentFinYear();
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/rates-run-history?accountId=${accountId}&finYear=${encodeURIComponent(yr)}`);
   return normalizeArray(data);
 }
 
 export async function getAccountRatesDetails(accountId: number, finYear?: string): Promise<any> {
-  const yr = finYear || new Date().getFullYear().toString();
+  const yr = finYear || getCurrentFinYear();
   return fetchWithTimeout(`/api/platinum/billing-enquiry/account-rates-details?accountId=${accountId}&finYear=${encodeURIComponent(yr)}`);
+}
+
+function getCurrentFinYear(): string {
+  const now = new Date();
+  const startYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+  return `${startYear}/${startYear + 1}`;
 }
 
 // === CHEQUES ===

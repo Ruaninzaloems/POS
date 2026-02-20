@@ -11,6 +11,8 @@ import {
   getRepaymentPlanStatus, getPaymentExtensionSearchResults, getPaymentAmountByAccountIds,
   getDebitOrderDeductionByAccount, getDebitOrderDeduction,
   getAccountRatesDetails, getRatesRunHistory,
+  getSupplementaryValuations, getValuationById, getValuationImportById,
+  getRebateTransactionDetail,
   getDeposits, getDepositAmount, getPaymentIncentive,
   getBilledVsPaidAmounts,
 } from '@/lib/enquiries-service';
@@ -803,70 +805,214 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
 }
 
 export function RatesValuationsTab({ accountId, propertyId }: { accountId: number; propertyId?: number }) {
-  const [ratesDetails, setRatesDetails] = useState<any[]>([]);
+  const [ratesDetails, setRatesDetails] = useState<any>(null);
   const [ratesHistory, setRatesHistory] = useState<any[]>([]);
+  const [valuations, setValuations] = useState<any[]>([]);
+  const [valuationData, setValuationData] = useState<any>(null);
+  const [valuationImport, setValuationImport] = useState<any>(null);
+  const [selectedFinYear, setSelectedFinYear] = useState(getFinYearOptions()[0]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const loaded = useRef(false);
+
+  const propId = propertyId || accountId;
+  const fmt = (v: any) => v != null ? Number(v).toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : '0.00';
+  const fmtDate = (v: any) => v ? new Date(v).toLocaleDateString('en-ZA') : '-';
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [rd, rh] = await Promise.all([
-        getAccountRatesDetails(accountId).catch(() => []),
-        getRatesRunHistory(accountId).catch(() => []),
+      const [rd, rh, sv, vById, vImport] = await Promise.allSettled([
+        getAccountRatesDetails(accountId, selectedFinYear),
+        getRatesRunHistory(accountId, selectedFinYear),
+        getSupplementaryValuations(propId),
+        getValuationById(propId),
+        getValuationImportById(propId),
       ]);
-      setRatesDetails(rd);
-      setRatesHistory(rh);
+      if (rd.status === 'fulfilled' && rd.value && !rd.value._error) setRatesDetails(rd.value);
+      if (rh.status === 'fulfilled') setRatesHistory(Array.isArray(rh.value) ? rh.value : []);
+      if (sv.status === 'fulfilled') setValuations(Array.isArray(sv.value) ? sv.value : []);
+      if (vById.status === 'fulfilled' && vById.value && !vById.value._error) setValuationData(vById.value);
+      if (vImport.status === 'fulfilled' && vImport.value && !vImport.value._error) setValuationImport(vImport.value);
       loaded.current = true;
     } catch (e: any) {
       setError(e.message || 'Failed to load rates & valuations');
     } finally {
       setLoading(false);
     }
-  }, [accountId]);
+  }, [accountId, propId, selectedFinYear]);
 
-  useEffect(() => { if (!loaded.current) load(); }, [load]);
+  useEffect(() => { load(); }, [load]);
+
+  const hasRatesObj = ratesDetails && (ratesDetails.annualPropertyRates || ratesDetails.installment || ratesDetails.rebateAmount);
+  const hasAny = hasRatesObj || ratesHistory.length > 0 || valuations.length > 0 || valuationData || valuationImport;
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
-  if (!ratesDetails.length && !ratesHistory.length) return <EmptyState message="No rates & valuations data available" />;
+  if (!hasAny) return <EmptyState message="No rates & valuations data available" />;
 
   return (
     <div className="p-5 space-y-5">
-      {ratesDetails.length > 0 && (
+      <div className="flex items-center gap-3 mb-2">
+        <label className="text-xs font-semibold text-slate-600">Financial Year:</label>
+        <select
+          value={selectedFinYear}
+          onChange={(e) => { setSelectedFinYear(e.target.value); loaded.current = false; }}
+          className="text-xs border border-slate-300 rounded px-2 py-1.5 bg-white"
+          data-testid="select-rates-finyear"
+        >
+          {getFinYearOptions().map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
+      </div>
+
+      {valuations.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+            <Landmark className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Property Valuations</h3>
+            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{valuations.length}</Badge>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {valuations.map((v: any, i: number) => (
+              <div key={i} className="p-4 hover:bg-blue-50/30 transition-colors" data-testid={`valuation-item-${i}`}>
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <Badge variant="outline" className="text-[10px] font-semibold">{v.type || 'General'}</Badge>
+                  <Badge className={`text-[10px] ${v.valuationStatus === 'Active' ? 'bg-green-600' : 'bg-slate-500'}`}>{v.valuationStatus || '-'}</Badge>
+                  {v.reason && <Badge variant="outline" className="text-[10px]">{v.reason}</Badge>}
+                  {v.financialYear && <span className="text-[10px] text-slate-500 ml-auto">FY: {v.financialYear}</span>}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 text-xs">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-0.5">Stand Market Value</div>
+                    <div className="font-mono font-bold text-slate-800">R {fmt(v.standMarketValue)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-0.5">Improvement Value</div>
+                    <div className="font-mono font-bold text-slate-800">R {fmt(v.improvementValue)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-0.5">Stand Size</div>
+                    <div className="font-mono text-slate-800">{v.standSize ?? '-'} m&sup2;</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-0.5">Land Size</div>
+                    <div className="font-mono text-slate-800">{v.landSize ?? '-'} ha</div>
+                  </div>
+                  {v.agriculturalValue > 0 && (
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-0.5">Agricultural Value</div>
+                      <div className="font-mono text-slate-800">R {fmt(v.agriculturalValue)}</div>
+                    </div>
+                  )}
+                  {v.standValue > 0 && (
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-0.5">Stand Value</div>
+                      <div className="font-mono text-slate-800">R {fmt(v.standValue)}</div>
+                    </div>
+                  )}
+                  {v.exemptValue > 0 && (
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-0.5">Exempt Value</div>
+                      <div className="font-mono text-green-700">R {fmt(v.exemptValue)}</div>
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-0.5">Zone</div>
+                    <div className="text-slate-800">{v.zoneDesc || '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-0.5">Type of Use</div>
+                    <div className="text-slate-800">{v.typeOfUseDesc || '-'}</div>
+                  </div>
+                  <div className="col-span-2 sm:col-span-3 md:col-span-4">
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-0.5">Rates Tariff Code</div>
+                    <div className="text-slate-800 text-xs">{v.ratesTariffCode || '-'}</div>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 pt-2 border-t border-slate-100 text-[10px] text-slate-500">
+                  <span>Roll No: {v.rollNumber || '-'}</span>
+                  <span>Roll Date: {fmtDate(v.rollDate)}</span>
+                  <span>Expected Expiry: {fmtDate(v.expectedExpiryDate)}</span>
+                  {v.address && <span className="font-medium text-slate-700">Address: {v.address}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {hasRatesObj && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
             <Scale className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Account Rates Details</h3>
-            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{ratesDetails.length}</Badge>
+            <h3 className="text-sm font-semibold text-white tracking-wide">Rates Summary ({selectedFinYear})</h3>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" data-testid="table-rates-details">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Category</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Description</th>
-                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Market Value</th>
-                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Rateable Value</th>
-                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Rate</th>
-                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Monthly Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ratesDetails.map((r: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
-                    <td className="py-2 px-3 font-medium">{r.category || r.rateCategory || '-'}</td>
-                    <td className="py-2 px-3">{r.description || r.rateDescription || '-'}</td>
-                    <td className="py-2 px-3 text-right font-mono">{(r.marketValue ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                    <td className="py-2 px-3 text-right font-mono">{(r.rateableValue ?? r.ratableValue ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                    <td className="py-2 px-3 text-right font-mono">{r.rateInRand ?? r.rate ?? '-'}</td>
-                    <td className="py-2 px-3 text-right font-mono font-semibold">{(r.monthlyAmount ?? r.amount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="p-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Annual Property Rates</div>
+                <div className="text-lg font-bold font-mono text-slate-800">R {fmt(ratesDetails.annualPropertyRates)}</div>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Instalment</div>
+                <div className="text-lg font-bold font-mono text-slate-800">R {fmt(ratesDetails.installment)}</div>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Frequency</div>
+                <div className="text-lg font-bold text-slate-800">{ratesDetails.frequency || 'Monthly'}</div>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Remaining Instalments</div>
+                <div className="text-lg font-bold font-mono text-slate-800">{ratesDetails.remainingInstallments ?? '-'}</div>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Remaining Amount</div>
+                <div className="text-lg font-bold font-mono text-slate-800">R {fmt(ratesDetails.remaingAmount ?? ratesDetails.remainingAmount)}</div>
+              </div>
+              <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                <div className="text-[10px] uppercase tracking-wider text-green-600 font-semibold mb-1">Rebate Amount</div>
+                <div className="text-lg font-bold font-mono text-green-700">R {fmt(ratesDetails.rebateAmount)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {valuationData && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-teal-600 to-teal-700 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Valuation Roll Data</h3>
+          </div>
+          <div className="p-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+              {Object.entries(valuationData).filter(([k]) => !k.startsWith('_')).map(([key, val]: [string, any]) => (
+                <div key={key}>
+                  <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-0.5">{key.replace(/([A-Z])/g, ' $1').trim()}</div>
+                  <div className="font-mono text-slate-800">{typeof val === 'number' ? fmt(val) : (val || '-')}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {valuationImport && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Valuation Import Data</h3>
+          </div>
+          <div className="p-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+              {Object.entries(valuationImport).filter(([k]) => !k.startsWith('_')).map(([key, val]: [string, any]) => (
+                <div key={key}>
+                  <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-0.5">{key.replace(/([A-Z])/g, ' $1').trim()}</div>
+                  <div className="font-mono text-slate-800">{typeof val === 'number' ? fmt(val) : (val || '-')}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -892,10 +1038,10 @@ export function RatesValuationsTab({ accountId, propertyId }: { accountId: numbe
               <tbody>
                 {ratesHistory.map((r: any, i: number) => (
                   <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
-                    <td className="py-2 px-3 text-slate-600">{r.runDate ? new Date(r.runDate).toLocaleDateString('en-ZA') : r.date || '-'}</td>
+                    <td className="py-2 px-3 text-slate-600">{fmtDate(r.runDate || r.date)}</td>
                     <td className="py-2 px-3">{r.period || r.billingPeriod || '-'}</td>
                     <td className="py-2 px-3">{r.description || '-'}</td>
-                    <td className="py-2 px-3 text-right font-mono font-semibold">{(r.amount ?? r.ratesAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    <td className="py-2 px-3 text-right font-mono font-semibold">{fmt(r.amount ?? r.ratesAmount ?? 0)}</td>
                     <td className="py-2 px-3"><Badge variant="outline" className="text-[10px]">{r.status || '-'}</Badge></td>
                   </tr>
                 ))}
