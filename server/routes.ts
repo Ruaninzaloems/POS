@@ -2025,6 +2025,22 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/platinum/cashbook-transaction-trace/search", async (req, res) => {
+    try {
+      const { searchText, finYear, month } = req.query as Record<string, string>;
+      if (!searchText) {
+        return res.status(400).json({ message: "searchText is required" });
+      }
+      const params: Record<string, string> = { searchText };
+      if (finYear) params.finYear = finYear;
+      if (month) params.month = month;
+      const data = await platinumGet("/api/billing/cashbook-transaction-trace/search", params);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.get("/api/platinum/direct-deposit-allocation/vote-details", async (req, res) => {
     try {
       const data = await platinumGet("/api/billing-direct-deposit-allocation/vote-details", req.query as Record<string, string>);

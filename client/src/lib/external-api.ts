@@ -2077,6 +2077,39 @@ export async function fetchMunicipalityInfo(): Promise<MunicipalityInfo> {
 
 // --- Utility / Session Functions ---
 
+export interface CashbookTransactionTraceResult {
+    cashbookTransactionID?: number;
+    description?: string;
+    amount?: number;
+    transactionDate?: string;
+    receiptNo?: string;
+    accountNumber?: string;
+    accountId?: number;
+    cashierName?: string;
+    paymentType?: string;
+    paymentOption?: string;
+    cashOffice?: string;
+    billType?: string;
+    [key: string]: any;
+}
+
+export async function searchCashbookTransactionTrace(searchText: string, finYear?: string, month?: number): Promise<CashbookTransactionTraceResult[]> {
+    const params = new URLSearchParams({ searchText });
+    if (finYear) params.append('finYear', finYear);
+    if (month !== undefined && month !== null) params.append('month', String(month));
+    const res = await apiFetch(`/api/platinum/cashbook-transaction-trace/search?${params.toString()}`);
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: 'Search failed' }));
+        throw new Error(err.message || 'Cashbook transaction trace search failed');
+    }
+    const data = await res.json();
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.items)) return data.items;
+    if (data && Array.isArray(data.value)) return data.value;
+    if (data && Array.isArray(data.results)) return data.results;
+    return data ? [data] : [];
+}
+
 export async function fetchActiveFinYear(): Promise<string> {
     try {
         const res = await apiFetch('/api/platinum/active-fin-year');

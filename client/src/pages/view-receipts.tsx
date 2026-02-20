@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { Search, Printer, Loader2, X, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, FileText, Banknote, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Search, Printer, Loader2, X, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, FileText, Banknote, CheckCircle2, AlertCircle, BookOpen } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { cn } from '@/lib/utils';
 import {
@@ -17,6 +17,9 @@ import {
     fetchReceiptList,
     searchSebataReceipts,
     searchReceiptsByEftDescription,
+    searchCashbookTransactionTrace,
+    fetchActiveFinYear,
+    CashbookTransactionTraceResult,
     ViewReceiptCashier,
     ViewReceiptItem,
     ReceiptSearchQuery,
@@ -124,6 +127,12 @@ export default function ViewReceipts() {
     const [eftResults, setEftResults] = useState<EftDescriptionSearchResult[] | null>(null);
     const [eftSearchInfo, setEftSearchInfo] = useState<{ totalBankReconItems: number; matchingItems: number } | null>(null);
 
+    const [cashbookSearchText, setCashbookSearchText] = useState('');
+    const [cashbookFinYear, setCashbookFinYear] = useState('');
+    const [cashbookMonth, setCashbookMonth] = useState<string>('');
+    const [cashbookSearching, setCashbookSearching] = useState(false);
+    const [cashbookResults, setCashbookResults] = useState<CashbookTransactionTraceResult[] | null>(null);
+
     useEffect(() => {
         const loadCashiers = async () => {
             setLoadingCashiers(true);
@@ -140,6 +149,12 @@ export default function ViewReceipts() {
             }
         };
         loadCashiers();
+    }, []);
+
+    useEffect(() => {
+        fetchActiveFinYear().then(fy => {
+            if (!cashbookFinYear) setCashbookFinYear(fy);
+        });
     }, []);
 
     const debounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -309,6 +324,58 @@ export default function ViewReceipts() {
         }
     };
 
+    const handleCashbookTraceSearch = async () => {
+        if (!cashbookSearchText || cashbookSearchText.length < 3) {
+            toast({ title: "Search Too Short", description: "Please enter at least 3 characters for the bank reference search.", variant: "destructive" });
+            return;
+        }
+        setCashbookSearching(true);
+        setCashbookResults(null);
+        setEftResults(null);
+        setEftSearchInfo(null);
+        setReceipts([]);
+        setTotalCount(0);
+        setDataSource('none');
+        try {
+            const monthNum = (cashbookMonth && cashbookMonth !== '__all__') ? parseInt(cashbookMonth, 10) : undefined;
+            const results = await searchCashbookTransactionTrace(
+                cashbookSearchText,
+                cashbookFinYear || undefined,
+                monthNum
+            );
+            setCashbookResults(results);
+            if (results.length === 0) {
+                toast({ title: "No Results", description: `No cashbook transactions found matching "${cashbookSearchText}".` });
+            } else {
+                toast({ title: "Results Found", description: `Found ${results.length} cashbook transaction${results.length !== 1 ? 's' : ''}.` });
+            }
+        } catch (e: any) {
+            toast({ title: "Search Failed", description: e.message || "Cashbook transaction trace search failed.", variant: "destructive" });
+        } finally {
+            setCashbookSearching(false);
+        }
+    };
+
+    const handleLoadReceiptsFromCashbook = async (item: CashbookTransactionTraceResult) => {
+        const receiptNo = item.receiptNo || item.receipt_No || item.receiptNumber || (item as any).receipt_no || '';
+        const accountNumber = item.accountNumber || item.account_Number || item.accountNo || (item as any).account_no || '';
+
+        if (receiptNo) {
+            setReceiptFilter(String(receiptNo));
+            setAccountFilter('');
+            setCashierFilter('0');
+        } else if (accountNumber) {
+            setAccountFilter(String(accountNumber));
+            setReceiptFilter('');
+            setCashierFilter('0');
+        } else {
+            toast({ title: "No Reference", description: "This cashbook entry has no receipt or account number to look up.", variant: "destructive" });
+            return;
+        }
+
+        setTimeout(() => handleSearch(1), 100);
+    };
+
     const handleClear = () => {
         setCashierFilter("0");
         const now = new Date();
@@ -319,6 +386,8 @@ export default function ViewReceipts() {
         setEftDescriptionFilter("");
         setEftResults(null);
         setEftSearchInfo(null);
+        setCashbookSearchText('');
+        setCashbookResults(null);
         setReceipts([]);
         setTotalCount(0);
         setCurrentPage(1);
@@ -757,6 +826,76 @@ export default function ViewReceipts() {
                                 <p className="text-[10px] text-slate-400 mt-1 md:ml-[136px]">Search Direct Deposit bank recon items by description to find allocation receipts</p>
                             </div>
 
+                            <div className="mt-4 border-t border-dashed border-slate-200 pt-4">
+                                <div className="grid grid-cols-1 md:grid-cols-[120px_1fr] items-start md:items-center gap-1 md:gap-4 mb-3">
+                                    <label className="text-sm font-medium text-left md:text-right text-slate-600 whitespace-nowrap flex items-center gap-1">
+                                        <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
+                                        Cashbook Trace
+                                    </label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
+                                        <div className="relative">
+                                            <Input
+                                                className="h-9 font-mono text-xs"
+                                                value={cashbookSearchText}
+                                                onChange={e => setCashbookSearchText(e.target.value)}
+                                                onKeyDown={e => e.key === 'Enter' && handleCashbookTraceSearch()}
+                                                placeholder="Bank reference e.g. EFT28012026/457163..."
+                                                data-testid="input-cashbook-search"
+                                            />
+                                            {cashbookSearchText && (
+                                                <button
+                                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                                    onClick={() => { setCashbookSearchText(''); setCashbookResults(null); }}
+                                                    type="button"
+                                                >
+                                                    <X className="w-3.5 h-3.5" />
+                                                </button>
+                                            )}
+                                        </div>
+                                        <Select value={cashbookFinYear} onValueChange={setCashbookFinYear}>
+                                            <SelectTrigger className="h-9 w-[130px] text-xs" data-testid="select-cashbook-finyear">
+                                                <SelectValue placeholder="Fin Year" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {(() => {
+                                                    const yr = new Date().getFullYear();
+                                                    const options = [];
+                                                    for (let i = -1; i <= 2; i++) {
+                                                        const y = yr - i;
+                                                        options.push(`${y}/${y + 1}`);
+                                                    }
+                                                    return options.map(fy => (
+                                                        <SelectItem key={fy} value={fy}>{fy}</SelectItem>
+                                                    ));
+                                                })()}
+                                            </SelectContent>
+                                        </Select>
+                                        <Select value={cashbookMonth} onValueChange={setCashbookMonth}>
+                                            <SelectTrigger className="h-9 w-[100px] text-xs" data-testid="select-cashbook-month">
+                                                <SelectValue placeholder="Month" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="__all__">All</SelectItem>
+                                                {['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'].map((m, i) => (
+                                                    <SelectItem key={i + 1} value={String(i + 1)}>{m} ({i + 1})</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <Button
+                                            size="sm"
+                                            className="bg-indigo-700 hover:bg-indigo-800 text-xs gap-1.5 whitespace-nowrap"
+                                            onClick={handleCashbookTraceSearch}
+                                            disabled={cashbookSearching || !cashbookSearchText}
+                                            data-testid="button-cashbook-search"
+                                        >
+                                            {cashbookSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                                            Trace
+                                        </Button>
+                                    </div>
+                                </div>
+                                <p className="text-[10px] text-slate-400 md:ml-[136px]">Search cashbook transactions by bank reference/description to find billing receipts</p>
+                            </div>
+
                             <div className="flex justify-center gap-3 mt-6 sm:mt-8">
                                 <Button className="bg-slate-800 hover:bg-slate-900 w-28 sm:w-32 text-sm" onClick={() => handleSearch(1)} disabled={isLoading} data-testid="button-load">
                                     {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />} Load
@@ -842,6 +981,86 @@ export default function ViewReceipts() {
                                         )}
                                     </div>
                                 ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {cashbookResults !== null && (
+                    <div className="p-3 sm:p-6 border-b border-slate-200">
+                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider border-l-2 border-indigo-500 pl-2 mb-3 flex items-center gap-2">
+                            <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
+                            Cashbook Transaction Trace Results
+                            <span className="text-indigo-600 font-normal normal-case">({cashbookResults.length} result{cashbookResults.length !== 1 ? 's' : ''})</span>
+                        </div>
+                        {cashbookResults.length === 0 ? (
+                            <div className="text-center py-6 text-slate-400 text-sm">
+                                <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                                No cashbook transactions matching this search were found.
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="bg-indigo-50/50">
+                                            <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Description</TableHead>
+                                            <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Receipt No</TableHead>
+                                            <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Account</TableHead>
+                                            <TableHead className="text-[10px] font-bold text-indigo-700 py-2 text-right">Amount</TableHead>
+                                            <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Date</TableHead>
+                                            <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Cashier</TableHead>
+                                            <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Payment Type</TableHead>
+                                            <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Cashbook</TableHead>
+                                            <TableHead className="text-[10px] font-bold text-indigo-700 py-2 text-center">Action</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {cashbookResults.map((item, idx) => {
+                                            const desc = item.description || (item as any).note || (item as any).bankReference || '';
+                                            const receiptNo = item.receiptNo || (item as any).receipt_No || (item as any).receiptNumber || '';
+                                            const accountNo = item.accountNumber || (item as any).account_Number || (item as any).accountNo || '';
+                                            const amount = item.amount ?? (item as any).transactionAmount ?? 0;
+                                            const txnDate = item.transactionDate || (item as any).transaction_Date || (item as any).dateOfTransaction || '';
+                                            const cashier = item.cashierName || (item as any).cashier_Name || (item as any).cashier || '';
+                                            const payType = item.paymentType || (item as any).payment_Type || (item as any).payMode || '';
+                                            const cashOffice = item.cashOffice || (item as any).cashOfficeName || (item as any).cashBook || (item as any).cash_Office || '';
+                                            return (
+                                                <TableRow key={idx} className="hover:bg-indigo-50/30" data-testid={`cashbook-result-${idx}`}>
+                                                    <TableCell className="text-[11px] font-mono max-w-[200px] truncate" title={desc}>{desc || '-'}</TableCell>
+                                                    <TableCell className="text-[11px] font-mono font-semibold text-blue-700">{receiptNo || '-'}</TableCell>
+                                                    <TableCell className="text-[11px] font-mono">{accountNo || '-'}</TableCell>
+                                                    <TableCell className="text-[11px] font-mono font-bold text-right">
+                                                        {typeof amount === 'number' ? `R ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
+                                                    </TableCell>
+                                                    <TableCell className="text-[10px] text-slate-600">
+                                                        {txnDate ? new Date(txnDate).toLocaleDateString('en-ZA') : '-'}
+                                                    </TableCell>
+                                                    <TableCell className="text-[10px]">{cashier || '-'}</TableCell>
+                                                    <TableCell className="text-[10px]">
+                                                        {payType ? <Badge variant="outline" className="text-[9px] px-1.5 py-0">{payType}</Badge> : '-'}
+                                                    </TableCell>
+                                                    <TableCell className="text-[10px] text-slate-600">{cashOffice || '-'}</TableCell>
+                                                    <TableCell className="text-center">
+                                                        {(receiptNo || accountNo) ? (
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="h-6 text-[10px] px-2 gap-1 text-indigo-700 border-indigo-300 hover:bg-indigo-50"
+                                                                onClick={() => handleLoadReceiptsFromCashbook(item)}
+                                                                data-testid={`button-load-receipt-${idx}`}
+                                                            >
+                                                                <FileText className="w-3 h-3" />
+                                                                View Receipt
+                                                            </Button>
+                                                        ) : (
+                                                            <span className="text-[10px] text-slate-400">-</span>
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
                             </div>
                         )}
                     </div>
