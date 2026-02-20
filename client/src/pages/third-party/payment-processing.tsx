@@ -483,11 +483,48 @@ export default function ThirdPartyPaymentProcessing() {
               </div>
 
               {validationResult && (
-                <Alert variant={validationResult.error ? "destructive" : "default"} className={!validationResult.error ? "bg-blue-50 border-blue-200" : ""}>
-                  {validationResult.error ? <AlertCircle className="h-4 w-4" /> : <FileCheck className="h-4 w-4 text-blue-600" />}
-                  <AlertTitle>{validationResult.error ? "Validation Failed" : "Validation Complete"}</AlertTitle>
+                <Alert
+                  variant={validationResult.error || validationResult.isValid === false ? "destructive" : "default"}
+                  className={!validationResult.error && validationResult.isValid !== false ? "bg-green-50 border-green-200 text-green-800" : ""}
+                >
+                  {validationResult.error || validationResult.isValid === false
+                    ? <AlertCircle className="h-4 w-4" />
+                    : <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                  <AlertTitle>
+                    {validationResult.error
+                      ? "Validation Failed"
+                      : validationResult.isValid === false
+                        ? "Validation Issues Found"
+                        : "Validation Passed"}
+                  </AlertTitle>
                   <AlertDescription>
-                    {validationResult.message || validationResult.error || JSON.stringify(validationResult)}
+                    {validationResult.error
+                      ? validationResult.message
+                      : (
+                        <div className="space-y-1 mt-1">
+                          {validationResult.errors?.length > 0 && (
+                            <ul className="list-disc list-inside text-sm">
+                              {validationResult.errors.map((err: string, i: number) => (
+                                <li key={i}>{err}</li>
+                              ))}
+                            </ul>
+                          )}
+                          <div className="flex flex-wrap gap-4 text-sm mt-2">
+                            {validationResult.invalidAccountCount > 0 && (
+                              <span className="text-red-600 font-medium">Invalid Accounts: {validationResult.invalidAccountCount}</span>
+                            )}
+                            {validationResult.emptyAccountCount > 0 && (
+                              <span className="text-orange-600 font-medium">Empty Accounts: {validationResult.emptyAccountCount}</span>
+                            )}
+                            {validationResult.missingCommentCount > 0 && (
+                              <span className="text-orange-600 font-medium">Missing Comments: {validationResult.missingCommentCount}</span>
+                            )}
+                            {validationResult.isValid && (
+                              <span className="text-green-700 font-medium">All transactions are valid and ready to commit.</span>
+                            )}
+                          </div>
+                        </div>
+                      )}
                   </AlertDescription>
                 </Alert>
               )}
