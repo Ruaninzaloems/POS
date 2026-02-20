@@ -670,8 +670,15 @@ export async function getChequeWriteBackDetail(chequeId: number): Promise<any> {
 // === BILLED VS PAID ===
 export async function getBilledVsPaidAmounts(accountId: number, financialYear?: string): Promise<any[]> {
   const yr = financialYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/billed-vs-paid-amounts?accountId=${accountId}&financialYear=${encodeURIComponent(yr)}`);
-  return normalizeArray(data);
+  try {
+    const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/billed-vs-paid-amounts?accountId=${accountId}&financialYear=${encodeURIComponent(yr)}`);
+    return normalizeArray(data);
+  } catch (e: any) {
+    if (e.message?.includes('500')) {
+      throw new Error('The Billed vs Paid endpoint is currently unavailable on the Platinum API. This may be a temporary server issue — please try again later or contact your system administrator.');
+    }
+    throw e;
+  }
 }
 
 // === CLEARANCE ===
