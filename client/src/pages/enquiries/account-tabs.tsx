@@ -22,7 +22,7 @@ import {
   getChequeFinalSearchList,
   getSupplementaryValuations,
   getPaymentPlanRemainingCapital, getAccountRatesDetails,
-  getLinkedAccountsOnProperty,
+  getLinkedAccountsOnProperty, getPaymentPlansByAccountId,
   type EnquirySearchResult,
   type EnquirySearchCriteria,
 } from '@/lib/enquiries-service';
@@ -614,6 +614,7 @@ export function BalanceDebtTab({ accountId }: { accountId: number }) {
   const [balanceData, setBalanceData] = useState<any[]>([]);
   const [txnHistory, setTxnHistory] = useState<any[]>([]);
   const [capitalData, setCapitalData] = useState<any>(null);
+  const [capitalPlans, setCapitalPlans] = useState<any[]>([]);
   const [ratesData, setRatesData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -624,10 +625,11 @@ export function BalanceDebtTab({ accountId }: { accountId: number }) {
     setLoading(true);
     setError(null);
     try {
-      const [balResult, txnResult, capResult, ratesResult] = await Promise.allSettled([
+      const [balResult, txnResult, capResult, plansResult, ratesResult] = await Promise.allSettled([
         getAccountBalance(accountId),
         getTransactionHistory(String(accountId).padStart(12, '0')),
         getPaymentPlanRemainingCapital(accountId),
+        getPaymentPlansByAccountId(accountId),
         getAccountRatesDetails(accountId, '2025/2026'),
       ]);
       if (balResult.status === 'fulfilled') {
@@ -636,6 +638,10 @@ export function BalanceDebtTab({ accountId }: { accountId: number }) {
       }
       if (txnResult.status === 'fulfilled') setTxnHistory(Array.isArray(txnResult.value) ? txnResult.value : []);
       if (capResult.status === 'fulfilled' && capResult.value && !capResult.value._error) setCapitalData(capResult.value);
+      if (plansResult.status === 'fulfilled') {
+        const pl = plansResult.value;
+        setCapitalPlans(Array.isArray(pl) ? pl : pl ? [pl] : []);
+      }
       if (ratesResult.status === 'fulfilled' && ratesResult.value && !ratesResult.value._error) setRatesData(ratesResult.value);
       loaded.current = true;
     } catch (e: any) {
@@ -745,6 +751,58 @@ export function BalanceDebtTab({ accountId }: { accountId: number }) {
                   {agingCols.map(col => (
                     <td key={col.label} className="py-2.5 px-3 text-right font-mono font-bold text-slate-800 text-[13px]">{fmtDash(sumField(balanceData, ...col.keys))}</td>
                   ))}
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden" data-testid="debtors-remaining-capital">
+        <div className="px-5 py-3 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
+          <Layers className="w-4 h-4 text-white" />
+          <h3 className="text-sm font-semibold text-white tracking-wide">Debtors - Remaining Capital Amounts</h3>
+          {capitalPlans.length > 0 && (
+            <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{capitalPlans.length} plan{capitalPlans.length !== 1 ? 's' : ''}</Badge>
+          )}
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm" data-testid="table-remaining-capital">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="text-left py-2.5 px-3 text-[11px] uppercase tracking-wider text-slate-600 font-bold min-w-[180px]">Service Description</th>
+                <th className="text-right py-2.5 px-3 text-[11px] uppercase tracking-wider text-slate-600 font-bold min-w-[120px]">Capital Amount</th>
+                <th className="text-right py-2.5 px-3 text-[11px] uppercase tracking-wider text-slate-600 font-bold min-w-[150px]">Remaining Capital Amount</th>
+                <th className="text-right py-2.5 px-3 text-[11px] uppercase tracking-wider text-slate-600 font-bold min-w-[130px]">Instalment Amount</th>
+                <th className="text-center py-2.5 px-3 text-[11px] uppercase tracking-wider text-slate-600 font-bold min-w-[120px]">Repayment Period</th>
+                <th className="text-center py-2.5 px-3 text-[11px] uppercase tracking-wider text-slate-600 font-bold min-w-[120px]">Remaining Period</th>
+              </tr>
+            </thead>
+            <tbody>
+              {capitalPlans.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-6 text-center text-slate-400 text-sm italic">No records to display.</td>
+                </tr>
+              ) : capitalPlans.map((plan: any, i: number) => (
+                <tr key={i} className="border-b border-slate-100 hover:bg-purple-50/30 transition-colors" data-testid={`row-capital-${i}`}>
+                  <td className="py-2.5 px-3 font-medium text-slate-800 text-[13px]">{plan.serviceDescription || plan.description || plan.capitalCostType || plan.serviceType || `Service ${i + 1}`}</td>
+                  <td className="py-2.5 px-3 text-right font-mono text-slate-700 text-[13px]">{fmt(plan.capitalAmount ?? plan.originalCapital ?? 0)}</td>
+                  <td className="py-2.5 px-3 text-right font-mono text-purple-700 font-semibold text-[13px]">{fmt(plan.remainingCapitalAmount ?? plan.remainingCapital ?? plan.capitalRemaining ?? 0)}</td>
+                  <td className="py-2.5 px-3 text-right font-mono text-slate-700 text-[13px]">{fmt(plan.instalmentAmount ?? plan.installmentAmount ?? plan.monthlyInstalment ?? 0)}</td>
+                  <td className="py-2.5 px-3 text-center text-slate-600 text-[13px]">{plan.repaymentPeriod ?? plan.period ?? plan.totalPeriod ?? '-'}</td>
+                  <td className="py-2.5 px-3 text-center text-slate-600 text-[13px]">{plan.remainingPeriod ?? plan.periodsRemaining ?? '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+            {capitalPlans.length > 0 && (
+              <tfoot>
+                <tr className="border-t-2 border-purple-200 bg-purple-50/50">
+                  <td className="py-2.5 px-3 font-bold text-slate-900 text-[13px]">Total</td>
+                  <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800 text-[13px]">{fmt(capitalPlans.reduce((s: number, p: any) => s + (p.capitalAmount ?? p.originalCapital ?? 0), 0))}</td>
+                  <td className="py-2.5 px-3 text-right font-mono font-bold text-purple-700 text-[13px]">{fmt(capitalPlans.reduce((s: number, p: any) => s + (p.remainingCapitalAmount ?? p.remainingCapital ?? p.capitalRemaining ?? 0), 0))}</td>
+                  <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800 text-[13px]">{fmt(capitalPlans.reduce((s: number, p: any) => s + (p.instalmentAmount ?? p.installmentAmount ?? p.monthlyInstalment ?? 0), 0))}</td>
+                  <td className="py-2.5 px-3" />
+                  <td className="py-2.5 px-3" />
                 </tr>
               </tfoot>
             )}
@@ -870,65 +928,37 @@ export function BalanceDebtTab({ accountId }: { accountId: number }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Payment Reversals</h3>
-            <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{reversals.length}</Badge>
-          </div>
-          <div className="max-h-[300px] overflow-y-auto">
-            {reversals.length === 0 ? (
-              <div className="p-6 text-center text-slate-400 text-sm">No payment reversals found in recent history</div>
-            ) : (
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-slate-50 z-10">
-                  <tr className="border-b border-slate-200">
-                    <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Date</th>
-                    <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Receipt #</th>
-                    <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Type</th>
-                    <th className="text-right py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reversals.slice(0, 20).map((rv: any, i: number) => (
-                    <tr key={i} className="border-b border-slate-50 hover:bg-red-50/50">
-                      <td className="py-1.5 px-3 text-slate-600">{rv.receiptDate ? new Date(rv.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
-                      <td className="py-1.5 px-3 font-mono text-slate-700">{rv.receiptNumber || rv.receiptNo || '-'}</td>
-                      <td className="py-1.5 px-3 text-slate-500">{rv.receiptType || rv.transactionType || '-'}</td>
-                      <td className="py-1.5 px-3 text-right font-mono font-medium text-red-700">{fmt(rv.amount || rv.receiptAmount || 0)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-white" />
+          <h3 className="text-sm font-semibold text-white tracking-wide">Payment Reversals</h3>
+          <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{reversals.length}</Badge>
         </div>
-
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
-            <Layers className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Debtors - Remaining Capital Amounts</h3>
-          </div>
-          <div className="p-4">
-            {capitalData ? (
-              <div className="space-y-3">
-                {Array.isArray(capitalData) ? capitalData.map((cap: any, i: number) => (
-                  <div key={i} className="flex items-center justify-between p-3 bg-purple-50/50 rounded-xl border border-purple-100">
-                    <span className="text-sm text-slate-700 font-medium">{cap.description || cap.serviceDescription || `Item ${i + 1}`}</span>
-                    <span className="font-mono font-bold text-purple-700 text-sm">{fmt(cap.amount || cap.remainingCapital || cap.capitalAmount || 0)}</span>
-                  </div>
-                )) : (
-                  <div className="flex items-center justify-between p-3 bg-purple-50/50 rounded-xl border border-purple-100">
-                    <span className="text-sm text-slate-700 font-medium">Remaining Capital</span>
-                    <span className="font-mono font-bold text-purple-700 text-sm">{fmt(capitalData.amount || capitalData.remainingCapital || capitalData.capitalAmount || capitalData.totalAmount || 0)}</span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-center text-slate-400 text-sm py-4">No remaining capital data available</div>
-            )}
-          </div>
+        <div className="max-h-[300px] overflow-y-auto">
+          {reversals.length === 0 ? (
+            <div className="p-6 text-center text-slate-400 text-sm">No payment reversals found in recent history</div>
+          ) : (
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-slate-50 z-10">
+                <tr className="border-b border-slate-200">
+                  <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Date</th>
+                  <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Receipt #</th>
+                  <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Type</th>
+                  <th className="text-right py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reversals.slice(0, 20).map((rv: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-50 hover:bg-red-50/50">
+                    <td className="py-1.5 px-3 text-slate-600">{rv.receiptDate ? new Date(rv.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
+                    <td className="py-1.5 px-3 font-mono text-slate-700">{rv.receiptNumber || rv.receiptNo || '-'}</td>
+                    <td className="py-1.5 px-3 text-slate-500">{rv.receiptType || rv.transactionType || '-'}</td>
+                    <td className="py-1.5 px-3 text-right font-mono font-medium text-red-700">{fmt(rv.amount || rv.receiptAmount || 0)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>
