@@ -18,6 +18,7 @@ import {
   getConsHandoverTransactionDetail, getAccountNotifications,
   getPropertyNotification, getGeneratedStatements,
   getClearanceInquiries, downloadClearanceDocument,
+  getLinkedAccountsOnProperty,
   getDebtorNoteLists, getSection129AccountEnquiry,
   getOccupiers, addOccupier, deleteOccupier, getAdditionalEmails,
   getAttpApplicationHistory,
@@ -1310,6 +1311,7 @@ export function StatementsTab({ accountId }: { accountId: number }) {
 
 export function ClearanceTab({ accountId, propertyId, currentAccountNumber, currentAccountName }: { accountId: number; propertyId?: number; currentAccountNumber?: string; currentAccountName?: string }) {
   const [data, setData] = useState<any[]>([]);
+  const [linkedAccounts, setLinkedAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
@@ -1319,8 +1321,12 @@ export function ClearanceTab({ accountId, propertyId, currentAccountNumber, curr
     setLoading(true);
     setError(null);
     try {
-      const result = await getClearanceInquiries(accountId, propertyId);
+      const [result, linked] = await Promise.all([
+        getClearanceInquiries(accountId, propertyId),
+        getLinkedAccountsOnProperty(accountId).catch(() => []),
+      ]);
       setData(result);
+      setLinkedAccounts(Array.isArray(linked) ? linked : []);
       loaded.current = true;
     } catch (e: any) {
       setError(e.message || 'Failed to load clearance data');
@@ -1568,6 +1574,34 @@ export function ClearanceTab({ accountId, propertyId, currentAccountNumber, curr
                                       }
                                     </span>
                                   </div>
+                                  {!isForThisAccount && (() => {
+                                    const prevAcct = linkedAccounts.find(la => {
+                                      const laName = normalizeStr(la.name || la.accountName || la.fullNAME);
+                                      const clrName = normalizeStr(clearanceAccountName);
+                                      if (!laName || !clrName || clrName === '-') return false;
+                                      const matchName = laName.includes(clrName) || clrName.includes(laName);
+                                      const currentNum = String(currentAccountNumber || '').replace(/^0+/, '');
+                                      const laNum = String(la.accountNumber || la.account_ID || '').replace(/^0+/, '');
+                                      return matchName && laNum !== currentNum;
+                                    });
+                                    const prevNum = prevAcct?.accountNumber || prevAcct?.account_ID;
+                                    return (
+                                      <div className="flex justify-between items-center px-4 py-2 bg-amber-50/50">
+                                        <span className="text-[12px] text-slate-600">Previous Account No</span>
+                                        <span className="flex items-center gap-1.5">
+                                          {prevNum ? (
+                                            <span className="font-mono text-[13px] text-amber-800 font-medium">
+                                              {String(prevNum).padStart(12, '0')}
+                                            </span>
+                                          ) : (
+                                            <span className="text-[12px] text-slate-500 italic">
+                                              {clearanceAccountName || 'Previous owner'}
+                                            </span>
+                                          )}
+                                        </span>
+                                      </div>
+                                    );
+                                  })()}
                                   {currentAccountNumber && (
                                     <div className="flex justify-between items-center px-4 py-2">
                                       <span className="text-[12px] text-slate-600">Current Account</span>
