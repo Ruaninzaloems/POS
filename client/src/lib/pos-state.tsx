@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect, useRef,
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, CashOffice } from './external-api';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange, fetchActiveCashierByUserId, fetchPosMultiReceiptPrintByCashier, platinumValidateCashier, fetchActiveFinYear, platinumAuthDayEndCancelReceipt } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange, fetchActiveCashierByUserId, fetchPosMultiReceiptPrintByCashier, platinumValidateCashier, fetchActiveFinYear, platinumAuthDayEndCancelReceipt, platinumRequestCancelReceipt, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumGetPendingCancelRequests } from './external-api';
 import { getAccountBalance as enquiryGetAccountBalance } from './enquiries-service';
 
 if (import.meta.hot) {
@@ -1870,11 +1870,21 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (tx.isReconciled === 1) return;
 
       const receiptId = id.startsWith('plt-') ? id.replace('plt-', '') : null;
+      const isSupervisor = currentUser.role === 'SUPERVISOR';
 
       if (receiptId) {
           try {
-              await platinumAuthDayEndCancelReceipt({ receiptId: Number(receiptId), reason });
-              console.log(`[CancelTransaction] Receipt ${receiptId} cancelled via Platinum API`);
+              if (isSupervisor) {
+                  await platinumAuthDayEndCancelReceipt({ receiptId: Number(receiptId), reason });
+                  console.log(`[CancelTransaction] Receipt ${receiptId} cancelled directly by supervisor via Platinum API`);
+              } else {
+                  await platinumRequestCancelReceipt({
+                      receiptId: Number(receiptId),
+                      reason,
+                      userId: platinumUser?.user_ID || Number(currentUser.id),
+                  });
+                  console.log(`[CancelTransaction] Receipt ${receiptId} cancellation requested via Platinum API`);
+              }
           } catch (e: any) {
               console.error('[CancelTransaction] API cancel failed:', e);
               toast({
@@ -1886,7 +1896,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
       }
 
-      const isSupervisor = currentUser.role === 'SUPERVISOR';
       const newStatus: TransactionStatus = isSupervisor ? 'CANCELLED' : 'PENDING_CANCELLATION';
 
       setRecentTransactions(prev => prev.map(t =>
@@ -1898,7 +1907,35 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }, 1500);
   };
   
-  const approveCancellation = (id: string, approved: boolean) => {
+  const approveCancellation = async (id: string, approved: boolean) => {
+      const receiptId = id.startsWith('plt-') ? id.replace('plt-', '') : null;
+
+      if (receiptId) {
+          try {
+              if (approved) {
+                  await platinumApproveCancelReceipt({
+                      receiptId: Number(receiptId),
+                      userId: platinumUser?.user_ID || Number(currentUser.id),
+                  });
+                  console.log(`[ApproveCancellation] Receipt ${receiptId} approved via Platinum API`);
+              } else {
+                  await platinumDeclineCancelReceipt({
+                      receiptId: Number(receiptId),
+                      userId: platinumUser?.user_ID || Number(currentUser.id),
+                  });
+                  console.log(`[ApproveCancellation] Receipt ${receiptId} declined via Platinum API`);
+              }
+          } catch (e: any) {
+              console.error('[ApproveCancellation] API call failed:', e);
+              toast({
+                  title: approved ? "Approval Failed" : "Decline Failed",
+                  description: e?.message || `Failed to ${approved ? 'approve' : 'decline'} cancellation`,
+                  variant: "destructive",
+              });
+              return;
+          }
+      }
+
       setRecentTransactions(prev => prev.map(t =>
           t.id === id ? { ...t, status: approved ? 'CANCELLED' as TransactionStatus : 'COMPLETED' as TransactionStatus } : t
       ));

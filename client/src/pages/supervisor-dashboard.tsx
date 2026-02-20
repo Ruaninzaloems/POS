@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { platinumGetAuthDayEndCashierList, platinumGetAuthDayEndCashierDetails, platinumGetAuthDayEndCashierReconcile } from '@/lib/external-api';
+import { platinumGetAuthDayEndCashierList, platinumGetAuthDayEndCashierDetails, platinumGetAuthDayEndCashierReconcile, platinumGetPendingCancelRequests, platinumApproveCancelReceipt, platinumDeclineCancelReceipt } from '@/lib/external-api';
 import { 
   LayoutDashboard, 
   Users, 
@@ -144,16 +144,111 @@ const MONTHS = [
     { value: '11', label: 'December' },
 ];
 
+interface PendingCancelRequest {
+  id: string;
+  receiptId: number;
+  receiptNo: string;
+  accountNumber: string;
+  amount: number;
+  cashierName: string;
+  cashierId: number;
+  reason: string;
+  requestDate: string;
+  paymentType: string;
+  status: string;
+  raw?: any;
+}
+
 export default function SupervisorDashboard() {
-  const { returnDayEnd, approveCancellation, recentTransactions, referenceData } = usePos();
+  const { returnDayEnd, approveCancellation, recentTransactions, referenceData, platinumUser } = usePos();
   const { toast } = useToast();
   const [reconMode, setReconMode] = useState<ReconMode>('PER_CASHIER');
   
+  const [pendingCancelRequests, setPendingCancelRequests] = useState<PendingCancelRequest[]>([]);
+  const [cancelRequestsLoading, setCancelRequestsLoading] = useState(false);
+  const [cancelActionLoading, setCancelActionLoading] = useState<string | null>(null);
+  const [processedCancelRequests, setProcessedCancelRequests] = useState<PendingCancelRequest[]>([]);
+
+  const loadPendingCancelRequests = useCallback(async () => {
+    setCancelRequestsLoading(true);
+    try {
+      const data = await platinumGetPendingCancelRequests();
+      console.log('[Supervisor] Pending cancel requests raw:', JSON.stringify(data).substring(0, 800));
+      const items = Array.isArray(data) ? data : (data?.items || data?.value || data?.data || data?.results || []);
+      const mapped: PendingCancelRequest[] = items.map((item: any, idx: number) => ({
+        id: String(item.id || item.receiptId || item.receipt_id || idx),
+        receiptId: Number(item.receiptId || item.receipt_id || item.id || 0),
+        receiptNo: String(item.receiptNo || item.receipt_no || item.receiptNumber || ''),
+        accountNumber: String(item.accountNumber || item.accountNo || item.account_number || ''),
+        amount: Number(item.amount || item.totalAmount || item.receiptAmount || 0),
+        cashierName: item.cashierName || item.cashier_name || item.requestedBy || '',
+        cashierId: Number(item.cashierId || item.cashier_id || item.userId || 0),
+        reason: item.reason || item.cancellationReason || item.returnReason || item.cancelReason || '',
+        requestDate: item.requestDate || item.requestedDate || item.createdDate || item.date || '',
+        paymentType: item.paymentType || item.payMode || '',
+        status: item.status || 'PENDING',
+        raw: item,
+      }));
+      setPendingCancelRequests(mapped);
+    } catch (e: any) {
+      console.error('[Supervisor] Failed to load pending cancel requests:', e);
+      setPendingCancelRequests([]);
+    } finally {
+      setCancelRequestsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPendingCancelRequests();
+  }, [loadPendingCancelRequests]);
+
+  const handleApproveCancelRequest = async (req: PendingCancelRequest) => {
+    setCancelActionLoading(req.id);
+    try {
+      await platinumApproveCancelReceipt({
+        receiptId: req.receiptId,
+        id: Number(req.id),
+        userId: platinumUser?.user_ID || 0,
+      });
+      toast({ title: 'Cancellation Approved', description: `Receipt ${req.receiptNo || req.receiptId} has been voided.` });
+      setProcessedCancelRequests(prev => [...prev, { ...req, status: 'APPROVED' }]);
+      setPendingCancelRequests(prev => prev.filter(r => r.id !== req.id));
+      loadPendingCancelRequests();
+    } catch (e: any) {
+      console.error('[Supervisor] Approve cancel failed:', e);
+      toast({ title: 'Error', description: `Approve failed: ${e.message}`, variant: 'destructive' });
+    } finally {
+      setCancelActionLoading(null);
+    }
+  };
+
+  const handleDeclineCancelRequest = async (req: PendingCancelRequest) => {
+    setCancelActionLoading(req.id);
+    try {
+      await platinumDeclineCancelReceipt({
+        receiptId: req.receiptId,
+        id: Number(req.id),
+        userId: platinumUser?.user_ID || 0,
+      });
+      toast({ title: 'Cancellation Declined', description: `Receipt ${req.receiptNo || req.receiptId} cancellation was rejected.` });
+      setProcessedCancelRequests(prev => [...prev, { ...req, status: 'DECLINED' }]);
+      setPendingCancelRequests(prev => prev.filter(r => r.id !== req.id));
+      loadPendingCancelRequests();
+    } catch (e: any) {
+      console.error('[Supervisor] Decline cancel failed:', e);
+      toast({ title: 'Error', description: `Decline failed: ${e.message}`, variant: 'destructive' });
+    } finally {
+      setCancelActionLoading(null);
+    }
+  };
+
   const pendingCancellations = recentTransactions.filter(tx => tx.status === 'PENDING_CANCELLATION');
   const processedCancellations = recentTransactions.filter(tx => 
       tx.status === 'CANCELLED' || 
       (tx.status === 'COMPLETED' && tx.cancellationReason && tx.cancellationRequestTime)
   );
+  
+  const allPendingCancellationCount = pendingCancelRequests.length + pendingCancellations.length;
 
   const [selectedShift, setSelectedShift] = useState<CashierShift | null>(null);
   const [shifts, setShifts] = useState<CashierShift[]>([]);
@@ -527,9 +622,9 @@ export default function SupervisorDashboard() {
             <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Pending Approvals</CardTitle>
           </CardHeader>
           <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-            <div className="text-2xl sm:text-3xl font-bold text-blue-600">{pendingCount + pendingCancellations.length}</div>
+            <div className="text-2xl sm:text-3xl font-bold text-blue-600">{pendingCount + allPendingCancellationCount}</div>
             <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                <RefreshCcw className="w-3 h-3" /> {pendingCount} shifts, {pendingCancellations.length} voids
+                <RefreshCcw className="w-3 h-3" /> {pendingCount} shifts, {allPendingCancellationCount} voids
             </p>
           </CardContent>
         </Card>
@@ -577,10 +672,13 @@ export default function SupervisorDashboard() {
                 <h3 className="font-semibold text-orange-900 flex items-center gap-2 text-sm sm:text-base">
                     <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5" />
                     Cancellation Requests
+                    <Button variant="ghost" size="sm" className="h-6 px-2 text-orange-700 hover:bg-orange-100" onClick={loadPendingCancelRequests} disabled={cancelRequestsLoading}>
+                        <RefreshCcw className={`w-3 h-3 ${cancelRequestsLoading ? 'animate-spin' : ''}`} />
+                    </Button>
                 </h3>
                 <TabsList className="bg-white/50 border border-orange-100">
                     <TabsTrigger value="pending" className="text-xs sm:text-sm data-[state=active]:bg-orange-100 data-[state=active]:text-orange-900">
-                        Pending ({pendingCancellations.length})
+                        Pending ({allPendingCancellationCount})
                     </TabsTrigger>
                     <TabsTrigger value="history" className="text-xs sm:text-sm data-[state=active]:bg-orange-100 data-[state=active]:text-orange-900">
                         History
@@ -589,7 +687,11 @@ export default function SupervisorDashboard() {
             </div>
             
             <TabsContent value="pending" className="mt-0">
-                {pendingCancellations.length === 0 ? (
+                {cancelRequestsLoading ? (
+                    <div className="text-center py-8 bg-white/50 rounded border border-dashed border-orange-200 text-orange-800/60 text-sm flex items-center justify-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" /> Loading pending cancellation requests...
+                    </div>
+                ) : allPendingCancellationCount === 0 ? (
                     <div className="text-center py-8 bg-white/50 rounded border border-dashed border-orange-200 text-orange-800/60 text-sm">
                         No pending cancellation requests
                     </div>
@@ -602,10 +704,74 @@ export default function SupervisorDashboard() {
                                     <TableHead className="whitespace-nowrap">Cashier</TableHead>
                                     <TableHead className="whitespace-nowrap">Time</TableHead>
                                     <TableHead className="whitespace-nowrap">Amount</TableHead>
+                                    <TableHead className="whitespace-nowrap">Reason</TableHead>
                                     <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
+                                {pendingCancelRequests.map(req => (
+                                    <TableRow key={`api-${req.id}`}>
+                                        <TableCell>
+                                            <div className="flex flex-col">
+                                                <span className="font-mono font-bold text-slate-900">{req.receiptNo || `#${req.receiptId}`}</span>
+                                                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                                                    {req.accountNumber && <span className="font-mono">{req.accountNumber}</span>}
+                                                    {req.paymentType && (
+                                                        <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 uppercase text-[10px] tracking-wider font-semibold">
+                                                            {req.paymentType}
+                                                        </span>
+                                                    )}
+                                                    <Badge variant="outline" className="text-[10px] px-1 py-0 text-blue-700 border-blue-300 bg-blue-50">API</Badge>
+                                                </div>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col">
+                                                <span className="font-medium text-slate-900">{req.cashierName || 'Unknown'}</span>
+                                                <span className="text-xs text-muted-foreground">ID: {req.cashierId}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            {req.requestDate ? (
+                                                <div className="flex flex-col">
+                                                    <span className="text-slate-900">{new Date(req.requestDate).toLocaleTimeString('en-ZA', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+                                                    <span className="text-xs text-muted-foreground">{new Date(req.requestDate).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', month: 'short', day: '2-digit' })}</span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-muted-foreground">—</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            <span className="font-bold text-slate-900 font-mono">R {req.amount.toFixed(2)}</span>
+                                        </TableCell>
+                                        <TableCell>
+                                            <span className="text-xs text-red-600 max-w-[150px] truncate block" title={req.reason}>{req.reason || '—'}</span>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <div className="flex justify-end gap-2">
+                                                <Button 
+                                                    size="sm" 
+                                                    variant="outline"
+                                                    className="text-red-600 border-red-200 hover:bg-red-50 h-8"
+                                                    onClick={() => handleDeclineCancelRequest(req)}
+                                                    disabled={cancelActionLoading === req.id}
+                                                >
+                                                    {cancelActionLoading === req.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
+                                                    Reject
+                                                </Button>
+                                                <Button 
+                                                    size="sm" 
+                                                    className="bg-green-600 hover:bg-green-700 text-white h-8"
+                                                    onClick={() => handleApproveCancelRequest(req)}
+                                                    disabled={cancelActionLoading === req.id}
+                                                >
+                                                    {cancelActionLoading === req.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
+                                                    Approve Void
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
                                 {pendingCancellations.map(tx => {
                                     const cashier = referenceData.cashiers.find(c => c.id === tx.cashierId);
                                     const mainType = tx.items[0]?.type.replace('_', ' ') || 'Unknown';
@@ -619,39 +785,7 @@ export default function SupervisorDashboard() {
                                                     <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 uppercase text-[10px] tracking-wider font-semibold">
                                                         {mainType}
                                                     </span>
-                                                    
-                                                    <HoverCard>
-                                                        <HoverCardTrigger asChild>
-                                                            <Button variant="link" className="h-auto p-0 text-xs text-blue-600 flex items-center gap-1">
-                                                                <Info className="w-3 h-3" /> View Items
-                                                            </Button>
-                                                        </HoverCardTrigger>
-                                                        <HoverCardContent className="w-80">
-                                                            <div className="space-y-2">
-                                                                <h4 className="text-sm font-semibold text-slate-900 border-b pb-1">Transaction Items</h4>
-                                                                {tx.items.map((item, idx) => (
-                                                                    <div key={idx} className="text-xs grid grid-cols-[1fr_auto] gap-2">
-                                                                        <span className="text-slate-600 truncate" title={item.description}>
-                                                                            {item.description}
-                                                                        </span>
-                                                                        <span className="font-mono font-medium">
-                                                                            R {item.amountToPay.toFixed(2)}
-                                                                        </span>
-                                                                    </div>
-                                                                ))}
-                                                                <div className="border-t pt-2 mt-2 flex justify-between font-bold text-xs">
-                                                                    <span>Total</span>
-                                                                    <span>R {tx.totalAmount.toFixed(2)}</span>
-                                                                </div>
-                                                                {tx.cancellationReason && (
-                                                                    <div className="mt-3 bg-red-50 p-2 rounded border border-red-100 text-xs">
-                                                                        <span className="font-bold text-red-700 block mb-0.5">Cancellation Reason:</span>
-                                                                        <span className="text-red-600">{tx.cancellationReason}</span>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </HoverCardContent>
-                                                    </HoverCard>
+                                                    <Badge variant="outline" className="text-[10px] px-1 py-0 text-amber-700 border-amber-300 bg-amber-50">Local</Badge>
                                                 </div>
                                             </div>
                                         </TableCell>
@@ -668,21 +802,10 @@ export default function SupervisorDashboard() {
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="flex flex-col">
-                                                <span className="font-bold text-slate-900">R {tx.totalAmount.toFixed(2)}</span>
-                                                <div className="flex items-center gap-1 mt-0.5">
-                                                    {tx.payment.cash > 0 && (
-                                                        <Badge variant="outline" className="h-5 px-1.5 bg-green-50 text-green-700 border-green-200 text-[10px] gap-1">
-                                                            <Banknote className="w-3 h-3" /> Cash
-                                                        </Badge>
-                                                    )}
-                                                    {tx.payment.card > 0 && (
-                                                        <Badge variant="outline" className="h-5 px-1.5 bg-blue-50 text-blue-700 border-blue-200 text-[10px] gap-1">
-                                                            <CreditCard className="w-3 h-3" /> Card
-                                                        </Badge>
-                                                    )}
-                                                </div>
-                                            </div>
+                                            <span className="font-bold text-slate-900">R {tx.totalAmount.toFixed(2)}</span>
+                                        </TableCell>
+                                        <TableCell>
+                                            <span className="text-xs text-red-600 max-w-[150px] truncate block" title={tx.cancellationReason}>{tx.cancellationReason || '—'}</span>
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-2">
@@ -712,7 +835,7 @@ export default function SupervisorDashboard() {
             </TabsContent>
             
             <TabsContent value="history" className="mt-0">
-                {processedCancellations.length === 0 ? (
+                {processedCancellations.length === 0 && processedCancelRequests.length === 0 ? (
                     <div className="text-center py-8 bg-white/50 rounded border border-dashed border-slate-200 text-slate-500 text-sm">
                         No cancellation history found
                     </div>
@@ -723,11 +846,34 @@ export default function SupervisorDashboard() {
                                 <TableRow>
                                     <TableHead className="whitespace-nowrap">Receipt Details</TableHead>
                                     <TableHead className="whitespace-nowrap">Cashier</TableHead>
-                                    <TableHead className="whitespace-nowrap">Processed Time</TableHead>
+                                    <TableHead className="whitespace-nowrap">Amount</TableHead>
                                     <TableHead className="whitespace-nowrap">Status</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
+                                {processedCancelRequests.map(req => (
+                                    <TableRow key={`api-hist-${req.id}`}>
+                                        <TableCell>
+                                            <div className="flex flex-col">
+                                                <span className="font-mono font-bold text-slate-900">{req.receiptNo || `#${req.receiptId}`}</span>
+                                                {req.accountNumber && <span className="text-xs text-muted-foreground font-mono">{req.accountNumber}</span>}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <span className="font-medium text-slate-900">{req.cashierName || 'Unknown'}</span>
+                                        </TableCell>
+                                        <TableCell>
+                                            <span className="font-bold font-mono">R {req.amount.toFixed(2)}</span>
+                                        </TableCell>
+                                        <TableCell>
+                                            {req.status === 'APPROVED' ? (
+                                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Approved</Badge>
+                                            ) : (
+                                                <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Declined</Badge>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
                                 {processedCancellations.map(tx => {
                                     const cashier = referenceData.cashiers.find(c => c.id === tx.cashierId);
                                     const mainType = tx.items[0]?.type.replace('_', ' ') || 'Unknown';
@@ -752,10 +898,7 @@ export default function SupervisorDashboard() {
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="flex flex-col">
-                                                <span className="text-slate-900">{new Date(tx.timestamp).toLocaleTimeString('en-ZA', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit', hour12: false })}</span>
-                                                <span className="text-xs text-muted-foreground">{new Date(tx.timestamp).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', month: 'short', day: '2-digit' })}</span>
-                                            </div>
+                                            <span className="font-bold font-mono">R {tx.totalAmount.toFixed(2)}</span>
                                         </TableCell>
                                         <TableCell>
                                             {isRejected ? (

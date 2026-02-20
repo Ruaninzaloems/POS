@@ -1688,6 +1688,50 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/platinum/auth-day-end/request-cancel-receipt", async (req, res) => {
+    try {
+      console.log(`[request-cancel-receipt] Body:`, JSON.stringify(req.body));
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/request-cancel-receipt", req.body);
+      console.log(`[request-cancel-receipt] Response:`, JSON.stringify(data).substring(0, 500));
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end/approve-cancel-receipt", async (req, res) => {
+    try {
+      console.log(`[approve-cancel-receipt] Body:`, JSON.stringify(req.body));
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/approve-cancel-receipt", req.body);
+      console.log(`[approve-cancel-receipt] Response:`, JSON.stringify(data).substring(0, 500));
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end/decline-cancel-receipt", async (req, res) => {
+    try {
+      console.log(`[decline-cancel-receipt] Body:`, JSON.stringify(req.body));
+      const data = await platinumPost("/api/billing/auth-day-end-reconcile/decline-cancel-receipt", req.body);
+      console.log(`[decline-cancel-receipt] Response:`, JSON.stringify(data).substring(0, 500));
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/auth-day-end/pending-cancel-requests", async (req, res) => {
+    try {
+      console.log(`[pending-cancel-requests] Query:`, JSON.stringify(req.query));
+      const data = await platinumGet("/api/billing/auth-day-end-reconcile/pending-cancel-requests", req.query as Record<string, string>);
+      console.log(`[pending-cancel-requests] Response:`, JSON.stringify(data).substring(0, 500));
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.post("/api/platinum/auth-day-end/print-receipt", async (req, res) => {
     try {
       const data = await platinumPost("/api/billing/auth-day-end-reconcile/print-receipt", req.body);

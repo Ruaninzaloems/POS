@@ -1183,6 +1183,34 @@ export async function platinumAuthDayEndCancelReceipt(data: any): Promise<any> {
     });
 }
 
+export async function platinumRequestCancelReceipt(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end/request-cancel-receipt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumApproveCancelReceipt(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end/approve-cancel-receipt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumDeclineCancelReceipt(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end/decline-cancel-receipt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumGetPendingCancelRequests(): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end/pending-cancel-requests`);
+}
+
 export async function platinumAuthDayEndPrintReceipt(data: any): Promise<any> {
     return platinumFetch(`/api/platinum/auth-day-end/print-receipt`, {
         method: 'POST',
