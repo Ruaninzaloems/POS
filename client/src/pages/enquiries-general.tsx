@@ -24,7 +24,7 @@ import { AccountInfoTab, NameTab, BalanceDebtTab, LinkedAccountsTab } from './en
 import { ServiceBalanceTab, ConsumptionTab, ServicesMetersTab } from './enquiries/service-tabs';
 import { TransactionSummaryTab, DetailedTransactionListTab, TransactionHistoryTab } from './enquiries/transaction-tabs';
 import { IncentivesTab, DepositsTab, PaymentPlansTab, PaymentExtensionHistoryTab, DebitOrdersTab, RatesValuationsTab } from './enquiries/financial-tabs';
-import { PropertyDetailsTab, ContactInfoTab, HandoverTab, NotificationsTab, StatementsTab, ClearanceTab, DebtorNotesTab, Section129Tab, OccupiersTab, SendStatementsTab } from './enquiries/other-tabs';
+import { PropertyDetailsTab, ContactInfoTab, HandoverTab, NotificationsTab, StatementsTab, ClearanceTab, DebtorNotesTab, Section129Tab, OccupiersTab, SendStatementsTab, IndigentHistoryTab } from './enquiries/other-tabs';
 import { SEARCH_FIELDS, detectSearchType, SmartSearchDropdown, ExpandableResultRow } from './enquiries/search-components';
 
 function FieldAutocompleteInput({ fieldKey, placeholder, value, onChange, onSelectAllLinked, onSelectByFieldValue, onEnter, onAutoResults }: {
@@ -592,10 +592,11 @@ function GeneralEnquiriesContent() {
         ],
       },
       {
-        heading: 'NOTIFICATIONS & INCENTIVES',
+        heading: 'NOTIFICATIONS & SUBSIDIES',
         tabs: [
           { value: 'notifications', label: 'Notifications', icon: <AlertCircle className="w-3.5 h-3.5" />, color: 'yellow' },
           { value: 'incentives', label: 'Incentives', icon: <Gift className="w-3.5 h-3.5" />, color: 'pink' },
+          { value: 'indigent', label: 'Indigent Subsidy', icon: <Shield className="w-3.5 h-3.5" />, color: 'teal' },
         ],
       },
     ];
@@ -739,6 +740,7 @@ function GeneralEnquiriesContent() {
               <TabsContent value="section129" className="m-0"><Section129Tab accountId={accountId} /></TabsContent>
               <TabsContent value="linked-accounts" className="m-0"><LinkedAccountsTab accountId={accountId} onSelectAccount={(acct) => { setSelectedAccount(acct); setActiveTab('account'); }} /></TabsContent>
               <TabsContent value="occupiers" className="m-0"><OccupiersTab accountId={accountId} /></TabsContent>
+              <TabsContent value="indigent" className="m-0"><IndigentHistoryTab accountId={accountId} /></TabsContent>
             </div>
           </Tabs>
         </div>

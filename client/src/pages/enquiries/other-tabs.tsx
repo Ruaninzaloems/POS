@@ -17,6 +17,7 @@ import {
   getPropertyNotification, getGeneratedStatements,
   getClearanceInquiries, getDebtorNoteLists, getSection129AccountEnquiry,
   getOccupiers, addOccupier, deleteOccupier, getAdditionalEmails,
+  getAttpApplicationHistory,
 } from '@/lib/enquiries-service';
 import { LoadingSkeleton, EmptyState, ErrorState, PaginatedTable, FieldRow, getFinYearOptions } from './shared';
 import { generateStatementPdf } from '@/lib/statement-pdf';
@@ -2081,6 +2082,117 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+export function IndigentHistoryTab({ accountId }: { accountId: number }) {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const loaded = useRef(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getAttpApplicationHistory(accountId);
+      setData(Array.isArray(result) ? result : result ? [result] : []);
+      loaded.current = true;
+    } catch (e: any) {
+      setError(e.message || 'Failed to load indigent history');
+    } finally {
+      setLoading(false);
+    }
+  }, [accountId]);
+
+  useEffect(() => { if (!loaded.current) load(); }, [load]);
+
+  if (loading) return <LoadingSkeleton />;
+  if (error) return <ErrorState message={error} onRetry={load} />;
+
+  const fmtDate = (v: any) => {
+    if (!v) return '-';
+    try { return new Date(v).toLocaleDateString('en-ZA'); } catch { return '-'; }
+  };
+  const fmtAmt = (v: any) => v != null && v !== '' ? Number(v).toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : '0.00';
+
+  return (
+    <div className="p-5 space-y-5" data-testid="indigent-history-panel">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-teal-700 to-teal-800 flex items-center gap-2">
+          <Shield className="w-4 h-4 text-white" />
+          <h3 className="text-sm font-semibold text-white tracking-wide">Indigent History</h3>
+          {data.length > 0 && (
+            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{data.length}</Badge>
+          )}
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs" data-testid="table-indigent-history">
+            <thead>
+              <tr className="bg-slate-100 border-b-2 border-slate-200">
+                <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">ATTP Status</th>
+                <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Indigent Type</th>
+                <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Application Date</th>
+                <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Disqualify / Terminate / Cancel Date</th>
+                <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Last Verification Date</th>
+                <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Disqualify / Terminate / Cancel Reason</th>
+                <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Do-Not-Cut Date</th>
+                <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Do-Not-Cut Ext Reason</th>
+                <th className="text-right py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Application Write Off Amount</th>
+                <th className="text-right py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Total Write Off Amount</th>
+                <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Electricity Meter Service Type</th>
+                <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Meter Change Date</th>
+                <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Remarks</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.length === 0 ? (
+                <tr>
+                  <td colSpan={13} className="py-10 text-center text-slate-400 text-sm">No records to display.</td>
+                </tr>
+              ) : data.map((row: any, i: number) => {
+                const statusText = row.attpStatus || row.status || row.attpStatusDesc || '-';
+                const isActive = statusText.toLowerCase().includes('active') || statusText.toLowerCase().includes('approved');
+                const isTerminated = statusText.toLowerCase().includes('terminat') || statusText.toLowerCase().includes('disqualif') || statusText.toLowerCase().includes('cancel');
+                return (
+                  <tr key={i} className={`border-b border-slate-100 hover:bg-teal-50/30 transition-colors ${isTerminated ? 'bg-red-50/20' : ''}`} data-testid={`indigent-row-${i}`}>
+                    <td className="py-2.5 px-3">
+                      <Badge variant="outline" className={`text-[10px] whitespace-nowrap ${isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : isTerminated ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                        {statusText}
+                      </Badge>
+                    </td>
+                    <td className="py-2.5 px-3 text-slate-700">{row.indigentType || row.attpType || row.type || '-'}</td>
+                    <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{fmtDate(row.applicationDate || row.appDate)}</td>
+                    <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{fmtDate(row.disqualifyDate || row.terminateDate || row.cancelDate || row.disqualifyTerminateCancelDate)}</td>
+                    <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{fmtDate(row.lastVerificationDate || row.verificationDate)}</td>
+                    <td className="py-2.5 px-3 text-slate-600 max-w-[200px] truncate" title={row.disqualifyReason || row.terminateReason || row.cancelReason || row.disqualifyTerminateCancelReason || ''}>
+                      {row.disqualifyReason || row.terminateReason || row.cancelReason || row.disqualifyTerminateCancelReason || '-'}
+                    </td>
+                    <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{fmtDate(row.doNotCutDate || row.dncDate)}</td>
+                    <td className="py-2.5 px-3 text-slate-600 max-w-[150px] truncate" title={row.doNotCutExtReason || row.dncExtReason || ''}>
+                      {row.doNotCutExtReason || row.dncExtReason || '-'}
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-mono text-slate-700">{fmtAmt(row.applicationWriteOffAmount || row.appWriteOffAmount || row.writeOffAmount)}</td>
+                    <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-800">{fmtAmt(row.totalWriteOffAmount || row.totalWriteOff)}</td>
+                    <td className="py-2.5 px-3 text-slate-700">{row.electricityMeterServiceType || row.elecMeterServiceType || row.meterServiceType || '-'}</td>
+                    <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{fmtDate(row.meterChangeDate || row.elecMeterChangeDate)}</td>
+                    <td className="py-2.5 px-3 text-slate-600 max-w-[200px] truncate" title={row.remarks || row.comment || ''}>
+                      {row.remarks || row.comment || '-'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 px-4 py-2 bg-slate-50 border-t border-slate-200 text-xs text-slate-500">
+          <span>Items per page: <span className="border rounded px-2 py-0.5 bg-white">50</span></span>
+          <span>{data.length > 0 ? `1 - ${data.length} of ${data.length}` : '0 of 0'}</span>
+        </div>
+      </div>
     </div>
   );
 }
