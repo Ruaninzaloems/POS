@@ -282,8 +282,18 @@ export default function ThirdPartyPaymentProcessing() {
         newAccountNumber: editAccountNo,
         comment: editComment,
       });
+      setTransactions(prev => prev.map(txn => {
+        if (txn.index !== editingIdx) return txn;
+        const mismatch = txn.oldAccountNumber !== '' && editAccountNo !== '' && txn.oldAccountNumber !== editAccountNo;
+        return {
+          ...txn,
+          newAccountNumber: editAccountNo,
+          comment: editComment,
+          hasAccountMismatch: mismatch,
+          status: mismatch ? 'Account Updated' : txn.status,
+        };
+      }));
       setEditingIdx(null);
-      await loadTransactions();
     } catch (e: any) {
       console.error('Failed to update transaction:', e);
     } finally {
@@ -323,6 +333,8 @@ export default function ThirdPartyPaymentProcessing() {
 
   const handleSelectAccount = async (account: any) => {
     const accNo = account.accountNumber || account.accountNo || account.account_Number || '';
+    const ownerName = account.ownerName || account.name || account.owner || '';
+    const propertyAddress = account.propertyAddress || account.address || account.street || '';
     if (searchIdx !== null && importId) {
       setSearchOpen(false);
       setSavingEdit(true);
@@ -331,7 +343,19 @@ export default function ThirdPartyPaymentProcessing() {
           newAccountNumber: accNo,
           comment: `Reassigned to ${accNo}`,
         });
-        await loadTransactions();
+        setTransactions(prev => prev.map(txn => {
+          if (txn.index !== searchIdx) return txn;
+          const mismatch = txn.oldAccountNumber !== '' && accNo !== '' && txn.oldAccountNumber !== accNo;
+          return {
+            ...txn,
+            newAccountNumber: accNo,
+            comment: `Reassigned to ${accNo}`,
+            ownerName: ownerName || txn.ownerName,
+            propertyAddress: propertyAddress || txn.propertyAddress,
+            hasAccountMismatch: mismatch,
+            status: mismatch ? 'Account Updated' : txn.status,
+          };
+        }));
       } catch (e: any) {
         console.error('Failed to update transaction after search:', e);
       } finally {
