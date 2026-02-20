@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { ArrowLeft, Plus, Trash2, CheckCircle, AlertCircle, Upload, X, Loader2, Search, Banknote, Building2, FileCheck, Receipt, CreditCard, RotateCcw, FileSpreadsheet, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { AllocationLine, Account, ClearanceCostSchedule, platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, platinumLoadDetailsPaymentGrouping, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, fetchMiscPaymentGroups, rebuildFullAccount, platinumSearchAccountsPayment, fetchActiveFinYear, fetchPlatinumUserInfo } from '@/lib/external-api';
+import { AllocationLine, Account, ClearanceCostSchedule, platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, platinumLoadDetailsPaymentGrouping, platinumLoadDetailsPaymentGroupingInstitutionData, platinumLoadDetailsConsumerServices, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, platinumGetConsumerDetailsData, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, platinumGetGroupPaymentDetails, fetchMiscPaymentGroups, rebuildFullAccount, platinumSearchAccountsPayment, fetchActiveFinYear, fetchPlatinumUserInfo } from '@/lib/external-api';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 
@@ -32,7 +32,7 @@ interface DDSearchResult {
   name: string;
   oldAccountCode?: string;
   outstandingAmount?: number;
-  type: 'ACCOUNT' | 'CLEARANCE' | 'DIRECT';
+  type: 'ACCOUNT' | 'CLEARANCE' | 'DIRECT' | 'GROUP';
   description?: string;
   rawData?: any;
 }
@@ -52,7 +52,7 @@ export default function AllocateTransaction() {
   const [linesPage, setLinesPage] = useState(1);
   const LINES_PER_PAGE = 10;
   
-  const [searchScope, setSearchScope] = useState<'ALL' | 'ACCOUNT' | 'CLEARANCE' | 'DIRECT'>('ALL');
+  const [searchScope, setSearchScope] = useState<'ALL' | 'ACCOUNT' | 'CLEARANCE' | 'DIRECT' | 'GROUP'>('ALL');
   
   const [selectedAccount, setSelectedAccount] = useState<{accountNo: string, name: string, description?: string, accountId?: number, allocationType?: string, miscPaymentGroupId?: number} | null>(null);
   const [newLineAmount, setNewLineAmount] = useState('');
@@ -196,6 +196,27 @@ export default function AllocateTransaction() {
         } catch {}
       }
 
+      if (searchScope === 'ALL' || searchScope === 'GROUP') {
+        try {
+          const groupResults = await platinumGetGroupPaymentDetails({ searchTerm: query });
+          const groupArr = Array.isArray(groupResults) ? groupResults : (groupResults?.value || []);
+          for (const g of groupArr.slice(0, 5)) {
+            const gId = g.groupId || g.id || g.group_ID || 0;
+            if (!seen.has(gId + 100000)) {
+              seen.add(gId + 100000);
+              results.push({
+                accountId: g.accountId || g.account_ID || 0,
+                accountNo: g.accountNumber || g.accountNo || `GRP-${gId}`,
+                name: g.name || g.description || g.groupName || 'Payment Group',
+                type: 'GROUP',
+                description: `Payment Grouping: ${g.name || g.description || g.groupName || ''}`,
+                rawData: g,
+              });
+            }
+          }
+        } catch {}
+      }
+
       if (searchScope === 'ALL' || searchScope === 'DIRECT') {
         if (miscGroupsLoaded && miscGroups.length > 0) {
           const q = query.toLowerCase();
@@ -259,6 +280,17 @@ export default function AllocateTransaction() {
         accountId: 0,
         allocationType: 'DIRECT',
         miscPaymentGroupId: result.rawData?.id || 0,
+      });
+      setNewLineAmount("0.00");
+      setSelectedClearance(null);
+    } else if (result.type === 'GROUP') {
+      setSelectedAccount({
+        accountNo: result.accountNo,
+        name: result.name,
+        description: result.description || `Payment Grouping: ${result.name}`,
+        accountId: result.accountId,
+        allocationType: 'GROUP',
+        miscPaymentGroupId: result.rawData?.id || result.rawData?.groupId || 0,
       });
       setNewLineAmount("0.00");
       setSelectedClearance(null);
@@ -706,9 +738,10 @@ export default function AllocateTransaction() {
           const ALLOC_TYPE_ORDER: Record<string, number> = {
               'ACCOUNT': 1,
               'PREPAID': 1,
-              'CLEARANCE': 2,
-              'DIRECT': 3,
-              'CASHBOOK': 4,
+              'GROUP': 2,
+              'CLEARANCE': 3,
+              'DIRECT': 4,
+              'CASHBOOK': 5,
           };
 
           const sortedLines = [...lines].sort((a, b) => {
@@ -726,7 +759,9 @@ export default function AllocateTransaction() {
               const allocType = line.allocationType || 'ACCOUNT';
 
               let billType = '1';
-              if (allocType === 'DIRECT') {
+              if (allocType === 'GROUP') {
+                  billType = '3';
+              } else if (allocType === 'DIRECT') {
                   billType = '4';
               } else if (allocType === 'CLEARANCE') {
                   billType = '6';
@@ -735,31 +770,55 @@ export default function AllocateTransaction() {
               const accountIdStr = line.accountId ? String(line.accountId) : '';
 
               try {
-                  if (allocType === 'DIRECT') {
-                      console.log(`[Direct Deposit] Step 1: load-details-payment-grouping for misc (billType 4)`);
-                      await platinumLoadDetailsPaymentGrouping({
-                          amount: line.amount,
-                          dateOfTransaction: transactionDate,
-                          cashbookID: transaction.cashbookTransactionID || 0,
-                          posItemId: transaction.posItem_ID,
-                          paymentTypeID: 3,
-                          userId: userId,
-                          finYear,
-                          page: 1,
-                          pageSize: 100,
+                  if (allocType === 'ACCOUNT' || allocType === 'PREPAID') {
+                      console.log(`[Direct Deposit] Prep: load-details-consumer-services (billType 1) for account ${accountIdStr}`);
+                      await platinumLoadDetailsConsumerServices(
+                          { page: 1, pageSize: 100, orderby: null, shortDirection: null },
+                          {
+                              posItemId: String(transaction.posItem_ID),
+                              finYear: finYear,
+                              userId: String(userId),
+                          }
+                      );
+
+                      console.log(`[Direct Deposit] Prep: get-consumer-details-data for account ${accountIdStr}`);
+                      await platinumGetConsumerDetailsData({
+                          accountID: accountIdStr,
+                          posItemID: transaction.posItem_ID,
+                          transactionAmount: line.amount,
                       });
+                  } else if (allocType === 'GROUP') {
+                      console.log(`[Direct Deposit] Prep: load-details-payment-grouping (billType 3) for group`);
+                      await platinumLoadDetailsPaymentGrouping(
+                          { page: 1, pageSize: 100, orderby: null, shortDirection: null },
+                          {
+                              posItemId: String(transaction.posItem_ID),
+                              finYear: finYear,
+                              userId: String(userId),
+                          }
+                      );
                   } else if (allocType === 'CLEARANCE') {
-                      console.log(`[Direct Deposit] Step 1: load-details-clearance (billType 6)`);
+                      console.log(`[Direct Deposit] Prep: load-details-clearance (billType 6)`);
                       const pagerBody = { page: 1, pageSize: 100, orderby: null, shortDirection: null };
                       await platinumLoadDetailsClearance(pagerBody);
 
-                      console.log(`[Direct Deposit] Step 2: get-clearance-details-info for ${accountIdStr}`);
+                      console.log(`[Direct Deposit] Prep: get-clearance-details-info for ${accountIdStr}`);
                       await platinumGetClearanceDetailsInfo({
                           costScheduleID: line.clearanceId ? String(line.clearanceId) : accountIdStr,
                           accountID: accountIdStr,
                           posItemID: transaction.posItem_ID,
                           transactionAmount: line.amount,
                       });
+                  } else if (allocType === 'DIRECT') {
+                      console.log(`[Direct Deposit] Prep: load-details-payment-grouping for misc (billType 4)`);
+                      await platinumLoadDetailsPaymentGrouping(
+                          { page: 1, pageSize: 100, orderby: null, shortDirection: null },
+                          {
+                              posItemId: String(transaction.posItem_ID),
+                              finYear: finYear,
+                              userId: String(userId),
+                          }
+                      );
                   }
               } catch (prepErr) {
                   console.warn(`[Direct Deposit] Preparation step warning (non-blocking):`, prepErr);
@@ -785,7 +844,7 @@ export default function AllocateTransaction() {
                   transactionDate,
                   paidAmount: line.amount,
                   billType,
-                  accountId: (allocType === 'ACCOUNT' || allocType === 'PREPAID' || allocType === 'CLEARANCE') ? (line.accountId || 0) : 0,
+                  accountId: (allocType === 'ACCOUNT' || allocType === 'PREPAID' || allocType === 'CLEARANCE' || allocType === 'GROUP') ? (line.accountId || 0) : 0,
                   paymentTypeId: line.paymentTypeId ?? 5,
                   description: line.description || transaction.note || '',
                   reference: line.reference || transaction.reference || '',
@@ -796,6 +855,11 @@ export default function AllocateTransaction() {
 
               if (allocType === 'CLEARANCE') {
                   submitData.clearanceId = line.clearanceId || 0;
+              }
+
+              if (allocType === 'GROUP') {
+                  submitData.miscPaymentGroupId = line.miscPaymentGroupId || 0;
+                  submitData.groupId = line.groupId || line.miscPaymentGroupId || 0;
               }
 
               if (allocType === 'DIRECT') {
@@ -826,7 +890,7 @@ export default function AllocateTransaction() {
           }
 
           const accountLines = lines.filter(l =>
-              (l.allocationType === 'ACCOUNT' || l.allocationType === 'PREPAID' || l.allocationType === 'CLEARANCE')
+              (l.allocationType === 'ACCOUNT' || l.allocationType === 'PREPAID' || l.allocationType === 'CLEARANCE' || l.allocationType === 'GROUP')
               && l.accountNo && l.accountNo !== 'CASHBOOK-RTN'
           );
           const uniqueAccountNos = Array.from(new Set(accountLines.map(l => l.accountNo)));
@@ -904,6 +968,7 @@ export default function AllocateTransaction() {
   const scopeOptions = [
     { value: 'ALL', label: 'All', icon: Search },
     { value: 'ACCOUNT', label: 'Account', icon: Building2 },
+    { value: 'GROUP', label: 'Grouping', icon: CreditCard },
     { value: 'CLEARANCE', label: 'Clearance', icon: FileCheck },
     { value: 'DIRECT', label: 'Income', icon: Receipt },
   ] as const;
@@ -1074,6 +1139,7 @@ export default function AllocateTransaction() {
                             placeholder={
                                 searchScope === 'ALL' ? "Search account, name, old code..." :
                                 searchScope === 'ACCOUNT' ? "Search account number or name..." :
+                                searchScope === 'GROUP' ? "Search payment grouping..." :
                                 searchScope === 'CLEARANCE' ? "Search clearance certificate..." :
                                 "Search direct income group..."
                             }
@@ -1099,10 +1165,12 @@ export default function AllocateTransaction() {
                                     >
                                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                                             result.type === 'ACCOUNT' ? 'bg-blue-50 text-blue-600' :
+                                            result.type === 'GROUP' ? 'bg-purple-50 text-purple-600' :
                                             result.type === 'CLEARANCE' ? 'bg-amber-50 text-amber-600' :
                                             'bg-emerald-50 text-emerald-600'
                                         }`}>
                                             {result.type === 'ACCOUNT' ? <Building2 className="w-3.5 h-3.5" /> :
+                                             result.type === 'GROUP' ? <CreditCard className="w-3.5 h-3.5" /> :
                                              result.type === 'CLEARANCE' ? <FileCheck className="w-3.5 h-3.5" /> :
                                              <Receipt className="w-3.5 h-3.5" />}
                                         </div>
@@ -1141,10 +1209,12 @@ export default function AllocateTransaction() {
                                 <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 ${
                                     selectedAccount.allocationType === 'CLEARANCE' ? 'bg-amber-100 text-amber-700' :
                                     selectedAccount.allocationType === 'DIRECT' ? 'bg-emerald-100 text-emerald-700' :
+                                    selectedAccount.allocationType === 'GROUP' ? 'bg-purple-100 text-purple-700' :
                                     'bg-blue-100 text-blue-700'
                                 }`}>
                                     {selectedAccount.allocationType === 'CLEARANCE' ? <FileCheck className="w-4 h-4 sm:w-5 sm:h-5" /> :
                                      selectedAccount.allocationType === 'DIRECT' ? <Receipt className="w-4 h-4 sm:w-5 sm:h-5" /> :
+                                     selectedAccount.allocationType === 'GROUP' ? <CreditCard className="w-4 h-4 sm:w-5 sm:h-5" /> :
                                      <Building2 className="w-4 h-4 sm:w-5 sm:h-5" />}
                                 </div>
                                 <div className="min-w-0">
@@ -1284,6 +1354,7 @@ export default function AllocateTransaction() {
                                             line.allocationType === 'CASHBOOK' ? 'bg-orange-50 text-orange-600' :
                                             line.allocationType === 'CLEARANCE' ? 'bg-amber-50 text-amber-600' :
                                             line.allocationType === 'DIRECT' ? 'bg-emerald-50 text-emerald-600' :
+                                            line.allocationType === 'GROUP' ? 'bg-purple-50 text-purple-600' :
                                             'bg-blue-50 text-blue-600'
                                         }`}>
                                             {startIdx + idx + 1}
@@ -1328,11 +1399,13 @@ export default function AllocateTransaction() {
                                                     line.allocationType === 'CASHBOOK' ? 'bg-orange-50 text-orange-700' :
                                                     line.allocationType === 'CLEARANCE' ? 'bg-amber-50 text-amber-700' :
                                                     line.allocationType === 'DIRECT' ? 'bg-emerald-50 text-emerald-700' :
+                                                    line.allocationType === 'GROUP' ? 'bg-purple-50 text-purple-700' :
                                                     'bg-blue-50 text-blue-700'
                                                 }`}>
                                                     {line.allocationType === 'CASHBOOK' ? 'Return' :
                                                      line.allocationType === 'CLEARANCE' ? 'Clearance' :
-                                                     line.allocationType === 'DIRECT' ? 'Income' : 'Account'}
+                                                     line.allocationType === 'DIRECT' ? 'Income' :
+                                                     line.allocationType === 'GROUP' ? 'Grouping' : 'Account'}
                                                 </Badge>
                                             </td>
                                             <td className="px-5 py-3 text-right">

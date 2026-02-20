@@ -155,7 +155,7 @@ export interface AllocationLine {
   accountNo: string;
   amount: number;
   description: string;
-  allocationType?: 'ACCOUNT' | 'PREPAID' | 'DIRECT' | 'CLEARANCE' | 'CASHBOOK';
+  allocationType?: 'ACCOUNT' | 'PREPAID' | 'DIRECT' | 'CLEARANCE' | 'GROUP' | 'CASHBOOK';
   accountId?: number;
   groupId?: number;
   miscPaymentGroupId?: number;
