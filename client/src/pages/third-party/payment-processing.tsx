@@ -258,11 +258,11 @@ export default function ThirdPartyPaymentProcessing() {
             documentNumber: t.documentNumber || '',
             amount: t.amount || 0,
             reference: t.reference || t.paymentReference || '',
-            comment: t.comment || '',
-            status: t.status || (mismatch ? 'Account Migrated' : 'Pending'),
+            comment: mismatch ? `Changed to EMS Account: ${resolvedAcct} from Old account in file: ${oldAcct}` : (t.comment || ''),
+            status: t.status || (mismatch ? 'Account Updated' : 'Pending'),
             isValid: t.isValid !== false,
             isDuplicate: t.isDuplicate || false,
-            validationMessage: mismatch ? `Old account ${oldAcct} → migrated to ${resolvedAcct}` : (t.validationMessage || t.statusMessage || ''),
+            validationMessage: t.validationMessage || t.statusMessage || '',
             ownerName: lookupResult?.ownerName || t.ownerName || t.name || '',
             propertyAddress: lookupResult?.propertyAddress || t.propertyAddress || t.address || '',
             hasAccountMismatch: mismatch,
@@ -279,7 +279,7 @@ export default function ThirdPartyPaymentProcessing() {
             const updates = batch.map(entry =>
               platinumThirdPartyUpdateTransaction(useId, entry.index, {
                 newAccountNumber: entry.newAcct,
-                comment: `Auto-migrated from ${entry.oldAcct}`,
+                comment: `Changed to EMS Account: ${entry.newAcct} from Old account in file: ${entry.oldAcct}`,
               }).catch(e => console.warn(`Auto-update failed for index ${entry.index}:`, e))
             );
             await Promise.all(updates);
@@ -600,8 +600,8 @@ export default function ThirdPartyPaymentProcessing() {
                   <p className="text-xl font-bold text-red-600" data-testid="text-invalid-count">{invalidCount}</p>
                 </Card>
                 <Card className="p-3">
-                  <p className="text-xs text-muted-foreground">Auto-Corrected</p>
-                  <p className="text-xl font-bold text-green-600" data-testid="text-migrated-count">{transactions.filter(t => t.hasAccountMismatch).length}</p>
+                  <p className="text-xs text-muted-foreground">Updated Accounts</p>
+                  <p className="text-xl font-bold text-blue-600" data-testid="text-migrated-count">{transactions.filter(t => t.hasAccountMismatch).length}</p>
                 </Card>
                 <Card className="p-3">
                   <p className="text-xs text-muted-foreground">Total Amount</p>
@@ -610,13 +610,12 @@ export default function ThirdPartyPaymentProcessing() {
               </div>
 
               {transactions.some(t => t.hasAccountMismatch) && (
-                <Alert className="bg-green-50 border-green-200">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <AlertTitle className="text-green-800">Old Accounts Auto-Corrected</AlertTitle>
-                  <AlertDescription className="text-green-700">
-                    {transactions.filter(t => t.hasAccountMismatch).length} transaction(s) used old/EasyPay account numbers. 
-                    The correct consumer accounts have been automatically identified and updated. 
-                    Payments will be allocated to the new account numbers shown in green. No manual action needed.
+                <Alert className="bg-blue-50 border-blue-200">
+                  <CheckCircle2 className="h-4 w-4 text-blue-600" />
+                  <AlertTitle className="text-blue-800">Account Numbers Updated</AlertTitle>
+                  <AlertDescription className="text-blue-700">
+                    {transactions.filter(t => t.hasAccountMismatch).length} transaction(s) had old account numbers in the import file. 
+                    These have been automatically changed to the correct EMS consumer account numbers. See the Comment column for details.
                   </AlertDescription>
                 </Alert>
               )}
@@ -741,18 +740,18 @@ export default function ThirdPartyPaymentProcessing() {
                         <TableHeader>
                           <TableRow className="bg-slate-50">
                             <TableHead className="w-[50px]">#</TableHead>
-                            <TableHead>File Account No</TableHead>
-                            <TableHead>Consumer Account</TableHead>
+                            <TableHead>Account Number</TableHead>
                             <TableHead>Owner / Name</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
                             <TableHead>Reference</TableHead>
+                            <TableHead>Comment</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead className="text-center w-[120px]">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {transactions.map((txn) => (
-                            <TableRow key={txn.index} className={`${!txn.isValid ? 'bg-red-50/50' : ''} ${txn.hasAccountMismatch ? 'bg-green-50/30' : ''}`}>
+                            <TableRow key={txn.index} className={`${!txn.isValid ? 'bg-red-50/50' : ''}`}>
                               <TableCell className="text-xs text-muted-foreground">{txn.index + 1}</TableCell>
                               <TableCell>
                                 {editingIdx === txn.index ? (
@@ -765,42 +764,23 @@ export default function ThirdPartyPaymentProcessing() {
                                     />
                                   </div>
                                 ) : (
-                                  <div>
-                                    <span className={`font-mono text-sm ${txn.hasAccountMismatch ? 'text-slate-400 line-through' : ''}`}>
-                                      {txn.oldAccountNumber}
-                                    </span>
-                                    {txn.hasAccountMismatch && (
-                                      <div className="flex items-center gap-1 mt-0.5">
-                                        <CheckCircle2 className="h-3 w-3 text-green-500" />
-                                        <span className="text-[10px] text-green-600 font-medium">Old EasyPay account — auto-corrected</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {txn.hasAccountMismatch ? (
-                                  <div>
-                                    <span className="font-mono text-sm font-semibold text-green-700">{txn.newAccountNumber}</span>
-                                    <div className="flex items-center gap-1 mt-0.5">
-                                      <ArrowRight className="h-3 w-3 text-green-600" />
-                                      <span className="text-[10px] text-green-600 font-medium">Payment processes here</span>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <span className="font-mono text-sm">{txn.newAccountNumber}</span>
+                                  <span className="font-mono text-sm text-blue-700 font-medium">{txn.newAccountNumber}</span>
                                 )}
                               </TableCell>
                               <TableCell className="text-sm">{txn.ownerName || '-'}</TableCell>
                               <TableCell className="text-right font-mono text-sm">R {txn.amount.toFixed(2)}</TableCell>
                               <TableCell className="text-xs text-muted-foreground">{txn.reference}</TableCell>
+                              <TableCell className="text-xs max-w-[220px]">
+                                {txn.hasAccountMismatch ? (
+                                  <span className="text-slate-600">
+                                    Changed to EMS Account: {txn.newAccountNumber} from Old account in file: {txn.oldAccountNumber}
+                                  </span>
+                                ) : txn.comment ? (
+                                  <span className="text-slate-500">{txn.comment}</span>
+                                ) : null}
+                              </TableCell>
                               <TableCell>
                                 <div className="space-y-0.5">
-                                  {txn.hasAccountMismatch && (
-                                    <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-300">
-                                      Auto-Corrected
-                                    </Badge>
-                                  )}
                                   {txn.isDuplicate && (
                                     <Badge variant="destructive" className="text-[10px]">
                                       Duplicate
@@ -808,13 +788,13 @@ export default function ThirdPartyPaymentProcessing() {
                                   )}
                                   <Badge
                                     variant={txn.isValid ? "default" : "destructive"}
-                                    className={`text-xs ${txn.isValid ? 'bg-green-100 text-green-800 hover:bg-green-100' : ''}`}
+                                    className={`text-xs ${txn.isValid && !txn.hasAccountMismatch ? 'bg-green-100 text-green-800 hover:bg-green-100' : ''} ${txn.isValid && txn.hasAccountMismatch ? 'bg-blue-100 text-blue-800 hover:bg-blue-100' : ''}`}
                                   >
                                     {txn.status}
                                   </Badge>
                                 </div>
-                                {txn.validationMessage && (
-                                  <p className={`text-xs mt-0.5 max-w-[200px] truncate ${txn.hasAccountMismatch ? 'text-green-600' : 'text-red-500'}`} title={txn.validationMessage}>
+                                {txn.validationMessage && !txn.hasAccountMismatch && (
+                                  <p className="text-xs text-red-500 mt-0.5 max-w-[200px] truncate" title={txn.validationMessage}>
                                     {txn.validationMessage}
                                   </p>
                                 )}
