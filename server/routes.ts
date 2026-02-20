@@ -2161,7 +2161,7 @@ export async function registerRoutes(
 
   app.post("/api/platinum/third-party-payments/import", async (req, res) => {
     try {
-      const data = await platinumPost("/api/v2/pos/third-party-payments/import", req.body);
+      const data = await platinumPost("/api/billing/pos/third-party-payments/import", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2188,7 +2188,7 @@ export async function registerRoutes(
 
   app.post("/api/platinum/third-party-payments/:importId/reconcile", async (req, res) => {
     try {
-      const data = await platinumPost(`/api/v2/pos/third-party-payments/${req.params.importId}/reconcile`, req.body);
+      const data = await platinumPost(`/api/billing/pos/third-party-payments/${req.params.importId}/reconcile`, req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2283,7 +2283,7 @@ export async function registerRoutes(
       const url = `${apiUrl}/api/billing/pos/third-party-payments/import`;
 
       const formBody = new URLSearchParams();
-      const fields = ['ContentType', 'ContentDisposition', 'Length', 'Name', 'FileName', 'thirdpartyTypeId', 'paymentReference', 'cashBookId'];
+      const fields = ['ContentType', 'ContentDisposition', 'Length', 'Name', 'FileName', 'thirdpartyTypeId', 'paymentReference', 'cashBookId', 'fileContent'];
       for (const field of fields) {
         if (req.body[field] !== undefined && req.body[field] !== null) {
           formBody.append(field, String(req.body[field]));
@@ -2293,7 +2293,7 @@ export async function registerRoutes(
         formBody.append('Headers', JSON.stringify(req.body.Headers));
       }
 
-      console.log(`[third-party-import] Posting form data to ${url}`);
+      console.log(`[third-party-import] Posting form data to ${url}, fileContent length: ${req.body.fileContent?.length || 0}`);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000);
       try {

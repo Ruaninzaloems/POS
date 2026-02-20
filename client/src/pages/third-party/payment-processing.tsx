@@ -1,22 +1,100 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { PosLayout } from '@/components/layout/pos-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Download, Upload, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Download, Upload, AlertCircle, CheckCircle2, Search, RefreshCw, ChevronLeft, Edit2, Save, X, Loader2, FileCheck, Send } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  platinumThirdPartyPaymentTypes,
+  platinumThirdPartyImportFile,
+  platinumThirdPartyGetTransactions,
+  platinumThirdPartyUpdateTransaction,
+  platinumThirdPartyValidateForReconcile,
+  platinumThirdPartyCommit,
+  platinumThirdPartyAccountSearch,
+  platinumThirdPartyValidateAccount,
+} from '@/lib/external-api';
+import { usePos } from '@/lib/pos-state';
+
+interface ThirdPartyType {
+  id: number;
+  name: string;
+  description?: string;
+}
+
+interface ImportTransaction {
+  index: number;
+  accountNumber: string;
+  newAccountNumber?: string;
+  amount: number;
+  reference: string;
+  comment?: string;
+  status: string;
+  isValid: boolean;
+  validationMessage?: string;
+  ownerName?: string;
+  propertyAddress?: string;
+}
+
+type Step = 'import' | 'transactions' | 'committed';
 
 export default function ThirdPartyPaymentProcessing() {
-  const [cashbook, setCashbook] = useState("ABSA BANK 2025/2026");
+  const posState = usePos();
+  const [step, setStep] = useState<Step>('import');
+
+  const [thirdPartyTypes, setThirdPartyTypes] = useState<ThirdPartyType[]>([]);
+  const [loadingTypes, setLoadingTypes] = useState(true);
+  const [selectedTypeId, setSelectedTypeId] = useState<string>("");
   const [paymentRef, setPaymentRef] = useState("");
-  const [thirdParty, setThirdParty] = useState("");
-  const [postToCashbook, setPostToCashbook] = useState("no");
+  const [cashBookId, setCashBookId] = useState("0");
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [processResult, setProcessResult] = useState<{success: boolean, message: string} | null>(null);
+  const [processResult, setProcessResult] = useState<{success: boolean; message: string} | null>(null);
+
+  const [importId, setImportId] = useState<string>("");
+  const [transactions, setTransactions] = useState<ImportTransaction[]>([]);
+  const [loadingTxns, setLoadingTxns] = useState(false);
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editAccountNo, setEditAccountNo] = useState("");
+  const [editComment, setEditComment] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchIdx, setSearchIdx] = useState<number | null>(null);
+  const [searchAccountNo, setSearchAccountNo] = useState("");
+  const [searchName, setSearchName] = useState("");
+  const [searchStreet, setSearchStreet] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  const [validating, setValidating] = useState(false);
+  const [validationResult, setValidationResult] = useState<any>(null);
+  const [committing, setCommitting] = useState(false);
+  const [commitResult, setCommitResult] = useState<any>(null);
+
+  useEffect(() => {
+    loadThirdPartyTypes();
+  }, []);
+
+  const loadThirdPartyTypes = async () => {
+    setLoadingTypes(true);
+    try {
+      const types = await platinumThirdPartyPaymentTypes();
+      if (Array.isArray(types)) {
+        setThirdPartyTypes(types);
+      }
+    } catch (e) {
+      console.error('Failed to load third party types:', e);
+    } finally {
+      setLoadingTypes(false);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -24,187 +102,578 @@ export default function ThirdPartyPaymentProcessing() {
     }
   };
 
-  const handleDownloadTemplate = () => {
-    // Mock download
-    const element = document.createElement("a");
-    const fileContent = "AccountNo,Amount,Reference,Date\nACC12345,100.00,REF001,2025-01-01";
-    const fileBlob = new Blob([fileContent], { type: "text/csv" });
-    element.href = URL.createObjectURL(fileBlob);
-    element.download = "payment_import_template.csv";
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-  };
-
-  const handleProcess = () => {
-    if (!thirdParty || !file) {
-      setProcessResult({
-        success: false, 
-        message: "Please select a third party provider and upload a file."
-      });
+  const handleImport = async () => {
+    if (!selectedTypeId || !file) {
+      setProcessResult({ success: false, message: "Please select a third party type and upload a file." });
       return;
     }
 
     setIsProcessing(true);
     setProcessResult(null);
 
-    // Simulate processing
-    setTimeout(() => {
-      setIsProcessing(false);
-      setProcessResult({
-        success: true,
-        message: `Successfully processed file '${file.name}' for ${thirdParty}. ${postToCashbook === 'yes' ? 'Transactions posted to Cashbook.' : 'Transactions recorded (No Cashbook posting).'}`
+    try {
+      const fileContent = await file.text();
+
+      const result = await platinumThirdPartyImportFile({
+        ContentType: file.type || 'text/plain',
+        FileName: file.name,
+        Name: file.name,
+        Length: file.size,
+        thirdpartyTypeId: Number(selectedTypeId),
+        paymentReference: paymentRef,
+        cashBookId: Number(cashBookId),
+        fileContent,
       });
-    }, 2000);
+
+      if (result && !result._error) {
+        const id = result.importId || result.id || result;
+        setImportId(String(id));
+        setProcessResult({
+          success: true,
+          message: `Successfully imported file '${file.name}'. ${typeof id === 'string' || typeof id === 'number' ? `Import ID: ${id}` : ''}`
+        });
+        if (id) {
+          setStep('transactions');
+          loadTransactions(String(id));
+        }
+      } else {
+        setProcessResult({
+          success: false,
+          message: result?.detail || result?.message || 'Import failed. Please check the file format and try again.'
+        });
+      }
+    } catch (e: any) {
+      setProcessResult({ success: false, message: e.message || 'Import failed.' });
+    } finally {
+      setIsProcessing(false);
+    }
   };
+
+  const loadTransactions = async (id?: string) => {
+    const useId = id || importId;
+    if (!useId) return;
+    setLoadingTxns(true);
+    try {
+      const txns = await platinumThirdPartyGetTransactions(useId);
+      if (Array.isArray(txns)) {
+        setTransactions(txns.map((t: any, i: number) => ({
+          index: t.index ?? i,
+          accountNumber: t.accountNumber || t.accountNo || '',
+          newAccountNumber: t.newAccountNumber || '',
+          amount: t.amount || 0,
+          reference: t.reference || t.paymentReference || '',
+          comment: t.comment || '',
+          status: t.status || 'Pending',
+          isValid: t.isValid !== false,
+          validationMessage: t.validationMessage || t.statusMessage || '',
+          ownerName: t.ownerName || t.name || '',
+          propertyAddress: t.propertyAddress || t.address || '',
+        })));
+      }
+    } catch (e: any) {
+      console.error('Failed to load transactions:', e);
+    } finally {
+      setLoadingTxns(false);
+    }
+  };
+
+  const handleStartEdit = (txn: ImportTransaction) => {
+    setEditingIdx(txn.index);
+    setEditAccountNo(txn.newAccountNumber || txn.accountNumber);
+    setEditComment(txn.comment || '');
+  };
+
+  const handleSaveEdit = async () => {
+    if (editingIdx === null) return;
+    setSavingEdit(true);
+    try {
+      await platinumThirdPartyUpdateTransaction(importId, editingIdx, {
+        newAccountNumber: editAccountNo,
+        comment: editComment,
+      });
+      setEditingIdx(null);
+      await loadTransactions();
+    } catch (e: any) {
+      console.error('Failed to update transaction:', e);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingIdx(null);
+  };
+
+  const openAccountSearch = (txnIndex: number) => {
+    setSearchIdx(txnIndex);
+    setSearchAccountNo("");
+    setSearchName("");
+    setSearchStreet("");
+    setSearchResults([]);
+    setSearchOpen(true);
+  };
+
+  const handleAccountSearch = async () => {
+    setSearching(true);
+    try {
+      const results = await platinumThirdPartyAccountSearch({
+        accountNo: searchAccountNo || undefined,
+        name: searchName || undefined,
+        street: searchStreet || undefined,
+      });
+      setSearchResults(Array.isArray(results) ? results : []);
+    } catch (e: any) {
+      console.error('Account search failed:', e);
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleSelectAccount = async (account: any) => {
+    const accNo = account.accountNumber || account.accountNo || account.account_Number || '';
+    if (searchIdx !== null && importId) {
+      setSearchOpen(false);
+      setSavingEdit(true);
+      try {
+        await platinumThirdPartyUpdateTransaction(importId, searchIdx, {
+          newAccountNumber: accNo,
+          comment: `Reassigned to ${accNo}`,
+        });
+        await loadTransactions();
+      } catch (e: any) {
+        console.error('Failed to update transaction after search:', e);
+      } finally {
+        setSavingEdit(false);
+        setEditingIdx(null);
+      }
+    } else {
+      setSearchOpen(false);
+    }
+  };
+
+  const handleValidateForReconcile = async () => {
+    if (!importId) return;
+    setValidating(true);
+    setValidationResult(null);
+    try {
+      const result = await platinumThirdPartyValidateForReconcile(importId);
+      setValidationResult(result);
+      await loadTransactions();
+    } catch (e: any) {
+      setValidationResult({ error: true, message: e.message });
+    } finally {
+      setValidating(false);
+    }
+  };
+
+  const handleCommit = async () => {
+    if (!importId) return;
+    setCommitting(true);
+    setCommitResult(null);
+    try {
+      const selectedType = thirdPartyTypes.find(t => String(t.id) === selectedTypeId);
+      const result = await platinumThirdPartyCommit(importId, {
+        groupId: 0,
+        cashBookId: Number(cashBookId),
+        paymentReference: paymentRef,
+        fileName: file?.name || '',
+      });
+      setCommitResult(result);
+      if (result && !result._error && !result.error) {
+        setStep('committed');
+      }
+    } catch (e: any) {
+      setCommitResult({ error: true, message: e.message });
+    } finally {
+      setCommitting(false);
+    }
+  };
+
+  const handleNewImport = () => {
+    setStep('import');
+    setImportId("");
+    setTransactions([]);
+    setFile(null);
+    setPaymentRef("");
+    setSelectedTypeId("");
+    setProcessResult(null);
+    setValidationResult(null);
+    setCommitResult(null);
+  };
+
+  const validCount = transactions.filter(t => t.isValid).length;
+  const invalidCount = transactions.filter(t => !t.isValid).length;
+  const totalAmount = transactions.reduce((sum, t) => sum + (t.amount || 0), 0);
 
   return (
     <PosLayout>
       <div className="flex-1 overflow-auto bg-slate-50 p-3 sm:p-6">
-        <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
-          
+        <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
+
           <div className="flex justify-between items-center">
-             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">Third Party Payment Processing</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900" data-testid="text-page-title">Third Party Payment Processing</h1>
+            {step !== 'import' && (
+              <Button variant="outline" onClick={handleNewImport} className="gap-2" data-testid="button-new-import">
+                <ChevronLeft className="h-4 w-4" /> New Import
+              </Button>
+            )}
           </div>
 
-          <Card className="border-t-4 border-t-blue-600 shadow-sm">
-            <CardHeader className="bg-slate-100/50 pb-4 border-b">
-              <div className="flex items-center gap-2">
-                <div className="h-6 w-1 bg-blue-600 rounded-full"></div>
-                <CardTitle className="text-lg font-medium text-slate-800">
-                  Third Party Payments - Import
-                </CardTitle>
+          {step === 'import' && (
+            <Card className="border-t-4 border-t-blue-600 shadow-sm">
+              <CardHeader className="bg-slate-100/50 pb-4 border-b">
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-1 bg-blue-600 rounded-full"></div>
+                  <CardTitle className="text-lg font-medium text-slate-800">
+                    Third Party Payments - Import
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-6 space-y-6">
+
+                {processResult && (
+                  <Alert variant={processResult.success ? "default" : "destructive"} className={processResult.success ? "bg-green-50 border-green-200 text-green-800" : ""}>
+                    {processResult.success ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <AlertCircle className="h-4 w-4" />}
+                    <AlertTitle>{processResult.success ? "Success" : "Error"}</AlertTitle>
+                    <AlertDescription>{processResult.message}</AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="paymentRef">Payment Reference</Label>
+                    <Input
+                      id="paymentRef"
+                      value={paymentRef}
+                      onChange={(e) => setPaymentRef(e.target.value)}
+                      placeholder="Enter reference number"
+                      className="bg-white"
+                      data-testid="input-payment-ref"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="cashBookId">CashBook ID</Label>
+                    <Input
+                      id="cashBookId"
+                      value={cashBookId}
+                      onChange={(e) => setCashBookId(e.target.value)}
+                      placeholder="Enter cashbook ID (0 for none)"
+                      className="bg-white"
+                      type="number"
+                      data-testid="input-cashbook-id"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="thirdParty" className="after:content-['*'] after:ml-0.5 after:text-red-500">
+                      Select Third Party
+                    </Label>
+                    {loadingTypes ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Loading types...
+                      </div>
+                    ) : (
+                      <Select value={selectedTypeId} onValueChange={setSelectedTypeId}>
+                        <SelectTrigger id="thirdParty" className={!selectedTypeId ? "border-red-300 bg-white" : "bg-white"} data-testid="select-third-party">
+                          <SelectValue placeholder="-- Select --" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {thirdPartyTypes.map(tp => (
+                            <SelectItem key={tp.id} value={String(tp.id)}>
+                              {tp.name || tp.description || `Type ${tp.id}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="fileUpload">Select File</Label>
+                    <Input
+                      id="fileUpload"
+                      type="file"
+                      onChange={handleFileChange}
+                      accept=".csv,.txt,.xml"
+                      className="cursor-pointer bg-white file:mr-4 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      data-testid="input-file-upload"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Maximum file size: 5 MB. Allowed extensions: .csv, .txt, .xml
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-4 border-t">
+                  <Button
+                    onClick={handleImport}
+                    disabled={isProcessing || !selectedTypeId || !file}
+                    className="bg-blue-600 hover:bg-blue-700 gap-2 min-w-[150px] w-full sm:w-auto"
+                    data-testid="button-import"
+                  >
+                    {isProcessing ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" /> Processing...</>
+                    ) : (
+                      <><Upload className="h-4 w-4" /> Import & Process</>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {step === 'transactions' && (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <Card className="p-3">
+                  <p className="text-xs text-muted-foreground">Total Transactions</p>
+                  <p className="text-xl font-bold text-slate-900" data-testid="text-total-count">{transactions.length}</p>
+                </Card>
+                <Card className="p-3">
+                  <p className="text-xs text-muted-foreground">Valid</p>
+                  <p className="text-xl font-bold text-green-600" data-testid="text-valid-count">{validCount}</p>
+                </Card>
+                <Card className="p-3">
+                  <p className="text-xs text-muted-foreground">Invalid</p>
+                  <p className="text-xl font-bold text-red-600" data-testid="text-invalid-count">{invalidCount}</p>
+                </Card>
+                <Card className="p-3">
+                  <p className="text-xs text-muted-foreground">Total Amount</p>
+                  <p className="text-xl font-bold text-blue-600" data-testid="text-total-amount">R {totalAmount.toFixed(2)}</p>
+                </Card>
               </div>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-6">
-              
-              {processResult && (
-                <Alert variant={processResult.success ? "default" : "destructive"} className={processResult.success ? "bg-green-50 border-green-200 text-green-800" : ""}>
-                  {processResult.success ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <AlertCircle className="h-4 w-4" />}
-                  <AlertTitle>{processResult.success ? "Success" : "Error"}</AlertTitle>
+
+              {validationResult && (
+                <Alert variant={validationResult.error ? "destructive" : "default"} className={!validationResult.error ? "bg-blue-50 border-blue-200" : ""}>
+                  {validationResult.error ? <AlertCircle className="h-4 w-4" /> : <FileCheck className="h-4 w-4 text-blue-600" />}
+                  <AlertTitle>{validationResult.error ? "Validation Failed" : "Validation Complete"}</AlertTitle>
                   <AlertDescription>
-                    {processResult.message}
+                    {validationResult.message || validationResult.error || JSON.stringify(validationResult)}
                   </AlertDescription>
                 </Alert>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="cashbook">CashBook</Label>
-                  <Select value={cashbook} onValueChange={setCashbook}>
-                    <SelectTrigger id="cashbook" className="bg-white">
-                      <SelectValue placeholder="Select Cashbook" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ABSA BANK 2025/2026">ABSA BANK 2025/2026</SelectItem>
-                      <SelectItem value="FNB MAIN 2025/2026">FNB MAIN 2025/2026</SelectItem>
-                      <SelectItem value="NEDBANK PRIMARY">NEDBANK PRIMARY</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="paymentRef">Payment Reference</Label>
-                  <Input 
-                    id="paymentRef" 
-                    value={paymentRef} 
-                    onChange={(e) => setPaymentRef(e.target.value)}
-                    placeholder="Enter reference number"
-                    className="bg-white"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="thirdParty" className="after:content-['*'] after:ml-0.5 after:text-red-500">
-                    Select Third Party
-                  </Label>
-                  <Select value={thirdParty} onValueChange={setThirdParty}>
-                    <SelectTrigger id="thirdParty" className={!thirdParty ? "border-red-300 bg-white" : "bg-white"}>
-                      <SelectValue placeholder="-- Select --" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="EasyPay">EasyPay</SelectItem>
-                      <SelectItem value="Grid">Grid</SelectItem>
-                      <SelectItem value="Post Office">Post Office</SelectItem>
-                      <SelectItem value="Utilipay">Utilipay</SelectItem>
-                      <SelectItem value="Utilipay Distribution">Utilipay Distribution</SelectItem>
-                      <SelectItem value="Generic Import">Generic Import</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="fileUpload">Select File</Label>
-                  <div className="flex gap-2">
-                    <Input 
-                      id="fileUpload" 
-                      type="file" 
-                      onChange={handleFileChange}
-                      accept=".csv,.txt,.xls,.xlsx,.xml"
-                      className="cursor-pointer bg-white file:mr-4 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Maximum file size: 5 MB. Allowed extensions: .csv, .txt, .xml
-                  </p>
-                </div>
-              </div>
-
-              {thirdParty === 'Generic Import' && (
-                <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100 space-y-4">
-                   <h3 className="text-sm font-semibold text-blue-900 mb-2">Import Settings</h3>
-                   
-                   <div className="space-y-3">
-                      <Label className="text-slate-700">Post transactions to Cashbook?</Label>
-                      <RadioGroup value={postToCashbook} onValueChange={setPostToCashbook} className="flex gap-6">
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="yes" id="post-yes" />
-                          <Label htmlFor="post-yes" className="font-normal cursor-pointer">Yes - Post to Bank & Debtor</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="no" id="post-no" />
-                          <Label htmlFor="post-no" className="font-normal cursor-pointer">No - Only Debtor/Direct Allocation</Label>
-                        </div>
-                      </RadioGroup>
-                      <p className="text-xs text-slate-500 italic">
-                        {postToCashbook === 'yes' 
-                          ? "Transactions will be recognized in the selected Cashbook and allocated to respective accounts." 
-                          : "Transactions will only be allocated to accounts or held for direct deposit allocation. No bank entry will be created."}
-                      </p>
-                   </div>
-                </div>
+              {commitResult && (
+                <Alert variant={commitResult.error ? "destructive" : "default"} className={!commitResult.error ? "bg-green-50 border-green-200 text-green-800" : ""}>
+                  {commitResult.error ? <AlertCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                  <AlertTitle>{commitResult.error ? "Commit Failed" : "Committed Successfully"}</AlertTitle>
+                  <AlertDescription>
+                    {commitResult.message || commitResult.error || 'Payments have been committed and allocated.'}
+                  </AlertDescription>
+                </Alert>
               )}
 
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t">
-                <Button 
-                  variant="outline" 
-                  onClick={handleDownloadTemplate}
-                  className="gap-2 text-slate-600 w-full sm:w-auto"
-                >
-                  <Download className="h-4 w-4" />
-                  Download Template
-                </Button>
-
-                <Button 
-                  onClick={handleProcess} 
-                  disabled={isProcessing || !thirdParty || !file}
-                  className="bg-blue-600 hover:bg-blue-700 gap-2 min-w-[150px] w-full sm:w-auto"
-                >
-                  {isProcessing ? (
-                    <>Processing...</>
+              <Card className="border-t-4 border-t-blue-600 shadow-sm">
+                <CardHeader className="bg-slate-100/50 pb-3 border-b">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="h-6 w-1 bg-blue-600 rounded-full"></div>
+                      <CardTitle className="text-lg font-medium text-slate-800">
+                        Imported Transactions
+                        {importId && <span className="text-sm font-normal text-muted-foreground ml-2">(Import: {importId})</span>}
+                      </CardTitle>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => loadTransactions()} disabled={loadingTxns} className="gap-1" data-testid="button-refresh-txns">
+                        <RefreshCw className={`h-3.5 w-3.5 ${loadingTxns ? 'animate-spin' : ''}`} /> Refresh
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleValidateForReconcile}
+                        disabled={validating || transactions.length === 0}
+                        className="gap-1 text-blue-700 border-blue-200 hover:bg-blue-50"
+                        data-testid="button-validate"
+                      >
+                        {validating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileCheck className="h-3.5 w-3.5" />}
+                        Validate
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleCommit}
+                        disabled={committing || transactions.length === 0}
+                        className="gap-1 bg-green-600 hover:bg-green-700"
+                        data-testid="button-commit"
+                      >
+                        {committing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                        Commit & Allocate
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {loadingTxns ? (
+                    <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
+                      <Loader2 className="h-5 w-5 animate-spin" /> Loading transactions...
+                    </div>
+                  ) : transactions.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      No transactions found for this import.
+                    </div>
                   ) : (
-                    <>
-                      <Upload className="h-4 w-4" />
-                      Import & Process
-                    </>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-slate-50">
+                            <TableHead className="w-[50px]">#</TableHead>
+                            <TableHead>Account No</TableHead>
+                            <TableHead>Owner / Name</TableHead>
+                            <TableHead className="text-right">Amount</TableHead>
+                            <TableHead>Reference</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-center w-[120px]">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {transactions.map((txn) => (
+                            <TableRow key={txn.index} className={!txn.isValid ? 'bg-red-50/50' : ''}>
+                              <TableCell className="text-xs text-muted-foreground">{txn.index + 1}</TableCell>
+                              <TableCell>
+                                {editingIdx === txn.index ? (
+                                  <div className="flex gap-1">
+                                    <Input
+                                      value={editAccountNo}
+                                      onChange={(e) => setEditAccountNo(e.target.value)}
+                                      className="h-7 text-xs w-32"
+                                      data-testid={`input-edit-account-${txn.index}`}
+                                    />
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <span className="font-mono text-sm">{txn.newAccountNumber || txn.accountNumber}</span>
+                                    {txn.newAccountNumber && txn.newAccountNumber !== txn.accountNumber && (
+                                      <div className="text-xs text-muted-foreground line-through">{txn.accountNumber}</div>
+                                    )}
+                                  </div>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-sm">{txn.ownerName || '-'}</TableCell>
+                              <TableCell className="text-right font-mono text-sm">R {txn.amount.toFixed(2)}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground">{txn.reference}</TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant={txn.isValid ? "default" : "destructive"}
+                                  className={`text-xs ${txn.isValid ? 'bg-green-100 text-green-800 hover:bg-green-100' : ''}`}
+                                >
+                                  {txn.status}
+                                </Badge>
+                                {txn.validationMessage && (
+                                  <p className="text-xs text-red-500 mt-0.5 max-w-[200px] truncate" title={txn.validationMessage}>
+                                    {txn.validationMessage}
+                                  </p>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {editingIdx === txn.index ? (
+                                  <div className="flex gap-1 justify-center">
+                                    <Button size="sm" variant="ghost" onClick={handleSaveEdit} disabled={savingEdit} className="h-7 w-7 p-0" data-testid={`button-save-edit-${txn.index}`}>
+                                      {savingEdit ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5 text-green-600" />}
+                                    </Button>
+                                    <Button size="sm" variant="ghost" onClick={handleCancelEdit} className="h-7 w-7 p-0">
+                                      <X className="h-3.5 w-3.5 text-red-500" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex gap-1 justify-center">
+                                    <Button size="sm" variant="ghost" onClick={() => handleStartEdit(txn)} className="h-7 w-7 p-0" title="Edit account" data-testid={`button-edit-${txn.index}`}>
+                                      <Edit2 className="h-3.5 w-3.5 text-blue-600" />
+                                    </Button>
+                                    <Button size="sm" variant="ghost" onClick={() => openAccountSearch(txn.index)} className="h-7 w-7 p-0" title="Search account" data-testid={`button-search-${txn.index}`}>
+                                      <Search className="h-3.5 w-3.5 text-slate-600" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   )}
-                </Button>
-              </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
 
-            </CardContent>
-          </Card>
+          {step === 'committed' && (
+            <Card className="border-t-4 border-t-green-600 shadow-sm">
+              <CardContent className="pt-8 pb-8 text-center space-y-4">
+                <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto" />
+                <h2 className="text-xl font-semibold text-slate-900">Payments Committed Successfully</h2>
+                <p className="text-muted-foreground max-w-md mx-auto">
+                  All valid transactions from import {importId} have been committed and allocated to their respective accounts.
+                </p>
+                <Button onClick={handleNewImport} className="gap-2 bg-blue-600 hover:bg-blue-700 mt-4" data-testid="button-start-new">
+                  <Upload className="h-4 w-4" /> Start New Import
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
+
+      <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Search Account</DialogTitle>
+            <DialogDescription>Find the correct account to assign to this transaction.</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            <div className="space-y-1">
+              <Label className="text-xs">Account No</Label>
+              <Input value={searchAccountNo} onChange={(e) => setSearchAccountNo(e.target.value)} placeholder="e.g. 123456" className="h-8 text-sm" data-testid="input-search-account" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Owner Name</Label>
+              <Input value={searchName} onChange={(e) => setSearchName(e.target.value)} placeholder="e.g. Smith" className="h-8 text-sm" data-testid="input-search-name" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Street</Label>
+              <Input value={searchStreet} onChange={(e) => setSearchStreet(e.target.value)} placeholder="e.g. Main" className="h-8 text-sm" data-testid="input-search-street" />
+            </div>
+          </div>
+          <Button onClick={handleAccountSearch} disabled={searching} size="sm" className="gap-1 mb-4" data-testid="button-do-search">
+            {searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+            Search
+          </Button>
+          {searchResults.length > 0 ? (
+            <div className="max-h-[300px] overflow-auto border rounded">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50 text-xs">
+                    <TableHead>Account</TableHead>
+                    <TableHead>Owner</TableHead>
+                    <TableHead>Address</TableHead>
+                    <TableHead className="w-[60px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {searchResults.map((acc, i) => (
+                    <TableRow key={i} className="text-xs cursor-pointer hover:bg-blue-50" onClick={() => handleSelectAccount(acc)}>
+                      <TableCell className="font-mono">{acc.accountNumber || acc.accountNo || acc.account_Number || '-'}</TableCell>
+                      <TableCell>{acc.ownerName || acc.name || acc.owner || '-'}</TableCell>
+                      <TableCell className="truncate max-w-[200px]">{acc.propertyAddress || acc.address || acc.street || '-'}</TableCell>
+                      <TableCell>
+                        <Button size="sm" variant="ghost" className="h-6 text-xs text-blue-600" data-testid={`button-select-account-${i}`}>
+                          Select
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : searching ? (
+            <div className="text-center py-6 text-muted-foreground text-sm">Searching...</div>
+          ) : (
+            <div className="text-center py-6 text-muted-foreground text-sm">
+              Enter search criteria and click Search to find accounts.
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </PosLayout>
   );
 }

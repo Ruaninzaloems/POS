@@ -1497,6 +1497,7 @@ export async function platinumThirdPartyImportFile(data: {
     thirdpartyTypeId?: number;
     paymentReference?: string;
     cashBookId?: number;
+    fileContent?: string;
 }): Promise<any> {
     return platinumFetch(`/api/platinum/third-party-payments/import-file`, {
         method: 'POST',
