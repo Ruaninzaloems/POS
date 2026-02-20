@@ -161,78 +161,21 @@ export function TransactionSummaryTab({ accountId, accountNumber }: { accountId:
       return [accNum, row.description, selectedYear, ...vals];
     });
 
-    const escXml = (s: string) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
-    const colWidths = [140, 180, 120, ...MONTHS.map(() => 100)];
-    const colXml = colWidths.map(w => `<Column ss:Width="${w}"/>`).join('');
-
-    const headerCells = headers.map(h =>
-      `<Cell ss:StyleID="header"><Data ss:Type="String">${escXml(h)}</Data></Cell>`
-    ).join('');
-
-    const dataRows = rows.map(row => {
-      const cells = row.map((val: any, ci: number) => {
-        if (ci <= 2) {
-          return `<Cell ss:StyleID="text"><Data ss:Type="String">${escXml(String(val))}</Data></Cell>`;
-        }
-        return `<Cell ss:StyleID="number"><Data ss:Type="Number">${Number(val).toFixed(2)}</Data></Cell>`;
-      }).join('');
-      return `<Row>${cells}</Row>`;
-    }).join('\n');
-
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<?mso-application progid="Excel.Sheet"?>
-<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
- <Styles>
-  <Style ss:ID="Default">
-   <Font ss:FontName="Calibri" ss:Size="11"/>
-  </Style>
-  <Style ss:ID="header">
-   <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/>
-   <Interior ss:Color="#2563EB" ss:Pattern="Solid"/>
-   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
-   <Borders>
-    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#1D4ED8"/>
-   </Borders>
-  </Style>
-  <Style ss:ID="text">
-   <Font ss:FontName="Calibri" ss:Size="11"/>
-   <Alignment ss:Vertical="Center"/>
-   <Borders>
-    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
-   </Borders>
-  </Style>
-  <Style ss:ID="number">
-   <Font ss:FontName="Calibri" ss:Size="11"/>
-   <NumberFormat ss:Format="#,##0.00"/>
-   <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
-   <Borders>
-    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
-   </Borders>
-  </Style>
-  <Style ss:ID="title">
-   <Font ss:FontName="Calibri" ss:Size="14" ss:Bold="1" ss:Color="#1E293B"/>
-  </Style>
- </Styles>
- <Worksheet ss:Name="Transaction Summary">
-  <Table>
-   ${colXml}
-   <Row ss:Height="30">
-    <Cell ss:StyleID="title" ss:MergeAcross="${headers.length - 1}"><Data ss:Type="String">Transaction Summary - Account ${escXml(accNum)} - ${escXml(selectedYear)}</Data></Cell>
-   </Row>
-   <Row></Row>
-   <Row ss:Height="25">${headerCells}</Row>
-   ${dataRows}
-  </Table>
- </Worksheet>
-</Workbook>`;
-
-    const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
+    const escapeCsv = (v: any) => {
+      const s = String(v);
+      if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    };
+    const csvLines = [
+      headers.map(escapeCsv).join(','),
+      ...rows.map(r => r.map((v: any, ci: number) => ci > 2 ? Number(v).toFixed(2) : escapeCsv(v)).join(','))
+    ];
+    const bom = '\uFEFF';
+    const blob = new Blob([bom + csvLines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Transaction_Summary_${accNum}_${selectedYear.replace('/', '-')}.xls`;
+    a.download = `Transaction_Summary_${accNum}_${selectedYear.replace('/', '-')}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -242,7 +185,7 @@ export function TransactionSummaryTab({ accountId, accountNumber }: { accountId:
   return (
     <div className="p-5 space-y-5" data-testid="transaction-summary-panel">
       <h3 className="text-base font-bold text-slate-800">Transaction Summary List per Fin-Year/Billing Period</h3>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3">
         <select
           value={selectedYear}
           onChange={e => setSelectedYear(e.target.value)}
