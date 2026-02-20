@@ -82,25 +82,23 @@ export default function ThirdPartyPaymentProcessing() {
 
   useEffect(() => {
     loadThirdPartyTypes();
-    loadCashierDetails();
   }, []);
 
-  const loadCashierDetails = async () => {
-    try {
-      const userId = posState?.platinumUser?.user_ID;
-      const finYear = posState?.platinumUser?.finYear || '2025/2026';
-      if (!userId) return;
-      const details = await platinumThirdPartyCashierDetails(userId, finYear);
-      if (details && !details._error) {
-        setCashierInfo(details);
-        if (details.cashOfficeId) {
-          setCashBookId(String(details.cashOfficeId));
+  useEffect(() => {
+    const userId = posState?.platinumUser?.user_ID;
+    const finYear = posState?.platinumUser?.finYear || '2025/2026';
+    if (!userId) return;
+    platinumThirdPartyCashierDetails(userId, finYear)
+      .then((details) => {
+        if (details && !details._error) {
+          setCashierInfo(details);
+          if (details.cashOfficeId) {
+            setCashBookId(String(details.cashOfficeId));
+          }
         }
-      }
-    } catch (e) {
-      console.error('Failed to load cashier details:', e);
-    }
-  };
+      })
+      .catch((e) => console.error('Failed to load cashier details:', e));
+  }, [posState?.platinumUser?.user_ID]);
 
   const loadThirdPartyTypes = async () => {
     setLoadingTypes(true);
@@ -379,22 +377,29 @@ export default function ThirdPartyPaymentProcessing() {
 
                   <div className="space-y-2">
                     <Label htmlFor="cashBookId">Cash Office</Label>
-                    <Input
-                      id="cashBookId"
-                      value={cashierInfo ? `${cashBookId} - ${cashierInfo.cashOfficeDesc || ''}` : cashBookId}
-                      readOnly={!!cashierInfo}
-                      className={`bg-white ${cashierInfo ? 'bg-slate-50 cursor-not-allowed' : ''}`}
-                      data-testid="input-cashbook-id"
-                    />
-                    {!cashierInfo && (
+                    {cashierInfo ? (
                       <Input
-                        value={cashBookId}
-                        onChange={(e) => setCashBookId(e.target.value)}
-                        placeholder="Enter cashbook ID"
-                        className="bg-white mt-1"
-                        type="number"
-                        data-testid="input-cashbook-id-manual"
+                        id="cashBookId"
+                        value={`${cashierInfo.cashOfficeId} - ${cashierInfo.cashOfficeDesc || ''}`}
+                        readOnly
+                        className="bg-slate-50 cursor-not-allowed"
+                        data-testid="input-cashbook-id"
                       />
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="cashBookId"
+                          value={cashBookId}
+                          onChange={(e) => setCashBookId(e.target.value)}
+                          placeholder="Loading..."
+                          className="bg-white"
+                          type="number"
+                          data-testid="input-cashbook-id"
+                        />
+                        {posState?.platinumUser?.user_ID && (
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        )}
+                      </div>
                     )}
                   </div>
 
