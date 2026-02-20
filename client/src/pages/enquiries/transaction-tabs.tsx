@@ -11,6 +11,7 @@ import {
   getReceiptTransactionDetail, getLevyTransactionDetail,
   getOpenBalanceDetail, getCloseBalanceDetail, getJournalTransactionDetails,
   getRebateTransactionDetail, getInterestConsPaymentDetail,
+  getBillingProcessingMonth,
 } from '@/lib/enquiries-service';
 import { fetchPosMultiReceiptPrint, platinumPrintReceiptRaw } from '@/lib/external-api';
 import { LoadingSkeleton, EmptyState, ErrorState, PaginatedTable, getFinYearOptions, MONTHS } from './shared';
@@ -255,15 +256,40 @@ export function DetailedTransactionListTab({ accountId }: { accountId: number })
   const [error, setError] = useState<string | null>(null);
   const years = useMemo(() => getFinYearOptions(), []);
   const [selectedYear, setSelectedYear] = useState(years[0]);
-  const [selectedMonth, setSelectedMonth] = useState('January');
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [initialised, setInitialised] = useState(false);
   const [selectedTxn, setSelectedTxn] = useState<any>(null);
   const [txnDetailData, setTxnDetailData] = useState<any[] | string | null>(null);
   const [txnDetailLoading, setTxnDetailLoading] = useState(false);
   const [showCreditMeterOnly, setShowCreditMeterOnly] = useState(false);
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [downloadFromMonth, setDownloadFromMonth] = useState('');
+  const [downloadToMonth, setDownloadToMonth] = useState('');
+  const [downloadYear, setDownloadYear] = useState(years[0]);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState('');
   const lastKey = useRef('');
 
   const calendarMonths = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const finYearMonths = ['July','August','September','October','November','December','January','February','March','April','May','June'];
+
+  useEffect(() => {
+    if (initialised) return;
+    getBillingProcessingMonth().then((month: any) => {
+      const m = typeof month === 'string' ? month.trim() : '';
+      if (m && finYearMonths.includes(m)) {
+        setSelectedMonth(m);
+      } else {
+        const now = new Date();
+        setSelectedMonth(calendarMonths[now.getMonth()] || 'January');
+      }
+      setInitialised(true);
+    }).catch(() => {
+      const now = new Date();
+      setSelectedMonth(calendarMonths[now.getMonth()] || 'January');
+      setInitialised(true);
+    });
+  }, [initialised]);
 
   const load = useCallback(async (finYear: string, monthName: string) => {
     setLoading(true);
@@ -279,12 +305,13 @@ export function DetailedTransactionListTab({ accountId }: { accountId: number })
   }, [accountId]);
 
   useEffect(() => {
+    if (!initialised || !selectedMonth) return;
     const key = `${accountId}-${selectedYear}-${selectedMonth}`;
     if (lastKey.current !== key) {
       lastKey.current = key;
       load(selectedYear, selectedMonth);
     }
-  }, [accountId, selectedYear, selectedMonth, load]);
+  }, [accountId, selectedYear, selectedMonth, load, initialised]);
 
   const detailedRows = useMemo(() => {
     if (!billingPeriodData || billingPeriodData.length === 0) return [];
@@ -388,12 +415,125 @@ export function DetailedTransactionListTab({ accountId }: { accountId: number })
     }
   };
 
-  if (loading) return <LoadingSkeleton />;
+  const generateCsvContent = (rows: any[], monthLabel: string, year: string) => {
+    const headers = ['Transaction Date','Transaction Description','Receipt ID / Doc Transaction ID','Document Number','Tariff','Amount','Interest','VAT','Total'];
+    const csvRows = [headers.join(',')];
+    rows.forEach((row: any) => {
+      const txDate = row.transactionDate ? new Date(row.transactionDate).toLocaleDateString('en-ZA') : '';
+      const desc = (row.description || '').replace(/"/g, '""');
+      const tariff = (row.tariff || '').replace(/"/g, '""');
+      csvRows.push([
+        txDate,
+        `"${desc}"`,
+        row.transactionId || '',
+        row.documentNumber || '',
+        `"${tariff}"`,
+        (row.amount ?? 0).toFixed(2),
+        (row.interestAmount ?? 0).toFixed(2),
+        (row.vatAmount ?? 0).toFixed(2),
+        (row.totalAmount ?? 0).toFixed(2),
+      ].join(','));
+    });
+    return csvRows.join('\n');
+  };
+
+  const downloadCsv = (content: string, filename: string) => {
+    const bom = '\uFEFF';
+    const blob = new Blob([bom + content], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadCurrentMonth = () => {
+    const csv = generateCsvContent(billingPeriodData, selectedMonth, selectedYear);
+    downloadCsv(csv, `Transactions_${selectedYear.replace('/', '-')}_${selectedMonth}.csv`);
+  };
+
+  const handleDownloadRange = async () => {
+    if (!downloadFromMonth || !downloadToMonth) return;
+    const fromIdx = finYearMonths.indexOf(downloadFromMonth);
+    const toIdx = finYearMonths.indexOf(downloadToMonth);
+    if (fromIdx < 0 || toIdx < 0 || fromIdx > toIdx) return;
+
+    setDownloading(true);
+    const monthsToFetch = finYearMonths.slice(fromIdx, toIdx + 1);
+    const allCsvParts: string[] = [];
+    const headers = 'Transaction Date,Transaction Description,Receipt ID / Doc Transaction ID,Document Number,Tariff,Amount,Interest,VAT,Total';
+
+    try {
+      for (let i = 0; i < monthsToFetch.length; i++) {
+        const month = monthsToFetch[i];
+        setDownloadProgress(`Fetching ${month} (${i + 1} of ${monthsToFetch.length})...`);
+        const result = await getBillingPeriodTransactions(accountId, downloadYear, month);
+        const rows = Array.isArray(result) ? result : [];
+        if (i === 0) {
+          allCsvParts.push(headers);
+        }
+        allCsvParts.push(`\n"--- ${month} ${downloadYear} ---"`);
+        rows.forEach((row: any) => {
+          const txDate = row.transactionDate ? new Date(row.transactionDate).toLocaleDateString('en-ZA') : '';
+          const desc = (row.description || '').replace(/"/g, '""');
+          const tariff = (row.tariff || '').replace(/"/g, '""');
+          allCsvParts.push([
+            txDate,
+            `"${desc}"`,
+            row.transactionId || '',
+            row.documentNumber || '',
+            `"${tariff}"`,
+            (row.amount ?? 0).toFixed(2),
+            (row.interestAmount ?? 0).toFixed(2),
+            (row.vatAmount ?? 0).toFixed(2),
+            (row.totalAmount ?? 0).toFixed(2),
+          ].join(','));
+        });
+        if (rows.length === 0) {
+          allCsvParts.push('"No transactions for this period"');
+        }
+      }
+      setDownloadProgress('Preparing download...');
+      const fromLabel = downloadFromMonth.slice(0, 3);
+      const toLabel = downloadToMonth.slice(0, 3);
+      downloadCsv(allCsvParts.join('\n'), `Transactions_${downloadYear.replace('/', '-')}_${fromLabel}-${toLabel}.csv`);
+      setShowDownloadModal(false);
+    } catch (e: any) {
+      setDownloadProgress(`Error: ${e.message || 'Download failed'}`);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const openDownloadModal = () => {
+    setDownloadFromMonth(selectedMonth);
+    setDownloadToMonth(selectedMonth);
+    setDownloadYear(selectedYear);
+    setDownloadProgress('');
+    setShowDownloadModal(true);
+  };
+
+  if (!initialised || (loading && !billingPeriodData.length)) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={() => load(selectedYear, selectedMonth)} />;
 
   return (
     <div className="p-5 space-y-5" data-testid="detailed-transaction-panel">
-      <h3 className="text-base font-bold text-slate-800">Detailed Transaction List per Billing Period</h3>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h3 className="text-base font-bold text-slate-800">Detailed Transaction List per Billing Period</h3>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleDownloadCurrentMonth} disabled={detailedRows.length === 0} className="text-xs gap-1.5" data-testid="button-download-current">
+            <Download className="w-3.5 h-3.5" />
+            Download {selectedMonth}
+          </Button>
+          <Button variant="outline" size="sm" onClick={openDownloadModal} className="text-xs gap-1.5 border-blue-200 text-blue-700 hover:bg-blue-50" data-testid="button-download-range">
+            <CalendarDays className="w-3.5 h-3.5" />
+            Download Range
+          </Button>
+        </div>
+      </div>
 
       <div className="flex items-center gap-4 flex-wrap">
         <label className="flex items-center gap-2 text-xs text-slate-600">
@@ -407,6 +547,7 @@ export function DetailedTransactionListTab({ accountId }: { accountId: number })
         <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="border border-slate-300 rounded px-3 py-1.5 text-sm bg-white" data-testid="select-detail-month">
           {finYearMonths.map(m => <option key={m} value={m}>{m}</option>)}
         </select>
+        {loading && <Loader2 className="w-4 h-4 animate-spin text-blue-500" />}
       </div>
 
       <div className="overflow-x-auto border border-slate-200 rounded">
@@ -453,6 +594,87 @@ export function DetailedTransactionListTab({ accountId }: { accountId: number })
         <span>Items per page: <span className="border rounded px-2 py-0.5">50</span></span>
         <span>{detailedRows.length === 0 ? '0 of 0' : `1 - ${detailedRows.length} of ${detailedRows.length}`}</span>
       </div>
+
+      {showDownloadModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => !downloading && setShowDownloadModal(false)} data-testid="download-range-overlay">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-700 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center">
+                  <Download className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white">Download Transaction Data</h4>
+                  <p className="text-[11px] text-blue-200">Select a period range to export</p>
+                </div>
+              </div>
+              {!downloading && (
+                <button onClick={() => setShowDownloadModal(false)} className="text-white/70 hover:text-white text-lg font-bold w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors" data-testid="button-close-download">&times;</button>
+              )}
+            </div>
+
+            <div className="p-6 space-y-5">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Financial Year</label>
+                <select value={downloadYear} onChange={e => setDownloadYear(e.target.value)} disabled={downloading} className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm bg-white disabled:opacity-50" data-testid="select-download-year">
+                  {years.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">From Period</label>
+                  <select value={downloadFromMonth} onChange={e => { setDownloadFromMonth(e.target.value); if (finYearMonths.indexOf(e.target.value) > finYearMonths.indexOf(downloadToMonth)) setDownloadToMonth(e.target.value); }} disabled={downloading} className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm bg-white disabled:opacity-50" data-testid="select-download-from">
+                    {finYearMonths.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">To Period</label>
+                  <select value={downloadToMonth} onChange={e => setDownloadToMonth(e.target.value)} disabled={downloading} className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm bg-white disabled:opacity-50" data-testid="select-download-to">
+                    {finYearMonths.filter(m => finYearMonths.indexOf(m) >= finYearMonths.indexOf(downloadFromMonth)).map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {downloadFromMonth && downloadToMonth && (
+                <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 rounded-lg border border-blue-100">
+                  <CalendarDays className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                  <p className="text-xs text-blue-700">
+                    {finYearMonths.indexOf(downloadFromMonth) === finYearMonths.indexOf(downloadToMonth)
+                      ? <span>Downloading <strong>{downloadFromMonth} {downloadYear}</strong></span>
+                      : <span>Downloading <strong>{downloadFromMonth}</strong> to <strong>{downloadToMonth}</strong> ({finYearMonths.indexOf(downloadToMonth) - finYearMonths.indexOf(downloadFromMonth) + 1} months) for <strong>{downloadYear}</strong></span>
+                    }
+                  </p>
+                </div>
+              )}
+
+              {downloading && downloadProgress && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-blue-700">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>{downloadProgress}</span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-1.5">
+                    <div className="bg-blue-600 h-1.5 rounded-full transition-all" style={{
+                      width: downloadProgress.includes('Error') ? '100%' :
+                        downloadProgress.includes('Preparing') ? '95%' :
+                        `${((parseInt(downloadProgress.match(/\d+(?= of)/)?.[0] || '0') / parseInt(downloadProgress.match(/of (\d+)/)?.[1] || '1')) * 100)}%`
+                    }} />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" className="flex-1" onClick={() => setShowDownloadModal(false)} disabled={downloading} data-testid="button-cancel-download">Cancel</Button>
+                <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white gap-2" onClick={handleDownloadRange} disabled={downloading || !downloadFromMonth || !downloadToMonth} data-testid="button-confirm-download">
+                  {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  {downloading ? 'Downloading...' : 'Download CSV'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {selectedTxn && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setSelectedTxn(null); setTxnDetailData(null); }} data-testid="txn-detail-overlay">
