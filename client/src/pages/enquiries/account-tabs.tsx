@@ -196,184 +196,311 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
     ? formatCurrency(part.partitionMarketValue) : (part.marketValue !== null && part.marketValue !== undefined
       ? formatCurrency(part.marketValue) : (p.marketValue !== null && p.marketValue !== undefined ? formatCurrency(p.marketValue) : '-'));
 
-  return (
-    <div className="p-5 space-y-5" data-testid="account-info-panel">
-      <div className="flex items-center gap-3 mb-1">
-        <div className="h-1 w-8 bg-blue-600 rounded-full" />
-        <h3 className="text-lg font-bold text-slate-800 tracking-tight">Account Enquiry</h3>
-      </div>
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    account: true, additional: true, property: true, partition: false,
+    delivery: false, services: false, addBilling: false, addInfo: false,
+  });
+  const toggle = (key: string) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
 
+  const safeStr = (v: any): string => {
+    if (v === null || v === undefined || v === '' || v === 'null') return '-';
+    return String(v).trim() || '-';
+  };
+
+  const statusColor = (s: any) => {
+    const sl = safeStr(s).toLowerCase();
+    if (sl === 'active' || sl === 'approved' || sl === 'registered') return 'bg-green-100 text-green-800 border-green-200';
+    if (sl === 'inactive' || sl === 'cancelled' || sl === 'closed') return 'bg-red-100 text-red-800 border-red-200';
+    if (sl === 'pending' || sl === 'in progress') return 'bg-amber-100 text-amber-800 border-amber-200';
+    return 'bg-slate-100 text-slate-700 border-slate-200';
+  };
+
+  const DetailItem = ({ label, value, icon, mono, accent }: { label: string; value: any; icon?: React.ReactNode; mono?: boolean; accent?: boolean }) => {
+    const display = safeStr(value);
+    return (
+      <div className="group flex items-start gap-3 py-2.5 px-3 rounded-lg hover:bg-slate-50/80 transition-all duration-200 cursor-default" data-testid={`field-${label.toLowerCase().replace(/\s+/g, '-')}`}>
+        {icon && <span className="mt-0.5 text-slate-400 group-hover:text-blue-500 transition-colors shrink-0">{icon}</span>}
+        <div className="flex-1 min-w-0">
+          <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-0.5">{label}</div>
+          <div className={`text-[13px] font-medium leading-snug break-words ${mono ? 'font-mono' : ''} ${accent ? 'text-blue-700' : 'text-slate-800'} ${display === '-' ? 'text-slate-300' : ''}`}>{display}</div>
+        </div>
+      </div>
+    );
+  };
+
+  const CollapsibleSection = ({ id, title, icon, color, badge, children }: { id: string; title: string; icon: React.ReactNode; color: string; badge?: React.ReactNode; children: React.ReactNode }) => (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden transition-shadow hover:shadow-md" data-testid={`section-${id}`}>
+      <button
+        onClick={() => toggle(id)}
+        className={`w-full flex items-center gap-3 px-5 py-3.5 transition-all duration-200 ${openSections[id] ? `bg-gradient-to-r ${color} text-white` : 'bg-white hover:bg-slate-50 text-slate-700'}`}
+        data-testid={`btn-toggle-${id}`}
+      >
+        <span className={`${openSections[id] ? 'text-white/90' : 'text-slate-400'}`}>{icon}</span>
+        <span className={`text-sm font-semibold tracking-wide flex-1 text-left ${openSections[id] ? '' : ''}`}>{title}</span>
+        {badge}
+        <span className={openSections[id] ? 'text-white/70' : 'text-slate-300'}>
+          {openSections[id] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </span>
+      </button>
+      {openSections[id] && <div className="border-t border-slate-100">{children}</div>}
+    </div>
+  );
+
+  return (
+    <div className="p-4 sm:p-5 space-y-4" data-testid="account-info-panel">
       {loading ? <LoadingSkeleton /> : (
         <>
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
-              <div className="p-5 space-y-0.5">
-                <InfoField label="Account Number" value={accountNumber} highlight />
-                <InfoField label="Account Group" value={accountGroup} />
-                <InfoField label="Payment Group" value={paymentGroup} />
-                <InfoField label="Account Type" value={accountType} />
-                <InfoField label="Incentive Scheme Code" value={incentiveCode} />
-                <InfoField label="Email" value={email} />
-                <InfoField label="Paid Deposit Amount" value={depositDisplay} />
+          <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-2xl shadow-lg overflow-hidden" data-testid="account-hero">
+            <div className="p-5 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center shrink-0">
+                  <User className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <h2 className="text-lg sm:text-xl font-bold text-white truncate" data-testid="text-account-name">{accName}</h2>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${statusColor(accountStatus)}`} data-testid="badge-account-status">
+                      {accountStatus}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
+                    <span className="inline-flex items-center gap-1.5 text-blue-100 text-[13px]">
+                      <CreditCard className="w-3.5 h-3.5" />
+                      <span className="font-mono font-semibold text-white" data-testid="text-account-number">{accountNumber}</span>
+                    </span>
+                    {accountType !== '-' && (
+                      <span className="inline-flex items-center gap-1.5 text-blue-200 text-[12px]">
+                        <Briefcase className="w-3.5 h-3.5" />
+                        {accountType}
+                      </span>
+                    )}
+                    {accountGroup !== '-' && (
+                      <span className="inline-flex items-center gap-1.5 text-blue-200 text-[12px]">
+                        <Layers className="w-3.5 h-3.5" />
+                        {accountGroup}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  {depositDisplay !== '-' && depositDisplay !== 'R 0.00' && (
+                    <div className="bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2 text-right">
+                      <div className="text-[10px] uppercase tracking-wider text-blue-200 font-semibold">Deposit</div>
+                      <div className="text-base font-bold text-white font-mono" data-testid="text-deposit-amount">{depositDisplay}</div>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="p-5 space-y-0.5">
-                <SectionHeader title="ACCOUNT INFORMATION" />
-                <InfoField label="Name" value={accName} />
-                <InfoField label="Sub Account Group" value={subAccountGroup} />
-                <InfoField label="Account Status" value={accountStatus} />
-                <InfoField label="Delivery Address" value={deliveryAddr} />
-                <InfoField label="Contact Number" value={contactNo} />
-              </div>
+            </div>
+            <div className="bg-black/10 px-5 sm:px-6 py-3 flex flex-wrap gap-x-6 gap-y-2 text-[12px] text-blue-100">
+              {contactNo !== '-' && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5" />
+                  {contactNo}
+                </span>
+              )}
+              {email !== '-' && (
+                <span className="inline-flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5" />
+                  {email}
+                </span>
+              )}
+              {deliveryAddr !== '-' && (
+                <span className="inline-flex items-center gap-1.5 max-w-[400px] truncate" title={deliveryAddr}>
+                  <MapPin className="w-3.5 h-3.5 shrink-0" />
+                  {deliveryAddr}
+                </span>
+              )}
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
-              <div className="p-5 space-y-0.5">
-                <SectionHeader title="ADDITIONAL ACCOUNT DETAILS" />
-                <InfoField label="Interest Waiver Status" value={interestWaiver} />
-                <InfoField label="Indigent Subsidy Status" value={indigentStatus} />
-                <InfoField label="Consumer RPP Status" value={consumerRpp} />
-                <InfoField label="Departmental Account" value={deptAccount} />
-              </div>
-              <div className="p-5 space-y-0.5 pt-9 lg:pt-5">
-                <div className="h-6 lg:h-7" />
-                <InfoField label="Rebate Status" value={rebateStatus} />
-                <InfoField label="Handover Status" value={handoverStatus} />
-                <InfoField label="Loan RPP Status" value={loanRpp} />
-              </div>
+          <CollapsibleSection id="account" title="Account Details" icon={<CreditCard className="w-4 h-4" />} color="from-blue-600 to-blue-700">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0">
+              <DetailItem label="Account Number" value={accountNumber} icon={<CreditCard className="w-4 h-4" />} mono accent />
+              <DetailItem label="Name" value={accName} icon={<User className="w-4 h-4" />} />
+              <DetailItem label="Account Group" value={accountGroup} icon={<Layers className="w-4 h-4" />} />
+              <DetailItem label="Payment Group" value={paymentGroup} icon={<Banknote className="w-4 h-4" />} />
+              <DetailItem label="Account Type" value={accountType} icon={<Briefcase className="w-4 h-4" />} />
+              <DetailItem label="Sub Account Group" value={subAccountGroup} icon={<Layers className="w-4 h-4" />} />
+              <DetailItem label="Incentive Scheme" value={incentiveCode} icon={<Gift className="w-4 h-4" />} />
+              <DetailItem label="Contact Number" value={contactNo} icon={<Phone className="w-4 h-4" />} />
+              <DetailItem label="Email" value={email} icon={<FileText className="w-4 h-4" />} />
+              <DetailItem label="Deposit Amount" value={depositDisplay} icon={<Banknote className="w-4 h-4" />} />
+              <DetailItem label="Billing Cycle" value={billingCycle} icon={<RefreshCw className="w-4 h-4" />} />
+              <DetailItem label="Delivery Address" value={deliveryAddr} icon={<MapPin className="w-4 h-4" />} />
+              <DetailItem label="Old Account Code" value={oldPropertyCode} icon={<FileText className="w-4 h-4" />} mono />
             </div>
-          </div>
+          </CollapsibleSection>
 
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
-              <div className="p-5 space-y-0.5">
-                <InfoField label="SG Number" value={sgNumber} />
-                <InfoField label="Old Property Code" value={oldPropertyCode} />
-                <InfoField label="Billing Cycle" value={billingCycle} />
-                <InfoField label="Sectional Title Scheme" value={sectionalTitleSchemeVal} />
-                <InfoField label="Location Address" value={locationAddress} />
-                <InfoField label="Longitude" value={longitude} />
-                <InfoField label="Registration Status" value={registrationStatus} />
+          <CollapsibleSection
+            id="additional"
+            title="Account Status & Flags"
+            icon={<Shield className="w-4 h-4" />}
+            color="from-emerald-600 to-emerald-700"
+            badge={
+              <div className="flex gap-1.5">
+                {safeStr(interestWaiver).toLowerCase().includes('waiver applied') && <span className="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-bold text-white">Interest Waiver</span>}
+                {deptAccount === 'Active' && <span className="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-bold text-white">Departmental</span>}
               </div>
-              <div className="p-5 space-y-0.5">
-                <SectionHeader title="PROPERTY" />
-                <InfoField label="Property ID" value={propertyId} />
-                <InfoField label="Property Status" value={propertyStatus} />
-                <InfoField label="Allotment Area" value={allotmentArea} />
-                <InfoField label="Farm Name" value={farmName} />
-                <InfoField label="Property Type" value={propertyType} />
-                <InfoField label="Latitude" value={latitude} />
-                <InfoField label="Magisterial District" value={magisterialDistrict} />
-                <InfoField label="Property Market Value" value={propertyMarketValue} />
-              </div>
+            }
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4">
+              {[
+                { label: 'Account Status', value: accountStatus, icon: <Shield className="w-4 h-4" /> },
+                { label: 'Interest Waiver', value: interestWaiver, icon: <Scale className="w-4 h-4" /> },
+                { label: 'Indigent Subsidy', value: indigentStatus, icon: <Heart className="w-4 h-4" /> },
+                { label: 'Consumer RPP', value: consumerRpp, icon: <Shield className="w-4 h-4" /> },
+                { label: 'Departmental Account', value: deptAccount, icon: <Building2 className="w-4 h-4" /> },
+                { label: 'Rebate Status', value: rebateStatus, icon: <Gift className="w-4 h-4" /> },
+                { label: 'Handover Status', value: handoverStatus, icon: <AlertTriangle className="w-4 h-4" /> },
+                { label: 'Loan RPP', value: loanRpp, icon: <Landmark className="w-4 h-4" /> },
+                { label: 'Registration', value: registrationStatus, icon: <FileText className="w-4 h-4" /> },
+              ].map(item => {
+                const sv = safeStr(item.value).toLowerCase();
+                const isPositive = sv.includes('active') || sv.includes('applied') || sv.includes('registered') || sv === 'yes';
+                const isNegative = sv.includes('handed over') || sv.includes('cancelled') || sv.includes('inactive');
+                const isNA = sv === 'n/a' || sv === '-';
+                return (
+                  <div key={item.label} className={`rounded-xl border p-3 transition-all duration-200 hover:shadow-md cursor-default ${isPositive ? 'bg-green-50 border-green-200' : isNegative ? 'bg-red-50 border-red-200' : isNA ? 'bg-slate-50 border-slate-200' : 'bg-white border-slate-200'}`}>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className={`${isPositive ? 'text-green-500' : isNegative ? 'text-red-500' : 'text-slate-400'}`}>{item.icon}</span>
+                      <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">{item.label}</span>
+                    </div>
+                    <div className={`text-[13px] font-semibold ${isPositive ? 'text-green-800' : isNegative ? 'text-red-800' : 'text-slate-700'}`}>{safeStr(item.value)}</div>
+                  </div>
+                );
+              })}
             </div>
-          </div>
+          </CollapsibleSection>
 
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
-              <div className="p-5 space-y-0.5">
-                <InfoField label="Property Type of Use" value={typeOfUse} />
-                <InfoField label="Property Category" value={propertyCategory} />
-                <InfoField label="Accountable Owner Name" value={accountableOwner} />
-              </div>
-              <div className="p-5 space-y-0.5">
-                <SectionHeader title="PARTITION" />
-                <InfoField label="Valuation Category" value={valuationCategory} />
-                <InfoField label="Partition Description" value={partitionDesc} />
-                <InfoField label="Partition Market Value" value={partitionMarketValue} />
-              </div>
+          <CollapsibleSection id="property" title="Property Information" icon={<Home className="w-4 h-4" />} color="from-violet-600 to-violet-700">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0">
+              <DetailItem label="SG Number" value={sgNumber} icon={<FileText className="w-4 h-4" />} mono />
+              <DetailItem label="Property ID" value={propertyId} icon={<Home className="w-4 h-4" />} mono />
+              <DetailItem label="Property Status" value={propertyStatus} icon={<Shield className="w-4 h-4" />} />
+              <DetailItem label="Location Address" value={locationAddress} icon={<MapPin className="w-4 h-4" />} />
+              <DetailItem label="Allotment Area" value={allotmentArea} icon={<MapPin className="w-4 h-4" />} />
+              <DetailItem label="Farm Name" value={farmName} icon={<Home className="w-4 h-4" />} />
+              <DetailItem label="Property Type" value={propertyType} icon={<Building2 className="w-4 h-4" />} />
+              <DetailItem label="Type of Use" value={typeOfUse} icon={<Briefcase className="w-4 h-4" />} />
+              <DetailItem label="Property Category" value={propertyCategory} icon={<Layers className="w-4 h-4" />} />
+              <DetailItem label="Market Value" value={propertyMarketValue} icon={<Banknote className="w-4 h-4" />} />
+              <DetailItem label="Magisterial District" value={magisterialDistrict} icon={<MapPin className="w-4 h-4" />} />
+              <DetailItem label="Sectional Title Scheme" value={sectionalTitleSchemeVal} icon={<Building2 className="w-4 h-4" />} />
+              <DetailItem label="Accountable Owner" value={accountableOwner} icon={<User className="w-4 h-4" />} />
+              <DetailItem label="Latitude" value={latitude} icon={<MapPin className="w-4 h-4" />} mono />
+              <DetailItem label="Longitude" value={longitude} icon={<MapPin className="w-4 h-4" />} mono />
             </div>
-          </div>
+          </CollapsibleSection>
 
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-5">
-            <SectionHeader title="DELIVERY ADDRESS DETAILS" />
-            <PaginatedTable
-              data={deliveryAddresses}
-              tableId="delivery-address"
-              columns={[
-                { key: 'addressStatus', label: 'Address Status' },
-                { key: 'startDate', label: 'Start Date' },
-                { key: 'typeofDeliveryAddress', label: 'Type of Delivery Address' },
-                { key: 'town', label: 'City/Town' },
-                { key: 'suburbName', label: 'Suburb' },
-                { key: 'streetName', label: 'Street Name / Non Standard Address', render: (r: any) => r.streetName || r.complexName || '' },
-                { key: 'streetNumber', label: 'Street Number' },
-                { key: 'boxBagNo', label: 'Box/Bag Number' },
-                { key: 'complexName', label: 'Complex Name' },
-                { key: 'unitNumber', label: 'Unit Number' },
-                { key: 'postalCode', label: 'Postal Code' },
-              ]}
-            />
-          </div>
+          <CollapsibleSection id="partition" title="Partition & Valuation" icon={<Scale className="w-4 h-4" />} color="from-amber-600 to-amber-700">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-0">
+              <DetailItem label="Valuation Category" value={valuationCategory} icon={<Layers className="w-4 h-4" />} />
+              <DetailItem label="Partition Description" value={partitionDesc} icon={<FileText className="w-4 h-4" />} />
+              <DetailItem label="Market Value" value={partitionMarketValue} icon={<Banknote className="w-4 h-4" />} />
+            </div>
+          </CollapsibleSection>
 
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-5">
-            <SectionHeader title="SERVICES" />
-            <PaginatedTable
-              data={services}
-              tableId="services"
-              columns={[
-                { key: 'serviceStatus', label: 'Service Status', render: (r: any) => r.serviceStatus || r.statusDesc || r.status || '' },
-                { key: 'serviceType', label: 'Service Type', render: (r: any) => r.serviceType || r.serviceTypeDesc || r.serviceDesc || '' },
-                { key: 'tariff', label: 'Tariff', render: (r: any) => r.tariff || r.tariffDescription || r.tariffDesc || '' },
-                { key: 'physicalMeter', label: 'Physical Meter + Meter Code', render: (r: any) => {
-                  const meter = r.physicalMeterNo || r.meterNo || r.physicalMeter || '';
-                  const code = r.meterCode || '';
-                  return meter && code ? `${meter} - ${code}` : meter || code || 'No Meter';
-                }},
-                { key: 'frequency', label: 'Frequency', render: (r: any) => r.frequency || r.frequencyDesc || '' },
-                { key: 'meterConnectionSize', label: 'Meter Connection Size', render: (r: any) => r.meterConnectionSize || r.connectionSize || '' },
-                { key: 'factorQuantity', label: 'FactorQuantity', render: (r: any) => r.factorQuantity ?? r.factor ?? '' },
-                { key: 'requestDate', label: 'Request Date', render: (r: any) => formatDate(r.requestDate) },
-                { key: 'commencementDate', label: 'Commencement Date', render: (r: any) => formatDate(r.commencementDate || r.startDate) },
-                { key: 'tariffType', label: 'Tariff Type', render: (r: any) => r.tariffType || r.tariffTypeDesc || '' },
-                { key: 'tariffRate', label: 'Tariff Rate', render: (r: any) => {
-                  const parts: string[] = [];
-                  if (r.tariffStartDate || r.tariffEndDate) parts.push(`Start Date - End Date:\n${formatDate(r.tariffStartDate)} - ${formatDate(r.tariffEndDate)}`);
-                  if (r.interval !== undefined || r.cost !== undefined) parts.push(`Interval : Cost:\n${r.interval ?? ''}`);
-                  if (r.remainder !== undefined) parts.push(`Remainder : ${typeof r.remainder === 'number' ? r.remainder.toFixed(6) : r.remainder}`);
-                  return parts.length > 0 ? <div className="whitespace-pre-wrap text-[10px]">{parts.join('\n')}</div> : '';
-                }},
-              ]}
-            />
-          </div>
+          <CollapsibleSection id="delivery" title="Delivery Addresses" icon={<MapPin className="w-4 h-4" />} color="from-teal-600 to-teal-700"
+            badge={deliveryAddresses.length > 0 ? <span className="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-bold text-white">{deliveryAddresses.length}</span> : undefined}
+          >
+            <div className="p-4">
+              <PaginatedTable
+                data={deliveryAddresses}
+                tableId="delivery-address"
+                columns={[
+                  { key: 'addressStatus', label: 'Status' },
+                  { key: 'startDate', label: 'Start Date' },
+                  { key: 'typeofDeliveryAddress', label: 'Type' },
+                  { key: 'town', label: 'City/Town' },
+                  { key: 'suburbName', label: 'Suburb' },
+                  { key: 'streetName', label: 'Street', render: (r: any) => r.streetName || r.complexName || '' },
+                  { key: 'streetNumber', label: 'No.' },
+                  { key: 'boxBagNo', label: 'Box/Bag' },
+                  { key: 'complexName', label: 'Complex' },
+                  { key: 'unitNumber', label: 'Unit' },
+                  { key: 'postalCode', label: 'Postal Code' },
+                ]}
+              />
+            </div>
+          </CollapsibleSection>
 
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-5">
-            <SectionHeader title="ADDITIONAL BILLING SERVICES" />
-            <PaginatedTable
-              data={additionalBilling}
-              tableId="additional-billing"
-              columns={[
-                { key: 'status', label: 'Status', render: (r: any) => r.status || r.statusDesc || r.serviceStatus || '' },
-                { key: 'type', label: 'Type', render: (r: any) => r.type || r.typeDesc || r.billingType || r.serviceDesc || '' },
-                { key: 'amount', label: 'Amount', render: (r: any) => typeof r.amount === 'number' ? r.amount.toFixed(2) : (r.amount || '') },
-                { key: 'commencementDate', label: 'Commencement Date', render: (r: any) => formatDate(r.commencementDate || r.startDate) },
-                { key: 'terminationDate', label: 'Termination Date', render: (r: any) => formatDate(r.terminationDate || r.endDate) },
-                { key: 'frequency', label: 'Frequency', render: (r: any) => r.frequency || r.frequencyDesc || '' },
-                { key: 'levyMonth', label: 'Levy Month', render: (r: any) => r.levyMonth || '' },
-                { key: 'factorQuantity', label: 'Factor Quantity', render: (r: any) => r.factorQuantity ?? r.factor ?? '' },
-              ]}
-            />
-          </div>
+          <CollapsibleSection id="services" title="Services" icon={<Gauge className="w-4 h-4" />} color="from-cyan-600 to-cyan-700"
+            badge={services.length > 0 ? <span className="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-bold text-white">{services.length}</span> : undefined}
+          >
+            <div className="p-4">
+              <PaginatedTable
+                data={services}
+                tableId="services"
+                columns={[
+                  { key: 'serviceStatus', label: 'Status', render: (r: any) => r.serviceStatus || r.statusDesc || r.status || '' },
+                  { key: 'serviceType', label: 'Type', render: (r: any) => r.serviceType || r.serviceTypeDesc || r.serviceDesc || '' },
+                  { key: 'tariff', label: 'Tariff', render: (r: any) => r.tariff || r.tariffDescription || r.tariffDesc || '' },
+                  { key: 'physicalMeter', label: 'Meter + Code', render: (r: any) => {
+                    const meter = r.physicalMeterNo || r.meterNo || r.physicalMeter || '';
+                    const code = r.meterCode || '';
+                    return meter && code ? `${meter} - ${code}` : meter || code || 'No Meter';
+                  }},
+                  { key: 'frequency', label: 'Frequency', render: (r: any) => r.frequency || r.frequencyDesc || '' },
+                  { key: 'meterConnectionSize', label: 'Connection Size', render: (r: any) => r.meterConnectionSize || r.connectionSize || '' },
+                  { key: 'factorQuantity', label: 'Factor', render: (r: any) => r.factorQuantity ?? r.factor ?? '' },
+                  { key: 'requestDate', label: 'Request Date', render: (r: any) => formatDate(r.requestDate) },
+                  { key: 'commencementDate', label: 'Start Date', render: (r: any) => formatDate(r.commencementDate || r.startDate) },
+                  { key: 'tariffType', label: 'Tariff Type', render: (r: any) => r.tariffType || r.tariffTypeDesc || '' },
+                  { key: 'tariffRate', label: 'Tariff Rate', render: (r: any) => {
+                    const parts: string[] = [];
+                    if (r.tariffStartDate || r.tariffEndDate) parts.push(`Start Date - End Date:\n${formatDate(r.tariffStartDate)} - ${formatDate(r.tariffEndDate)}`);
+                    if (r.interval !== undefined || r.cost !== undefined) parts.push(`Interval : Cost:\n${r.interval ?? ''}`);
+                    if (r.remainder !== undefined) parts.push(`Remainder : ${typeof r.remainder === 'number' ? r.remainder.toFixed(6) : r.remainder}`);
+                    return parts.length > 0 ? <div className="whitespace-pre-wrap text-[10px]">{parts.join('\n')}</div> : '';
+                  }},
+                ]}
+              />
+            </div>
+          </CollapsibleSection>
 
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-5">
-            <SectionHeader title="ADDITIONAL INFORMATION" />
-            <PaginatedTable
-              data={additionalInfo}
-              tableId="additional-info"
-              columns={[
-                { key: 'blockOrUnblock', label: 'Block or Unblock', render: (r: any) => r.blockOrUnblock || r.type || '' },
-                { key: 'receiptNo', label: 'Receipt No', render: (r: any) => r.receiptNo || r.receiptNumber || '' },
-                { key: 'receiptDate', label: 'Receipt Date', render: (r: any) => formatDate(r.receiptDate) },
-                { key: 'cardNo', label: 'Card No', render: (r: any) => r.cardNo || r.chequeNo || '' },
-                { key: 'receiptAmount', label: 'Receipt Amount', render: (r: any) => typeof r.receiptAmount === 'number' ? r.receiptAmount.toFixed(2) : (r.receiptAmount || r.amount || '') },
-                { key: 'transactionDate', label: 'Transaction Date', render: (r: any) => formatDate(r.transactionDate) },
-                { key: 'documentNo', label: 'Document No', render: (r: any) => r.documentNo || r.documentNumber || '' },
-                { key: 'comment', label: 'Comment', render: (r: any) => r.comment || r.remarks || '' },
-                { key: 'adminFee', label: 'Admin Fee', render: (r: any) => typeof r.adminFee === 'number' ? r.adminFee.toFixed(2) : (r.adminFee || '') },
-              ]}
-            />
-          </div>
+          <CollapsibleSection id="addBilling" title="Additional Billing" icon={<Receipt className="w-4 h-4" />} color="from-orange-600 to-orange-700"
+            badge={additionalBilling.length > 0 ? <span className="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-bold text-white">{additionalBilling.length}</span> : undefined}
+          >
+            <div className="p-4">
+              <PaginatedTable
+                data={additionalBilling}
+                tableId="additional-billing"
+                columns={[
+                  { key: 'status', label: 'Status', render: (r: any) => r.status || r.statusDesc || r.serviceStatus || '' },
+                  { key: 'type', label: 'Type', render: (r: any) => r.type || r.typeDesc || r.billingType || r.serviceDesc || '' },
+                  { key: 'amount', label: 'Amount', render: (r: any) => typeof r.amount === 'number' ? r.amount.toFixed(2) : (r.amount || '') },
+                  { key: 'commencementDate', label: 'Start Date', render: (r: any) => formatDate(r.commencementDate || r.startDate) },
+                  { key: 'terminationDate', label: 'End Date', render: (r: any) => formatDate(r.terminationDate || r.endDate) },
+                  { key: 'frequency', label: 'Frequency', render: (r: any) => r.frequency || r.frequencyDesc || '' },
+                  { key: 'levyMonth', label: 'Levy Month', render: (r: any) => r.levyMonth || '' },
+                  { key: 'factorQuantity', label: 'Factor', render: (r: any) => r.factorQuantity ?? r.factor ?? '' },
+                ]}
+              />
+            </div>
+          </CollapsibleSection>
+
+          <CollapsibleSection id="addInfo" title="Additional Information" icon={<FileText className="w-4 h-4" />} color="from-slate-600 to-slate-700"
+            badge={additionalInfo.length > 0 ? <span className="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-bold text-white">{additionalInfo.length}</span> : undefined}
+          >
+            <div className="p-4">
+              <PaginatedTable
+                data={additionalInfo}
+                tableId="additional-info"
+                columns={[
+                  { key: 'blockOrUnblock', label: 'Block/Unblock', render: (r: any) => r.blockOrUnblock || r.type || '' },
+                  { key: 'receiptNo', label: 'Receipt No', render: (r: any) => r.receiptNo || r.receiptNumber || '' },
+                  { key: 'receiptDate', label: 'Receipt Date', render: (r: any) => formatDate(r.receiptDate) },
+                  { key: 'cardNo', label: 'Card No', render: (r: any) => r.cardNo || r.chequeNo || '' },
+                  { key: 'receiptAmount', label: 'Amount', render: (r: any) => typeof r.receiptAmount === 'number' ? r.receiptAmount.toFixed(2) : (r.receiptAmount || r.amount || '') },
+                  { key: 'transactionDate', label: 'Transaction Date', render: (r: any) => formatDate(r.transactionDate) },
+                  { key: 'documentNo', label: 'Doc No', render: (r: any) => r.documentNo || r.documentNumber || '' },
+                  { key: 'comment', label: 'Comment', render: (r: any) => r.comment || r.remarks || '' },
+                  { key: 'adminFee', label: 'Admin Fee', render: (r: any) => typeof r.adminFee === 'number' ? r.adminFee.toFixed(2) : (r.adminFee || '') },
+                ]}
+              />
+            </div>
+          </CollapsibleSection>
         </>
       )}
     </div>
