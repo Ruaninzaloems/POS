@@ -362,8 +362,12 @@ export async function getSectionalTitleScheme(accountId: number): Promise<any> {
   return fetchWithTimeout(`/api/platinum/billing-enquiry/sectional-title-scheme?accountId=${accountId}`);
 }
 
-export async function getPropertyNotification(accountId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/property-notification?accountId=${accountId}`);
+export async function getPropertyNotification(accountId: number, finYear?: string): Promise<any> {
+  const now = new Date();
+  const yr = finYear || (now.getMonth() >= 6
+    ? `${now.getFullYear()}/${now.getFullYear() + 1}`
+    : `${now.getFullYear() - 1}/${now.getFullYear()}`);
+  return fetchWithTimeout(`/api/platinum/billing-enquiry/property-notification?accountId=${accountId}&finYear=${encodeURIComponent(yr)}`);
 }
 
 // === SERVICES & METERS ===

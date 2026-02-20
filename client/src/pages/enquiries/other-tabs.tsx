@@ -707,7 +707,11 @@ export function NotificationsTab({ accountId }: { accountId: number }) {
         getAccountNotifications(accountId).catch(() => []),
         getPropertyNotification(accountId).catch(() => null),
       ]);
-      setAccountNotifs(an);
+      const filtered = Array.isArray(an) ? an.filter((item: any) => {
+        if (typeof item === 'string') return item.trim() !== '';
+        return true;
+      }) : [];
+      setAccountNotifs(filtered);
       setPropertyNotif(pn);
       loaded.current = true;
     } catch (e: any) {
@@ -747,30 +751,41 @@ export function NotificationsTab({ accountId }: { accountId: number }) {
             <h3 className="text-sm font-semibold text-white tracking-wide">Account Notifications</h3>
             <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{accountNotifs.length}</Badge>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" data-testid="table-account-notifications">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Date</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Type</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Message</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Created By</th>
-                </tr>
-              </thead>
-              <tbody>
-                {accountNotifs.map((n: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
-                    <td className="py-2 px-3 text-slate-600">{n.notificationDate ? new Date(n.notificationDate).toLocaleDateString('en-ZA') : n.date || n.createdDate || '-'}</td>
-                    <td className="py-2 px-3 font-medium">{n.notificationType || n.type || '-'}</td>
-                    <td className="py-2 px-3 max-w-[300px] truncate">{n.message || n.notificationMessage || n.description || '-'}</td>
-                    <td className="py-2 px-3"><Badge variant="outline" className="text-[10px]">{n.status || n.notificationStatus || '-'}</Badge></td>
-                    <td className="py-2 px-3 text-slate-500 text-xs">{n.createdBy || n.user || '-'}</td>
+          {accountNotifs.every((n: any) => typeof n === 'string') ? (
+            <div className="divide-y divide-slate-100" data-testid="table-account-notifications">
+              {accountNotifs.map((n: any, i: number) => (
+                <div key={i} className="flex items-center gap-3 px-5 py-3 hover:bg-orange-50/30 transition-colors">
+                  <div className="w-2 h-2 rounded-full bg-orange-400 flex-shrink-0" />
+                  <span className="text-sm text-slate-700">{n}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" data-testid="table-account-notifications">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Date</th>
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Type</th>
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Message</th>
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Created By</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {accountNotifs.map((n: any, i: number) => (
+                    <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
+                      <td className="py-2 px-3 text-slate-600">{n.notificationDate ? new Date(n.notificationDate).toLocaleDateString('en-ZA') : '-'}</td>
+                      <td className="py-2 px-3 font-medium">{n.notificationType || n.type || '-'}</td>
+                      <td className="py-2 px-3 max-w-[300px] truncate">{n.message || n.description || '-'}</td>
+                      <td className="py-2 px-3"><Badge variant="outline" className="text-[10px]">{n.status || '-'}</Badge></td>
+                      <td className="py-2 px-3 text-slate-500 text-xs">{n.createdBy || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>
