@@ -721,7 +721,7 @@ function GeneralEnquiriesContent() {
               <TabsContent value="balance" className="m-0"><BalanceDebtTab accountId={accountId} accountNumber={selectedAccount.accountNumber || selectedAccount.oldAccountCode || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabsContent>
               <TabsContent value="services" className="m-0"><ServiceBalanceTab accountId={accountId} /></TabsContent>
               <TabsContent value="property" className="m-0"><PropertyDetailsTab accountId={accountId} /></TabsContent>
-              <TabsContent value="consumption" className="m-0"><ConsumptionTab accountId={accountId} /></TabsContent>
+              <TabsContent value="consumption" className="m-0"><ConsumptionTab accountId={accountId} accountNumber={selectedAccount.accountNumber || selectedAccount.oldAccountCode || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabsContent>
               <TabsContent value="contact" className="m-0"><ContactInfoTab accountId={accountId} /></TabsContent>
               <TabsContent value="handover" className="m-0"><HandoverTab accountId={accountId} /></TabsContent>
               <TabsContent value="incentives" className="m-0"><IncentivesTab accountId={accountId} /></TabsContent>

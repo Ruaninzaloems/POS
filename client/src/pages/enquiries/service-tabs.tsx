@@ -562,7 +562,7 @@ export function ConsumptionChart({ readings }: { readings: any[] }) {
   );
 }
 
-export function ConsumptionTab({ accountId }: { accountId: number }) {
+export function ConsumptionTab({ accountId, accountNumber }: { accountId: number; accountNumber?: string }) {
   const [meters, setMeters] = useState<any[]>([]);
   const [selectedMeter, setSelectedMeter] = useState<any | null>(null);
   const [readingHistory, setReadingHistory] = useState<any[]>([]);
@@ -832,7 +832,8 @@ export function ConsumptionTab({ accountId }: { accountId: number }) {
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement('a');
                   a.href = url;
-                  a.download = `meter-reading-history-${selectedFinYear}-${selectedMeter?.physicalMeterNo || selectedMeter?.meterNo || 'export'}.csv`;
+                  const acctLabel = accountNumber || String(accountId);
+                  a.download = `MeterReadingHistory_${acctLabel}_${selectedFinYear}_${selectedMeter?.physicalMeterNo || selectedMeter?.meterNo || 'export'}.csv`;
                   a.click();
                   URL.revokeObjectURL(url);
                 }}
@@ -886,7 +887,7 @@ export function ConsumptionTab({ accountId }: { accountId: number }) {
   );
 }
 
-export function ServicesMetersTab({ accountId, unitId }: { accountId: number; unitId?: number }) {
+export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accountId: number; unitId?: number; accountNumber?: string }) {
   const [meters, setMeters] = useState<any[]>([]);
   const [allServices, setAllServices] = useState<any[]>([]);
   const [prepaidMeters, setPrepaidMeters] = useState<any[]>([]);

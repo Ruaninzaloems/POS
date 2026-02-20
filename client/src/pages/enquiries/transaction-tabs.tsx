@@ -388,7 +388,7 @@ export function TransactionSummaryTab({ accountId, accountNumber }: { accountId:
   );
 }
 
-export function DetailedTransactionListTab({ accountId }: { accountId: number }) {
+export function DetailedTransactionListTab({ accountId, accountNumber }: { accountId: number; accountNumber?: string }) {
   const [billingPeriodData, setBillingPeriodData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -554,8 +554,9 @@ export function DetailedTransactionListTab({ accountId }: { accountId: number })
   };
 
   const generateCsvContent = (rows: any[], monthLabel: string, year: string) => {
+    const acctLabel = accountNumber || String(accountId);
     const headers = ['Transaction Date','Transaction Description','Receipt ID / Doc Transaction ID','Document Number','Tariff','Amount','Interest','VAT','Total'];
-    const csvRows = [headers.join(',')];
+    const csvRows = [`Account Number:,${acctLabel}`, `Period:,"${monthLabel} ${year}"`, '', headers.join(',')];
     rows.forEach((row: any) => {
       const txDate = row.transactionDate ? new Date(row.transactionDate).toLocaleDateString('en-ZA') : '';
       const desc = (row.description || '').replace(/"/g, '""');
@@ -590,7 +591,8 @@ export function DetailedTransactionListTab({ accountId }: { accountId: number })
 
   const handleDownloadCurrentMonth = () => {
     const csv = generateCsvContent(billingPeriodData, selectedMonth, selectedYear);
-    downloadCsv(csv, `Transactions_${selectedYear.replace('/', '-')}_${selectedMonth}.csv`);
+    const acctLabel = accountNumber || String(accountId);
+    downloadCsv(csv, `DetailedTransactions_${acctLabel}_${selectedYear.replace('/', '-')}_${selectedMonth}.csv`);
   };
 
   const handleDownloadRange = async () => {
@@ -637,7 +639,8 @@ export function DetailedTransactionListTab({ accountId }: { accountId: number })
       setDownloadProgress('Preparing download...');
       const fromLabel = downloadFromMonth.slice(0, 3);
       const toLabel = downloadToMonth.slice(0, 3);
-      downloadCsv(allCsvParts.join('\n'), `Transactions_${downloadYear.replace('/', '-')}_${fromLabel}-${toLabel}.csv`);
+      const acctLabel = accountNumber || String(accountId);
+      downloadCsv(allCsvParts.join('\n'), `DetailedTransactions_${acctLabel}_${downloadYear.replace('/', '-')}_${fromLabel}-${toLabel}.csv`);
       setShowDownloadModal(false);
     } catch (e: any) {
       setDownloadProgress(`Error: ${e.message || 'Download failed'}`);

@@ -943,7 +943,7 @@ function generateBalanceDebtPdf(
   doc.save(`Balance_Debt_Account_${accountId}_${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
-export function BalanceDebtTab({ accountId }: { accountId: number }) {
+export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number; accountNumber?: string }) {
   const [balanceData, setBalanceData] = useState<any[]>([]);
   const [txnHistory, setTxnHistory] = useState<any[]>([]);
   const [capitalData, setCapitalData] = useState<any>(null);
@@ -1075,7 +1075,7 @@ export function BalanceDebtTab({ accountId }: { accountId: number }) {
                   String(item.totalOutStanding ?? item.totalOutstandingAmount ?? 0),
                   ...agingCols.map(col => String(getVal(item, col.keys) ?? '')),
                 ]);
-                downloadCsvFromRows(headers, rows, `Balance_Debt_${accountId}.csv`);
+                downloadCsvFromRows(headers, rows, `Balance_Debt_${accountNumber || accountId}_${new Date().toISOString().slice(0, 10)}.csv`);
               }} />
             )}
             <button
@@ -1144,7 +1144,7 @@ export function BalanceDebtTab({ accountId }: { accountId: number }) {
                   String(p.repaymentPeriod ?? '-'),
                   String(p.remainingPeriod ?? '-'),
                 ]);
-                downloadCsvFromRows(headers, rows, `Capital_Amounts_${accountId}.csv`);
+                downloadCsvFromRows(headers, rows, `Capital_Amounts_${accountNumber || accountId}_${new Date().toISOString().slice(0, 10)}.csv`);
               }} />
             )}
             {capitalPlans.length > 0 && (
@@ -1286,7 +1286,7 @@ export function BalanceDebtTab({ accountId }: { accountId: number }) {
                   p.cashBook || p.cashBookName || '-',
                   p.cancellationReason || p.reasonForCancellation || '',
                 ]);
-                downloadCsvFromRows(headers, rows, `Payments_Received_${accountId}.csv`);
+                downloadCsvFromRows(headers, rows, `Payments_Received_${accountNumber || accountId}_${new Date().toISOString().slice(0, 10)}.csv`);
               }} />
             )}
             <Badge variant="outline" className="bg-white/20 text-white border-white/30 text-[10px]">{payments.length}</Badge>
@@ -1355,7 +1355,7 @@ export function BalanceDebtTab({ accountId }: { accountId: number }) {
                   rv.receiptType || rv.transactionType || '-',
                   String(rv.amount || rv.receiptAmount || 0),
                 ]);
-                downloadCsvFromRows(headers, rows, `Payment_Reversals_${accountId}.csv`);
+                downloadCsvFromRows(headers, rows, `Payment_Reversals_${accountNumber || accountId}_${new Date().toISOString().slice(0, 10)}.csv`);
               }} />
             )}
             <Badge variant="outline" className="bg-white/20 text-white border-white/30 text-[10px]">{reversals.length}</Badge>
