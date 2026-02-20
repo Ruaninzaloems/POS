@@ -1369,23 +1369,24 @@ export function ClearanceTab({ accountId, propertyId }: { accountId: number; pro
               {data.length === 0 ? (
                 <tr><td colSpan={14} className="py-8 text-center text-slate-400 text-sm italic">No clearance records to display.</td></tr>
               ) : data.map((c: any, i: number) => {
-                const scheduleId = c.costSchedule_ID ?? c.costScheduleId ?? c.costScheduleID ?? c.id;
+                const scheduleId = c.clearanceStagingID ?? c.clearance_ID ?? c.costSchedule_ID ?? c.id;
+                const cleanAddr = (c.propertyAddress || c.address || '-').replace(/\r\n/g, ', ').replace(/\s{2,}/g, ' ').trim();
                 return (
                   <tr key={i} className="border-b border-slate-100 hover:bg-emerald-50/30 transition-colors" data-testid={`row-clearance-${i}`}>
                     <td className="py-2 px-2 font-mono text-[13px] text-slate-700">{scheduleId ?? '-'}</td>
-                    <td className="py-2 px-2 text-[13px] text-slate-700">{c.accountType ?? c.clearanceType ?? c.type ?? '-'}</td>
-                    <td className="py-2 px-2 font-mono text-[12px] text-slate-600">{c.sgNumber ?? c.sg_Number ?? '-'}</td>
-                    <td className="py-2 px-2 text-[13px] text-slate-700">{c.address ?? c.propertyAddress ?? c.description ?? '-'}</td>
-                    <td className="py-2 px-2 text-[13px] font-medium text-slate-800">{c.buyerAccountName ?? c.buyerName ?? c.accountHolderName ?? '-'}</td>
-                    <td className="py-2 px-2 text-[13px] text-slate-600">{c.attorney ?? c.attorneyName ?? '-'}</td>
-                    <td className="py-2 px-2 font-mono text-[12px] text-slate-600">{c.clearanceCertificateNo ?? c.certificateNumber ?? c.clearanceReference ?? '-'}</td>
-                    <td className="py-2 px-2 font-mono text-[12px] text-slate-600">{c.receiptNo ?? c.receiptNumber ?? '-'}</td>
-                    <td className="py-2 px-2 text-[13px] text-slate-600">{fmtDate(c.receiptDate ?? c.clearanceDate ?? c.date)}</td>
-                    <td className="py-2 px-2 text-[13px] text-slate-600">{fmtDate(c.validUntil ?? c.expiryDate)}</td>
-                    <td className="py-2 px-2 text-[13px] text-slate-600">{fmtDate(c.sellDate ?? c.saleDate)}</td>
+                    <td className="py-2 px-2 text-[13px] text-slate-700">{c.accounttype ?? c.accountType ?? '-'}</td>
+                    <td className="py-2 px-2 font-mono text-[12px] text-slate-600">{c.sgNumber ?? '-'}</td>
+                    <td className="py-2 px-2 text-[13px] text-slate-700">{cleanAddr}</td>
+                    <td className="py-2 px-2 text-[13px] font-medium text-slate-800">{c.buyername ?? c.buyerName ?? c.accountName ?? '-'}</td>
+                    <td className="py-2 px-2 text-[13px] text-slate-600">{c.attorneyDesc ?? c.attorney ?? '-'}</td>
+                    <td className="py-2 px-2 font-mono text-[12px] text-slate-600">{c.certificateNo ?? c.clearance ?? '-'}</td>
+                    <td className="py-2 px-2 font-mono text-[12px] text-slate-600">{c.receiptNo || '-'}</td>
+                    <td className="py-2 px-2 text-[13px] text-slate-600">{c.receiptDate ? fmtDate(c.receiptDate) : '-'}</td>
+                    <td className="py-2 px-2 text-[13px] text-slate-600">{fmtDate(c.toDate)}</td>
+                    <td className="py-2 px-2 text-[13px] text-slate-600">{fmtDate(c.sellDate)}</td>
                     <td className="py-2 px-2">
-                      <Badge variant={c.status === 'Completed' || c.status === 'Approved' ? 'default' : 'secondary'} className="text-[10px]">
-                        {c.status ?? c.clearanceStatus ?? '-'}
+                      <Badge variant={(c.clearanceStatus ?? c.status) === 'Completed' || (c.clearanceStatus ?? c.status) === 'Approved' ? 'default' : 'secondary'} className="text-[10px]">
+                        {c.clearanceStatus ?? c.status ?? '-'}
                       </Badge>
                     </td>
                     <td className="py-2 px-2 text-center">
