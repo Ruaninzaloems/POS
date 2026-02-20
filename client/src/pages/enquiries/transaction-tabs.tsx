@@ -448,7 +448,7 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
   const detailedRows = useMemo(() => {
     if (!billingPeriodData || billingPeriodData.length === 0) return [];
 
-    return billingPeriodData.map((row: any) => {
+    const mapped = billingPeriodData.map((row: any) => {
       const txDate = row.transactionDate ? new Date(row.transactionDate).toLocaleDateString('en-ZA', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
       const desc = row.description || '';
       const drilldown = (row.drilldown || '').toLowerCase();
@@ -475,6 +475,8 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
         isRebate,
         isInterest,
         isSpecial: isOpen || isClose,
+        isOpenBalance: isOpen,
+        isCloseBalance: isClose,
         isBold: isClose,
         drilldown: row.drilldown || '',
         primaryId: row.primaryId || '',
@@ -482,6 +484,58 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
         _raw: row,
       };
     });
+
+    const filtered: any[] = [];
+    let prevWasZeroOpen = false;
+    let skippedZeroOpens = 0;
+    let lastCloseTotal: number | null = null;
+    let skippedCarryForwards = 0;
+
+    for (let i = 0; i < mapped.length; i++) {
+      const row = mapped[i];
+      const allZero = row.amount === 0 && row.interest === 0 && row.vat === 0 && row.total === 0;
+
+      if (row.isOpenBalance && allZero) {
+        if (!prevWasZeroOpen) {
+          filtered.push(row);
+          prevWasZeroOpen = true;
+        } else {
+          skippedZeroOpens++;
+        }
+        continue;
+      }
+
+      if (prevWasZeroOpen && skippedZeroOpens > 0) {
+        filtered.push({ ...row, description: `... ${skippedZeroOpens} more zero-balance month${skippedZeroOpens > 1 ? 's' : ''} omitted ...`, isSpecial: true, isOpenBalance: true, amount: 0, interest: 0, vat: 0, total: 0, _dimmed: true });
+        skippedZeroOpens = 0;
+      }
+      prevWasZeroOpen = false;
+
+      if ((row.isOpenBalance || row.isCloseBalance) && lastCloseTotal !== null && row.total === lastCloseTotal) {
+        skippedCarryForwards++;
+        continue;
+      }
+
+      if (skippedCarryForwards > 0 && !row.isOpenBalance && !row.isCloseBalance) {
+        filtered.push({ ...mapped[i - 1], description: `... ${skippedCarryForwards} repeated carry-forward balance${skippedCarryForwards > 1 ? 's' : ''} omitted ...`, isSpecial: true, _dimmed: true });
+        skippedCarryForwards = 0;
+      }
+
+      if (row.isCloseBalance) {
+        lastCloseTotal = row.total;
+      } else {
+        lastCloseTotal = null;
+        skippedCarryForwards = 0;
+      }
+
+      filtered.push(row);
+    }
+
+    if (skippedCarryForwards > 0) {
+      filtered.push({ ...mapped[mapped.length - 1], description: `... ${skippedCarryForwards} repeated carry-forward balance${skippedCarryForwards > 1 ? 's' : ''} omitted ...`, isSpecial: true, _dimmed: true });
+    }
+
+    return filtered;
   }, [billingPeriodData]);
 
   const fmt = (v: any) => {
@@ -676,15 +730,23 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
           <tbody>
             {detailedRows.length === 0 ? (
               <tr><td colSpan={9} className="text-center text-slate-400 py-4">No records to display</td></tr>
-            ) : detailedRows.map((row: any, i: number) => (
+            ) : detailedRows.map((row: any, i: number) => {
+              if (row._dimmed) {
+                return (
+                  <tr key={i} className="border-b border-dashed border-slate-200 bg-slate-50/50" data-testid={`detail-row-${i}`}>
+                    <td colSpan={9} className="px-3 py-1.5 text-center text-[10px] italic text-slate-400">{row.description}</td>
+                  </tr>
+                );
+              }
+              return (
               <tr
                 key={i}
-                className={`border-b border-slate-100 cursor-pointer ${row.isBold ? 'bg-slate-50 font-bold' : ''} ${row.isPayment ? 'hover:bg-blue-50 text-red-600' : 'hover:bg-slate-50'}`}
+                className={`border-b border-slate-100 cursor-pointer ${row.isBold ? 'bg-amber-50/50 font-bold border-t border-amber-200' : ''} ${row.isOpenBalance ? 'bg-blue-50/30' : ''} ${row.isCloseBalance ? 'bg-amber-50/50 border-t border-amber-200' : ''} ${row.isPayment ? 'hover:bg-blue-50 text-red-600' : 'hover:bg-slate-50'}`}
                 onClick={() => handleRowClick(row)}
                 data-testid={`detail-row-${i}`}
               >
                 <td className="px-3 py-2 text-slate-700 whitespace-nowrap">{row.transactionDate}</td>
-                <td className={`px-3 py-2 whitespace-nowrap ${row.isBold ? 'font-bold text-slate-900' : row.isSpecial ? 'text-slate-600' : row.isPayment ? 'text-red-600' : 'text-slate-700'}`}>{row.description}</td>
+                <td className={`px-3 py-2 whitespace-nowrap ${row.isBold ? 'font-bold text-slate-900' : row.isOpenBalance ? 'text-blue-600 italic text-[11px]' : row.isCloseBalance ? 'font-semibold text-amber-800' : row.isPayment ? 'text-red-600' : 'text-slate-700'}`}>{row.description}</td>
                 <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{row.receiptId || ''}</td>
                 <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{row.documentNumber || ''}</td>
                 <td className="px-3 py-2 text-slate-600 whitespace-nowrap max-w-[300px] truncate" title={row.tariff || ''}>{row.tariff || ''}</td>
@@ -693,7 +755,8 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
                 <td className={`px-3 py-2 text-right font-mono whitespace-nowrap ${(row.vat || 0) < 0 ? 'text-red-600' : ''}`}>{fmt(row.vat)}</td>
                 <td className={`px-3 py-2 text-right font-mono whitespace-nowrap ${row.isBold ? 'font-bold' : ''} ${(row.total || 0) < 0 ? 'text-red-600' : ''}`}>{fmt(row.total)}</td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
