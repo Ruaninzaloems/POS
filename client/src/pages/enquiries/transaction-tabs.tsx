@@ -17,223 +17,373 @@ import {
 import { fetchPosMultiReceiptPrint, platinumPrintReceiptRaw } from '@/lib/external-api';
 import { LoadingSkeleton, EmptyState, ErrorState, PaginatedTable, getFinYearOptions, MONTHS } from './shared';
 
+function extractServiceType(desc: string): string {
+  const levyMatch = desc.match(/^Levy\s*-\s*(.+)/i);
+  if (levyMatch) return levyMatch[1].trim();
+  const journalMatch = desc.match(/^(?:Billing\s+Transfer\s+)?(?:Normal\s+)?Journal\s*-\s*(.+?)(?:\s*-\s*Transfer|$)/i);
+  if (journalMatch) return journalMatch[1].trim();
+  const parts = desc.split('-').map(s => s.trim());
+  if (parts.length >= 2) return parts[1];
+  return desc || 'Other';
+}
+
+function buildPivotData(data: { month: string; records: any[] }[]): any[] {
+  if (!Array.isArray(data) || data.length === 0) return [];
+  const serviceMap = new Map<string, Record<string, number>>();
+  const monthOpening: Record<string, number> = {};
+  const monthClosing: Record<string, number> = {};
+  const monthInterest: Record<string, number> = {};
+  const monthReceipts: Record<string, number> = {};
+  const monthCharges: Record<string, number> = {};
+
+  data.forEach(({ month, records }) => {
+    records.forEach((r: any) => {
+      const drilldown = r.drilldown || '';
+      const totalAmt = r.totalAmount ?? r.amount ?? 0;
+      if (drilldown === 'OpenBalance') { monthOpening[month] = (monthOpening[month] || 0) + totalAmt; return; }
+      if (drilldown === 'CloseBalance') { monthClosing[month] = (monthClosing[month] || 0) + totalAmt; return; }
+      if (drilldown === 'Interest') { monthInterest[month] = (monthInterest[month] || 0) + totalAmt; return; }
+      if (drilldown === 'Receipt') { monthReceipts[month] = (monthReceipts[month] || 0) + totalAmt; return; }
+      const serviceType = extractServiceType(r.description || '');
+      if (!serviceMap.has(serviceType)) serviceMap.set(serviceType, {});
+      const row = serviceMap.get(serviceType)!;
+      row[month] = (row[month] || 0) + totalAmt;
+      monthCharges[month] = (monthCharges[month] || 0) + totalAmt;
+    });
+  });
+
+  const serviceRows = Array.from(serviceMap.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([desc, months]) => ({ description: desc, isSpecial: false, ...months }));
+
+  const openingRow: any = { description: 'Opening Balance', isSpecial: true };
+  const chargesRow: any = { description: 'Total Charges', isSpecial: true, isBold: true };
+  const interestRow: any = { description: 'Interest', isSpecial: true };
+  const receiptsRow: any = { description: 'Receipts / Payments', isSpecial: true };
+  const closingRow: any = { description: 'Closing Balance', isSpecial: true, isBold: true };
+
+  MONTHS.forEach(m => {
+    openingRow[m] = monthOpening[m] || 0;
+    chargesRow[m] = monthCharges[m] || 0;
+    interestRow[m] = monthInterest[m] || 0;
+    receiptsRow[m] = monthReceipts[m] || 0;
+    closingRow[m] = monthClosing[m] !== undefined ? monthClosing[m] : (openingRow[m] + chargesRow[m] + interestRow[m] + receiptsRow[m]);
+  });
+
+  return [openingRow, ...serviceRows, interestRow, chargesRow, receiptsRow, closingRow];
+}
+
+const fmtAmount = (v: number | undefined) => {
+  if (v === undefined) return '0,00';
+  const num = typeof v === 'number' ? v : 0;
+  if (num < 0) return `(${Math.abs(num).toLocaleString('en-ZA', { minimumFractionDigits: 2 })})`;
+  return num.toLocaleString('en-ZA', { minimumFractionDigits: 2 });
+};
+
+type PeriodData = { year: string; data: { month: string; records: any[] }[]; pivotData: any[]; hasData: boolean };
+
+function SummaryTable({ pivotData, year, hasData }: { pivotData: any[]; year: string; hasData: boolean }) {
+  return (
+    <div className="overflow-x-auto border border-slate-200 rounded">
+      <table className="w-full text-xs" data-testid={`transaction-summary-grid-${year}`}>
+        <thead>
+          <tr className="bg-slate-100 border-b border-slate-200">
+            <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap sticky left-0 bg-slate-100 min-w-[180px]">Description</th>
+            <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap">Financial Year</th>
+            {MONTHS.map(m => (
+              <th key={m} className="text-right px-3 py-2 font-semibold text-slate-700 whitespace-nowrap">{m}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {!hasData ? (
+            <tr><td colSpan={14} className="text-center text-slate-400 py-4">No records to display</td></tr>
+          ) : pivotData.map((row: any, i: number) => (
+            <tr key={i} className={`border-b border-slate-100 hover:bg-slate-50 ${row.isBold ? 'bg-slate-50 font-bold' : ''} ${row.isSpecial ? 'border-t border-slate-200' : ''}`}>
+              <td className={`px-3 py-2 whitespace-nowrap sticky left-0 ${row.isBold ? 'bg-slate-50 font-bold text-slate-900' : row.isSpecial ? 'bg-white text-slate-600 italic' : 'bg-white text-slate-700'}`}>{row.description}</td>
+              <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{year}</td>
+              {MONTHS.map(m => (
+                <td key={m} className={`px-3 py-2 text-right whitespace-nowrap font-mono ${row.isBold ? 'font-bold text-slate-900' : 'text-slate-700'} ${(row[m] || 0) < 0 ? 'text-red-600' : ''}`}>{fmtAmount(row[m])}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PeriodSection({ period, expanded, onToggle }: { period: PeriodData; expanded: boolean; onToggle: () => void }) {
+  const closingRow = period.pivotData.find((r: any) => r.description === 'Closing Balance');
+  const totalChargesRow = period.pivotData.find((r: any) => r.description === 'Total Charges');
+  const closingTotal = closingRow ? MONTHS.reduce((s, m) => s + (closingRow[m] || 0), 0) : 0;
+  const chargesTotal = totalChargesRow ? MONTHS.reduce((s, m) => s + (totalChargesRow[m] || 0), 0) : 0;
+
+  return (
+    <div className="border border-slate-200 rounded-lg overflow-hidden" data-testid={`period-section-${period.year}`}>
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-slate-50 to-white hover:from-slate-100 hover:to-slate-50 transition-colors"
+        data-testid={`toggle-period-${period.year}`}
+      >
+        <div className="flex items-center gap-3">
+          {expanded ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+          <span className="font-semibold text-sm text-slate-800">{period.year}</span>
+          {!period.hasData && <span className="text-xs text-slate-400 italic">No transactions</span>}
+        </div>
+        {period.hasData && (
+          <div className="flex items-center gap-4 text-xs">
+            <span className="text-slate-500">Charges: <span className="font-mono font-semibold text-slate-700">{fmtAmount(chargesTotal)}</span></span>
+            <span className={`font-mono font-bold ${closingTotal < 0 ? 'text-red-600' : closingTotal > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+              Balance: {fmtAmount(closingTotal)}
+            </span>
+          </div>
+        )}
+      </button>
+      {expanded && (
+        <div className="p-3 border-t border-slate-200">
+          <SummaryTable pivotData={period.pivotData} year={period.year} hasData={period.hasData} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function TransactionSummaryTab({ accountId, accountNumber }: { accountId: number; accountNumber?: string }) {
-  const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [loadProgress, setLoadProgress] = useState('');
   const years = useMemo(() => getFinYearOptions(), []);
   const [selectedYear, setSelectedYear] = useState(years[0]);
-  const lastKey = useRef('');
+  const [multiView, setMultiView] = useState(false);
+  const [selectedYears, setSelectedYears] = useState<string[]>([years[0]]);
+  const [periodsCache, setPeriodsCache] = useState<Record<string, { data: { month: string; records: any[] }[] }>>({});
+  const [loadingYears, setLoadingYears] = useState<Set<string>>(new Set());
+  const [errorYears, setErrorYears] = useState<Record<string, string>>({});
+  const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set([years[0]]));
 
-  const load = useCallback(async (finYear: string) => {
-    setLoading(true);
-    setError(null);
-    setLoadProgress('Loading all billing periods...');
+  const loadYear = useCallback(async (finYear: string) => {
+    if (periodsCache[`${accountId}-${finYear}`]) return;
+    setLoadingYears(prev => new Set(prev).add(finYear));
+    setErrorYears(prev => { const n = { ...prev }; delete n[finYear]; return n; });
     try {
-      const months = MONTHS;
-      const results: { month: string; records: any[] }[] = [];
-      const fetches = months.map(async (month) => {
+      const fetches = MONTHS.map(async (month) => {
         const records = await getBillingPeriodTransactions(accountId, finYear, month).catch(() => []);
         return { month, records: Array.isArray(records) ? records : [] };
       });
       const allResults = await Promise.all(fetches);
-      allResults.forEach(r => results.push(r));
-      setData(results as any);
+      setPeriodsCache(prev => ({ ...prev, [`${accountId}-${finYear}`]: { data: allResults } }));
     } catch (e: any) {
-      setError(e.message || 'Failed to load transaction summary');
+      setErrorYears(prev => ({ ...prev, [finYear]: e.message || 'Failed to load' }));
     } finally {
-      setLoading(false);
-      setLoadProgress('');
+      setLoadingYears(prev => { const n = new Set(prev); n.delete(finYear); return n; });
     }
-  }, [accountId]);
+  }, [accountId, periodsCache]);
 
   useEffect(() => {
-    const key = `${accountId}-${selectedYear}`;
-    if (lastKey.current !== key) {
-      lastKey.current = key;
-      load(selectedYear);
+    if (multiView) {
+      selectedYears.forEach(y => loadYear(y));
+    } else {
+      loadYear(selectedYear);
     }
-  }, [accountId, selectedYear, load]);
+  }, [multiView, selectedYear, selectedYears, loadYear]);
 
-  const extractServiceType = useCallback((desc: string): string => {
-    const levyMatch = desc.match(/^Levy\s*-\s*(.+)/i);
-    if (levyMatch) return levyMatch[1].trim();
-    const journalMatch = desc.match(/^(?:Billing\s+Transfer\s+)?(?:Normal\s+)?Journal\s*-\s*(.+?)(?:\s*-\s*Transfer|$)/i);
-    if (journalMatch) return journalMatch[1].trim();
-    const parts = desc.split('-').map(s => s.trim());
-    if (parts.length >= 2) return parts[1];
-    return desc || 'Other';
-  }, []);
-
-  const pivotData = useMemo(() => {
-    if (!Array.isArray(data) || data.length === 0) return [];
-    const serviceMap = new Map<string, Record<string, number>>();
-    const monthOpening: Record<string, number> = {};
-    const monthClosing: Record<string, number> = {};
-    const monthInterest: Record<string, number> = {};
-    const monthReceipts: Record<string, number> = {};
-    const monthCharges: Record<string, number> = {};
-
-    (data as { month: string; records: any[] }[]).forEach(({ month, records }) => {
-      records.forEach((r: any) => {
-        const drilldown = r.drilldown || '';
-        const totalAmt = r.totalAmount ?? r.amount ?? 0;
-
-        if (drilldown === 'OpenBalance') {
-          monthOpening[month] = (monthOpening[month] || 0) + totalAmt;
-          return;
-        }
-        if (drilldown === 'CloseBalance') {
-          monthClosing[month] = (monthClosing[month] || 0) + totalAmt;
-          return;
-        }
-        if (drilldown === 'Interest') {
-          monthInterest[month] = (monthInterest[month] || 0) + totalAmt;
-          return;
-        }
-        if (drilldown === 'Receipt') {
-          monthReceipts[month] = (monthReceipts[month] || 0) + totalAmt;
-          return;
-        }
-
-        const serviceType = extractServiceType(r.description || '');
-
-        if (!serviceMap.has(serviceType)) serviceMap.set(serviceType, {});
-        const row = serviceMap.get(serviceType)!;
-        row[month] = (row[month] || 0) + totalAmt;
-        monthCharges[month] = (monthCharges[month] || 0) + totalAmt;
-      });
+  const toggleYearSelection = (year: string) => {
+    setSelectedYears(prev => {
+      if (prev.includes(year)) {
+        if (prev.length <= 1) return prev;
+        return prev.filter(y => y !== year);
+      }
+      const newYears = [...prev, year].sort((a, b) => b.localeCompare(a));
+      return newYears;
     });
-
-    const serviceRows = Array.from(serviceMap.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([desc, months]) => ({
-        description: desc,
-        isSpecial: false,
-        ...months,
-      }));
-
-    const openingRow: any = { description: 'Opening Balance', isSpecial: true };
-    const chargesRow: any = { description: 'Total Charges', isSpecial: true, isBold: true };
-    const interestRow: any = { description: 'Interest', isSpecial: true };
-    const receiptsRow: any = { description: 'Receipts / Payments', isSpecial: true };
-    const closingRow: any = { description: 'Closing Balance', isSpecial: true, isBold: true };
-
-    MONTHS.forEach(m => {
-      openingRow[m] = monthOpening[m] || 0;
-      chargesRow[m] = monthCharges[m] || 0;
-      interestRow[m] = monthInterest[m] || 0;
-      receiptsRow[m] = monthReceipts[m] || 0;
-      closingRow[m] = monthClosing[m] !== undefined
-        ? monthClosing[m]
-        : (openingRow[m] + chargesRow[m] + interestRow[m] + receiptsRow[m]);
-    });
-
-    return [openingRow, ...serviceRows, interestRow, chargesRow, receiptsRow, closingRow];
-  }, [data, extractServiceType]);
-
-  if (loading) return (
-    <div className="p-5 space-y-3">
-      <LoadingSkeleton />
-      {loadProgress && <p className="text-xs text-slate-500 text-center">{loadProgress}</p>}
-    </div>
-  );
-  if (error) return <ErrorState message={error} onRetry={() => load(selectedYear)} />;
-
-  const hasData = Array.isArray(data) && (data as { month: string; records: any[] }[]).some(d => d.records.length > 0);
-  const fmt = (v: number | undefined) => {
-    if (v === undefined) return '0.00';
-    const num = typeof v === 'number' ? v : 0;
-    if (num < 0) return `(${Math.abs(num).toLocaleString('en-ZA', { minimumFractionDigits: 2 })})`;
-    return num.toLocaleString('en-ZA', { minimumFractionDigits: 2 });
+    setExpandedYears(prev => { const n = new Set(prev); n.add(year); return n; });
   };
 
-  const exportToExcel = () => {
-    if (!hasData) return;
-    const accNum = accountNumber || String(accountId);
-    const headers = ['Account Number', 'Description', 'Financial Year', ...MONTHS];
-    const rows = pivotData.map((row: any) => {
-      const vals = MONTHS.map(m => {
-        const v = row[m];
-        return v === undefined ? 0 : (typeof v === 'number' ? v : 0);
-      });
-      return [accNum, row.description, selectedYear, ...vals];
-    });
+  const getPeriodData = (year: string): PeriodData => {
+    const cached = periodsCache[`${accountId}-${year}`];
+    const data = cached?.data || [];
+    const pivotData = buildPivotData(data);
+    const hasData = data.some(d => d.records.length > 0);
+    return { year, data, pivotData, hasData };
+  };
 
+  const activeYears = multiView ? selectedYears : [selectedYear];
+  const anyLoading = activeYears.some(y => loadingYears.has(y));
+  const allPeriodsLoaded = activeYears.every(y => periodsCache[`${accountId}-${y}`]);
+
+  const currentPeriod = getPeriodData(selectedYear);
+
+  const exportToExcel = () => {
+    const accNum = accountNumber || String(accountId);
+    const periodsToExport = multiView
+      ? selectedYears.map(y => getPeriodData(y))
+      : [currentPeriod];
+
+    const headers = ['Account Number', 'Description', 'Financial Year', ...MONTHS];
     const escapeCsv = (v: any) => {
       const s = String(v);
       if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g, '""')}"`;
       return s;
     };
-    const csvLines = [
-      headers.map(escapeCsv).join(','),
-      ...rows.map(r => r.map((v: any, ci: number) => ci > 2 ? Number(v).toFixed(2) : escapeCsv(v)).join(','))
-    ];
+
+    const allRows: string[] = [headers.map(escapeCsv).join(',')];
+    for (const period of periodsToExport) {
+      if (!period.hasData) continue;
+      period.pivotData.forEach((row: any) => {
+        const vals = MONTHS.map(m => {
+          const v = row[m];
+          return v === undefined ? '0.00' : (typeof v === 'number' ? v.toFixed(2) : '0.00');
+        });
+        allRows.push([escapeCsv(accNum), escapeCsv(row.description), escapeCsv(period.year), ...vals].join(','));
+      });
+      allRows.push('');
+    }
+
     const bom = '\uFEFF';
-    const blob = new Blob([bom + csvLines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const blob = new Blob([bom + allRows.join('\r\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Transaction_Summary_${accNum}_${selectedYear.replace('/', '-')}.csv`;
+    const yearLabel = multiView ? selectedYears.map(y => y.replace('/', '-')).join('_') : selectedYear.replace('/', '-');
+    a.download = `Transaction_Summary_${accNum}_${yearLabel}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
+  const toggleExpanded = (year: string) => {
+    setExpandedYears(prev => {
+      const n = new Set(prev);
+      if (n.has(year)) n.delete(year); else n.add(year);
+      return n;
+    });
+  };
+
+  const expandAll = () => setExpandedYears(new Set(selectedYears));
+  const collapseAll = () => setExpandedYears(new Set());
+
   return (
-    <div className="p-5 space-y-5" data-testid="transaction-summary-panel">
-      <h3 className="text-base font-bold text-slate-800">Transaction Summary List per Fin-Year/Billing Period</h3>
-      <div className="flex items-center justify-between gap-3">
-        <select
-          value={selectedYear}
-          onChange={e => setSelectedYear(e.target.value)}
-          className="border border-slate-300 rounded px-3 py-1.5 text-sm bg-white"
-          data-testid="select-financial-year"
-        >
-          {years.map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
-        <button
-          onClick={exportToExcel}
-          disabled={!hasData}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          data-testid="btn-export-txn-summary"
-        >
-          <Download className="w-4 h-4" />
-          Export to Excel
-        </button>
+    <div className="p-5 space-y-4" data-testid="transaction-summary-panel">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h3 className="text-base font-bold text-slate-800">Transaction Summary List per Fin-Year/Billing Period</h3>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center bg-slate-100 rounded-lg p-0.5" data-testid="view-toggle">
+            <button
+              onClick={() => setMultiView(false)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${!multiView ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              data-testid="btn-single-view"
+            >
+              <Layers className="w-3.5 h-3.5 inline mr-1" />
+              Single Period
+            </button>
+            <button
+              onClick={() => { setMultiView(true); if (selectedYears.length === 0) setSelectedYears([selectedYear]); }}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${multiView ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              data-testid="btn-multi-view"
+            >
+              <LayoutList className="w-3.5 h-3.5 inline mr-1" />
+              Multi-Period
+            </button>
+          </div>
+        </div>
       </div>
-      <div className="overflow-x-auto border border-slate-200 rounded">
-        <table className="w-full text-xs" data-testid="transaction-summary-grid">
-          <thead>
-            <tr className="bg-slate-100 border-b border-slate-200">
-              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap sticky left-0 bg-slate-100 min-w-[180px]">Description</th>
-              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap">Financial Year</th>
-              {MONTHS.map(m => (
-                <th key={m} className="text-right px-3 py-2 font-semibold text-slate-700 whitespace-nowrap">{m}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {!hasData ? (
-              <tr><td colSpan={14} className="text-center text-slate-400 py-4">No records to display</td></tr>
-            ) : pivotData.map((row: any, i: number) => (
-              <tr key={i} className={`border-b border-slate-100 hover:bg-slate-50 ${row.isBold ? 'bg-slate-50 font-bold' : ''} ${row.isSpecial ? 'border-t border-slate-200' : ''}`}>
-                <td className={`px-3 py-2 whitespace-nowrap sticky left-0 ${row.isBold ? 'bg-slate-50 font-bold text-slate-900' : row.isSpecial ? 'bg-white text-slate-600 italic' : 'bg-white text-slate-700'}`}>{row.description}</td>
-                <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{selectedYear}</td>
-                {MONTHS.map(m => (
-                  <td key={m} className={`px-3 py-2 text-right whitespace-nowrap font-mono ${row.isBold ? 'font-bold text-slate-900' : 'text-slate-700'} ${(row[m] || 0) < 0 ? 'text-red-600' : ''}`}>{fmt(row[m])}</td>
-                ))}
-              </tr>
+
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        {!multiView ? (
+          <select
+            value={selectedYear}
+            onChange={e => setSelectedYear(e.target.value)}
+            className="border border-slate-300 rounded px-3 py-1.5 text-sm bg-white"
+            data-testid="select-financial-year"
+          >
+            {years.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+        ) : (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-slate-500 font-medium">Periods:</span>
+            {years.map(y => (
+              <button
+                key={y}
+                onClick={() => toggleYearSelection(y)}
+                className={`px-2.5 py-1 text-xs rounded-full border transition-all ${
+                  selectedYears.includes(y)
+                    ? 'bg-blue-50 border-blue-300 text-blue-700 font-semibold'
+                    : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700'
+                }`}
+                data-testid={`chip-year-${y}`}
+              >
+                {y}
+                {loadingYears.has(y) && <Loader2 className="w-3 h-3 ml-1 inline animate-spin" />}
+              </button>
             ))}
-          </tbody>
-        </table>
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          {multiView && selectedYears.length > 1 && (
+            <>
+              <button onClick={expandAll} className="text-xs text-blue-600 hover:text-blue-800 hover:underline" data-testid="btn-expand-all">Expand All</button>
+              <span className="text-slate-300">|</span>
+              <button onClick={collapseAll} className="text-xs text-blue-600 hover:text-blue-800 hover:underline" data-testid="btn-collapse-all">Collapse All</button>
+            </>
+          )}
+          <button
+            onClick={exportToExcel}
+            disabled={anyLoading || !allPeriodsLoaded}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            data-testid="btn-export-txn-summary"
+          >
+            <Download className="w-4 h-4" />
+            Export to Excel
+          </button>
+        </div>
       </div>
-      <div className="flex items-center justify-end gap-2 text-xs text-slate-500">
-        <span>Items per page: <span className="border rounded px-2 py-0.5">50</span></span>
-        <span>{!hasData ? '0 of 0' : `1 - ${pivotData.length} of ${pivotData.length}`}</span>
-      </div>
+
+      {anyLoading && (
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Loading billing periods...
+        </div>
+      )}
+
+      {!multiView ? (
+        loadingYears.has(selectedYear) ? (
+          <LoadingSkeleton />
+        ) : errorYears[selectedYear] ? (
+          <ErrorState message={errorYears[selectedYear]} onRetry={() => { setPeriodsCache(prev => { const n = { ...prev }; delete n[`${accountId}-${selectedYear}`]; return n; }); loadYear(selectedYear); }} />
+        ) : (
+          <>
+            <SummaryTable pivotData={currentPeriod.pivotData} year={selectedYear} hasData={currentPeriod.hasData} />
+            <div className="flex items-center justify-end gap-2 text-xs text-slate-500">
+              <span>Items per page: <span className="border rounded px-2 py-0.5">50</span></span>
+              <span>{!currentPeriod.hasData ? '0 of 0' : `1 - ${currentPeriod.pivotData.length} of ${currentPeriod.pivotData.length}`}</span>
+            </div>
+          </>
+        )
+      ) : (
+        <div className="space-y-3">
+          {selectedYears.map(year => {
+            if (loadingYears.has(year)) {
+              return (
+                <div key={year} className="border border-slate-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Loading {year}...
+                  </div>
+                </div>
+              );
+            }
+            if (errorYears[year]) {
+              return (
+                <div key={year} className="border border-red-200 rounded-lg p-4 bg-red-50">
+                  <p className="text-sm text-red-600">{year}: {errorYears[year]}</p>
+                  <button className="text-xs text-red-700 underline mt-1" onClick={() => { setPeriodsCache(prev => { const n = { ...prev }; delete n[`${accountId}-${year}`]; return n; }); loadYear(year); }}>Retry</button>
+                </div>
+              );
+            }
+            const period = getPeriodData(year);
+            return <PeriodSection key={year} period={period} expanded={expandedYears.has(year)} onToggle={() => toggleExpanded(year)} />;
+          })}
+        </div>
+      )}
     </div>
   );
 }
