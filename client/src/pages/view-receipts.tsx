@@ -199,9 +199,15 @@ export default function ViewReceipts() {
         setFilterStatus('all');
         setSortField(null);
         try {
+            const hasSpecificLookup = !!receiptFilter || !!accountFilter;
+            const searchFromDate = hasSpecificLookup
+                ? new Date(new Date().getFullYear() - 2, 0, 1)
+                : effectiveFromDate;
+            const searchToDate = toDate || new Date();
+
             const query: ReceiptSearchQuery = {
-                fromDate: format(effectiveFromDate, "yyyy-MM-dd'T'00:00:00"),
-                toDate: toDate ? format(toDate, "yyyy-MM-dd'T'23:59:59") : undefined,
+                fromDate: format(searchFromDate, "yyyy-MM-dd'T'00:00:00"),
+                toDate: format(searchToDate, "yyyy-MM-dd'T'23:59:59"),
                 page,
                 pageSize,
                 orderby: 'receiptDate',
