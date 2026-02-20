@@ -2143,9 +2143,16 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-enquiry/service-type-balance", async (req, res) => {
     try {
+      console.log('[ServiceTypeBalance] Query params:', JSON.stringify(req.query));
       const data = await platinumGet("/api/BillingEnquiry/ServiceTypeBalanceDetails", req.query as Record<string, string>);
+      console.log('[ServiceTypeBalance] Response type:', typeof data, Array.isArray(data) ? `array(${data.length})` : '');
+      if (data && typeof data === 'object') {
+        const sample = Array.isArray(data) ? data.slice(0, 2) : data;
+        console.log('[ServiceTypeBalance] Sample:', JSON.stringify(sample).substring(0, 500));
+      }
       handlePlatinumResult(res, data);
     } catch (e: any) {
+      console.error('[ServiceTypeBalance] Error:', e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
