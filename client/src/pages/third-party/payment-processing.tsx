@@ -87,7 +87,11 @@ export default function ThirdPartyPaymentProcessing() {
     try {
       const types = await platinumThirdPartyPaymentTypes();
       if (Array.isArray(types)) {
-        setThirdPartyTypes(types);
+        setThirdPartyTypes(types.map((t: any) => ({
+          id: t.thirdPartyTypeId ?? t.id,
+          name: t.description ?? t.name ?? '',
+          description: t.description ?? '',
+        })));
       }
     } catch (e) {
       console.error('Failed to load third party types:', e);

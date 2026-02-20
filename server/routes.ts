@@ -2282,18 +2282,24 @@ export async function registerRoutes(
       const apiUrl = getPlatinumApiUrl();
       const url = `${apiUrl}/api/billing/pos/third-party-payments/import`;
 
-      const formBody = new URLSearchParams();
-      const fields = ['ContentType', 'ContentDisposition', 'Length', 'Name', 'FileName', 'thirdpartyTypeId', 'paymentReference', 'cashBookId', 'fileContent'];
-      for (const field of fields) {
-        if (req.body[field] !== undefined && req.body[field] !== null) {
-          formBody.append(field, String(req.body[field]));
-        }
-      }
-      if (req.body.Headers && typeof req.body.Headers === 'object') {
-        formBody.append('Headers', JSON.stringify(req.body.Headers));
+      const { fileContent, FileName, Name, ContentType, thirdpartyTypeId, paymentReference, cashBookId } = req.body;
+
+      if (!fileContent) {
+        return res.status(400).json({ message: "No file content provided" });
       }
 
-      console.log(`[third-party-import] Posting form data to ${url}, fileContent length: ${req.body.fileContent?.length || 0}`);
+      const fileName = FileName || Name || 'upload.csv';
+      const mimeType = ContentType || 'text/plain';
+
+      const formData = new FormData();
+      const fileBlob = new Blob([fileContent], { type: mimeType });
+      formData.append('file', fileBlob, fileName);
+
+      if (thirdpartyTypeId !== undefined) formData.append('thirdpartyTypeId', String(thirdpartyTypeId));
+      if (paymentReference) formData.append('paymentReference', String(paymentReference));
+      if (cashBookId !== undefined) formData.append('cashBookId', String(cashBookId));
+
+      console.log(`[third-party-import] Uploading file '${fileName}' (${fileContent.length} chars) to ${url}`);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000);
       try {
@@ -2302,9 +2308,8 @@ export async function registerRoutes(
           headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/json",
-            "Content-Type": "application/x-www-form-urlencoded",
           },
-          body: formBody.toString(),
+          body: formData,
           signal: controller.signal,
         });
         const rawText = await rawRes.text();
