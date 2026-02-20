@@ -2179,7 +2179,7 @@ export async function registerRoutes(
 
   app.post("/api/platinum/third-party-payments/validate-account", async (req, res) => {
     try {
-      const data = await platinumPost("/api/v2/pos/third-party-payments/validate-account", req.body);
+      const data = await platinumPost("/api/billing/pos/third-party-payments/validate-account", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
