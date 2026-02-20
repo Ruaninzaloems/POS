@@ -2098,3 +2098,16 @@ export async function fetchBulkProgressDirectDeposit(jobId: number): Promise<any
     if (!res.ok) return null;
     return res.json();
 }
+
+export async function retryBulkAllocationJob(jobId: number, userId: number): Promise<any> {
+    const res = await apiFetch(`/api/platinum/direct-deposit-errors/retry/${jobId}/${userId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+    });
+    if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(text || `Retry failed (${res.status})`);
+    }
+    return res.json().catch(() => ({}));
+}

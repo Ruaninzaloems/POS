@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Search, Filter, RotateCcw, Eye, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-  Loader2, AlertCircle, CheckCircle2, Clock, XCircle, Activity, FileBarChart, ArrowUpDown, ArrowUp, ArrowDown
+  Loader2, AlertCircle, CheckCircle2, Clock, XCircle, Activity, FileBarChart, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw
 } from 'lucide-react';
 import {
   fetchBulkProgressFinancialYears,
@@ -20,6 +20,7 @@ import {
   fetchBulkProgressDirectDeposit,
   fetchViewReceiptCashiers,
   platinumGetPosItemDetails,
+  retryBulkAllocationJob,
   type BulkProgressSearchQuery,
 } from '@/lib/external-api';
 import { useToast } from '@/hooks/use-toast';
@@ -83,6 +84,7 @@ export default function BulkAllocationProgress() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailData, setDetailData] = useState<any>(null);
   const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [retryingJobId, setRetryingJobId] = useState<number | null>(null);
 
   useEffect(() => {
     loadFilterOptions();
@@ -214,6 +216,31 @@ export default function BulkAllocationProgress() {
     } finally {
       setDetailLoading(false);
     }
+  }
+
+  async function handleRetryJob(job: any, e?: React.MouseEvent) {
+    if (e) e.stopPropagation();
+    const jobId = job.directDepositJob_ID ?? job.jobId ?? job.id;
+    const userId = job.capturerID ?? job.cashierID ?? 0;
+    if (!jobId) {
+      toast({ title: 'Error', description: 'Cannot determine Job ID for retry', variant: 'destructive' });
+      return;
+    }
+    setRetryingJobId(jobId);
+    try {
+      await retryBulkAllocationJob(jobId, userId);
+      toast({ title: 'Retry Submitted', description: `Job #${jobId} has been resubmitted for processing.` });
+      searchAllocations(page);
+    } catch (err: any) {
+      toast({ title: 'Retry Failed', description: err.message || 'Could not retry this job', variant: 'destructive' });
+    } finally {
+      setRetryingJobId(null);
+    }
+  }
+
+  function isErrorStatus(job: any): boolean {
+    const s = getJobStatus(job);
+    return s.includes('fail') || s.includes('error');
   }
 
   function handleSort(field: string) {
@@ -352,7 +379,7 @@ export default function BulkAllocationProgress() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Financial Year</Label>
                 <Select value={selectedYear} onValueChange={setSelectedYear} disabled={loadingFilters} data-testid="select-financial-year">
@@ -392,6 +419,24 @@ export default function BulkAllocationProgress() {
                     {monthList.map((m, i) => (
                       <SelectItem key={i} value={getOptionValue(m)}>{getOptionLabel(m)}</SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Status</Label>
+                <Select value={statusFilter ?? '__all__'} onValueChange={v => setStatusFilter(v === '__all__' ? null : v)} data-testid="select-status-filter">
+                  <SelectTrigger data-testid="trigger-status-filter">
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">All Statuses</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="failed">Failed / Error</SelectItem>
+                    <SelectItem value="rebuilds">Performing Rebuilds</SelectItem>
+                    <SelectItem value="recon">Completing Recon</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -539,15 +584,33 @@ export default function BulkAllocationProgress() {
                             </div>
                             <p className="text-sm text-muted-foreground truncate">{process}</p>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0 shrink-0"
-                            onClick={(e) => { e.stopPropagation(); viewJobDetail(job); }}
-                            data-testid={`button-view-mobile-${jobId}`}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {isErrorStatus(job) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                onClick={(e) => handleRetryJob(job, e)}
+                                disabled={retryingJobId === jobId}
+                                data-testid={`button-retry-mobile-${jobId}`}
+                              >
+                                {retryingJobId === jobId ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="w-4 h-4" />
+                                )}
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 shrink-0"
+                              onClick={(e) => { e.stopPropagation(); viewJobDetail(job); }}
+                              data-testid={`button-view-mobile-${jobId}`}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                           <div>
@@ -634,15 +697,47 @@ export default function BulkAllocationProgress() {
                               {amount != null ? `R ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '—'}
                             </TableCell>
                             <TableCell className="text-center">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 w-7 p-0"
-                                onClick={(e) => { e.stopPropagation(); viewJobDetail(job); }}
-                                data-testid={`button-view-${jobId}`}
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
+                              <div className="flex items-center justify-center gap-1">
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 w-7 p-0"
+                                        onClick={(e) => { e.stopPropagation(); viewJobDetail(job); }}
+                                        data-testid={`button-view-${jobId}`}
+                                      >
+                                        <Eye className="w-4 h-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>View Details</TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                                {isErrorStatus(job) && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-7 w-7 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                          onClick={(e) => handleRetryJob(job, e)}
+                                          disabled={retryingJobId === jobId}
+                                          data-testid={`button-retry-${jobId}`}
+                                        >
+                                          {retryingJobId === jobId ? (
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                          ) : (
+                                            <RefreshCw className="w-4 h-4" />
+                                          )}
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Retry Failed Job</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </div>
                             </TableCell>
                           </TableRow>
                         );
