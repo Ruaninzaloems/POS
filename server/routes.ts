@@ -2204,6 +2204,40 @@ export async function registerRoutes(
     }
   });
 
+  app.put("/api/platinum/third-party-payments/:importId/transactions/:index", async (req, res) => {
+    try {
+      const token = await getPlatinumToken();
+      const apiUrl = getPlatinumApiUrl();
+      const url = `${apiUrl}/api/billing/pos/third-party-payments/${req.params.importId}/transactions/${req.params.index}`;
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      try {
+        const rawRes = await fetch(url, {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(req.body),
+          signal: controller.signal,
+        });
+        const rawText = await rawRes.text();
+        if (!rawRes.ok) {
+          return res.status(rawRes.status).json({ message: rawRes.statusText, detail: rawText.substring(0, 1000) });
+        }
+        let data;
+        try { data = rawText ? JSON.parse(rawText) : null; } catch { data = rawText; }
+        res.json(data);
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   // --- Third Party Payments - Cashier Status ---
 
   app.get("/api/platinum/third-party-payments/is-cashier-active", async (req, res) => {
