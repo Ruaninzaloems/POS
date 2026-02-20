@@ -2224,6 +2224,15 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/platinum/third-party-payments/types", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing/pos/third-party-payments/types");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   // --- Billing Enquiry endpoints ---
 
   app.get("/api/platinum/billing-enquiry/deposit-amount", async (req, res) => {
