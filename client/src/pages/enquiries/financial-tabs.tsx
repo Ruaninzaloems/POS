@@ -233,15 +233,93 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
 
-  const repaymentLabels = ['Interest Waiver', 'Rebate'];
-  const hasRepaymentData = repaymentStatus.length > 0;
+  const fmtAmt = (v: any) => v != null && v !== '' ? Number(v).toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : '0.00';
+  const fmtDate = (v: any) => v ? new Date(v).toLocaleDateString('en-ZA') : '-';
   const hasPlans = plans.length > 0;
   const hasExtensions = extensions.length > 0;
   const hasPaymentAmounts = paymentAmounts.length > 0;
+  const repaymentLabels = ['Interest Waiver', 'Rebate'];
+  const hasRepaymentData = repaymentStatus.length > 0;
   const hasCapital = remainingCapital && (typeof remainingCapital !== 'object' || Object.values(remainingCapital).some((v: any) => v != null && v !== 0));
+
+  const initialDownPayment = plans.length > 0
+    ? fmtAmt(plans[0]?.initialDownPayment ?? plans[0]?.downPayment ?? plans[0]?.depositAmount ?? 0)
+    : '0.00';
 
   return (
     <div className="p-5 space-y-5">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-slate-700 to-slate-800 flex items-center gap-2">
+          <CreditCard className="w-4 h-4 text-white" />
+          <h3 className="text-sm font-semibold text-white tracking-wide">Payment Plans - Capital Cost</h3>
+          {hasPlans && <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{plans.length}</Badge>}
+        </div>
+
+        <div className="px-5 py-3 bg-slate-50 border-b border-slate-200">
+          <p className="text-sm text-slate-700">
+            <span className="font-semibold">Initial Down Payment That Was Required:</span>{' '}
+            <span className="font-mono font-bold text-slate-900">{initialDownPayment}</span>
+          </p>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs" data-testid="table-payment-plans">
+            <thead>
+              <tr className="bg-slate-100 border-b-2 border-slate-200">
+                <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Status</th>
+                <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Capital Cost Type</th>
+                <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Service Type / Additional Billing Type</th>
+                <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Contract Number</th>
+                <th className="text-right py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Capital Amount</th>
+                <th className="text-center py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Period</th>
+                <th className="text-right py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Instalment Amount</th>
+                <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Commencement Date</th>
+                <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Expected End Date</th>
+                <th className="text-right py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Remaining Capital Amount</th>
+                <th className="text-center py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Remaining Period</th>
+                <th className="text-right py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Total Payments Received</th>
+                <th className="text-center py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Instalment Counter</th>
+              </tr>
+            </thead>
+            <tbody>
+              {hasPlans ? plans.map((p: any, i: number) => {
+                const isActive = p.status === 'Active' || p.isActive;
+                return (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors" data-testid={`plan-row-${i}`}>
+                    <td className="py-2.5 px-3">
+                      <Badge variant={isActive ? 'default' : 'secondary'} className={`text-[10px] ${isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                        {p.status || p.planStatus || (p.isActive ? 'Active' : 'Inactive')}
+                      </Badge>
+                    </td>
+                    <td className="py-2.5 px-3 text-slate-700">{p.capitalCostType || p.planType || p.paymentPlanType || p.description || '-'}</td>
+                    <td className="py-2.5 px-3 text-slate-700">{p.serviceType || p.additionalBillingType || p.billingType || '-'}</td>
+                    <td className="py-2.5 px-3 font-mono text-slate-600">{p.contractNumber || p.contractNo || p.agreementNo || '-'}</td>
+                    <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-800">{fmtAmt(p.capitalAmount ?? p.amount ?? p.totalAmount)}</td>
+                    <td className="py-2.5 px-3 text-center font-mono text-slate-700">{p.period ?? p.numberOfInstalments ?? p.termMonths ?? '-'}</td>
+                    <td className="py-2.5 px-3 text-right font-mono text-slate-700">{fmtAmt(p.instalmentAmount ?? p.instalment ?? p.monthlyAmount)}</td>
+                    <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{fmtDate(p.commencementDate ?? p.startDate ?? p.effectiveDate)}</td>
+                    <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{fmtDate(p.expectedEndDate ?? p.endDate ?? p.expiryDate)}</td>
+                    <td className="py-2.5 px-3 text-right font-mono text-slate-700">{fmtAmt(p.remainingCapitalAmount ?? p.remainingCapital ?? p.outstandingAmount)}</td>
+                    <td className="py-2.5 px-3 text-center font-mono text-slate-700">{p.remainingPeriod ?? p.remainingInstalments ?? p.remainingMonths ?? '-'}</td>
+                    <td className="py-2.5 px-3 text-right font-mono text-slate-700">{fmtAmt(p.totalPaymentsReceived ?? p.totalPaid ?? p.paymentsReceived)}</td>
+                    <td className="py-2.5 px-3 text-center font-mono text-slate-700">{p.instalmentCounter ?? p.paidInstalments ?? p.instalmentsPaid ?? '-'}</td>
+                  </tr>
+                );
+              }) : (
+                <tr>
+                  <td colSpan={13} className="py-10 text-center text-slate-400 text-sm">No records to display.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 px-4 py-2 bg-slate-50 border-t border-slate-200 text-xs text-slate-500">
+          <span>Items per page: <span className="border rounded px-2 py-0.5 bg-white">50</span></span>
+          <span>{hasPlans ? `1 - ${plans.length} of ${plans.length}` : '0 of 0'}</span>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
@@ -302,58 +380,6 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
         </div>
       </div>
 
-      {hasPlans ? (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
-            <CreditCard className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Active Payment Plans</h3>
-            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{plans.length}</Badge>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" data-testid="table-payment-plans">
-              <thead>
-                <tr className="bg-slate-50 border-b-2 border-slate-200">
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Plan ID</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Type</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Start Date</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">End Date</th>
-                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Instalment</th>
-                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Total</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {plans.map((p: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                    <td className="py-2.5 px-3 font-mono text-xs">{p.planId || p.paymentPlanId || p.id || '-'}</td>
-                    <td className="py-2.5 px-3 font-medium">{p.planType || p.paymentPlanType || p.description || '-'}</td>
-                    <td className="py-2.5 px-3 text-slate-600">{p.startDate ? new Date(p.startDate).toLocaleDateString('en-ZA') : p.effectiveDate ? new Date(p.effectiveDate).toLocaleDateString('en-ZA') : '-'}</td>
-                    <td className="py-2.5 px-3 text-slate-600">{p.endDate ? new Date(p.endDate).toLocaleDateString('en-ZA') : p.expiryDate ? new Date(p.expiryDate).toLocaleDateString('en-ZA') : '-'}</td>
-                    <td className="py-2.5 px-3 text-right font-mono">{(p.instalmentAmount ?? p.instalment ?? p.monthlyAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                    <td className="py-2.5 px-3 text-right font-mono font-semibold">{(p.totalAmount ?? p.amount ?? p.capitalAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                    <td className="py-2.5 px-3"><Badge variant={p.status === 'Active' || p.isActive ? 'default' : 'secondary'} className="text-[10px]">{p.status || p.planStatus || (p.isActive ? 'Active' : 'Inactive')}</Badge></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
-            <CreditCard className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Active Payment Plans</h3>
-          </div>
-          <div className="py-10 px-5 flex flex-col items-center justify-center text-center">
-            <div className="w-14 h-14 rounded-full bg-slate-50 flex items-center justify-center mb-4">
-              <CreditCard className="w-7 h-7 text-slate-300" />
-            </div>
-            <p className="text-sm font-medium text-slate-500">No Active Payment Plans</p>
-            <p className="text-xs text-slate-400 mt-1">There are no payment or repayment plans currently active on this account</p>
-          </div>
-        </div>
-      )}
-
       {hasExtensions && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
@@ -362,21 +388,21 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
             <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{extensions.length}</Badge>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm" data-testid="table-payment-extensions">
+            <table className="w-full text-xs" data-testid="table-payment-extensions">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Date</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Extension Type</th>
-                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
+                  <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Date</th>
+                  <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Extension Type</th>
+                  <th className="text-right py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Amount</th>
+                  <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {extensions.map((ext: any, i: number) => (
                   <tr key={i} className="border-b border-slate-100 hover:bg-amber-50/30 transition-colors">
-                    <td className="py-2.5 px-3">{ext.extensionDate ? new Date(ext.extensionDate).toLocaleDateString('en-ZA') : ext.date || '-'}</td>
-                    <td className="py-2.5 px-3">{ext.extensionType || ext.type || ext.description || '-'}</td>
-                    <td className="py-2.5 px-3 text-right font-mono">{(ext.amount ?? ext.extensionAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{fmtDate(ext.extensionDate ?? ext.date)}</td>
+                    <td className="py-2.5 px-3 text-slate-700">{ext.extensionType || ext.type || ext.description || '-'}</td>
+                    <td className="py-2.5 px-3 text-right font-mono">{fmtAmt(ext.amount ?? ext.extensionAmount)}</td>
                     <td className="py-2.5 px-3"><Badge variant="outline" className="text-[10px]">{ext.status || '-'}</Badge></td>
                   </tr>
                 ))}
@@ -394,34 +420,34 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
         </div>
         {hasPaymentAmounts ? (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm" data-testid="table-payment-amounts">
+            <table className="w-full text-xs" data-testid="table-payment-amounts">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Receipt No</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Date</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Payment Type</th>
-                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Cashier</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Cash Book</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Card/Cheque</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Cancel Reason</th>
+                <tr className="bg-slate-100 border-b border-slate-200">
+                  <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Receipt No</th>
+                  <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Date</th>
+                  <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Payment Type</th>
+                  <th className="text-right py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Amount</th>
+                  <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Cashier</th>
+                  <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Cash Book</th>
+                  <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Card/Cheque</th>
+                  <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Cancel Reason</th>
                 </tr>
               </thead>
               <tbody>
                 {paymentAmounts.map((pa: any, i: number) => (
                   <tr key={i} className={`border-b border-slate-100 hover:bg-indigo-50/30 transition-colors ${pa.cancelReson ? 'bg-red-50/30' : ''}`}>
-                    <td className="py-2.5 px-3 font-mono text-xs font-medium">{pa.receiptNo || '-'}</td>
+                    <td className="py-2.5 px-3 font-mono font-medium">{pa.receiptNo || '-'}</td>
                     <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{pa.receiptDate ? new Date(pa.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
                     <td className="py-2.5 px-3">
                       <Badge variant="outline" className={`text-[10px] ${pa.paymentType === 'Cash' ? 'bg-green-50 text-green-700 border-green-200' : pa.paymentType === 'Credit Card' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
                         {pa.paymentType || '-'}
                       </Badge>
                     </td>
-                    <td className="py-2.5 px-3 text-right font-mono font-semibold">{(pa.amount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                    <td className="py-2.5 px-3 text-slate-600 text-xs">{pa.cashier || '-'}</td>
-                    <td className="py-2.5 px-3 text-slate-500 text-xs">{pa.cashBook || '-'}</td>
-                    <td className="py-2.5 px-3 text-slate-500 text-xs font-mono">{pa.cardChequeDetail || '-'}</td>
-                    <td className="py-2.5 px-3 text-xs">{pa.cancelReson ? <span className="text-red-600 font-medium">{pa.cancelReson}</span> : '-'}</td>
+                    <td className="py-2.5 px-3 text-right font-mono font-semibold">{fmtAmt(pa.amount)}</td>
+                    <td className="py-2.5 px-3 text-slate-600">{pa.cashier || '-'}</td>
+                    <td className="py-2.5 px-3 text-slate-500">{pa.cashBook || '-'}</td>
+                    <td className="py-2.5 px-3 text-slate-500 font-mono">{pa.cardChequeDetail || '-'}</td>
+                    <td className="py-2.5 px-3">{pa.cancelReson ? <span className="text-red-600 font-medium">{pa.cancelReson}</span> : '-'}</td>
                   </tr>
                 ))}
               </tbody>
