@@ -827,13 +827,21 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
                       return String(val ?? '').replace(/"/g, '""');
                     })
                   );
-                  const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n');
-                  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                  const acctLabel = accountNumber || String(accountId);
+                  const meterLabel = selectedMeter?.physicalMeterNo || selectedMeter?.meterNo || 'N/A';
+                  const infoRows = [
+                    `"Account Number:","${acctLabel}"`,
+                    `"Report:","Meter Reading History"`,
+                    `"Meter No:","${meterLabel}"`,
+                    `"Financial Year:","${selectedFinYear}"`,
+                    '',
+                  ].join('\n');
+                  const csv = infoRows + '\n' + [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n');
+                  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement('a');
                   a.href = url;
-                  const acctLabel = accountNumber || String(accountId);
-                  a.download = `MeterReadingHistory_${acctLabel}_${selectedFinYear}_${selectedMeter?.physicalMeterNo || selectedMeter?.meterNo || 'export'}.csv`;
+                  a.download = `MeterReadingHistory_${acctLabel}_${selectedFinYear}_${meterLabel || 'export'}.csv`;
                   a.click();
                   URL.revokeObjectURL(url);
                 }}

@@ -224,7 +224,14 @@ export function TransactionSummaryTab({ accountId, accountNumber }: { accountId:
       return s;
     };
 
-    const allRows: string[] = [headers.map(escapeCsv).join(',')];
+    const yearLabel = multiView ? selectedYears.join(', ') : selectedYear;
+    const allRows: string[] = [
+      `Account Number:,${escapeCsv(accNum)}`,
+      `Report:,Transaction Summary`,
+      `Financial Year:,${escapeCsv(yearLabel)}`,
+      '',
+      headers.map(escapeCsv).join(','),
+    ];
     for (const period of periodsToExport) {
       if (!period.hasData) continue;
       period.pivotData.forEach((row: any) => {
@@ -242,8 +249,8 @@ export function TransactionSummaryTab({ accountId, accountNumber }: { accountId:
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    const yearLabel = multiView ? selectedYears.map(y => y.replace('/', '-')).join('_') : selectedYear.replace('/', '-');
-    a.download = `Transaction_Summary_${accNum}_${yearLabel}.csv`;
+    const fileYearLabel = multiView ? selectedYears.map(y => y.replace('/', '-')).join('_') : selectedYear.replace('/', '-');
+    a.download = `Transaction_Summary_${accNum}_${fileYearLabel}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -604,6 +611,7 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
     setDownloading(true);
     const monthsToFetch = finYearMonths.slice(fromIdx, toIdx + 1);
     const allCsvParts: string[] = [];
+    const acctLabel = accountNumber || String(accountId);
     const headers = 'Transaction Date,Transaction Description,Receipt ID / Doc Transaction ID,Document Number,Tariff,Amount,Interest,VAT,Total';
 
     try {
@@ -613,6 +621,11 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
         const result = await getBillingPeriodTransactions(accountId, downloadYear, month);
         const rows = Array.isArray(result) ? result : [];
         if (i === 0) {
+          allCsvParts.push(`Account Number:,${acctLabel}`);
+          allCsvParts.push(`Report:,Detailed Transactions`);
+          allCsvParts.push(`Financial Year:,${downloadYear}`);
+          allCsvParts.push(`Period:,"${downloadFromMonth} to ${downloadToMonth}"`);
+          allCsvParts.push('');
           allCsvParts.push(headers);
         }
         allCsvParts.push(`\n"--- ${month} ${downloadYear} ---"`);

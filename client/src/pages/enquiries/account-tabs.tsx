@@ -739,9 +739,10 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
   );
 }
 
-function downloadCsvFromRows(headers: string[], rows: string[][], filename: string) {
+function downloadCsvFromRows(headers: string[], rows: string[][], filename: string, infoRows?: string[][]) {
   const escape = (v: string) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const csv = [headers.map(escape).join(','), ...rows.map(r => r.map(escape).join(','))].join('\n');
+  const infoPart = infoRows ? infoRows.map(r => r.map(escape).join(',')).join('\n') + '\n\n' : '';
+  const csv = infoPart + [headers.map(escape).join(','), ...rows.map(r => r.map(escape).join(','))].join('\n');
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1075,7 +1076,12 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
                   String(item.totalOutStanding ?? item.totalOutstandingAmount ?? 0),
                   ...agingCols.map(col => String(getVal(item, col.keys) ?? '')),
                 ]);
-                downloadCsvFromRows(headers, rows, `Balance_Debt_${accountNumber || accountId}_${new Date().toISOString().slice(0, 10)}.csv`);
+                const acctLabel = accountNumber || String(accountId);
+                downloadCsvFromRows(headers, rows, `Balance_Debt_${acctLabel}_${new Date().toISOString().slice(0, 10)}.csv`, [
+                  ['Account Number:', acctLabel],
+                  ['Report:', 'Total Balance / Debt Inquiry'],
+                  ['Date:', new Date().toLocaleDateString('en-ZA')],
+                ]);
               }} />
             )}
             <button
@@ -1144,7 +1150,12 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
                   String(p.repaymentPeriod ?? '-'),
                   String(p.remainingPeriod ?? '-'),
                 ]);
-                downloadCsvFromRows(headers, rows, `Capital_Amounts_${accountNumber || accountId}_${new Date().toISOString().slice(0, 10)}.csv`);
+                const acctLabel2 = accountNumber || String(accountId);
+                downloadCsvFromRows(headers, rows, `Capital_Amounts_${acctLabel2}_${new Date().toISOString().slice(0, 10)}.csv`, [
+                  ['Account Number:', acctLabel2],
+                  ['Report:', 'Debtors - Remaining Capital Amounts'],
+                  ['Date:', new Date().toLocaleDateString('en-ZA')],
+                ]);
               }} />
             )}
             {capitalPlans.length > 0 && (
@@ -1286,7 +1297,12 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
                   p.cashBook || p.cashBookName || '-',
                   p.cancellationReason || p.reasonForCancellation || '',
                 ]);
-                downloadCsvFromRows(headers, rows, `Payments_Received_${accountNumber || accountId}_${new Date().toISOString().slice(0, 10)}.csv`);
+                const acctLabel3 = accountNumber || String(accountId);
+                downloadCsvFromRows(headers, rows, `Payments_Received_${acctLabel3}_${new Date().toISOString().slice(0, 10)}.csv`, [
+                  ['Account Number:', acctLabel3],
+                  ['Report:', 'Payments Received'],
+                  ['Date:', new Date().toLocaleDateString('en-ZA')],
+                ]);
               }} />
             )}
             <Badge variant="outline" className="bg-white/20 text-white border-white/30 text-[10px]">{payments.length}</Badge>
@@ -1355,7 +1371,12 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
                   rv.receiptType || rv.transactionType || '-',
                   String(rv.amount || rv.receiptAmount || 0),
                 ]);
-                downloadCsvFromRows(headers, rows, `Payment_Reversals_${accountNumber || accountId}_${new Date().toISOString().slice(0, 10)}.csv`);
+                const acctLabel4 = accountNumber || String(accountId);
+                downloadCsvFromRows(headers, rows, `Payment_Reversals_${acctLabel4}_${new Date().toISOString().slice(0, 10)}.csv`, [
+                  ['Account Number:', acctLabel4],
+                  ['Report:', 'Payment Reversals'],
+                  ['Date:', new Date().toLocaleDateString('en-ZA')],
+                ]);
               }} />
             )}
             <Badge variant="outline" className="bg-white/20 text-white border-white/30 text-[10px]">{reversals.length}</Badge>
