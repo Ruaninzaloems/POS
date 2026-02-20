@@ -192,8 +192,8 @@ export default function ThirdPartyPaymentProcessing() {
     }
   };
 
-  const lookupCurrentAccounts = async (accountNumbers: string[]): Promise<Map<string, string>> => {
-    const mapping = new Map<string, string>();
+  const lookupCurrentAccounts = async (accountNumbers: string[]): Promise<Map<string, { accountNumber: string; accountId: string; ownerName: string; propertyAddress: string }>> => {
+    const mapping = new Map<string, { accountNumber: string; accountId: string; ownerName: string; propertyAddress: string }>();
     const unique = Array.from(new Set(accountNumbers.filter(a => a.length > 0)));
     if (unique.length === 0) return mapping;
     const batchSize = 10;
@@ -201,16 +201,22 @@ export default function ThirdPartyPaymentProcessing() {
     for (let i = 0; i < unique.length; i += batchSize) {
       const batchNum = Math.floor(i / batchSize) + 1;
       const processed = Math.min(i + batchSize, unique.length);
-      setLoadProgress({ step: `Checking account migrations (${processed}/${unique.length})...`, percent: 50 + Math.round((batchNum / totalBatches) * 45) });
+      setLoadProgress({ step: `Resolving consumer accounts (${processed}/${unique.length})...`, percent: 50 + Math.round((batchNum / totalBatches) * 45) });
       const batch = unique.slice(i, i + batchSize);
       const lookups = batch.map(async (accNo) => {
         try {
           const results = await platinumThirdPartyAccountSearch({ accountNo: accNo });
           if (Array.isArray(results) && results.length > 0) {
-            const currentAccNo = results[0].accountNumber || '';
-            if (currentAccNo && currentAccNo !== accNo) {
-              mapping.set(accNo, currentAccNo);
-            }
+            const result = results[0];
+            const currentAccNo = result.accountNumber || '';
+            const currentAccId = result.accountId || '';
+            const resolvedAcct = currentAccId || currentAccNo;
+            mapping.set(accNo, {
+              accountNumber: currentAccNo,
+              accountId: currentAccId,
+              ownerName: result.ownerName || '',
+              propertyAddress: result.propertyAddress || '',
+            });
           }
         } catch (e) {
           console.warn(`Account lookup failed for ${accNo}:`, e);
@@ -229,7 +235,7 @@ export default function ThirdPartyPaymentProcessing() {
     try {
       const txns = await platinumThirdPartyGetTransactions(useId);
       if (Array.isArray(txns)) {
-        setLoadProgress({ step: `Loaded ${txns.length} transaction(s). Checking account numbers...`, percent: 40 });
+        setLoadProgress({ step: `Loaded ${txns.length} transaction(s). Resolving consumer accounts...`, percent: 40 });
         const fileAccounts = txns.map((t: any) => t.oldAccountNumber || t.accountNumber || t.accountNo || '');
         const migrationMap = await lookupCurrentAccounts(fileAccounts);
 
@@ -237,14 +243,14 @@ export default function ThirdPartyPaymentProcessing() {
         setTransactions(txns.map((t: any, i: number) => {
           const oldAcct = t.oldAccountNumber || t.accountNumber || t.accountNo || '';
           const apiNewAcct = t.newAccountNumber || '';
-          const lookupNewAcct = migrationMap.get(oldAcct) || '';
-          const newAcct = apiNewAcct && apiNewAcct !== oldAcct ? apiNewAcct : (lookupNewAcct || oldAcct);
-          const mismatch = oldAcct !== '' && newAcct !== '' && oldAcct !== newAcct;
+          const lookupResult = migrationMap.get(oldAcct);
+          const resolvedAcct = lookupResult ? (lookupResult.accountId || lookupResult.accountNumber || oldAcct) : (apiNewAcct || oldAcct);
+          const mismatch = oldAcct !== '' && resolvedAcct !== '' && oldAcct !== resolvedAcct;
           return {
             index: t.index ?? i,
             accountNumber: oldAcct,
             oldAccountNumber: oldAcct,
-            newAccountNumber: newAcct,
+            newAccountNumber: resolvedAcct,
             documentNumber: t.documentNumber || '',
             amount: t.amount || 0,
             reference: t.reference || t.paymentReference || '',
@@ -253,8 +259,8 @@ export default function ThirdPartyPaymentProcessing() {
             isValid: t.isValid !== false,
             isDuplicate: t.isDuplicate || false,
             validationMessage: t.validationMessage || t.statusMessage || '',
-            ownerName: t.ownerName || t.name || '',
-            propertyAddress: t.propertyAddress || t.address || '',
+            ownerName: lookupResult?.ownerName || t.ownerName || t.name || '',
+            propertyAddress: lookupResult?.propertyAddress || t.propertyAddress || t.address || '',
             hasAccountMismatch: mismatch,
           };
         }));
