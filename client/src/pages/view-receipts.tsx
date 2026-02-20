@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { Search, Printer, Loader2, X, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, FileText, Banknote, CheckCircle2, AlertCircle, BookOpen } from 'lucide-react';
+import { Search, Printer, Loader2, X, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, FileText, CheckCircle2, AlertCircle, BookOpen } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { cn } from '@/lib/utils';
 import {
@@ -16,14 +16,12 @@ import {
     searchReceiptNumbers,
     fetchReceiptList,
     searchSebataReceipts,
-    searchReceiptsByEftDescription,
     searchCashbookTransactionTrace,
     fetchActiveFinYear,
     CashbookTransactionTraceResult,
     ViewReceiptCashier,
     ViewReceiptItem,
     ReceiptSearchQuery,
-    EftDescriptionSearchResult,
     platinumPrintReceiptRaw,
     fetchPosMultiReceiptPrint,
 } from '@/lib/external-api';
@@ -122,16 +120,12 @@ export default function ViewReceipts() {
     const [sortDir, setSortDir] = useState<SortDir>('desc');
     const [showFilters, setShowFilters] = useState(false);
 
-    const [eftDescriptionFilter, setEftDescriptionFilter] = useState('');
-    const [eftSearching, setEftSearching] = useState(false);
-    const [eftResults, setEftResults] = useState<EftDescriptionSearchResult[] | null>(null);
-    const [eftSearchInfo, setEftSearchInfo] = useState<{ totalBankReconItems: number; matchingItems: number } | null>(null);
-
     const [cashbookSearchText, setCashbookSearchText] = useState('');
     const [cashbookFinYear, setCashbookFinYear] = useState('');
     const [cashbookMonth, setCashbookMonth] = useState<string>('');
     const [cashbookSearching, setCashbookSearching] = useState(false);
     const [cashbookResults, setCashbookResults] = useState<CashbookTransactionTraceResult[] | null>(null);
+    const [cashbookSearchStatus, setCashbookSearchStatus] = useState('');
 
     useEffect(() => {
         const loadCashiers = async () => {
@@ -297,59 +291,34 @@ export default function ViewReceipts() {
         }
     };
 
-    const handleEftDescriptionSearch = async () => {
-        if (!eftDescriptionFilter || eftDescriptionFilter.length < 3) {
-            toast({ title: "Search Too Short", description: "Please enter at least 3 characters of the EFT description.", variant: "destructive" });
-            return;
-        }
-        setEftSearching(true);
-        setEftResults(null);
-        setEftSearchInfo(null);
-        setReceipts([]);
-        setTotalCount(0);
-        setDataSource('none');
-        try {
-            const fDate = fromDate ? format(fromDate, "yyyy-MM-dd'T'00:00:00") : undefined;
-            const tDate = toDate ? format(toDate, "yyyy-MM-dd'T'23:59:59") : undefined;
-            const result = await searchReceiptsByEftDescription(eftDescriptionFilter, fDate, tDate);
-            setEftResults(result.results);
-            setEftSearchInfo({ totalBankReconItems: result.totalBankReconItems, matchingItems: result.matchingItems });
-            if (result.results.length === 0) {
-                toast({ title: "No Matches", description: `No EFT transactions found matching "${eftDescriptionFilter}".` });
-            }
-        } catch (e: any) {
-            toast({ title: "Search Failed", description: e.message || "Failed to search by EFT description.", variant: "destructive" });
-        } finally {
-            setEftSearching(false);
-        }
-    };
-
     const handleCashbookTraceSearch = async () => {
         if (!cashbookSearchText || cashbookSearchText.length < 3) {
             toast({ title: "Search Too Short", description: "Please enter at least 3 characters for the bank reference search.", variant: "destructive" });
             return;
         }
         setCashbookSearching(true);
-        setCashbookResults(null);
-        setEftResults(null);
-        setEftSearchInfo(null);
+        setCashbookResults([]);
+        setCashbookSearchStatus('Searching cashbook transactions...');
         setReceipts([]);
         setTotalCount(0);
         setDataSource('none');
         try {
             const monthNum = (cashbookMonth && cashbookMonth !== '__all__') ? parseInt(cashbookMonth, 10) : undefined;
+            setCashbookSearchStatus(`Querying Platinum API for "${cashbookSearchText}"...`);
             const results = await searchCashbookTransactionTrace(
                 cashbookSearchText,
                 cashbookFinYear || undefined,
                 monthNum
             );
             setCashbookResults(results);
+            setCashbookSearchStatus('');
             if (results.length === 0) {
                 toast({ title: "No Results", description: `No cashbook transactions found matching "${cashbookSearchText}".` });
             } else {
                 toast({ title: "Results Found", description: `Found ${results.length} cashbook transaction${results.length !== 1 ? 's' : ''}.` });
             }
         } catch (e: any) {
+            setCashbookSearchStatus('');
             toast({ title: "Search Failed", description: e.message || "Cashbook transaction trace search failed.", variant: "destructive" });
         } finally {
             setCashbookSearching(false);
@@ -383,11 +352,9 @@ export default function ViewReceipts() {
         setToDate(new Date());
         setAccountFilter("");
         setReceiptFilter("");
-        setEftDescriptionFilter("");
-        setEftResults(null);
-        setEftSearchInfo(null);
         setCashbookSearchText('');
         setCashbookResults(null);
+        setCashbookSearchStatus('');
         setReceipts([]);
         setTotalCount(0);
         setCurrentPage(1);
@@ -788,45 +755,6 @@ export default function ViewReceipts() {
                             </div>
 
                             <div className="mt-4 border-t border-dashed border-slate-200 pt-4">
-                                <div className="grid grid-cols-1 md:grid-cols-[120px_1fr_auto] items-start md:items-center gap-1 md:gap-4">
-                                    <label className="text-sm font-medium text-left md:text-right text-slate-600 whitespace-nowrap flex items-center gap-1">
-                                        <Banknote className="w-3.5 h-3.5 text-green-600" />
-                                        EFT Description
-                                    </label>
-                                    <div className="relative">
-                                        <Input
-                                            className="h-9 font-mono text-xs"
-                                            value={eftDescriptionFilter}
-                                            onChange={e => setEftDescriptionFilter(e.target.value)}
-                                            onKeyDown={e => e.key === 'Enter' && handleEftDescriptionSearch()}
-                                            placeholder="Paste EFT description e.g. MAGTAPE CREDIT USER 9634 SEQ/CAPITEC..."
-                                            data-testid="input-eft-description"
-                                        />
-                                        {eftDescriptionFilter && (
-                                            <button
-                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                                                onClick={() => { setEftDescriptionFilter(""); setEftResults(null); setEftSearchInfo(null); }}
-                                                type="button"
-                                            >
-                                                <X className="w-3.5 h-3.5" />
-                                            </button>
-                                        )}
-                                    </div>
-                                    <Button
-                                        size="sm"
-                                        className="bg-green-700 hover:bg-green-800 text-xs gap-1.5 whitespace-nowrap"
-                                        onClick={handleEftDescriptionSearch}
-                                        disabled={eftSearching || !eftDescriptionFilter}
-                                        data-testid="button-eft-search"
-                                    >
-                                        {eftSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
-                                        Find EFT Receipt
-                                    </Button>
-                                </div>
-                                <p className="text-[10px] text-slate-400 mt-1 md:ml-[136px]">Search Direct Deposit bank recon items by description to find allocation receipts</p>
-                            </div>
-
-                            <div className="mt-4 border-t border-dashed border-slate-200 pt-4">
                                 <div className="grid grid-cols-1 md:grid-cols-[120px_1fr] items-start md:items-center gap-1 md:gap-4 mb-3">
                                     <label className="text-sm font-medium text-left md:text-right text-slate-600 whitespace-nowrap flex items-center gap-1">
                                         <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
@@ -908,97 +836,38 @@ export default function ViewReceipts() {
                     </div>
                 </div>
 
-                {eftResults !== null && (
-                    <div className="p-3 sm:p-6 border-b border-slate-200">
-                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider border-l-2 border-green-500 pl-2 mb-3 flex items-center gap-2">
-                            <Banknote className="w-3.5 h-3.5 text-green-600" />
-                            EFT Description Search Results
-                            {eftSearchInfo && <span className="text-green-600 font-normal normal-case">({eftSearchInfo.matchingItems} match{eftSearchInfo.matchingItems !== 1 ? 'es' : ''} found in {eftSearchInfo.totalBankReconItems} bank recon items)</span>}
-                        </div>
-                        {eftResults.length === 0 ? (
-                            <div className="text-center py-6 text-slate-400 text-sm">
-                                <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                                No EFT transactions matching this description were found.
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {eftResults.map((item: any, idx: number) => (
-                                    <div key={idx} className={`border rounded-lg overflow-hidden ${item.allocated ? 'border-green-200 bg-green-50/30' : 'border-amber-200 bg-amber-50/30'}`} data-testid={`eft-result-${idx}`}>
-                                        <div className="px-4 py-3 flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
-                                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                                                {item.allocated ? (
-                                                    <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                                ) : (
-                                                    <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                                                )}
-                                                <div className="min-w-0 flex-1">
-                                                    <p className="text-xs font-mono font-medium text-slate-800 break-all" title={item.description}>{item.description || '(no description)'}</p>
-                                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-[10px] text-slate-500">
-                                                        <span>POS Item #{item.posItemId}</span>
-                                                        <span>Bank Recon #{item.bankReconId}</span>
-                                                        <span>Txn Date: {item.dateOfTransaction ? new Date(item.dateOfTransaction).toLocaleDateString('en-ZA') : 'N/A'}</span>
-                                                        {item.cashbookTransactionID && <span className="text-blue-600 font-semibold">Cashbook Txn #{item.cashbookTransactionID}</span>}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-sm font-bold font-mono text-slate-800">R {item.amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
-                                                <Badge variant={item.allocated ? 'default' : 'outline'} className={item.allocated ? 'bg-green-600 text-[10px]' : 'text-amber-700 border-amber-400 text-[10px]'}>
-                                                    {item.allocated ? 'Allocated' : 'Not Allocated'}
-                                                </Badge>
-                                            </div>
-                                        </div>
-                                        {item.allocated && (
-                                            <div className="border-t border-green-200 bg-white/50 px-4 py-2">
-                                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px]">
-                                                    {item.dateAllocated && (
-                                                        <span className="text-green-700">
-                                                            <span className="font-semibold">Allocated:</span> {new Date(item.dateAllocated).toLocaleDateString('en-ZA')} {new Date(item.dateAllocated).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
-                                                        </span>
-                                                    )}
-                                                    {item.dateCaptured && (
-                                                        <span className="text-slate-600">
-                                                            <span className="font-semibold">Captured:</span> {new Date(item.dateCaptured).toLocaleDateString('en-ZA')}
-                                                        </span>
-                                                    )}
-                                                    {item.capturerID && (
-                                                        <span className="text-slate-600">
-                                                            <span className="font-semibold">Capturer ID:</span> {item.capturerID}
-                                                        </span>
-                                                    )}
-                                                    {item.cashbookTransactionID && (
-                                                        <span className="text-blue-700 font-medium">
-                                                            <span className="font-semibold">Cashbook Transaction ID:</span> {item.cashbookTransactionID}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )}
-                                        {!item.allocated && (
-                                            <div className="border-t border-amber-200 bg-white/50 px-4 py-2 text-[10px] text-amber-600 italic">
-                                                This EFT transaction has not been allocated yet.
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {cashbookResults !== null && (
+                {(cashbookResults !== null || cashbookSearching) && (
                     <div className="p-3 sm:p-6 border-b border-slate-200">
                         <div className="text-xs font-bold text-slate-500 uppercase tracking-wider border-l-2 border-indigo-500 pl-2 mb-3 flex items-center gap-2">
                             <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
                             Cashbook Transaction Trace Results
-                            <span className="text-indigo-600 font-normal normal-case">({cashbookResults.length} result{cashbookResults.length !== 1 ? 's' : ''})</span>
+                            {cashbookSearching && <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" />}
+                            {!cashbookSearching && cashbookResults && <span className="text-indigo-600 font-normal normal-case">({cashbookResults.length} result{cashbookResults.length !== 1 ? 's' : ''})</span>}
                         </div>
-                        {cashbookResults.length === 0 ? (
+                        {cashbookSearching && (
+                            <div className="mb-4">
+                                <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                                    <div className="bg-indigo-600 h-1.5 rounded-full animate-pulse" style={{ width: '100%', animation: 'indeterminate 1.5s ease-in-out infinite' }} />
+                                </div>
+                                <p className="text-xs text-indigo-600 mt-2 flex items-center gap-2">
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    {cashbookSearchStatus || 'Searching...'}
+                                </p>
+                                <style>{`
+                                    @keyframes indeterminate {
+                                        0% { transform: translateX(-100%); }
+                                        50% { transform: translateX(0%); }
+                                        100% { transform: translateX(100%); }
+                                    }
+                                `}</style>
+                            </div>
+                        )}
+                        {!cashbookSearching && cashbookResults && cashbookResults.length === 0 ? (
                             <div className="text-center py-6 text-slate-400 text-sm">
                                 <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                                 No cashbook transactions matching this search were found.
                             </div>
-                        ) : (
+                        ) : !cashbookSearching && cashbookResults && cashbookResults.length > 0 && (
                             <div className="overflow-x-auto">
                                 <Table>
                                     <TableHeader>
