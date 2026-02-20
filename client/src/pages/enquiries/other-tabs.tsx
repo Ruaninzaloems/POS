@@ -373,8 +373,7 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
   const [addressHistory, setAddressHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showContactHistory, setShowContactHistory] = useState(false);
-  const [showAddressHistory, setShowAddressHistory] = useState(false);
+  const [activeSection, setActiveSection] = useState<'contact' | 'delivery' | 'contact-history' | 'address-history'>('contact');
   const prevAccountId = useRef<number | null>(null);
 
   const load = useCallback(async () => {
@@ -414,174 +413,254 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
   const c = contactData || {};
   const da = deliveryAddr[0] || {};
 
-  const phoneFormat = '(### ######) / +27## #######)';
+  const mobile = n.tel_Mobile || c.mobile || c.tel_Mobile || '';
+  const home = n.tel_Home || c.homePhone || c.tel_Home || '';
+  const work = n.tel_Work || c.workPhone || c.tel_Work || '';
+  const fax = n.fax || c.fax || '';
+  const email = n.email || c.email || c.emailAddress || '';
+  const addEmails = [c.additionalEmail1, c.additionalEmail2, c.additionalEmail3, c.additionalEmail4].filter(Boolean);
+
+  const fullAddr = [da.streetNumber, da.streetName, da.suburbName || da.suburb, da.town, da.postalCode].filter(Boolean).join(', ');
+
+  const navItems = [
+    { id: 'contact' as const, label: 'Contact Details', icon: <Phone className="w-4 h-4" />, color: 'blue' },
+    { id: 'delivery' as const, label: 'Delivery Address', icon: <MapPin className="w-4 h-4" />, color: 'emerald' },
+    { id: 'contact-history' as const, label: 'Contact History', icon: <Clock className="w-4 h-4" />, badge: contactHistory.length, color: 'indigo' },
+    { id: 'address-history' as const, label: 'Address History', icon: <Clock className="w-4 h-4" />, badge: addressHistory.length, color: 'amber' },
+  ];
+
+  const ContactField = ({ icon, label, value, testId, highlight }: { icon: React.ReactNode; label: string; value: string; testId: string; highlight?: boolean }) => (
+    <div className={`flex items-start gap-3 p-3.5 rounded-xl border transition-all ${value ? (highlight ? 'bg-blue-50/60 border-blue-200' : 'bg-white border-slate-200 hover:border-slate-300') : 'bg-slate-50/50 border-slate-100'}`} data-testid={testId}>
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${value ? (highlight ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-500') : 'bg-slate-100 text-slate-300'}`}>
+        {icon}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-0.5">{label}</p>
+        <p className={`text-sm font-medium truncate ${value ? 'text-slate-800' : 'text-slate-300 italic'}`}>{value || 'Not provided'}</p>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="p-5 space-y-5" data-testid="contact-info-panel">
+    <div className="p-5" data-testid="contact-info-panel">
+      <div className="flex items-center gap-3 mb-5">
+        <div className="h-1 w-8 bg-blue-600 rounded-full" />
+        <h3 className="text-lg font-bold text-slate-800 tracking-tight">Contact & Delivery Information</h3>
+      </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2" data-testid="section-contact-details">
-          <Phone className="w-4 h-4 text-white" />
-          <h3 className="text-sm font-semibold text-white tracking-wide">Contact Details</h3>
-        </div>
-        <div className="p-5">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-8 gap-y-4">
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs text-slate-400 block mb-0.5">Telephone (Mobile)</label>
-                <div className="flex items-center gap-2">
-                  <input readOnly className="flex-1 bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={n.tel_Mobile || c.mobile || c.tel_Mobile || ''} data-testid="input-tel-mobile" />
-                </div>
-                <span className="text-[10px] text-slate-400 italic">{phoneFormat}</span>
-              </div>
-              <div>
-                <label className="text-xs text-slate-400 block mb-0.5">Telephone (Home)</label>
-                <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={n.tel_Home || c.homePhone || c.tel_Home || ''} data-testid="input-tel-home" />
-                <span className="text-[10px] text-slate-400 italic">{phoneFormat}</span>
-              </div>
-              <div>
-                <label className="text-xs text-slate-400 block mb-0.5">Telephone (Work)</label>
-                <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={n.tel_Work || c.workPhone || c.tel_Work || ''} data-testid="input-tel-work" />
-                <span className="text-[10px] text-slate-400 italic">{phoneFormat}</span>
+      <div className="flex flex-wrap gap-2 mb-5" data-testid="contact-nav">
+        {navItems.map(item => {
+          const isActive = activeSection === item.id;
+          const colorMap: Record<string, { active: string; inactive: string }> = {
+            blue: { active: 'bg-blue-600 text-white shadow-blue-200', inactive: 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-700' },
+            emerald: { active: 'bg-emerald-600 text-white shadow-emerald-200', inactive: 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300 hover:text-emerald-700' },
+            indigo: { active: 'bg-indigo-600 text-white shadow-indigo-200', inactive: 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:text-indigo-700' },
+            amber: { active: 'bg-amber-600 text-white shadow-amber-200', inactive: 'bg-white text-slate-600 border-slate-200 hover:border-amber-300 hover:text-amber-700' },
+          };
+          const colors = colorMap[item.color] || colorMap.blue;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActiveSection(item.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold border transition-all ${isActive ? `${colors.active} border-transparent shadow-lg` : colors.inactive}`}
+              data-testid={`nav-${item.id}`}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+              {item.badge != null && item.badge > 0 && (
+                <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isActive ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                  {item.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {activeSection === 'contact' && (
+        <div className="space-y-5 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+              <Phone className="w-4 h-4 text-white" />
+              <h4 className="text-sm font-semibold text-white tracking-wide">Phone & Email</h4>
+            </div>
+
+            <div className="p-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                <ContactField icon={<Phone className="w-4 h-4" />} label="Mobile" value={mobile} testId="input-tel-mobile" highlight />
+                <ContactField icon={<Phone className="w-4 h-4" />} label="Home" value={home} testId="input-tel-home" />
+                <ContactField icon={<Phone className="w-4 h-4" />} label="Work" value={work} testId="input-tel-work" />
+                <ContactField icon={<Receipt className="w-4 h-4" />} label="Fax" value={fax} testId="input-fax" />
+                <ContactField icon={<Mail className="w-4 h-4" />} label="Email Address" value={email} testId="input-email" highlight />
               </div>
             </div>
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs text-slate-400 block mb-0.5">Fax</label>
-                <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={n.fax || c.fax || ''} data-testid="input-fax" />
-              </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 flex items-center gap-2">
+              <Mail className="w-4 h-4 text-white" />
+              <h4 className="text-sm font-semibold text-white tracking-wide">Additional Statement Emails</h4>
+              {addEmails.length > 0 && <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{addEmails.length}</Badge>}
             </div>
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs text-slate-400 block mb-0.5">Email Address</label>
-                <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={n.email || c.email || c.emailAddress || ''} data-testid="input-email" />
+
+            <div className="px-5 py-3 bg-amber-50 border-b border-amber-100 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+              <p className="text-[11px] text-amber-700 leading-relaxed">The primary email address above must be populated before additional emails will be considered. Statements emailed to the primary address will also be sent to any additional emails listed below.</p>
+            </div>
+
+            <div className="p-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <ContactField icon={<Mail className="w-4 h-4" />} label="Additional Email 1" value={c.additionalEmail1 || ''} testId="input-additional-email-1" />
+                <ContactField icon={<Mail className="w-4 h-4" />} label="Additional Email 2" value={c.additionalEmail2 || ''} testId="input-additional-email-2" />
+                <ContactField icon={<Mail className="w-4 h-4" />} label="Additional Email 3" value={c.additionalEmail3 || ''} testId="input-additional-email-3" />
+                <ContactField icon={<Mail className="w-4 h-4" />} label="Additional Email 4" value={c.additionalEmail4 || ''} testId="input-additional-email-4" />
               </div>
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
-        <div className="px-4 py-2.5 bg-gradient-to-r from-blue-50 to-white border-b border-slate-200">
-          <span className="text-sm font-semibold text-slate-700">Additional Statement Emails</span>
-          <p className="text-[10px] text-orange-600 mt-0.5">NOTE: The Primary Email Address above needs to be populated with a valid Email Address in Contact Details before this form will be considered. If you enter email addresses here and statements are emailed to these, it will receive it as well. Clearing a field and Saving will delete the additional Email.</p>
-        </div>
-        <div className="p-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
-            <div>
-              <label className="text-xs text-slate-400 block mb-0.5">Additional Email Address 1</label>
-              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={c.additionalEmail1 || ''} data-testid="input-additional-email-1" />
-            </div>
-            <div>
-              <label className="text-xs text-slate-400 block mb-0.5">Additional Email Address 2</label>
-              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={c.additionalEmail2 || ''} data-testid="input-additional-email-2" />
-            </div>
-            <div>
-              <label className="text-xs text-slate-400 block mb-0.5">Additional Email Address 3</label>
-              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={c.additionalEmail3 || ''} data-testid="input-additional-email-3" />
-            </div>
-            <div>
-              <label className="text-xs text-slate-400 block mb-0.5">Additional Email Address 4</label>
-              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={c.additionalEmail4 || ''} data-testid="input-additional-email-4" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <button
-        onClick={() => setShowContactHistory(!showContactHistory)}
-        className="text-sm font-semibold text-blue-700 underline hover:text-blue-900 transition-colors flex items-center gap-1"
-        data-testid="toggle-contact-history"
-      >
-        <Clock className="w-3.5 h-3.5" />
-        Contact Details History
-        {showContactHistory ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-      </button>
-      {showContactHistory && (
-        <PaginatedTable
-          data={contactHistory}
-          tableId="contact-history"
-          columns={[
-            { key: 'changeDate', label: 'Date', render: (r: any) => { try { return r.changeDate ? new Date(r.changeDate).toLocaleDateString('en-ZA') : r.date || ''; } catch { return r.changeDate || ''; } } },
-            { key: 'fieldName', label: 'Field', render: (r: any) => r.fieldName || r.field || r.description || '' },
-            { key: 'oldValue', label: 'Old Value', render: (r: any) => r.oldValue || r.previousValue || '' },
-            { key: 'newValue', label: 'New Value', render: (r: any) => r.newValue || r.currentValue || '' },
-            { key: 'changedBy', label: 'Changed By', render: (r: any) => r.changedBy || r.user || '' },
-          ]}
-        />
       )}
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2" data-testid="section-delivery-address">
-          <MapPin className="w-4 h-4 text-white" />
-          <h3 className="text-sm font-semibold text-white tracking-wide">Delivery Address Details</h3>
-        </div>
-        <div className="p-5">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-3">
-            <div>
-              <label className="text-xs text-slate-400 block mb-0.5">Type of Delivery Address *</label>
-              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={da.typeofDeliveryAddress || da.typeOfDeliveryAddress || ''} data-testid="input-delivery-type" />
+      {activeSection === 'delivery' && (
+        <div className="space-y-5 animate-in fade-in duration-200">
+          {fullAddr && (
+            <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border border-emerald-200 p-5 flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-emerald-200">
+                <MapPin className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 mb-1">Full Delivery Address</p>
+                <p className="text-base font-semibold text-slate-800">{fullAddr}</p>
+                {da.careOf && <p className="text-xs text-slate-500 mt-1">c/o {da.careOf}</p>}
+              </div>
             </div>
-            <div>
-              <label className="text-xs text-slate-400 block mb-0.5">Complex Name</label>
-              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={da.complexName || ''} data-testid="input-complex-name" />
+          )}
+
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2" data-testid="section-delivery-address">
+              <MapPin className="w-4 h-4 text-white" />
+              <h4 className="text-sm font-semibold text-white tracking-wide">Address Breakdown</h4>
             </div>
-            <div>
-              <label className="text-xs text-slate-400 block mb-0.5">City / Town</label>
-              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={da.town || ''} data-testid="input-city" />
-            </div>
-            <div>
-              <label className="text-xs text-slate-400 block mb-0.5">Unit Number</label>
-              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={da.unitNumber || ''} data-testid="input-unit-number" />
-            </div>
-            <div>
-              <label className="text-xs text-slate-400 block mb-0.5">Suburb</label>
-              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={da.suburbName || da.suburb || ''} data-testid="input-suburb" />
-            </div>
-            <div>
-              <label className="text-xs text-slate-400 block mb-0.5">Postal Code *</label>
-              <input readOnly className="w-full bg-orange-50 border border-orange-300 rounded px-3 py-1.5 text-sm text-slate-700 font-medium" value={da.postalCode || ''} data-testid="input-postal-code" />
-            </div>
-            <div>
-              <label className="text-xs text-slate-400 block mb-0.5">Address Line 1</label>
-              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={da.streetNumber || ''} data-testid="input-address-line1" />
-            </div>
-            <div>
-              <label className="text-xs text-slate-400 block mb-0.5">Care Of</label>
-              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={da.careOf || ''} data-testid="input-care-of" />
-            </div>
-            <div>
-              <label className="text-xs text-slate-400 block mb-0.5">Address Line 2</label>
-              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={da.streetName || ''} data-testid="input-address-line2" />
-            </div>
-            <div />
-            <div>
-              <label className="text-xs text-slate-400 block mb-0.5">Address Line 3</label>
-              <input readOnly className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm text-slate-700" value={da.boxBagNo || ''} data-testid="input-address-line3" />
+
+            <div className="p-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                <ContactField icon={<FileText className="w-4 h-4" />} label="Delivery Type" value={da.typeofDeliveryAddress || da.typeOfDeliveryAddress || ''} testId="input-delivery-type" />
+                <ContactField icon={<Building2 className="w-4 h-4" />} label="Complex Name" value={da.complexName || ''} testId="input-complex-name" />
+                <ContactField icon={<Hash className="w-4 h-4" />} label="Unit Number" value={da.unitNumber || ''} testId="input-unit-number" />
+                <ContactField icon={<MapPin className="w-4 h-4" />} label="Address Line 1" value={da.streetNumber || ''} testId="input-address-line1" />
+                <ContactField icon={<MapPin className="w-4 h-4" />} label="Address Line 2" value={da.streetName || ''} testId="input-address-line2" />
+                <ContactField icon={<MapPin className="w-4 h-4" />} label="Address Line 3" value={da.boxBagNo || ''} testId="input-address-line3" />
+                <ContactField icon={<MapPin className="w-4 h-4" />} label="Suburb" value={da.suburbName || da.suburb || ''} testId="input-suburb" />
+                <ContactField icon={<MapPin className="w-4 h-4" />} label="City / Town" value={da.town || ''} testId="input-city" />
+                <ContactField icon={<MapPin className="w-4 h-4" />} label="Postal Code" value={da.postalCode || ''} testId="input-postal-code" highlight />
+                <ContactField icon={<MapPin className="w-4 h-4" />} label="Care Of" value={da.careOf || ''} testId="input-care-of" />
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <button
-        onClick={() => setShowAddressHistory(!showAddressHistory)}
-        className="text-sm font-semibold text-blue-700 underline hover:text-blue-900 transition-colors flex items-center gap-1"
-        data-testid="toggle-address-history"
-      >
-        <Clock className="w-3.5 h-3.5" />
-        Delivery Address Details History
-        {showAddressHistory ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-      </button>
-      {showAddressHistory && (
-        <PaginatedTable
-          data={addressHistory}
-          tableId="address-history"
-          columns={[
-            { key: 'changeDate', label: 'Date', render: (r: any) => { try { return r.changeDate ? new Date(r.changeDate).toLocaleDateString('en-ZA') : r.date || ''; } catch { return r.changeDate || ''; } } },
-            { key: 'address', label: 'Address', render: (r: any) => (r.address || r.deliveryAddress || '').replace(/\r\n/g, ', ') },
-            { key: 'changedBy', label: 'Changed By', render: (r: any) => r.changedBy || r.user || '' },
-          ]}
-        />
+      {activeSection === 'contact-history' && (
+        <div className="animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-white" />
+              <h4 className="text-sm font-semibold text-white tracking-wide">Contact Details Change History</h4>
+              {contactHistory.length > 0 && <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{contactHistory.length}</Badge>}
+            </div>
+
+            {contactHistory.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs" data-testid="table-contact-history">
+                  <thead>
+                    <tr className="bg-slate-100 border-b-2 border-slate-200">
+                      <th className="text-left py-2.5 px-4 font-bold text-slate-700 whitespace-nowrap">Date</th>
+                      <th className="text-left py-2.5 px-4 font-bold text-slate-700 whitespace-nowrap">Field</th>
+                      <th className="text-left py-2.5 px-4 font-bold text-slate-700 whitespace-nowrap">Old Value</th>
+                      <th className="text-left py-2.5 px-4 font-bold text-slate-700 whitespace-nowrap">New Value</th>
+                      <th className="text-left py-2.5 px-4 font-bold text-slate-700 whitespace-nowrap">Changed By</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {contactHistory.map((r: any, i: number) => (
+                      <tr key={i} className="border-b border-slate-100 hover:bg-indigo-50/30 transition-colors" data-testid={`contact-history-row-${i}`}>
+                        <td className="py-2.5 px-4 text-slate-600 whitespace-nowrap">{(() => { try { return r.changeDate ? new Date(r.changeDate).toLocaleDateString('en-ZA') : r.date || '-'; } catch { return r.changeDate || '-'; } })()}</td>
+                        <td className="py-2.5 px-4 font-medium text-slate-800">{r.fieldName || r.field || r.description || '-'}</td>
+                        <td className="py-2.5 px-4 text-red-500 font-mono">{r.oldValue || r.previousValue || '-'}</td>
+                        <td className="py-2.5 px-4 text-emerald-600 font-mono font-medium">{r.newValue || r.currentValue || '-'}</td>
+                        <td className="py-2.5 px-4 text-slate-500">{r.changedBy || r.user || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="py-12 px-5 flex flex-col items-center justify-center text-center">
+                <div className="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center mb-4">
+                  <Clock className="w-7 h-7 text-indigo-300" />
+                </div>
+                <p className="text-sm font-medium text-slate-500">No Contact History</p>
+                <p className="text-xs text-slate-400 mt-1">There are no recorded changes to contact details for this account</p>
+              </div>
+            )}
+
+            {contactHistory.length > 0 && (
+              <div className="flex items-center justify-end gap-2 px-4 py-2 bg-slate-50 border-t border-slate-200 text-xs text-slate-500">
+                <span>Items per page: <span className="border rounded px-2 py-0.5 bg-white">50</span></span>
+                <span>{`1 - ${contactHistory.length} of ${contactHistory.length}`}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeSection === 'address-history' && (
+        <div className="animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-3 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-white" />
+              <h4 className="text-sm font-semibold text-white tracking-wide">Delivery Address Change History</h4>
+              {addressHistory.length > 0 && <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{addressHistory.length}</Badge>}
+            </div>
+
+            {addressHistory.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs" data-testid="table-address-history">
+                  <thead>
+                    <tr className="bg-slate-100 border-b-2 border-slate-200">
+                      <th className="text-left py-2.5 px-4 font-bold text-slate-700 whitespace-nowrap">Date</th>
+                      <th className="text-left py-2.5 px-4 font-bold text-slate-700 whitespace-nowrap">Address</th>
+                      <th className="text-left py-2.5 px-4 font-bold text-slate-700 whitespace-nowrap">Changed By</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {addressHistory.map((r: any, i: number) => (
+                      <tr key={i} className="border-b border-slate-100 hover:bg-amber-50/30 transition-colors" data-testid={`address-history-row-${i}`}>
+                        <td className="py-2.5 px-4 text-slate-600 whitespace-nowrap">{(() => { try { return r.changeDate ? new Date(r.changeDate).toLocaleDateString('en-ZA') : r.date || '-'; } catch { return r.changeDate || '-'; } })()}</td>
+                        <td className="py-2.5 px-4 text-slate-800">{(r.address || r.deliveryAddress || '-').replace(/\r\n/g, ', ')}</td>
+                        <td className="py-2.5 px-4 text-slate-500">{r.changedBy || r.user || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="py-12 px-5 flex flex-col items-center justify-center text-center">
+                <div className="w-14 h-14 rounded-full bg-amber-50 flex items-center justify-center mb-4">
+                  <Clock className="w-7 h-7 text-amber-300" />
+                </div>
+                <p className="text-sm font-medium text-slate-500">No Address History</p>
+                <p className="text-xs text-slate-400 mt-1">There are no recorded changes to delivery address for this account</p>
+              </div>
+            )}
+
+            {addressHistory.length > 0 && (
+              <div className="flex items-center justify-end gap-2 px-4 py-2 bg-slate-50 border-t border-slate-200 text-xs text-slate-500">
+                <span>Items per page: <span className="border rounded px-2 py-0.5 bg-white">50</span></span>
+                <span>{`1 - ${addressHistory.length} of ${addressHistory.length}`}</span>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
