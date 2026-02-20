@@ -600,6 +600,8 @@ export default function AllocateTransaction() {
      let totalToAdd = 0;
 
      // Process 118(1) allocations
+     const clearanceAccountId = selectedClearance.linkedAccounts?.[0]?.apiId || selectedClearance.linkedAccounts?.[0]?.accountId || 0;
+
      selectedClearance.section118_1_Breakdown.forEach((item, idx) => {
          const key = `118_1_${item.accountNo}_${idx}`;
          const amount = clearanceAllocations[key] || 0;
@@ -610,12 +612,14 @@ export default function AllocateTransaction() {
                  amount: amount,
                  description: `Clearance ${selectedClearance.scheduleNo} - 118(1): ${item.item}`,
                  allocationType: 'CLEARANCE',
+                 accountId: clearanceAccountId,
+                 clearanceId: parseInt(selectedClearance.scheduleNo, 10) || 0,
+                 outstandingAmount: item.amount,
              });
              totalToAdd += amount;
          }
      });
 
-     // Process 118(3) allocations
      selectedClearance.section118_3_Breakdown.forEach((item, idx) => {
          const key = `118_3_${item.accountNo}_${idx}`;
          const amount = clearanceAllocations[key] || 0;
@@ -626,6 +630,9 @@ export default function AllocateTransaction() {
                  amount: amount,
                  description: `Clearance ${selectedClearance.scheduleNo} - 118(3): ${item.item}`,
                  allocationType: 'CLEARANCE',
+                 accountId: clearanceAccountId,
+                 clearanceId: parseInt(selectedClearance.scheduleNo, 10) || 0,
+                 outstandingAmount: item.amount,
              });
              totalToAdd += amount;
          }
@@ -696,23 +703,56 @@ export default function AllocateTransaction() {
           const receiptDate = `${getPart('year')}-${getPart('month')}-${getPart('day')}T${getPart('hour')}:${getPart('minute')}:${getPart('second')}`;
           const transactionDate = transaction.dateOfTransaction || receiptDate;
 
+          const ALLOC_TYPE_ORDER: Record<string, number> = {
+              'ACCOUNT': 1,
+              'PREPAID': 1,
+              'GROUP': 2,
+              'CLEARANCE': 3,
+              'DIRECT': 4,
+              'CASHBOOK': 5,
+          };
+
+          const sortedLines = [...lines].sort((a, b) => {
+              const orderA = ALLOC_TYPE_ORDER[a.allocationType || 'ACCOUNT'] || 99;
+              const orderB = ALLOC_TYPE_ORDER[b.allocationType || 'ACCOUNT'] || 99;
+              return orderA - orderB;
+          });
+
+          console.log('[Direct Deposit] Processing order:', sortedLines.map(l => `${l.allocationType}:${l.accountNo}:R${l.amount}`));
+
           let submittedCount = 0;
-          for (const line of lines) {
+          for (const line of sortedLines) {
               if (line.accountNo === 'CASHBOOK-RTN' || line.allocationType === 'CASHBOOK') continue;
 
               const allocType = line.allocationType || 'ACCOUNT';
-              let billType = 'ConsumerServices';
-              if (allocType === 'DIRECT' || allocType === 'GROUP') {
-                  billType = 'MiscPayment';
+
+              let billType = '1';
+              if (allocType === 'GROUP') {
+                  billType = '3';
+              } else if (allocType === 'DIRECT') {
+                  billType = '4';
               } else if (allocType === 'CLEARANCE') {
-                  billType = 'ClearancePayment';
+                  billType = '6';
               }
 
               const accountIdStr = line.accountId ? String(line.accountId) : '';
 
               try {
-                  if (allocType === 'DIRECT' || allocType === 'GROUP') {
-                      console.log(`[Direct Deposit] Step 1: load-details-payment-grouping`);
+                  if (allocType === 'GROUP') {
+                      console.log(`[Direct Deposit] Step 1: load-details-payment-grouping (billType 3)`);
+                      await platinumLoadDetailsPaymentGrouping({
+                          amount: line.amount,
+                          dateOfTransaction: transactionDate,
+                          cashbookID: transaction.cashbookTransactionID || 0,
+                          posItemId: transaction.posItem_ID,
+                          paymentTypeID: 3,
+                          userId: userId,
+                          finYear,
+                          page: 1,
+                          pageSize: 100,
+                      });
+                  } else if (allocType === 'DIRECT') {
+                      console.log(`[Direct Deposit] Step 1: load-details-payment-grouping for misc (billType 4)`);
                       await platinumLoadDetailsPaymentGrouping({
                           amount: line.amount,
                           dateOfTransaction: transactionDate,
@@ -725,13 +765,13 @@ export default function AllocateTransaction() {
                           pageSize: 100,
                       });
                   } else if (allocType === 'CLEARANCE') {
-                      console.log(`[Direct Deposit] Step 1: load-details-clearance`);
+                      console.log(`[Direct Deposit] Step 1: load-details-clearance (billType 6)`);
                       const pagerBody = { page: 1, pageSize: 100, orderby: null, shortDirection: null };
                       await platinumLoadDetailsClearance(pagerBody);
 
                       console.log(`[Direct Deposit] Step 2: get-clearance-details-info for ${accountIdStr}`);
                       await platinumGetClearanceDetailsInfo({
-                          costScheduleID: accountIdStr,
+                          costScheduleID: line.clearanceId ? String(line.clearanceId) : accountIdStr,
                           accountID: accountIdStr,
                           posItemID: transaction.posItem_ID,
                           transactionAmount: line.amount,
@@ -742,7 +782,7 @@ export default function AllocateTransaction() {
               }
 
               try {
-                  console.log(`[Direct Deposit] load-confirm-payment-details for ${billType}, account ${accountIdStr}`);
+                  console.log(`[Direct Deposit] load-confirm-payment-details for billType=${billType}, account ${accountIdStr}`);
                   const confirmResponse = await platinumLoadConfirmPaymentDetails({}, {
                       billType,
                       accountID: accountIdStr,
@@ -754,31 +794,42 @@ export default function AllocateTransaction() {
               }
 
               const submitData: any = {
-                  outstandingAmount: line.amount,
-                  paidAmount: line.amount,
-                  transactionDate,
-                  reconId: transaction.bankReconID || 0,
                   posItemId: transaction.posItem_ID,
-                  billType,
-                  accountId: (allocType === 'ACCOUNT' || allocType === 'CLEARANCE') ? (line.accountId || 0) : 0,
-                  masterId: 0,
+                  reconId: transaction.bankReconID || 0,
                   userId: userId,
-                  description: line.description || transaction.note || '',
-                  groupId: 0,
-                  initials: '',
-                  lastName: '',
                   financialYear: finYear,
-                  miscPaymentGroupId: (allocType === 'DIRECT' || allocType === 'GROUP') ? (line.miscPaymentGroupId || 0) : 0,
-                  amount: line.amount,
-                  vatAmount: 0,
-                  totalAmount: line.amount,
-                  receiptDate,
-                  paymentTypeId: 3,
-                  vatableVote: 0,
-                  vatPercentage: 0,
+                  transactionDate,
+                  paidAmount: line.amount,
+                  billType,
+                  accountId: (allocType === 'ACCOUNT' || allocType === 'PREPAID' || allocType === 'CLEARANCE') ? (line.accountId || 0) : 0,
+                  description: line.description || transaction.note || '',
+                  reference: line.reference || transaction.reference || '',
+                  note: line.note || transaction.note || '',
+                  outstandingAmount: line.outstandingAmount ?? line.amount,
               };
 
-              console.log('[Direct Deposit] submit-details-data:', submitData);
+              if (allocType === 'CLEARANCE') {
+                  submitData.clearanceId = line.clearanceId || 0;
+              }
+
+              if (allocType === 'GROUP') {
+                  submitData.groupId = line.groupId || 0;
+              }
+
+              if (allocType === 'DIRECT') {
+                  submitData.miscPaymentGroupId = line.miscPaymentGroupId || 0;
+                  submitData.lastName = line.lastName || '';
+                  submitData.initials = line.initials || '';
+                  submitData.amount = line.amount;
+                  submitData.vatAmount = line.vatAmount ?? 0;
+                  submitData.totalAmount = line.amount;
+                  submitData.receiptDate = receiptDate;
+                  submitData.paymentTypeId = line.paymentTypeId ?? 3;
+                  submitData.vatableVote = line.vatableVote ?? 0;
+                  submitData.vatPercentage = line.vatPercentage ?? 0;
+              }
+
+              console.log(`[Direct Deposit] submit-details-data (${allocType}, billType=${billType}):`, submitData);
               const result = await platinumSubmitDirectDepositAllocation(submitData);
               console.log('[Direct Deposit] Submit result:', result);
 

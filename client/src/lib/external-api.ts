@@ -161,6 +161,17 @@ export interface AllocationLine {
   miscPaymentGroupId?: number;
   scoaItemId?: number;
   voteId?: number;
+  clearanceId?: number;
+  costScheduleId?: number;
+  outstandingAmount?: number;
+  reference?: string;
+  note?: string;
+  lastName?: string;
+  initials?: string;
+  vatAmount?: number;
+  vatPercentage?: number;
+  vatableVote?: number;
+  paymentTypeId?: number;
 }
 
 export interface AllocationDraft {

@@ -69,6 +69,7 @@ Preferred communication style: Simple, everyday language.
     -   **Critical Payment Flow**: `save-multiple-account-payment` → `submit-consumer-payment/{userId}` (per account) → `print-receipt` → `pos-multi-receipt-print` (for structured receipt data).
     -   Payment Type IDs: 1=Cash, 3=Credit Card (critical for split payments). Payment Option (e.g., 1 for Consumer Services) is distinct from Payment Type.
     -   Cashier setup and session status are managed through specific Platinum endpoints.
+    -   **Direct Deposit Allocation**: `submit-details-data` endpoint. Processing order: Consumer Services (ACCOUNT, billType "1") → Payment Grouping (GROUP, billType "3") → Clearance (billType "6") → Misc/Direct Income (DIRECT, billType "4") → Cashbook Return (skipped). Each line submitted individually. Mandatory fields: posItemId, reconId, userId, financialYear, transactionDate, paidAmount, billType, accountId.
 -   **Sebata Billing Microservice** (`george-uat-ems-billing-api.azurewebsites.net`):
     -   Legacy OData-based API for consumer account data and billing configuration.
     -   Accessed via server-side proxy routes (`/api/proxy/`).
