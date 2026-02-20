@@ -1943,16 +1943,17 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Description must be at least 3 characters" });
       }
       const searchText = description.toLowerCase();
-      console.log(`[EFT Description Search] Searching for: "${description}"`);
+      console.log(`[EFT Search] Searching for: "${description}"`);
 
       const allItems: any[] = [];
       let currentPage = 1;
-      const maxPages = 40;
+      const pageSize = 200;
+      const maxPages = 10;
 
       while (currentPage <= maxPages) {
         const listData = await platinumPost("/api/billing-direct-deposit-allocation/get-bank-recon-positem-list", {
           page: currentPage,
-          pageSize: 50,
+          pageSize,
           orderby: 'dateOfTransaction',
           shortDirection: 'desc',
         });
@@ -1968,108 +1969,58 @@ export async function registerRoutes(
         currentPage++;
       }
 
-      console.log(`[EFT Description Search] Loaded ${allItems.length} bank recon items across ${currentPage} pages`);
-
-      if (allItems.length > 0) {
-        const sample = allItems[0];
-        console.log(`[EFT Description Search] SAMPLE ITEM FIELDS: ${JSON.stringify(Object.keys(sample))}`);
-        console.log(`[EFT Description Search] SAMPLE ITEM DATA: ${JSON.stringify(sample)}`);
-        const allocatedSample = allItems.find((i: any) => i.billingAllocated === true);
-        if (allocatedSample) {
-          console.log(`[EFT Description Search] ALLOCATED SAMPLE FIELDS: ${JSON.stringify(Object.keys(allocatedSample))}`);
-          console.log(`[EFT Description Search] ALLOCATED SAMPLE DATA: ${JSON.stringify(allocatedSample)}`);
-        }
-      }
+      console.log(`[EFT Search] Loaded ${allItems.length} bank recon items across ${currentPage} pages`);
 
       const matching = allItems.filter((item: any) => {
-        const searchableFields = [
-          item.reference, item.note, item.description, item.eftDescription,
-          item.transDescription, item.bankDescription, item.statementDescription,
-          item.narration, item.particulars, item.remarks, item.detail
-        ].filter(Boolean).map((f: string) => f.toLowerCase());
-        return searchableFields.some((f: string) => f.includes(searchText));
+        const noteText = (item.note || '').toLowerCase();
+        return noteText.includes(searchText);
       });
 
-      console.log(`[EFT Description Search] Found ${matching.length} matching items`);
+      console.log(`[EFT Search] Found ${matching.length} matching items by 'note' field`);
 
-      const allocatedMatches = matching.filter((item: any) => item.billingAllocated === true);
-      const unallocatedMatches = matching.filter((item: any) => !item.billingAllocated);
+      const allocatedMatches = matching.filter((item: any) => !!item.dateAllocated);
+      const unallocatedMatches = matching.filter((item: any) => !item.dateAllocated);
 
       const results: any[] = [];
 
-      if (allocatedMatches.length > 0) {
-        const searchFrom = fromDate || new Date(new Date().getFullYear() - 2, 0, 1).toISOString();
-        const searchTo = toDate || new Date().toISOString();
-
-        const receiptParams: Record<string, string> = {
-          FromDate: searchFrom,
-          ToDate: searchTo,
-          Page: '1',
-          PageSize: '200',
-          Orderby: 'receiptDate',
-          ShortDirection: 'desc',
-          CashierId: '0',
-        };
-
-        let allReceipts: any[] = [];
-        try {
-          const receiptData = await platinumGet("/api/ViewReceipt/get-receipt-list", receiptParams, { timeoutMs: 90000 });
-          if (receiptData && !receiptData._error) {
-            if (Array.isArray(receiptData)) {
-              allReceipts = receiptData;
-            } else if (receiptData.items) {
-              allReceipts = Array.isArray(receiptData.items) ? receiptData.items : [];
-            }
-          }
-        } catch (e: any) {
-          console.warn(`[EFT Description Search] Failed to load receipt list:`, e.message);
-        }
-
-        for (const item of allocatedMatches) {
-          const itemAmount = item.amount || 0;
-          const itemDate = item.dateOfTransaction ? new Date(item.dateOfTransaction) : null;
-          const allocDate = item.dateAllocated ? new Date(item.dateAllocated) : null;
-
-          const candidateReceipts = allReceipts.filter((r: any) => {
-            const rAmount = r.amount ?? r.receiptAmount ?? r.totalAmount ?? 0;
-            const amountMatch = Math.abs(rAmount - itemAmount) < 0.02;
-
-            const rPayType = (r.paymentType || r.payMode || '').toString().toLowerCase();
-            const isEft = rPayType.includes('eft') || rPayType === '5' || r.paymentTypeId === 5;
-
-            return amountMatch && isEft;
-          });
-
-          results.push({
-            posItemId: item.posItem_ID,
-            bankReconId: item.bankReconID,
-            description: item.reference || item.note || '',
-            amount: itemAmount,
-            dateOfTransaction: item.dateOfTransaction,
-            dateAllocated: item.dateAllocated,
-            allocated: true,
-            matchedReceipts: candidateReceipts.slice(0, 10),
-          });
-        }
+      for (const item of allocatedMatches) {
+        results.push({
+          posItemId: item.posItem_ID,
+          bankReconId: item.bankReconID,
+          description: item.note || '',
+          amount: item.amount || 0,
+          dateOfTransaction: item.dateOfTransaction,
+          dateAllocated: item.dateAllocated,
+          dateCaptured: item.dateCaptured,
+          capturerID: item.capturerID,
+          cashbookTransactionID: item.cashbookTransactionID || null,
+          directDepositTypeID: item.directDepositTypeID || null,
+          allocated: true,
+          matchedReceipts: [],
+        });
       }
 
       for (const item of unallocatedMatches) {
         results.push({
           posItemId: item.posItem_ID,
           bankReconId: item.bankReconID,
-          description: item.reference || item.note || '',
+          description: item.note || '',
           amount: item.amount || 0,
           dateOfTransaction: item.dateOfTransaction,
           dateAllocated: null,
+          dateCaptured: null,
+          capturerID: null,
+          cashbookTransactionID: item.cashbookTransactionID || null,
+          directDepositTypeID: null,
           allocated: false,
           matchedReceipts: [],
         });
       }
 
-      console.log(`[EFT Description Search] Returning ${results.length} results (${allocatedMatches.length} allocated, ${unallocatedMatches.length} unallocated)`);
+      console.log(`[EFT Search] Returning ${results.length} results (${allocatedMatches.length} allocated, ${unallocatedMatches.length} unallocated)`);
       res.json({ results, totalBankReconItems: allItems.length, matchingItems: matching.length });
     } catch (e: any) {
-      console.error(`[EFT Description Search] Error:`, e.message);
+      console.error(`[EFT Search] Error:`, e.message);
       res.status(502).json({ message: "Search failed", detail: e.message });
     }
   });

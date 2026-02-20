@@ -783,7 +783,7 @@ export default function ViewReceipts() {
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                {eftResults.map((item, idx) => (
+                                {eftResults.map((item: any, idx: number) => (
                                     <div key={idx} className={`border rounded-lg overflow-hidden ${item.allocated ? 'border-green-200 bg-green-50/30' : 'border-amber-200 bg-amber-50/30'}`} data-testid={`eft-result-${idx}`}>
                                         <div className="px-4 py-3 flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
                                             <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -793,11 +793,12 @@ export default function ViewReceipts() {
                                                     <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
                                                 )}
                                                 <div className="min-w-0 flex-1">
-                                                    <p className="text-xs font-mono font-medium text-slate-800 truncate" title={item.description}>{item.description}</p>
-                                                    <div className="flex items-center gap-3 mt-0.5 text-[10px] text-slate-500">
+                                                    <p className="text-xs font-mono font-medium text-slate-800 break-all" title={item.description}>{item.description || '(no description)'}</p>
+                                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-[10px] text-slate-500">
                                                         <span>POS Item #{item.posItemId}</span>
                                                         <span>Bank Recon #{item.bankReconId}</span>
-                                                        <span>Date: {item.dateOfTransaction ? new Date(item.dateOfTransaction).toLocaleDateString('en-ZA') : 'N/A'}</span>
+                                                        <span>Txn Date: {item.dateOfTransaction ? new Date(item.dateOfTransaction).toLocaleDateString('en-ZA') : 'N/A'}</span>
+                                                        {item.cashbookTransactionID && <span className="text-blue-600 font-semibold">Cashbook Txn #{item.cashbookTransactionID}</span>}
                                                     </div>
                                                 </div>
                                             </div>
@@ -808,99 +809,35 @@ export default function ViewReceipts() {
                                                 </Badge>
                                             </div>
                                         </div>
-                                        {item.allocated && item.dateAllocated && (
-                                            <div className="px-4 pb-1 text-[10px] text-green-700">
-                                                Allocated on: {new Date(item.dateAllocated).toLocaleDateString('en-ZA')}
-                                            </div>
-                                        )}
-                                        {item.allocated && item.matchedReceipts.length > 0 && (
-                                            <div className="border-t border-green-200 bg-white/50">
-                                                <div className="px-4 py-2 text-[10px] font-semibold text-green-800 uppercase tracking-wider">
-                                                    Matching EFT Receipts ({item.matchedReceipts.length})
+                                        {item.allocated && (
+                                            <div className="border-t border-green-200 bg-white/50 px-4 py-2">
+                                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px]">
+                                                    {item.dateAllocated && (
+                                                        <span className="text-green-700">
+                                                            <span className="font-semibold">Allocated:</span> {new Date(item.dateAllocated).toLocaleDateString('en-ZA')} {new Date(item.dateAllocated).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                    )}
+                                                    {item.dateCaptured && (
+                                                        <span className="text-slate-600">
+                                                            <span className="font-semibold">Captured:</span> {new Date(item.dateCaptured).toLocaleDateString('en-ZA')}
+                                                        </span>
+                                                    )}
+                                                    {item.capturerID && (
+                                                        <span className="text-slate-600">
+                                                            <span className="font-semibold">Capturer ID:</span> {item.capturerID}
+                                                        </span>
+                                                    )}
+                                                    {item.cashbookTransactionID && (
+                                                        <span className="text-blue-700 font-medium">
+                                                            <span className="font-semibold">Cashbook Transaction ID:</span> {item.cashbookTransactionID}
+                                                        </span>
+                                                    )}
                                                 </div>
-                                                <div className="overflow-x-auto">
-                                                    <table className="w-full text-xs">
-                                                        <thead>
-                                                            <tr className="bg-green-50 border-y border-green-100">
-                                                                <th className="text-left px-3 py-1.5 font-semibold text-green-800">Receipt No</th>
-                                                                <th className="text-left px-3 py-1.5 font-semibold text-green-800">Account</th>
-                                                                <th className="text-left px-3 py-1.5 font-semibold text-green-800">Date</th>
-                                                                <th className="text-right px-3 py-1.5 font-semibold text-green-800">Amount</th>
-                                                                <th className="text-left px-3 py-1.5 font-semibold text-green-800">Cashier</th>
-                                                                <th className="text-left px-3 py-1.5 font-semibold text-green-800">Type</th>
-                                                                <th className="px-3 py-1.5"></th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {item.matchedReceipts.map((r: any, ri: number) => {
-                                                                const rNo = r.receiptNo || r.receipt_no || '';
-                                                                const rAcc = r.accountNumber || r.accountNo || r.account_number || '';
-                                                                const rDate = r.receiptDate || r.receipt_date || '';
-                                                                const rAmount = r.amount ?? r.receiptAmount ?? r.totalAmount ?? 0;
-                                                                const rCashier = r.cashierName || r.cashier_name || r.cashier || '';
-                                                                const rPayType = r.paymentType || r.payMode || '';
-                                                                const serialNo = r.serialNo || r.receiptId || r.id || '';
-                                                                return (
-                                                                    <tr key={ri} className="border-b border-green-50 hover:bg-green-50/50">
-                                                                        <td className="px-3 py-1.5 font-mono font-medium">{rNo}</td>
-                                                                        <td className="px-3 py-1.5 font-mono">{rAcc}</td>
-                                                                        <td className="px-3 py-1.5 whitespace-nowrap">{rDate ? new Date(rDate).toLocaleDateString('en-ZA') : ''}</td>
-                                                                        <td className="px-3 py-1.5 text-right font-mono font-medium">R {Number(rAmount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                                                                        <td className="px-3 py-1.5">{rCashier}</td>
-                                                                        <td className="px-3 py-1.5">{rPayType}</td>
-                                                                        <td className="px-3 py-1.5">
-                                                                            {serialNo && (
-                                                                                <Button
-                                                                                    variant="ghost"
-                                                                                    size="sm"
-                                                                                    className="h-6 px-2 text-[10px] gap-1 text-blue-700 hover:text-blue-900 hover:bg-blue-50"
-                                                                                    onClick={() => {
-                                                                                        const asViewItem: ViewReceiptItem = {
-                                                                                            receiptId: serialNo,
-                                                                                            receiptNo: rNo,
-                                                                                            accountNumber: rAcc,
-                                                                                            paymentType: rPayType,
-                                                                                            paymentOption: r.paymentOption || r.billType || '',
-                                                                                            receiptDate: rDate,
-                                                                                            isStaged: false,
-                                                                                            amount: rAmount,
-                                                                                            tenderAmount: r.tenderAmount || rAmount,
-                                                                                            changeAmount: r.changeAmount || 0,
-                                                                                            cashierName: rCashier,
-                                                                                            cashBook: '',
-                                                                                            cashOffice: r.cashOfficeName || '',
-                                                                                            isCancelled: 0,
-                                                                                            cancellationReason: '',
-                                                                                            accName: r.accName || r.consumerName || '',
-                                                                                            accAddress: '',
-                                                                                            outstandingAmount: r.outstandingAmount || 0,
-                                                                                        };
-                                                                                        handlePrintReceipt(asViewItem);
-                                                                                    }}
-                                                                                    disabled={printingReceiptId === serialNo}
-                                                                                    data-testid={`button-print-eft-receipt-${ri}`}
-                                                                                >
-                                                                                    {printingReceiptId === serialNo ? <Loader2 className="w-3 h-3 animate-spin" /> : <Printer className="w-3 h-3" />}
-                                                                                    Print
-                                                                                </Button>
-                                                                            )}
-                                                                        </td>
-                                                                    </tr>
-                                                                );
-                                                            })}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </div>
-                                        )}
-                                        {item.allocated && item.matchedReceipts.length === 0 && (
-                                            <div className="border-t border-green-200 bg-white/50 px-4 py-2 text-[10px] text-slate-500 italic">
-                                                This item is allocated but no matching EFT receipts were found in the receipt list for the selected date range. Try widening the date range.
                                             </div>
                                         )}
                                         {!item.allocated && (
                                             <div className="border-t border-amber-200 bg-white/50 px-4 py-2 text-[10px] text-amber-600 italic">
-                                                This EFT transaction has not been allocated yet. No receipt exists.
+                                                This EFT transaction has not been allocated yet.
                                             </div>
                                         )}
                                     </div>
