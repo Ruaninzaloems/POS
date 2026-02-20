@@ -796,6 +796,29 @@ export default function AllocateTransaction() {
 
               updateProgress(`Line ${lineIdx}/${activeLines.length}: Submitting ${lineLabel}...`);
 
+              let derivedLastName = line.lastName || '';
+              let derivedInitials = line.initials || '';
+              if (!derivedLastName) {
+                  const nameSource = line.description || transaction.note || line.accountNo || 'Unknown';
+                  const cleanName = nameSource
+                      .replace(/\s*\(Old:.*\)$/, '')
+                      .replace(/&amp;/g, '&')
+                      .replace(/CSV Import:\s*/i, '')
+                      .replace(/Payment to\s*/i, '')
+                      .replace(/Payment Grouping:\s*/i, '')
+                      .trim();
+                  const nameParts = cleanName.split(/\s+/).filter(p => p && p !== '&');
+                  if (nameParts.length >= 2) {
+                      derivedLastName = nameParts[0];
+                      derivedInitials = nameParts.slice(1).map(p => p.charAt(0).toUpperCase()).join('');
+                  } else if (nameParts.length === 1) {
+                      derivedLastName = nameParts[0];
+                      derivedInitials = nameParts[0].charAt(0).toUpperCase();
+                  }
+              }
+              if (!derivedLastName) derivedLastName = 'N/A';
+              if (!derivedInitials) derivedInitials = 'N';
+
               let submitData: any;
 
               if (allocType === 'DIRECT') {
@@ -808,8 +831,8 @@ export default function AllocateTransaction() {
                       paidAmount: line.amount,
                       billType,
                       miscPaymentGroupId: line.miscPaymentGroupId || 0,
-                      lastName: line.lastName || '',
-                      initials: line.initials || '',
+                      lastName: derivedLastName,
+                      initials: derivedInitials,
                       description: line.description || transaction.note || '',
                       amount: line.amount,
                       vatAmount: line.vatAmount ?? 0,
@@ -831,6 +854,8 @@ export default function AllocateTransaction() {
                       paidAmount: line.amount,
                       billType,
                       accountId: line.accountId || 0,
+                      lastName: derivedLastName,
+                      initials: derivedInitials,
                       paymentTypeId: line.paymentTypeId ?? 5,
                       description: line.description || transaction.note || '',
                       reference: line.reference || transaction.reference || '',
