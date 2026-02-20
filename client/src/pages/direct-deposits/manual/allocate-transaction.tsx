@@ -868,29 +868,6 @@ export default function AllocateTransaction() {
 
               updateProgress(`Line ${lineIdx}/${activeLines.length}: Submitting ${lineLabel}...`);
 
-              let derivedLastName = line.lastName || '';
-              let derivedInitials = line.initials || '';
-              if (!derivedLastName) {
-                  const nameSource = line.description || transaction.note || line.accountNo || 'Unknown';
-                  const cleanName = nameSource
-                      .replace(/\s*\(Old:.*\)$/, '')
-                      .replace(/&amp;/g, '&')
-                      .replace(/CSV Import:\s*/i, '')
-                      .replace(/Payment to\s*/i, '')
-                      .replace(/Payment Grouping:\s*/i, '')
-                      .trim();
-                  const nameParts = cleanName.split(/\s+/).filter(p => p && p !== '&');
-                  if (nameParts.length >= 2) {
-                      derivedLastName = nameParts[0];
-                      derivedInitials = nameParts.slice(1).map(p => p.charAt(0).toUpperCase()).join('');
-                  } else if (nameParts.length === 1) {
-                      derivedLastName = nameParts[0];
-                      derivedInitials = nameParts[0].charAt(0).toUpperCase();
-                  }
-              }
-              if (!derivedLastName) derivedLastName = 'N/A';
-              if (!derivedInitials) derivedInitials = 'N';
-
               const submitData: any = {
                   posItemId: transaction.posItem_ID,
                   reconId: transaction.bankReconID || 0,
@@ -906,10 +883,6 @@ export default function AllocateTransaction() {
                   note: line.note || transaction.note || '',
                   outstandingAmount: line.outstandingAmount ?? line.amount,
                   receiptDate: receiptDate,
-                  lastName: derivedLastName,
-                  initials: derivedInitials,
-                  LastName: derivedLastName,
-                  Initials: derivedInitials,
               };
 
               if (allocType === 'CLEARANCE') {
@@ -923,6 +896,8 @@ export default function AllocateTransaction() {
 
               if (allocType === 'DIRECT') {
                   submitData.miscPaymentGroupId = line.miscPaymentGroupId || 0;
+                  submitData.lastName = line.lastName || '';
+                  submitData.initials = line.initials || '';
                   submitData.amount = line.amount;
                   submitData.vatAmount = line.vatAmount ?? 0;
                   submitData.totalAmount = line.amount;
