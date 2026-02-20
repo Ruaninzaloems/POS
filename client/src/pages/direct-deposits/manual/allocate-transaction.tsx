@@ -868,41 +868,57 @@ export default function AllocateTransaction() {
 
               updateProgress(`Line ${lineIdx}/${activeLines.length}: Submitting ${lineLabel}...`);
 
-              const submitData: any = {
-                  posItemId: transaction.posItem_ID,
-                  reconId: transaction.bankReconID || 0,
-                  userId: userId,
-                  financialYear: finYear,
-                  transactionDate,
-                  paidAmount: line.amount,
-                  billType,
-                  accountId: (allocType === 'ACCOUNT' || allocType === 'PREPAID' || allocType === 'CLEARANCE' || allocType === 'GROUP') ? (line.accountId || 0) : 0,
-                  paymentTypeId: line.paymentTypeId ?? 5,
-                  description: line.description || transaction.note || '',
-                  reference: line.reference || transaction.reference || '',
-                  note: line.note || transaction.note || '',
-                  outstandingAmount: line.outstandingAmount ?? line.amount,
-                  receiptDate: receiptDate,
-              };
-
-              if (allocType === 'CLEARANCE') {
-                  submitData.clearanceId = line.clearanceId || 0;
-              }
-
-              if (allocType === 'GROUP') {
-                  submitData.miscPaymentGroupId = line.miscPaymentGroupId || 0;
-                  submitData.groupId = line.groupId || line.miscPaymentGroupId || 0;
-              }
+              let submitData: any;
 
               if (allocType === 'DIRECT') {
-                  submitData.miscPaymentGroupId = line.miscPaymentGroupId || 0;
-                  submitData.lastName = line.lastName || '';
-                  submitData.initials = line.initials || '';
-                  submitData.amount = line.amount;
-                  submitData.vatAmount = line.vatAmount ?? 0;
-                  submitData.totalAmount = line.amount;
-                  submitData.vatableVote = line.vatableVote ?? 0;
-                  submitData.vatPercentage = line.vatPercentage ?? 0;
+                  submitData = {
+                      posItemId: transaction.posItem_ID,
+                      reconId: transaction.bankReconID || 0,
+                      userId: userId,
+                      financialYear: finYear,
+                      transactionDate,
+                      paidAmount: line.amount,
+                      billType,
+                      miscPaymentGroupId: line.miscPaymentGroupId || 0,
+                      lastName: line.lastName || '',
+                      initials: line.initials || '',
+                      description: line.description || transaction.note || '',
+                      amount: line.amount,
+                      vatAmount: line.vatAmount ?? 0,
+                      totalAmount: line.amount,
+                      vatableVote: line.vatableVote ?? 0,
+                      vatPercentage: line.vatPercentage ?? 0,
+                      paymentTypeId: line.paymentTypeId ?? 5,
+                      reference: line.reference || transaction.reference || '',
+                      note: line.note || transaction.note || '',
+                      receiptDate: receiptDate,
+                  };
+              } else {
+                  submitData = {
+                      posItemId: transaction.posItem_ID,
+                      reconId: transaction.bankReconID || 0,
+                      userId: userId,
+                      financialYear: finYear,
+                      transactionDate,
+                      paidAmount: line.amount,
+                      billType,
+                      accountId: line.accountId || 0,
+                      paymentTypeId: line.paymentTypeId ?? 5,
+                      description: line.description || transaction.note || '',
+                      reference: line.reference || transaction.reference || '',
+                      note: line.note || transaction.note || '',
+                      outstandingAmount: line.outstandingAmount ?? line.amount,
+                      receiptDate: receiptDate,
+                  };
+
+                  if (allocType === 'CLEARANCE') {
+                      submitData.clearanceId = line.clearanceId || 0;
+                  }
+
+                  if (allocType === 'GROUP') {
+                      submitData.miscPaymentGroupId = line.miscPaymentGroupId || 0;
+                      submitData.groupId = line.groupId || line.miscPaymentGroupId || 0;
+                  }
               }
 
               try {
