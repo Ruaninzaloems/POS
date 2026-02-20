@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   FileText, Receipt, Download, Eye, RefreshCw, ChevronDown, ChevronUp, Loader2,
-  Layers, Activity, X, Banknote, CreditCard, CalendarDays
+  Layers, Activity, X, Banknote, CreditCard, CalendarDays, Clock, List, LayoutList,
+  ArrowDown, ArrowUp, Circle, CheckCircle2, XCircle, Filter
 } from 'lucide-react';
 import {
   getTransactionHistory, getDetailedTransactionResults, getBillingPeriodTransactions,
@@ -831,6 +832,9 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
 
   const [printingId, setPrintingId] = useState<string | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<any>(null);
+  const [receiptView, setReceiptView] = useState<'table' | 'timeline'>('timeline');
+  const [timelineFilter, setTimelineFilter] = useState<'all' | 'cash' | 'card' | 'eft'>('all');
+  const [timelineSortAsc, setTimelineSortAsc] = useState(false);
 
   const sortedReceipts = useMemo(() =>
     [...data].sort((a, b) => {
@@ -841,6 +845,48 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
   [data]);
 
   const totalAmount = useMemo(() => sortedReceipts.reduce((s, r) => s + (r.amount ?? 0), 0), [sortedReceipts]);
+
+  const filteredReceipts = useMemo(() => {
+    let items = [...data];
+    if (timelineFilter !== 'all') {
+      items = items.filter(r => {
+        const pt = (r.paymentType || '').toLowerCase();
+        if (timelineFilter === 'cash') return pt.includes('cash');
+        if (timelineFilter === 'card') return pt.includes('card') || pt.includes('credit');
+        if (timelineFilter === 'eft') return pt.includes('eft') || pt.includes('electronic') || pt.includes('transfer');
+        return true;
+      });
+    }
+    items.sort((a, b) => {
+      const da = a.receiptDate ? new Date(a.receiptDate).getTime() : 0;
+      const db = b.receiptDate ? new Date(b.receiptDate).getTime() : 0;
+      return timelineSortAsc ? da - db : db - da;
+    });
+    return items;
+  }, [data, timelineFilter, timelineSortAsc]);
+
+  const groupedByMonth = useMemo(() => {
+    const groups: { key: string; label: string; year: number; month: number; items: any[]; total: number }[] = [];
+    const map = new Map<string, any[]>();
+    for (const r of filteredReceipts) {
+      const d = r.receiptDate ? new Date(r.receiptDate) : null;
+      const key = d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` : 'unknown';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    }
+    for (const [key, items] of map.entries()) {
+      const d = items[0]?.receiptDate ? new Date(items[0].receiptDate) : null;
+      groups.push({
+        key,
+        label: d ? d.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long' }) : 'Unknown Date',
+        year: d ? d.getFullYear() : 0,
+        month: d ? d.getMonth() : 0,
+        items,
+        total: items.reduce((s: number, r: any) => s + (r.amount ?? 0), 0),
+      });
+    }
+    return groups;
+  }, [filteredReceipts]);
 
   useEffect(() => { if (!loaded.current) load(); }, [load]);
 
@@ -1034,84 +1080,275 @@ h2{text-align:center;margin:6px 0;font-size:14px}p{margin:3px 0}
 
       {activeSubTab === 'receipts' && (
         data.length === 0 ? <EmptyState message="No receipt history found" /> : (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Receipt className="w-4 h-4 text-white" />
-                <h3 className="text-sm font-semibold text-white tracking-wide">Receipt History</h3>
-                <Badge className="bg-white/20 text-white border-white/30 text-[10px]">{data.length} receipts</Badge>
+          <div className="space-y-4">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-4 sm:px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex flex-wrap items-center gap-2 sm:gap-3">
+                <div className="flex items-center gap-2">
+                  <Receipt className="w-4 h-4 text-white" />
+                  <h3 className="text-sm font-semibold text-white tracking-wide">Receipt History</h3>
+                  <Badge className="bg-white/20 text-white border-white/30 text-[10px]">{data.length} receipts</Badge>
+                </div>
+                <div className="ml-auto flex items-center gap-2">
+                  <div className="flex items-center bg-white/15 rounded-lg p-0.5">
+                    <button
+                      onClick={() => setReceiptView('timeline')}
+                      className={`flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold rounded-md transition-all ${receiptView === 'timeline' ? 'bg-white text-blue-700 shadow-sm' : 'text-white/80 hover:text-white hover:bg-white/10'}`}
+                      data-testid="button-receipt-view-timeline"
+                    >
+                      <Clock className="w-3 h-3" /> Timeline
+                    </button>
+                    <button
+                      onClick={() => setReceiptView('table')}
+                      className={`flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold rounded-md transition-all ${receiptView === 'table' ? 'bg-white text-blue-700 shadow-sm' : 'text-white/80 hover:text-white hover:bg-white/10'}`}
+                      data-testid="button-receipt-view-table"
+                    >
+                      <List className="w-3 h-3" /> Table
+                    </button>
+                  </div>
+                  <div className="text-white text-xs sm:text-sm font-mono font-bold">
+                    R {totalAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
               </div>
-              <div className="text-white text-sm font-mono font-bold">
-                Total: R {totalAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm" data-testid="table-transaction-history">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Receipt No.</th>
-                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Date</th>
-                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Payment Type</th>
-                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
-                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Card/Cheque Detail</th>
-                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Cashier</th>
-                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Cash Book</th>
-                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
-                    <th className="text-center py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Print</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedReceipts.map((item: any, i: number) => (
-                    <tr key={item.receiptId || i} className={`border-b border-slate-100 hover:bg-blue-50/30 transition-colors ${item.isCancelled ? 'bg-red-50/30' : ''}`}>
-                      <td className="py-2.5 px-3 font-mono text-blue-700 font-semibold whitespace-nowrap text-xs">{item.receiptNo || '-'}</td>
-                      <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{item.receiptDate ? new Date(item.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
-                      <td className="py-2.5 px-3">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium ${
-                          (item.paymentType || '').toLowerCase().includes('cash') ? 'bg-green-50 text-green-700 border border-green-200' :
-                          (item.paymentType || '').toLowerCase().includes('eft') ? 'bg-blue-50 text-blue-700 border border-blue-200' :
-                          (item.paymentType || '').toLowerCase().includes('card') ? 'bg-purple-50 text-purple-700 border border-purple-200' :
-                          'bg-slate-50 text-slate-600 border border-slate-200'
-                        }`}>
-                          {(item.paymentType || '').toLowerCase().includes('cash') && <Banknote className="w-3 h-3" />}
-                          {(item.paymentType || '').toLowerCase().includes('card') && <CreditCard className="w-3 h-3" />}
-                          {item.paymentType || '-'}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">{(item.amount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                      <td className="py-2.5 px-3 text-slate-500 text-xs">{item.cardChequeDetail || '-'}</td>
-                      <td className="py-2.5 px-3 text-slate-600 text-xs font-medium">{item.cashierName || '-'}</td>
-                      <td className="py-2.5 px-3 text-slate-500 text-xs">{item.cashBook || '-'}</td>
-                      <td className="py-2.5 px-3">
-                        {item.isCancelled ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 border border-red-200">
-                            <X className="w-3 h-3" /> Cancelled
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
-                            <Activity className="w-3 h-3" /> Active
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2.5 px-3 text-center">
+
+              {receiptView === 'timeline' && (
+                <div className="px-4 sm:px-5 py-2.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <Filter className="w-3 h-3 text-slate-400" />
+                    <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Filter:</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {([
+                      { key: 'all', label: 'All', icon: null },
+                      { key: 'cash', label: 'Cash', icon: Banknote },
+                      { key: 'card', label: 'Card', icon: CreditCard },
+                      { key: 'eft', label: 'EFT', icon: null },
+                    ] as const).map(f => {
+                      const Icon = f.icon;
+                      return (
                         <button
-                          onClick={() => handlePrintReceipt(item)}
-                          disabled={printingId === String(item.receiptId || item.receipt_ID) || !item.receiptId}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-[10px] font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
-                          data-testid={`button-print-receipt-${i}`}
-                          title="Print Receipt"
+                          key={f.key}
+                          onClick={() => setTimelineFilter(f.key)}
+                          className={`flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold rounded-md transition-all ${timelineFilter === f.key ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}`}
+                          data-testid={`button-filter-${f.key}`}
                         >
-                          {printingId === String(item.receiptId || item.receipt_ID) ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <FileText className="w-3 h-3" />
-                          )}
-                          Print
+                          {Icon && <Icon className="w-3 h-3" />}
+                          {f.label}
                         </button>
-                      </td>
-                    </tr>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={() => setTimelineSortAsc(prev => !prev)}
+                    className="ml-auto flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold rounded-md bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition-all"
+                    data-testid="button-sort-timeline"
+                  >
+                    {timelineSortAsc ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
+                    {timelineSortAsc ? 'Oldest First' : 'Newest First'}
+                  </button>
+                </div>
+              )}
+
+              {receiptView === 'timeline' ? (
+                <div className="px-4 sm:px-6 py-4 space-y-6 max-h-[70vh] overflow-y-auto" data-testid="receipt-timeline">
+                  {filteredReceipts.length === 0 ? (
+                    <div className="py-8 text-center text-slate-400 text-sm italic">No receipts match the selected filter.</div>
+                  ) : groupedByMonth.map(group => (
+                    <div key={group.key} className="relative">
+                      <div className="sticky top-0 z-10 flex items-center gap-3 mb-3 bg-white/95 backdrop-blur-sm py-1">
+                        <div className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-3 py-1.5 rounded-lg shadow-sm">
+                          <CalendarDays className="w-3.5 h-3.5" />
+                          <span className="text-xs font-bold tracking-wide">{group.label}</span>
+                        </div>
+                        <div className="flex-1 h-px bg-slate-200" />
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-slate-400 font-medium">{group.items.length} receipt{group.items.length !== 1 ? 's' : ''}</span>
+                          <span className="text-xs font-mono font-bold text-slate-700">R {group.total.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                      </div>
+
+                      <div className="relative ml-4 sm:ml-6 border-l-2 border-blue-200 pl-4 sm:pl-6 space-y-3">
+                        {group.items.map((item: any, i: number) => {
+                          const pt = (item.paymentType || '').toLowerCase();
+                          const isCash = pt.includes('cash');
+                          const isCard = pt.includes('card') || pt.includes('credit');
+                          const isEft = pt.includes('eft') || pt.includes('electronic') || pt.includes('transfer');
+                          const isCancelled = !!item.isCancelled;
+                          const receiptDate = item.receiptDate ? new Date(item.receiptDate) : null;
+
+                          const dotColor = isCancelled ? 'bg-red-500' :
+                            isCash ? 'bg-green-500' :
+                            isCard ? 'bg-purple-500' :
+                            isEft ? 'bg-blue-500' : 'bg-slate-400';
+
+                          const cardBg = isCancelled ? 'bg-red-50/50 border-red-200 hover:border-red-300' :
+                            'bg-white border-slate-200 hover:border-blue-300 hover:shadow-md';
+
+                          return (
+                            <div key={item.receiptId || i} className="relative group" data-testid={`timeline-receipt-${i}`}>
+                              <div className={`absolute -left-[1.4rem] sm:-left-[1.65rem] top-3 w-3 h-3 rounded-full ${dotColor} ring-2 ring-white shadow-sm z-[1]`} />
+
+                              <div className={`rounded-xl border shadow-sm transition-all duration-200 ${cardBg}`}>
+                                <div className="px-3 sm:px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                                    <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                                      isCancelled ? 'bg-red-100 text-red-600' :
+                                      isCash ? 'bg-green-100 text-green-700' :
+                                      isCard ? 'bg-purple-100 text-purple-700' :
+                                      isEft ? 'bg-blue-100 text-blue-700' :
+                                      'bg-slate-100 text-slate-600'
+                                    }`}>
+                                      {isCash ? <Banknote className="w-4 h-4 sm:w-5 sm:h-5" /> :
+                                       isCard ? <CreditCard className="w-4 h-4 sm:w-5 sm:h-5" /> :
+                                       <Receipt className="w-4 h-4 sm:w-5 sm:h-5" />}
+                                    </div>
+
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-mono text-xs font-bold text-blue-700">{item.receiptNo || '-'}</span>
+                                        {isCancelled && (
+                                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-red-100 text-red-700 border border-red-200">
+                                            <XCircle className="w-2.5 h-2.5" /> Cancelled
+                                          </span>
+                                        )}
+                                        {!isCancelled && (
+                                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                            <CheckCircle2 className="w-2.5 h-2.5" /> Active
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-2 sm:gap-3 mt-0.5 flex-wrap">
+                                        <span className="text-[11px] text-slate-500">
+                                          {receiptDate ? receiptDate.toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                                        </span>
+                                        {receiptDate && (
+                                          <span className="text-[10px] text-slate-400">
+                                            {receiptDate.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
+                                          </span>
+                                        )}
+                                        <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-medium ${
+                                          isCash ? 'bg-green-50 text-green-700 border border-green-200' :
+                                          isCard ? 'bg-purple-50 text-purple-700 border border-purple-200' :
+                                          isEft ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                                          'bg-slate-50 text-slate-600 border border-slate-200'
+                                        }`}>
+                                          {item.paymentType || 'Unknown'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-3 sm:gap-4 justify-between sm:justify-end">
+                                    <div className="text-right">
+                                      <div className={`font-mono text-base sm:text-lg font-bold ${isCancelled ? 'text-red-600 line-through' : 'text-slate-800'}`}>
+                                        R {(item.amount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => handlePrintReceipt(item)}
+                                      disabled={printingId === String(item.receiptId || item.receipt_ID) || !item.receiptId}
+                                      className="flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-[10px] font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                                      data-testid={`button-print-timeline-${i}`}
+                                    >
+                                      {printingId === String(item.receiptId || item.receipt_ID) ? (
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                      ) : (
+                                        <FileText className="w-3 h-3" />
+                                      )}
+                                      Print
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="px-3 sm:px-4 py-2 bg-slate-50/70 rounded-b-xl border-t border-slate-100 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] sm:text-[11px] text-slate-500">
+                                  {item.cashierName && (
+                                    <span><span className="font-semibold text-slate-600">Cashier:</span> {item.cashierName}</span>
+                                  )}
+                                  {item.cashBook && (
+                                    <span><span className="font-semibold text-slate-600">Cash Book:</span> {item.cashBook}</span>
+                                  )}
+                                  {item.cardChequeDetail && (
+                                    <span><span className="font-semibold text-slate-600">Detail:</span> {item.cardChequeDetail}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm" data-testid="table-transaction-history">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200">
+                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Receipt No.</th>
+                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Date</th>
+                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Payment Type</th>
+                        <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
+                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Card/Cheque Detail</th>
+                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Cashier</th>
+                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Cash Book</th>
+                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
+                        <th className="text-center py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Print</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedReceipts.map((item: any, i: number) => (
+                        <tr key={item.receiptId || i} className={`border-b border-slate-100 hover:bg-blue-50/30 transition-colors ${item.isCancelled ? 'bg-red-50/30' : ''}`}>
+                          <td className="py-2.5 px-3 font-mono text-blue-700 font-semibold whitespace-nowrap text-xs">{item.receiptNo || '-'}</td>
+                          <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{item.receiptDate ? new Date(item.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
+                          <td className="py-2.5 px-3">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium ${
+                              (item.paymentType || '').toLowerCase().includes('cash') ? 'bg-green-50 text-green-700 border border-green-200' :
+                              (item.paymentType || '').toLowerCase().includes('eft') ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                              (item.paymentType || '').toLowerCase().includes('card') ? 'bg-purple-50 text-purple-700 border border-purple-200' :
+                              'bg-slate-50 text-slate-600 border border-slate-200'
+                            }`}>
+                              {(item.paymentType || '').toLowerCase().includes('cash') && <Banknote className="w-3 h-3" />}
+                              {(item.paymentType || '').toLowerCase().includes('card') && <CreditCard className="w-3 h-3" />}
+                              {item.paymentType || '-'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">{(item.amount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                          <td className="py-2.5 px-3 text-slate-500 text-xs">{item.cardChequeDetail || '-'}</td>
+                          <td className="py-2.5 px-3 text-slate-600 text-xs font-medium">{item.cashierName || '-'}</td>
+                          <td className="py-2.5 px-3 text-slate-500 text-xs">{item.cashBook || '-'}</td>
+                          <td className="py-2.5 px-3">
+                            {item.isCancelled ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 border border-red-200">
+                                <X className="w-3 h-3" /> Cancelled
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                                <Activity className="w-3 h-3" /> Active
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <button
+                              onClick={() => handlePrintReceipt(item)}
+                              disabled={printingId === String(item.receiptId || item.receipt_ID) || !item.receiptId}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-[10px] font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                              data-testid={`button-print-receipt-${i}`}
+                              title="Print Receipt"
+                            >
+                              {printingId === String(item.receiptId || item.receipt_ID) ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <FileText className="w-3 h-3" />
+                              )}
+                              Print
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )
