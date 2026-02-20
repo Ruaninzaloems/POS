@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import {
   getTransactionHistory, getDetailedTransactionResults, getBillingPeriodTransactions,
-  getAllBillingPeriodTransactions, getServiceTypeBalance,
+  getAllBillingPeriodTransactions,
   getReceiptTransactionDetail, getLevyTransactionDetail,
   getOpenBalanceDetail, getCloseBalanceDetail, getJournalTransactionDetails,
   getRebateTransactionDetail, getInterestConsPaymentDetail,
@@ -21,6 +21,7 @@ export function TransactionSummaryTab({ accountId, accountNumber }: { accountId:
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadProgress, setLoadProgress] = useState('');
   const years = useMemo(() => getFinYearOptions(), []);
   const [selectedYear, setSelectedYear] = useState(years[0]);
   const lastKey = useRef('');
@@ -28,13 +29,22 @@ export function TransactionSummaryTab({ accountId, accountNumber }: { accountId:
   const load = useCallback(async (finYear: string) => {
     setLoading(true);
     setError(null);
+    setLoadProgress('Loading all billing periods...');
     try {
-      const result = await getServiceTypeBalance(accountId, finYear);
-      setData(Array.isArray(result) ? result : []);
+      const months = MONTHS;
+      const results: { month: string; records: any[] }[] = [];
+      const fetches = months.map(async (month) => {
+        const records = await getBillingPeriodTransactions(accountId, finYear, month).catch(() => []);
+        return { month, records: Array.isArray(records) ? records : [] };
+      });
+      const allResults = await Promise.all(fetches);
+      allResults.forEach(r => results.push(r));
+      setData(results as any);
     } catch (e: any) {
       setError(e.message || 'Failed to load transaction summary');
     } finally {
       setLoading(false);
+      setLoadProgress('');
     }
   }, [accountId]);
 
@@ -46,58 +56,92 @@ export function TransactionSummaryTab({ accountId, accountNumber }: { accountId:
     }
   }, [accountId, selectedYear, load]);
 
+  const extractServiceType = useCallback((desc: string): string => {
+    const levyMatch = desc.match(/^Levy\s*-\s*(.+)/i);
+    if (levyMatch) return levyMatch[1].trim();
+    const journalMatch = desc.match(/^(?:Billing\s+Transfer\s+)?(?:Normal\s+)?Journal\s*-\s*(.+?)(?:\s*-\s*Transfer|$)/i);
+    if (journalMatch) return journalMatch[1].trim();
+    const parts = desc.split('-').map(s => s.trim());
+    if (parts.length >= 2) return parts[1];
+    return desc || 'Other';
+  }, []);
+
   const pivotData = useMemo(() => {
-    const descMap = new Map<string, Record<string, number>>();
-    const monthTotals: Record<string, number> = {};
-    const monthOpeningBalance: Record<string, number> = {};
+    if (!Array.isArray(data) || data.length === 0) return [];
+    const serviceMap = new Map<string, Record<string, number>>();
+    const monthOpening: Record<string, number> = {};
+    const monthClosing: Record<string, number> = {};
     const monthInterest: Record<string, number> = {};
     const monthReceipts: Record<string, number> = {};
+    const monthCharges: Record<string, number> = {};
 
-    data.forEach((d: any) => {
-      const desc = d.serviceDescription || d.description || 'Unknown';
-      const month = d.month || '';
-      const totalAmt = d.totalAmount ?? d.amount ?? 0;
-      const openBal = d.openingBalance ?? 0;
-      const interest = d.interestAmount ?? 0;
-      const currentCharge = d.currentCharge ?? 0;
+    (data as { month: string; records: any[] }[]).forEach(({ month, records }) => {
+      records.forEach((r: any) => {
+        const drilldown = r.drilldown || '';
+        const totalAmt = r.totalAmount ?? r.amount ?? 0;
 
-      if (!descMap.has(desc)) descMap.set(desc, {});
-      const row = descMap.get(desc)!;
-      row[month] = (row[month] || 0) + totalAmt;
+        if (drilldown === 'OpenBalance') {
+          monthOpening[month] = (monthOpening[month] || 0) + totalAmt;
+          return;
+        }
+        if (drilldown === 'CloseBalance') {
+          monthClosing[month] = (monthClosing[month] || 0) + totalAmt;
+          return;
+        }
+        if (drilldown === 'Interest') {
+          monthInterest[month] = (monthInterest[month] || 0) + totalAmt;
+          return;
+        }
+        if (drilldown === 'Receipt') {
+          monthReceipts[month] = (monthReceipts[month] || 0) + totalAmt;
+          return;
+        }
 
-      monthTotals[month] = (monthTotals[month] || 0) + totalAmt;
-      monthOpeningBalance[month] = (monthOpeningBalance[month] || 0) + openBal;
-      monthInterest[month] = (monthInterest[month] || 0) + interest;
+        const serviceType = extractServiceType(r.description || '');
+
+        if (!serviceMap.has(serviceType)) serviceMap.set(serviceType, {});
+        const row = serviceMap.get(serviceType)!;
+        row[month] = (row[month] || 0) + totalAmt;
+        monthCharges[month] = (monthCharges[month] || 0) + totalAmt;
+      });
     });
 
-    const serviceRows = Array.from(descMap.entries()).map(([desc, months]) => ({
-      description: desc,
-      isSpecial: false,
-      ...months,
-    }));
+    const serviceRows = Array.from(serviceMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([desc, months]) => ({
+        description: desc,
+        isSpecial: false,
+        ...months,
+      }));
 
     const openingRow: any = { description: 'Opening Balance', isSpecial: true };
-    const totalRow: any = { description: 'Total', isSpecial: true, isBold: true };
+    const chargesRow: any = { description: 'Total Charges', isSpecial: true, isBold: true };
     const interestRow: any = { description: 'Interest', isSpecial: true };
-    const receiptsRow: any = { description: 'Receipts', isSpecial: true };
+    const receiptsRow: any = { description: 'Receipts / Payments', isSpecial: true };
     const closingRow: any = { description: 'Closing Balance', isSpecial: true, isBold: true };
 
     MONTHS.forEach(m => {
-      openingRow[m] = monthOpeningBalance[m] || 0;
-      totalRow[m] = monthTotals[m] || 0;
+      openingRow[m] = monthOpening[m] || 0;
+      chargesRow[m] = monthCharges[m] || 0;
       interestRow[m] = monthInterest[m] || 0;
-      const closingVal = (monthOpeningBalance[m] || 0) + (monthTotals[m] || 0) + (monthInterest[m] || 0);
-      closingRow[m] = closingVal;
-      receiptsRow[m] = 0;
+      receiptsRow[m] = monthReceipts[m] || 0;
+      closingRow[m] = monthClosing[m] !== undefined
+        ? monthClosing[m]
+        : (openingRow[m] + chargesRow[m] + interestRow[m] + receiptsRow[m]);
     });
 
-    return [openingRow, ...serviceRows, interestRow, totalRow, receiptsRow, closingRow];
-  }, [data]);
+    return [openingRow, ...serviceRows, interestRow, chargesRow, receiptsRow, closingRow];
+  }, [data, extractServiceType]);
 
-  if (loading) return <LoadingSkeleton />;
+  if (loading) return (
+    <div className="p-5 space-y-3">
+      <LoadingSkeleton />
+      {loadProgress && <p className="text-xs text-slate-500 text-center">{loadProgress}</p>}
+    </div>
+  );
   if (error) return <ErrorState message={error} onRetry={() => load(selectedYear)} />;
 
-  const hasData = data.length > 0;
+  const hasData = Array.isArray(data) && (data as { month: string; records: any[] }[]).some(d => d.records.length > 0);
   const fmt = (v: number | undefined) => {
     if (v === undefined) return '0.00';
     const num = typeof v === 'number' ? v : 0;
@@ -874,7 +918,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(r);
     }
-    for (const [key, items] of map.entries()) {
+    for (const [key, items] of Array.from(map.entries())) {
       const d = items[0]?.receiptDate ? new Date(items[0].receiptDate) : null;
       groups.push({
         key,
