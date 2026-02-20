@@ -2342,6 +2342,7 @@ export async function registerRoutes(
     ["section129-account-enquiry", "GetSection129AccountEnquiry"],
     ["get-debit-order-deduction", "getDebitOrderDeduction"],
     ["handover-account-enquiry", "getHandoverAccountEnquiry"],
+    ["billed-vs-paid-amounts", "BilledVsPaidAmounts"],
     ["cons-handover-transaction-detail", "getConsHandoverTransactionDetail"],
     ["meter-info-by-id", "getMeterInfoById"],
     ["payments-received", "PaymentsReceived"],
@@ -2374,6 +2375,41 @@ export async function registerRoutes(
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/clearance-document-download", async (req, res) => {
+    try {
+      const { costScheduleId, type } = req.query as Record<string, string>;
+      if (!costScheduleId || !type) {
+        return res.status(400).json({ message: "costScheduleId and type are required" });
+      }
+      const token = await getPlatinumToken();
+      const apiUrl = getPlatinumApiUrl();
+      const endpoint = type === 'cost-schedule'
+        ? `/api/BillingEnquiry/DownloadCostSchedule`
+        : `/api/BillingEnquiry/DownloadClearanceCertificate`;
+      const url = `${apiUrl}${endpoint}?costScheduleId=${costScheduleId}`;
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        return res.status(response.status).json({ message: `Failed to download ${type}`, detail: text.substring(0, 500) });
+      }
+      const contentType = response.headers.get('content-type') || 'application/pdf';
+      const contentDisposition = response.headers.get('content-disposition');
+      res.setHeader('Content-Type', contentType);
+      if (contentDisposition) {
+        res.setHeader('Content-Disposition', contentDisposition);
+      } else {
+        const filename = type === 'cost-schedule' ? 'cost-schedule.pdf' : 'clearance-certificate.pdf';
+        res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+      }
+      const buffer = await response.arrayBuffer();
+      res.send(Buffer.from(buffer));
+    } catch (e: any) {
+      res.status(502).json({ message: "Failed to download clearance document", detail: e.message });
     }
   });
 

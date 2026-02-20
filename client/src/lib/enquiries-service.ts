@@ -667,10 +667,21 @@ export async function getChequeWriteBackDetail(chequeId: number): Promise<any> {
   return fetchWithTimeout(`/api/platinum/billing-enquiry/cheque-write-back-detail?chequeId=${chequeId}`);
 }
 
+// === BILLED VS PAID ===
+export async function getBilledVsPaidAmounts(accountId: number, financialYear?: string): Promise<any[]> {
+  const yr = financialYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/billed-vs-paid-amounts?accountId=${accountId}&financialYear=${encodeURIComponent(yr)}`);
+  return normalizeArray(data);
+}
+
 // === CLEARANCE ===
 export async function getClearanceInquiries(accountId: number): Promise<any[]> {
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/clearance-inquiries?accountId=${accountId}`);
   return normalizeArray(data);
+}
+
+export function downloadClearanceDocument(costScheduleId: number | string, type: 'cost-schedule' | 'clearance-certificate'): void {
+  window.open(`/api/platinum/clearance-document-download?costScheduleId=${costScheduleId}&type=${type}`, '_blank');
 }
 
 // === BANK GUARANTEE ===

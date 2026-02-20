@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Gift, CreditCard, Landmark, RefreshCw, ChevronDown, ChevronUp,
-  Scale, FileText, Banknote, Receipt, Activity, CalendarDays, Shield, Clock
+  Scale, FileText, Banknote, Receipt, Activity, CalendarDays, Shield, Clock,
+  BarChart3, TrendingUp, TrendingDown, Search
 } from 'lucide-react';
 import {
   getPaymentPlansByAccountId, getPaymentPlanRemainingCapital,
@@ -11,6 +12,7 @@ import {
   getDebitOrderDeductionByAccount, getDebitOrderDeduction,
   getAccountRatesDetails, getRatesRunHistory,
   getDeposits, getDepositAmount, getPaymentIncentive,
+  getBilledVsPaidAmounts,
 } from '@/lib/enquiries-service';
 import { LoadingSkeleton, EmptyState, ErrorState, InfoField, SectionHeader, PaginatedTable, TabCard, FieldRow, getFinYearOptions, MONTHS } from './shared';
 
@@ -546,83 +548,256 @@ export function DebitOrdersTab({ accountId }: { accountId: number }) {
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
-  if (!deductions.length && !debitOrders.length) return <EmptyState message="No debit order data available" />;
+
+  const fmt = (v: any) => {
+    const n = typeof v === 'number' ? v : parseFloat(v) || 0;
+    return n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+  const fmtDate = (v: any) => v ? new Date(v).toLocaleDateString('en-ZA') : '-';
 
   return (
     <div className="p-5 space-y-5">
-      {deductions.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
-            <CreditCard className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Debit Order Deductions</h3>
-            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{deductions.length}</Badge>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" data-testid="table-debit-order-deductions">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Date</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Bank</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Account</th>
-                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reference</th>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-3 bg-gradient-to-r from-teal-600 to-teal-700 flex items-center gap-2">
+          <Landmark className="w-4 h-4 text-white" />
+          <h3 className="text-sm font-semibold text-white tracking-wide">Debit Order Deduction List</h3>
+          {(deductions.length + debitOrders.length) > 0 && (
+            <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{deductions.length + debitOrders.length} record{(deductions.length + debitOrders.length) !== 1 ? 's' : ''}</Badge>
+          )}
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm" data-testid="table-debit-order-deductions">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="text-center py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold w-[40px]">Nr</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[80px]">Status</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Service Type</th>
+                <th className="text-right py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Maximum Amount</th>
+                <th className="text-right py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[120px]">Total Maximum Amount</th>
+                <th className="text-center py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[60px]">Ageing</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[110px]">Commencement Date</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Deduction Date</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Date Captured</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[90px]">Captured By</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[110px]">Termination Date</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[120px]">Termination Reason</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Terminated By</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(deductions.length + debitOrders.length) === 0 ? (
+                <tr><td colSpan={13} className="py-8 text-center text-slate-400 text-sm italic">No records to display.</td></tr>
+              ) : [...deductions, ...debitOrders].map((d: any, i: number) => (
+                <tr key={i} className="border-b border-slate-100 hover:bg-teal-50/30 transition-colors" data-testid={`row-debit-${i}`}>
+                  <td className="py-2 px-2 text-center text-slate-500 text-[13px]">{d.nr ?? d.number ?? i + 1}</td>
+                  <td className="py-2 px-2">
+                    <Badge variant={d.status === 'Active' || d.status === 'Successful' ? 'default' : 'secondary'} className="text-[10px]">
+                      {d.status || d.deductionStatus || '-'}
+                    </Badge>
+                  </td>
+                  <td className="py-2 px-2 text-[13px] text-slate-700">{d.serviceType || d.serviceDescription || d.accountType || '-'}</td>
+                  <td className="py-2 px-2 text-right font-mono text-[13px]">{fmt(d.maximumAmount ?? d.amount ?? d.deductionAmount ?? 0)}</td>
+                  <td className="py-2 px-2 text-right font-mono text-[13px]">{fmt(d.totalMaximumAmount ?? d.debitOrderAmount ?? 0)}</td>
+                  <td className="py-2 px-2 text-center text-[13px] text-slate-600">{d.ageing ?? d.aging ?? '-'}</td>
+                  <td className="py-2 px-2 text-[13px] text-slate-600">{fmtDate(d.commencementDate ?? d.startDate)}</td>
+                  <td className="py-2 px-2 text-[13px] text-slate-600">{fmtDate(d.deductionDate ?? d.date)}</td>
+                  <td className="py-2 px-2 text-[13px] text-slate-600">{fmtDate(d.dateCaptured ?? d.capturedDate ?? d.createdDate)}</td>
+                  <td className="py-2 px-2 text-[13px] text-slate-600">{d.capturedBy ?? d.createdBy ?? '-'}</td>
+                  <td className="py-2 px-2 text-[13px] text-slate-600">{fmtDate(d.terminationDate)}</td>
+                  <td className="py-2 px-2 text-[13px] text-slate-500">{d.terminationReason ?? '-'}</td>
+                  <td className="py-2 px-2 text-[13px] text-slate-500">{d.terminatedBy ?? '-'}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {deductions.map((d: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
-                    <td className="py-2 px-3">{d.deductionDate ? new Date(d.deductionDate).toLocaleDateString('en-ZA') : d.date || '-'}</td>
-                    <td className="py-2 px-3">{d.bankName || d.bank || '-'}</td>
-                    <td className="py-2 px-3 font-mono text-xs">{d.bankAccountNumber || d.accountNumber || '-'}</td>
-                    <td className="py-2 px-3 text-right font-mono font-semibold">{(d.amount ?? d.deductionAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                    <td className="py-2 px-3"><Badge variant={d.status === 'Successful' ? 'default' : 'secondary'} className="text-[10px]">{d.status || d.deductionStatus || '-'}</Badge></td>
-                    <td className="py-2 px-3 text-slate-500 text-xs">{d.reference || '-'}</td>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end">
+          <span className="text-xs text-slate-500">{deductions.length + debitOrders.length} record{(deductions.length + debitOrders.length) !== 1 ? 's' : ''}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function BilledVsPaidTab({ accountId }: { accountId: number }) {
+  const [data, setData] = useState<any[]>([]);
+  const [selectedYear, setSelectedYear] = useState(getFinYearOptions()[0]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getBilledVsPaidAmounts(accountId, selectedYear);
+      setData(result);
+    } catch (e: any) {
+      setError(e.message || 'Failed to load billed vs paid data');
+    } finally {
+      setLoading(false);
+    }
+  }, [accountId, selectedYear]);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (loading) return <LoadingSkeleton />;
+  if (error) return <ErrorState message={error} onRetry={load} />;
+
+  const fmt = (v: any) => {
+    const n = typeof v === 'number' ? v : parseFloat(v) || 0;
+    return n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const totalBilled = data.reduce((s, d) => s + (d.billingAmount ?? d.billedAmount ?? d.amount ?? 0), 0);
+  const totalPaid = data.reduce((s, d) => s + (d.paidAmount ?? d.paymentAmount ?? 0), 0);
+  const maxVal = Math.max(...data.map(d => Math.max(Math.abs(d.billingAmount ?? d.billedAmount ?? d.amount ?? 0), Math.abs(d.paidAmount ?? d.paymentAmount ?? 0))), 1);
+
+  return (
+    <div className="p-5 space-y-5">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center gap-2">
+          <BarChart3 className="w-4 h-4 text-white" />
+          <h3 className="text-sm font-semibold text-white tracking-wide">Billed vs Paid Amounts</h3>
+        </div>
+        <div className="px-5 py-3 bg-slate-50 border-b border-slate-200 flex items-center gap-3">
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+            className="text-sm border border-slate-300 rounded-lg px-3 py-1.5 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+            data-testid="select-billed-year"
+          >
+            {getFinYearOptions().map(yr => <option key={yr} value={yr}>{yr}</option>)}
+          </select>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm" data-testid="table-billed-vs-paid">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="text-left py-2.5 px-4 text-[11px] uppercase tracking-wider text-slate-600 font-bold min-w-[140px]">Financial Year</th>
+                <th className="text-left py-2.5 px-4 text-[11px] uppercase tracking-wider text-slate-600 font-bold min-w-[120px]">Month</th>
+                <th className="text-right py-2.5 px-4 text-[11px] uppercase tracking-wider text-indigo-600 font-bold min-w-[140px]">Billing Amount</th>
+                <th className="text-right py-2.5 px-4 text-[11px] uppercase tracking-wider text-rose-600 font-bold min-w-[140px]">Paid Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.length === 0 ? (
+                <tr><td colSpan={4} className="py-8 text-center text-slate-400 text-sm italic">No records to display.</td></tr>
+              ) : data.map((d: any, i: number) => {
+                const billed = d.billingAmount ?? d.billedAmount ?? d.amount ?? 0;
+                const paid = d.paidAmount ?? d.paymentAmount ?? 0;
+                return (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-indigo-50/30 transition-colors" data-testid={`row-billed-${i}`}>
+                    <td className="py-2.5 px-4 text-[13px] text-slate-700">{d.financialYear || selectedYear}</td>
+                    <td className="py-2.5 px-4 text-[13px] font-medium text-slate-800">{d.month || d.billingMonth || d.period || '-'}</td>
+                    <td className="py-2.5 px-4 text-right font-mono text-[13px] text-indigo-700 font-semibold">{fmt(billed)}</td>
+                    <td className={`py-2.5 px-4 text-right font-mono text-[13px] font-semibold ${paid < 0 ? 'text-red-600' : 'text-rose-600'}`}>{fmt(paid)}</td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                );
+              })}
+            </tbody>
+            {data.length > 0 && (
+              <tfoot>
+                <tr className="border-t-2 border-indigo-200 bg-indigo-50/50">
+                  <td colSpan={2} className="py-2.5 px-4 font-bold text-slate-900 text-[13px]">Total</td>
+                  <td className="py-2.5 px-4 text-right font-mono font-bold text-indigo-700 text-[13px]">{fmt(totalBilled)}</td>
+                  <td className={`py-2.5 px-4 text-right font-mono font-bold text-[13px] ${totalPaid < 0 ? 'text-red-600' : 'text-rose-600'}`}>{fmt(totalPaid)}</td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+        <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end">
+          <span className="text-xs text-slate-500">{data.length} of {data.length} records</span>
+        </div>
+      </div>
+
+      {data.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Account History</h3>
+          </div>
+          <div className="p-5">
+            <div className="flex items-end gap-1 justify-center" style={{ height: '320px' }} data-testid="chart-billed-vs-paid">
+              {data.map((d: any, i: number) => {
+                const billed = Math.abs(d.billingAmount ?? d.billedAmount ?? d.amount ?? 0);
+                const paid = Math.abs(d.paidAmount ?? d.paymentAmount ?? 0);
+                const billedPct = maxVal > 0 ? (billed / maxVal) * 100 : 0;
+                const paidPct = maxVal > 0 ? (paid / maxVal) * 100 : 0;
+                const month = d.month || d.billingMonth || d.period || '';
+                return (
+                  <div key={i} className="flex flex-col items-center flex-1 max-w-[100px] group">
+                    <div className="flex items-end gap-1 w-full justify-center" style={{ height: '260px' }}>
+                      <div className="relative flex flex-col items-center justify-end" style={{ height: '100%', width: '35%' }}>
+                        <div
+                          className="w-full bg-indigo-400 hover:bg-indigo-500 rounded-t-sm transition-all duration-300 relative group/bar"
+                          style={{ height: `${Math.max(billedPct * 0.95, 2)}%`, minHeight: '4px' }}
+                        >
+                          <div className="absolute -top-7 left-1/2 -translate-x-1/2 hidden group-hover/bar:block bg-slate-800 text-white text-[9px] rounded px-1.5 py-0.5 whitespace-nowrap z-10">
+                            R {fmt(billed)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="relative flex flex-col items-center justify-end" style={{ height: '100%', width: '35%' }}>
+                        <div
+                          className="w-full bg-rose-400 hover:bg-rose-500 rounded-t-sm transition-all duration-300 relative group/bar"
+                          style={{ height: `${Math.max(paidPct * 0.95, 2)}%`, minHeight: '4px' }}
+                        >
+                          <div className="absolute -top-7 left-1/2 -translate-x-1/2 hidden group-hover/bar:block bg-slate-800 text-white text-[9px] rounded px-1.5 py-0.5 whitespace-nowrap z-10">
+                            R {fmt(paid)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-2 text-[10px] text-slate-500 text-center font-medium truncate w-full">{month}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex items-center justify-center gap-6 mt-4 pt-3 border-t border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-sm bg-indigo-400" />
+                <span className="text-xs text-slate-600 font-medium">Billing Amount</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-sm bg-rose-400" />
+                <span className="text-xs text-slate-600 font-medium">Paid Amount</span>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {debitOrders.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
-            <Landmark className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Debit Orders</h3>
-            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{debitOrders.length}</Badge>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+              <TrendingUp className="w-4 h-4 text-indigo-600" />
+            </div>
+            <span className="text-xs text-slate-500 uppercase tracking-wider font-medium">Total Billed</span>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" data-testid="table-debit-orders">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Bank</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Branch</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Account Holder</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Account Type</th>
-                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Day of Deduction</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {debitOrders.map((d: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                    <td className="py-2 px-3">{d.bankName || d.bank || '-'}</td>
-                    <td className="py-2 px-3">{d.branchCode || d.branch || '-'}</td>
-                    <td className="py-2 px-3 font-medium">{d.accountHolderName || d.accountHolder || '-'}</td>
-                    <td className="py-2 px-3">{d.accountType || '-'}</td>
-                    <td className="py-2 px-3 text-right font-mono font-semibold">{(d.amount ?? d.debitOrderAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                    <td className="py-2 px-3">{d.deductionDay || d.dayOfDeduction || '-'}</td>
-                    <td className="py-2 px-3"><Badge variant={d.status === 'Active' ? 'default' : 'secondary'} className="text-[10px]">{d.status || '-'}</Badge></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <div className="text-lg font-bold text-indigo-700 font-mono mt-1">R {fmt(totalBilled)}</div>
         </div>
-      )}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center">
+              <TrendingDown className="w-4 h-4 text-rose-600" />
+            </div>
+            <span className="text-xs text-slate-500 uppercase tracking-wider font-medium">Total Paid</span>
+          </div>
+          <div className={`text-lg font-bold font-mono mt-1 ${totalPaid < 0 ? 'text-red-600' : 'text-rose-600'}`}>R {fmt(totalPaid)}</div>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${totalBilled - totalPaid > 0 ? 'bg-amber-50' : 'bg-emerald-50'}`}>
+              <Banknote className={`w-4 h-4 ${totalBilled - totalPaid > 0 ? 'text-amber-600' : 'text-emerald-600'}`} />
+            </div>
+            <span className="text-xs text-slate-500 uppercase tracking-wider font-medium">Balance</span>
+          </div>
+          <div className={`text-lg font-bold font-mono mt-1 ${totalBilled - totalPaid > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>R {fmt(totalBilled - totalPaid)}</div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -11,7 +11,8 @@ import {
   AlertTriangle, Clock, ArrowRight, Loader2, SlidersHorizontal,
   Layers, Home, Activity, Users, Receipt, CalendarDays, Banknote, Scale,
   Gauge, Filter, AlertCircle, Briefcase, Star, ScanBarcode, CheckCircle2,
-  CircleDot, Wallet, Gauge as MeterIcon, CalendarCheck, Building2, Send
+  CircleDot, Wallet, Gauge as MeterIcon, CalendarCheck, Building2, Send,
+  BarChart3
 } from 'lucide-react';
 import {
   searchAccounts, getAccountBalance, multiAutocompleteSearch, getAutocompleteType,
@@ -23,7 +24,7 @@ import { ErrorState } from './enquiries/shared';
 import { AccountInfoTab, NameTab, BalanceDebtTab, LinkedAccountsTab } from './enquiries/account-tabs';
 import { ServiceBalanceTab, ConsumptionTab, ServicesMetersTab } from './enquiries/service-tabs';
 import { TransactionSummaryTab, DetailedTransactionListTab, TransactionHistoryTab } from './enquiries/transaction-tabs';
-import { IncentivesTab, DepositsTab, PaymentPlansTab, PaymentExtensionHistoryTab, DebitOrdersTab, RatesValuationsTab } from './enquiries/financial-tabs';
+import { IncentivesTab, DepositsTab, PaymentPlansTab, PaymentExtensionHistoryTab, DebitOrdersTab, RatesValuationsTab, BilledVsPaidTab } from './enquiries/financial-tabs';
 import { PropertyDetailsTab, ContactInfoTab, HandoverTab, NotificationsTab, StatementsTab, ClearanceTab, DebtorNotesTab, Section129Tab, OccupiersTab, SendStatementsTab, IndigentHistoryTab } from './enquiries/other-tabs';
 import { SEARCH_FIELDS, detectSearchType, SmartSearchDropdown, ExpandableResultRow } from './enquiries/search-components';
 
@@ -572,6 +573,7 @@ function GeneralEnquiriesContent() {
           { value: 'deposits', label: 'Deposits', icon: <Banknote className="w-3.5 h-3.5" />, color: 'lime' },
           { value: 'payment-plans', label: 'Payment Plans', icon: <CalendarDays className="w-3.5 h-3.5" />, color: 'purple' },
           { value: 'payment-extensions', label: 'Extensions', icon: <Clock className="w-3.5 h-3.5" />, color: 'amber' },
+          { value: 'billed-vs-paid', label: 'Billed vs Paid', icon: <BarChart3 className="w-3.5 h-3.5" />, color: 'indigo' },
         ],
       },
       {
@@ -731,6 +733,7 @@ function GeneralEnquiriesContent() {
               <TabsContent value="payment-plans" className="m-0"><PaymentPlansTab accountId={accountId} /></TabsContent>
               <TabsContent value="payment-extensions" className="m-0"><PaymentExtensionHistoryTab accountId={accountId} /></TabsContent>
               <TabsContent value="debit-orders" className="m-0"><DebitOrdersTab accountId={accountId} /></TabsContent>
+              <TabsContent value="billed-vs-paid" className="m-0"><BilledVsPaidTab accountId={accountId} /></TabsContent>
               <TabsContent value="rates" className="m-0"><RatesValuationsTab accountId={accountId} propertyId={propertyId} /></TabsContent>
               <TabsContent value="notifications" className="m-0"><NotificationsTab accountId={accountId} /></TabsContent>
               <TabsContent value="statements" className="m-0"><StatementsTab accountId={accountId} /></TabsContent>

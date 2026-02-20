@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   MapPin, Phone, Clock, Download, FileText, Shield, ArrowRight,
   ChevronDown, ChevronUp, Building2, Loader2, Landmark, Gift, Zap,
   Receipt, AlertCircle, X, CalendarDays, Hash, Scale, Banknote,
-  Mail, MessageSquare, Send, CheckCircle2, Eye, Paperclip, RefreshCw
+  Mail, MessageSquare, Send, CheckCircle2, Eye, Paperclip, RefreshCw,
+  Search, FileDown
 } from 'lucide-react';
 import {
   getPropertyDetails, getConsumptionUnits, getSupplementaryValuations,
@@ -15,7 +17,8 @@ import {
   getHandoverInfo, getHandoverAccountEnquiry,
   getConsHandoverTransactionDetail, getAccountNotifications,
   getPropertyNotification, getGeneratedStatements,
-  getClearanceInquiries, getDebtorNoteLists, getSection129AccountEnquiry,
+  getClearanceInquiries, downloadClearanceDocument,
+  getDebtorNoteLists, getSection129AccountEnquiry,
   getOccupiers, addOccupier, deleteOccupier, getAdditionalEmails,
   getAttpApplicationHistory,
 } from '@/lib/enquiries-service';
@@ -698,50 +701,86 @@ export function HandoverTab({ accountId }: { accountId: number }) {
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
-  if (!data && !enquiry && !transactions.length) return <EmptyState message="No handover information available" />;
+
+  const fmt = (v: any) => {
+    const n = typeof v === 'number' ? v : parseFloat(v) || 0;
+    return n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+  const fmtDate = (v: any) => v ? new Date(v).toLocaleDateString('en-ZA') : '-';
 
   const items = data ? (Array.isArray(data) ? data : [data]) : [];
+  const allHandovers = [...items, ...(enquiry ? (Array.isArray(enquiry) ? enquiry : [enquiry]) : [])];
+
   return (
     <div className="p-5 space-y-5">
-      {items.map((item: any, i: number) => (
-        <div key={i} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-orange-600 to-orange-700 flex items-center gap-2">
-            <Shield className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Handover Details</h3>
-            {(item.handoverStatus || item.status) && (
-              <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{item.handoverStatus || item.status}</Badge>
-            )}
-          </div>
-          <div className="p-5">
-            <FieldRow label="Handover Status" value={item.handoverStatus || item.status} icon={<Shield className="w-3.5 h-3.5" />} />
-            <FieldRow label="Handover Date" value={item.handoverDate ? new Date(item.handoverDate).toLocaleDateString('en-ZA') : null} icon={<CalendarDays className="w-3.5 h-3.5" />} />
-            <FieldRow label="Attorney" value={item.attorney || item.attorneyName} icon={<Scale className="w-3.5 h-3.5" />} />
-            <FieldRow label="Reference" value={item.reference || item.handoverReference} icon={<Hash className="w-3.5 h-3.5" />} />
-            <FieldRow label="Amount" value={item.amount || item.handoverAmount} icon={<Banknote className="w-3.5 h-3.5" />} />
-            <FieldRow label="Description" value={item.description || item.notes} />
-          </div>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-3 bg-gradient-to-r from-orange-600 to-orange-700 flex items-center gap-2">
+          <ArrowRight className="w-4 h-4 text-white" />
+          <h3 className="text-sm font-semibold text-white tracking-wide">Handover List</h3>
+          {allHandovers.length > 0 && (
+            <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{allHandovers.length} record{allHandovers.length !== 1 ? 's' : ''}</Badge>
+          )}
         </div>
-      ))}
-
-      {enquiry && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
-            <FileText className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Handover Account Enquiry</h3>
-          </div>
-          <div className="p-5">
-            {Object.entries(enquiry).filter(([k]) => !k.startsWith('_')).map(([key, val]) => (
-              <FieldRow key={key} label={key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())} value={val as any} />
-            ))}
-          </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm" data-testid="table-handover-list">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[80px]">Run Type</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[120px]">Handover Account</th>
+                <th className="text-right py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[120px]">Handover Amount</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[110px]">Handed Over Date</th>
+                <th className="text-center py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Outstanding Days</th>
+                <th className="text-center py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[110px]">Outstanding Month</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Attorney</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[80px]">Status</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[90px]">Capturer</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Date Created</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[90px]">Reviewed By</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[120px]">Termination Reason</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[110px]">Termination Date</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[90px]">Reviewed By</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Review Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allHandovers.length === 0 ? (
+                <tr><td colSpan={15} className="py-8 text-center text-slate-400 text-sm italic">No records to display.</td></tr>
+              ) : allHandovers.map((h: any, i: number) => (
+                <tr key={i} className="border-b border-slate-100 hover:bg-orange-50/30 transition-colors" data-testid={`row-handover-${i}`}>
+                  <td className="py-2 px-2 text-[13px] text-slate-700">{h.runType ?? h.type ?? '-'}</td>
+                  <td className="py-2 px-2 text-[13px] font-mono text-slate-700">{h.handoverAccount ?? h.accountNumber ?? h.account ?? '-'}</td>
+                  <td className="py-2 px-2 text-right font-mono text-[13px] text-slate-700 font-semibold">{fmt(h.handoverAmount ?? h.amount ?? 0)}</td>
+                  <td className="py-2 px-2 text-[13px] text-slate-600">{fmtDate(h.handedOverDate ?? h.handoverDate)}</td>
+                  <td className="py-2 px-2 text-center text-[13px] text-slate-600">{h.outstandingDays ?? h.daysOutstanding ?? '-'}</td>
+                  <td className="py-2 px-2 text-center text-[13px] text-slate-600">{h.outstandingMonth ?? h.monthsOutstanding ?? '-'}</td>
+                  <td className="py-2 px-2 text-[13px] text-slate-700">{h.attorney ?? h.attorneyName ?? '-'}</td>
+                  <td className="py-2 px-2">
+                    <Badge variant={h.status === 'Active' || h.handoverStatus === 'Active' ? 'default' : 'secondary'} className="text-[10px]">
+                      {h.status ?? h.handoverStatus ?? '-'}
+                    </Badge>
+                  </td>
+                  <td className="py-2 px-2 text-[13px] text-slate-600">{h.capturer ?? h.capturedBy ?? h.createdBy ?? '-'}</td>
+                  <td className="py-2 px-2 text-[13px] text-slate-600">{fmtDate(h.dateCreated ?? h.createdDate ?? h.capturedDate)}</td>
+                  <td className="py-2 px-2 text-[13px] text-slate-600">{h.reviewedBy ?? '-'}</td>
+                  <td className="py-2 px-2 text-[13px] text-slate-500">{h.terminationReason ?? '-'}</td>
+                  <td className="py-2 px-2 text-[13px] text-slate-600">{fmtDate(h.terminationDate)}</td>
+                  <td className="py-2 px-2 text-[13px] text-slate-600">{h.reviewedBy2 ?? h.terminatedReviewedBy ?? '-'}</td>
+                  <td className="py-2 px-2 text-[13px] text-slate-600">{fmtDate(h.reviewDate ?? h.reviewedDate)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      )}
+        <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end">
+          <span className="text-xs text-slate-500">{allHandovers.length} of {allHandovers.length} records</span>
+        </div>
+      </div>
 
       {transactions.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
+          <div className="px-5 py-3 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
             <Receipt className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Handover Transactions</h3>
+            <h3 className="text-sm font-semibold text-white tracking-wide">Handover Transaction Detail</h3>
             <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{transactions.length}</Badge>
           </div>
           <div className="overflow-x-auto">
@@ -752,15 +791,17 @@ export function HandoverTab({ accountId }: { accountId: number }) {
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Description</th>
                   <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reference</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Type</th>
                 </tr>
               </thead>
               <tbody>
                 {transactions.map((tx: any, i: number) => (
                   <tr key={i} className="border-b border-slate-100 hover:bg-orange-50/30 transition-colors">
-                    <td className="py-2 px-3 text-slate-500">{tx.transactionDate ? new Date(tx.transactionDate).toLocaleDateString('en-ZA') : tx.date || '-'}</td>
-                    <td className="py-2 px-3">{tx.description || tx.transactionDescription || '-'}</td>
-                    <td className="py-2 px-3 text-right font-mono font-semibold">{(tx.amount ?? tx.transactionAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                    <td className="py-2 px-3 text-slate-500">{tx.reference || '-'}</td>
+                    <td className="py-2 px-3 text-slate-600 text-[13px]">{fmtDate(tx.transactionDate ?? tx.date)}</td>
+                    <td className="py-2 px-3 text-[13px]">{tx.description || tx.transactionDescription || '-'}</td>
+                    <td className="py-2 px-3 text-right font-mono font-semibold text-[13px]">{fmt(tx.amount ?? tx.transactionAmount ?? 0)}</td>
+                    <td className="py-2 px-3 text-slate-500 text-[13px]">{tx.reference || '-'}</td>
+                    <td className="py-2 px-3 text-slate-500 text-[13px]">{tx.transactionType || tx.type || '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1166,34 +1207,96 @@ export function ClearanceTab({ accountId }: { accountId: number }) {
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
-  if (!data.length) return <EmptyState message="No clearance inquiries available" />;
+
+  const fmtDate = (v: any) => v ? new Date(v).toLocaleDateString('en-ZA') : '-';
 
   return (
-    <div className="p-4 overflow-x-auto">
-      <table className="w-full text-sm" data-testid="table-clearance">
-        <thead>
-          <tr className="border-b-2 border-slate-200">
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Type</th>
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Description</th>
-            <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Reference</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((c: any, i: number) => (
-            <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-              <td className="py-2 px-3 text-slate-600">{c.clearanceDate ? new Date(c.clearanceDate).toLocaleDateString('en-ZA') : c.date || c.applicationDate || '-'}</td>
-              <td className="py-2 px-3 font-medium">{c.clearanceType || c.type || '-'}</td>
-              <td className="py-2 px-3">{c.description || c.clearanceDescription || '-'}</td>
-              <td className="py-2 px-3 text-right font-mono font-semibold">{(c.amount ?? c.clearanceAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-              <td className="py-2 px-3"><Badge variant={c.status === 'Approved' ? 'default' : 'secondary'} className="text-[10px]">{c.status || c.clearanceStatus || '-'}</Badge></td>
-              <td className="py-2 px-3 text-slate-500 text-xs">{c.reference || c.clearanceReference || '-'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="p-5 space-y-5">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
+          <Shield className="w-4 h-4 text-white" />
+          <h3 className="text-sm font-semibold text-white tracking-wide">Clearance</h3>
+          {data.length > 0 && (
+            <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{data.length} record{data.length !== 1 ? 's' : ''}</Badge>
+          )}
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm" data-testid="table-clearance">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Cost Schedule ID</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Account Type</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[140px]">SG Number</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[200px]">Address</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[180px]">Buyer Account Name</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[80px]">Attorney</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[120px]">Clearance Certificate No</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[90px]">Receipt No</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[90px]">Receipt Date</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[80px]">Valid Until</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[80px]">Sell Date</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[80px]">Status</th>
+                <th className="text-center py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[90px]">Cost Schedule</th>
+                <th className="text-center py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Clearance Certificate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.length === 0 ? (
+                <tr><td colSpan={14} className="py-8 text-center text-slate-400 text-sm italic">No clearance records to display.</td></tr>
+              ) : data.map((c: any, i: number) => {
+                const scheduleId = c.costSchedule_ID ?? c.costScheduleId ?? c.costScheduleID ?? c.id;
+                return (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-emerald-50/30 transition-colors" data-testid={`row-clearance-${i}`}>
+                    <td className="py-2 px-2 font-mono text-[13px] text-slate-700">{scheduleId ?? '-'}</td>
+                    <td className="py-2 px-2 text-[13px] text-slate-700">{c.accountType ?? c.clearanceType ?? c.type ?? '-'}</td>
+                    <td className="py-2 px-2 font-mono text-[12px] text-slate-600">{c.sgNumber ?? c.sg_Number ?? '-'}</td>
+                    <td className="py-2 px-2 text-[13px] text-slate-700">{c.address ?? c.propertyAddress ?? c.description ?? '-'}</td>
+                    <td className="py-2 px-2 text-[13px] font-medium text-slate-800">{c.buyerAccountName ?? c.buyerName ?? c.accountHolderName ?? '-'}</td>
+                    <td className="py-2 px-2 text-[13px] text-slate-600">{c.attorney ?? c.attorneyName ?? '-'}</td>
+                    <td className="py-2 px-2 font-mono text-[12px] text-slate-600">{c.clearanceCertificateNo ?? c.certificateNumber ?? c.clearanceReference ?? '-'}</td>
+                    <td className="py-2 px-2 font-mono text-[12px] text-slate-600">{c.receiptNo ?? c.receiptNumber ?? '-'}</td>
+                    <td className="py-2 px-2 text-[13px] text-slate-600">{fmtDate(c.receiptDate ?? c.clearanceDate ?? c.date)}</td>
+                    <td className="py-2 px-2 text-[13px] text-slate-600">{fmtDate(c.validUntil ?? c.expiryDate)}</td>
+                    <td className="py-2 px-2 text-[13px] text-slate-600">{fmtDate(c.sellDate ?? c.saleDate)}</td>
+                    <td className="py-2 px-2">
+                      <Badge variant={c.status === 'Completed' || c.status === 'Approved' ? 'default' : 'secondary'} className="text-[10px]">
+                        {c.status ?? c.clearanceStatus ?? '-'}
+                      </Badge>
+                    </td>
+                    <td className="py-2 px-2 text-center">
+                      {scheduleId ? (
+                        <button
+                          onClick={() => downloadClearanceDocument(scheduleId, 'cost-schedule')}
+                          className="inline-flex items-center gap-1 text-emerald-600 hover:text-emerald-800 transition-colors group"
+                          title="Download Cost Schedule"
+                          data-testid={`btn-download-schedule-${i}`}
+                        >
+                          <FileDown className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                        </button>
+                      ) : <span className="text-slate-300">-</span>}
+                    </td>
+                    <td className="py-2 px-2 text-center">
+                      {scheduleId ? (
+                        <button
+                          onClick={() => downloadClearanceDocument(scheduleId, 'clearance-certificate')}
+                          className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 transition-colors group"
+                          title="Download Clearance Certificate"
+                          data-testid={`btn-download-certificate-${i}`}
+                        >
+                          <FileDown className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                        </button>
+                      ) : <span className="text-slate-300">-</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end">
+          <span className="text-xs text-slate-500">{data.length} of {data.length} records</span>
+        </div>
+      </div>
     </div>
   );
 }
