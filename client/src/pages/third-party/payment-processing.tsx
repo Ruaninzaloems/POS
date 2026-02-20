@@ -96,6 +96,8 @@ export default function ThirdPartyPaymentProcessing() {
   const [committing, setCommitting] = useState(false);
   const [commitResult, setCommitResult] = useState<any>(null);
 
+  const [loadProgress, setLoadProgress] = useState({ step: '', percent: 0 });
+
   useEffect(() => {
     loadThirdPartyTypes();
   }, []);
@@ -192,9 +194,14 @@ export default function ThirdPartyPaymentProcessing() {
 
   const lookupCurrentAccounts = async (accountNumbers: string[]): Promise<Map<string, string>> => {
     const mapping = new Map<string, string>();
-    const unique = [...new Set(accountNumbers.filter(a => a.length > 0))];
-    const batchSize = 5;
+    const unique = Array.from(new Set(accountNumbers.filter(a => a.length > 0)));
+    if (unique.length === 0) return mapping;
+    const batchSize = 10;
+    const totalBatches = Math.ceil(unique.length / batchSize);
     for (let i = 0; i < unique.length; i += batchSize) {
+      const batchNum = Math.floor(i / batchSize) + 1;
+      const processed = Math.min(i + batchSize, unique.length);
+      setLoadProgress({ step: `Checking account migrations (${processed}/${unique.length})...`, percent: 50 + Math.round((batchNum / totalBatches) * 45) });
       const batch = unique.slice(i, i + batchSize);
       const lookups = batch.map(async (accNo) => {
         try {
@@ -218,12 +225,15 @@ export default function ThirdPartyPaymentProcessing() {
     const useId = id || importId;
     if (!useId) return;
     setLoadingTxns(true);
+    setLoadProgress({ step: 'Fetching transactions from server...', percent: 10 });
     try {
       const txns = await platinumThirdPartyGetTransactions(useId);
       if (Array.isArray(txns)) {
+        setLoadProgress({ step: `Loaded ${txns.length} transaction(s). Checking account numbers...`, percent: 40 });
         const fileAccounts = txns.map((t: any) => t.oldAccountNumber || t.accountNumber || t.accountNo || '');
         const migrationMap = await lookupCurrentAccounts(fileAccounts);
 
+        setLoadProgress({ step: 'Building transaction list...', percent: 98 });
         setTransactions(txns.map((t: any, i: number) => {
           const oldAcct = t.oldAccountNumber || t.accountNumber || t.accountNo || '';
           const apiNewAcct = t.newAccountNumber || '';
@@ -248,9 +258,11 @@ export default function ThirdPartyPaymentProcessing() {
             hasAccountMismatch: mismatch,
           };
         }));
+        setLoadProgress({ step: 'Done', percent: 100 });
       }
     } catch (e: any) {
       console.error('Failed to load transactions:', e);
+      setLoadProgress({ step: 'Failed to load transactions', percent: 0 });
     } finally {
       setLoadingTxns(false);
     }
@@ -651,8 +663,18 @@ export default function ThirdPartyPaymentProcessing() {
                 </CardHeader>
                 <CardContent className="p-0">
                   {loadingTxns ? (
-                    <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
-                      <Loader2 className="h-5 w-5 animate-spin" /> Loading transactions...
+                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-3 px-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                      <div className="text-sm font-medium">{loadProgress.step || 'Loading...'}</div>
+                      <div className="w-full max-w-md">
+                        <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-blue-500 rounded-full transition-all duration-300 ease-out"
+                            style={{ width: `${loadProgress.percent}%` }}
+                          />
+                        </div>
+                        <div className="text-xs text-center mt-1 text-muted-foreground">{loadProgress.percent}%</div>
+                      </div>
                     </div>
                   ) : transactions.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
