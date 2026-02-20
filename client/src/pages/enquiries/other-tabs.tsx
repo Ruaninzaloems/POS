@@ -1312,6 +1312,7 @@ export function ClearanceTab({ accountId, propertyId }: { accountId: number; pro
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedRow, setExpandedRow] = useState<number | null>(null);
   const loaded = useRef(false);
 
   const load = useCallback(async () => {
@@ -1334,6 +1335,7 @@ export function ClearanceTab({ accountId, propertyId }: { accountId: number; pro
   if (error) return <ErrorState message={error} onRetry={load} />;
 
   const fmtDate = (v: any) => v ? new Date(v).toLocaleDateString('en-ZA') : '-';
+  const fmtR = (v: any) => v != null ? `R ${Number(v).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-';
 
   return (
     <div className="p-5 space-y-5">
@@ -1349,77 +1351,216 @@ export function ClearanceTab({ accountId, propertyId }: { accountId: number; pro
           <table className="w-full text-sm" data-testid="table-clearance">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="w-8 py-2.5 px-1"></th>
                 <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Cost Schedule ID</th>
                 <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Account Type</th>
                 <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[140px]">SG Number</th>
                 <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[200px]">Address</th>
                 <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[180px]">Buyer Account Name</th>
                 <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[80px]">Attorney</th>
-                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[120px]">Clearance Certificate No</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[120px]">Certificate No</th>
                 <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[90px]">Receipt No</th>
                 <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[90px]">Receipt Date</th>
                 <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[80px]">Valid Until</th>
                 <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[80px]">Sell Date</th>
                 <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[80px]">Status</th>
                 <th className="text-center py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[90px]">Cost Schedule</th>
-                <th className="text-center py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Clearance Certificate</th>
+                <th className="text-center py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Clearance Cert</th>
               </tr>
             </thead>
             <tbody>
               {data.length === 0 ? (
-                <tr><td colSpan={14} className="py-8 text-center text-slate-400 text-sm italic">No clearance records to display.</td></tr>
+                <tr><td colSpan={15} className="py-8 text-center text-slate-400 text-sm italic">No clearance records to display.</td></tr>
               ) : data.map((c: any, i: number) => {
                 const scheduleId = c.clearanceStagingID ?? c.clearance_ID ?? c.costSchedule_ID ?? c.id;
                 const cleanAddr = (c.propertyAddress || c.address || '-').replace(/\r\n/g, ', ').replace(/\s{2,}/g, ' ').trim();
+                const isExpanded = expandedRow === i;
+                const s1181 = Number(c.section1181 ?? 0);
+                const s1183 = Number(c.section1183 ?? 0);
+                const provision = Number(c.provision ?? 0);
+                const interest = Number(c.interest ?? 0);
+                const advance = Number(c.advancepayment ?? 0);
+                const additional = Number(c.additional ?? 0);
+                const clrCost = Number(c.clearanceCost ?? 0);
+                const totalClearance = s1181 + s1183 + provision + interest + advance + additional + clrCost;
+
                 return (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-emerald-50/30 transition-colors" data-testid={`row-clearance-${i}`}>
-                    <td className="py-2 px-2 font-mono text-[13px] text-slate-700">{scheduleId ?? '-'}</td>
-                    <td className="py-2 px-2 text-[13px] text-slate-700">{c.accounttype ?? c.accountType ?? '-'}</td>
-                    <td className="py-2 px-2 font-mono text-[12px] text-slate-600">{c.sgNumber ?? '-'}</td>
-                    <td className="py-2 px-2 text-[13px] text-slate-700">{cleanAddr}</td>
-                    <td className="py-2 px-2 text-[13px] font-medium text-slate-800">{c.buyername ?? c.buyerName ?? c.accountName ?? '-'}</td>
-                    <td className="py-2 px-2 text-[13px] text-slate-600">{c.attorneyDesc ?? c.attorney ?? '-'}</td>
-                    <td className="py-2 px-2 font-mono text-[12px] text-slate-600">{c.certificateNo ?? c.clearance ?? '-'}</td>
-                    <td className="py-2 px-2 font-mono text-[12px] text-slate-600">{c.receiptNo || '-'}</td>
-                    <td className="py-2 px-2 text-[13px] text-slate-600">{c.receiptDate ? fmtDate(c.receiptDate) : '-'}</td>
-                    <td className="py-2 px-2 text-[13px] text-slate-600">{fmtDate(c.toDate)}</td>
-                    <td className="py-2 px-2 text-[13px] text-slate-600">{fmtDate(c.sellDate)}</td>
-                    <td className="py-2 px-2">
-                      <Badge variant={(c.clearanceStatus ?? c.status) === 'Completed' || (c.clearanceStatus ?? c.status) === 'Approved' ? 'default' : 'secondary'} className="text-[10px]">
-                        {c.clearanceStatus ?? c.status ?? '-'}
-                      </Badge>
-                    </td>
-                    <td className="py-2 px-2 text-center">
-                      {scheduleId ? (
-                        <button
-                          onClick={() => downloadClearanceDocument(scheduleId, 'cost-schedule')}
-                          className="inline-flex items-center gap-1 text-emerald-600 hover:text-emerald-800 transition-colors group"
-                          title="Download Cost Schedule"
-                          data-testid={`btn-download-schedule-${i}`}
-                        >
-                          <FileDown className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  <React.Fragment key={i}>
+                    <tr
+                      className={`border-b border-slate-100 hover:bg-emerald-50/30 transition-colors cursor-pointer ${isExpanded ? 'bg-emerald-50/40' : ''}`}
+                      onClick={() => setExpandedRow(isExpanded ? null : i)}
+                      data-testid={`row-clearance-${i}`}
+                    >
+                      <td className="py-2 px-1 text-center">
+                        <button className="text-slate-400 hover:text-slate-600 transition-colors" data-testid={`btn-expand-clearance-${i}`}>
+                          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                         </button>
-                      ) : <span className="text-slate-300">-</span>}
-                    </td>
-                    <td className="py-2 px-2 text-center">
-                      {scheduleId ? (
-                        <button
-                          onClick={() => downloadClearanceDocument(scheduleId, 'clearance-certificate')}
-                          className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 transition-colors group"
-                          title="Download Clearance Certificate"
-                          data-testid={`btn-download-certificate-${i}`}
-                        >
-                          <FileDown className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                        </button>
-                      ) : <span className="text-slate-300">-</span>}
-                    </td>
-                  </tr>
+                      </td>
+                      <td className="py-2 px-2 font-mono text-[13px] text-slate-700">{scheduleId ?? '-'}</td>
+                      <td className="py-2 px-2 text-[13px] text-slate-700">{c.accounttype ?? c.accountType ?? '-'}</td>
+                      <td className="py-2 px-2 font-mono text-[12px] text-slate-600">{c.sgNumber ?? '-'}</td>
+                      <td className="py-2 px-2 text-[13px] text-slate-700">{cleanAddr}</td>
+                      <td className="py-2 px-2 text-[13px] font-medium text-slate-800">{c.buyername ?? c.buyerName ?? c.accountName ?? '-'}</td>
+                      <td className="py-2 px-2 text-[13px] text-slate-600">{c.attorneyDesc ?? c.attorney ?? '-'}</td>
+                      <td className="py-2 px-2 font-mono text-[12px] text-slate-600">{c.certificateNo ?? c.clearance ?? '-'}</td>
+                      <td className="py-2 px-2 font-mono text-[12px] text-slate-600">{c.receiptNo || '-'}</td>
+                      <td className="py-2 px-2 text-[13px] text-slate-600">{c.receiptDate ? fmtDate(c.receiptDate) : '-'}</td>
+                      <td className="py-2 px-2 text-[13px] text-slate-600">{fmtDate(c.toDate)}</td>
+                      <td className="py-2 px-2 text-[13px] text-slate-600">{fmtDate(c.sellDate)}</td>
+                      <td className="py-2 px-2">
+                        <Badge variant={(c.clearanceStatus ?? c.status) === 'Completed' || (c.clearanceStatus ?? c.status) === 'Approved' ? 'default' : 'secondary'} className="text-[10px]">
+                          {c.clearanceStatus ?? c.status ?? '-'}
+                        </Badge>
+                      </td>
+                      <td className="py-2 px-2 text-center" onClick={(e) => e.stopPropagation()}>
+                        {scheduleId ? (
+                          <button
+                            onClick={() => downloadClearanceDocument(scheduleId, 'cost-schedule')}
+                            className="inline-flex items-center gap-1 text-emerald-600 hover:text-emerald-800 transition-colors group"
+                            title="Download Cost Schedule"
+                            data-testid={`btn-download-schedule-${i}`}
+                          >
+                            <FileDown className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                          </button>
+                        ) : <span className="text-slate-300">-</span>}
+                      </td>
+                      <td className="py-2 px-2 text-center" onClick={(e) => e.stopPropagation()}>
+                        {scheduleId ? (
+                          <button
+                            onClick={() => downloadClearanceDocument(scheduleId, 'clearance-certificate')}
+                            className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 transition-colors group"
+                            title="Download Clearance Certificate"
+                            data-testid={`btn-download-certificate-${i}`}
+                          >
+                            <FileDown className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                          </button>
+                        ) : <span className="text-slate-300">-</span>}
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className="bg-emerald-50/20">
+                        <td colSpan={15} className="p-0">
+                          <div className="px-6 py-4 border-b border-emerald-200/50">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                              <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+                                <div className="px-4 py-2 bg-emerald-600 text-white text-xs font-semibold tracking-wide flex items-center gap-1.5">
+                                  <Scale className="w-3.5 h-3.5" />
+                                  Financial Breakdown
+                                </div>
+                                <div className="divide-y divide-slate-100">
+                                  <div className="flex justify-between items-center px-4 py-2">
+                                    <span className="text-[12px] text-slate-600">Section 118(1)</span>
+                                    <span className="font-mono text-[13px] font-medium text-slate-800">{fmtR(s1181)}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center px-4 py-2">
+                                    <span className="text-[12px] text-slate-600">Section 118(3)</span>
+                                    <span className="font-mono text-[13px] font-medium text-slate-800">{fmtR(s1183)}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center px-4 py-2">
+                                    <span className="text-[12px] text-slate-600">Provision</span>
+                                    <span className="font-mono text-[13px] font-medium text-slate-800">{fmtR(provision)}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center px-4 py-2">
+                                    <span className="text-[12px] text-slate-600">Interest</span>
+                                    <span className="font-mono text-[13px] font-medium text-slate-800">{fmtR(interest)}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center px-4 py-2">
+                                    <span className="text-[12px] text-slate-600">Advance Payment</span>
+                                    <span className={`font-mono text-[13px] font-medium ${advance < 0 ? 'text-green-700' : 'text-slate-800'}`}>{fmtR(advance)}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center px-4 py-2">
+                                    <span className="text-[12px] text-slate-600">Additional</span>
+                                    <span className="font-mono text-[13px] font-medium text-slate-800">{fmtR(additional)}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center px-4 py-2">
+                                    <span className="text-[12px] text-slate-600">Clearance Cost</span>
+                                    <span className="font-mono text-[13px] font-medium text-slate-800">{fmtR(clrCost)}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center px-4 py-2.5 bg-emerald-50 border-t-2 border-emerald-200">
+                                    <span className="text-[12px] font-bold text-emerald-800">TOTAL</span>
+                                    <span className="font-mono text-[14px] font-bold text-emerald-800">{fmtR(totalClearance)}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+                                <div className="px-4 py-2 bg-slate-600 text-white text-xs font-semibold tracking-wide flex items-center gap-1.5">
+                                  <Building2 className="w-3.5 h-3.5" />
+                                  Sale Details
+                                </div>
+                                <div className="divide-y divide-slate-100">
+                                  <div className="flex justify-between items-center px-4 py-2">
+                                    <span className="text-[12px] text-slate-600">Sell Price</span>
+                                    <span className="font-mono text-[13px] font-medium text-slate-800">{fmtR(c.sellPrice)}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center px-4 py-2">
+                                    <span className="text-[12px] text-slate-600">Sell Date</span>
+                                    <span className="text-[13px] text-slate-700">{fmtDate(c.sellDate)}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center px-4 py-2">
+                                    <span className="text-[12px] text-slate-600">Valid From</span>
+                                    <span className="text-[13px] text-slate-700">{fmtDate(c.fromDate)}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center px-4 py-2">
+                                    <span className="text-[12px] text-slate-600">Valid Until</span>
+                                    <span className="text-[13px] text-slate-700">{fmtDate(c.toDate)}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center px-4 py-2">
+                                    <span className="text-[12px] text-slate-600">Receipt No</span>
+                                    <span className="font-mono text-[13px] text-slate-700">{c.receiptNo || '-'}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center px-4 py-2">
+                                    <span className="text-[12px] text-slate-600">Receipt Date</span>
+                                    <span className="text-[13px] text-slate-700">{c.receiptDate ? fmtDate(c.receiptDate) : '-'}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+                                <div className="px-4 py-2 bg-blue-600 text-white text-xs font-semibold tracking-wide flex items-center gap-1.5">
+                                  <FileText className="w-3.5 h-3.5" />
+                                  Property & Parties
+                                </div>
+                                <div className="divide-y divide-slate-100">
+                                  <div className="flex justify-between items-center px-4 py-2">
+                                    <span className="text-[12px] text-slate-600">Account Name</span>
+                                    <span className="text-[13px] font-medium text-slate-800 text-right max-w-[180px] truncate" title={c.accountName ?? '-'}>{(c.accountName ?? '-').trim()}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center px-4 py-2">
+                                    <span className="text-[12px] text-slate-600">Buyer</span>
+                                    <span className="text-[13px] font-medium text-slate-800 text-right max-w-[180px] truncate" title={c.buyername ?? '-'}>{c.buyername ?? c.buyerName ?? '-'}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center px-4 py-2">
+                                    <span className="text-[12px] text-slate-600">Attorney</span>
+                                    <span className="text-[13px] text-slate-700">{c.attorneyDesc ?? '-'}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center px-4 py-2">
+                                    <span className="text-[12px] text-slate-600">File No</span>
+                                    <span className="font-mono text-[13px] text-slate-700">{c.fileNo || '-'}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center px-4 py-2">
+                                    <span className="text-[12px] text-slate-600">SG Number</span>
+                                    <span className="font-mono text-[12px] text-slate-600">{c.sgNumber ?? '-'}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center px-4 py-2">
+                                    <span className="text-[12px] text-slate-600">Clearance Type</span>
+                                    <span className="text-[13px] text-slate-700">{c.clearanceTypeID === 1 ? 'Transfer' : c.clearanceTypeID === 2 ? 'Section 118' : c.clearanceTypeID ?? '-'}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })}
             </tbody>
           </table>
         </div>
-        <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end">
+        <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+          <span className="text-xs text-slate-500">Click a row to view financial breakdown</span>
           <span className="text-xs text-slate-500">{data.length} of {data.length} records</span>
         </div>
       </div>
