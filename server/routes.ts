@@ -1217,79 +1217,67 @@ export async function registerRoutes(
       if (sgNumber || erfNumber) {
         console.log(`[enquiry-results] SG/ERF search — sgNumber: "${sgNumber}", erfNumber: "${erfNumber}"`);
 
-        const scanConsUnits = async (targetSg: string, maxUnits: number = 2000): Promise<number | null> => {
-          const batchSize = 20;
-          for (let start = 1; start <= maxUnits; start += batchSize) {
-            const ids = Array.from({ length: Math.min(batchSize, maxUnits - start + 1) }, (_, i) => start + i);
-            const checks = ids.map(async (unitId) => {
-              try {
-                const unitData = await proxyGet(`${EXTERNAL_API_BASE}/api/cons-units/${unitId}`);
-                if (unitData && !unitData.error && unitData.sgNumber === targetSg) {
-                  return unitId;
-                }
-              } catch { }
-              return null;
-            });
-            const results = await Promise.all(checks);
-            const match = results.find(r => r !== null);
-            if (match) return match;
-          }
-          return null;
-        };
-
         if (sgNumber) {
-          console.log(`[enquiry-results] Scanning Sebata cons-units for SG match...`);
-          const matchedUnitId = await scanConsUnits(sgNumber);
-          if (matchedUnitId !== null) {
-            console.log(`[enquiry-results] Found SG match at cons-unit ${matchedUnitId}, looking up property...`);
+          console.log(`[enquiry-results] SG search via erfNumber autocomplete...`);
+          const sgParts = sgNumber.match(/\d+/g) || [];
+          const erfDigits = sgParts.length >= 3 ? sgParts[2].replace(/^0+/, '') : '';
+          const searchTerms = new Set<string>();
+          if (erfDigits) searchTerms.add(erfDigits);
+          sgParts.forEach(p => { const d = p.replace(/^0+/, ''); if (d && d.length >= 3) searchTerms.add(d); });
+
+          const matchedAccountIds = new Set<number>();
+          for (const term of searchTerms) {
             try {
-              const propData = await platinumGet("/api/BillingEnquiry/PropertyDetailsByAccountId", { accountId: String(matchedUnitId) });
-              if (propData && !propData._error) {
-                const accData = await platinumPost("/api/BillingEnquiry/EnquiryResults", { accountID: matchedUnitId });
-                if (Array.isArray(accData) && accData.length > 0) {
-                  console.log(`[enquiry-results] SG search returned ${accData.length} account(s)`);
-                  return res.json(accData);
-                }
-                if (accData && !accData._error) {
-                  return res.json([accData]);
+              const acResults = await platinumGet("/api/BillingEnquiry/Autocomplete", { search: term, type: 'erfNumber' });
+              const acArr = Array.isArray(acResults) ? acResults : [];
+              for (const item of acArr) {
+                if (item.displayItem === sgNumber && item.accountId) {
+                  matchedAccountIds.add(item.accountId);
                 }
               }
-            } catch (lookupErr: any) {
-              console.log(`[enquiry-results] Account lookup for unit ${matchedUnitId} failed: ${lookupErr.message}`);
+            } catch (e: any) {
+              console.log(`[enquiry-results] erfNumber autocomplete for "${term}" failed: ${e.message}`);
             }
+            if (matchedAccountIds.size > 0) break;
+          }
+
+          if (matchedAccountIds.size > 0) {
+            console.log(`[enquiry-results] Found ${matchedAccountIds.size} account(s) with exact SG match via autocomplete: ${Array.from(matchedAccountIds).join(', ')}`);
+            const lookups = await Promise.allSettled(
+              Array.from(matchedAccountIds).map(id =>
+                platinumPost("/api/BillingEnquiry/EnquiryResults", { accountID: String(id) })
+              )
+            );
+            const allAccounts: any[] = [];
+            const seen = new Set<number>();
+            for (const r of lookups) {
+              if (r.status === 'fulfilled') {
+                const data = r.value;
+                const arr = Array.isArray(data) ? data : (data && !data._error ? [data] : []);
+                for (const acct of arr) {
+                  const id = acct.account_ID || acct.accountID;
+                  if (id && !seen.has(id) && matchedAccountIds.has(id)) { seen.add(id); allAccounts.push(acct); }
+                }
+              }
+            }
+            console.log(`[enquiry-results] SG search returning ${allAccounts.length} unique account(s)`);
+            return res.json(allAccounts);
           } else {
-            console.log(`[enquiry-results] No SG match found in cons-units scan`);
+            console.log(`[enquiry-results] No accounts found with matching SG number`);
           }
         }
 
-        if (erfNumber && !sgNumber) {
-          console.log(`[enquiry-results] ERF search not supported by Platinum API, scanning properties...`);
-          const matchedAccounts: any[] = [];
-          const batchSize = 10;
-          for (let start = 1; start <= 200 && matchedAccounts.length === 0; start += batchSize) {
-            const ids = Array.from({ length: batchSize }, (_, i) => start + i);
-            const checks = ids.map(async (accId) => {
-              try {
-                const propData = await platinumGet("/api/BillingEnquiry/PropertyDetailsByAccountId", { accountId: String(accId) });
-                if (propData && !propData._error) {
-                  const propErf = String(propData.erfNumber || '').replace(/^0+/, '');
-                  if (propErf === erfNumber) return accId;
-                }
-              } catch { }
-              return null;
-            });
-            const results = await Promise.all(checks);
-            for (const accId of results.filter(Boolean)) {
-              try {
-                const accData = await platinumPost("/api/BillingEnquiry/EnquiryResults", { accountID: accId });
-                if (Array.isArray(accData)) matchedAccounts.push(...accData);
-                else if (accData && !accData._error) matchedAccounts.push(accData);
-              } catch { }
+        if (erfNumber) {
+          console.log(`[enquiry-results] Trying Platinum API with erfNumber...`);
+          try {
+            const erfResult = await platinumPost("/api/BillingEnquiry/EnquiryResults", { erfNumber });
+            const erfAccounts = Array.isArray(erfResult) ? erfResult : (erfResult && !erfResult._error ? [erfResult] : []);
+            if (erfAccounts.length > 0) {
+              console.log(`[enquiry-results] ERF search found ${erfAccounts.length} matching accounts`);
+              return res.json(erfAccounts);
             }
-          }
-          if (matchedAccounts.length > 0) {
-            console.log(`[enquiry-results] ERF search found ${matchedAccounts.length} matching accounts`);
-            return res.json(matchedAccounts);
+          } catch (e: any) {
+            console.log(`[enquiry-results] Platinum erfNumber search failed: ${e.message}`);
           }
         }
 
