@@ -1785,6 +1785,30 @@ export interface ReceiptListResponse {
     pageSize: number;
 }
 
+export interface EftDescriptionSearchResult {
+    posItemId: number;
+    bankReconId: number;
+    description: string;
+    amount: number;
+    dateOfTransaction: string;
+    dateAllocated: string | null;
+    allocated: boolean;
+    matchedReceipts: any[];
+}
+
+export async function searchReceiptsByEftDescription(description: string, fromDate?: string, toDate?: string): Promise<{ results: EftDescriptionSearchResult[]; totalBankReconItems: number; matchingItems: number }> {
+    const res = await apiFetch(`/api/platinum/view-receipt/search-by-eft-description`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description, fromDate, toDate }),
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: 'Search failed' }));
+        throw new Error(err.message || 'Search failed');
+    }
+    return res.json();
+}
+
 export async function fetchReceiptList(query: ReceiptSearchQuery): Promise<ReceiptListResponse> {
     try {
         const res = await apiFetch('/api/platinum/view-receipt/get-receipt-list', {

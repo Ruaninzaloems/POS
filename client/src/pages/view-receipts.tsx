@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { Search, Printer, Loader2, X, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal } from 'lucide-react';
+import { Search, Printer, Loader2, X, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, FileText, Banknote, CheckCircle2, AlertCircle } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { cn } from '@/lib/utils';
 import {
@@ -16,9 +16,11 @@ import {
     searchReceiptNumbers,
     fetchReceiptList,
     searchSebataReceipts,
+    searchReceiptsByEftDescription,
     ViewReceiptCashier,
     ViewReceiptItem,
     ReceiptSearchQuery,
+    EftDescriptionSearchResult,
     platinumPrintReceiptRaw,
     fetchPosMultiReceiptPrint,
 } from '@/lib/external-api';
@@ -116,6 +118,11 @@ export default function ViewReceipts() {
     const [sortField, setSortField] = useState<SortField | null>(null);
     const [sortDir, setSortDir] = useState<SortDir>('desc');
     const [showFilters, setShowFilters] = useState(false);
+
+    const [eftDescriptionFilter, setEftDescriptionFilter] = useState('');
+    const [eftSearching, setEftSearching] = useState(false);
+    const [eftResults, setEftResults] = useState<EftDescriptionSearchResult[] | null>(null);
+    const [eftSearchInfo, setEftSearchInfo] = useState<{ totalBankReconItems: number; matchingItems: number } | null>(null);
 
     useEffect(() => {
         const loadCashiers = async () => {
@@ -275,6 +282,33 @@ export default function ViewReceipts() {
         }
     };
 
+    const handleEftDescriptionSearch = async () => {
+        if (!eftDescriptionFilter || eftDescriptionFilter.length < 3) {
+            toast({ title: "Search Too Short", description: "Please enter at least 3 characters of the EFT description.", variant: "destructive" });
+            return;
+        }
+        setEftSearching(true);
+        setEftResults(null);
+        setEftSearchInfo(null);
+        setReceipts([]);
+        setTotalCount(0);
+        setDataSource('none');
+        try {
+            const fDate = fromDate ? format(fromDate, "yyyy-MM-dd'T'00:00:00") : undefined;
+            const tDate = toDate ? format(toDate, "yyyy-MM-dd'T'23:59:59") : undefined;
+            const result = await searchReceiptsByEftDescription(eftDescriptionFilter, fDate, tDate);
+            setEftResults(result.results);
+            setEftSearchInfo({ totalBankReconItems: result.totalBankReconItems, matchingItems: result.matchingItems });
+            if (result.results.length === 0) {
+                toast({ title: "No Matches", description: `No EFT transactions found matching "${eftDescriptionFilter}".` });
+            }
+        } catch (e: any) {
+            toast({ title: "Search Failed", description: e.message || "Failed to search by EFT description.", variant: "destructive" });
+        } finally {
+            setEftSearching(false);
+        }
+    };
+
     const handleClear = () => {
         setCashierFilter("0");
         const now = new Date();
@@ -282,6 +316,9 @@ export default function ViewReceipts() {
         setToDate(new Date());
         setAccountFilter("");
         setReceiptFilter("");
+        setEftDescriptionFilter("");
+        setEftResults(null);
+        setEftSearchInfo(null);
         setReceipts([]);
         setTotalCount(0);
         setCurrentPage(1);
@@ -681,6 +718,45 @@ export default function ViewReceipts() {
                                 </div>
                             </div>
 
+                            <div className="mt-4 border-t border-dashed border-slate-200 pt-4">
+                                <div className="grid grid-cols-1 md:grid-cols-[120px_1fr_auto] items-start md:items-center gap-1 md:gap-4">
+                                    <label className="text-sm font-medium text-left md:text-right text-slate-600 whitespace-nowrap flex items-center gap-1">
+                                        <Banknote className="w-3.5 h-3.5 text-green-600" />
+                                        EFT Description
+                                    </label>
+                                    <div className="relative">
+                                        <Input
+                                            className="h-9 font-mono text-xs"
+                                            value={eftDescriptionFilter}
+                                            onChange={e => setEftDescriptionFilter(e.target.value)}
+                                            onKeyDown={e => e.key === 'Enter' && handleEftDescriptionSearch()}
+                                            placeholder="Paste EFT description e.g. MAGTAPE CREDIT USER 9634 SEQ/CAPITEC..."
+                                            data-testid="input-eft-description"
+                                        />
+                                        {eftDescriptionFilter && (
+                                            <button
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                                onClick={() => { setEftDescriptionFilter(""); setEftResults(null); setEftSearchInfo(null); }}
+                                                type="button"
+                                            >
+                                                <X className="w-3.5 h-3.5" />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <Button
+                                        size="sm"
+                                        className="bg-green-700 hover:bg-green-800 text-xs gap-1.5 whitespace-nowrap"
+                                        onClick={handleEftDescriptionSearch}
+                                        disabled={eftSearching || !eftDescriptionFilter}
+                                        data-testid="button-eft-search"
+                                    >
+                                        {eftSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                                        Find EFT Receipt
+                                    </Button>
+                                </div>
+                                <p className="text-[10px] text-slate-400 mt-1 md:ml-[136px]">Search Direct Deposit bank recon items by description to find allocation receipts</p>
+                            </div>
+
                             <div className="flex justify-center gap-3 mt-6 sm:mt-8">
                                 <Button className="bg-slate-800 hover:bg-slate-900 w-28 sm:w-32 text-sm" onClick={() => handleSearch(1)} disabled={isLoading} data-testid="button-load">
                                     {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />} Load
@@ -692,6 +768,147 @@ export default function ViewReceipts() {
                         </div>
                     </div>
                 </div>
+
+                {eftResults !== null && (
+                    <div className="p-3 sm:p-6 border-b border-slate-200">
+                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider border-l-2 border-green-500 pl-2 mb-3 flex items-center gap-2">
+                            <Banknote className="w-3.5 h-3.5 text-green-600" />
+                            EFT Description Search Results
+                            {eftSearchInfo && <span className="text-green-600 font-normal normal-case">({eftSearchInfo.matchingItems} match{eftSearchInfo.matchingItems !== 1 ? 'es' : ''} found in {eftSearchInfo.totalBankReconItems} bank recon items)</span>}
+                        </div>
+                        {eftResults.length === 0 ? (
+                            <div className="text-center py-6 text-slate-400 text-sm">
+                                <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                                No EFT transactions matching this description were found.
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {eftResults.map((item, idx) => (
+                                    <div key={idx} className={`border rounded-lg overflow-hidden ${item.allocated ? 'border-green-200 bg-green-50/30' : 'border-amber-200 bg-amber-50/30'}`} data-testid={`eft-result-${idx}`}>
+                                        <div className="px-4 py-3 flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
+                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                {item.allocated ? (
+                                                    <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                                ) : (
+                                                    <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                                                )}
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-xs font-mono font-medium text-slate-800 truncate" title={item.description}>{item.description}</p>
+                                                    <div className="flex items-center gap-3 mt-0.5 text-[10px] text-slate-500">
+                                                        <span>POS Item #{item.posItemId}</span>
+                                                        <span>Bank Recon #{item.bankReconId}</span>
+                                                        <span>Date: {item.dateOfTransaction ? new Date(item.dateOfTransaction).toLocaleDateString('en-ZA') : 'N/A'}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-sm font-bold font-mono text-slate-800">R {item.amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                                                <Badge variant={item.allocated ? 'default' : 'outline'} className={item.allocated ? 'bg-green-600 text-[10px]' : 'text-amber-700 border-amber-400 text-[10px]'}>
+                                                    {item.allocated ? 'Allocated' : 'Not Allocated'}
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                        {item.allocated && item.dateAllocated && (
+                                            <div className="px-4 pb-1 text-[10px] text-green-700">
+                                                Allocated on: {new Date(item.dateAllocated).toLocaleDateString('en-ZA')}
+                                            </div>
+                                        )}
+                                        {item.allocated && item.matchedReceipts.length > 0 && (
+                                            <div className="border-t border-green-200 bg-white/50">
+                                                <div className="px-4 py-2 text-[10px] font-semibold text-green-800 uppercase tracking-wider">
+                                                    Matching EFT Receipts ({item.matchedReceipts.length})
+                                                </div>
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full text-xs">
+                                                        <thead>
+                                                            <tr className="bg-green-50 border-y border-green-100">
+                                                                <th className="text-left px-3 py-1.5 font-semibold text-green-800">Receipt No</th>
+                                                                <th className="text-left px-3 py-1.5 font-semibold text-green-800">Account</th>
+                                                                <th className="text-left px-3 py-1.5 font-semibold text-green-800">Date</th>
+                                                                <th className="text-right px-3 py-1.5 font-semibold text-green-800">Amount</th>
+                                                                <th className="text-left px-3 py-1.5 font-semibold text-green-800">Cashier</th>
+                                                                <th className="text-left px-3 py-1.5 font-semibold text-green-800">Type</th>
+                                                                <th className="px-3 py-1.5"></th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {item.matchedReceipts.map((r: any, ri: number) => {
+                                                                const rNo = r.receiptNo || r.receipt_no || '';
+                                                                const rAcc = r.accountNumber || r.accountNo || r.account_number || '';
+                                                                const rDate = r.receiptDate || r.receipt_date || '';
+                                                                const rAmount = r.amount ?? r.receiptAmount ?? r.totalAmount ?? 0;
+                                                                const rCashier = r.cashierName || r.cashier_name || r.cashier || '';
+                                                                const rPayType = r.paymentType || r.payMode || '';
+                                                                const serialNo = r.serialNo || r.receiptId || r.id || '';
+                                                                return (
+                                                                    <tr key={ri} className="border-b border-green-50 hover:bg-green-50/50">
+                                                                        <td className="px-3 py-1.5 font-mono font-medium">{rNo}</td>
+                                                                        <td className="px-3 py-1.5 font-mono">{rAcc}</td>
+                                                                        <td className="px-3 py-1.5 whitespace-nowrap">{rDate ? new Date(rDate).toLocaleDateString('en-ZA') : ''}</td>
+                                                                        <td className="px-3 py-1.5 text-right font-mono font-medium">R {Number(rAmount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                                                                        <td className="px-3 py-1.5">{rCashier}</td>
+                                                                        <td className="px-3 py-1.5">{rPayType}</td>
+                                                                        <td className="px-3 py-1.5">
+                                                                            {serialNo && (
+                                                                                <Button
+                                                                                    variant="ghost"
+                                                                                    size="sm"
+                                                                                    className="h-6 px-2 text-[10px] gap-1 text-blue-700 hover:text-blue-900 hover:bg-blue-50"
+                                                                                    onClick={() => {
+                                                                                        const asViewItem: ViewReceiptItem = {
+                                                                                            receiptId: serialNo,
+                                                                                            receiptNo: rNo,
+                                                                                            accountNumber: rAcc,
+                                                                                            paymentType: rPayType,
+                                                                                            paymentOption: r.paymentOption || r.billType || '',
+                                                                                            receiptDate: rDate,
+                                                                                            isStaged: false,
+                                                                                            amount: rAmount,
+                                                                                            tenderAmount: r.tenderAmount || rAmount,
+                                                                                            changeAmount: r.changeAmount || 0,
+                                                                                            cashierName: rCashier,
+                                                                                            cashBook: '',
+                                                                                            cashOffice: r.cashOfficeName || '',
+                                                                                            isCancelled: 0,
+                                                                                            cancellationReason: '',
+                                                                                            accName: r.accName || r.consumerName || '',
+                                                                                            accAddress: '',
+                                                                                            outstandingAmount: r.outstandingAmount || 0,
+                                                                                        };
+                                                                                        handlePrintReceipt(asViewItem);
+                                                                                    }}
+                                                                                    disabled={printingReceiptId === serialNo}
+                                                                                    data-testid={`button-print-eft-receipt-${ri}`}
+                                                                                >
+                                                                                    {printingReceiptId === serialNo ? <Loader2 className="w-3 h-3 animate-spin" /> : <Printer className="w-3 h-3" />}
+                                                                                    Print
+                                                                                </Button>
+                                                                            )}
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {item.allocated && item.matchedReceipts.length === 0 && (
+                                            <div className="border-t border-green-200 bg-white/50 px-4 py-2 text-[10px] text-slate-500 italic">
+                                                This item is allocated but no matching EFT receipts were found in the receipt list for the selected date range. Try widening the date range.
+                                            </div>
+                                        )}
+                                        {!item.allocated && (
+                                            <div className="border-t border-amber-200 bg-white/50 px-4 py-2 text-[10px] text-amber-600 italic">
+                                                This EFT transaction has not been allocated yet. No receipt exists.
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 <div className="p-3 sm:p-6">
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3">
