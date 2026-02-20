@@ -884,6 +884,7 @@ export function BalanceDebtTab({ accountId }: { accountId: number }) {
     { label: '90 DAYS', keys: ['days90', '90days'] },
     { label: '120 DAYS', keys: ['days120', '120days'] },
     { label: '150 DAYS', keys: ['days150', '150days'] },
+    { label: '180+ DAYS', keys: ['untill360', 'days180Plus', 'days360Plus'] },
   ];
   const extendedCols = [
     { label: '180 DAYS', keys: ['days180'] },
@@ -899,10 +900,9 @@ export function BalanceDebtTab({ accountId }: { accountId: number }) {
   const hasGranularAging = balanceData.some((item: any) =>
     item.days180 !== undefined || item.days210 !== undefined || item.days240 !== undefined
   );
-  const extCols = hasGranularAging
-    ? extendedCols
-    : [{ label: '180+ DAYS', keys: ['untill360', 'days180Plus'] }];
-  const agingCols = showExtended ? [...baseCols, ...extCols] : baseCols;
+  const agingCols = showExtended && hasGranularAging
+    ? [...baseCols.slice(0, -1), ...extendedCols]
+    : baseCols;
   const getVal = (item: any, keys: string[]) => { for (const k of keys) { if (item[k] !== undefined && item[k] !== null) return item[k]; } return 0; };
 
   const payments = txnHistory.filter((t: any) => {
@@ -956,8 +956,8 @@ export function BalanceDebtTab({ accountId }: { accountId: number }) {
               className="flex items-center gap-1.5 text-[10px] font-medium text-white/90 hover:text-white bg-white/15 hover:bg-white/25 rounded-md px-2.5 py-1 transition-colors"
               data-testid="toggle-extended-aging"
             >
-              {showExtended ? <ChevronLeft className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-              {showExtended ? 'Show up to 150 Days' : 'Show up to 360 Days'}
+              {showExtended && hasGranularAging ? <ChevronLeft className="w-3 h-3" /> : !showExtended && hasGranularAging ? <ChevronRight className="w-3 h-3" /> : null}
+              {hasGranularAging ? (showExtended ? 'Show up to 180+ Days' : 'Show up to 360 Days') : 'Up to 180+ Days'}
             </button>
           </div>
         </div>
@@ -1112,7 +1112,8 @@ export function BalanceDebtTab({ accountId }: { accountId: number }) {
                         { label: '90 Days', value: fmtDash(getVal(item, ['days90'])) },
                         { label: '120 Days', value: fmtDash(getVal(item, ['days120'])) },
                         { label: '150 Days', value: fmtDash(getVal(item, ['days150'])) },
-                        ...(showExtended ? (hasGranularAging ? [
+                        { label: '180+ Days', value: fmtDash(getVal(item, ['untill360', 'days180Plus', 'days360Plus'])) },
+                        ...(showExtended && hasGranularAging ? [
                           { label: '180 Days', value: fmtDash(getVal(item, ['days180'])) },
                           { label: '210 Days', value: fmtDash(getVal(item, ['days210'])) },
                           { label: '240 Days', value: fmtDash(getVal(item, ['days240'])) },
@@ -1120,10 +1121,8 @@ export function BalanceDebtTab({ accountId }: { accountId: number }) {
                           { label: '300 Days', value: fmtDash(getVal(item, ['days300'])) },
                           { label: '330 Days', value: fmtDash(getVal(item, ['days330'])) },
                           { label: '360 Days', value: fmtDash(getVal(item, ['days360'])) },
-                          { label: '360+ Days', value: fmtDash(getVal(item, ['untill360', 'days180Plus'])) },
-                        ] : [
-                          { label: '180+ Days', value: fmtDash(getVal(item, ['untill360', 'days180Plus'])) },
-                        ]) : []),
+                          { label: '360+ Days', value: fmtDash(getVal(item, ['untill360', 'days180Plus', 'days360Plus'])) },
+                        ] : []),
                       ].map((row, idx) => (
                         <div key={idx} className="flex justify-between items-center py-2">
                           <span className="text-xs text-slate-500">{row.label}</span>
