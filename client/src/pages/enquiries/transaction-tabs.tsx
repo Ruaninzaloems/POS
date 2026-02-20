@@ -15,6 +15,7 @@ import {
   getBillingProcessingMonth,
 } from '@/lib/enquiries-service';
 import { fetchPosMultiReceiptPrint, platinumPrintReceiptRaw } from '@/lib/external-api';
+import { openSlipPrintWindow, ReceiptPrintData } from '@/lib/receipt-print';
 import { LoadingSkeleton, EmptyState, ErrorState, PaginatedTable, getFinYearOptions, MONTHS } from './shared';
 
 function extractServiceType(desc: string): string {
@@ -1111,45 +1112,19 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
 
   const handlePrintWindow = () => {
     if (!receiptPreview) return;
-    const services = Array.isArray(receiptPreview.services) ? receiptPreview.services : [];
-    const svcHtml = services.map((s: any) =>
-      `<tr><td style="padding:3px 4px">${s.serviceDescription || s.description || ''}</td><td style="padding:3px 4px;text-align:right">R ${(s.amount ?? 0).toFixed(2)}</td></tr>`
-    ).join('');
-    const html = `<!DOCTYPE html><html><head><title>Receipt ${receiptPreview.receiptNo || ''}</title>
-<style>body{font-family:'Courier New',monospace;font-size:12px;padding:20px;max-width:380px;margin:0 auto;color:#333}
-table{width:100%;border-collapse:collapse}td{padding:3px 4px}
-h2{text-align:center;margin:6px 0;font-size:14px}p{margin:3px 0}
-.divider{border-top:1px dashed #333;margin:10px 0}
-.right{text-align:right}.bold{font-weight:bold}
-.total-row td{border-top:1px solid #333;font-weight:bold;padding-top:6px}
-@media print{body{padding:0;margin:0}}</style></head><body>
-<h2>${receiptPreview.municipalityName || 'George Municipality'}</h2>
-<p style="text-align:center">${receiptPreview.address || ''}</p>
-<div class="divider"></div>
-<p><strong>Receipt:</strong> ${receiptPreview.receiptNo || receiptPreview.receiptNumber || ''}</p>
-<p><strong>Date:</strong> ${receiptPreview.receiptDate || ''}</p>
-<p><strong>Account:</strong> ${receiptPreview.accountNumber || accountNumber}</p>
-<p><strong>Consumer:</strong> ${receiptPreview.consumerName || ''}</p>
-<div class="divider"></div>
-<table>${svcHtml}
-<tr class="total-row"><td><strong>Total</strong></td><td style="text-align:right"><strong>R ${(receiptPreview.totalAmount ?? receiptPreview.amount ?? 0).toFixed(2)}</strong></td></tr></table>
-<div class="divider"></div>
-<p><strong>Payment:</strong> ${receiptPreview.paymentType || ''}</p>
-<p><strong>Cashier:</strong> ${receiptPreview.cashierName || ''}</p>
-<div class="divider"></div>
-<p style="text-align:center;font-size:10px;color:#666">Thank you for your payment</p>
-</body></html>`;
-    const printWindow = window.open('', '_blank', 'width=450,height=650,scrollbars=yes');
-    if (printWindow) {
-      printWindow.document.write(html);
-      printWindow.document.close();
-      printWindow.onload = () => {
-        setTimeout(() => {
-          printWindow.focus();
-          printWindow.print();
-        }, 300);
-      };
-    }
+    const printData: ReceiptPrintData = {
+      receiptNo: receiptPreview.receiptNo || receiptPreview.receiptNumber || '',
+      receiptDate: receiptPreview.receiptDate || '',
+      accountNumber: receiptPreview.accountNumber || accountNumber,
+      consumerName: receiptPreview.consumerName || '',
+      municipalityName: receiptPreview.municipalityName || 'George Municipality',
+      address: receiptPreview.address || '',
+      totalAmount: receiptPreview.totalAmount ?? receiptPreview.amount ?? 0,
+      paymentType: receiptPreview.paymentType || '',
+      cashierName: receiptPreview.cashierName || '',
+      services: Array.isArray(receiptPreview.services) ? receiptPreview.services : [],
+    };
+    openSlipPrintWindow(printData, true);
   };
 
   return (

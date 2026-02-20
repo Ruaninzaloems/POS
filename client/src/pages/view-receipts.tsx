@@ -20,9 +20,11 @@ import {
     ViewReceiptItem,
     ReceiptSearchQuery,
     platinumPrintReceiptRaw,
+    fetchPosMultiReceiptPrint,
 } from '@/lib/external-api';
 import { useToast } from '@/hooks/use-toast';
 import { usePos } from '@/lib/pos-state';
+import { openSlipPrintWindow, ReceiptPrintData } from '@/lib/receipt-print';
 
 type SortField = 'receiptNo' | 'accountNumber' | 'amount' | 'receiptDate' | 'cashierName' | 'paymentType' | 'paymentOption';
 type SortDir = 'asc' | 'desc';
@@ -304,41 +306,90 @@ export default function ViewReceipts() {
         }
         setPrintingReceiptId(serialNo);
         try {
-            const res = await platinumPrintReceiptRaw([Number(serialNo)]);
-            if (!res.ok) {
-                const errText = await res.text().catch(() => '');
-                let errMsg = `HTTP ${res.status}`;
+            const multiData = await fetchPosMultiReceiptPrint(String(serialNo));
+            const items = Array.isArray(multiData) ? multiData : [];
+            const first: any = items.length > 0 ? items[0] : null;
+            const services = items.map((s: any) => ({
+                serviceDescription: s.serviceDescription || s.description || s.service || '',
+                amount: s.amount ?? s.serviceAmount ?? 0,
+            }));
+            const totalFromServices = services.reduce((sum: number, s: any) => sum + (s.amount || 0), 0);
+            const fallbackTotal = getReceiptField(receipt, 'amount') || 0;
+            const finalTotal = totalFromServices > 0 ? totalFromServices : fallbackTotal;
+
+            if (!first && finalTotal === 0) {
+                toast({ title: "Print Issue", description: "Could not retrieve receipt details. Trying PDF fallback...", variant: "destructive" });
                 try {
-                    const errJson = JSON.parse(errText);
-                    errMsg = errJson.message || errJson.detail || errMsg;
-                } catch {
-                    if (errText) errMsg = errText.substring(0, 200);
-                }
-                throw new Error(errMsg);
+                    const res = await platinumPrintReceiptRaw([Number(serialNo)]);
+                    if (res.ok) {
+                        const ct = res.headers.get('content-type') || '';
+                        if (ct.includes('application/pdf')) {
+                            const blob = await res.blob();
+                            const url = URL.createObjectURL(blob);
+                            window.open(url, '_blank');
+                            setTimeout(() => URL.revokeObjectURL(url), 60000);
+                            return;
+                        }
+                    }
+                } catch {}
+                const printData: ReceiptPrintData = {
+                    receiptNo: getReceiptField(receipt, 'receiptNo'),
+                    receiptDate: getReceiptField(receipt, 'receiptDate'),
+                    accountNumber: getReceiptField(receipt, 'accountNumber'),
+                    totalAmount: fallbackTotal,
+                    paymentType: getReceiptField(receipt, 'paymentType'),
+                    paymentOption: getReceiptField(receipt, 'paymentOption'),
+                    cashierName: getReceiptField(receipt, 'cashierName'),
+                    cashOffice: getReceiptField(receipt, 'cashBook'),
+                    services: [],
+                };
+                openSlipPrintWindow(printData, true);
+                return;
             }
-            const contentType = res.headers.get('content-type') || '';
-            if (contentType.includes('application/pdf')) {
-                const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
-                window.open(url, '_blank');
-                setTimeout(() => URL.revokeObjectURL(url), 60000);
-                toast({
-                    title: "Receipt Ready",
-                    description: `Receipt ${getReceiptField(receipt, 'receiptNo') || serialNo} opened for printing.`,
-                });
-            } else {
-                toast({
-                    title: "Print Sent",
-                    description: `Receipt ${getReceiptField(receipt, 'receiptNo') || serialNo} sent to print.`,
-                });
+
+            const printData: ReceiptPrintData = {
+                receiptNo: first?.receiptNo || first?.receiptNumber || getReceiptField(receipt, 'receiptNo'),
+                receiptDate: first?.receiptDate || getReceiptField(receipt, 'receiptDate'),
+                accountNumber: first?.accountNumber || first?.accountNo || getReceiptField(receipt, 'accountNumber'),
+                consumerName: first?.consumerName || first?.consumer || '',
+                municipalityName: first?.municipalityName || 'George Municipality',
+                address: first?.address || '',
+                totalAmount: finalTotal,
+                paymentType: first?.paymentType || getReceiptField(receipt, 'paymentType'),
+                paymentOption: first?.paymentOption || getReceiptField(receipt, 'paymentOption'),
+                cashierName: first?.cashierName || first?.cashier || getReceiptField(receipt, 'cashierName'),
+                cashOffice: first?.cashOfficeName || first?.cashOffice || getReceiptField(receipt, 'cashBook'),
+                services,
+            };
+
+            const win = openSlipPrintWindow(printData, true);
+            if (!win) {
+                toast({ title: "Popup Blocked", description: "Please allow popups for this site to print receipts.", variant: "destructive" });
+                return;
             }
-        } catch (e: any) {
-            console.warn('Failed to print receipt', e);
             toast({
-                title: "Print Failed",
-                description: e?.message || "Could not print the receipt.",
-                variant: "destructive",
+                title: "Receipt Ready",
+                description: `Receipt ${printData.receiptNo || serialNo} opened for reprinting.`,
             });
+        } catch (e: any) {
+            console.warn('Multi-receipt fetch failed, falling back to basic print:', e);
+            const printData: ReceiptPrintData = {
+                receiptNo: getReceiptField(receipt, 'receiptNo'),
+                receiptDate: getReceiptField(receipt, 'receiptDate'),
+                accountNumber: getReceiptField(receipt, 'accountNumber'),
+                consumerName: '',
+                municipalityName: 'George Municipality',
+                totalAmount: getReceiptField(receipt, 'amount') || 0,
+                paymentType: getReceiptField(receipt, 'paymentType'),
+                paymentOption: getReceiptField(receipt, 'paymentOption'),
+                cashierName: getReceiptField(receipt, 'cashierName'),
+                cashOffice: getReceiptField(receipt, 'cashBook'),
+                services: [],
+            };
+            const win = openSlipPrintWindow(printData, true);
+            if (!win) {
+                toast({ title: "Popup Blocked", description: "Please allow popups for this site to print receipts.", variant: "destructive" });
+            }
         } finally {
             setPrintingReceiptId(null);
         }
