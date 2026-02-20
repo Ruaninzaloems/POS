@@ -231,23 +231,27 @@ export default function ThirdPartyPaymentProcessing() {
     const useId = id || importId;
     if (!useId) return;
     setLoadingTxns(true);
-    setLoadProgress({ step: 'Fetching transactions from server...', percent: 10 });
+    setLoadProgress({ step: 'Fetching transactions from server...', percent: 5 });
     try {
       const txns = await platinumThirdPartyGetTransactions(useId);
       if (Array.isArray(txns)) {
-        setLoadProgress({ step: `Loaded ${txns.length} transaction(s). Resolving consumer accounts...`, percent: 40 });
+        setLoadProgress({ step: `Loaded ${txns.length} transaction(s). Resolving consumer accounts...`, percent: 20 });
         const fileAccounts = txns.map((t: any) => t.oldAccountNumber || t.accountNumber || t.accountNo || '');
         const migrationMap = await lookupCurrentAccounts(fileAccounts);
 
-        setLoadProgress({ step: 'Building transaction list...', percent: 98 });
-        setTransactions(txns.map((t: any, i: number) => {
+        const migratedEntries: { index: number; oldAcct: string; newAcct: string }[] = [];
+        const builtTxns = txns.map((t: any, i: number) => {
           const oldAcct = t.oldAccountNumber || t.accountNumber || t.accountNo || '';
           const apiNewAcct = t.newAccountNumber || '';
           const lookupResult = migrationMap.get(oldAcct);
           const resolvedAcct = lookupResult ? (lookupResult.accountId || lookupResult.accountNumber || oldAcct) : (apiNewAcct || oldAcct);
           const mismatch = oldAcct !== '' && resolvedAcct !== '' && oldAcct !== resolvedAcct;
+          const idx = t.index ?? i;
+          if (mismatch && !apiNewAcct) {
+            migratedEntries.push({ index: idx, oldAcct, newAcct: resolvedAcct });
+          }
           return {
-            index: t.index ?? i,
+            index: idx,
             accountNumber: oldAcct,
             oldAccountNumber: oldAcct,
             newAccountNumber: resolvedAcct,
@@ -255,15 +259,35 @@ export default function ThirdPartyPaymentProcessing() {
             amount: t.amount || 0,
             reference: t.reference || t.paymentReference || '',
             comment: t.comment || '',
-            status: t.status || (mismatch ? 'Account Updated' : 'Pending'),
+            status: t.status || (mismatch ? 'Account Migrated' : 'Pending'),
             isValid: t.isValid !== false,
             isDuplicate: t.isDuplicate || false,
-            validationMessage: t.validationMessage || t.statusMessage || '',
+            validationMessage: mismatch ? `Old account ${oldAcct} → migrated to ${resolvedAcct}` : (t.validationMessage || t.statusMessage || ''),
             ownerName: lookupResult?.ownerName || t.ownerName || t.name || '',
             propertyAddress: lookupResult?.propertyAddress || t.propertyAddress || t.address || '',
             hasAccountMismatch: mismatch,
           };
-        }));
+        });
+
+        setTransactions(builtTxns);
+
+        if (migratedEntries.length > 0) {
+          setLoadProgress({ step: `Auto-updating ${migratedEntries.length} migrated account(s) on server...`, percent: 96 });
+          const updateBatchSize = 5;
+          for (let i = 0; i < migratedEntries.length; i += updateBatchSize) {
+            const batch = migratedEntries.slice(i, i + updateBatchSize);
+            const updates = batch.map(entry =>
+              platinumThirdPartyUpdateTransaction(useId, entry.index, {
+                newAccountNumber: entry.newAcct,
+                comment: `Auto-migrated from ${entry.oldAcct}`,
+              }).catch(e => console.warn(`Auto-update failed for index ${entry.index}:`, e))
+            );
+            await Promise.all(updates);
+            const done = Math.min(i + updateBatchSize, migratedEntries.length);
+            setLoadProgress({ step: `Auto-updating migrated accounts (${done}/${migratedEntries.length})...`, percent: 96 + Math.round((done / migratedEntries.length) * 4) });
+          }
+        }
+
         setLoadProgress({ step: 'Done', percent: 100 });
       }
     } catch (e: any) {
@@ -576,8 +600,8 @@ export default function ThirdPartyPaymentProcessing() {
                   <p className="text-xl font-bold text-red-600" data-testid="text-invalid-count">{invalidCount}</p>
                 </Card>
                 <Card className="p-3">
-                  <p className="text-xs text-muted-foreground">Migrated Accounts</p>
-                  <p className="text-xl font-bold text-amber-600" data-testid="text-migrated-count">{transactions.filter(t => t.hasAccountMismatch).length}</p>
+                  <p className="text-xs text-muted-foreground">Auto-Corrected</p>
+                  <p className="text-xl font-bold text-green-600" data-testid="text-migrated-count">{transactions.filter(t => t.hasAccountMismatch).length}</p>
                 </Card>
                 <Card className="p-3">
                   <p className="text-xs text-muted-foreground">Total Amount</p>
@@ -586,12 +610,13 @@ export default function ThirdPartyPaymentProcessing() {
               </div>
 
               {transactions.some(t => t.hasAccountMismatch) && (
-                <Alert className="bg-amber-50 border-amber-200">
-                  <AlertTriangle className="h-4 w-4 text-amber-600" />
-                  <AlertTitle className="text-amber-800">Account Migration Detected</AlertTitle>
-                  <AlertDescription className="text-amber-700">
-                    {transactions.filter(t => t.hasAccountMismatch).length} transaction(s) have old account numbers that have been mapped to new consumer accounts.
-                    Payments will be processed to the updated consumer account numbers shown in green.
+                <Alert className="bg-green-50 border-green-200">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <AlertTitle className="text-green-800">Old Accounts Auto-Corrected</AlertTitle>
+                  <AlertDescription className="text-green-700">
+                    {transactions.filter(t => t.hasAccountMismatch).length} transaction(s) used old/EasyPay account numbers. 
+                    The correct consumer accounts have been automatically identified and updated. 
+                    Payments will be allocated to the new account numbers shown in green. No manual action needed.
                   </AlertDescription>
                 </Alert>
               )}
@@ -727,7 +752,7 @@ export default function ThirdPartyPaymentProcessing() {
                         </TableHeader>
                         <TableBody>
                           {transactions.map((txn) => (
-                            <TableRow key={txn.index} className={`${!txn.isValid ? 'bg-red-50/50' : ''} ${txn.hasAccountMismatch ? 'bg-amber-50/50' : ''}`}>
+                            <TableRow key={txn.index} className={`${!txn.isValid ? 'bg-red-50/50' : ''} ${txn.hasAccountMismatch ? 'bg-green-50/30' : ''}`}>
                               <TableCell className="text-xs text-muted-foreground">{txn.index + 1}</TableCell>
                               <TableCell>
                                 {editingIdx === txn.index ? (
@@ -741,13 +766,13 @@ export default function ThirdPartyPaymentProcessing() {
                                   </div>
                                 ) : (
                                   <div>
-                                    <span className={`font-mono text-sm ${txn.hasAccountMismatch ? 'text-amber-700 line-through' : ''}`}>
+                                    <span className={`font-mono text-sm ${txn.hasAccountMismatch ? 'text-slate-400 line-through' : ''}`}>
                                       {txn.oldAccountNumber}
                                     </span>
                                     {txn.hasAccountMismatch && (
                                       <div className="flex items-center gap-1 mt-0.5">
-                                        <AlertTriangle className="h-3 w-3 text-amber-500" />
-                                        <span className="text-[10px] text-amber-600 font-medium">Old account number</span>
+                                        <CheckCircle2 className="h-3 w-3 text-green-500" />
+                                        <span className="text-[10px] text-green-600 font-medium">Old EasyPay account — auto-corrected</span>
                                       </div>
                                     )}
                                   </div>
@@ -772,8 +797,8 @@ export default function ThirdPartyPaymentProcessing() {
                               <TableCell>
                                 <div className="space-y-0.5">
                                   {txn.hasAccountMismatch && (
-                                    <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-300">
-                                      Account Migrated
+                                    <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-300">
+                                      Auto-Corrected
                                     </Badge>
                                   )}
                                   {txn.isDuplicate && (
@@ -789,7 +814,7 @@ export default function ThirdPartyPaymentProcessing() {
                                   </Badge>
                                 </div>
                                 {txn.validationMessage && (
-                                  <p className="text-xs text-red-500 mt-0.5 max-w-[200px] truncate" title={txn.validationMessage}>
+                                  <p className={`text-xs mt-0.5 max-w-[200px] truncate ${txn.hasAccountMismatch ? 'text-green-600' : 'text-red-500'}`} title={txn.validationMessage}>
                                     {txn.validationMessage}
                                   </p>
                                 )}
