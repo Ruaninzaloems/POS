@@ -45,6 +45,18 @@ interface ImportTransaction {
 
 type Step = 'import' | 'transactions' | 'committed';
 
+function parseApiErrorMessage(rawMsg: string): string {
+  try {
+    const jsonMatch = rawMsg.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      const detail = parsed.detail || parsed.message || '';
+      return typeof detail === 'string' ? detail.replace(/^["']|["']$/g, '').trim() : rawMsg;
+    }
+  } catch {}
+  return rawMsg;
+}
+
 export default function ThirdPartyPaymentProcessing() {
   const posState = usePos();
   const [step, setStep] = useState<Step>('import');
@@ -159,13 +171,16 @@ export default function ThirdPartyPaymentProcessing() {
           loadTransactions(String(id));
         }
       } else {
+        const detail = result?.detail || result?.message || '';
+        const cleanMsg = typeof detail === 'string' ? detail.replace(/^["']|["']$/g, '').trim() : detail;
         setProcessResult({
           success: false,
-          message: result?.detail || result?.message || 'Import failed. Please check the file format and try again.'
+          message: cleanMsg || 'Import failed. Please check the file format and try again.'
         });
       }
     } catch (e: any) {
-      setProcessResult({ success: false, message: e.message || 'Import failed.' });
+      const errMsg = parseApiErrorMessage(e.message || 'Import failed.');
+      setProcessResult({ success: false, message: errMsg });
     } finally {
       setIsProcessing(false);
     }
