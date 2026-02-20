@@ -1970,10 +1970,24 @@ export async function registerRoutes(
 
       console.log(`[EFT Description Search] Loaded ${allItems.length} bank recon items across ${currentPage} pages`);
 
+      if (allItems.length > 0) {
+        const sample = allItems[0];
+        console.log(`[EFT Description Search] SAMPLE ITEM FIELDS: ${JSON.stringify(Object.keys(sample))}`);
+        console.log(`[EFT Description Search] SAMPLE ITEM DATA: ${JSON.stringify(sample)}`);
+        const allocatedSample = allItems.find((i: any) => i.billingAllocated === true);
+        if (allocatedSample) {
+          console.log(`[EFT Description Search] ALLOCATED SAMPLE FIELDS: ${JSON.stringify(Object.keys(allocatedSample))}`);
+          console.log(`[EFT Description Search] ALLOCATED SAMPLE DATA: ${JSON.stringify(allocatedSample)}`);
+        }
+      }
+
       const matching = allItems.filter((item: any) => {
-        const ref = (item.reference || '').toLowerCase();
-        const note = (item.note || '').toLowerCase();
-        return ref.includes(searchText) || note.includes(searchText);
+        const searchableFields = [
+          item.reference, item.note, item.description, item.eftDescription,
+          item.transDescription, item.bankDescription, item.statementDescription,
+          item.narration, item.particulars, item.remarks, item.detail
+        ].filter(Boolean).map((f: string) => f.toLowerCase());
+        return searchableFields.some((f: string) => f.includes(searchText));
       });
 
       console.log(`[EFT Description Search] Found ${matching.length} matching items`);

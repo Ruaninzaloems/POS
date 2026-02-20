@@ -1,0 +1,95 @@
+
+-- =============================================
+CREATE   PROCEDURE [dbo].[AdhocReport_Unallocated_Deposits_sp]  
+    @finYear NVARCHAR(10),
+    @fromMonth INT, 
+    @toMonth INT    
+AS
+BEGIN
+
+SET NOCOUNT ON;
+
+
+SELECT A.ScoaDesc,A.ScoaCode,A.GenLedger_ID,
+A.PostingDate,A.ProcessingMonth,
+A.FinYear,A.TransactionTypeID,
+A.TransactionDetails,A.DocumentNumber
+,A.CashbookTransactionID'Cashbooktransactionid'
+,A.Debit,A.Credit,A.MatchTranGuid ,d.ItemDescription'CashbookReference'
+INTO #TempgluNALLOCATED
+FROM
+(select css.ScoaDesc,css.ScoaCode,gl.GenLedger_ID,gl.PostingDate,gl.ProcessingMonth,gl.FinYear,gl.TransactionTypeID,gl.TransactionDetails,gl.DocumentNumber,gl.CashbookTransactionID'Cashbooktransactionid'
+,gl.Debit,(gl.Credit*-1)'Credit',gl.MatchTranGuid
+from Led_GeneralLedger gl
+left join Const_SCOA_Structure css on css.ScoaID=gl.SCOAItemID
+where css.ScoaDesc like '%unallocated%'
+and gl.FinYear=@finyear)a
+left join 
+(select distinct CashbookTransactionID,Max(ItemDescription)ItemDescription,Max(ReferenceNumber)ReferenceNumber from Led_CashbookVote group by CashbookTransactionID  )
+d on isnull(d.CashbookTransactionID,0)=isnull(a.Cashbooktransactionid,0)
+
+
+select distinct t.PostingID,brp.CashbookTransactionID,cr.ReceiptNo,brp.POSItem_ID,cr.AccountID,cr.DateCaptured
+INTO #BillingEFT
+from POS_CashierReceipt cr
+inner join POS_CashierReceiptDetails crd on crd.Receipt_Id=cr.Id
+left join Led_BankReconPOSItems brp on brp.POSItem_ID=cr.BillId
+inner join Billing_Transactions t on t.BillingID=crd.id and t.DebitAmount>0 and t.JournalType ='BillingPOS'
+where PaymentTypeId=5 and  isnull(Reconciled,0)=1
+and cr.BillPeriodID in (select Period_ID from Billing_Period where FinancialYear=@finyear)
+
+
+select CashbookTransactionID,
+      STRING_AGG(CAST(Receiptno AS NVARCHAR(MAX)), ' | ') AS 'Receiptno',
+   STRING_AGG(CAST(POSItem_ID AS NVARCHAR(MAX)), ' | ') AS PosItem_id ,
+   AccountID,DateCaptured
+INTO #BillingEFT2   
+from(
+select distinct brp.CashbookTransactionID,max(cr.ReceiptNo)'Receiptno',brp.POSItem_ID,cr.AccountID,cr.DateCaptured
+from POS_CashierReceipt cr
+inner join POS_CashierReceiptDetails crd on crd.Receipt_Id=cr.Id
+left join Led_BankReconPOSItems brp on brp.POSItem_ID=cr.BillId
+inner join Billing_Transactions t on t.BillingID=crd.id and t.DebitAmount>0 and t.JournalType ='BillingPOS'
+where PaymentTypeId=5 and  isnull(IsCancelled,0)=0
+and cr.BillPeriodID in (select Period_ID from Billing_Period where FinancialYear=@finyear)
+group by CashbookTransactionID,POSItem_ID, cr.AccountID,cr.DateCaptured)v1
+group by CashbookTransactionId,   AccountID,DateCaptured
+
+select GenLedger_ID,PostingDate,ProcessingMonth,FinYear,TransactionTypeID,TransactionDetails,replace (DocumentNumber,'/','_')'Documentnumber'
+,Debit,Credit,ReceiptNo,
+AllocationCashbookTransactionid,isnull(CashbookReference,ItemDescription)'CashbookReference',ScoaDesc,scoacode,
+AccountNumber, ReceiptDate
+from 
+(select distinct 
+ScoaDesc ,
+ScoaCode ,
+GenLedger_ID ,
+PostingDate ,
+ProcessingMonth ,
+FinYear ,
+TransactionTypeID ,
+TransactionDetails ,
+tgl.DocumentNumber ,
+isnull(tgl.Cashbooktransactionid,0)'Cashbooktransactionid' ,
+Debit ,
+Credit ,
+CashbookReference, isnull(isnull(isnull(tbill.CashbookTransactionID,tgl.Cashbooktransactionid),j.CashbookTransactionID),0)'AllocationCashbookTransactionid',isnull(isnull(tbill.ReceiptNo,tbill2.ReceiptNo),j.ReceiptNo)
+'ReceiptNo', isnull(tbill.AccountID,tbill2.AccountID) As AccountNumber, isnull(tbill.DateCaptured,tbill2.DateCaptured) As ReceiptDate
+from #TempgluNALLOCATED TGL
+left join #BillingEFT TBill on Tbill.PostingID=TGL.MatchTranGuid 
+left join #BillingEFT2 Tbill2 on tbill2.CashbookTransactionID=tgl.Cashbooktransactionid
+left join(select  cr.ReceiptNo,DocumentNumber,brpi.CashbookTransactionID from Billing_Journal j
+inner join POS_CashierReceipt cr on cr.id=j.DebitReceiptID
+left join Led_BankReconPOSItems brpi on brpi.POSItem_ID=cr.BillId
+where j.documenttypeid=165
+) j on j.Documentnumber=tgl.DocumentNumber
+)a
+left join 
+(select CashbookTransactionID,max(ItemDescription)ItemDescription from Led_CashbookVote group by CashbookTransactionID) b on b.CashbookTransactionID=a.AllocationCashbookTransactionid
+ order by GenLedger_ID
+
+END
+GO
+
+
+ 
