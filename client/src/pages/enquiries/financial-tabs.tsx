@@ -38,27 +38,52 @@ export function IncentivesTab({ accountId }: { accountId: number }) {
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
-  if (!data) return <EmptyState message="No payment incentive data available" />;
 
-  const items = Array.isArray(data) ? data : [data];
+  const items = Array.isArray(data) ? data : data ? [data] : [];
+  const hasIncentive = items.length > 0 && items.some((item: any) =>
+    item.description || item.incentiveType || item.code || item.incentive || item.enable
+  );
+
+  if (!hasIncentive) {
+    return (
+      <div className="p-5">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
+            <Gift className="w-4 h-4 text-white" />
+            <h3 className="text-sm font-semibold text-white tracking-wide">Payment Incentive</h3>
+          </div>
+          <div className="py-12 px-5 flex flex-col items-center justify-center text-center">
+            <div className="w-14 h-14 rounded-full bg-purple-50 flex items-center justify-center mb-4">
+              <Gift className="w-7 h-7 text-purple-300" />
+            </div>
+            <p className="text-sm font-medium text-slate-500">No Payment Incentive</p>
+            <p className="text-xs text-slate-400 mt-1">There are no active payment incentives on this account</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-5 space-y-5">
-      {items.map((item: any, i: number) => (
+      {items.filter((item: any) => item.description || item.incentiveType || item.code || item.incentive || item.enable).map((item: any, i: number) => (
         <div key={i} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
             <Gift className="w-4 h-4 text-white" />
             <h3 className="text-sm font-semibold text-white tracking-wide">Payment Incentive</h3>
-            {(item.status || item.incentiveStatus) && (
-              <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{item.status || item.incentiveStatus}</Badge>
+            {item.enable && (
+              <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">Active</Badge>
             )}
           </div>
           <div className="p-5">
-            <FieldRow label="Incentive Type" value={item.incentiveType || item.type} icon={<Gift className="w-3.5 h-3.5" />} />
-            <FieldRow label="Discount %" value={item.discountPercentage || item.percentage} icon={<Activity className="w-3.5 h-3.5" />} />
-            <FieldRow label="Discount Amount" value={item.discountAmount || item.amount} icon={<Banknote className="w-3.5 h-3.5" />} />
-            <FieldRow label="Valid From" value={item.validFrom ? new Date(item.validFrom).toLocaleDateString('en-ZA') : null} icon={<CalendarDays className="w-3.5 h-3.5" />} />
-            <FieldRow label="Valid To" value={item.validTo ? new Date(item.validTo).toLocaleDateString('en-ZA') : null} icon={<CalendarDays className="w-3.5 h-3.5" />} />
-            <FieldRow label="Status" value={item.status || item.incentiveStatus} icon={<Shield className="w-3.5 h-3.5" />} />
+            <FieldRow label="Description" value={item.description} icon={<Gift className="w-3.5 h-3.5" />} />
+            <FieldRow label="Incentive Type" value={item.incentiveType || item.code} icon={<Activity className="w-3.5 h-3.5" />} />
+            <FieldRow label="Incentive" value={item.incentive} icon={<Banknote className="w-3.5 h-3.5" />} />
+            <FieldRow label="Financial Year" value={item.financialYear} icon={<CalendarDays className="w-3.5 h-3.5" />} />
+            <FieldRow label="Valid From" value={item.validPeriodFrom ? new Date(item.validPeriodFrom).toLocaleDateString('en-ZA') : null} icon={<CalendarDays className="w-3.5 h-3.5" />} />
+            <FieldRow label="Valid To" value={item.validPeriodTo ? new Date(item.validPeriodTo).toLocaleDateString('en-ZA') : null} icon={<CalendarDays className="w-3.5 h-3.5" />} />
+            <FieldRow label="CRN" value={item.crn} icon={<Shield className="w-3.5 h-3.5" />} />
+            <FieldRow label="Enabled" value={item.enable ? 'Yes' : 'No'} icon={<Shield className="w-3.5 h-3.5" />} />
           </div>
         </div>
       ))}
