@@ -2238,6 +2238,15 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/platinum/third-party-payments/account-search", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing/pos/third-party-payments/account-search", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   // --- Third Party Payments - Cashier Status ---
 
   app.get("/api/platinum/third-party-payments/is-cashier-active", async (req, res) => {
