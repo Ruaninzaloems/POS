@@ -673,6 +673,9 @@ export function HandoverTab({ accountId }: { accountId: number }) {
   const [data, setData] = useState<any>(null);
   const [enquiry, setEnquiry] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [selectedYear, setSelectedYear] = useState(getFinYearOptions()[0]);
+  const [itemsPerPage, setItemsPerPage] = useState(50);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const loaded = useRef(false);
@@ -708,95 +711,159 @@ export function HandoverTab({ accountId }: { accountId: number }) {
   };
   const fmtDate = (v: any) => v ? new Date(v).toLocaleDateString('en-ZA') : '-';
 
-  const items = data ? (Array.isArray(data) ? data : [data]) : [];
-  const allHandovers = [...items, ...(enquiry ? (Array.isArray(enquiry) ? enquiry : [enquiry]) : [])];
+  useEffect(() => { setCurrentPage(1); }, [accountId]);
+
+  const infoItems = data ? (Array.isArray(data) ? data : [data]) : [];
+  const enqItems = enquiry ? (Array.isArray(enquiry) ? enquiry : [enquiry]) : [];
+  const seen = new Set<string>();
+  const dedupedHandovers = [...infoItems, ...enqItems].filter((h: any) => {
+    const key = JSON.stringify({
+      acc: h.handoverAccount ?? h.accountNumber ?? h.account ?? '',
+      amt: h.handoverAmount ?? h.amount ?? '',
+      dt: h.handedOverDate ?? h.handoverDate ?? '',
+      rt: h.runType ?? h.type ?? '',
+      st: h.status ?? h.handoverStatus ?? '',
+      cd: h.dateCreated ?? h.createdDate ?? '',
+    });
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const [yearStart, yearEnd] = selectedYear.split('/').map(Number);
+  const allHandovers = dedupedHandovers.filter((h: any) => {
+    const dateStr = h.handedOverDate ?? h.handoverDate ?? h.dateCreated ?? h.createdDate;
+    if (!dateStr) return true;
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return true;
+    const fy = d.getMonth() >= 6 ? d.getFullYear() : d.getFullYear() - 1;
+    return fy === (yearStart < 100 ? 2000 + yearStart : yearStart);
+  });
+
+  const totalRecords = allHandovers.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / itemsPerPage));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIdx = (safePage - 1) * itemsPerPage;
+  const pageItems = allHandovers.slice(startIdx, startIdx + itemsPerPage);
+
+  const thCls = "text-left py-2.5 px-3 text-[11px] font-semibold text-slate-600 whitespace-nowrap border-r border-slate-200 last:border-r-0 cursor-pointer hover:bg-slate-100 select-none";
 
   return (
-    <div className="p-5 space-y-5">
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-3 bg-gradient-to-r from-orange-600 to-orange-700 flex items-center gap-2">
-          <ArrowRight className="w-4 h-4 text-white" />
-          <h3 className="text-sm font-semibold text-white tracking-wide">Handover List</h3>
-          {allHandovers.length > 0 && (
-            <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{allHandovers.length} record{allHandovers.length !== 1 ? 's' : ''}</Badge>
-          )}
+    <div className="p-4 space-y-4">
+      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-4 py-2.5 bg-slate-100 border-b border-slate-200">
+          <h3 className="text-sm font-semibold text-slate-800" data-testid="text-handover-title">Handover List per Billing Period</h3>
         </div>
+
+        <div className="flex justify-center py-3 border-b border-slate-200 bg-white">
+          <select
+            value={selectedYear}
+            onChange={(e) => { setSelectedYear(e.target.value); setCurrentPage(1); }}
+            className="text-sm border border-slate-300 rounded px-4 py-1.5 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none min-w-[160px] text-center"
+            data-testid="select-handover-year"
+          >
+            {getFinYearOptions().map(yr => <option key={yr} value={yr}>{yr}</option>)}
+          </select>
+        </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full text-sm" data-testid="table-handover-list">
+          <table className="w-full text-sm border-collapse" data-testid="table-handover-list">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[80px]">Run Type</th>
-                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[120px]">Handover Account</th>
-                <th className="text-right py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[120px]">Handover Amount</th>
-                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[110px]">Handed Over Date</th>
-                <th className="text-center py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Outstanding Days</th>
-                <th className="text-center py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[110px]">Outstanding Month</th>
-                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Attorney</th>
-                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[80px]">Status</th>
-                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[90px]">Capturer</th>
-                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Date Created</th>
-                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[90px]">Reviewed By</th>
-                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[120px]">Termination Reason</th>
-                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[110px]">Termination Date</th>
-                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[90px]">Reviewed By</th>
-                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Review Date</th>
+                <th className={thCls} style={{ minWidth: 90 }}>Run Type <span className="inline-block ml-0.5 text-slate-400">&#x21C5;</span></th>
+                <th className={thCls} style={{ minWidth: 140 }}>Handover Account <span className="inline-block ml-0.5 text-slate-400">&#x21C5;</span></th>
+                <th className={`${thCls} text-right`} style={{ minWidth: 130 }}>Handover Amount <span className="inline-block ml-0.5 text-slate-400">&#x21C5;</span></th>
+                <th className={thCls} style={{ minWidth: 120 }}>Handed Over Date <span className="inline-block ml-0.5 text-slate-400">&#x21C5;</span></th>
+                <th className={thCls} style={{ minWidth: 120 }}>Outstanding Days <span className="inline-block ml-0.5 text-slate-400">&#x21C5;</span></th>
+                <th className={thCls} style={{ minWidth: 130 }}>Outstanding Month <span className="inline-block ml-0.5 text-slate-400">&#x21C5;</span></th>
+                <th className={thCls} style={{ minWidth: 100 }}>Attorney <span className="inline-block ml-0.5 text-slate-400">&#x21C5;</span></th>
+                <th className={thCls} style={{ minWidth: 80 }}>Status <span className="inline-block ml-0.5 text-slate-400">&#x21C5;</span></th>
+                <th className={thCls} style={{ minWidth: 90 }}>Capturer <span className="inline-block ml-0.5 text-slate-400">&#x21C5;</span></th>
+                <th className={thCls} style={{ minWidth: 110 }}>Date Created <span className="inline-block ml-0.5 text-slate-400">&#x21C5;</span></th>
+                <th className={thCls} style={{ minWidth: 100 }}>Reviewed By <span className="inline-block ml-0.5 text-slate-400">&#x21C5;</span></th>
+                <th className={thCls} style={{ minWidth: 140 }}>Termination Reason <span className="inline-block ml-0.5 text-slate-400">&#x21C5;</span></th>
+                <th className={thCls} style={{ minWidth: 120 }}>Termination Date <span className="inline-block ml-0.5 text-slate-400">&#x21C5;</span></th>
+                <th className={thCls} style={{ minWidth: 100 }}>Reviewed By <span className="inline-block ml-0.5 text-slate-400">&#x21C5;</span></th>
+                <th className={thCls} style={{ minWidth: 110 }}>Review Date <span className="inline-block ml-0.5 text-slate-400">&#x21C5;</span></th>
               </tr>
             </thead>
             <tbody>
-              {allHandovers.length === 0 ? (
-                <tr><td colSpan={15} className="py-8 text-center text-slate-400 text-sm italic">No records to display.</td></tr>
-              ) : allHandovers.map((h: any, i: number) => (
-                <tr key={i} className="border-b border-slate-100 hover:bg-orange-50/30 transition-colors" data-testid={`row-handover-${i}`}>
-                  <td className="py-2 px-2 text-[13px] text-slate-700">{h.runType ?? h.type ?? '-'}</td>
-                  <td className="py-2 px-2 text-[13px] font-mono text-slate-700">{h.handoverAccount ?? h.accountNumber ?? h.account ?? '-'}</td>
-                  <td className="py-2 px-2 text-right font-mono text-[13px] text-slate-700 font-semibold">{fmt(h.handoverAmount ?? h.amount ?? 0)}</td>
-                  <td className="py-2 px-2 text-[13px] text-slate-600">{fmtDate(h.handedOverDate ?? h.handoverDate)}</td>
-                  <td className="py-2 px-2 text-center text-[13px] text-slate-600">{h.outstandingDays ?? h.daysOutstanding ?? '-'}</td>
-                  <td className="py-2 px-2 text-center text-[13px] text-slate-600">{h.outstandingMonth ?? h.monthsOutstanding ?? '-'}</td>
-                  <td className="py-2 px-2 text-[13px] text-slate-700">{h.attorney ?? h.attorneyName ?? '-'}</td>
-                  <td className="py-2 px-2">
-                    <Badge variant={h.status === 'Active' || h.handoverStatus === 'Active' ? 'default' : 'secondary'} className="text-[10px]">
+              {pageItems.length === 0 ? (
+                <tr><td colSpan={15} className="py-6 text-center text-slate-400 text-sm">No records to display.</td></tr>
+              ) : pageItems.map((h: any, i: number) => (
+                <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/40 transition-colors" data-testid={`row-handover-${i}`}>
+                  <td className="py-2 px-3 text-[13px] text-slate-700 border-r border-slate-100">{h.runType ?? h.type ?? '-'}</td>
+                  <td className="py-2 px-3 text-[13px] font-mono text-slate-700 border-r border-slate-100">{h.handoverAccount ?? h.accountNumber ?? h.account ?? '-'}</td>
+                  <td className="py-2 px-3 text-right font-mono text-[13px] text-slate-700 border-r border-slate-100">{fmt(h.handoverAmount ?? h.amount ?? 0)}</td>
+                  <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-slate-100">{fmtDate(h.handedOverDate ?? h.handoverDate)}</td>
+                  <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-slate-100">{h.outstandingDays ?? h.daysOutstanding ?? '-'}</td>
+                  <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-slate-100">{h.outstandingMonth ?? h.monthsOutstanding ?? '-'}</td>
+                  <td className="py-2 px-3 text-[13px] text-slate-700 border-r border-slate-100">{h.attorney ?? h.attorneyName ?? '-'}</td>
+                  <td className="py-2 px-3 text-[13px] border-r border-slate-100">
+                    <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${
+                      (h.status ?? h.handoverStatus) === 'Active' ? 'bg-green-100 text-green-700' :
+                      (h.status ?? h.handoverStatus) === 'Terminated' ? 'bg-red-100 text-red-700' :
+                      'bg-slate-100 text-slate-600'
+                    }`}>
                       {h.status ?? h.handoverStatus ?? '-'}
-                    </Badge>
+                    </span>
                   </td>
-                  <td className="py-2 px-2 text-[13px] text-slate-600">{h.capturer ?? h.capturedBy ?? h.createdBy ?? '-'}</td>
-                  <td className="py-2 px-2 text-[13px] text-slate-600">{fmtDate(h.dateCreated ?? h.createdDate ?? h.capturedDate)}</td>
-                  <td className="py-2 px-2 text-[13px] text-slate-600">{h.reviewedBy ?? '-'}</td>
-                  <td className="py-2 px-2 text-[13px] text-slate-500">{h.terminationReason ?? '-'}</td>
-                  <td className="py-2 px-2 text-[13px] text-slate-600">{fmtDate(h.terminationDate)}</td>
-                  <td className="py-2 px-2 text-[13px] text-slate-600">{h.reviewedBy2 ?? h.terminatedReviewedBy ?? '-'}</td>
-                  <td className="py-2 px-2 text-[13px] text-slate-600">{fmtDate(h.reviewDate ?? h.reviewedDate)}</td>
+                  <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-slate-100">{h.capturer ?? h.capturedBy ?? h.createdBy ?? '-'}</td>
+                  <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-slate-100">{fmtDate(h.dateCreated ?? h.createdDate ?? h.capturedDate)}</td>
+                  <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-slate-100">{h.reviewedBy ?? '-'}</td>
+                  <td className="py-2 px-3 text-[13px] text-slate-500 border-r border-slate-100">{h.terminationReason ?? '-'}</td>
+                  <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-slate-100">{fmtDate(h.terminationDate)}</td>
+                  <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-slate-100">{h.terminatedReviewedBy ?? h.reviewedBy2 ?? '-'}</td>
+                  <td className="py-2 px-3 text-[13px] text-slate-600">{fmtDate(h.reviewDate ?? h.reviewedDate)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end">
-          <span className="text-xs text-slate-500">{allHandovers.length} of {allHandovers.length} records</span>
+
+        <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-4">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <span>Items per page:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+              className="border border-slate-300 rounded px-1.5 py-0.5 text-xs bg-white"
+              data-testid="select-handover-pagesize"
+            >
+              {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
+          <span className="text-xs text-slate-500">{totalRecords === 0 ? '0 of 0' : `${startIdx + 1}-${Math.min(startIdx + itemsPerPage, totalRecords)} of ${totalRecords}`}</span>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setCurrentPage(1)} disabled={safePage <= 1} className="px-1.5 py-0.5 text-xs text-slate-500 hover:text-slate-800 disabled:opacity-30" data-testid="btn-handover-first">&laquo;</button>
+            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safePage <= 1} className="px-1.5 py-0.5 text-xs text-slate-500 hover:text-slate-800 disabled:opacity-30" data-testid="btn-handover-prev">&lsaquo;</button>
+            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} className="px-1.5 py-0.5 text-xs text-slate-500 hover:text-slate-800 disabled:opacity-30" data-testid="btn-handover-next">&rsaquo;</button>
+            <button onClick={() => setCurrentPage(totalPages)} disabled={safePage >= totalPages} className="px-1.5 py-0.5 text-xs text-slate-500 hover:text-slate-800 disabled:opacity-30" data-testid="btn-handover-last">&raquo;</button>
+          </div>
         </div>
       </div>
 
       {transactions.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
-            <Receipt className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Handover Transaction Detail</h3>
-            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{transactions.length}</Badge>
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-4 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center gap-2">
+            <Receipt className="w-4 h-4 text-slate-600" />
+            <h3 className="text-sm font-semibold text-slate-800">Handover Transaction Detail</h3>
+            <Badge variant="secondary" className="ml-auto text-[10px]">{transactions.length}</Badge>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-handover-transactions">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Date</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Description</th>
-                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reference</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Type</th>
+                  <th className={thCls}>Date</th>
+                  <th className={thCls}>Description</th>
+                  <th className={`${thCls} text-right`}>Amount</th>
+                  <th className={thCls}>Reference</th>
+                  <th className={thCls}>Type</th>
                 </tr>
               </thead>
               <tbody>
                 {transactions.map((tx: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-orange-50/30 transition-colors">
+                  <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/40 transition-colors">
                     <td className="py-2 px-3 text-slate-600 text-[13px]">{fmtDate(tx.transactionDate ?? tx.date)}</td>
                     <td className="py-2 px-3 text-[13px]">{tx.description || tx.transactionDescription || '-'}</td>
                     <td className="py-2 px-3 text-right font-mono font-semibold text-[13px]">{fmt(tx.amount ?? tx.transactionAmount ?? 0)}</td>
