@@ -870,9 +870,16 @@ export default function AllocateTransaction() {
 
               let derivedLastName = line.lastName || '';
               let derivedInitials = line.initials || '';
-              if (!derivedLastName && line.description) {
-                  const cleanName = line.description.replace(/\s*\(Old:.*\)$/, '').replace(/&amp;/g, '&').trim();
-                  const nameParts = cleanName.split(/\s+/).filter(Boolean);
+              if (!derivedLastName) {
+                  const nameSource = line.description || transaction.note || line.accountNo || 'Unknown';
+                  const cleanName = nameSource
+                      .replace(/\s*\(Old:.*\)$/, '')
+                      .replace(/&amp;/g, '&')
+                      .replace(/CSV Import:\s*/i, '')
+                      .replace(/Payment to\s*/i, '')
+                      .replace(/Payment Grouping:\s*/i, '')
+                      .trim();
+                  const nameParts = cleanName.split(/\s+/).filter(p => p && p !== '&');
                   if (nameParts.length >= 2) {
                       derivedLastName = nameParts[0];
                       derivedInitials = nameParts.slice(1).map(p => p.charAt(0).toUpperCase()).join('');
@@ -881,6 +888,8 @@ export default function AllocateTransaction() {
                       derivedInitials = nameParts[0].charAt(0).toUpperCase();
                   }
               }
+              if (!derivedLastName) derivedLastName = 'N/A';
+              if (!derivedInitials) derivedInitials = 'N';
 
               const submitData: any = {
                   posItemId: transaction.posItem_ID,
@@ -899,6 +908,8 @@ export default function AllocateTransaction() {
                   receiptDate: receiptDate,
                   lastName: derivedLastName,
                   initials: derivedInitials,
+                  LastName: derivedLastName,
+                  Initials: derivedInitials,
               };
 
               if (allocType === 'CLEARANCE') {

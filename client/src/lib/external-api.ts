@@ -829,8 +829,24 @@ async function platinumFetch(url: string, options?: RequestInit & { timeoutMs?: 
             let detail = text;
             try {
                 const parsed = JSON.parse(text);
-                detail = parsed.detail || parsed.message || text;
+                let raw = parsed.detail || parsed.message || text;
+                if (typeof raw === 'string') {
+                    try {
+                        const nested = JSON.parse(raw);
+                        if (nested.errors && typeof nested.errors === 'object') {
+                            const msgs = Object.entries(nested.errors).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`);
+                            detail = nested.title ? `${nested.title} — ${msgs.join('; ')}` : msgs.join('; ');
+                        } else {
+                            detail = nested.title || nested.message || raw;
+                        }
+                    } catch {
+                        detail = raw;
+                    }
+                } else {
+                    detail = parsed.message || JSON.stringify(raw);
+                }
             } catch {}
+            detail = detail?.replace(/<[^>]*>/g, '')?.substring(0, 300) || '';
             throw new Error(detail || `Platinum API error (${res.status})`);
         }
         return res.json();
