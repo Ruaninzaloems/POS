@@ -718,7 +718,7 @@ function GeneralEnquiriesContent() {
             <div className="flex-1 overflow-auto bg-gradient-to-b from-slate-50/80 to-slate-100/50">
               <TabsContent value="account" className="m-0"><AccountInfoTab account={selectedAccount} /></TabsContent>
               <TabsContent value="name" className="m-0"><NameTab accountId={accountId} onNavigateToAccount={(acct) => { setSelectedAccount(acct); setActiveTab('account'); }} /></TabsContent>
-              <TabsContent value="balance" className="m-0"><BalanceDebtTab accountId={accountId} /></TabsContent>
+              <TabsContent value="balance" className="m-0"><BalanceDebtTab accountId={accountId} accountNumber={selectedAccount.accountNumber || selectedAccount.oldAccountCode || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabsContent>
               <TabsContent value="services" className="m-0"><ServiceBalanceTab accountId={accountId} /></TabsContent>
               <TabsContent value="property" className="m-0"><PropertyDetailsTab accountId={accountId} /></TabsContent>
               <TabsContent value="consumption" className="m-0"><ConsumptionTab accountId={accountId} /></TabsContent>
@@ -728,8 +728,8 @@ function GeneralEnquiriesContent() {
               <TabsContent value="deposits" className="m-0"><DepositsTab accountId={accountId} /></TabsContent>
               <TabsContent value="transactions" className="m-0"><TransactionHistoryTab accountId={accountId} accountNumber={selectedAccount.accountNumber || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabsContent>
               <TabsContent value="txn-summary" className="m-0"><TransactionSummaryTab accountId={accountId} accountNumber={selectedAccount.accountNumber || selectedAccount.oldAccountCode || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabsContent>
-              <TabsContent value="txn-detailed" className="m-0"><DetailedTransactionListTab accountId={accountId} /></TabsContent>
-              <TabsContent value="services-meters" className="m-0"><ServicesMetersTab accountId={accountId} unitId={unitId} /></TabsContent>
+              <TabsContent value="txn-detailed" className="m-0"><DetailedTransactionListTab accountId={accountId} accountNumber={selectedAccount.accountNumber || selectedAccount.oldAccountCode || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabsContent>
+              <TabsContent value="services-meters" className="m-0"><ServicesMetersTab accountId={accountId} unitId={unitId} accountNumber={selectedAccount.accountNumber || selectedAccount.oldAccountCode || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabsContent>
               <TabsContent value="payment-plans" className="m-0"><PaymentPlansTab accountId={accountId} /></TabsContent>
               <TabsContent value="payment-extensions" className="m-0"><PaymentExtensionHistoryTab accountId={accountId} /></TabsContent>
               <TabsContent value="debit-orders" className="m-0"><DebitOrdersTab accountId={accountId} /></TabsContent>
