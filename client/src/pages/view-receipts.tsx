@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { PosLayout } from '@/components/layout/pos-layout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,11 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
-import { Search, Printer, FileDown, RefreshCw, Loader2, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Printer, Loader2, X, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
-import { useReactToPrint } from 'react-to-print';
 import { cn } from '@/lib/utils';
 import {
     fetchViewReceiptCashiers,
@@ -25,6 +23,38 @@ import {
 } from '@/lib/external-api';
 import { useToast } from '@/hooks/use-toast';
 import { usePos } from '@/lib/pos-state';
+
+type SortField = 'receiptNo' | 'accountNumber' | 'amount' | 'receiptDate' | 'cashierName' | 'paymentType' | 'paymentOption';
+type SortDir = 'asc' | 'desc';
+
+function getReceiptField(receipt: ViewReceiptItem, field: string): any {
+    const r = receipt as any;
+    switch (field) {
+        case 'accountNumber': return receipt.accountNumber || r.accountNo || r.accountID || r.account_number || '';
+        case 'receiptNo': return receipt.receiptNo || r.receipt_no || '';
+        case 'paymentType': return receipt.paymentType || r.payment_type || r.payMode || '';
+        case 'paymentOption': return receipt.paymentOption || r.payment_option || r.billType || '';
+        case 'receiptDate': return receipt.receiptDate || r.receipt_date || '';
+        case 'amount': return receipt.amount ?? r.receiptAmount ?? 0;
+        case 'tenderAmount': return receipt.tenderAmount ?? r.tender_amount ?? 0;
+        case 'changeAmount': return receipt.changeAmount ?? r.change_amount ?? 0;
+        case 'cashierName': return receipt.cashierName || r.cashier_name || r.cashier || '';
+        case 'cashBook': return receipt.cashBook || r.cash_book || r.cashOfficeName || r.cashBook || '';
+        case 'cashOffice': return receipt.cashOffice || r.cash_office || r.cashOfficeName || r.cashierOffice || '';
+        case 'staged': {
+            const s = receipt.isStaged ?? r.is_staged ?? r.staged ?? false;
+            return typeof s === 'string' ? s : (s ? 'Yes' : 'No');
+        }
+        case 'isCancelled': {
+            const cancelField = r.cancel || '';
+            return receipt.isCancelled === 1 || r.is_cancelled === 1 || r.isCancelled === true || cancelField.toLowerCase().includes('cancel');
+        }
+        case 'cancelField': return r.cancel || '';
+        case 'cancellationReason': return receipt.cancellationReason || r.cancellation_reason || r.reasonForCancel || '';
+        case 'serialNo': return r.serialNo || receipt.receiptId || r.id || '';
+        default: return '';
+    }
+}
 
 export default function ViewReceipts() {
     const { toast } = useToast();
@@ -57,6 +87,14 @@ export default function ViewReceipts() {
     const [selectedReceipt, setSelectedReceipt] = useState<ViewReceiptItem | null>(null);
     const [printingReceiptId, setPrintingReceiptId] = useState<string | number | null>(null);
     const [dataSource, setDataSource] = useState<'none' | 'platinum' | 'sebata'>('none');
+
+    const [quickSearch, setQuickSearch] = useState('');
+    const [filterPaymentType, setFilterPaymentType] = useState('__all__');
+    const [filterPaymentOption, setFilterPaymentOption] = useState('__all__');
+    const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'cancelled'>('all');
+    const [sortField, setSortField] = useState<SortField | null>(null);
+    const [sortDir, setSortDir] = useState<SortDir>('desc');
+    const [showFilters, setShowFilters] = useState(false);
 
     useEffect(() => {
         const loadCashiers = async () => {
@@ -135,6 +173,11 @@ export default function ViewReceipts() {
         }
         const effectiveFromDate = fromDate || new Date();
         setIsLoading(true);
+        setQuickSearch('');
+        setFilterPaymentType('__all__');
+        setFilterPaymentOption('__all__');
+        setFilterStatus('all');
+        setSortField(null);
         try {
             const query: ReceiptSearchQuery = {
                 fromDate: format(effectiveFromDate, "yyyy-MM-dd'T'00:00:00"),
@@ -215,10 +258,15 @@ export default function ViewReceipts() {
         setTotalCount(0);
         setCurrentPage(1);
         setDataSource('none');
+        setQuickSearch('');
+        setFilterPaymentType('__all__');
+        setFilterPaymentOption('__all__');
+        setFilterStatus('all');
+        setSortField(null);
     };
 
     const handlePrintReceipt = async (receipt: ViewReceiptItem) => {
-        const serialNo = (receipt as any).serialNo || receipt.receiptId || (receipt as any).id;
+        const serialNo = getReceiptField(receipt, 'serialNo');
         if (!serialNo) {
             toast({
                 title: "Print Failed",
@@ -249,12 +297,12 @@ export default function ViewReceipts() {
                 setTimeout(() => URL.revokeObjectURL(url), 60000);
                 toast({
                     title: "Receipt Ready",
-                    description: `Receipt ${receipt.receiptNo || serialNo} opened for printing.`,
+                    description: `Receipt ${getReceiptField(receipt, 'receiptNo') || serialNo} opened for printing.`,
                 });
             } else {
                 toast({
                     title: "Print Sent",
-                    description: `Receipt ${receipt.receiptNo || serialNo} sent to print.`,
+                    description: `Receipt ${getReceiptField(receipt, 'receiptNo') || serialNo} sent to print.`,
                 });
             }
         } catch (e: any) {
@@ -292,6 +340,113 @@ export default function ViewReceipts() {
         if (c.name) return c.name;
         return `Cashier ${c.id}`;
     };
+
+    const uniquePaymentTypes = useMemo(() => {
+        const set = new Set<string>();
+        receipts.forEach(r => {
+            const v = getReceiptField(r, 'paymentType');
+            if (v) set.add(v);
+        });
+        return Array.from(set).sort();
+    }, [receipts]);
+
+    const uniquePaymentOptions = useMemo(() => {
+        const set = new Set<string>();
+        receipts.forEach(r => {
+            const v = getReceiptField(r, 'paymentOption');
+            if (v) set.add(v);
+        });
+        return Array.from(set).sort();
+    }, [receipts]);
+
+    const filteredReceipts = useMemo(() => {
+        let result = receipts;
+
+        if (filterPaymentType !== '__all__') {
+            result = result.filter(r => getReceiptField(r, 'paymentType') === filterPaymentType);
+        }
+        if (filterPaymentOption !== '__all__') {
+            result = result.filter(r => getReceiptField(r, 'paymentOption') === filterPaymentOption);
+        }
+        if (filterStatus !== 'all') {
+            result = result.filter(r => {
+                const cancelled = getReceiptField(r, 'isCancelled');
+                return filterStatus === 'cancelled' ? cancelled : !cancelled;
+            });
+        }
+        if (quickSearch.trim()) {
+            const q = quickSearch.trim().toLowerCase();
+            result = result.filter(r => {
+                const searchable = [
+                    getReceiptField(r, 'accountNumber'),
+                    getReceiptField(r, 'receiptNo'),
+                    getReceiptField(r, 'paymentType'),
+                    getReceiptField(r, 'paymentOption'),
+                    getReceiptField(r, 'cashierName'),
+                    getReceiptField(r, 'cashBook'),
+                    String(getReceiptField(r, 'amount')),
+                ].join(' ').toLowerCase();
+                return searchable.includes(q);
+            });
+        }
+
+        if (sortField) {
+            result = [...result].sort((a, b) => {
+                let va = getReceiptField(a, sortField);
+                let vb = getReceiptField(b, sortField);
+                if (sortField === 'amount') {
+                    va = Number(va) || 0;
+                    vb = Number(vb) || 0;
+                    return sortDir === 'asc' ? va - vb : vb - va;
+                }
+                if (sortField === 'receiptDate') {
+                    const da = new Date(va).getTime() || 0;
+                    const db = new Date(vb).getTime() || 0;
+                    return sortDir === 'asc' ? da - db : db - da;
+                }
+                const sa = String(va).toLowerCase();
+                const sb = String(vb).toLowerCase();
+                const cmp = sa.localeCompare(sb);
+                return sortDir === 'asc' ? cmp : -cmp;
+            });
+        }
+
+        return result;
+    }, [receipts, filterPaymentType, filterPaymentOption, filterStatus, quickSearch, sortField, sortDir]);
+
+    const activeFilterCount = [
+        filterPaymentType !== '__all__',
+        filterPaymentOption !== '__all__',
+        filterStatus !== 'all',
+        quickSearch.trim().length > 0,
+    ].filter(Boolean).length;
+
+    const clearAllFilters = () => {
+        setQuickSearch('');
+        setFilterPaymentType('__all__');
+        setFilterPaymentOption('__all__');
+        setFilterStatus('all');
+        setSortField(null);
+    };
+
+    const handleSort = (field: SortField) => {
+        if (sortField === field) {
+            if (sortDir === 'desc') setSortDir('asc');
+            else { setSortField(null); setSortDir('desc'); }
+        } else {
+            setSortField(field);
+            setSortDir('desc');
+        }
+    };
+
+    const SortIcon = ({ field }: { field: SortField }) => {
+        if (sortField !== field) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-30" />;
+        return sortDir === 'asc' ? <ArrowUp className="w-3 h-3 ml-1 text-blue-600" /> : <ArrowDown className="w-3 h-3 ml-1 text-blue-600" />;
+    };
+
+    const filteredTotal = useMemo(() => {
+        return filteredReceipts.reduce((sum, r) => sum + (Number(getReceiptField(r, 'amount')) || 0), 0);
+    }, [filteredReceipts]);
 
     return (
         <PosLayout>
@@ -439,7 +594,7 @@ export default function ViewReceipts() {
                                     {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />} Load
                                 </Button>
                                 <Button variant="outline" className="w-28 sm:w-32 bg-slate-100 hover:bg-slate-200 border-slate-300 text-sm" onClick={handleClear} data-testid="button-cancel">
-                                    <RefreshCw className="w-4 h-4 mr-2" /> Cancel
+                                    <X className="w-4 h-4 mr-2" /> Cancel
                                 </Button>
                             </div>
                         </div>
@@ -447,7 +602,7 @@ export default function ViewReceipts() {
                 </div>
 
                 <div className="p-3 sm:p-6">
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3 sm:mb-4">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3">
                         <div className="text-xs font-bold text-slate-500 uppercase tracking-wider border-l-2 border-slate-500 pl-2 flex items-center gap-2">
                             Receipt Information {totalCount > 0 && <span className="text-blue-600">({totalCount} records)</span>}
                             {dataSource === 'platinum' && totalCount > 0 && (
@@ -486,28 +641,181 @@ export default function ViewReceipts() {
                         </div>
                     </div>
 
+                    {receipts.length > 0 && (
+                        <div className="bg-white border rounded-lg shadow-sm mb-3 overflow-hidden" data-testid="filter-toolbar">
+                            <div className="flex items-center gap-2 p-2 sm:p-3 border-b bg-slate-50/80">
+                                <div className="relative flex-1 max-w-xs">
+                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                                    <Input
+                                        className="h-8 pl-8 text-sm bg-white"
+                                        placeholder="Quick search in results..."
+                                        value={quickSearch}
+                                        onChange={e => setQuickSearch(e.target.value)}
+                                        data-testid="input-quick-search"
+                                    />
+                                    {quickSearch && (
+                                        <button
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                            onClick={() => setQuickSearch('')}
+                                            type="button"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    )}
+                                </div>
+
+                                <Button
+                                    variant={showFilters ? "default" : "outline"}
+                                    size="sm"
+                                    className={cn("h-8 text-xs gap-1.5", showFilters && "bg-blue-600 hover:bg-blue-700")}
+                                    onClick={() => setShowFilters(!showFilters)}
+                                    data-testid="button-toggle-filters"
+                                >
+                                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                                    <span className="hidden sm:inline">Filters</span>
+                                    {activeFilterCount > 0 && (
+                                        <span className={cn(
+                                            "inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold",
+                                            showFilters ? "bg-white text-blue-600" : "bg-blue-600 text-white"
+                                        )}>
+                                            {activeFilterCount}
+                                        </span>
+                                    )}
+                                </Button>
+
+                                {activeFilterCount > 0 && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 px-2"
+                                        onClick={clearAllFilters}
+                                        data-testid="button-clear-filters"
+                                    >
+                                        <X className="w-3 h-3 mr-1" /> Clear
+                                    </Button>
+                                )}
+
+                                <div className="hidden sm:flex items-center gap-3 ml-auto text-xs text-slate-500">
+                                    {activeFilterCount > 0 && filteredReceipts.length !== receipts.length && (
+                                        <span className="font-medium text-blue-600">{filteredReceipts.length} of {receipts.length} shown</span>
+                                    )}
+                                    <span className="font-mono font-medium text-slate-700">
+                                        Total: R {filteredTotal.toFixed(2)}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {showFilters && (
+                                <div className="p-2 sm:p-3 bg-blue-50/30 border-b">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                                        <div>
+                                            <label className="text-[11px] font-medium text-slate-500 uppercase tracking-wider mb-1 block">Payment Type</label>
+                                            <Select value={filterPaymentType} onValueChange={setFilterPaymentType}>
+                                                <SelectTrigger className="h-8 text-xs bg-white" data-testid="select-filter-payment-type">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="__all__">All Types</SelectItem>
+                                                    {uniquePaymentTypes.map(t => (
+                                                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div>
+                                            <label className="text-[11px] font-medium text-slate-500 uppercase tracking-wider mb-1 block">Payment Option</label>
+                                            <Select value={filterPaymentOption} onValueChange={setFilterPaymentOption}>
+                                                <SelectTrigger className="h-8 text-xs bg-white" data-testid="select-filter-payment-option">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="__all__">All Options</SelectItem>
+                                                    {uniquePaymentOptions.map(t => (
+                                                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div>
+                                            <label className="text-[11px] font-medium text-slate-500 uppercase tracking-wider mb-1 block">Status</label>
+                                            <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as any)}>
+                                                <SelectTrigger className="h-8 text-xs bg-white" data-testid="select-filter-status">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all">All Statuses</SelectItem>
+                                                    <SelectItem value="active">Active Only</SelectItem>
+                                                    <SelectItem value="cancelled">Cancelled Only</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeFilterCount > 0 && (
+                                <div className="flex flex-wrap items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-slate-50/50 border-b">
+                                    <span className="text-[10px] text-slate-400 uppercase font-medium mr-1">Active:</span>
+                                    {quickSearch.trim() && (
+                                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 gap-1 bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200 cursor-pointer" onClick={() => setQuickSearch('')}>
+                                            Search: "{quickSearch}" <X className="w-2.5 h-2.5" />
+                                        </Badge>
+                                    )}
+                                    {filterPaymentType !== '__all__' && (
+                                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 gap-1 bg-violet-100 text-violet-800 border-violet-200 hover:bg-violet-200 cursor-pointer" onClick={() => setFilterPaymentType('__all__')}>
+                                            Type: {filterPaymentType} <X className="w-2.5 h-2.5" />
+                                        </Badge>
+                                    )}
+                                    {filterPaymentOption !== '__all__' && (
+                                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 gap-1 bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200 cursor-pointer" onClick={() => setFilterPaymentOption('__all__')}>
+                                            Option: {filterPaymentOption} <X className="w-2.5 h-2.5" />
+                                        </Badge>
+                                    )}
+                                    {filterStatus !== 'all' && (
+                                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 gap-1 bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200 cursor-pointer" onClick={() => setFilterStatus('all')}>
+                                            Status: {filterStatus} <X className="w-2.5 h-2.5" />
+                                        </Badge>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="flex sm:hidden items-center justify-between px-2 py-1.5 bg-slate-50/50 border-b text-xs text-slate-500">
+                                {activeFilterCount > 0 && filteredReceipts.length !== receipts.length && (
+                                    <span className="font-medium text-blue-600">{filteredReceipts.length} of {receipts.length} shown</span>
+                                )}
+                                <span className="font-mono font-medium text-slate-700 ml-auto">
+                                    Total: R {filteredTotal.toFixed(2)}
+                                </span>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Mobile card view for receipts */}
                     <div className="sm:hidden space-y-2">
                         {isLoading ? (
                             <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
                                 <Loader2 className="w-5 h-5 animate-spin" /> Loading receipts...
                             </div>
-                        ) : receipts.length === 0 ? (
+                        ) : filteredReceipts.length === 0 && receipts.length > 0 ? (
+                            <div className="text-center py-12 text-muted-foreground text-sm">
+                                No receipts match the current filters. Try adjusting your filters.
+                            </div>
+                        ) : filteredReceipts.length === 0 ? (
                             <div className="text-center py-12 text-muted-foreground text-sm">
                                 No receipts found. Use the filters above and click Load.
                             </div>
-                        ) : receipts.map((receipt, idx) => {
-                            const r = receipt as any;
-                            const cancelField = r.cancel || '';
-                            const isCancelled = receipt.isCancelled === 1 || r.is_cancelled === 1 || r.isCancelled === true || cancelField.toLowerCase().includes('cancel');
-                            const acctNo = receipt.accountNumber || r.accountNo || r.accountID || '';
-                            const receiptNo = receipt.receiptNo || r.receipt_no || '';
-                            const payType = receipt.paymentType || r.payment_type || '';
-                            const dateStr = receipt.receiptDate || r.receipt_date || '';
-                            const amount = receipt.amount ?? r.receiptAmount ?? 0;
-                            const cashier = receipt.cashierName || r.cashier_name || r.cashier || '';
+                        ) : filteredReceipts.map((receipt, idx) => {
+                            const isCancelled = getReceiptField(receipt, 'isCancelled');
+                            const acctNo = getReceiptField(receipt, 'accountNumber');
+                            const receiptNo = getReceiptField(receipt, 'receiptNo');
+                            const payType = getReceiptField(receipt, 'paymentType');
+                            const payOption = getReceiptField(receipt, 'paymentOption');
+                            const dateStr = getReceiptField(receipt, 'receiptDate');
+                            const amount = getReceiptField(receipt, 'amount');
+                            const cashier = getReceiptField(receipt, 'cashierName');
+                            const serialNo = getReceiptField(receipt, 'serialNo');
                             return (
-                                <Card key={r.serialNo || receipt.receiptId || idx} className={cn("p-3", isCancelled && "border-red-200 bg-red-50/30")} data-testid={`card-receipt-${idx}`}>
+                                <Card key={serialNo || idx} className={cn("p-3", isCancelled && "border-red-200 bg-red-50/30")} data-testid={`card-receipt-${idx}`}>
                                     <div className="flex justify-between items-start gap-2 mb-1.5">
                                         <div className="min-w-0">
                                             <div className="font-mono text-sm font-medium text-blue-700">{receiptNo || '-'}</div>
@@ -518,12 +826,16 @@ export default function ViewReceipts() {
                                             {isCancelled ? (
                                                 <Badge variant="destructive" className="text-[10px] px-1 py-0">Cancelled</Badge>
                                             ) : (
-                                                <Badge variant="outline" className="text-[10px] px-1 py-0 text-green-700 border-green-300 bg-green-50">Completed</Badge>
+                                                <Badge variant="outline" className="text-[10px] px-1 py-0 text-green-700 border-green-300 bg-green-50">Active</Badge>
                                             )}
                                         </div>
                                     </div>
+                                    <div className="flex flex-wrap gap-1 mb-1.5">
+                                        {payType && <Badge variant="outline" className="text-[9px] px-1 py-0 text-slate-600 border-slate-200 bg-slate-50">{payType}</Badge>}
+                                        {payOption && <Badge variant="outline" className="text-[9px] px-1 py-0 text-violet-600 border-violet-200 bg-violet-50">{payOption}</Badge>}
+                                    </div>
                                     <div className="flex justify-between items-center text-xs text-muted-foreground">
-                                        <span>{payType} | {formatReceiptDate(dateStr)}</span>
+                                        <span>{formatReceiptDate(dateStr)}</span>
                                         <Button
                                             variant="outline"
                                             size="sm"
@@ -531,7 +843,7 @@ export default function ViewReceipts() {
                                             onClick={() => handlePrintReceipt(receipt)}
                                             disabled={printingReceiptId !== null}
                                         >
-                                            {printingReceiptId === ((receipt as any).serialNo || receipt.receiptId || (receipt as any).id) ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Printer className="w-3 h-3 mr-1" />} Print
+                                            {printingReceiptId === serialNo ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Printer className="w-3 h-3 mr-1" />} Print
                                         </Button>
                                     </div>
                                     {cashier && <div className="text-[10px] text-muted-foreground mt-1">Cashier: {cashier}</div>}
@@ -546,16 +858,30 @@ export default function ViewReceipts() {
                             <TableHeader className="bg-slate-100 sticky top-0 z-10">
                                 <TableRow>
                                     <TableHead className="w-[50px] font-bold text-slate-700">No</TableHead>
-                                    <TableHead className="min-w-[120px] font-bold text-slate-700">Account ID</TableHead>
-                                    <TableHead className="min-w-[140px] font-bold text-slate-700">Receipt No</TableHead>
-                                    <TableHead className="min-w-[100px] font-bold text-slate-700">Payment Type</TableHead>
-                                    <TableHead className="min-w-[150px] font-bold text-slate-700">Payment Option</TableHead>
-                                    <TableHead className="min-w-[140px] font-bold text-slate-700">Date/Time</TableHead>
+                                    <TableHead className="min-w-[120px] font-bold text-slate-700 cursor-pointer select-none hover:text-blue-700" onClick={() => handleSort('accountNumber')}>
+                                        <span className="inline-flex items-center">Account ID <SortIcon field="accountNumber" /></span>
+                                    </TableHead>
+                                    <TableHead className="min-w-[140px] font-bold text-slate-700 cursor-pointer select-none hover:text-blue-700" onClick={() => handleSort('receiptNo')}>
+                                        <span className="inline-flex items-center">Receipt No <SortIcon field="receiptNo" /></span>
+                                    </TableHead>
+                                    <TableHead className="min-w-[100px] font-bold text-slate-700 cursor-pointer select-none hover:text-blue-700" onClick={() => handleSort('paymentType')}>
+                                        <span className="inline-flex items-center">Payment Type <SortIcon field="paymentType" /></span>
+                                    </TableHead>
+                                    <TableHead className="min-w-[150px] font-bold text-slate-700 cursor-pointer select-none hover:text-blue-700" onClick={() => handleSort('paymentOption')}>
+                                        <span className="inline-flex items-center">Payment Option <SortIcon field="paymentOption" /></span>
+                                    </TableHead>
+                                    <TableHead className="min-w-[140px] font-bold text-slate-700 cursor-pointer select-none hover:text-blue-700" onClick={() => handleSort('receiptDate')}>
+                                        <span className="inline-flex items-center">Date/Time <SortIcon field="receiptDate" /></span>
+                                    </TableHead>
                                     <TableHead className="min-w-[80px] font-bold text-slate-700">Staged</TableHead>
-                                    <TableHead className="min-w-[100px] text-right font-bold text-slate-700">Amount</TableHead>
+                                    <TableHead className="min-w-[100px] text-right font-bold text-slate-700 cursor-pointer select-none hover:text-blue-700" onClick={() => handleSort('amount')}>
+                                        <span className="inline-flex items-center justify-end w-full">Amount <SortIcon field="amount" /></span>
+                                    </TableHead>
                                     <TableHead className="min-w-[100px] text-right font-bold text-slate-700">Tender</TableHead>
                                     <TableHead className="min-w-[100px] text-right font-bold text-slate-700">Change</TableHead>
-                                    <TableHead className="min-w-[150px] font-bold text-slate-700">Cashier</TableHead>
+                                    <TableHead className="min-w-[150px] font-bold text-slate-700 cursor-pointer select-none hover:text-blue-700" onClick={() => handleSort('cashierName')}>
+                                        <span className="inline-flex items-center">Cashier <SortIcon field="cashierName" /></span>
+                                    </TableHead>
                                     <TableHead className="min-w-[200px] font-bold text-slate-700">Cash Book</TableHead>
                                     <TableHead className="min-w-[150px] font-bold text-slate-700">Cashier Office</TableHead>
                                     <TableHead className="min-w-[100px] font-bold text-slate-700 sticky right-[120px] bg-slate-100">Action</TableHead>
@@ -572,35 +898,40 @@ export default function ViewReceipts() {
                                             </div>
                                         </TableCell>
                                     </TableRow>
-                                ) : receipts.length === 0 ? (
+                                ) : filteredReceipts.length === 0 && receipts.length > 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={15} className="h-24 text-center text-muted-foreground">
+                                            No receipts match the current filters. Try adjusting your filters above.
+                                        </TableCell>
+                                    </TableRow>
+                                ) : filteredReceipts.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={15} className="h-24 text-center text-muted-foreground">
                                             No receipts found. Use the filters above and click Load.
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    receipts.map((receipt, idx) => {
-                                        const r = receipt as any;
-                                        const cancelField = r.cancel || '';
-                                        const isCancelled = receipt.isCancelled === 1 || r.is_cancelled === 1 || r.isCancelled === true || cancelField.toLowerCase().includes('cancel');
-                                        const acctNo = receipt.accountNumber || r.accountNo || r.accountID || r.account_number || '';
-                                        const receiptNo = receipt.receiptNo || r.receipt_no || '';
-                                        const payType = receipt.paymentType || r.payment_type || r.payMode || '';
-                                        const payOption = receipt.paymentOption || r.payment_option || r.billType || '';
-                                        const dateStr = receipt.receiptDate || r.receipt_date || '';
-                                        const staged = receipt.isStaged ?? r.is_staged ?? r.staged ?? false;
-                                        const stagedStr = typeof staged === 'string' ? staged : (staged ? 'Yes' : 'No');
-                                        const amount = receipt.amount ?? r.receiptAmount ?? 0;
-                                        const tender = receipt.tenderAmount ?? r.tender_amount ?? 0;
-                                        const change = receipt.changeAmount ?? r.change_amount ?? 0;
-                                        const cashier = receipt.cashierName || r.cashier_name || r.cashier || '';
-                                        const cashBook = receipt.cashBook || r.cash_book || r.cashOfficeName || r.cashBook || '';
-                                        const cashOffice = receipt.cashOffice || r.cash_office || r.cashOfficeName || r.cashierOffice || '';
-                                        const cancelReason = receipt.cancellationReason || r.cancellation_reason || r.reasonForCancel || '';
+                                    filteredReceipts.map((receipt, idx) => {
+                                        const isCancelled = getReceiptField(receipt, 'isCancelled');
+                                        const acctNo = getReceiptField(receipt, 'accountNumber');
+                                        const receiptNo = getReceiptField(receipt, 'receiptNo');
+                                        const payType = getReceiptField(receipt, 'paymentType');
+                                        const payOption = getReceiptField(receipt, 'paymentOption');
+                                        const dateStr = getReceiptField(receipt, 'receiptDate');
+                                        const staged = getReceiptField(receipt, 'staged');
+                                        const amount = getReceiptField(receipt, 'amount');
+                                        const tender = getReceiptField(receipt, 'tenderAmount');
+                                        const change = getReceiptField(receipt, 'changeAmount');
+                                        const cashier = getReceiptField(receipt, 'cashierName');
+                                        const cashBook = getReceiptField(receipt, 'cashBook');
+                                        const cashOffice = getReceiptField(receipt, 'cashOffice');
+                                        const cancelField = getReceiptField(receipt, 'cancelField');
+                                        const cancelReason = getReceiptField(receipt, 'cancellationReason');
+                                        const serialNo = getReceiptField(receipt, 'serialNo');
 
                                         return (
                                             <TableRow
-                                                key={r.serialNo || receipt.receiptId || idx}
+                                                key={serialNo || idx}
                                                 className={cn(
                                                     isCancelled && 'bg-red-50/50',
                                                     'hover:bg-slate-50 cursor-pointer'
@@ -614,10 +945,10 @@ export default function ViewReceipts() {
                                                 <TableCell className="text-xs">{payOption}</TableCell>
                                                 <TableCell className="text-xs whitespace-nowrap">{formatReceiptDate(dateStr)}</TableCell>
                                                 <TableCell className="text-xs">
-                                                    {(stagedStr === 'Yes' || staged === true) ? (
+                                                    {(staged === 'Yes' || staged === true) ? (
                                                         <Badge variant="outline" className="text-[10px] px-1 py-0 text-green-700 border-green-300 bg-green-50">Yes</Badge>
                                                     ) : (
-                                                        <span className="text-muted-foreground">{stagedStr || 'No'}</span>
+                                                        <span className="text-muted-foreground">{staged || 'No'}</span>
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-right font-mono font-medium text-xs">
@@ -645,7 +976,7 @@ export default function ViewReceipts() {
                                                         disabled={printingReceiptId !== null}
                                                         data-testid={`button-print-${idx}`}
                                                     >
-                                                        {printingReceiptId === ((receipt as any).serialNo || receipt.receiptId || (receipt as any).id) ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Printer className="w-3.5 h-3.5 mr-1" />}
+                                                        {printingReceiptId === serialNo ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Printer className="w-3.5 h-3.5 mr-1" />}
                                                         Print
                                                     </Button>
                                                 </TableCell>
@@ -674,7 +1005,7 @@ export default function ViewReceipts() {
                     {totalCount > 0 && (
                         <div className="hidden sm:flex justify-between items-center mt-3 text-xs text-slate-500">
                             <span>
-                                Showing {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, totalCount)} of {totalCount} receipts
+                                Showing {filteredReceipts.length !== receipts.length ? `${filteredReceipts.length} filtered of ` : ''}{(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, totalCount)} of {totalCount} receipts
                             </span>
                             {totalPages > 1 && (
                                 <div className="flex items-center gap-1">
