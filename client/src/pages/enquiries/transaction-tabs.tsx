@@ -907,25 +907,33 @@ h2{text-align:center;margin:6px 0;font-size:14px}p{margin:3px 0}
               <table className="w-full text-sm" data-testid="table-billing-period-transactions">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Period</th>
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Date</th>
                     <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Description</th>
-                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service</th>
-                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Debit</th>
-                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Credit</th>
-                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Balance</th>
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Tariff</th>
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Doc No</th>
+                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
+                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Interest</th>
+                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">VAT</th>
+                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Total</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {billingPeriodTxns.map((item: any, i: number) => (
-                    <tr key={i} className="border-b border-slate-100 hover:bg-emerald-50/30 transition-colors">
-                      <td className="py-2.5 px-3 text-slate-600 font-medium">{item.period || item.billingPeriod || '-'}</td>
-                      <td className="py-2.5 px-3">{item.description || item.transactionDescription || '-'}</td>
-                      <td className="py-2.5 px-3">{item.serviceType || item.serviceDescription || '-'}</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-red-600">{(item.debit ?? item.debitAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-green-600">{(item.credit ?? item.creditAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">{(item.balance ?? item.runningBalance ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                    </tr>
-                  ))}
+                  {billingPeriodTxns.map((item: any, i: number) => {
+                    const isOpenClose = (item.description || '').toLowerCase().includes('balance');
+                    const fmtAmt = (v: number) => v !== 0 ? v.toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : '0,00';
+                    return (
+                      <tr key={i} className={`border-b border-slate-100 hover:bg-emerald-50/30 transition-colors ${isOpenClose ? 'bg-slate-50/50 font-semibold' : ''}`}>
+                        <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{item.transactionDate ? new Date(item.transactionDate).toLocaleDateString('en-ZA') : '-'}</td>
+                        <td className="py-2.5 px-3">{item.description || '-'}</td>
+                        <td className="py-2.5 px-3 text-slate-500">{item.tariff || '-'}</td>
+                        <td className="py-2.5 px-3 text-slate-500 font-mono text-xs">{item.documentNumber || '-'}</td>
+                        <td className="py-2.5 px-3 text-right font-mono">{fmtAmt(item.amount ?? 0)}</td>
+                        <td className="py-2.5 px-3 text-right font-mono text-orange-600">{fmtAmt(item.interestAmount ?? 0)}</td>
+                        <td className="py-2.5 px-3 text-right font-mono text-slate-500">{fmtAmt(item.vatAmount ?? 0)}</td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">{fmtAmt(item.totalAmount ?? 0)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -934,7 +942,11 @@ h2{text-align:center;margin:6px 0;font-size:14px}p{margin:3px 0}
       )}
 
       {activeSubTab === 'detailed' && (
-        detailedTxns.length === 0 ? <EmptyState message="No detailed transactions found" /> : (
+        detailedTxns.length === 0 ? <EmptyState message="No detailed transactions found" /> : (() => {
+          const months = ['july','august','september','october','november','december','january','february','march','april','may','june'];
+          const monthLabels = ['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'];
+          const fmtPivot = (v: number) => v !== 0 ? v.toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : '-';
+          return (
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="px-5 py-3 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
               <FileText className="w-4 h-4 text-white" />
@@ -945,32 +957,36 @@ h2{text-align:center;margin:6px 0;font-size:14px}p{margin:3px 0}
               <table className="w-full text-sm" data-testid="table-detailed-transactions">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Date</th>
-                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Type</th>
-                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Description</th>
-                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service</th>
-                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
-                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reference</th>
+                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold sticky left-0 bg-slate-50 min-w-[160px]">Description</th>
+                    {monthLabels.map(m => (
+                      <th key={m} className="text-right py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[80px]">{m}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {detailedTxns.map((item: any, i: number) => (
-                    <tr key={i} className="border-b border-slate-100 hover:bg-purple-50/30 transition-colors">
-                      <td className="py-2.5 px-3 text-slate-600">{item.transactionDate ? new Date(item.transactionDate).toLocaleDateString('en-ZA') : item.date || '-'}</td>
-                      <td className="py-2.5 px-3">
-                        <span className="inline-flex px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">{item.transactionType || item.type || '-'}</span>
-                      </td>
-                      <td className="py-2.5 px-3">{item.description || item.transactionDescription || '-'}</td>
-                      <td className="py-2.5 px-3">{item.serviceType || item.serviceDescription || '-'}</td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">{(item.amount ?? item.transactionAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                      <td className="py-2.5 px-3 text-slate-500 text-xs font-mono">{item.reference || '-'}</td>
-                    </tr>
-                  ))}
+                  {detailedTxns.map((item: any, i: number) => {
+                    const isClosing = (item.serviceDesc || '').toLowerCase().includes('closing');
+                    const isOpening = (item.serviceDesc || '').toLowerCase().includes('opening');
+                    return (
+                      <tr key={i} className={`border-b border-slate-100 hover:bg-purple-50/30 transition-colors ${isClosing ? 'bg-slate-50 font-bold' : isOpening ? 'bg-slate-50/50' : ''}`}>
+                        <td className="py-2.5 px-3 font-medium sticky left-0 bg-white">{item.serviceDesc || '-'}</td>
+                        {months.map(m => {
+                          const val = item[m] ?? 0;
+                          return (
+                            <td key={m} className={`py-2.5 px-2 text-right font-mono text-xs ${val < 0 ? 'text-green-600' : val > 0 ? 'text-red-600' : 'text-slate-300'}`}>
+                              {fmtPivot(val)}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
-        )
+          );
+        })()
       )}
     </div>
   );
