@@ -2224,6 +2224,54 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/platinum/third-party-payments/import-file", async (req, res) => {
+    try {
+      const token = await getPlatinumToken();
+      const apiUrl = getPlatinumApiUrl();
+      const url = `${apiUrl}/api/billing/pos/third-party-payments/import`;
+
+      const formBody = new URLSearchParams();
+      const fields = ['ContentType', 'ContentDisposition', 'Length', 'Name', 'FileName', 'thirdpartyTypeId', 'paymentReference', 'cashBookId'];
+      for (const field of fields) {
+        if (req.body[field] !== undefined && req.body[field] !== null) {
+          formBody.append(field, String(req.body[field]));
+        }
+      }
+      if (req.body.Headers && typeof req.body.Headers === 'object') {
+        formBody.append('Headers', JSON.stringify(req.body.Headers));
+      }
+
+      console.log(`[third-party-import] Posting form data to ${url}`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+      try {
+        const rawRes = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: formBody.toString(),
+          signal: controller.signal,
+        });
+        const rawText = await rawRes.text();
+        console.log(`[third-party-import] Status: ${rawRes.status}, Response:`, rawText.substring(0, 1000));
+        if (!rawRes.ok) {
+          return res.status(rawRes.status).json({ message: rawRes.statusText, detail: rawText.substring(0, 1000) });
+        }
+        let data;
+        try { data = rawText ? JSON.parse(rawText) : null; } catch { data = rawText; }
+        res.json(data);
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    } catch (e: any) {
+      console.error(`[third-party-import] Error:`, e.message);
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.get("/api/platinum/third-party-payments/types", async (req, res) => {
     try {
       const data = await platinumGet("/api/billing/pos/third-party-payments/types");
