@@ -652,7 +652,6 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
       setDownloadProgress('Preparing download...');
       const fromLabel = downloadFromMonth.slice(0, 3);
       const toLabel = downloadToMonth.slice(0, 3);
-      const acctLabel = accountNumber || String(accountId);
       downloadCsv(allCsvParts.join('\n'), `DetailedTransactions_${acctLabel}_${downloadYear.replace('/', '-')}_${fromLabel}-${toLabel}.csv`);
       setShowDownloadModal(false);
     } catch (e: any) {
