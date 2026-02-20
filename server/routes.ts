@@ -2204,6 +2204,26 @@ export async function registerRoutes(
     }
   });
 
+  // --- Third Party Payments - Cashier Status ---
+
+  app.get("/api/platinum/third-party-payments/is-cashier-active", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing/pos/third-party-payments/is-cashier-active", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/third-party-payments/cashier-details", async (req, res) => {
+    try {
+      const data = await platinumGet("/api/billing/pos/third-party-payments/cashier-details", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   // --- Billing Enquiry endpoints ---
 
   app.get("/api/platinum/billing-enquiry/deposit-amount", async (req, res) => {
