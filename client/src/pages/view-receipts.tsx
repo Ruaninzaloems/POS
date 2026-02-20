@@ -55,7 +55,7 @@ export default function ViewReceipts() {
     const [loadingCashiers, setLoadingCashiers] = useState(false);
 
     const [selectedReceipt, setSelectedReceipt] = useState<ViewReceiptItem | null>(null);
-    const [isPrinting, setIsPrinting] = useState(false);
+    const [printingReceiptId, setPrintingReceiptId] = useState<string | number | null>(null);
     const [dataSource, setDataSource] = useState<'none' | 'platinum' | 'sebata'>('none');
 
     useEffect(() => {
@@ -227,7 +227,7 @@ export default function ViewReceipts() {
             });
             return;
         }
-        setIsPrinting(true);
+        setPrintingReceiptId(serialNo);
         try {
             const res = await platinumPrintReceiptRaw([Number(serialNo)]);
             if (!res.ok) {
@@ -265,7 +265,7 @@ export default function ViewReceipts() {
                 variant: "destructive",
             });
         } finally {
-            setIsPrinting(false);
+            setPrintingReceiptId(null);
         }
     };
 
@@ -529,9 +529,9 @@ export default function ViewReceipts() {
                                             size="sm"
                                             className="h-6 text-[10px] px-2"
                                             onClick={() => handlePrintReceipt(receipt)}
-                                            disabled={isPrinting}
+                                            disabled={printingReceiptId !== null}
                                         >
-                                            <Printer className="w-3 h-3 mr-1" /> Print
+                                            {printingReceiptId === ((receipt as any).serialNo || receipt.receiptId || (receipt as any).id) ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Printer className="w-3 h-3 mr-1" />} Print
                                         </Button>
                                     </div>
                                     {cashier && <div className="text-[10px] text-muted-foreground mt-1">Cashier: {cashier}</div>}
@@ -642,10 +642,10 @@ export default function ViewReceipts() {
                                                         size="sm"
                                                         className="h-7 text-xs bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700 font-medium px-3 shadow-sm"
                                                         onClick={(e) => { e.stopPropagation(); handlePrintReceipt(receipt); }}
-                                                        disabled={isPrinting}
+                                                        disabled={printingReceiptId !== null}
                                                         data-testid={`button-print-${idx}`}
                                                     >
-                                                        {isPrinting ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Printer className="w-3.5 h-3.5 mr-1" />}
+                                                        {printingReceiptId === ((receipt as any).serialNo || receipt.receiptId || (receipt as any).id) ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Printer className="w-3.5 h-3.5 mr-1" />}
                                                         Print
                                                     </Button>
                                                 </TableCell>
