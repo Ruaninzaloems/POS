@@ -19,6 +19,7 @@ import {
   platinumThirdPartyCommit,
   platinumThirdPartyAccountSearch,
   platinumThirdPartyValidateAccount,
+  platinumThirdPartyCashierDetails,
 } from '@/lib/external-api';
 import { usePos } from '@/lib/pos-state';
 
@@ -50,9 +51,10 @@ export default function ThirdPartyPaymentProcessing() {
 
   const [thirdPartyTypes, setThirdPartyTypes] = useState<ThirdPartyType[]>([]);
   const [loadingTypes, setLoadingTypes] = useState(true);
-  const [selectedTypeId, setSelectedTypeId] = useState<string>("");
+  const [selectedTypeId, setSelectedTypeId] = useState<string | undefined>(undefined);
   const [paymentRef, setPaymentRef] = useState("");
   const [cashBookId, setCashBookId] = useState("0");
+  const [cashierInfo, setCashierInfo] = useState<any>(null);
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processResult, setProcessResult] = useState<{success: boolean; message: string} | null>(null);
@@ -80,7 +82,25 @@ export default function ThirdPartyPaymentProcessing() {
 
   useEffect(() => {
     loadThirdPartyTypes();
+    loadCashierDetails();
   }, []);
+
+  const loadCashierDetails = async () => {
+    try {
+      const userId = posState?.platinumUser?.user_ID;
+      const finYear = posState?.platinumUser?.finYear || '2025/2026';
+      if (!userId) return;
+      const details = await platinumThirdPartyCashierDetails(userId, finYear);
+      if (details && !details._error) {
+        setCashierInfo(details);
+        if (details.cashOfficeId) {
+          setCashBookId(String(details.cashOfficeId));
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load cashier details:', e);
+    }
+  };
 
   const loadThirdPartyTypes = async () => {
     setLoadingTypes(true);
@@ -107,7 +127,7 @@ export default function ThirdPartyPaymentProcessing() {
   };
 
   const handleImport = async () => {
-    if (!selectedTypeId || !file) {
+    if (!selectedTypeId || selectedTypeId === '' || !file) {
       setProcessResult({ success: false, message: "Please select a third party type and upload a file." });
       return;
     }
@@ -300,7 +320,7 @@ export default function ThirdPartyPaymentProcessing() {
     setTransactions([]);
     setFile(null);
     setPaymentRef("");
-    setSelectedTypeId("");
+    setSelectedTypeId(undefined);
     setProcessResult(null);
     setValidationResult(null);
     setCommitResult(null);
@@ -358,16 +378,24 @@ export default function ThirdPartyPaymentProcessing() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="cashBookId">CashBook ID</Label>
+                    <Label htmlFor="cashBookId">Cash Office</Label>
                     <Input
                       id="cashBookId"
-                      value={cashBookId}
-                      onChange={(e) => setCashBookId(e.target.value)}
-                      placeholder="Enter cashbook ID (0 for none)"
-                      className="bg-white"
-                      type="number"
+                      value={cashierInfo ? `${cashBookId} - ${cashierInfo.cashOfficeDesc || ''}` : cashBookId}
+                      readOnly={!!cashierInfo}
+                      className={`bg-white ${cashierInfo ? 'bg-slate-50 cursor-not-allowed' : ''}`}
                       data-testid="input-cashbook-id"
                     />
+                    {!cashierInfo && (
+                      <Input
+                        value={cashBookId}
+                        onChange={(e) => setCashBookId(e.target.value)}
+                        placeholder="Enter cashbook ID"
+                        className="bg-white mt-1"
+                        type="number"
+                        data-testid="input-cashbook-id-manual"
+                      />
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -379,14 +407,14 @@ export default function ThirdPartyPaymentProcessing() {
                         <Loader2 className="h-4 w-4 animate-spin" /> Loading types...
                       </div>
                     ) : (
-                      <Select value={selectedTypeId} onValueChange={setSelectedTypeId}>
+                      <Select value={selectedTypeId} onValueChange={(val) => setSelectedTypeId(val)}>
                         <SelectTrigger id="thirdParty" className={!selectedTypeId ? "border-red-300 bg-white" : "bg-white"} data-testid="select-third-party">
-                          <SelectValue placeholder="-- Select --" />
+                          <SelectValue placeholder="-- Select Third Party --" />
                         </SelectTrigger>
                         <SelectContent>
                           {thirdPartyTypes.map(tp => (
-                            <SelectItem key={tp.id} value={String(tp.id)}>
-                              {tp.name || tp.description || `Type ${tp.id}`}
+                            <SelectItem key={String(tp.id)} value={String(tp.id)}>
+                              {tp.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
