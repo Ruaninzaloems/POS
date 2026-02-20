@@ -600,7 +600,7 @@ export default function AllocateTransaction() {
      let totalToAdd = 0;
 
      // Process 118(1) allocations
-     const clearanceAccountId = selectedClearance.linkedAccounts?.[0]?.apiId || selectedClearance.linkedAccounts?.[0]?.accountId || 0;
+     const clearanceAccountId = selectedClearance.linkedAccounts?.[0]?.apiId || 0;
 
      selectedClearance.section118_1_Breakdown.forEach((item, idx) => {
          const key = `118_1_${item.accountNo}_${idx}`;
@@ -706,10 +706,9 @@ export default function AllocateTransaction() {
           const ALLOC_TYPE_ORDER: Record<string, number> = {
               'ACCOUNT': 1,
               'PREPAID': 1,
-              'GROUP': 2,
-              'CLEARANCE': 3,
-              'DIRECT': 4,
-              'CASHBOOK': 5,
+              'CLEARANCE': 2,
+              'DIRECT': 3,
+              'CASHBOOK': 4,
           };
 
           const sortedLines = [...lines].sort((a, b) => {
@@ -727,9 +726,7 @@ export default function AllocateTransaction() {
               const allocType = line.allocationType || 'ACCOUNT';
 
               let billType = '1';
-              if (allocType === 'GROUP') {
-                  billType = '3';
-              } else if (allocType === 'DIRECT') {
+              if (allocType === 'DIRECT') {
                   billType = '4';
               } else if (allocType === 'CLEARANCE') {
                   billType = '6';
@@ -738,20 +735,7 @@ export default function AllocateTransaction() {
               const accountIdStr = line.accountId ? String(line.accountId) : '';
 
               try {
-                  if (allocType === 'GROUP') {
-                      console.log(`[Direct Deposit] Step 1: load-details-payment-grouping (billType 3)`);
-                      await platinumLoadDetailsPaymentGrouping({
-                          amount: line.amount,
-                          dateOfTransaction: transactionDate,
-                          cashbookID: transaction.cashbookTransactionID || 0,
-                          posItemId: transaction.posItem_ID,
-                          paymentTypeID: 3,
-                          userId: userId,
-                          finYear,
-                          page: 1,
-                          pageSize: 100,
-                      });
-                  } else if (allocType === 'DIRECT') {
+                  if (allocType === 'DIRECT') {
                       console.log(`[Direct Deposit] Step 1: load-details-payment-grouping for misc (billType 4)`);
                       await platinumLoadDetailsPaymentGrouping({
                           amount: line.amount,
@@ -810,10 +794,6 @@ export default function AllocateTransaction() {
 
               if (allocType === 'CLEARANCE') {
                   submitData.clearanceId = line.clearanceId || 0;
-              }
-
-              if (allocType === 'GROUP') {
-                  submitData.groupId = line.groupId || 0;
               }
 
               if (allocType === 'DIRECT') {
@@ -1303,7 +1283,7 @@ export default function AllocateTransaction() {
                                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold ${
                                             line.allocationType === 'CASHBOOK' ? 'bg-orange-50 text-orange-600' :
                                             line.allocationType === 'CLEARANCE' ? 'bg-amber-50 text-amber-600' :
-                                            line.allocationType === 'DIRECT' || line.allocationType === 'GROUP' ? 'bg-emerald-50 text-emerald-600' :
+                                            line.allocationType === 'DIRECT' ? 'bg-emerald-50 text-emerald-600' :
                                             'bg-blue-50 text-blue-600'
                                         }`}>
                                             {startIdx + idx + 1}
@@ -1347,12 +1327,12 @@ export default function AllocateTransaction() {
                                                 <Badge variant="secondary" className={`text-[10px] font-medium ${
                                                     line.allocationType === 'CASHBOOK' ? 'bg-orange-50 text-orange-700' :
                                                     line.allocationType === 'CLEARANCE' ? 'bg-amber-50 text-amber-700' :
-                                                    line.allocationType === 'DIRECT' || line.allocationType === 'GROUP' ? 'bg-emerald-50 text-emerald-700' :
+                                                    line.allocationType === 'DIRECT' ? 'bg-emerald-50 text-emerald-700' :
                                                     'bg-blue-50 text-blue-700'
                                                 }`}>
                                                     {line.allocationType === 'CASHBOOK' ? 'Return' :
                                                      line.allocationType === 'CLEARANCE' ? 'Clearance' :
-                                                     line.allocationType === 'DIRECT' || line.allocationType === 'GROUP' ? 'Income' : 'Account'}
+                                                     line.allocationType === 'DIRECT' ? 'Income' : 'Account'}
                                                 </Badge>
                                             </td>
                                             <td className="px-5 py-3 text-right">

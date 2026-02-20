@@ -76,15 +76,6 @@ export function mapSearchResultToAllocationTarget(result: SearchResult) {
           scoaItemId: item.scoaItemId ? Number(item.scoaItemId) : undefined,
           miscPaymentGroupId: item.miscPaymentGroupId ? Number(item.miscPaymentGroupId) : undefined,
       };
-  } else if (result.type === 'GROUP') {
-      const group = result.data as any;
-      return {
-          accountNo: group.id,
-          name: group.name,
-          description: `Group Payment: ${group.name}`,
-          allocationType: 'GROUP' as const,
-          groupId: group.id ? Number(group.id) : undefined,
-      };
   } else if (result.type === 'CLEARANCE') {
       const clr = result.data as any;
       return {
