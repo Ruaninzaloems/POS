@@ -2197,7 +2197,7 @@ export async function registerRoutes(
 
   app.post("/api/platinum/third-party-payments/:importId/commit", async (req, res) => {
     try {
-      const data = await platinumPost(`/api/v2/pos/third-party-payments/${req.params.importId}/commit`, req.body);
+      const data = await platinumPost(`/api/billing/pos/third-party-payments/${req.params.importId}/commit`, req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
