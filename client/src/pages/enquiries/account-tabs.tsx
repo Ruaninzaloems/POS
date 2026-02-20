@@ -680,9 +680,23 @@ export function BalanceDebtTab({ accountId }: { accountId: number }) {
     { label: '150 DAYS', keys: ['days150', '150days'] },
   ];
   const extendedCols = [
-    { label: '180+ DAYS', keys: ['untill360', 'days180Plus'] },
+    { label: '180 DAYS', keys: ['days180'] },
+    { label: '210 DAYS', keys: ['days210'] },
+    { label: '240 DAYS', keys: ['days240'] },
+    { label: '270 DAYS', keys: ['days270'] },
+    { label: '300 DAYS', keys: ['days300'] },
+    { label: '330 DAYS', keys: ['days330'] },
+    { label: '360 DAYS', keys: ['days360'] },
+    { label: '360+ DAYS', keys: ['untill360', 'days180Plus', 'days360Plus'] },
   ];
-  const agingCols = showExtended ? [...baseCols, ...extendedCols] : baseCols;
+
+  const hasGranularAging = balanceData.some((item: any) =>
+    item.days180 !== undefined || item.days210 !== undefined || item.days240 !== undefined
+  );
+  const extCols = hasGranularAging
+    ? extendedCols
+    : [{ label: '180+ DAYS', keys: ['untill360', 'days180Plus'] }];
+  const agingCols = showExtended ? [...baseCols, ...extCols] : baseCols;
   const getVal = (item: any, keys: string[]) => { for (const k of keys) { if (item[k] !== undefined && item[k] !== null) return item[k]; } return 0; };
 
   const payments = txnHistory.filter((t: any) => {
@@ -715,7 +729,7 @@ export function BalanceDebtTab({ accountId }: { accountId: number }) {
             data-testid="toggle-extended-aging"
           >
             {showExtended ? <ChevronLeft className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-            {showExtended ? 'Show up to 150 Days' : 'Show 180+ Days'}
+            {showExtended ? 'Show up to 150 Days' : 'Show up to 360 Days'}
           </button>
         </div>
         <div className="overflow-x-auto">
@@ -853,7 +867,18 @@ export function BalanceDebtTab({ accountId }: { accountId: number }) {
                         { label: '90 Days', value: fmtDash(getVal(item, ['days90'])) },
                         { label: '120 Days', value: fmtDash(getVal(item, ['days120'])) },
                         { label: '150 Days', value: fmtDash(getVal(item, ['days150'])) },
-                        ...(showExtended ? [{ label: '180+ Days', value: fmtDash(getVal(item, ['untill360'])) }] : []),
+                        ...(showExtended ? (hasGranularAging ? [
+                          { label: '180 Days', value: fmtDash(getVal(item, ['days180'])) },
+                          { label: '210 Days', value: fmtDash(getVal(item, ['days210'])) },
+                          { label: '240 Days', value: fmtDash(getVal(item, ['days240'])) },
+                          { label: '270 Days', value: fmtDash(getVal(item, ['days270'])) },
+                          { label: '300 Days', value: fmtDash(getVal(item, ['days300'])) },
+                          { label: '330 Days', value: fmtDash(getVal(item, ['days330'])) },
+                          { label: '360 Days', value: fmtDash(getVal(item, ['days360'])) },
+                          { label: '360+ Days', value: fmtDash(getVal(item, ['untill360', 'days180Plus'])) },
+                        ] : [
+                          { label: '180+ Days', value: fmtDash(getVal(item, ['untill360', 'days180Plus'])) },
+                        ]) : []),
                       ].map((row, idx) => (
                         <div key={idx} className="flex justify-between items-center py-2">
                           <span className="text-xs text-slate-500">{row.label}</span>
