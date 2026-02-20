@@ -26,6 +26,102 @@ import { LoadingSkeleton, EmptyState, ErrorState, PaginatedTable, FieldRow, getF
 import { generateStatementPdf } from '@/lib/statement-pdf';
 import { generateSection49Letter, generateSection78Letter, generateValuationCertificate } from '@/lib/property-letters-pdf';
 
+function TransferOfOwnershipSection({ transfers, fmt, fmtDate }: { transfers: any[]; fmt: (v: any) => string; fmtDate: (v: any) => string }) {
+  const [itemsPerPage, setItemsPerPage] = useState(50);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalRecords = transfers.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / itemsPerPage));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIdx = (safePage - 1) * itemsPerPage;
+  const pageItems = transfers.slice(startIdx, startIdx + itemsPerPage);
+
+  const thCls = "text-left py-2.5 px-3 text-[11px] font-semibold text-slate-600 whitespace-nowrap border-r border-slate-200 last:border-r-0 cursor-pointer hover:bg-slate-100 select-none";
+  const sortIcon = <span className="inline-block ml-0.5 text-slate-400">&#x21C5;</span>;
+
+  return (
+    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+      <div className="px-4 py-2.5 bg-slate-100 border-b border-slate-200 text-center">
+        <h3 className="text-sm font-semibold text-slate-800" data-testid="text-transfer-title">Transfer of Ownership History:</h3>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border-collapse" data-testid="table-transfer-ownership">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-200">
+              <th className={thCls} style={{ minWidth: 100 }}>Financial Year {sortIcon}</th>
+              <th className={thCls} style={{ minWidth: 80 }}>Status {sortIcon}</th>
+              <th className={thCls} style={{ minWidth: 140 }}>Transfer of Ownership Date {sortIcon}</th>
+              <th className={thCls} style={{ minWidth: 160 }}>Old Owner {sortIcon}</th>
+              <th className={thCls} style={{ minWidth: 130 }}>Old Account Number {sortIcon}</th>
+              <th className={thCls} style={{ minWidth: 130 }}>Title Deed Number {sortIcon}</th>
+              <th className={thCls} style={{ minWidth: 120 }}>Registration Date {sortIcon}</th>
+              <th className={thCls} style={{ minWidth: 140 }}>RDP / Land Reform Date {sortIcon}</th>
+              <th className={`${thCls} text-right`} style={{ minWidth: 170 }}>Journal Amount - Services {sortIcon}</th>
+              <th className={`${thCls} text-right`} style={{ minWidth: 210 }}>Journal Amount - Additional Billing {sortIcon}</th>
+              <th className={`${thCls} text-right`} style={{ minWidth: 110 }}>Purchase Price {sortIcon}</th>
+              <th className={thCls} style={{ minWidth: 110 }}>Purchase Date {sortIcon}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pageItems.length === 0 ? (
+              <tr><td colSpan={12} className="py-6 text-center text-slate-400 text-sm">No records to display.</td></tr>
+            ) : pageItems.map((t: any, i: number) => (
+              <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/40 transition-colors" data-testid={`row-transfer-${i}`}>
+                <td className="py-2 px-3 text-[13px] text-slate-700 border-r border-slate-100">{t.financialYear ?? t.financial_Year ?? '-'}</td>
+                <td className="py-2 px-3 text-[13px] border-r border-slate-100">
+                  <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${
+                    (t.status ?? t.transferStatus ?? '') === 'Approve' || (t.status ?? t.transferStatus ?? '') === 'Approved'
+                      ? 'bg-green-100 text-green-700'
+                      : (t.status ?? t.transferStatus ?? '') === 'Rejected' || (t.status ?? t.transferStatus ?? '') === 'Cancelled'
+                        ? 'bg-red-100 text-red-700'
+                        : (t.status ?? t.transferStatus ?? '') === 'Pending'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {t.status ?? t.transferStatus ?? '-'}
+                  </span>
+                </td>
+                <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-slate-100">{fmtDate(t.transferOfOwnershipDate ?? t.transferDate ?? t.dateOfTransfer ?? t.date)}</td>
+                <td className="py-2 px-3 text-[13px] text-slate-700 border-r border-slate-100">{t.oldOwner ?? t.previousOwner ?? t.fromOwner ?? t.from ?? '-'}</td>
+                <td className="py-2 px-3 text-[13px] font-mono text-slate-700 border-r border-slate-100">{t.oldAccountNumber ?? t.oldAccount ?? t.previousAccountNumber ?? '-'}</td>
+                <td className="py-2 px-3 text-[13px] font-mono text-slate-700 border-r border-slate-100">{t.titleDeedNumber ?? t.titleDeed ?? t.deedNumber ?? '-'}</td>
+                <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-slate-100">{fmtDate(t.registrationDate ?? t.registerDate)}</td>
+                <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-slate-100">{fmtDate(t.rdpLandReformDate ?? t.rdpDate ?? t.landReformDate)}</td>
+                <td className="py-2 px-3 text-right font-mono text-[13px] text-slate-700 border-r border-slate-100">{fmt(t.journalAmountServices ?? t.journalAmount_Services ?? t.journalAmountService ?? 0)}</td>
+                <td className="py-2 px-3 text-right font-mono text-[13px] text-slate-700 border-r border-slate-100">{fmt(t.journalAmountAdditionalBilling ?? t.journalAmount_AdditionalBilling ?? t.journalAmountAddBilling ?? 0)}</td>
+                <td className="py-2 px-3 text-right font-mono text-[13px] text-slate-700 border-r border-slate-100">{fmt(t.purchasePrice ?? t.purchase_Price ?? 0)}</td>
+                <td className="py-2 px-3 text-[13px] text-slate-600">{fmtDate(t.purchaseDate ?? t.purchase_Date)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-4">
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <span>Items per page:</span>
+          <select
+            value={itemsPerPage}
+            onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+            className="border border-slate-300 rounded px-1.5 py-0.5 text-xs bg-white"
+            data-testid="select-transfer-pagesize"
+          >
+            {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
+        <span className="text-xs text-slate-500">{totalRecords === 0 ? '0 of 0' : `${startIdx + 1}\u2013${Math.min(startIdx + itemsPerPage, totalRecords)} of ${totalRecords}`}</span>
+        <div className="flex items-center gap-1">
+          <button onClick={() => setCurrentPage(1)} disabled={safePage <= 1} className="px-1.5 py-0.5 text-xs text-slate-500 hover:text-slate-800 disabled:opacity-30" data-testid="btn-transfer-first">&laquo;</button>
+          <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safePage <= 1} className="px-1.5 py-0.5 text-xs text-slate-500 hover:text-slate-800 disabled:opacity-30" data-testid="btn-transfer-prev">&lsaquo;</button>
+          <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} className="px-1.5 py-0.5 text-xs text-slate-500 hover:text-slate-800 disabled:opacity-30" data-testid="btn-transfer-next">&rsaquo;</button>
+          <button onClick={() => setCurrentPage(totalPages)} disabled={safePage >= totalPages} className="px-1.5 py-0.5 text-xs text-slate-500 hover:text-slate-800 disabled:opacity-30" data-testid="btn-transfer-last">&raquo;</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PropertyDetailsTab({ accountId }: { accountId: number }) {
   const [propData, setPropData] = useState<any>(null);
   const [consUnit, setConsUnit] = useState<any>(null);
@@ -325,45 +421,7 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
         )}
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
-          <ArrowRight className="w-4 h-4 text-white" />
-          <h3 className="text-sm font-semibold text-white tracking-wide">Transfer of Ownership History</h3>
-          <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{transfers.length}</Badge>
-        </div>
-        {transfers.length === 0 ? (
-          <div className="p-6 text-center text-slate-400 text-sm">No transfer of ownership records found</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Date</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">From</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">To</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Type</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reference</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transfers.map((t: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-purple-50/30 transition-colors">
-                    <td className="py-2 px-3 text-slate-600">{fmtDate(t.transferDate || t.dateOfTransfer || t.date)}</td>
-                    <td className="py-2 px-3 font-medium text-slate-800">{t.fromOwner || t.previousOwner || t.from || '-'}</td>
-                    <td className="py-2 px-3 font-medium text-slate-800">{t.toOwner || t.newOwner || t.to || '-'}</td>
-                    <td className="py-2 px-3 text-slate-600">{t.transferType || t.type || '-'}</td>
-                    <td className="py-2 px-3 font-mono text-slate-600">{t.reference || t.referenceNumber || '-'}</td>
-                    <td className="py-2 px-3">
-                      <Badge variant="outline" className="text-[10px]">{t.status || t.transferStatus || '-'}</Badge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <TransferOfOwnershipSection transfers={transfers} fmt={fmt} fmtDate={fmtDate} />
     </div>
   );
 }

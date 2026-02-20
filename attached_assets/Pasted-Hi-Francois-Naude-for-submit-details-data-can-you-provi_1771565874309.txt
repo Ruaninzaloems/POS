@@ -1,0 +1,225 @@
+Hi Francois Naude, 
+for submit-details-data can you provide the payload in the below format
+Consumer Services (BillType = "1")
+{
+
+  "posItemId": 12345,
+
+  "reconId": 67890,
+
+  "userId": 1001,
+
+  "financialYear": "2024",
+
+  "transactionDate": "2024-02-20T10:30:00",
+
+  "paidAmount": 1500.50,
+
+  "billType": "1",
+
+  "accountId": 98765,
+
+  "description": "Monthly water and electricity payment",
+
+  "reference": "INV-2024-00123",
+
+  "note": "Payment for February 2024 services",
+
+  "outstandingAmount": 2500.75
+
+}
+ 
+Payment Grouping (BillType = "3") with Multiple Accounts
+ 
+{
+
+  "posItemId": 12345,
+
+  "reconId": 67890,
+
+  "userId": 1001,
+
+  "financialYear": "2024",
+
+  "transactionDate": "2024-02-20T10:30:00",
+
+  "paidAmount": 3500.00,
+
+  "billType": "3",
+
+  "groupId": 555,
+
+  "description": "Bulk payment for multiple accounts",
+
+  "reference": "BULK-PAY-022024",
+
+  "fileName": "bulk_payments_feb2024.csv",
+
+  "accounts": [
+
+    {
+
+      "accountId": 98765,
+
+      "amount": 1500.50,
+
+      "accountNumber": "ACC-001",
+
+      "outstandingAmount": 2000.00
+
+    },
+
+    {
+
+      "accountId": 98766,
+
+      "amount": 1200.25,
+
+      "accountNumber": "ACC-002",
+
+      "outstandingAmount": 1800.00
+
+    },
+
+    {
+
+      "accountId": 98767,
+
+      "amount": 799.25,
+
+      "accountNumber": "ACC-003",
+
+      "outstandingAmount": 1000.00
+
+    }
+
+  ]
+
+}
+ 
+Clearance (BillType = "6")
+{
+
+  "posItemId": 12345,
+
+  "reconId": 67890,
+
+  "userId": 1001,
+
+  "financialYear": "2024",
+
+  "transactionDate": "2024-02-20T10:30:00",
+
+  "paidAmount": 5000.00,
+
+  "billType": "6",
+
+  "accountId": 98765,
+
+  "clearanceId": 444,
+
+  "description": "Property clearance certificate payment",
+
+  "reference": "CLR-2024-00555",
+
+  "note": "Clearance for property transfer",
+
+  "outstandingAmount": 5000.00
+
+}
+ 
+Miscellaneous Payment (BillType = "4")
+{
+
+  "posItemId": 12345,
+
+  "reconId": 67890,
+
+  "userId": 1001,
+
+  "financialYear": "2024",
+
+  "transactionDate": "2024-02-20T10:30:00",
+
+  "paidAmount": 750.00,
+
+  "billType": "4",
+
+  "miscPaymentGroupId": 333,
+
+  "lastName": "Smith",
+
+  "initials": "J.D.",
+
+  "description": "Deposit for market stall rental",
+
+  "amount": 652.17,
+
+  "vatAmount": 97.83,
+
+  "totalAmount": 750.00,
+
+  "vatableVote": 789,
+
+  "vatPercentage": 15.0,
+
+  "paymentTypeId": 5,
+
+  "receiptDate": "2024-02-20",
+
+  "reference": "MISC-2024-001",
+
+  "note": "Market stall deposit - Stall #45"
+
+}
+ 
+Deposit (If Deposit is a different bill type, e.g., "5")
+{
+
+  "posItemId": 12345,
+
+  "reconId": 67890,
+
+  "userId": 1001,
+
+  "financialYear": "2024",
+
+  "transactionDate": "2024-02-20T10:30:00",
+
+  "paidAmount": 2000.00,
+
+  "billType": "5",
+
+  "accountId": 98765,
+
+  "description": "Security deposit for new rental",
+
+  "reference": "DEP-2024-00234",
+
+  "note": "Security deposit - Unit 12B",
+
+  "outstandingAmount": 2000.00
+
+}
+ 
+mandatory fields for the validation are below fields
+{
+
+  "posItemId": 12345,
+
+  "reconId": 67890,
+
+  "userId": 1001,
+
+  "financialYear": "2024",
+
+  "transactionDate": "2024-02-20T10:30:00",
+
+  "paidAmount": 500.00,
+
+  "billType": "1",
+
+  "accountId": 98765
+
+}
+ 
