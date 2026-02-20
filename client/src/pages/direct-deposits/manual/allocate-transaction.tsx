@@ -868,6 +868,20 @@ export default function AllocateTransaction() {
 
               updateProgress(`Line ${lineIdx}/${activeLines.length}: Submitting ${lineLabel}...`);
 
+              let derivedLastName = line.lastName || '';
+              let derivedInitials = line.initials || '';
+              if (!derivedLastName && line.description) {
+                  const cleanName = line.description.replace(/\s*\(Old:.*\)$/, '').replace(/&amp;/g, '&').trim();
+                  const nameParts = cleanName.split(/\s+/).filter(Boolean);
+                  if (nameParts.length >= 2) {
+                      derivedLastName = nameParts[0];
+                      derivedInitials = nameParts.slice(1).map(p => p.charAt(0).toUpperCase()).join('');
+                  } else if (nameParts.length === 1) {
+                      derivedLastName = nameParts[0];
+                      derivedInitials = nameParts[0].charAt(0).toUpperCase();
+                  }
+              }
+
               const submitData: any = {
                   posItemId: transaction.posItem_ID,
                   reconId: transaction.bankReconID || 0,
@@ -883,6 +897,8 @@ export default function AllocateTransaction() {
                   note: line.note || transaction.note || '',
                   outstandingAmount: line.outstandingAmount ?? line.amount,
                   receiptDate: receiptDate,
+                  lastName: derivedLastName,
+                  initials: derivedInitials,
               };
 
               if (allocType === 'CLEARANCE') {
@@ -896,8 +912,6 @@ export default function AllocateTransaction() {
 
               if (allocType === 'DIRECT') {
                   submitData.miscPaymentGroupId = line.miscPaymentGroupId || 0;
-                  submitData.lastName = line.lastName || '';
-                  submitData.initials = line.initials || '';
                   submitData.amount = line.amount;
                   submitData.vatAmount = line.vatAmount ?? 0;
                   submitData.totalAmount = line.amount;
