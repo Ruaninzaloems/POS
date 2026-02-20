@@ -1308,7 +1308,7 @@ export function StatementsTab({ accountId }: { accountId: number }) {
   );
 }
 
-export function ClearanceTab({ accountId, propertyId }: { accountId: number; propertyId?: number }) {
+export function ClearanceTab({ accountId, propertyId, currentAccountNumber, currentAccountName }: { accountId: number; propertyId?: number; currentAccountNumber?: string; currentAccountName?: string }) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1336,6 +1336,12 @@ export function ClearanceTab({ accountId, propertyId }: { accountId: number; pro
 
   const fmtDate = (v: any) => v ? new Date(v).toLocaleDateString('en-ZA') : '-';
   const fmtR = (v: any) => v != null ? `R ${Number(v).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-';
+
+  const normalizeStr = (s: string | undefined | null) => (s ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const isSameAccount = (clearanceAccountName: string | undefined | null) => {
+    if (!currentAccountName || !clearanceAccountName) return true;
+    return normalizeStr(clearanceAccountName) === normalizeStr(currentAccountName);
+  };
 
   return (
     <div className="p-5 space-y-5">
@@ -1384,10 +1390,40 @@ export function ClearanceTab({ accountId, propertyId }: { accountId: number; pro
                 const clrCost = Number(c.clearanceCost ?? 0);
                 const totalClearance = s1181 + s1183 + provision + interest + advance + additional + clrCost;
 
+                const clearanceAccountName = (c.accountName ?? '').trim();
+                const isForThisAccount = isSameAccount(clearanceAccountName);
+                const isCompleted = (c.clearanceStatus ?? c.status ?? '').toLowerCase() === 'completed';
+
                 return (
                   <React.Fragment key={i}>
+                    {!isForThisAccount && (
+                      <tr className="bg-amber-50 border-b border-amber-200">
+                        <td colSpan={15} className="py-2 px-4">
+                          <div className="flex items-center gap-2 text-[12px]">
+                            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                            <span className="text-amber-800">
+                              <strong>Previous account clearance</strong> — This clearance was processed on account <strong>{clearanceAccountName || 'unknown'}</strong> (previous owner) for this property.
+                              {isCompleted && <> Transfer of ownership to the current account <strong>{currentAccountNumber}</strong> ({currentAccountName}) is complete.</>}
+                              {!isCompleted && <> Transfer to <strong>{c.buyername ?? 'buyer'}</strong> is in progress.</>}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    {isForThisAccount && isCompleted && (
+                      <tr className="bg-green-50 border-b border-green-200">
+                        <td colSpan={15} className="py-2 px-4">
+                          <div className="flex items-center gap-2 text-[12px]">
+                            <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                            <span className="text-green-800">
+                              <strong>Clearance on this account</strong> — This clearance was processed on this account ({currentAccountNumber}). Transfer of ownership to <strong>{c.buyername ?? 'buyer'}</strong> is complete.
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                     <tr
-                      className={`border-b border-slate-100 hover:bg-emerald-50/30 transition-colors cursor-pointer ${isExpanded ? 'bg-emerald-50/40' : ''}`}
+                      className={`border-b border-slate-100 hover:bg-emerald-50/30 transition-colors cursor-pointer ${isExpanded ? 'bg-emerald-50/40' : ''} ${!isForThisAccount ? 'opacity-80' : ''}`}
                       onClick={() => setExpandedRow(isExpanded ? null : i)}
                       data-testid={`row-clearance-${i}`}
                     >
@@ -1523,9 +1559,21 @@ export function ClearanceTab({ accountId, propertyId }: { accountId: number; pro
                                 </div>
                                 <div className="divide-y divide-slate-100">
                                   <div className="flex justify-between items-center px-4 py-2">
-                                    <span className="text-[12px] text-slate-600">Account Name</span>
-                                    <span className="text-[13px] font-medium text-slate-800 text-right max-w-[180px] truncate" title={c.accountName ?? '-'}>{(c.accountName ?? '-').trim()}</span>
+                                    <span className="text-[12px] text-slate-600">Clearance Account</span>
+                                    <span className="flex items-center gap-1.5">
+                                      <span className="text-[13px] font-medium text-slate-800 text-right max-w-[160px] truncate" title={clearanceAccountName || '-'}>{clearanceAccountName || '-'}</span>
+                                      {isForThisAccount
+                                        ? <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-100 text-green-700 whitespace-nowrap"><CheckCircle2 className="w-3 h-3" />This account</span>
+                                        : <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700 whitespace-nowrap"><AlertCircle className="w-3 h-3" />Previous owner</span>
+                                      }
+                                    </span>
                                   </div>
+                                  {currentAccountNumber && (
+                                    <div className="flex justify-between items-center px-4 py-2">
+                                      <span className="text-[12px] text-slate-600">Current Account</span>
+                                      <span className="font-mono text-[13px] text-slate-700">{currentAccountNumber}</span>
+                                    </div>
+                                  )}
                                   <div className="flex justify-between items-center px-4 py-2">
                                     <span className="text-[12px] text-slate-600">Buyer</span>
                                     <span className="text-[13px] font-medium text-slate-800 text-right max-w-[180px] truncate" title={c.buyername ?? '-'}>{c.buyername ?? c.buyerName ?? '-'}</span>
