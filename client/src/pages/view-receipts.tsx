@@ -126,6 +126,11 @@ export default function ViewReceipts() {
     const [cashbookSearching, setCashbookSearching] = useState(false);
     const [cashbookResults, setCashbookResults] = useState<CashbookTransactionTraceResult[] | null>(null);
     const [cashbookSearchStatus, setCashbookSearchStatus] = useState('');
+    const [cashbookSuggestions, setCashbookSuggestions] = useState<CashbookTransactionTraceResult[]>([]);
+    const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const suggestionsRef = React.useRef<HTMLDivElement>(null);
+    const suggestionsTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         const loadCashiers = async () => {
@@ -149,6 +154,43 @@ export default function ViewReceipts() {
         fetchActiveFinYear().then(fy => {
             if (!cashbookFinYear) setCashbookFinYear(fy);
         });
+    }, []);
+
+    useEffect(() => {
+        if (suggestionsTimerRef.current) clearTimeout(suggestionsTimerRef.current);
+        if (cashbookSearchText.length < 3) {
+            setCashbookSuggestions([]);
+            setShowSuggestions(false);
+            return;
+        }
+        setSuggestionsLoading(true);
+        setShowSuggestions(true);
+        suggestionsTimerRef.current = setTimeout(async () => {
+            try {
+                const monthNum = (cashbookMonth && cashbookMonth !== '__all__') ? parseInt(cashbookMonth, 10) : undefined;
+                const results = await searchCashbookTransactionTrace(
+                    cashbookSearchText,
+                    cashbookFinYear || undefined,
+                    monthNum
+                );
+                setCashbookSuggestions(results.slice(0, 8));
+            } catch {
+                setCashbookSuggestions([]);
+            } finally {
+                setSuggestionsLoading(false);
+            }
+        }, 400);
+        return () => { if (suggestionsTimerRef.current) clearTimeout(suggestionsTimerRef.current); };
+    }, [cashbookSearchText, cashbookFinYear, cashbookMonth]);
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node)) {
+                setShowSuggestions(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
     const debounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -296,6 +338,7 @@ export default function ViewReceipts() {
             toast({ title: "Search Too Short", description: "Please enter at least 3 characters for the bank reference search.", variant: "destructive" });
             return;
         }
+        setShowSuggestions(false);
         setCashbookSearching(true);
         setCashbookResults([]);
         setCashbookSearchStatus('Searching cashbook transactions...');
@@ -761,23 +804,82 @@ export default function ViewReceipts() {
                                         Cashbook Trace
                                     </label>
                                     <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
-                                        <div className="relative">
+                                        <div className="relative" ref={suggestionsRef}>
                                             <Input
                                                 className="h-9 font-mono text-xs"
                                                 value={cashbookSearchText}
                                                 onChange={e => setCashbookSearchText(e.target.value)}
-                                                onKeyDown={e => e.key === 'Enter' && handleCashbookTraceSearch()}
+                                                onKeyDown={e => {
+                                                    if (e.key === 'Enter') { setShowSuggestions(false); handleCashbookTraceSearch(); }
+                                                    if (e.key === 'Escape') setShowSuggestions(false);
+                                                }}
+                                                onFocus={() => { if (cashbookSuggestions.length > 0) setShowSuggestions(true); }}
                                                 placeholder="Bank reference e.g. EFT28012026/457163..."
                                                 data-testid="input-cashbook-search"
+                                                autoComplete="off"
                                             />
                                             {cashbookSearchText && (
                                                 <button
-                                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                                                    onClick={() => { setCashbookSearchText(''); setCashbookResults(null); }}
+                                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 z-10"
+                                                    onClick={() => { setCashbookSearchText(''); setCashbookResults(null); setCashbookSuggestions([]); setShowSuggestions(false); }}
                                                     type="button"
                                                 >
                                                     <X className="w-3.5 h-3.5" />
                                                 </button>
+                                            )}
+                                            {showSuggestions && (suggestionsLoading || cashbookSuggestions.length > 0) && (
+                                                <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-[280px] overflow-y-auto">
+                                                    {suggestionsLoading && cashbookSuggestions.length === 0 && (
+                                                        <div className="px-3 py-3 flex items-center gap-2 text-xs text-slate-500">
+                                                            <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+                                                            Searching cashbook transactions...
+                                                        </div>
+                                                    )}
+                                                    {cashbookSuggestions.map((item, idx) => {
+                                                        const desc = (item as any).description || (item as any).transactionDescription || '';
+                                                        const receiptNo = (item as any).receiptNo || (item as any).receipt_No || (item as any).receiptNumber || '';
+                                                        const accNo = (item as any).accountNumber || (item as any).account_Number || (item as any).accountNo || '';
+                                                        const amount = (item as any).amount ?? (item as any).transactionAmount ?? 0;
+                                                        const cashbook = (item as any).cashbook || (item as any).cashbookName || '';
+                                                        return (
+                                                            <button
+                                                                key={idx}
+                                                                type="button"
+                                                                className="w-full text-left px-3 py-2 hover:bg-indigo-50 border-b border-slate-100 last:border-b-0 transition-colors"
+                                                                onClick={() => {
+                                                                    setShowSuggestions(false);
+                                                                    setCashbookResults([item]);
+                                                                    setCashbookSearchText(desc || cashbookSearchText);
+                                                                }}
+                                                                data-testid={`cashbook-suggestion-${idx}`}
+                                                            >
+                                                                <div className="flex items-start justify-between gap-2">
+                                                                    <div className="min-w-0 flex-1">
+                                                                        <p className="text-xs font-mono text-slate-800 truncate">{desc || '(no description)'}</p>
+                                                                        <div className="flex flex-wrap gap-x-3 gap-y-0 mt-0.5 text-[10px] text-slate-500">
+                                                                            {receiptNo && <span>Receipt: <span className="font-semibold text-indigo-700">{receiptNo}</span></span>}
+                                                                            {accNo && <span>Account: {accNo}</span>}
+                                                                            {cashbook && <span>Cashbook: {cashbook}</span>}
+                                                                        </div>
+                                                                    </div>
+                                                                    {amount > 0 && (
+                                                                        <span className="text-xs font-mono font-semibold text-slate-700 whitespace-nowrap">R {Number(amount).toFixed(2)}</span>
+                                                                    )}
+                                                                </div>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                    {suggestionsLoading && cashbookSuggestions.length > 0 && (
+                                                        <div className="px-3 py-2 flex items-center gap-2 text-[10px] text-slate-400">
+                                                            <Loader2 className="w-3 h-3 animate-spin" /> Loading more...
+                                                        </div>
+                                                    )}
+                                                    {!suggestionsLoading && cashbookSuggestions.length > 0 && (
+                                                        <div className="px-3 py-1.5 bg-slate-50 text-[10px] text-slate-400 text-center border-t">
+                                                            Click a result or press Enter to run full trace
+                                                        </div>
+                                                    )}
+                                                </div>
                                             )}
                                         </div>
                                         <Select value={cashbookFinYear} onValueChange={setCashbookFinYear}>
