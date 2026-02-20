@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Download, Upload, AlertCircle, CheckCircle2, Search, RefreshCw, ChevronLeft, Edit2, Save, X, Loader2, FileCheck, Send } from 'lucide-react';
+import { Download, Upload, AlertCircle, CheckCircle2, Search, RefreshCw, ChevronLeft, Edit2, Save, X, Loader2, FileCheck, Send, ArrowRight, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -32,15 +32,19 @@ interface ThirdPartyType {
 interface ImportTransaction {
   index: number;
   accountNumber: string;
-  newAccountNumber?: string;
+  oldAccountNumber: string;
+  newAccountNumber: string;
+  documentNumber?: string;
   amount: number;
   reference: string;
   comment?: string;
   status: string;
   isValid: boolean;
+  isDuplicate?: boolean;
   validationMessage?: string;
   ownerName?: string;
   propertyAddress?: string;
+  hasAccountMismatch: boolean;
 }
 
 type Step = 'import' | 'transactions' | 'committed';
@@ -193,19 +197,28 @@ export default function ThirdPartyPaymentProcessing() {
     try {
       const txns = await platinumThirdPartyGetTransactions(useId);
       if (Array.isArray(txns)) {
-        setTransactions(txns.map((t: any, i: number) => ({
-          index: t.index ?? i,
-          accountNumber: t.accountNumber || t.accountNo || '',
-          newAccountNumber: t.newAccountNumber || '',
-          amount: t.amount || 0,
-          reference: t.reference || t.paymentReference || '',
-          comment: t.comment || '',
-          status: t.status || 'Pending',
-          isValid: t.isValid !== false,
-          validationMessage: t.validationMessage || t.statusMessage || '',
-          ownerName: t.ownerName || t.name || '',
-          propertyAddress: t.propertyAddress || t.address || '',
-        })));
+        setTransactions(txns.map((t: any, i: number) => {
+          const oldAcct = t.oldAccountNumber || t.accountNumber || t.accountNo || '';
+          const newAcct = t.newAccountNumber || oldAcct;
+          const mismatch = oldAcct !== '' && newAcct !== '' && oldAcct !== newAcct;
+          return {
+            index: t.index ?? i,
+            accountNumber: oldAcct,
+            oldAccountNumber: oldAcct,
+            newAccountNumber: newAcct,
+            documentNumber: t.documentNumber || '',
+            amount: t.amount || 0,
+            reference: t.reference || t.paymentReference || '',
+            comment: t.comment || '',
+            status: t.status || (mismatch ? 'Account Updated' : 'Pending'),
+            isValid: t.isValid !== false,
+            isDuplicate: t.isDuplicate || false,
+            validationMessage: t.validationMessage || t.statusMessage || '',
+            ownerName: t.ownerName || t.name || '',
+            propertyAddress: t.propertyAddress || t.address || '',
+            hasAccountMismatch: mismatch,
+          };
+        }));
       }
     } catch (e: any) {
       console.error('Failed to load transactions:', e);
@@ -478,7 +491,7 @@ export default function ThirdPartyPaymentProcessing() {
 
           {step === 'transactions' && (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 <Card className="p-3">
                   <p className="text-xs text-muted-foreground">Total Transactions</p>
                   <p className="text-xl font-bold text-slate-900" data-testid="text-total-count">{transactions.length}</p>
@@ -492,10 +505,25 @@ export default function ThirdPartyPaymentProcessing() {
                   <p className="text-xl font-bold text-red-600" data-testid="text-invalid-count">{invalidCount}</p>
                 </Card>
                 <Card className="p-3">
+                  <p className="text-xs text-muted-foreground">Migrated Accounts</p>
+                  <p className="text-xl font-bold text-amber-600" data-testid="text-migrated-count">{transactions.filter(t => t.hasAccountMismatch).length}</p>
+                </Card>
+                <Card className="p-3">
                   <p className="text-xs text-muted-foreground">Total Amount</p>
                   <p className="text-xl font-bold text-blue-600" data-testid="text-total-amount">R {totalAmount.toFixed(2)}</p>
                 </Card>
               </div>
+
+              {transactions.some(t => t.hasAccountMismatch) && (
+                <Alert className="bg-amber-50 border-amber-200">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <AlertTitle className="text-amber-800">Account Migration Detected</AlertTitle>
+                  <AlertDescription className="text-amber-700">
+                    {transactions.filter(t => t.hasAccountMismatch).length} transaction(s) have old account numbers that have been mapped to new consumer accounts.
+                    Payments will be processed to the updated consumer account numbers shown in green.
+                  </AlertDescription>
+                </Alert>
+              )}
 
               {validationResult && (
                 <Alert
@@ -607,7 +635,8 @@ export default function ThirdPartyPaymentProcessing() {
                         <TableHeader>
                           <TableRow className="bg-slate-50">
                             <TableHead className="w-[50px]">#</TableHead>
-                            <TableHead>Account No</TableHead>
+                            <TableHead>File Account No</TableHead>
+                            <TableHead>Consumer Account</TableHead>
                             <TableHead>Owner / Name</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
                             <TableHead>Reference</TableHead>
@@ -617,7 +646,7 @@ export default function ThirdPartyPaymentProcessing() {
                         </TableHeader>
                         <TableBody>
                           {transactions.map((txn) => (
-                            <TableRow key={txn.index} className={!txn.isValid ? 'bg-red-50/50' : ''}>
+                            <TableRow key={txn.index} className={`${!txn.isValid ? 'bg-red-50/50' : ''} ${txn.hasAccountMismatch ? 'bg-amber-50/50' : ''}`}>
                               <TableCell className="text-xs text-muted-foreground">{txn.index + 1}</TableCell>
                               <TableCell>
                                 {editingIdx === txn.index ? (
@@ -625,29 +654,59 @@ export default function ThirdPartyPaymentProcessing() {
                                     <Input
                                       value={editAccountNo}
                                       onChange={(e) => setEditAccountNo(e.target.value)}
-                                      className="h-7 text-xs w-32"
+                                      className="h-7 text-xs w-36"
                                       data-testid={`input-edit-account-${txn.index}`}
                                     />
                                   </div>
                                 ) : (
                                   <div>
-                                    <span className="font-mono text-sm">{txn.newAccountNumber || txn.accountNumber}</span>
-                                    {txn.newAccountNumber && txn.newAccountNumber !== txn.accountNumber && (
-                                      <div className="text-xs text-muted-foreground line-through">{txn.accountNumber}</div>
+                                    <span className={`font-mono text-sm ${txn.hasAccountMismatch ? 'text-amber-700 line-through' : ''}`}>
+                                      {txn.oldAccountNumber}
+                                    </span>
+                                    {txn.hasAccountMismatch && (
+                                      <div className="flex items-center gap-1 mt-0.5">
+                                        <AlertTriangle className="h-3 w-3 text-amber-500" />
+                                        <span className="text-[10px] text-amber-600 font-medium">Old account number</span>
+                                      </div>
                                     )}
                                   </div>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {txn.hasAccountMismatch ? (
+                                  <div>
+                                    <span className="font-mono text-sm font-semibold text-green-700">{txn.newAccountNumber}</span>
+                                    <div className="flex items-center gap-1 mt-0.5">
+                                      <ArrowRight className="h-3 w-3 text-green-600" />
+                                      <span className="text-[10px] text-green-600 font-medium">Payment processes here</span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="font-mono text-sm">{txn.newAccountNumber}</span>
                                 )}
                               </TableCell>
                               <TableCell className="text-sm">{txn.ownerName || '-'}</TableCell>
                               <TableCell className="text-right font-mono text-sm">R {txn.amount.toFixed(2)}</TableCell>
                               <TableCell className="text-xs text-muted-foreground">{txn.reference}</TableCell>
                               <TableCell>
-                                <Badge
-                                  variant={txn.isValid ? "default" : "destructive"}
-                                  className={`text-xs ${txn.isValid ? 'bg-green-100 text-green-800 hover:bg-green-100' : ''}`}
-                                >
-                                  {txn.status}
-                                </Badge>
+                                <div className="space-y-0.5">
+                                  {txn.hasAccountMismatch && (
+                                    <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-300">
+                                      Account Migrated
+                                    </Badge>
+                                  )}
+                                  {txn.isDuplicate && (
+                                    <Badge variant="destructive" className="text-[10px]">
+                                      Duplicate
+                                    </Badge>
+                                  )}
+                                  <Badge
+                                    variant={txn.isValid ? "default" : "destructive"}
+                                    className={`text-xs ${txn.isValid ? 'bg-green-100 text-green-800 hover:bg-green-100' : ''}`}
+                                  >
+                                    {txn.status}
+                                  </Badge>
+                                </div>
                                 {txn.validationMessage && (
                                   <p className="text-xs text-red-500 mt-0.5 max-w-[200px] truncate" title={txn.validationMessage}>
                                     {txn.validationMessage}
