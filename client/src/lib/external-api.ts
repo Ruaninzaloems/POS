@@ -1454,6 +1454,22 @@ export async function platinumThirdPartyCommit(importId: string, data: any): Pro
     });
 }
 
+// --- Third Party Payments - Cashier Status ---
+
+export async function platinumThirdPartyIsCashierActive(userId: number, finYear: string): Promise<any> {
+    const qs = new URLSearchParams({ userId: String(userId), finYear }).toString();
+    return platinumFetch(`/api/platinum/third-party-payments/is-cashier-active?${qs}`);
+}
+
+export async function platinumThirdPartyCashierDetails(userId: number, finYear: string): Promise<any> {
+    const qs = new URLSearchParams({ userId: String(userId), finYear }).toString();
+    return platinumFetch(`/api/platinum/third-party-payments/cashier-details?${qs}`);
+}
+
+export async function platinumThirdPartyPaymentTypes(): Promise<any[]> {
+    return platinumFetch(`/api/platinum/third-party-payments/types`);
+}
+
 // --- Billing Enquiry ---
 
 export async function platinumGetDepositsByAccountId(params: Record<string, string>): Promise<any[]> {
