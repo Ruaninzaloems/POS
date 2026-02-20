@@ -1475,8 +1475,23 @@ export async function platinumThirdPartyValidateForReconcile(importId: string): 
 }
 
 export async function platinumThirdPartyAccountSearch(params: { accountNo?: string; name?: string; street?: string; oldCode?: string }): Promise<any[]> {
-    const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v))).toString();
-    return platinumFetch(`/api/platinum/third-party-payments/account-search?${qs}`);
+    const body: Record<string, string> = {};
+    if (params.accountNo) body.accountID = params.accountNo;
+    if (params.name) body.name = params.name;
+    if (params.street) body.locationAddress = params.street;
+    const results = await platinumFetch('/api/platinum/billing-enquiry/enquiry-results', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+    const arr = Array.isArray(results) ? results : [];
+    return arr.slice(0, 50).map((r: any) => ({
+        accountNumber: r.accountNumber || '',
+        accountId: r.accountID || r.accountId || '',
+        ownerName: r.name || r.ownerName || '',
+        propertyAddress: r.locationAddress || r.address || r.propertyAddress || '',
+        accountStatus: r.accountStatus || '',
+    }));
 }
 
 export async function platinumThirdPartyUpdateTransaction(importId: string, index: number, data: { newAccountNumber: string; comment: string }): Promise<any> {
