@@ -2238,6 +2238,15 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/platinum/third-party-payments/:importId/validate-for-reconcile", async (req, res) => {
+    try {
+      const data = await platinumPost(`/api/billing/pos/third-party-payments/${req.params.importId}/validate-for-reconcile`, req.body || {});
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.get("/api/platinum/third-party-payments/account-search", async (req, res) => {
     try {
       const data = await platinumGet("/api/billing/pos/third-party-payments/account-search", req.query as Record<string, string>);

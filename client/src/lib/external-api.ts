@@ -1466,6 +1466,14 @@ export async function platinumThirdPartyCashierDetails(userId: number, finYear: 
     return platinumFetch(`/api/platinum/third-party-payments/cashier-details?${qs}`);
 }
 
+export async function platinumThirdPartyValidateForReconcile(importId: string): Promise<any> {
+    return platinumFetch(`/api/platinum/third-party-payments/${importId}/validate-for-reconcile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+    });
+}
+
 export async function platinumThirdPartyAccountSearch(params: { accountNo?: string; name?: string; street?: string; oldCode?: string }): Promise<any[]> {
     const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v))).toString();
     return platinumFetch(`/api/platinum/third-party-payments/account-search?${qs}`);
