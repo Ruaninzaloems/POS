@@ -28,6 +28,7 @@ import {
   type EnquirySearchResult,
   type EnquirySearchCriteria,
 } from '@/lib/enquiries-service';
+import { platinumPrintReceiptRaw, fetchPosMultiReceiptPrint } from '@/lib/external-api';
 import { LoadingSkeleton, EmptyState, ErrorState, InfoField, SectionHeader, PaginatedTable, FieldRow, TabCard, getFinYearOptions } from './shared';
 
 export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
@@ -953,6 +954,8 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showExtended, setShowExtended] = useState(false);
+  const [printingId, setPrintingId] = useState<string | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<any>(null);
   const loaded = useRef(false);
 
   const load = useCallback(async () => {
@@ -1051,8 +1054,162 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
     (it.serviceDescription || '').toLowerCase().includes('rate')
   );
 
+  const handlePrintReceipt = async (p: any) => {
+    const receiptId = p.receiptId || p.receipt_ID || p.id;
+    if (!receiptId) return;
+    setPrintingId(String(receiptId));
+    try {
+      const res = await platinumPrintReceiptRaw([Number(receiptId)]);
+      if (res.ok) {
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/pdf')) {
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          window.open(url, '_blank');
+          setTimeout(() => URL.revokeObjectURL(url), 60000);
+          setPrintingId(null);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Platinum print-receipt failed, falling back to preview:', e);
+    }
+    try {
+      const multiData = await fetchPosMultiReceiptPrint(String(receiptId));
+      const first: any = Array.isArray(multiData) && multiData.length > 0 ? multiData[0] : null;
+      const services = Array.isArray(multiData) ? multiData.map((s: any) => ({
+        serviceDescription: s.serviceDescription || s.description || s.service || '',
+        amount: s.amount ?? s.serviceAmount ?? 0,
+      })) : [];
+      const totalFromServices = services.reduce((sum: number, s: any) => sum + (s.amount || 0), 0);
+      setReceiptPreview({
+        receiptNo: first?.receiptNo || first?.receiptNumber || p.receiptNumber || p.receiptNo || '',
+        receiptNumber: first?.receiptNo || first?.receiptNumber || p.receiptNumber || p.receiptNo || '',
+        receiptDate: first?.receiptDate || p.receiptDate || '',
+        accountNumber: first?.accountNumber || first?.accountNo || accountNumber || '',
+        consumerName: first?.consumerName || first?.consumer || p.consumerName || p.consumer || '',
+        municipalityName: first?.municipalityName || 'George Municipality',
+        address: first?.address || '',
+        totalAmount: totalFromServices > 0 ? totalFromServices : (p.amount || p.receiptAmount || 0),
+        paymentType: first?.paymentType || p.paymentType || p.receiptType || p.transactionType || '',
+        cashierName: first?.cashierName || first?.cashier || p.cashierName || p.cashier || '',
+        services,
+      });
+    } catch (e) {
+      console.error('Failed to fetch receipt for preview:', e);
+      setReceiptPreview({
+        receiptNo: p.receiptNumber || p.receiptNo || '',
+        receiptNumber: p.receiptNumber || p.receiptNo || '',
+        receiptDate: p.receiptDate || '',
+        accountNumber: accountNumber || '',
+        consumerName: p.consumerName || p.consumer || '',
+        municipalityName: 'George Municipality',
+        address: '',
+        totalAmount: p.amount || p.receiptAmount || 0,
+        paymentType: p.paymentType || p.receiptType || p.transactionType || '',
+        cashierName: p.cashierName || p.cashier || '',
+        services: [],
+      });
+    } finally {
+      setPrintingId(null);
+    }
+  };
+
+  const handlePrintWindow = () => {
+    if (!receiptPreview) return;
+    const services = Array.isArray(receiptPreview.services) ? receiptPreview.services : [];
+    const svcHtml = services.map((s: any) =>
+      `<tr><td style="padding:3px 4px">${s.serviceDescription || s.description || ''}</td><td style="padding:3px 4px;text-align:right">R ${(s.amount ?? 0).toFixed(2)}</td></tr>`
+    ).join('');
+    const html = `<!DOCTYPE html><html><head><title>Receipt ${receiptPreview.receiptNo || ''}</title>
+<style>body{font-family:'Courier New',monospace;font-size:12px;padding:20px;max-width:380px;margin:0 auto;color:#333}
+table{width:100%;border-collapse:collapse}td{padding:3px 4px}
+h2{text-align:center;margin:6px 0;font-size:14px}p{margin:3px 0}
+.divider{border-top:1px dashed #333;margin:10px 0}
+.right{text-align:right}.bold{font-weight:bold}
+.total-row td{border-top:1px solid #333;font-weight:bold;padding-top:6px}
+@media print{body{padding:0;margin:0}}</style></head><body>
+<h2>${receiptPreview.municipalityName || 'George Municipality'}</h2>
+<p style="text-align:center">${receiptPreview.address || ''}</p>
+<div class="divider"></div>
+<p><strong>Receipt:</strong> ${receiptPreview.receiptNo || ''}</p>
+<p><strong>Date:</strong> ${receiptPreview.receiptDate || ''}</p>
+<p><strong>Account:</strong> ${receiptPreview.accountNumber || accountNumber || ''}</p>
+<p><strong>Consumer:</strong> ${receiptPreview.consumerName || ''}</p>
+<div class="divider"></div>
+<table>${svcHtml}
+<tr class="total-row"><td><strong>Total</strong></td><td style="text-align:right"><strong>R ${(receiptPreview.totalAmount ?? 0).toFixed(2)}</strong></td></tr></table>
+<div class="divider"></div>
+<p><strong>Payment:</strong> ${receiptPreview.paymentType || ''}</p>
+<p><strong>Cashier:</strong> ${receiptPreview.cashierName || ''}</p>
+<div class="divider"></div>
+<p style="text-align:center;font-size:10px;color:#666">Thank you for your payment</p>
+</body></html>`;
+    const printWindow = window.open('', '_blank', 'width=450,height=650,scrollbars=yes');
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.onload = () => {
+        setTimeout(() => { printWindow.focus(); printWindow.print(); }, 300);
+      };
+    }
+  };
+
   return (
     <div className="p-5 space-y-5" data-testid="balance-debt-tab">
+      {receiptPreview && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setReceiptPreview(null)} data-testid="receipt-preview-overlay">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-xl flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Receipt className="w-4 h-4 text-white" />
+                <h4 className="text-sm font-bold text-white">Receipt Preview</h4>
+              </div>
+              <button onClick={() => setReceiptPreview(null)} className="text-white/70 hover:text-white text-xl font-bold w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center" data-testid="button-close-receipt-preview">&times;</button>
+            </div>
+            <div className="p-5 space-y-3 font-mono text-sm">
+              <div className="text-center">
+                <h3 className="font-bold text-slate-800">{receiptPreview.municipalityName || 'George Municipality'}</h3>
+                <p className="text-xs text-slate-500">{receiptPreview.address || ''}</p>
+              </div>
+              <div className="border-t border-dashed border-slate-300 my-2" />
+              <div className="grid grid-cols-2 gap-1 text-xs">
+                <span className="text-slate-500">Receipt:</span><span className="font-semibold text-slate-800">{receiptPreview.receiptNo || '-'}</span>
+                <span className="text-slate-500">Date:</span><span className="text-slate-700">{receiptPreview.receiptDate || '-'}</span>
+                <span className="text-slate-500">Account:</span><span className="text-slate-700">{receiptPreview.accountNumber || accountNumber || '-'}</span>
+                <span className="text-slate-500">Consumer:</span><span className="text-slate-700">{receiptPreview.consumerName || '-'}</span>
+              </div>
+              <div className="border-t border-dashed border-slate-300 my-2" />
+              {receiptPreview.services && Array.isArray(receiptPreview.services) && receiptPreview.services.length > 0 && (
+                <div className="space-y-1">
+                  {receiptPreview.services.map((s: any, si: number) => (
+                    <div key={si} className="flex justify-between text-xs">
+                      <span className="text-slate-600">{s.serviceDescription || s.description}</span>
+                      <span className="font-semibold text-slate-800">R {(s.amount ?? 0).toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="border-t border-dashed border-slate-300 my-2" />
+              <div className="flex justify-between font-bold text-sm">
+                <span>Total</span>
+                <span className="text-blue-700">R {(receiptPreview.totalAmount ?? 0).toFixed(2)}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-1 text-xs">
+                <span className="text-slate-500">Payment:</span><span className="text-slate-700">{receiptPreview.paymentType || '-'}</span>
+                <span className="text-slate-500">Cashier:</span><span className="text-slate-700">{receiptPreview.cashierName || '-'}</span>
+              </div>
+            </div>
+            <div className="px-5 py-3 border-t border-slate-200 flex items-center justify-end gap-2">
+              <button onClick={() => setReceiptPreview(null)} className="px-4 py-2 border border-slate-300 text-slate-600 text-xs font-semibold rounded-lg hover:bg-slate-50" data-testid="button-close-receipt">Close</button>
+              <button onClick={handlePrintWindow} className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-xs font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 flex items-center gap-1.5 shadow-sm" data-testid="button-print-receipt-confirm">
+                <Printer className="w-3.5 h-3.5" />
+                Print Receipt
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-end gap-2 mb-1">
         <button
           onClick={() => generateBalanceDebtPdf(accountId, balanceData, capitalPlans, ratesData, payments, reversals, agingCols, fmt, fmtDash, getVal, sumField)}
@@ -1334,16 +1491,16 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
                     <td className="py-1.5 px-3 text-right font-mono font-medium text-green-700 whitespace-nowrap">{fmt(p.amount || p.receiptAmount || 0)}</td>
                     <td className="py-1.5 px-3 text-center">
                       <button
-                        onClick={() => {
-                          const receiptId = p.receiptId || p.receipt_ID || p.id;
-                          if (receiptId) {
-                            window.open(`/api/platinum/billing-payment/print-receipt?receiptId=${receiptId}`, '_blank');
-                          }
-                        }}
-                        className="text-blue-600 hover:text-blue-800 hover:underline text-xs font-medium"
+                        onClick={() => handlePrintReceipt(p)}
+                        disabled={printingId === String(p.receiptId || p.receipt_ID || p.id)}
+                        className="text-blue-600 hover:text-blue-800 hover:underline text-xs font-medium disabled:opacity-50 flex items-center gap-1 mx-auto"
                         data-testid={`btn-print-receipt-${i}`}
                       >
-                        Print Receipt
+                        {printingId === String(p.receiptId || p.receipt_ID || p.id) ? (
+                          <><RefreshCw className="w-3 h-3 animate-spin" /> Loading...</>
+                        ) : (
+                          <><Printer className="w-3 h-3" /> Print</>
+                        )}
                       </button>
                     </td>
                     <td className="py-1.5 px-3 text-slate-600 whitespace-nowrap">{p.cashierName || p.cashier || '-'}</td>
