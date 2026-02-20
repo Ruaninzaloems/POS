@@ -6,8 +6,10 @@ import {
   Gift, Landmark, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
   RefreshCw, AlertTriangle, Search, Eye,
   Briefcase, Heart, Users, Receipt, Banknote, Scale, Gauge,
-  Home, Layers
+  Home, Layers, Download, Printer
 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   searchAccounts, getAccountBalance, getServiceTypeBalance,
   getPropertyDetails, getConsumptionUnits, getNameInfo, getAccountsByNameId,
@@ -610,6 +612,210 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
   );
 }
 
+function downloadCsvFromRows(headers: string[], rows: string[][], filename: string) {
+  const escape = (v: string) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const csv = [headers.map(escape).join(','), ...rows.map(r => r.map(escape).join(','))].join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function SectionDownloadBtn({ onClick, label = 'CSV' }: { onClick: () => void; label?: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-1 text-[10px] font-medium text-white/90 hover:text-white bg-white/15 hover:bg-white/25 rounded-md px-2 py-1 transition-colors"
+      title={`Download ${label}`}
+      data-testid={`btn-download-${label.toLowerCase().replace(/\s/g, '-')}`}
+    >
+      <Download className="w-3 h-3" /> {label}
+    </button>
+  );
+}
+
+function generateBalanceDebtPdf(
+  accountId: number,
+  balanceData: any[],
+  capitalPlans: any[],
+  ratesData: any,
+  payments: any[],
+  reversals: any[],
+  agingCols: { label: string; keys: string[] }[],
+  fmt: (v: any) => string,
+  fmtDash: (v: any) => string,
+  getVal: (item: any, keys: string[]) => any,
+  sumField: (arr: any[], ...keys: string[]) => number,
+) {
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 12;
+  let y = 15;
+
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Balance / Debt Inquiry Report', margin, y);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Account: ${accountId}  |  Generated: ${new Date().toLocaleDateString('en-ZA')} ${new Date().toLocaleTimeString('en-ZA')}`, margin, y + 6);
+  y += 14;
+
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Total Balance / Debt', margin, y);
+  y += 3;
+
+  const balHeaders = ['Service', 'Total Outstanding', ...agingCols.map(c => c.label)];
+  if (balanceData.length === 0) {
+    doc.setFontSize(8); doc.setFont('helvetica', 'italic');
+    doc.text('No balance data available', margin, y + 5);
+    y += 12;
+  } else {
+    const balRows = balanceData.map(item => [
+      item.serviceDescription || '-',
+      fmt(item.totalOutStanding ?? item.totalOutstandingAmount ?? 0),
+      ...agingCols.map(col => fmtDash(getVal(item, col.keys))),
+    ]);
+    balRows.push([
+      'Total',
+      fmt(sumField(balanceData, 'totalOutStanding', 'totalOutstandingAmount')),
+      ...agingCols.map(col => fmtDash(sumField(balanceData, ...col.keys))),
+    ]);
+
+    autoTable(doc, {
+      startY: y,
+      head: [balHeaders],
+      body: balRows,
+      styles: { fontSize: 7, cellPadding: 1.5 },
+      headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold', fontSize: 7 },
+      margin: { left: margin, right: margin },
+      didParseCell: (data: any) => {
+        if (data.section === 'body' && data.row.index === balRows.length - 1) {
+          data.cell.styles.fontStyle = 'bold';
+          data.cell.styles.fillColor = [239, 246, 255];
+        }
+      },
+    });
+    y = (doc as any).lastAutoTable.finalY + 8;
+  }
+
+  if (capitalPlans.length > 0) {
+    if (y > doc.internal.pageSize.getHeight() - 40) { doc.addPage(); y = 15; }
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Debtors - Remaining Capital Amounts', margin, y);
+    y += 3;
+
+    const capHeaders = ['Service Description', 'Capital Amount', 'Remaining Capital', 'Instalment Amount', 'Repayment Period', 'Remaining Period'];
+    const capRows = capitalPlans.map(p => [
+      p.serviceDescription || p.description || '-',
+      fmt(p.capitalAmount ?? 0),
+      fmt(p.remainingCapitalAmount ?? p.remainingCapital ?? 0),
+      fmt(p.instalmentAmount ?? p.installmentAmount ?? 0),
+      String(p.repaymentPeriod ?? '-'),
+      String(p.remainingPeriod ?? '-'),
+    ]);
+
+    autoTable(doc, {
+      startY: y,
+      head: [capHeaders],
+      body: capRows,
+      styles: { fontSize: 7, cellPadding: 1.5 },
+      headStyles: { fillColor: [147, 51, 234], textColor: 255, fontStyle: 'bold', fontSize: 7 },
+      margin: { left: margin, right: margin },
+    });
+    y = (doc as any).lastAutoTable.finalY + 8;
+  }
+
+  if (ratesData) {
+    if (y > doc.internal.pageSize.getHeight() - 40) { doc.addPage(); y = 15; }
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Property Rates', margin, y);
+    y += 3;
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Detail', 'Value']],
+      body: [
+        ['Annual Property Rates Amount', `R ${fmt(ratesData.annualPropertyRates ?? 0)}`],
+        ['Frequency', ratesData.frequency ?? '-'],
+        ['Instalment', `R ${fmt(ratesData.installment ?? 0)}`],
+        ['Remaining Instalments', String(ratesData.remainingInstallments ?? '-')],
+      ],
+      styles: { fontSize: 7, cellPadding: 1.5 },
+      headStyles: { fillColor: [5, 150, 105], textColor: 255, fontStyle: 'bold', fontSize: 7 },
+      margin: { left: margin, right: margin },
+    });
+    y = (doc as any).lastAutoTable.finalY + 8;
+  }
+
+  if (payments.length > 0) {
+    if (y > doc.internal.pageSize.getHeight() - 40) { doc.addPage(); y = 15; }
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Payments Received', margin, y);
+    y += 3;
+
+    const payHeaders = ['Receipt No', 'Payment Type', 'Date', 'Amount', 'Cashier', 'Cash Book', 'Cancellation Reason'];
+    const payRows = payments.map(p => [
+      p.receiptNumber || p.receiptNo || '-',
+      p.paymentType || p.receiptType || p.transactionType || '-',
+      p.receiptDate ? new Date(p.receiptDate).toLocaleDateString('en-ZA') : '-',
+      fmt(p.amount || p.receiptAmount || 0),
+      p.cashierName || p.cashier || '-',
+      p.cashBook || p.cashBookName || '-',
+      p.cancellationReason || p.reasonForCancellation || '',
+    ]);
+
+    autoTable(doc, {
+      startY: y,
+      head: [payHeaders],
+      body: payRows,
+      styles: { fontSize: 7, cellPadding: 1.5 },
+      headStyles: { fillColor: [22, 163, 74], textColor: 255, fontStyle: 'bold', fontSize: 7 },
+      margin: { left: margin, right: margin },
+    });
+    y = (doc as any).lastAutoTable.finalY + 8;
+  }
+
+  if (reversals.length > 0) {
+    if (y > doc.internal.pageSize.getHeight() - 40) { doc.addPage(); y = 15; }
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Payment Reversals', margin, y);
+    y += 3;
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Date', 'Receipt #', 'Type', 'Amount']],
+      body: reversals.map(rv => [
+        rv.receiptDate ? new Date(rv.receiptDate).toLocaleDateString('en-ZA') : '-',
+        rv.receiptNumber || rv.receiptNo || '-',
+        rv.receiptType || rv.transactionType || '-',
+        fmt(rv.amount || rv.receiptAmount || 0),
+      ]),
+      styles: { fontSize: 7, cellPadding: 1.5 },
+      headStyles: { fillColor: [220, 38, 38], textColor: 255, fontStyle: 'bold', fontSize: 7 },
+      margin: { left: margin, right: margin },
+    });
+  }
+
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(150);
+    doc.text(`Page ${i} of ${totalPages}`, pageW - margin, doc.internal.pageSize.getHeight() - 5, { align: 'right' });
+    doc.text('George Municipality - Balance / Debt Report', margin, doc.internal.pageSize.getHeight() - 5);
+    doc.setTextColor(0);
+  }
+
+  doc.save(`Balance_Debt_Account_${accountId}_${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
 export function BalanceDebtTab({ accountId }: { accountId: number }) {
   const [balanceData, setBalanceData] = useState<any[]>([]);
   const [txnHistory, setTxnHistory] = useState<any[]>([]);
@@ -719,18 +925,41 @@ export function BalanceDebtTab({ accountId }: { accountId: number }) {
 
   return (
     <div className="p-5 space-y-5" data-testid="balance-debt-tab">
+      <div className="flex items-center justify-end gap-2 mb-1">
+        <button
+          onClick={() => generateBalanceDebtPdf(accountId, balanceData, capitalPlans, ratesData, payments, reversals, agingCols, fmt, fmtDash, getVal, sumField)}
+          className="flex items-center gap-1.5 text-xs font-medium text-white bg-slate-700 hover:bg-slate-800 rounded-lg px-3.5 py-2 transition-colors shadow-sm"
+          data-testid="btn-print-all-pdf"
+        >
+          <Printer className="w-3.5 h-3.5" /> Print All to PDF
+        </button>
+      </div>
+
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
           <Landmark className="w-4 h-4 text-white" />
           <h3 className="text-sm font-semibold text-white tracking-wide">Total Balance / Debt Inquiry</h3>
-          <button
-            onClick={() => setShowExtended(!showExtended)}
-            className="ml-auto flex items-center gap-1.5 text-[10px] font-medium text-white/90 hover:text-white bg-white/15 hover:bg-white/25 rounded-md px-2.5 py-1 transition-colors"
-            data-testid="toggle-extended-aging"
-          >
-            {showExtended ? <ChevronLeft className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-            {showExtended ? 'Show up to 150 Days' : 'Show up to 360 Days'}
-          </button>
+          <div className="ml-auto flex items-center gap-2">
+            {balanceData.length > 0 && (
+              <SectionDownloadBtn label="CSV" onClick={() => {
+                const headers = ['Service', 'Total Outstanding', ...agingCols.map(c => c.label)];
+                const rows = balanceData.map(item => [
+                  item.serviceDescription || '-',
+                  String(item.totalOutStanding ?? item.totalOutstandingAmount ?? 0),
+                  ...agingCols.map(col => String(getVal(item, col.keys) ?? '')),
+                ]);
+                downloadCsvFromRows(headers, rows, `Balance_Debt_${accountId}.csv`);
+              }} />
+            )}
+            <button
+              onClick={() => setShowExtended(!showExtended)}
+              className="flex items-center gap-1.5 text-[10px] font-medium text-white/90 hover:text-white bg-white/15 hover:bg-white/25 rounded-md px-2.5 py-1 transition-colors"
+              data-testid="toggle-extended-aging"
+            >
+              {showExtended ? <ChevronLeft className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+              {showExtended ? 'Show up to 150 Days' : 'Show up to 360 Days'}
+            </button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm" data-testid="table-balance-debt">
@@ -776,9 +1005,25 @@ export function BalanceDebtTab({ accountId }: { accountId: number }) {
         <div className="px-5 py-3 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
           <Layers className="w-4 h-4 text-white" />
           <h3 className="text-sm font-semibold text-white tracking-wide">Debtors - Remaining Capital Amounts</h3>
-          {capitalPlans.length > 0 && (
-            <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{capitalPlans.length} plan{capitalPlans.length !== 1 ? 's' : ''}</Badge>
-          )}
+          <div className="ml-auto flex items-center gap-2">
+            {capitalPlans.length > 0 && (
+              <SectionDownloadBtn label="CSV" onClick={() => {
+                const headers = ['Service Description', 'Capital Amount', 'Remaining Capital Amount', 'Instalment Amount', 'Repayment Period', 'Remaining Period'];
+                const rows = capitalPlans.map(p => [
+                  p.serviceDescription || p.description || '-',
+                  String(p.capitalAmount ?? 0),
+                  String(p.remainingCapitalAmount ?? p.remainingCapital ?? 0),
+                  String(p.instalmentAmount ?? p.installmentAmount ?? 0),
+                  String(p.repaymentPeriod ?? '-'),
+                  String(p.remainingPeriod ?? '-'),
+                ]);
+                downloadCsvFromRows(headers, rows, `Capital_Amounts_${accountId}.csv`);
+              }} />
+            )}
+            {capitalPlans.length > 0 && (
+              <Badge variant="outline" className="bg-white/20 text-white border-white/30 text-[10px]">{capitalPlans.length} plan{capitalPlans.length !== 1 ? 's' : ''}</Badge>
+            )}
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm" data-testid="table-remaining-capital">
@@ -902,7 +1147,24 @@ export function BalanceDebtTab({ accountId }: { accountId: number }) {
         <div className="px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 flex items-center gap-2">
           <CreditCard className="w-4 h-4 text-white" />
           <h3 className="text-sm font-semibold text-white tracking-wide">Payments Received</h3>
-          <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{payments.length}</Badge>
+          <div className="ml-auto flex items-center gap-2">
+            {payments.length > 0 && (
+              <SectionDownloadBtn label="CSV" onClick={() => {
+                const headers = ['Receipt No', 'Payment Type', 'Date', 'Amount', 'Cashier', 'Cash Book', 'Cancellation Reason'];
+                const rows = payments.map(p => [
+                  p.receiptNumber || p.receiptNo || '-',
+                  p.paymentType || p.receiptType || p.transactionType || '-',
+                  p.receiptDate ? new Date(p.receiptDate).toLocaleDateString('en-ZA') : '-',
+                  String(p.amount || p.receiptAmount || 0),
+                  p.cashierName || p.cashier || '-',
+                  p.cashBook || p.cashBookName || '-',
+                  p.cancellationReason || p.reasonForCancellation || '',
+                ]);
+                downloadCsvFromRows(headers, rows, `Payments_Received_${accountId}.csv`);
+              }} />
+            )}
+            <Badge variant="outline" className="bg-white/20 text-white border-white/30 text-[10px]">{payments.length}</Badge>
+          </div>
         </div>
         <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
           {payments.length === 0 ? (
@@ -957,7 +1219,21 @@ export function BalanceDebtTab({ accountId }: { accountId: number }) {
         <div className="px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-white" />
           <h3 className="text-sm font-semibold text-white tracking-wide">Payment Reversals</h3>
-          <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{reversals.length}</Badge>
+          <div className="ml-auto flex items-center gap-2">
+            {reversals.length > 0 && (
+              <SectionDownloadBtn label="CSV" onClick={() => {
+                const headers = ['Date', 'Receipt #', 'Type', 'Amount'];
+                const rows = reversals.map(rv => [
+                  rv.receiptDate ? new Date(rv.receiptDate).toLocaleDateString('en-ZA') : '-',
+                  rv.receiptNumber || rv.receiptNo || '-',
+                  rv.receiptType || rv.transactionType || '-',
+                  String(rv.amount || rv.receiptAmount || 0),
+                ]);
+                downloadCsvFromRows(headers, rows, `Payment_Reversals_${accountId}.csv`);
+              }} />
+            )}
+            <Badge variant="outline" className="bg-white/20 text-white border-white/30 text-[10px]">{reversals.length}</Badge>
+          </div>
         </div>
         <div className="max-h-[300px] overflow-y-auto">
           {reversals.length === 0 ? (
