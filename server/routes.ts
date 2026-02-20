@@ -90,9 +90,28 @@ async function proxyGet(url: string): Promise<any> {
   return res.json();
 }
 
+function stripHtml(text: string): string {
+  if (!text) return text;
+  if (/<[^>]+>/.test(text)) {
+    const cleaned = text
+      .replace(/<title[^>]*>(.*?)<\/title>/gi, '$1 — ')
+      .replace(/<br\s*\/?>/gi, ' ')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/\s+/g, ' ')
+      .trim();
+    return cleaned.substring(0, 300) || 'Server returned an HTML error page';
+  }
+  return text.substring(0, 500);
+}
+
 function handlePlatinumResult(res: any, data: any) {
   if (data && data._error) {
-    return res.status(data.status || 502).json({ message: data.statusText || "Platinum API error", detail: data.detail || null });
+    return res.status(data.status || 502).json({ message: data.statusText || "Platinum API error", detail: stripHtml(data.detail) || null });
   }
   res.json(data);
 }

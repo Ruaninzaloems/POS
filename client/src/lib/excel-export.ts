@@ -1,5 +1,3 @@
-import XLSX from 'xlsx-js-style';
-
 export interface ExcelExportOptions {
   filename: string;
   sheetName?: string;
@@ -105,7 +103,7 @@ function calcColWidth(header: string, colIdx: number, rows: (string | number)[][
   return Math.min(Math.max(max + 3, 12), 45);
 }
 
-export function downloadExcel(options: ExcelExportOptions): void {
+export async function downloadExcel(options: ExcelExportOptions): Promise<void> {
   const {
     filename,
     sheetName = 'Report',
@@ -186,6 +184,8 @@ export function downloadExcel(options: ExcelExportOptions): void {
     wsData.push(totalRow);
   }
 
+  const XLSX = (await import('xlsx-js-style')).default;
+
   const ws = XLSX.utils.aoa_to_sheet(wsData);
 
   if (!ws['!merges']) ws['!merges'] = [];
@@ -214,7 +214,7 @@ export function downloadExcel(options: ExcelExportOptions): void {
   XLSX.writeFile(wb, xlsxFilename, { bookType: 'xlsx' });
 }
 
-export function downloadTransactionExcel(options: {
+export async function downloadTransactionExcel(options: {
   filename: string;
   accountNumber: string;
   reportName: string;
@@ -223,7 +223,7 @@ export function downloadTransactionExcel(options: {
   headers: string[];
   monthGroups: { month: string; rows: (string | number)[][] }[];
   currencyColumns?: number[];
-}): void {
+}): Promise<void> {
   const {
     filename,
     accountNumber,
@@ -306,6 +306,8 @@ export function downloadTransactionExcel(options: {
     }
   }
 
+  const XLSX = (await import('xlsx-js-style')).default;
+
   const ws = XLSX.utils.aoa_to_sheet(wsData);
 
   if (!ws['!merges']) ws['!merges'] = [];
@@ -328,14 +330,14 @@ export function downloadTransactionExcel(options: {
   XLSX.writeFile(wb, xlsxFilename, { bookType: 'xlsx' });
 }
 
-export function downloadSummaryExcel(options: {
+export async function downloadSummaryExcel(options: {
   filename: string;
   accountNumber: string;
   financialYears: string[];
   headers: string[];
   yearGroups: { year: string; rows: (string | number)[][] }[];
   currencyColumns?: number[];
-}): void {
+}): Promise<void> {
   const {
     filename,
     accountNumber,
@@ -402,6 +404,8 @@ export function downloadSummaryExcel(options: {
       globalRowIdx++;
     }
   }
+
+  const XLSX = (await import('xlsx-js-style')).default;
 
   const ws = XLSX.utils.aoa_to_sheet(wsData);
 
