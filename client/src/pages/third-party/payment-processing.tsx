@@ -190,6 +190,30 @@ export default function ThirdPartyPaymentProcessing() {
     }
   };
 
+  const lookupCurrentAccounts = async (accountNumbers: string[]): Promise<Map<string, string>> => {
+    const mapping = new Map<string, string>();
+    const unique = [...new Set(accountNumbers.filter(a => a.length > 0))];
+    const batchSize = 5;
+    for (let i = 0; i < unique.length; i += batchSize) {
+      const batch = unique.slice(i, i + batchSize);
+      const lookups = batch.map(async (accNo) => {
+        try {
+          const results = await platinumThirdPartyAccountSearch({ accountNo: accNo });
+          if (Array.isArray(results) && results.length > 0) {
+            const currentAccNo = results[0].accountNumber || '';
+            if (currentAccNo && currentAccNo !== accNo) {
+              mapping.set(accNo, currentAccNo);
+            }
+          }
+        } catch (e) {
+          console.warn(`Account lookup failed for ${accNo}:`, e);
+        }
+      });
+      await Promise.all(lookups);
+    }
+    return mapping;
+  };
+
   const loadTransactions = async (id?: string) => {
     const useId = id || importId;
     if (!useId) return;
@@ -197,9 +221,14 @@ export default function ThirdPartyPaymentProcessing() {
     try {
       const txns = await platinumThirdPartyGetTransactions(useId);
       if (Array.isArray(txns)) {
+        const fileAccounts = txns.map((t: any) => t.oldAccountNumber || t.accountNumber || t.accountNo || '');
+        const migrationMap = await lookupCurrentAccounts(fileAccounts);
+
         setTransactions(txns.map((t: any, i: number) => {
           const oldAcct = t.oldAccountNumber || t.accountNumber || t.accountNo || '';
-          const newAcct = t.newAccountNumber || oldAcct;
+          const apiNewAcct = t.newAccountNumber || '';
+          const lookupNewAcct = migrationMap.get(oldAcct) || '';
+          const newAcct = apiNewAcct && apiNewAcct !== oldAcct ? apiNewAcct : (lookupNewAcct || oldAcct);
           const mismatch = oldAcct !== '' && newAcct !== '' && oldAcct !== newAcct;
           return {
             index: t.index ?? i,
