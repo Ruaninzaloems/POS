@@ -320,18 +320,18 @@ export function UnifiedSearch() {
               />
               {advancedResults.length > 0 && (
                   <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
-                      <div className="bg-gradient-to-b from-gray-700 to-gray-800 text-white px-4 py-2 text-sm font-medium">
+                      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 text-sm font-medium">
                           Search Results ({advancedResults.length})
                       </div>
                       <div className="max-h-80 overflow-y-auto">
                           <table className="w-full text-sm" data-testid="table-advanced-results">
-                              <thead className="bg-gray-100 sticky top-0">
+                              <thead className="bg-gradient-to-r from-blue-600 to-indigo-600 sticky top-0">
                                   <tr>
-                                      <th className="text-left px-3 py-2 font-medium text-xs text-gray-600">Account</th>
-                                      <th className="text-left px-3 py-2 font-medium text-xs text-gray-600">Name</th>
-                                      <th className="text-left px-3 py-2 font-medium text-xs text-gray-600">Address</th>
-                                      <th className="text-right px-3 py-2 font-medium text-xs text-gray-600">Outstanding</th>
-                                      <th className="text-center px-3 py-2 font-medium text-xs text-gray-600">Status</th>
+                                      <th className="text-left px-3 py-2 font-medium text-xs text-white">Account</th>
+                                      <th className="text-left px-3 py-2 font-medium text-xs text-white">Name</th>
+                                      <th className="text-left px-3 py-2 font-medium text-xs text-white">Address</th>
+                                      <th className="text-right px-3 py-2 font-medium text-xs text-white">Outstanding</th>
+                                      <th className="text-center px-3 py-2 font-medium text-xs text-white">Status</th>
                                   </tr>
                               </thead>
                               <tbody>
@@ -369,11 +369,11 @@ export function UnifiedSearch() {
           <Button 
             variant="outline" 
             size="icon" 
-            className="h-10 w-10 sm:h-12 sm:w-12 shrink-0 border-primary/20 bg-background"
+            className="h-10 w-10 sm:h-12 sm:w-12 shrink-0 rounded-xl border-blue-200 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all"
             onClick={() => setShowAdvanced(true)}
             title="Advanced Search"
           >
-            <Filter className="h-5 w-5 text-muted-foreground" />
+            <Filter className="h-5 w-5 text-blue-500" />
           </Button>
       </div>
       <AlertDialog open={!!inactiveConfirm} onOpenChange={(open) => { if (!open) setInactiveConfirm(null); }}>

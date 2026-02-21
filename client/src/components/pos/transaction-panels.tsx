@@ -64,7 +64,7 @@ function BasketPayAmountInput({ value, onChange, className = '' }: { value: numb
         <Input
             type="text"
             inputMode="decimal"
-            className={`h-9 pl-6 text-right font-mono ${className}`}
+            className={`h-9 pl-6 text-right font-mono rounded-lg focus:ring-2 focus:ring-blue-200 ${className}`}
             value={text}
             onChange={handleChange}
             onBlur={handleBlur}
@@ -167,9 +167,9 @@ function ClearanceBasketExpander({ item, updateItemDetails, updateItemAmount }: 
 
     return (
         <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-0">
-            <div className="bg-amber-50 border border-amber-200 rounded-md">
+            <div className="bg-amber-50 border border-amber-200 rounded-xl">
                 <button
-                    className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100/50 transition-colors rounded-md"
+                    className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100/50 transition-colors rounded-xl"
                     onClick={() => setExpanded(!expanded)}
                     data-testid={`button-expand-clearance-${item.id}`}
                 >
@@ -435,7 +435,7 @@ export function TransactionPanels() {
       if (item) {
           // Wrap in a container to maintain layout
           return (
-              <div className="flex-1 p-3 sm:p-6 overflow-y-auto bg-gray-100/50">
+              <div className="flex-1 p-3 sm:p-6 overflow-y-auto bg-gradient-to-br from-slate-50 to-blue-50/30">
                   <div className="max-w-[1200px] mx-auto space-y-4 sm:space-y-6">
                       <AccountEnquiryView item={item} />
                   </div>
@@ -447,16 +447,16 @@ export function TransactionPanels() {
   if (activeTransactionType === 'NONE') {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-4 sm:p-8">
-        <div className="w-24 h-24 bg-muted/50 rounded-full flex items-center justify-center mb-6">
-           <svg className="w-10 h-10 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+        <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mb-6">
+           <svg className="w-10 h-10 opacity-70 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
         </div>
-        <h2 className="text-2xl font-semibold mb-2">Ready to Receipt</h2>
+        <h2 className="text-2xl font-semibold mb-2 text-slate-800">Ready to Receipt</h2>
         <p className="max-w-md text-center">Use the search bar above to find an account, prepaid meter, clearance schedule, or direct income item.</p>
         
         <div className="mt-8 flex gap-4">
              <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
                  <DialogTrigger asChild>
-                    <Button variant="outline" className="gap-2">
+                    <Button variant="outline" className="gap-2 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 rounded-xl">
                         <Upload className="w-4 h-4" />
                         Import CSV
                     </Button>
@@ -469,9 +469,9 @@ export function TransactionPanels() {
                         </DialogDescription>
                     </DialogHeader>
                     
-                    <div className="bg-slate-50 p-4 rounded-md border text-sm space-y-3">
+                    <div className="bg-blue-50/50 border-blue-100 p-4 rounded-md border text-sm space-y-3">
                         <div className="font-semibold text-slate-700">Required CSV Format:</div>
-                        <div className="bg-white border rounded p-2 font-mono text-xs text-slate-600">
+                        <div className="bg-white rounded-xl border border-blue-200 p-2 font-mono text-xs text-slate-600">
                             Receipt Date, Account Number, Amount
                         </div>
                         <div className="text-xs text-muted-foreground">
@@ -486,11 +486,11 @@ export function TransactionPanels() {
                     </div>
 
                     <DialogFooter className="sm:justify-between gap-2">
-                         <Button variant="ghost" size="sm" onClick={handleDownloadTemplate} className="gap-2 text-muted-foreground">
+                         <Button variant="ghost" size="sm" onClick={handleDownloadTemplate} className="gap-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
                              <Download className="w-4 h-4" />
                              Download Template
                          </Button>
-                         <Button onClick={() => fileInputRef.current?.click()} className="gap-2" disabled={importingCSV}>
+                         <Button onClick={() => fileInputRef.current?.click()} className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700" disabled={importingCSV}>
                              {importingCSV ? (
                                <><Loader2 className="w-4 h-4 animate-spin" /> Importing...</>
                              ) : (
@@ -542,9 +542,9 @@ export function TransactionPanels() {
                                     </DialogDescription>
                                 </DialogHeader>
                                 
-                                <div className="bg-slate-50 p-4 rounded-md border text-sm space-y-3">
+                                <div className="bg-blue-50/50 border-blue-100 p-4 rounded-md border text-sm space-y-3">
                                     <div className="font-semibold text-slate-700">Required CSV Format:</div>
-                                    <div className="bg-white border rounded p-2 font-mono text-xs text-slate-600">
+                                    <div className="bg-white rounded-xl border border-blue-200 p-2 font-mono text-xs text-slate-600">
                                         Receipt Date, Account Number, Amount
                                     </div>
                                     <div className="text-xs text-muted-foreground">
@@ -559,11 +559,11 @@ export function TransactionPanels() {
                                 </div>
 
                                 <DialogFooter className="sm:justify-between gap-2">
-                                     <Button variant="ghost" size="sm" onClick={handleDownloadTemplate} className="gap-2 text-muted-foreground">
+                                     <Button variant="ghost" size="sm" onClick={handleDownloadTemplate} className="gap-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
                                          <Download className="w-4 h-4" />
                                          Download Template
                                      </Button>
-                                     <Button onClick={() => fileInputRef.current?.click()} className="gap-2" disabled={importingCSV}>
+                                     <Button onClick={() => fileInputRef.current?.click()} className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700" disabled={importingCSV}>
                                          {importingCSV ? (
                                            <><Loader2 className="w-4 h-4 animate-spin" /> Importing...</>
                                          ) : (
@@ -613,15 +613,15 @@ export function TransactionPanels() {
                                 return getPriority(a.type) - getPriority(b.type);
                             })
                             .map((item) => (
-                              <div key={item.id} className="border-b last:border-0 hover:bg-muted/5 transition-colors">
+                              <div key={item.id} className="border-b last:border-0 rounded-xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
                                   <div className="sm:grid sm:grid-cols-[1fr_2fr_1fr_1fr_auto] sm:gap-4 sm:items-center p-3 sm:p-4">
                                       <div className="flex items-center justify-between sm:justify-start gap-2 mb-2 sm:mb-0">
                                           <div className="flex items-center gap-2">
-                                              {item.type === 'CONSUMER_SERVICES' && <Badge variant="secondary" className="font-mono text-xs">ACC</Badge>}
+                                              {item.type === 'CONSUMER_SERVICES' && <Badge variant="secondary" className="font-mono text-xs bg-blue-50 text-blue-700 border-blue-200">ACC</Badge>}
                                               {item.type === 'PREPAID' && (
                                                  <Badge variant="outline" className={`font-mono text-xs ${
                                                      (item.originalData as Account).prepaidType === 'Water' 
-                                                     ? 'border-blue-500 text-blue-600 bg-blue-50'
+                                                     ? 'border-emerald-500 text-emerald-700 bg-emerald-50'
                                                      : 'border-yellow-500 text-yellow-600 bg-yellow-50'
                                                  }`}>
                                                      {(item.originalData as Account).prepaidType === 'Water' ? 'H2O' : 'ELEC'}
@@ -656,7 +656,7 @@ export function TransactionPanels() {
 
                                       <div className="flex items-center justify-between sm:block sm:text-right gap-2 mb-2 sm:mb-0">
                                           <span className="text-xs text-muted-foreground sm:hidden">Due:</span>
-                                          <span className="font-mono text-muted-foreground text-sm">
+                                          <span className="font-mono text-blue-700 font-bold text-sm">
                                               {item.amountDue > 0 ? `R ${item.amountDue.toFixed(2)}` : '-'}
                                           </span>
                                       </div>
@@ -687,7 +687,7 @@ export function TransactionPanels() {
                                                       <Label className="text-[10px] font-semibold text-green-700 uppercase">Paid By (Last Name) *</Label>
                                                       <Input
                                                           placeholder="Surname / Company"
-                                                          className={`h-8 text-sm bg-white ${(item as any).paidByError ? 'border-red-400 ring-1 ring-red-400' : 'border-green-200'}`}
+                                                          className={`h-9 rounded-lg text-sm bg-white ${(item as any).paidByError ? 'border-red-400 ring-1 ring-red-400' : 'border-green-200'}`}
                                                           value={item.paidBy || ''}
                                                           onChange={(e) => updateItemDetails(item.id, { paidBy: e.target.value })}
                                                           data-testid={`input-basket-paidby-${item.id}`}
@@ -697,7 +697,7 @@ export function TransactionPanels() {
                                                       <Label className="text-[10px] font-semibold text-green-700 uppercase">Description/Notes *</Label>
                                                       <Input
                                                           placeholder="Payment description..."
-                                                          className={`h-8 text-sm bg-white ${(item as any).notesError ? 'border-red-400 ring-1 ring-red-400' : 'border-green-200'}`}
+                                                          className={`h-9 rounded-lg text-sm bg-white ${(item as any).notesError ? 'border-red-400 ring-1 ring-red-400' : 'border-green-200'}`}
                                                           value={item.notes || ''}
                                                           onChange={(e) => updateItemDetails(item.id, { notes: e.target.value })}
                                                           data-testid={`input-basket-notes-${item.id}`}
@@ -722,7 +722,7 @@ export function TransactionPanels() {
 
   // Single Item Views
   return (
-    <div className="flex-1 p-3 sm:p-6 overflow-y-auto bg-gray-100/50"> 
+    <div className="flex-1 p-3 sm:p-6 overflow-y-auto bg-gradient-to-br from-slate-50 to-blue-50/30"> 
       <div className="max-w-[1200px] mx-auto space-y-4 sm:space-y-6"> 
         
         {/* Header Badge */}

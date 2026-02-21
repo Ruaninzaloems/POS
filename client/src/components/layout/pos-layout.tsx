@@ -57,7 +57,7 @@ export function PosLayout({ children }: PosLayoutProps) {
 
   if (sessionLoading && isPosPage) {
       return (
-        <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+        <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-600" />
             <p className="text-slate-600">Checking session status...</p>
@@ -68,8 +68,8 @@ export function PosLayout({ children }: PosLayoutProps) {
 
   if (isReceiptingPage && platinumUser?.authMode === 'override') {
       return (
-        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-lg border border-amber-200 max-w-lg w-full p-6 sm:p-8 text-center space-y-4">
+        <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl shadow-amber-500/10 border border-amber-200 max-w-lg w-full p-6 sm:p-8 text-center space-y-4">
             <div className="mx-auto w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">
               <AlertTriangle className="h-8 w-8 text-amber-600" />
             </div>
@@ -97,7 +97,7 @@ export function PosLayout({ children }: PosLayoutProps) {
 
   if (isReceiptingPage && !platinumUser) {
       return (
-        <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+        <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-600" />
             <p className="text-slate-600">Verifying authentication...</p>
@@ -158,20 +158,20 @@ export function PosLayout({ children }: PosLayoutProps) {
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden">
       {/* Top Bar */}
-      <header className="h-auto min-h-[3.5rem] border-b bg-card flex flex-wrap items-center px-3 sm:px-4 py-2 justify-between shrink-0 z-20 shadow-sm relative gap-2">
+      <header className="h-auto min-h-[3.5rem] border-b-0 bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 text-white flex flex-wrap items-center px-3 sm:px-4 py-2 justify-between shrink-0 z-20 shadow-lg shadow-black/10 relative gap-2">
         <div className="flex items-center gap-2 sm:gap-4">
           <Link href="/">
             <div className="flex items-center gap-2 cursor-pointer hover:opacity-80">
               <img src="/images/platinum-logo.png" alt="Platinum" className="w-7 h-7 sm:w-8 sm:h-8 object-contain" />
-              <h1 className="font-semibold text-base sm:text-lg tracking-tight hidden sm:inline-block">Platinum POS <span className="text-muted-foreground text-sm font-normal">v2.0</span></h1>
+              <h1 className="font-semibold text-base sm:text-lg tracking-tight hidden sm:inline-block text-white">Platinum POS <span className="bg-white/20 text-white/80 text-[10px] px-1.5 py-0.5 rounded-full font-normal">v2.0</span></h1>
             </div>
           </Link>
-          <div className="h-6 w-px bg-border mx-1 hidden sm:block" />
+          <div className="h-6 w-px bg-white/20 mx-1 hidden sm:block" />
           
           <nav className="flex items-center">
              <DropdownMenu>
                <DropdownMenuTrigger asChild>
-                 <Button variant="outline" size="sm" className="gap-1 sm:gap-2 min-w-0 sm:min-w-[140px] justify-between text-xs sm:text-sm px-2 sm:px-3">
+                 <Button variant="outline" size="sm" className="gap-1 sm:gap-2 min-w-0 sm:min-w-[140px] justify-between text-xs sm:text-sm px-2 sm:px-3 bg-white/10 border-white/20 text-white hover:bg-white/20">
                    <span className="flex items-center gap-1 sm:gap-2">
                      <Menu className="w-4 h-4" />
                      <span className="truncate max-w-[80px] sm:max-w-[150px]">{getPageTitle(location)}</span>
@@ -216,58 +216,58 @@ export function PosLayout({ children }: PosLayoutProps) {
            <Button 
              variant="ghost" 
              size="icon" 
-             className="text-muted-foreground hidden sm:inline-flex" 
+             className="text-white/70 hover:text-white hover:bg-white/10 hidden sm:inline-flex" 
              onClick={toggleViewMode} 
              title={viewMode === 'desktop' ? "Switch to Mobile View" : "Switch to Desktop View"}
            >
              {viewMode === 'desktop' ? <Smartphone className="w-5 h-5" /> : <Monitor className="w-5 h-5" />}
            </Button>
 
-           <div className="h-6 w-px bg-border hidden sm:block" />
+           <div className="h-6 w-px bg-white/20 hidden sm:block" />
 
            {activeSession ? (
              <>
                <div className="flex items-center gap-2 sm:gap-3 px-1 sm:px-2">
-                  <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground text-xs font-mono border shrink-0">
+                  <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-white/20 flex items-center justify-center text-white text-xs font-mono border border-white/30 shrink-0">
                     {currentUser.name?.charAt(0) || 'C'}
                   </div>
                   <div className="hidden sm:flex flex-col items-start text-sm leading-tight">
-                    <span className="font-medium">{currentUser.name}</span>
-                    <span className="text-xs text-muted-foreground">{sessionDetails?.officeDesc || currentUser.cashOffice}</span>
+                    <span className="font-medium text-white">{currentUser.name}</span>
+                    <span className="text-xs text-white/70">{sessionDetails?.officeDesc || currentUser.cashOffice}</span>
                   </div>
                   <div
                     title={apiSessionActive === true ? 'Session active (validate-cashier API — POS_Cashier.IsActive=1)' : apiSessionActive === false ? 'Session NOT active (validate-cashier API — POS_Cashier.IsActive=0)' : 'Checking session status...'}
                     className={`hidden md:flex items-center gap-1.5 ml-1 px-2.5 py-1 text-[10px] font-semibold rounded-full border whitespace-nowrap transition-all duration-300 ${
                       apiSessionActive === null
-                        ? 'bg-slate-100 text-slate-500 border-slate-200'
+                        ? 'bg-slate-200 text-slate-600 border-slate-300'
                         : apiSessionActive === true
-                          ? 'bg-green-100 text-green-700 border-green-300'
-                          : 'border-red-300 text-red-700 bg-red-100 animate-pulse'
+                          ? 'bg-emerald-100 text-emerald-700 border-emerald-400'
+                          : 'border-red-400 text-red-700 bg-red-100 animate-pulse'
                     }`}
                     data-testid="badge-session-status"
                   >
                     <span className={`inline-block w-2 h-2 rounded-full ${
-                      apiSessionActive === null ? 'bg-slate-400' : apiSessionActive ? 'bg-green-500' : 'bg-red-500'
+                      apiSessionActive === null ? 'bg-slate-400' : apiSessionActive ? 'bg-emerald-500' : 'bg-red-500'
                     }`} />
                     {apiSessionActive === true ? 'SESSION ACTIVE' : apiSessionActive === false ? 'SESSION INACTIVE' : 'CHECKING...'}
                   </div>
                </div>
 
-               <div className="h-6 w-px bg-border hidden sm:block" />
+               <div className="h-6 w-px bg-white/20 hidden sm:block" />
 
                {dayEndStatus === 'RECONCILED' ? (
-                 <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={endSession} title="End Session">
+                 <Button variant="ghost" size="icon" className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10" onClick={endSession} title="End Session">
                    <LogOut className="w-4 h-4" />
                  </Button>
                ) : (
-                 <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground opacity-40 cursor-not-allowed" onClick={endSession} title="Session active until day-end reconciliation is completed">
+                 <Button variant="ghost" size="icon" className="h-8 w-8 text-white/70 opacity-40 cursor-not-allowed hover:bg-white/10" onClick={endSession} title="Session active until day-end reconciliation is completed">
                    <LogOut className="w-4 h-4" />
                  </Button>
                )}
                <Button
                  variant="ghost"
                  size="sm"
-                 className="h-8 text-xs text-muted-foreground hover:text-destructive"
+                 className="h-8 text-xs text-white/60 hover:text-white hover:bg-white/10"
                  onClick={async () => { await logoutUser(); window.location.reload(); }}
                  title="Sign out and switch user"
                  data-testid="button-sign-out"
@@ -277,7 +277,7 @@ export function PosLayout({ children }: PosLayoutProps) {
              </>
            ) : (
              <div className="flex items-center gap-2">
-               <Button variant="outline" size="sm" onClick={() => setLocation('/cashier-setup')} className="gap-1 sm:gap-2 text-xs sm:text-sm">
+               <Button variant="outline" size="sm" onClick={() => setLocation('/cashier-setup')} className="gap-1 sm:gap-2 text-xs sm:text-sm bg-white/15 border-white/30 text-white hover:bg-white/20">
                  <Layers className="w-4 h-4" />
                  <span className="hidden sm:inline">Start POS Session</span>
                  <span className="sm:hidden">Start</span>
@@ -285,7 +285,7 @@ export function PosLayout({ children }: PosLayoutProps) {
                <Button
                  variant="ghost"
                  size="sm"
-                 className="h-8 text-xs text-muted-foreground hover:text-destructive"
+                 className="h-8 text-xs text-white/60 hover:text-white hover:bg-white/10"
                  onClick={async () => { await logoutUser(); window.location.reload(); }}
                  title="Sign out and switch user"
                  data-testid="button-sign-out-no-session"

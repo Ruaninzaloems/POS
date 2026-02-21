@@ -360,12 +360,12 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
   return (
     <div className={`relative w-full z-50 flex gap-2 ${className || ''}`} ref={wrapperRef}>
       <div className="relative flex-1">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-blue-400" />
         <Input 
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder={placeholder || "Search Account / Meter / Group..."}
-          className="pl-10 h-10 sm:h-12 text-sm sm:text-lg shadow-sm border-primary/20 focus-visible:ring-primary/30"
+          className="h-12 rounded-xl border-2 border-slate-200 bg-white pl-11 pr-4 text-base focus:border-blue-500 focus:ring-4 focus:ring-blue-100 shadow-sm placeholder:text-slate-400 transition-all"
           autoFocus={autoFocus}
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex gap-1">
@@ -405,11 +405,11 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
       </Popover>
 
       {isOpen && (results.length > 0 || externalResults.length > 0 || isSearchingExternal || (miscGroupsLoading && searchQuery.length >= 2)) && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-popover text-popover-foreground rounded-lg border shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100 z-[100] max-h-[60vh] overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-2 rounded-xl shadow-xl border border-slate-200/80 bg-white/98 backdrop-blur-sm text-popover-foreground overflow-hidden animate-in fade-in zoom-in-95 duration-100 z-[100] max-h-[60vh] overflow-y-auto">
           <div className="py-1">
             {isSearchingExternal && (
                 <div className="px-4 py-2 text-xs text-muted-foreground flex items-center gap-2 bg-muted/30">
-                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
                     Searching external database...
                 </div>
             )}
@@ -422,7 +422,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
               return (
                 <div key={`${result.type}-${idx}`}>
                   <button
-                    className="w-full text-left px-4 py-3 hover:bg-muted/50 focus:bg-muted focus:outline-none flex items-center gap-4 transition-colors group border-b last:border-0"
+                    className="w-full text-left px-4 py-3 hover:bg-blue-50 active:bg-blue-100 focus:bg-blue-50 focus:outline-none flex items-center gap-4 transition-colors group border-b last:border-0"
                     onClick={() => {
                       if (isDirectGroup) {
                         handleExpandGroup(groupId);
@@ -434,11 +434,11 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                   >
                     <div className={`
                       w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm
-                      ${result.type === 'ACCOUNT' ? 'bg-blue-100 text-blue-600' : ''}
-                      ${result.type === 'PREPAID' ? 'bg-yellow-100 text-yellow-600' : ''}
-                      ${result.type === 'DIRECT' ? 'bg-green-100 text-green-600' : ''}
-                      ${result.type === 'GROUP' ? 'bg-purple-100 text-purple-600' : ''}
-                      ${result.type === 'CLEARANCE' ? 'bg-amber-100 text-amber-600' : ''}
+                      ${result.type === 'ACCOUNT' ? 'bg-blue-100 text-blue-700' : ''}
+                      ${result.type === 'PREPAID' ? 'bg-amber-100 text-amber-700' : ''}
+                      ${result.type === 'DIRECT' ? 'bg-emerald-100 text-emerald-700' : ''}
+                      ${result.type === 'GROUP' ? 'bg-purple-100 text-purple-700' : ''}
+                      ${result.type === 'CLEARANCE' ? 'bg-rose-100 text-rose-700' : ''}
                     `}>
                       {result.type === 'ACCOUNT' && <Users className="w-5 h-5" />}
                       {result.type === 'PREPAID' && <Zap className="w-5 h-5" />}

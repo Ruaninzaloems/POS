@@ -80,13 +80,13 @@ export function PaymentDrawer() {
   return (
     <>
     {/* Mobile Toggle Button (when collapsed) */}
-    <div className={`${viewMode === 'desktop' ? 'lg:hidden' : ''} fixed bottom-0 left-0 right-0 z-40 bg-card border-t shadow-[0_-4px_10px_rgba(0,0,0,0.1)] transition-transform duration-300 ${isMobileExpanded ? 'translate-y-full' : 'translate-y-0'}`}>
+    <div className={`${viewMode === 'desktop' ? 'lg:hidden' : ''} fixed bottom-0 left-0 right-0 z-40 bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 border-t-0 text-white shadow-[0_-4px_10px_rgba(0,0,0,0.1)] transition-transform duration-300 ${isMobileExpanded ? 'translate-y-full' : 'translate-y-0'}`}>
         <div className="p-4 flex items-center justify-between" onClick={() => setIsMobileExpanded(true)}>
              <div>
-                <div className="text-xs text-muted-foreground uppercase font-bold">Total Due</div>
-                <div className="text-xl font-mono font-bold text-primary">R {totalDue.toFixed(2)}</div>
+                <div className="text-xs text-white/70 uppercase font-bold">Total Due</div>
+                <div className="text-xl font-mono font-bold text-white">R {totalDue.toFixed(2)}</div>
              </div>
-             <Button size="lg" className="shadow-lg" onClick={(e) => { e.stopPropagation(); setIsMobileExpanded(true); }}>
+             <Button size="lg" className="bg-white text-blue-900 hover:bg-white/90 shadow-lg" onClick={(e) => { e.stopPropagation(); setIsMobileExpanded(true); }}>
                  Pay <ChevronUp className="ml-2 w-4 h-4" />
              </Button>
         </div>
@@ -94,7 +94,7 @@ export function PaymentDrawer() {
 
     {/* Main Drawer */}
     <aside className={`
-        fixed inset-x-0 bottom-0 z-50 bg-card shadow-2xl transition-all duration-300 flex flex-col
+        fixed inset-x-0 bottom-0 z-50 bg-card border-l border-slate-200/80 shadow-2xl transition-all duration-300 flex flex-col
         ${viewMode === 'desktop' ? 'lg:static lg:w-[450px] lg:h-full lg:border-l lg:border-t-0 lg:shadow-none' : ''}
         ${isMobileExpanded ? 'h-[85vh] rounded-t-2xl' : `h-0 ${viewMode === 'desktop' ? 'lg:h-full' : ''} overflow-hidden`}
     `}>
@@ -103,9 +103,9 @@ export function PaymentDrawer() {
           <div className="w-12 h-1.5 bg-muted rounded-full" />
       </div>
 
-      <div className="p-3 sm:p-4 lg:p-6 border-b bg-muted/30 flex justify-between items-center">
+      <div className="p-3 sm:p-4 lg:p-6 bg-gradient-to-br from-blue-50 to-indigo-50/50 border-b border-blue-100/50 flex justify-between items-center">
         <div>
-           <h2 className="text-lg lg:text-xl font-bold tracking-tight">Payment Drawer</h2>
+           <h2 className="text-lg lg:text-xl font-bold tracking-tight text-slate-800">Payment Drawer</h2>
            <div className="flex items-center gap-2">
                <p className={`text-sm text-muted-foreground ${viewMode === 'desktop' ? 'hidden lg:block' : 'hidden'}`}>Touch-enabled checkout</p>
                {dayEndStatus === 'RECONCILED' && (
@@ -137,22 +137,22 @@ export function PaymentDrawer() {
       <div className="flex-1 overflow-y-auto">
         <Tabs defaultValue="payment" className="w-full">
            <div className="px-6 pt-4">
-                <TabsList className="grid w-full grid-cols-2 h-12">
-                    <TabsTrigger value="items" className="text-md">Line Items ({transactionItems.length})</TabsTrigger>
-                    <TabsTrigger value="payment" className="text-md">Payment</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-2 bg-slate-100/80 rounded-xl p-1 h-11">
+                    <TabsTrigger value="items" className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-700 rounded-lg text-sm font-medium">Line Items ({transactionItems.length})</TabsTrigger>
+                    <TabsTrigger value="payment" className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-700 rounded-lg text-sm font-medium">Payment</TabsTrigger>
                 </TabsList>
            </div>
 
            <TabsContent value="items" className="p-6 space-y-4 min-h-[400px]">
                 {transactionItems.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-48 text-muted-foreground border-2 border-dashed rounded-xl bg-muted/20">
+                    <div className="flex flex-col items-center justify-center h-48 text-muted-foreground border-2 border-dashed border-blue-200/50 rounded-2xl bg-blue-50/20">
                     <p>No items added</p>
                     <p className="text-xs mt-1">Search to add items</p>
                     </div>
                 ) : (
                     <div className="space-y-3">
                     {transactionItems.map((item) => (
-                        <div key={item.id} className="relative group flex justify-between items-center p-4 bg-background rounded-xl border shadow-sm active:border-primary transition-all active:scale-[0.99] touch-manipulation">
+                        <div key={item.id} className="relative group flex justify-between items-center p-4 bg-white rounded-xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all hover:border-blue-200/50 active:scale-[0.99] touch-manipulation">
                             <div className="flex-1 min-w-0 pr-3">
                                 <div className="font-semibold text-lg truncate leading-none mb-1">{item.description}</div>
                                 <div className="text-xs text-muted-foreground font-mono">{item.reference}</div>
@@ -176,9 +176,9 @@ export function PaymentDrawer() {
 
            <TabsContent value="payment" className="p-6 space-y-6">
                  {/* Total Display */}
-                 <div className="bg-primary/5 rounded-xl p-4 border border-primary/10 text-center">
-                    <div className="text-sm text-muted-foreground uppercase tracking-widest font-semibold mb-1">Total Due</div>
-                    <div className="text-4xl font-mono font-bold text-primary">R {totalDue.toFixed(2)}</div>
+                 <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-5 border border-blue-100/50 text-center">
+                    <div className="text-blue-600/80 uppercase tracking-widest font-bold text-xs mb-1">TOTAL DUE</div>
+                    <div className="text-5xl font-mono font-bold text-blue-700">R {totalDue.toFixed(2)}</div>
                  </div>
 
                  
@@ -194,9 +194,9 @@ export function PaymentDrawer() {
                     <div className="grid grid-cols-2 gap-4">
                         <div 
                             onClick={() => setActiveInput('cash')}
-                            className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${activeInput === 'cash' ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-transparent bg-muted hover:bg-muted/80'}`}
+                            className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${activeInput === 'cash' ? 'border-blue-500 bg-blue-50/30 ring-2 ring-blue-200/50' : 'border-slate-200 bg-slate-50 hover:bg-slate-100/80'}`}
                         >
-                            <div className="flex items-center gap-2 mb-1 text-muted-foreground">
+                            <div className={`flex items-center gap-2 mb-1 ${activeInput === 'cash' ? 'text-green-600' : 'text-muted-foreground'}`}>
                                 <Banknote className="w-5 h-5" />
                                 <span className="font-medium text-sm">Cash</span>
                             </div>
@@ -220,9 +220,9 @@ export function PaymentDrawer() {
 
                         <div 
                             onClick={() => setActiveInput('card')}
-                            className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${activeInput === 'card' ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-transparent bg-muted hover:bg-muted/80'}`}
+                            className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${activeInput === 'card' ? 'border-blue-500 bg-blue-50/30 ring-2 ring-blue-200/50' : 'border-slate-200 bg-slate-50 hover:bg-slate-100/80'}`}
                         >
-                            <div className="flex items-center gap-2 mb-1 text-muted-foreground">
+                            <div className={`flex items-center gap-2 mb-1 ${activeInput === 'card' ? 'text-blue-600' : 'text-muted-foreground'}`}>
                                 <CreditCard className="w-5 h-5" />
                                 <span className="font-medium text-sm">Card</span>
                             </div>
@@ -265,7 +265,7 @@ export function PaymentDrawer() {
                             <Button 
                                 key={amt}
                                 variant="outline"
-                                className="h-12 text-lg font-mono bg-white hover:bg-green-50 hover:text-green-700 hover:border-green-200 transition-colors"
+                                className="rounded-xl bg-white border-slate-200 hover:bg-green-50 hover:text-green-700 hover:border-green-300 hover:shadow-sm transition-all h-12 text-base font-mono font-semibold"
                                 onClick={() => setPaymentAmount(activeInput, (activeInput === 'cash' ? payment.cashAmount : payment.cardAmount) + amt)}
                             >
                                 +R{amt}
@@ -290,9 +290,9 @@ export function PaymentDrawer() {
       </div>
 
       {/* Footer Actions */}
-      <div className="p-4 sm:p-6 bg-card border-t space-y-3 sm:space-y-4 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] z-30 relative pb-8 lg:pb-6">
+      <div className="p-4 sm:p-6 bg-white border-t border-slate-200/80 space-y-3 sm:space-y-4 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] z-30 relative pb-8 lg:pb-6">
         <div className="flex justify-between items-baseline">
-            <span className="text-muted-foreground font-medium">Change Due</span>
+            <span className="text-sm font-semibold text-slate-500">Change Due</span>
             <div className="flex flex-col items-end">
                 <span className={`font-mono text-2xl font-bold ${payment.changeDue > 200 ? 'text-destructive' : 'text-foreground'}`}>
                     R {payment.changeDue.toFixed(2)}
@@ -316,7 +316,7 @@ export function PaymentDrawer() {
         )}
 
         <Button 
-          className="w-full h-16 text-xl font-bold shadow-lg active:scale-[0.98] transition-all" 
+          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25 h-16 text-xl font-bold rounded-xl disabled:from-slate-300 disabled:to-slate-400 disabled:shadow-none active:scale-[0.98] transition-all" 
           size="lg"
           disabled={!isCompleteEnabled}
           onClick={completeTransaction}

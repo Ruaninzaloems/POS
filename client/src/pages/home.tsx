@@ -40,17 +40,17 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden">
-      <header className="h-14 border-b bg-card flex items-center px-3 sm:px-4 justify-between shrink-0 z-20 shadow-sm">
+      <header className="h-14 bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 text-white flex items-center px-3 sm:px-4 justify-between shrink-0 z-20 shadow-lg">
         <div className="flex items-center gap-2">
           <img src="/images/platinum-logo.png" alt="Platinum" className="w-7 h-7 sm:w-8 sm:h-8 object-contain" />
-          <h1 className="font-semibold text-base sm:text-lg tracking-tight">Platinum POS <span className="text-muted-foreground text-xs sm:text-sm font-normal">v2.0</span></h1>
+          <h1 className="font-semibold text-base sm:text-lg tracking-tight text-white">Platinum POS <span className="bg-white/20 text-white/80 text-[10px] px-1.5 py-0.5 rounded-full font-normal ml-1">v2.0</span></h1>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4">
           <Button
             variant="ghost"
             size="icon"
-            className="text-muted-foreground hidden sm:inline-flex"
+            className="text-white/70 hover:text-white hover:bg-white/10 hidden sm:inline-flex"
             onClick={toggleViewMode}
             title={viewMode === 'desktop' ? "Switch to Mobile View" : "Switch to Desktop View"}
           >
@@ -59,18 +59,18 @@ export default function HomePage() {
 
           {activeSession && (
             <>
-              <div className="h-6 w-px bg-border hidden sm:block" />
+              <div className="h-6 w-px bg-white/20 hidden sm:block" />
               <div className="flex items-center gap-2 sm:gap-3 px-1 sm:px-2">
-                <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground text-xs font-mono border shrink-0">
+                <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-white/20 flex items-center justify-center text-white text-xs font-mono border border-white/30 shrink-0">
                   {currentUser.name?.charAt(0) || 'C'}
                 </div>
                 <div className="hidden sm:flex flex-col items-start text-sm leading-tight">
-                  <span className="font-medium">{currentUser.name}</span>
-                  <span className="text-xs text-muted-foreground">{currentUser.cashOffice}</span>
+                  <span className="font-medium text-white">{currentUser.name}</span>
+                  <span className="text-xs text-white/60">{currentUser.cashOffice}</span>
                 </div>
               </div>
-              <div className="h-6 w-px bg-border hidden sm:block" />
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={endSession} title="End Session">
+              <div className="h-6 w-px bg-white/20 hidden sm:block" />
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-white/70 hover:text-red-300 hover:bg-white/10" onClick={endSession} title="End Session">
                 <LogOut className="w-4 h-4" />
               </Button>
             </>
@@ -81,15 +81,16 @@ export default function HomePage() {
       <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
         <div className="md:hidden p-4 bg-card border-b">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Modules</h2>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {menuItems.map((item, idx) => (
               <Link key={idx} href={item.href}>
                 <button
-                  className="w-full flex flex-col items-center gap-1.5 p-3 rounded-lg text-center hover:bg-accent transition-colors group border bg-background"
+                  className="w-full flex flex-col items-center gap-1.5 p-3 rounded-lg text-center hover:bg-accent transition-colors group border bg-background relative overflow-hidden"
                   data-testid={`menu-item-${item.href.replace(/\//g, '-').slice(1) || 'home'}`}
                 >
-                  <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover:bg-primary/10">
-                    <item.icon className="w-5 h-5 text-muted-foreground group-hover:text-primary" />
+                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover:bg-blue-100">
+                    <item.icon className="w-5 h-5 text-muted-foreground group-hover:text-blue-600" />
                   </div>
                   <div className="text-[11px] font-medium text-foreground leading-tight">{item.label}</div>
                 </button>
@@ -99,18 +100,18 @@ export default function HomePage() {
         </div>
 
         <aside className="hidden md:block w-80 border-r bg-card overflow-y-auto shrink-0" data-testid="sidebar-menu">
-          <div className="p-4 border-b">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Modules</h2>
+          <div className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white p-5">
+            <h2 className="text-sm font-semibold uppercase tracking-wider">Modules</h2>
           </div>
           <nav className="py-2">
             {menuItems.map((item, idx) => (
               <Link key={idx} href={item.href}>
                 <button
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors group"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-blue-50/50 transition-colors group border-l-3 border-transparent hover:border-blue-500"
                   data-testid={`menu-item-desktop-${item.href.replace(/\//g, '-').slice(1) || 'home'}`}
                 >
-                  <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover:bg-primary/10">
-                    <item.icon className="w-5 h-5 text-muted-foreground group-hover:text-primary" />
+                  <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover:bg-blue-100">
+                    <item.icon className="w-5 h-5 text-muted-foreground group-hover:text-blue-600" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-foreground">{item.label}</div>
@@ -123,10 +124,13 @@ export default function HomePage() {
           </nav>
         </aside>
 
-        <main className="hidden md:flex flex-1 items-center justify-center bg-muted/30 overflow-auto">
-          <div className="text-center max-w-md px-6">
-            <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
-              <Layers className="w-8 h-8 text-primary" />
+        <main className="hidden md:flex flex-1 items-center justify-center bg-muted/30 overflow-auto relative">
+          <div className="absolute inset-0 opacity-5">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-400 via-transparent to-transparent" />
+          </div>
+          <div className="text-center max-w-md px-6 relative z-10">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-500/10">
+              <Layers className="w-10 h-10 text-blue-600" />
             </div>
             <h2 className="text-2xl font-semibold mb-2">Platinum POS System</h2>
             <p className="text-muted-foreground mb-6">
