@@ -1,6 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
-import connectPgSimple from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
@@ -8,8 +7,6 @@ import path from "path";
 import { existsSync } from "fs";
 import crypto from "crypto";
 import type { UserSession } from "./platinum-auth";
-
-const PgSession = connectPgSimple(session);
 
 const app = express();
 const httpServer = createServer(app);
@@ -32,12 +29,6 @@ app.set('trust proxy', 1);
 
 app.use(
   session({
-    store: new PgSession({
-      conString: process.env.DATABASE_URL,
-      tableName: 'user_sessions',
-      createTableIfMissing: true,
-      pruneSessionInterval: 300,
-    }),
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,

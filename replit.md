@@ -37,14 +37,13 @@ Preferred communication style: Simple, everyday language.
 - **Framework**: Express 5 with TypeScript.
 - **API Pattern**: RESTful routes.
 - **Proxy Layer**: Proxies requests to Platinum Inzalo EMS API (authenticated via JWT for POS operations) and legacy Sebata Billing API (unauthenticated OData for backward compatibility).
-- **Session Management**: `express-session` with `connect-pg-simple` stores per-user sessions in PostgreSQL (`user_sessions` table, auto-created). Each user's Platinum JWT token, userData, posCashierId, and authMode are stored in `req.session.platinumAuth` (type `UserSession`). This enables 50+ concurrent users without session cross-contamination.
+- **Session Management**: `express-session` with in-memory store holds per-user browser sessions (cookie-based). Each user's Platinum JWT token, userData, posCashierId, and authMode are stored in `req.session.platinumAuth` (type `UserSession`). This enables 50+ concurrent users without session cross-contamination. NO local database is used — the Platinum API is the sole authority for authentication and all data.
 - **Concurrency**: Global request queue limits concurrent Platinum API calls to 100. Response cache is user-aware: user-specific paths (validate-cashier, payment-options, etc.) are keyed by userId, shared data (BillingEnquiry) uses URL-only keys.
 - **Serving**: Serves production builds statically; uses Vite middleware for development.
-- **No Local Database for Business Data**: All transaction storage, cashier sessions, account data, receipts, day-end reconciliation, and every other business operation is handled exclusively via the Platinum API. The local PostgreSQL database is used ONLY for HTTP session storage (`user_sessions` table via `connect-pg-simple`). Local database schemas (`storage.ts`, `db.ts`, `shared/schema.ts`) are dead code — never called from routes or client.
+- **No Local Database for Business Data**: All transaction storage, cashier sessions, account data, receipts, day-end reconciliation, and every other business operation is handled exclusively via the Platinum API. The local PostgreSQL database is NOT used at all. Local database schemas (`storage.ts`, `db.ts`, `shared/schema.ts`) are dead code — never called from routes or client.
 
 ### Database (PostgreSQL)
-- **Purpose**: HTTP session storage ONLY. The `user_sessions` table (auto-created by `connect-pg-simple`) stores express-session data for multi-user support.
-- **NOT used for**: Transactions, cashier sessions, account data, receipts, or any business logic. All persistence goes through Platinum API.
+- **Purpose**: The local database is NOT used for any business logic or session storage. All persistence goes through the Platinum API exclusively.
 - **Legacy code**: `shared/schema.ts`, `server/storage.ts`, `server/db.ts` define unused tables (`users`, `cashier_sessions`, `transactions`). These are dead code kept for reference only.
 
 ### Key Business Logic Decisions
