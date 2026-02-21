@@ -5,14 +5,14 @@ import { TransactionPanels } from '@/components/pos/transaction-panels';
 import { PaymentDrawer } from '@/components/pos/payment-drawer';
 import { ReceiptModal } from '@/components/pos/receipt-modal';
 import { Button } from '@/components/ui/button';
-import { Globe } from 'lucide-react';
+import { Search, Layers, CreditCard, Zap, FileCheck, Package, ArrowRight, Sparkles } from 'lucide-react';
 import { EasyPayModal } from '@/components/pos/easy-pay-modal';
 import { usePos } from '@/lib/pos-state';
 import { EasyPayBill } from '@/lib/external-api';
 
 function PosPageContent() {
   const [isEasyPayOpen, setIsEasyPayOpen] = useState(false);
-  const { addItem } = usePos();
+  const { addItem, transactionItems } = usePos();
 
   const handleAddEasyPay = (bill: EasyPayBill) => {
     addItem({
@@ -26,29 +26,28 @@ function PosPageContent() {
     });
   };
 
+  const hasItems = transactionItems.length > 0;
+
   return (
     <PosLayout>
       <div className="flex flex-col lg:flex-row flex-1 overflow-hidden relative">
-        {/* Central Area */}
-        <div className="flex-1 flex flex-col min-w-0 bg-background relative z-0 overflow-hidden">
+        <div className="flex-1 flex flex-col min-w-0 bg-slate-50 relative z-0 overflow-hidden">
           
-          {/* Search Area */}
-          <div className="px-2 sm:px-4 lg:px-6 py-3 sm:py-4 bg-background border-b z-10 shrink-0 flex gap-2">
-             <div className="flex-1 max-w-2xl mx-auto">
-               <UnifiedSearch />
-             </div>
+          <div className="px-3 sm:px-5 lg:px-6 py-2.5 sm:py-3 bg-white border-b border-slate-100 z-10 shrink-0">
+            <div className="flex gap-2 max-w-3xl mx-auto">
+              <div className="flex-1">
+                <UnifiedSearch />
+              </div>
+            </div>
           </div>
 
-          {/* Dynamic Panel Area */}
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden pb-16 lg:pb-0">
             <TransactionPanels />
           </div>
         </div>
 
-        {/* Right Drawer */}
         <PaymentDrawer />
         
-        {/* Modals */}
         <ReceiptModal />
         <EasyPayModal 
           open={isEasyPayOpen} 

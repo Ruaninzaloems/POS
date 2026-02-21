@@ -447,21 +447,58 @@ export function TransactionPanels() {
 
   if (activeTransactionType === 'NONE') {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-4 sm:p-8">
-        <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mb-6">
-           <svg className="w-10 h-10 opacity-70 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-        </div>
-        <h2 className="text-2xl font-semibold mb-2 text-slate-800">Ready to Receipt</h2>
-        <p className="max-w-md text-center">Use the search bar above to find an account, prepaid meter, clearance schedule, or direct income item.</p>
+      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50/30" />
+        <div className="absolute top-1/4 -left-32 w-64 h-64 bg-blue-200/20 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 -right-32 w-64 h-64 bg-indigo-200/20 rounded-full blur-3xl" />
         
-        <div className="mt-8 flex gap-4">
-             <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
-                 <DialogTrigger asChild>
-                    <Button variant="outline" className="gap-2 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 rounded-xl">
-                        <Upload className="w-4 h-4" />
-                        Import CSV
-                    </Button>
-                 </DialogTrigger>
+        <div className="relative z-10 flex flex-col items-center max-w-lg w-full">
+          <div className="relative mb-6">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-blue-500/20 rotate-3 transition-transform hover:rotate-0">
+              <Search className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+            </div>
+            <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center shadow-lg">
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+            </div>
+          </div>
+
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-1.5 tracking-tight">Start a Transaction</h2>
+          <p className="text-sm text-slate-400 text-center mb-6 max-w-sm leading-relaxed">Search for an account, meter, or item above to begin receipting</p>
+
+          <div className="grid grid-cols-2 gap-2 w-full max-w-xs mb-6">
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white border border-slate-100 shadow-sm" data-testid="hint-accounts">
+              <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                <User className="w-3.5 h-3.5 text-blue-500" />
+              </div>
+              <span className="text-[11px] font-medium text-slate-600 leading-tight">Consumer Accounts</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white border border-slate-100 shadow-sm" data-testid="hint-prepaid">
+              <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                <Zap className="w-3.5 h-3.5 text-amber-500" />
+              </div>
+              <span className="text-[11px] font-medium text-slate-600 leading-tight">Prepaid Meters</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white border border-slate-100 shadow-sm" data-testid="hint-clearance">
+              <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                <FileCheck className="w-3.5 h-3.5 text-emerald-500" />
+              </div>
+              <span className="text-[11px] font-medium text-slate-600 leading-tight">Clearance Certs</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white border border-slate-100 shadow-sm" data-testid="hint-direct">
+              <div className="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
+                <FileText className="w-3.5 h-3.5 text-violet-500" />
+              </div>
+              <span className="text-[11px] font-medium text-slate-600 leading-tight">Direct Income</span>
+            </div>
+          </div>
+
+          <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
+              <DialogTrigger asChild>
+                <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-100 transition-colors" data-testid="button-import-csv">
+                    <Upload className="w-3.5 h-3.5" />
+                    Import CSV Batch
+                </button>
+              </DialogTrigger>
                  <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>Import Transactions</DialogTitle>
@@ -502,13 +539,13 @@ export function TransactionPanels() {
                  </DialogContent>
              </Dialog>
 
-             <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
-                accept=".csv,.txt" 
-                onChange={handleFileUpload}
-             />
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            className="hidden" 
+            accept=".csv,.txt" 
+            onChange={handleFileUpload}
+          />
         </div>
       </div>
     );
