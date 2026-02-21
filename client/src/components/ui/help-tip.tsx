@@ -3,6 +3,18 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { HelpCircle, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
 
+function useIsMobile(breakpoint = 640) {
+  const [isMobile, setIsMobile] = React.useState(false)
+  React.useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`)
+    setIsMobile(mql.matches)
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mql.addEventListener("change", handler)
+    return () => mql.removeEventListener("change", handler)
+  }, [breakpoint])
+  return isMobile
+}
+
 interface HelpTipProps {
   text: string
   side?: "top" | "bottom" | "left" | "right"
@@ -15,6 +27,11 @@ interface HelpTipProps {
 export function HelpTip({ text, side = "top", icon = "help", size = "sm", className, children }: HelpTipProps) {
   const Icon = icon === "info" ? Info : HelpCircle
   const iconSize = size === "sm" ? "w-3.5 h-3.5" : "w-4 h-4"
+  const isMobile = useIsMobile()
+
+  if (isMobile) {
+    return children ? <>{children}</> : null
+  }
 
   return (
     <Tooltip delayDuration={200}>
