@@ -86,32 +86,52 @@ type PeriodData = { year: string; data: { month: string; records: any[] }[]; piv
 
 function SummaryTable({ pivotData, year, hasData }: { pivotData: any[]; year: string; hasData: boolean }) {
   return (
-    <div className="overflow-x-auto border border-slate-200 rounded">
-      <table className="w-full text-xs" data-testid={`transaction-summary-grid-${year}`}>
-        <thead>
-          <tr className="bg-slate-100 border-b border-slate-200">
-            <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap sticky left-0 bg-slate-100 min-w-[180px]">Description</th>
-            <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap">Financial Year</th>
-            {MONTHS.map(m => (
-              <th key={m} className="text-right px-3 py-2 font-semibold text-slate-700 whitespace-nowrap">{m}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {!hasData ? (
-            <tr><td colSpan={14} className="text-center text-slate-400 py-4">No records to display</td></tr>
-          ) : pivotData.map((row: any, i: number) => (
-            <tr key={i} className={`border-b border-slate-100 hover:bg-slate-50 ${row.isBold ? 'bg-slate-50 font-bold' : ''} ${row.isSpecial ? 'border-t border-slate-200' : ''}`}>
-              <td className={`px-3 py-2 whitespace-nowrap sticky left-0 ${row.isBold ? 'bg-slate-50 font-bold text-slate-900' : row.isSpecial ? 'bg-white text-slate-600 italic' : 'bg-white text-slate-700'}`}>{row.description}</td>
-              <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{year}</td>
+    <>
+      <div className="sm:hidden space-y-2" data-testid={`transaction-summary-grid-${year}-mobile`}>
+        {!hasData ? (
+          <div className="text-center text-slate-400 py-4 text-sm">No records to display</div>
+        ) : pivotData.map((row: any, i: number) => (
+            <div key={i} className={`border rounded-lg p-3 ${row.isBold ? 'bg-slate-50 border-slate-300' : row.isSpecial ? 'bg-slate-50/50 border-slate-200' : 'bg-white border-slate-200'}`}>
+              <div className={`text-xs mb-1.5 ${row.isBold ? 'font-bold text-slate-900' : row.isSpecial ? 'italic text-slate-600' : 'font-semibold text-slate-800'}`}>{row.description}</div>
+              <div className="text-[10px] text-slate-400 mb-1.5">{year}</div>
+              <div className="grid grid-cols-3 gap-x-3 gap-y-1">
+                {MONTHS.map(m => (
+                  <div key={m} className="flex justify-between items-baseline">
+                    <span className="text-[10px] text-slate-400 font-medium">{m.slice(0, 3)}</span>
+                    <span className={`font-mono text-[11px] ${row.isBold ? 'font-bold' : ''} ${(row[m] || 0) < 0 ? 'text-red-600' : (row[m] || 0) === 0 ? 'text-slate-300' : 'text-slate-700'}`}>{fmtAmount(row[m])}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+        ))}
+      </div>
+      <div className="hidden sm:block overflow-x-auto border border-slate-200 rounded">
+        <table className="w-full text-xs" data-testid={`transaction-summary-grid-${year}`}>
+          <thead>
+            <tr className="bg-slate-100 border-b border-slate-200">
+              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap sticky left-0 bg-slate-100 min-w-[180px]">Description</th>
+              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap">Financial Year</th>
               {MONTHS.map(m => (
-                <td key={m} className={`px-3 py-2 text-right whitespace-nowrap font-mono ${row.isBold ? 'font-bold text-slate-900' : 'text-slate-700'} ${(row[m] || 0) < 0 ? 'text-red-600' : ''}`}>{fmtAmount(row[m])}</td>
+                <th key={m} className="text-right px-3 py-2 font-semibold text-slate-700 whitespace-nowrap">{m}</th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {!hasData ? (
+              <tr><td colSpan={14} className="text-center text-slate-400 py-4">No records to display</td></tr>
+            ) : pivotData.map((row: any, i: number) => (
+              <tr key={i} className={`border-b border-slate-100 hover:bg-slate-50 ${row.isBold ? 'bg-slate-50 font-bold' : ''} ${row.isSpecial ? 'border-t border-slate-200' : ''}`}>
+                <td className={`px-3 py-2 whitespace-nowrap sticky left-0 ${row.isBold ? 'bg-slate-50 font-bold text-slate-900' : row.isSpecial ? 'bg-white text-slate-600 italic' : 'bg-white text-slate-700'}`}>{row.description}</td>
+                <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{year}</td>
+                {MONTHS.map(m => (
+                  <td key={m} className={`px-3 py-2 text-right whitespace-nowrap font-mono ${row.isBold ? 'font-bold text-slate-900' : 'text-slate-700'} ${(row[m] || 0) < 0 ? 'text-red-600' : ''}`}>{fmtAmount(row[m])}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
@@ -934,24 +954,39 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
                   </div>
                 </div>
                 <div className="border-t border-slate-100">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="bg-gradient-to-r from-teal-600 to-teal-700 text-white">
-                        <th className="px-3 py-2 text-right font-semibold">Amount</th>
-                        <th className="px-3 py-2 text-right font-semibold">Interest</th>
-                        <th className="px-3 py-2 text-right font-semibold">VAT</th>
-                        <th className="px-3 py-2 text-right font-semibold">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-b border-slate-100">
-                        <td className={`px-3 py-2.5 text-right font-mono font-semibold ${(selectedTxn.amount || 0) < 0 ? 'text-red-600' : 'text-slate-800'}`}>{fmt(selectedTxn.amount)}</td>
-                        <td className="px-3 py-2.5 text-right font-mono text-slate-700">{fmt(selectedTxn.interest ?? 0)}</td>
-                        <td className="px-3 py-2.5 text-right font-mono text-slate-700">{fmt(selectedTxn.vat ?? 0)}</td>
-                        <td className={`px-3 py-2.5 text-right font-mono font-bold ${(selectedTxn.total || 0) < 0 ? 'text-red-600' : 'text-blue-700'}`}>{fmt(selectedTxn.total)}</td>
-                      </tr>
-                    </tbody>
-                  </table>
+                  <div className="sm:hidden grid grid-cols-2 gap-px bg-slate-200">
+                    {[
+                      { label: 'Amount', value: fmt(selectedTxn.amount), color: (selectedTxn.amount || 0) < 0 ? 'text-red-600' : 'text-slate-800', bold: true },
+                      { label: 'Interest', value: fmt(selectedTxn.interest ?? 0), color: 'text-slate-700', bold: false },
+                      { label: 'VAT', value: fmt(selectedTxn.vat ?? 0), color: 'text-slate-700', bold: false },
+                      { label: 'Total', value: fmt(selectedTxn.total), color: (selectedTxn.total || 0) < 0 ? 'text-red-600' : 'text-blue-700', bold: true },
+                    ].map(item => (
+                      <div key={item.label} className="bg-white p-2.5 flex justify-between items-center">
+                        <span className="text-[10px] uppercase tracking-wider text-teal-700 font-semibold">{item.label}</span>
+                        <span className={`font-mono text-sm ${item.bold ? 'font-bold' : 'font-semibold'} ${item.color}`}>{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden sm:block">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-teal-600 to-teal-700 text-white">
+                          <th className="px-3 py-2 text-right font-semibold">Amount</th>
+                          <th className="px-3 py-2 text-right font-semibold">Interest</th>
+                          <th className="px-3 py-2 text-right font-semibold">VAT</th>
+                          <th className="px-3 py-2 text-right font-semibold">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b border-slate-100">
+                          <td className={`px-3 py-2.5 text-right font-mono font-semibold ${(selectedTxn.amount || 0) < 0 ? 'text-red-600' : 'text-slate-800'}`}>{fmt(selectedTxn.amount)}</td>
+                          <td className="px-3 py-2.5 text-right font-mono text-slate-700">{fmt(selectedTxn.interest ?? 0)}</td>
+                          <td className="px-3 py-2.5 text-right font-mono text-slate-700">{fmt(selectedTxn.vat ?? 0)}</td>
+                          <td className={`px-3 py-2.5 text-right font-mono font-bold ${(selectedTxn.total || 0) < 0 ? 'text-red-600' : 'text-blue-700'}`}>{fmt(selectedTxn.total)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
 
@@ -966,41 +1001,66 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
                     <span className="text-sm text-slate-500">Loading detail...</span>
                   </div>
                 ) : typeof txnDetailData === 'string' && txnDetailData.length > 0 ? (
-                  <div className="p-4 overflow-x-auto platinum-detail-html" dangerouslySetInnerHTML={{ __html: txnDetailData }} />
+                  <div className="p-2 sm:p-4 overflow-x-auto platinum-detail-html platinum-detail-mobile" dangerouslySetInnerHTML={{ __html: txnDetailData }} />
                 ) : Array.isArray(txnDetailData) && txnDetailData.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="bg-slate-100 border-b border-slate-200">
-                          {Object.keys(txnDetailData[0]).filter(k => !k.startsWith('_') && k !== 'id').slice(0, 12).map(key => (
-                            <th key={key} className="text-left px-3 py-2 font-semibold text-slate-600 whitespace-nowrap text-[10px] uppercase tracking-wider">
-                              {key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim()}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {txnDetailData.map((row: any, ri: number) => {
-                          const keys = Object.keys(row).filter(k => !k.startsWith('_') && k !== 'id').slice(0, 12);
-                          return (
-                            <tr key={ri} className="border-b border-slate-100 hover:bg-blue-50/30">
-                              {keys.map(key => {
-                                const val = row[key];
-                                const isNum = typeof val === 'number';
-                                const isNeg = isNum && val < 0;
-                                const isDate = typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val);
-                                return (
-                                  <td key={key} className={`px-3 py-2 whitespace-nowrap ${isNum ? 'text-right font-mono' : ''} ${isNeg ? 'text-red-600' : 'text-slate-700'}`}>
-                                    {isDate ? new Date(val).toLocaleDateString('en-ZA') : isNum ? fmt(val) : val != null ? String(val) : '-'}
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                  <>
+                    <div className="sm:hidden p-2 space-y-2">
+                      {txnDetailData.map((row: any, ri: number) => {
+                        const keys = Object.keys(row).filter(k => !k.startsWith('_') && k !== 'id').slice(0, 12);
+                        return (
+                          <div key={ri} className="bg-white border border-slate-200 rounded-lg p-3 space-y-1.5">
+                            {keys.map(key => {
+                              const val = row[key];
+                              const isNum = typeof val === 'number';
+                              const isNeg = isNum && val < 0;
+                              const isDate = typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val);
+                              const formatted = isDate ? new Date(val).toLocaleDateString('en-ZA') : isNum ? fmt(val) : val != null ? String(val) : '-';
+                              const label = key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim();
+                              return (
+                                <div key={key} className="flex justify-between items-baseline gap-2">
+                                  <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold shrink-0">{label}</span>
+                                  <span className={`text-xs text-right ${isNum ? 'font-mono font-semibold' : ''} ${isNeg ? 'text-red-600' : 'text-slate-700'}`}>{formatted}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="hidden sm:block overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="bg-slate-100 border-b border-slate-200">
+                            {Object.keys(txnDetailData[0]).filter(k => !k.startsWith('_') && k !== 'id').slice(0, 12).map(key => (
+                              <th key={key} className="text-left px-3 py-2 font-semibold text-slate-600 whitespace-nowrap text-[10px] uppercase tracking-wider">
+                                {key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim()}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {txnDetailData.map((row: any, ri: number) => {
+                            const keys = Object.keys(row).filter(k => !k.startsWith('_') && k !== 'id').slice(0, 12);
+                            return (
+                              <tr key={ri} className="border-b border-slate-100 hover:bg-blue-50/30">
+                                {keys.map(key => {
+                                  const val = row[key];
+                                  const isNum = typeof val === 'number';
+                                  const isNeg = isNum && val < 0;
+                                  const isDate = typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val);
+                                  return (
+                                    <td key={key} className={`px-3 py-2 whitespace-nowrap ${isNum ? 'text-right font-mono' : ''} ${isNeg ? 'text-red-600' : 'text-slate-700'}`}>
+                                      {isDate ? new Date(val).toLocaleDateString('en-ZA') : isNum ? fmt(val) : val != null ? String(val) : '-'}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
                 ) : txnDetailData !== null ? (
                   <div className="p-6 text-center text-slate-400 text-sm">
                     <Activity className="w-8 h-8 text-slate-200 mx-auto mb-2" />
@@ -1673,7 +1733,29 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
               <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Detailed Transactions</h3>
               <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{detailedTxns.length}</Badge>
             </div>
-            <div className="overflow-x-auto">
+            <div className="sm:hidden p-2 space-y-2">
+              {detailedTxns.map((item: any, i: number) => {
+                const isClosing = (item.serviceDesc || '').toLowerCase().includes('closing');
+                const isOpening = (item.serviceDesc || '').toLowerCase().includes('opening');
+                return (
+                  <div key={i} className={`border rounded-lg p-3 ${isClosing ? 'bg-slate-50 border-slate-300' : isOpening ? 'bg-slate-50/50 border-slate-200' : 'bg-white border-slate-200'}`} data-testid={`detailed-txn-card-${i}`}>
+                    <div className={`text-xs font-semibold mb-2 ${isClosing ? 'text-slate-900 font-bold' : 'text-slate-800'}`}>{item.serviceDesc || '-'}</div>
+                    <div className="grid grid-cols-3 gap-x-3 gap-y-1">
+                      {months.map((m, mi) => {
+                        const val = item[m] ?? 0;
+                        return (
+                          <div key={m} className="flex justify-between items-baseline">
+                            <span className="text-[10px] text-slate-400 font-medium">{monthLabels[mi]}</span>
+                            <span className={`font-mono text-[11px] ${val < 0 ? 'text-green-600' : val > 0 ? 'text-red-600' : 'text-slate-300'}`}>{fmtPivot(val)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-sm" data-testid="table-detailed-transactions">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
