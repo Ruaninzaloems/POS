@@ -1,6 +1,6 @@
 import { resolveApiUrl, getAuthHeaders } from "./pos-config-context";
 
-const TIMEOUT_MS = 30000;
+const TIMEOUT_MS = 15000;
 
 const apiCache = new Map<string, { data: any; ts: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
@@ -54,7 +54,7 @@ async function fetchOnce(url: string, options?: RequestInit): Promise<any> {
 }
 
 const MAX_RETRIES = 1;
-const RETRY_DELAY = 800;
+const RETRY_DELAY = 400;
 
 async function fetchWithTimeout(url: string, options?: RequestInit): Promise<any> {
   let lastError: any;
@@ -1311,17 +1311,33 @@ export async function getLookups(): Promise<any> {
 
 // === PREFETCH ===
 export async function prefetchAccountData(accountId: number): Promise<void> {
-  const calls = [
+  const critical = [
     getBasicAccountDetails(accountId),
-    getAccountBalance(accountId),
+    getAccountInfoResult(accountId),
     getPropertyDetails(accountId),
+    getAccountInformation(accountId),
+    getDepositAmount(accountId),
+    getNameInfo(accountId),
+    getAccountBalance(accountId),
+  ];
+  await Promise.allSettled(critical);
+
+  const secondary = [
     getAllServices(accountId),
     getContactDetails(accountId),
-    getNameInfo(accountId),
     getSectionalTitleScheme(accountId),
     getAccountNotifications(accountId),
     getServiceTypeBalance(accountId),
     getDeposits(accountId),
+    getPaymentIncentive(accountId),
+    getHandoverInfo(accountId),
+    getDepartmentalAccountsById(accountId),
+    getRepaymentPlanStatus(accountId),
+    getAccountDeliveryAddressDetail(accountId),
+    getServicesSearchResults(accountId),
+    getAdditionalBillingSearchResults(accountId),
+    getChequeFinalSearchList(accountId),
+    getConsumptionUnits(accountId),
   ];
-  await Promise.allSettled(calls);
+  Promise.allSettled(secondary);
 }

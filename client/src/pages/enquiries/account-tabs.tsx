@@ -34,7 +34,7 @@ import { LoadingSkeleton, EmptyState, ErrorState, InfoField, SectionHeader, Pagi
 import { downloadExcel } from '@/lib/excel-export';
 
 export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
-  const [loading, setLoading] = useState(true);
+  const [coreLoaded, setCoreLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [basic, setBasic] = useState<any>(null);
   const [air, setAir] = useState<any>(null);
@@ -55,73 +55,53 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
   const [nameInfo, setNameInfo] = useState<any>(null);
   const [consUnit, setConsUnit] = useState<any>(null);
   const [suppValuations, setSuppValuations] = useState<any[]>([]);
+  const [secondaryLoaded, setSecondaryLoaded] = useState(false);
   const loaded = useRef(false);
+  const activeAccountRef = useRef<number | null>(null);
 
   const accountId = account.account_ID || account.accountID;
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const results = await Promise.allSettled([
-        getBasicAccountDetails(accountId),
-        getAccountInfoResult(accountId),
-        getPropertyDetails(accountId),
-        getPartitionDetails(accountId),
-        getAccountInformation(accountId),
-        getPaymentIncentive(accountId),
-        getDepositAmount(accountId),
-        getHandoverInfo(accountId),
-        getDepartmentalAccountsById(accountId),
-        getSectionalTitleScheme(accountId),
-        getRepaymentPlanStatus(accountId),
-        getAccountDeliveryAddressDetail(accountId),
-        getServicesSearchResults(accountId),
-        getAdditionalBillingSearchResults(accountId),
-        getChequeFinalSearchList(accountId),
-        getNameInfo(accountId),
-        getConsumptionUnits(accountId),
-      ]);
+  useEffect(() => {
+    loaded.current = false;
+    activeAccountRef.current = accountId;
+  }, [accountId]);
 
+  const load = useCallback(async () => {
+    const currentId = accountId;
+    activeAccountRef.current = currentId;
+    setCoreLoaded(false);
+    setSecondaryLoaded(false);
+    setError(null);
+
+    const corePromises = Promise.allSettled([
+      getBasicAccountDetails(accountId),
+      getAccountInfoResult(accountId),
+      getPropertyDetails(accountId),
+      getAccountInformation(accountId),
+      getDepositAmount(accountId),
+      getNameInfo(accountId),
+    ]);
+
+    try {
+      const coreResults = await corePromises;
+      if (activeAccountRef.current !== currentId) return;
       const val = (r: PromiseSettledResult<any>, fallback: any = null) => r.status === 'fulfilled' ? r.value : fallback;
 
-      const bas = val(results[0]);
-      const airRes = val(results[1]);
-      const propRes = val(results[2]);
-      const partRes = val(results[3]);
-      const mgmt = val(results[4]);
-      const inc = val(results[5]);
-      const dep = val(results[6]);
-      const ho = val(results[7]);
-      const dept = val(results[8], []);
-      const st = val(results[9]);
-      const rpp = val(results[10]);
-      const da = val(results[11], []);
-      const svc = val(results[12], []);
-      const ab = val(results[13], []);
-      const ai = val(results[14], []);
-      const ni = val(results[15]);
-      const cu = val(results[16]);
+      const bas = val(coreResults[0]);
+      const airRes = val(coreResults[1]);
+      const propRes = val(coreResults[2]);
+      const mgmt = val(coreResults[3]);
+      const dep = val(coreResults[4]);
+      const ni = val(coreResults[5]);
 
       setBasic(bas);
       setAir(airRes);
       const propData = Array.isArray(propRes) ? propRes[0] : propRes;
       setProp(propData);
-      setPartition(Array.isArray(partRes) ? partRes[0] : partRes);
       setAcctMgmt(mgmt);
-      setIncentive(inc);
       setDepositAmt(dep);
-      setHandover(ho);
-      setDeptAccounts(Array.isArray(dept) ? dept : []);
-      setSectionalTitle(st);
-      setRppStatus(rpp);
-      setDeliveryAddresses(Array.isArray(da) ? da : da ? [da] : []);
-      setServices(Array.isArray(svc) ? svc : svc ? [svc] : []);
-      setAdditionalBilling(Array.isArray(ab) ? ab : ab ? [ab] : []);
-      setAdditionalInfo(Array.isArray(ai) ? ai : ai ? [ai] : []);
       setNameInfo(ni);
-      const cuData = Array.isArray(cu) ? cu[0] : cu;
-      setConsUnit(cuData);
+      setCoreLoaded(true);
 
       const rawUnitId = bas?.unitPartitionID || propData?.propertyId;
       const unitId = rawUnitId ? parseInt(String(rawUnitId), 10) : null;
@@ -132,11 +112,51 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
           if (pd) setPartition(Array.isArray(pd) ? pd[0] : pd);
         }).catch(() => {});
       }
+
+      const secondaryPromises = Promise.allSettled([
+        getPartitionDetails(accountId),
+        getPaymentIncentive(accountId),
+        getHandoverInfo(accountId),
+        getDepartmentalAccountsById(accountId),
+        getSectionalTitleScheme(accountId),
+        getRepaymentPlanStatus(accountId),
+        getAccountDeliveryAddressDetail(accountId),
+        getServicesSearchResults(accountId),
+        getAdditionalBillingSearchResults(accountId),
+        getChequeFinalSearchList(accountId),
+        getConsumptionUnits(accountId),
+      ]);
+
+      secondaryPromises.then(secResults => {
+        if (activeAccountRef.current !== currentId) return;
+        setPartition((prev: any) => {
+          const partRes = val(secResults[0]);
+          const parsed = Array.isArray(partRes) ? partRes[0] : partRes;
+          return prev || parsed;
+        });
+        setIncentive(val(secResults[1]));
+        setHandover(val(secResults[2]));
+        const dept = val(secResults[3], []);
+        setDeptAccounts(Array.isArray(dept) ? dept : []);
+        setSectionalTitle(val(secResults[4]));
+        setRppStatus(val(secResults[5]));
+        const da = val(secResults[6], []);
+        setDeliveryAddresses(Array.isArray(da) ? da : da ? [da] : []);
+        const svc = val(secResults[7], []);
+        setServices(Array.isArray(svc) ? svc : svc ? [svc] : []);
+        const ab = val(secResults[8], []);
+        setAdditionalBilling(Array.isArray(ab) ? ab : ab ? [ab] : []);
+        const ai = val(secResults[9], []);
+        setAdditionalInfo(Array.isArray(ai) ? ai : ai ? [ai] : []);
+        const cu = val(secResults[10]);
+        setConsUnit(Array.isArray(cu) ? cu[0] : cu);
+        setSecondaryLoaded(true);
+      }).catch(() => setSecondaryLoaded(true));
+
       loaded.current = true;
     } catch (e: any) {
       setError(e.message || 'Failed to load account information');
-    } finally {
-      setLoading(false);
+      setCoreLoaded(true);
     }
   }, [accountId]);
 
@@ -278,7 +298,7 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
 
   return (
     <div className="p-4 sm:p-5 space-y-4" data-testid="account-info-panel">
-      {loading ? <LoadingSkeleton /> : error ? <ErrorState message={error} onRetry={load} /> : (
+      {error && !coreLoaded ? <ErrorState message={error} onRetry={load} /> : (
         <>
           <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-2xl shadow-lg overflow-hidden" data-testid="account-hero">
             <div className="p-5 sm:p-6">
@@ -345,21 +365,27 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
           </div>
 
           <CollapsibleSection id="account" title="Account Details" icon={<CreditCard className="w-4 h-4" />} color="from-blue-600 to-blue-700">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0">
-              <DetailItem label="Account Number" value={accountNumber} icon={<CreditCard className="w-4 h-4" />} mono accent />
-              <DetailItem label="Name" value={accName} icon={<User className="w-4 h-4" />} />
-              <DetailItem label="Account Group" value={accountGroup} icon={<Layers className="w-4 h-4" />} />
-              <DetailItem label="Payment Group" value={paymentGroup} icon={<Banknote className="w-4 h-4" />} />
-              <DetailItem label="Account Type" value={accountType} icon={<Briefcase className="w-4 h-4" />} />
-              <DetailItem label="Sub Account Group" value={subAccountGroup} icon={<Layers className="w-4 h-4" />} />
-              <DetailItem label="Incentive Scheme" value={incentiveCode} icon={<Gift className="w-4 h-4" />} />
-              <DetailItem label="Contact Number" value={contactNo} icon={<Phone className="w-4 h-4" />} />
-              <DetailItem label="Email" value={email} icon={<FileText className="w-4 h-4" />} />
-              <DetailItem label="Deposit Amount" value={depositDisplay} icon={<Banknote className="w-4 h-4" />} />
-              <DetailItem label="Billing Cycle" value={billingCycle} icon={<RefreshCw className="w-4 h-4" />} />
-              <DetailItem label="Delivery Address" value={deliveryAddr} icon={<MapPin className="w-4 h-4" />} />
-              <DetailItem label="Old Account Code" value={oldPropertyCode} icon={<FileText className="w-4 h-4" />} mono />
-            </div>
+            {!coreLoaded ? (
+              <div className="p-4 space-y-2">
+                {[...Array(6)].map((_, i) => <div key={i} className="h-5 bg-slate-100 rounded animate-pulse" style={{ width: `${60 + Math.random() * 30}%` }} />)}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0">
+                <DetailItem label="Account Number" value={accountNumber} icon={<CreditCard className="w-4 h-4" />} mono accent />
+                <DetailItem label="Name" value={accName} icon={<User className="w-4 h-4" />} />
+                <DetailItem label="Account Group" value={accountGroup} icon={<Layers className="w-4 h-4" />} />
+                <DetailItem label="Payment Group" value={paymentGroup} icon={<Banknote className="w-4 h-4" />} />
+                <DetailItem label="Account Type" value={accountType} icon={<Briefcase className="w-4 h-4" />} />
+                <DetailItem label="Sub Account Group" value={subAccountGroup} icon={<Layers className="w-4 h-4" />} />
+                <DetailItem label="Incentive Scheme" value={incentiveCode} icon={<Gift className="w-4 h-4" />} />
+                <DetailItem label="Contact Number" value={contactNo} icon={<Phone className="w-4 h-4" />} />
+                <DetailItem label="Email" value={email} icon={<FileText className="w-4 h-4" />} />
+                <DetailItem label="Deposit Amount" value={depositDisplay} icon={<Banknote className="w-4 h-4" />} />
+                <DetailItem label="Billing Cycle" value={billingCycle} icon={<RefreshCw className="w-4 h-4" />} />
+                <DetailItem label="Delivery Address" value={deliveryAddr} icon={<MapPin className="w-4 h-4" />} />
+                <DetailItem label="Old Account Code" value={oldPropertyCode} icon={<FileText className="w-4 h-4" />} mono />
+              </div>
+            )}
           </CollapsibleSection>
 
           <CollapsibleSection
@@ -374,53 +400,65 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
               </div>
             }
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4">
-              {[
-                { label: 'Account Status', value: accountStatus, icon: <Shield className="w-4 h-4" /> },
-                { label: 'Interest Waiver', value: interestWaiver, icon: <Scale className="w-4 h-4" /> },
-                { label: 'Indigent Subsidy', value: indigentStatus, icon: <Heart className="w-4 h-4" /> },
-                { label: 'Consumer RPP', value: consumerRpp, icon: <Shield className="w-4 h-4" /> },
-                { label: 'Departmental Account', value: deptAccount, icon: <Building2 className="w-4 h-4" /> },
-                { label: 'Rebate Status', value: rebateStatus, icon: <Gift className="w-4 h-4" /> },
-                { label: 'Handover Status', value: handoverStatus, icon: <AlertTriangle className="w-4 h-4" /> },
-                { label: 'Loan RPP', value: loanRpp, icon: <Landmark className="w-4 h-4" /> },
-                { label: 'Registration', value: registrationStatus, icon: <FileText className="w-4 h-4" /> },
-              ].map(item => {
-                const sv = safeStr(item.value).toLowerCase();
-                const isPositive = sv.includes('active') || sv.includes('applied') || sv.includes('registered') || sv === 'yes';
-                const isNegative = sv.includes('handed over') || sv.includes('cancelled') || sv.includes('inactive');
-                const isNA = sv === 'n/a' || sv === '-';
-                return (
-                  <div key={item.label} className={`rounded-xl border p-3 transition-all duration-200 hover:shadow-md cursor-default ${isPositive ? 'bg-green-50 border-green-200' : isNegative ? 'bg-red-50 border-red-200' : isNA ? 'bg-slate-50 border-slate-200' : 'bg-white border-slate-200'}`}>
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <span className={`${isPositive ? 'text-green-500' : isNegative ? 'text-red-500' : 'text-slate-400'}`}>{item.icon}</span>
-                      <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">{item.label}</span>
+            {!secondaryLoaded && !incentive && !handover ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4">
+                {[...Array(9)].map((_, i) => <div key={i} className="rounded-xl border border-slate-100 p-3 bg-slate-50 animate-pulse h-[60px]" />)}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4">
+                {[
+                  { label: 'Account Status', value: accountStatus, icon: <Shield className="w-4 h-4" /> },
+                  { label: 'Interest Waiver', value: interestWaiver, icon: <Scale className="w-4 h-4" /> },
+                  { label: 'Indigent Subsidy', value: indigentStatus, icon: <Heart className="w-4 h-4" /> },
+                  { label: 'Consumer RPP', value: consumerRpp, icon: <Shield className="w-4 h-4" /> },
+                  { label: 'Departmental Account', value: deptAccount, icon: <Building2 className="w-4 h-4" /> },
+                  { label: 'Rebate Status', value: rebateStatus, icon: <Gift className="w-4 h-4" /> },
+                  { label: 'Handover Status', value: handoverStatus, icon: <AlertTriangle className="w-4 h-4" /> },
+                  { label: 'Loan RPP', value: loanRpp, icon: <Landmark className="w-4 h-4" /> },
+                  { label: 'Registration', value: registrationStatus, icon: <FileText className="w-4 h-4" /> },
+                ].map(item => {
+                  const sv = safeStr(item.value).toLowerCase();
+                  const isPositive = sv.includes('active') || sv.includes('applied') || sv.includes('registered') || sv === 'yes';
+                  const isNegative = sv.includes('handed over') || sv.includes('cancelled') || sv.includes('inactive');
+                  const isNA = sv === 'n/a' || sv === '-';
+                  return (
+                    <div key={item.label} className={`rounded-xl border p-3 transition-all duration-200 hover:shadow-md cursor-default ${isPositive ? 'bg-green-50 border-green-200' : isNegative ? 'bg-red-50 border-red-200' : isNA ? 'bg-slate-50 border-slate-200' : 'bg-white border-slate-200'}`}>
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className={`${isPositive ? 'text-green-500' : isNegative ? 'text-red-500' : 'text-slate-400'}`}>{item.icon}</span>
+                        <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">{item.label}</span>
+                      </div>
+                      <div className={`text-[13px] font-semibold ${isPositive ? 'text-green-800' : isNegative ? 'text-red-800' : 'text-slate-700'}`}>{safeStr(item.value)}</div>
                     </div>
-                    <div className={`text-[13px] font-semibold ${isPositive ? 'text-green-800' : isNegative ? 'text-red-800' : 'text-slate-700'}`}>{safeStr(item.value)}</div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </CollapsibleSection>
 
           <CollapsibleSection id="property" title="Property Information" icon={<Home className="w-4 h-4" />} color="from-violet-600 to-violet-700">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0">
-              <DetailItem label="SG Number" value={sgNumber} icon={<FileText className="w-4 h-4" />} mono />
-              <DetailItem label="Property ID" value={propertyId} icon={<Home className="w-4 h-4" />} mono />
-              <DetailItem label="Property Status" value={propertyStatus} icon={<Shield className="w-4 h-4" />} />
-              <DetailItem label="Location Address" value={locationAddress} icon={<MapPin className="w-4 h-4" />} />
-              <DetailItem label="Allotment Area" value={allotmentArea} icon={<MapPin className="w-4 h-4" />} />
-              <DetailItem label="Farm Name" value={farmName} icon={<Home className="w-4 h-4" />} />
-              <DetailItem label="Property Type" value={propertyType} icon={<Building2 className="w-4 h-4" />} />
-              <DetailItem label="Type of Use" value={typeOfUse} icon={<Briefcase className="w-4 h-4" />} />
-              <DetailItem label="Property Category" value={propertyCategory} icon={<Layers className="w-4 h-4" />} />
-              <DetailItem label="Market Value" value={propertyMarketValue} icon={<Banknote className="w-4 h-4" />} />
-              <DetailItem label="Magisterial District" value={magisterialDistrict} icon={<MapPin className="w-4 h-4" />} />
-              <DetailItem label="Sectional Title Scheme" value={sectionalTitleSchemeVal} icon={<Building2 className="w-4 h-4" />} />
-              <DetailItem label="Accountable Owner" value={accountableOwner} icon={<User className="w-4 h-4" />} />
-              <DetailItem label="Latitude" value={latitude} icon={<MapPin className="w-4 h-4" />} mono />
-              <DetailItem label="Longitude" value={longitude} icon={<MapPin className="w-4 h-4" />} mono />
-            </div>
+            {!coreLoaded ? (
+              <div className="p-4 space-y-2">
+                {[...Array(5)].map((_, i) => <div key={i} className="h-5 bg-slate-100 rounded animate-pulse" style={{ width: `${50 + Math.random() * 40}%` }} />)}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0">
+                <DetailItem label="SG Number" value={sgNumber} icon={<FileText className="w-4 h-4" />} mono />
+                <DetailItem label="Property ID" value={propertyId} icon={<Home className="w-4 h-4" />} mono />
+                <DetailItem label="Property Status" value={propertyStatus} icon={<Shield className="w-4 h-4" />} />
+                <DetailItem label="Location Address" value={locationAddress} icon={<MapPin className="w-4 h-4" />} />
+                <DetailItem label="Allotment Area" value={allotmentArea} icon={<MapPin className="w-4 h-4" />} />
+                <DetailItem label="Farm Name" value={farmName} icon={<Home className="w-4 h-4" />} />
+                <DetailItem label="Property Type" value={propertyType} icon={<Building2 className="w-4 h-4" />} />
+                <DetailItem label="Type of Use" value={typeOfUse} icon={<Briefcase className="w-4 h-4" />} />
+                <DetailItem label="Property Category" value={propertyCategory} icon={<Layers className="w-4 h-4" />} />
+                <DetailItem label="Market Value" value={propertyMarketValue} icon={<Banknote className="w-4 h-4" />} />
+                <DetailItem label="Magisterial District" value={magisterialDistrict} icon={<MapPin className="w-4 h-4" />} />
+                <DetailItem label="Sectional Title Scheme" value={sectionalTitleSchemeVal} icon={<Building2 className="w-4 h-4" />} />
+                <DetailItem label="Accountable Owner" value={accountableOwner} icon={<User className="w-4 h-4" />} />
+                <DetailItem label="Latitude" value={latitude} icon={<MapPin className="w-4 h-4" />} mono />
+                <DetailItem label="Longitude" value={longitude} icon={<MapPin className="w-4 h-4" />} mono />
+              </div>
+            )}
           </CollapsibleSection>
 
           <CollapsibleSection id="partition" title="Partition & Valuation" icon={<Scale className="w-4 h-4" />} color="from-amber-600 to-amber-700">
