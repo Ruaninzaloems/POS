@@ -16,8 +16,8 @@ import {
   BarChart3, ChevronDown, Check
 } from 'lucide-react';
 import {
-  searchAccounts, getAccountBalance, multiAutocompleteSearch, getAutocompleteType,
-  autocomplete, prefetchAccountData, clearEnquiryCache,
+  searchAccounts, getAccountBalance, getAutocompleteType,
+  autocomplete, autocompleteSearch, prefetchAccountData, clearEnquiryCache,
   type EnquirySearchCriteria, type EnquirySearchResult,
 } from '@/lib/enquiries-service';
 
@@ -266,34 +266,21 @@ function GeneralEnquiriesContent() {
     const { field } = detectSearchType(query);
     const token = ++quickSearchTokenRef.current;
     try {
-      const enquiryPromise = searchAccounts({ [field]: query.trim() } as any).catch(() => [] as EnquirySearchResult[]);
-      const acPromise = multiAutocompleteSearch(query.trim()).catch(() => ({ suggestions: [], results: [] as EnquirySearchResult[] }));
-
-      const eqResults = await enquiryPromise;
+      let results = await searchAccounts({ [field]: query.trim() } as any).catch(() => [] as EnquirySearchResult[]);
       if (quickSearchTokenRef.current !== token) return;
-      if (eqResults.length > 0) {
-        setDropdownResults(eqResults);
-        setShowDropdown(true);
-        setDropdownSearching(false);
-        enrichWithBalances(eqResults, quickSearchTokenRef, token, setDropdownResults);
+      if (results.length === 0) {
+        results = await autocompleteSearch(query.trim(), field).catch(() => [] as EnquirySearchResult[]);
+        if (quickSearchTokenRef.current !== token) return;
       }
-
-      const acData = await acPromise;
-      if (quickSearchTokenRef.current !== token) return;
-      const acResults = acData.results || [];
-      if (acResults.length > 0 || eqResults.length > 0) {
-        const seen = new Set<number>();
-        const merged: EnquirySearchResult[] = [];
-        for (const r of [...eqResults, ...acResults]) {
-          const id = r.account_ID || r.accountID;
-          if (id && !seen.has(id)) { seen.add(id); merged.push(r); }
-        }
-        setDropdownResults(merged);
-        setShowDropdown(true);
-        enrichWithBalances(merged, quickSearchTokenRef, token, setDropdownResults);
-      } else {
-        setDropdownResults([]);
-        setShowDropdown(true);
+      setDropdownResults(results);
+      setShowDropdown(true);
+      if (results.length > 0) {
+        enrichWithBalances(results.slice(0, 10), quickSearchTokenRef, token, (enriched) => {
+          if (quickSearchTokenRef.current !== token) return;
+          const enrichMap = new Map<number, EnquirySearchResult>();
+          enriched.forEach(r => { const id = r.account_ID || r.accountID; if (id) enrichMap.set(id, r); });
+          setDropdownResults(prev => prev.map(r => { const id = r.account_ID || r.accountID; return id && enrichMap.has(id) ? enrichMap.get(id)! : r; }));
+        });
       }
     } catch (e: any) {
       if (quickSearchTokenRef.current === token) setDropdownResults([]);
@@ -309,7 +296,7 @@ function GeneralEnquiriesContent() {
     if (val.trim().length >= 2) {
       setShowDropdown(true);
       setDropdownSearching(true);
-      debounceRef.current = setTimeout(() => doQuickSearch(val), 250);
+      debounceRef.current = setTimeout(() => doQuickSearch(val), 400);
     } else {
       setShowDropdown(val.trim().length > 0);
       setDropdownResults([]);
@@ -369,39 +356,16 @@ function GeneralEnquiriesContent() {
         const { field } = detectSearchType(quickQuery);
         searchCriteria = { ...searchCriteria, [field]: quickQuery.trim() };
       }
-      let data: EnquirySearchResult[];
-      if (hasQuick && !hasAdvanced) {
-        const mainPromise = searchAccounts(searchCriteria);
-        const acPromise = multiAutocompleteSearch(quickQuery.trim());
-        const mainResults = await mainPromise;
-        if (fullSearchTokenRef.current !== token) return;
-        setResults(mainResults);
-        if (mainResults.length > 0) { setMobileFormCollapsed(true); setFieldSearchOpen(false); }
-        setSearching(false);
-        enrichWithBalances(mainResults, fullSearchTokenRef, token, setResults);
-        try {
-          const acData = await acPromise;
-          if (fullSearchTokenRef.current !== token) return;
-          const acResults = acData.results || [];
-          if (acResults.length > 0) {
-            const seen = new Set<number>();
-            data = [];
-            for (const r of [...mainResults, ...acResults]) {
-              const id = r.account_ID || r.accountID;
-              if (id && !seen.has(id)) { seen.add(id); data.push(r); }
-            }
-            setResults(data);
-            enrichWithBalances(data, fullSearchTokenRef, token, setResults);
-          }
-        } catch {}
-        return;
-      } else {
-        data = await searchAccounts(searchCriteria);
-      }
+      let data = await searchAccounts(searchCriteria);
       if (fullSearchTokenRef.current !== token) return;
+      if (data.length === 0 && hasQuick) {
+        const { field } = detectSearchType(quickQuery);
+        data = await autocompleteSearch(quickQuery.trim(), field).catch(() => [] as EnquirySearchResult[]);
+        if (fullSearchTokenRef.current !== token) return;
+      }
       setResults(data);
       if (data.length > 0) { setMobileFormCollapsed(true); setFieldSearchOpen(false); }
-      enrichWithBalances(data, fullSearchTokenRef, token, setResults);
+      enrichWithBalances(data.slice(0, 20), fullSearchTokenRef, token, setResults);
     } catch (e: any) {
       if (fullSearchTokenRef.current === token) {
         setSearchError(e.message || 'Search failed');
