@@ -19,14 +19,28 @@ export function PaymentDrawer() {
     transactionItems, 
     removeItem,
     dayEndStatus,
-    viewMode
+    viewMode,
+    isPaymentTypeAllowed
   } = usePos();
 
-  const [activeInput, setActiveInput] = useState<'cash' | 'card'>('cash');
+  const cashAllowed = isPaymentTypeAllowed(1);
+  const cardAllowed = isPaymentTypeAllowed(3);
+  const defaultInput = cashAllowed ? 'cash' : cardAllowed ? 'card' : 'cash';
+  const [activeInput, setActiveInput] = useState<'cash' | 'card'>(defaultInput);
   const [inputBuffer, setInputBuffer] = useState<string>("");
   const [showDayEnd, setShowDayEnd] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
+
+  React.useEffect(() => {
+      if (!cashAllowed && activeInput === 'cash' && cardAllowed) setActiveInput('card');
+      if (!cardAllowed && activeInput === 'card' && cashAllowed) setActiveInput('cash');
+  }, [cashAllowed, cardAllowed]);
+
+  React.useEffect(() => {
+      if (!cashAllowed && payment.cashAmount > 0) setPaymentAmount('cash', 0);
+      if (!cardAllowed && payment.cardAmount > 0) setPaymentAmount('card', 0);
+  }, [cashAllowed, cardAllowed]);
 
   // Sync buffer when switching inputs or external changes (simplified)
   React.useEffect(() => {
@@ -190,8 +204,15 @@ export function PaymentDrawer() {
                      </div>
                  ) : (
                  <>
-                    {/* Input Selection */}
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* Input Selection - filtered by cashier payment type permissions */}
+                    {!cashAllowed && !cardAllowed && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center text-amber-800 text-sm">
+                            <AlertTriangle className="w-5 h-5 mx-auto mb-1 opacity-70" />
+                            No payment types enabled for your profile. Contact your supervisor.
+                        </div>
+                    )}
+                    <div className={`grid gap-4 ${cashAllowed && cardAllowed ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                        {cashAllowed && (
                         <div 
                             onClick={() => setActiveInput('cash')}
                             className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${activeInput === 'cash' ? 'border-blue-500 bg-blue-50/30 ring-2 ring-blue-200/50' : 'border-slate-200 bg-slate-50 hover:bg-slate-100/80'}`}
@@ -217,7 +238,9 @@ export function PaymentDrawer() {
                                 onFocus={() => setActiveInput('cash')}
                             />
                         </div>
+                        )}
 
+                        {cardAllowed && (
                         <div 
                             onClick={() => setActiveInput('card')}
                             className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${activeInput === 'card' ? 'border-blue-500 bg-blue-50/30 ring-2 ring-blue-200/50' : 'border-slate-200 bg-slate-50 hover:bg-slate-100/80'}`}
@@ -243,6 +266,7 @@ export function PaymentDrawer() {
                                 onFocus={() => setActiveInput('card')}
                             />
                         </div>
+                        )}
                     </div>
 
                     {payment.cardAmount > 0 && (
