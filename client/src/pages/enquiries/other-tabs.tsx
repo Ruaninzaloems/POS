@@ -1344,19 +1344,19 @@ export function StatementsTab({ accountId }: { accountId: number }) {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)} data-testid="statement-modal-overlay">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-slate-700 to-slate-800 rounded-t-2xl flex items-center justify-between">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" onClick={() => setShowModal(false)} data-testid="statement-modal-overlay">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-w-3xl w-full max-h-[92vh] sm:max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 bg-gradient-to-r from-slate-700 to-slate-800 rounded-t-2xl flex items-center justify-between sticky top-0 z-10">
               <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-white" />
-                <h4 className="text-base font-bold text-white">Account Summary</h4>
+                <FileText className="w-4 sm:w-5 h-4 sm:h-5 text-white" />
+                <h4 className="text-sm sm:text-base font-bold text-white">Account Summary</h4>
               </div>
               <button onClick={() => setShowModal(false)} className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors" data-testid="button-close-stmt-x">
                 <X className="w-4 h-4 text-white" />
               </button>
             </div>
-            <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
-              <div className="flex items-center gap-6 bg-slate-50 rounded-xl p-4 border border-slate-200">
+            <div className="p-3 sm:p-6 space-y-3 sm:space-y-5">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6 bg-slate-50 rounded-xl p-3 sm:p-4 border border-slate-200">
                 <label className="flex items-center gap-2.5 text-sm cursor-pointer group">
                   <input type="radio" name="stmtType" checked={statementType === 'account'} onChange={() => setStatementType('account')} className="w-4 h-4 text-blue-600" data-testid="radio-account-statement" />
                   <span className={`font-medium ${statementType === 'account' ? 'text-blue-700' : 'text-slate-600'}`}>Account Statement</span>
@@ -1367,25 +1367,27 @@ export function StatementsTab({ accountId }: { accountId: number }) {
                 </label>
               </div>
 
-              <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                 <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
                   <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider">Account</span>
                   <span className="text-sm font-mono font-bold text-blue-800">{accountNumber}</span>
                 </div>
-                <select value={modalYear} onChange={e => setModalYear(e.target.value)} className="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" data-testid="select-stmt-year">
-                  {years.map(y => <option key={y} value={y}>{y}</option>)}
-                </select>
-                <select value={modalMonth} onChange={e => setModalMonth(e.target.value)} className="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" data-testid="select-stmt-month">
-                  <option value="">All Months</option>
-                  {['January','February','March','April','May','June','July','August','September','October','November','December'].map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-3">
+                  <select value={modalYear} onChange={e => setModalYear(e.target.value)} className="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" data-testid="select-stmt-year">
+                    {years.map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                  <select value={modalMonth} onChange={e => setModalMonth(e.target.value)} className="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" data-testid="select-stmt-month">
+                    <option value="">All Months</option>
+                    {['January','February','March','April','May','June','July','August','September','October','November','December'].map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
               </div>
 
               <div className="flex justify-center">
                 <button
                   onClick={handleGenerateStatement}
                   disabled={generating}
-                  className="inline-flex items-center gap-2 px-8 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-md disabled:opacity-50"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-md disabled:opacity-50"
                   data-testid="button-submit-stmt"
                 >
                   {generating ? (
@@ -1404,53 +1406,80 @@ export function StatementsTab({ accountId }: { accountId: number }) {
 
               {generateResult && (
                 <div className={`p-3 rounded-lg text-sm ${generateResult.error ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
-                  {generateResult.error || 'Statement generated successfully. Check the table below for download.'}
+                  {generateResult.error || 'Statement generated successfully. Check below for download.'}
                 </div>
               )}
 
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                <table className="w-full text-sm" data-testid="table-stmt-download">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200">
-                      <th className="text-left px-4 py-2.5 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Financial Year</th>
-                      <th className="text-left px-4 py-2.5 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Month</th>
-                      <th className="text-center px-4 py-2.5 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Download</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredData.length === 0 ? (
-                      <tr><td colSpan={3} className="text-center text-slate-400 py-6 text-sm">No statements found for selected period</td></tr>
-                    ) : filteredData.map((s: any, i: number) => (
-                      <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors" data-testid={`stmt-download-row-${i}`}>
-                        <td className="px-4 py-3 text-slate-700 font-medium">{s.financialYear}</td>
-                        <td className="px-4 py-3 text-slate-700">{s.month}</td>
-                        <td className="px-4 py-3 text-center">
-                          <button
-                            onClick={() => handleDownload(s)}
-                            disabled={downloading === s.accountstatement_id}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs font-semibold rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all shadow-sm disabled:opacity-40"
-                            title="Download Statement PDF"
-                            data-testid={`btn-download-stmt-${i}`}
-                          >
-                            {downloading === s.accountstatement_id ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <Download className="w-3.5 h-3.5" />
-                            )}
-                            Download
-                          </button>
-                        </td>
+                <div className="sm:hidden p-2 space-y-2">
+                  {filteredData.length === 0 ? (
+                    <div className="py-6 text-center text-slate-400 text-sm">No statements found for selected period</div>
+                  ) : filteredData.map((s: any, i: number) => (
+                    <div key={i} className="border border-slate-200 rounded-lg p-3 flex items-center justify-between gap-3" data-testid={`stmt-download-card-${i}`}>
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-slate-800">{s.financialYear}</div>
+                        <div className="text-xs text-slate-500">{s.month}</div>
+                      </div>
+                      <button
+                        onClick={() => handleDownload(s)}
+                        disabled={downloading === s.accountstatement_id}
+                        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs font-semibold rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all shadow-sm disabled:opacity-40"
+                        data-testid={`btn-download-stmt-mobile-modal-${i}`}
+                      >
+                        {downloading === s.accountstatement_id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Download className="w-3.5 h-3.5" />
+                        )}
+                        Download
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden sm:block overflow-x-auto">
+                  <table className="w-full text-sm" data-testid="table-stmt-download">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200">
+                        <th className="text-left px-4 py-2.5 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Financial Year</th>
+                        <th className="text-left px-4 py-2.5 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Month</th>
+                        <th className="text-center px-4 py-2.5 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Download</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {filteredData.length === 0 ? (
+                        <tr><td colSpan={3} className="text-center text-slate-400 py-6 text-sm">No statements found for selected period</td></tr>
+                      ) : filteredData.map((s: any, i: number) => (
+                        <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors" data-testid={`stmt-download-row-${i}`}>
+                          <td className="px-4 py-3 text-slate-700 font-medium">{s.financialYear}</td>
+                          <td className="px-4 py-3 text-slate-700">{s.month}</td>
+                          <td className="px-4 py-3 text-center">
+                            <button
+                              onClick={() => handleDownload(s)}
+                              disabled={downloading === s.accountstatement_id}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs font-semibold rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all shadow-sm disabled:opacity-40"
+                              title="Download Statement PDF"
+                              data-testid={`btn-download-stmt-${i}`}
+                            >
+                              {downloading === s.accountstatement_id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Download className="w-3.5 h-3.5" />
+                              )}
+                              Download
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               <div className="flex items-center justify-between">
                 <div className="text-xs text-slate-500">
                   {filteredData.length === 0 ? '0 of 0' : `1 – ${filteredData.length} of ${filteredData.length}`} statements
                 </div>
-                <button onClick={() => setShowModal(false)} className="inline-flex items-center gap-1.5 px-6 py-2.5 bg-gradient-to-r from-slate-700 to-slate-800 text-white text-sm font-semibold rounded-lg hover:from-slate-800 hover:to-slate-900 transition-all shadow-md" data-testid="button-close-stmt-modal">
+                <button onClick={() => setShowModal(false)} className="inline-flex items-center gap-1.5 px-4 sm:px-6 py-2 sm:py-2.5 bg-gradient-to-r from-slate-700 to-slate-800 text-white text-sm font-semibold rounded-lg hover:from-slate-800 hover:to-slate-900 transition-all shadow-md" data-testid="button-close-stmt-modal">
                   Close
                 </button>
               </div>
@@ -2386,16 +2415,16 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <div className="xl:col-span-2 space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="lg:col-span-2 space-y-3 sm:space-y-4">
 
           <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-            <div className="px-4 py-2.5 bg-gradient-to-r from-slate-700 to-slate-800 flex items-center gap-2">
+            <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-slate-700 to-slate-800 flex items-center gap-2">
               <CalendarDays className="w-4 h-4 text-white" />
               <h4 className="text-xs font-bold text-white uppercase tracking-wider">Statement Period & Type</h4>
             </div>
-            <div className="p-4">
-              <div className="flex items-center gap-4 flex-wrap">
+            <div className="p-3 sm:p-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 flex items-center gap-2">
                   <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Account</span>
                   <span className="text-sm font-mono font-bold text-blue-800">{accountNumber}</span>
@@ -2404,81 +2433,83 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                   <div className="text-sm font-medium text-slate-700">{accountHolder}</div>
                 )}
               </div>
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="mt-3 sm:mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="text-xs font-semibold text-slate-600 block mb-1.5">From Period</label>
-                  <div className="flex gap-2">
-                    <select value={fromYear} onChange={e => setFromYear(e.target.value)} className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" data-testid="select-from-year">
+                  <div className="grid grid-cols-2 gap-2">
+                    <select value={fromYear} onChange={e => setFromYear(e.target.value)} className="w-full border border-slate-300 rounded-lg px-2.5 sm:px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" data-testid="select-from-year">
                       {years.map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
-                    <select value={fromMonth} onChange={e => setFromMonth(e.target.value)} className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" data-testid="select-from-month">
+                    <select value={fromMonth} onChange={e => setFromMonth(e.target.value)} className="w-full border border-slate-300 rounded-lg px-2.5 sm:px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" data-testid="select-from-month">
                       {months.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
                   </div>
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-slate-600 block mb-1.5">To Period</label>
-                  <div className="flex gap-2">
-                    <select value={toYear} onChange={e => setToYear(e.target.value)} className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" data-testid="select-to-year">
+                  <div className="grid grid-cols-2 gap-2">
+                    <select value={toYear} onChange={e => setToYear(e.target.value)} className="w-full border border-slate-300 rounded-lg px-2.5 sm:px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" data-testid="select-to-year">
                       {years.map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
-                    <select value={toMonth} onChange={e => setToMonth(e.target.value)} className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" data-testid="select-to-month">
+                    <select value={toMonth} onChange={e => setToMonth(e.target.value)} className="w-full border border-slate-300 rounded-lg px-2.5 sm:px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" data-testid="select-to-month">
                       {months.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
                   </div>
                 </div>
               </div>
-              <div className="mt-4 flex items-center gap-3 sm:gap-5 bg-slate-50 rounded-lg p-3 border border-slate-200 flex-wrap">
+              <div className="mt-3 sm:mt-4 flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-5 bg-slate-50 rounded-lg p-3 border border-slate-200">
                 <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Type:</span>
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="radio" name="sendStmtType" checked={statementType === 'account'} onChange={() => setStatementType('account')} className="w-3.5 h-3.5 text-blue-600" data-testid="radio-send-account" />
-                  <span className={`font-medium ${statementType === 'account' ? 'text-blue-700' : 'text-slate-500'}`}>Account Statement</span>
-                </label>
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="radio" name="sendStmtType" checked={statementType === 'detailed'} onChange={() => setStatementType('detailed')} className="w-3.5 h-3.5 text-blue-600" data-testid="radio-send-detailed" />
-                  <span className={`font-medium ${statementType === 'detailed' ? 'text-blue-700' : 'text-slate-500'}`}>Detailed Statement</span>
-                </label>
+                <div className="flex items-center gap-4 sm:gap-5">
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="radio" name="sendStmtType" checked={statementType === 'account'} onChange={() => setStatementType('account')} className="w-3.5 h-3.5 text-blue-600" data-testid="radio-send-account" />
+                    <span className={`font-medium ${statementType === 'account' ? 'text-blue-700' : 'text-slate-500'}`}>Account Statement</span>
+                  </label>
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="radio" name="sendStmtType" checked={statementType === 'detailed'} onChange={() => setStatementType('detailed')} className="w-3.5 h-3.5 text-blue-600" data-testid="radio-send-detailed" />
+                    <span className={`font-medium ${statementType === 'detailed' ? 'text-blue-700' : 'text-slate-500'}`}>Detailed Statement</span>
+                  </label>
+                </div>
               </div>
             </div>
           </div>
 
           {mode === 'email' && (
             <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-              <div className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+              <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
                 <Paperclip className="w-4 h-4 text-white" />
                 <h4 className="text-xs font-bold text-white uppercase tracking-wider">Delivery Options</h4>
               </div>
-              <div className="p-4 space-y-3">
-                <label className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 cursor-pointer transition-all">
+              <div className="p-3 sm:p-4 space-y-2 sm:space-y-3">
+                <label className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 cursor-pointer transition-all">
                   <input
                     type="checkbox"
                     checked={includeStatementPdf}
                     onChange={e => setIncludeStatementPdf(e.target.checked)}
-                    className="mt-0.5 rounded border-slate-300 text-blue-600"
+                    className="mt-0.5 rounded border-slate-300 text-blue-600 shrink-0"
                     data-testid="checkbox-include-pdf"
                   />
-                  <div>
-                    <div className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-orange-500" />
-                      Generate & Attach Statement PDF
+                  <div className="min-w-0">
+                    <div className="text-xs sm:text-sm font-semibold text-slate-800 flex items-center gap-1.5 sm:gap-2">
+                      <FileText className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-orange-500 shrink-0" />
+                      <span>Generate & Attach PDF</span>
                     </div>
-                    <p className="text-xs text-slate-500 mt-0.5">Generate the statement as a PDF and attach it to the email. Uses the reports service to render the official statement template.</p>
+                    <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Attach the statement as a PDF to the email.</p>
                   </div>
                 </label>
-                <label className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 cursor-pointer transition-all">
+                <label className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 cursor-pointer transition-all">
                   <input
                     type="checkbox"
                     checked={includeTemplateLink}
                     onChange={e => setIncludeTemplateLink(e.target.checked)}
-                    className="mt-0.5 rounded border-slate-300 text-blue-600"
+                    className="mt-0.5 rounded border-slate-300 text-blue-600 shrink-0"
                     data-testid="checkbox-include-link"
                   />
-                  <div>
-                    <div className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                      <ArrowRight className="w-4 h-4 text-blue-500" />
-                      Include Statement Link
+                  <div className="min-w-0">
+                    <div className="text-xs sm:text-sm font-semibold text-slate-800 flex items-center gap-1.5 sm:gap-2">
+                      <ArrowRight className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-blue-500 shrink-0" />
+                      <span>Include Statement Link</span>
                     </div>
-                    <p className="text-xs text-slate-500 mt-0.5">Include a secure link in the email body that opens the statement in the browser. Useful for large statements or when PDF delivery isn't preferred.</p>
+                    <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Secure link to view the statement in browser.</p>
                   </div>
                 </label>
               </div>
@@ -2487,27 +2518,27 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
 
           {mode === 'sms' && (
             <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-              <div className="px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 flex items-center gap-2">
+              <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-green-600 to-green-700 flex items-center gap-2">
                 <MessageSquare className="w-4 h-4 text-white" />
                 <h4 className="text-xs font-bold text-white uppercase tracking-wider">SMS Delivery</h4>
               </div>
-              <div className="p-4 space-y-3">
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                  <p className="text-sm text-green-800">
-                    A secure template link will be generated and sent via SMS. The recipient can open this link to view their statement in the browser.
+              <div className="p-3 sm:p-4 space-y-2 sm:space-y-3">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-2.5 sm:p-3">
+                  <p className="text-xs sm:text-sm text-green-800">
+                    A secure template link will be sent via SMS. The recipient can view their statement in the browser.
                   </p>
                 </div>
-                <label className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 hover:border-green-300 hover:bg-green-50/30 cursor-pointer transition-all">
+                <label className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg border border-slate-200 hover:border-green-300 hover:bg-green-50/30 cursor-pointer transition-all">
                   <input
                     type="checkbox"
                     checked={includeTemplateLink}
                     onChange={e => setIncludeTemplateLink(e.target.checked)}
-                    className="mt-0.5 rounded border-slate-300 text-green-600"
+                    className="mt-0.5 rounded border-slate-300 text-green-600 shrink-0"
                     data-testid="checkbox-sms-link"
                   />
-                  <div>
-                    <div className="text-sm font-semibold text-slate-800">Include Secure Statement Link</div>
-                    <p className="text-xs text-slate-500 mt-0.5">Generate a time-limited secure link for the recipient to view their statement online.</p>
+                  <div className="min-w-0">
+                    <div className="text-xs sm:text-sm font-semibold text-slate-800">Include Secure Statement Link</div>
+                    <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Time-limited secure link for online viewing.</p>
                   </div>
                 </label>
               </div>
@@ -2515,30 +2546,30 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
           )}
 
           <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-            <div className="px-4 py-2.5 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
+            <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
               <FileText className="w-4 h-4 text-white" />
               <h4 className="text-xs font-bold text-white uppercase tracking-wider">Custom Message (Optional)</h4>
             </div>
-            <div className="p-4">
+            <div className="p-3 sm:p-4">
               <textarea
                 value={customMessage}
                 onChange={e => setCustomMessage(e.target.value)}
                 placeholder={mode === 'email' ? "Add a custom message to include in the email body (optional)..." : "Add a custom message to include in the SMS (optional, keep it short)..."}
                 className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                rows={mode === 'email' ? 4 : 2}
+                rows={mode === 'email' ? 3 : 2}
                 maxLength={mode === 'sms' ? 120 : undefined}
                 data-testid="textarea-custom-message"
               />
               {mode === 'sms' && (
-                <p className="text-[10px] text-slate-400 mt-1">{customMessage.length}/120 characters (remaining space reserved for statement link)</p>
+                <p className="text-[10px] text-slate-400 mt-1">{customMessage.length}/120 characters</p>
               )}
             </div>
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-            <div className={`px-4 py-2.5 flex items-center justify-between ${mode === 'email' ? 'bg-gradient-to-r from-blue-600 to-blue-700' : 'bg-gradient-to-r from-green-600 to-green-700'}`}>
+            <div className={`px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between ${mode === 'email' ? 'bg-gradient-to-r from-blue-600 to-blue-700' : 'bg-gradient-to-r from-green-600 to-green-700'}`}>
               <div className="flex items-center gap-2">
                 {mode === 'email' ? <Mail className="w-4 h-4 text-white" /> : <Phone className="w-4 h-4 text-white" />}
                 <h4 className="text-xs font-bold text-white uppercase tracking-wider">
@@ -2556,12 +2587,12 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
             </div>
 
             {mode === 'email' ? (
-              <div className="p-3 space-y-1.5">
+              <div className="p-2.5 sm:p-3 space-y-1.5">
                 {emailTargets.length === 0 ? (
-                  <div className="py-6 text-center">
-                    <Mail className="w-8 h-8 mx-auto text-slate-300 mb-2" />
-                    <p className="text-sm text-slate-400 font-medium">No email address on file</p>
-                    <p className="text-xs text-slate-400 mt-1">Update the account's contact details to add email</p>
+                  <div className="py-4 sm:py-6 text-center">
+                    <Mail className="w-6 sm:w-8 h-6 sm:h-8 mx-auto text-slate-300 mb-2" />
+                    <p className="text-xs sm:text-sm text-slate-400 font-medium">No email address on file</p>
+                    <p className="text-[11px] sm:text-xs text-slate-400 mt-1">Update contact details to add email</p>
                   </div>
                 ) : (
                   emailTargets.map((target, idx) => (
@@ -2581,7 +2612,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                         data-testid={`checkbox-email-${idx}`}
                       />
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm text-slate-800 truncate font-medium">{target.address}</div>
+                        <div className="text-xs sm:text-sm text-slate-800 truncate font-medium">{target.address}</div>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
                             target.type === 'primary'
@@ -2643,15 +2674,15 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
           </div>
 
           <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-            <div className="px-4 py-2.5 bg-gradient-to-r from-slate-500 to-slate-600 flex items-center gap-2">
+            <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-slate-500 to-slate-600 flex items-center gap-2">
               <Eye className="w-4 h-4 text-white" />
               <h4 className="text-xs font-bold text-white uppercase tracking-wider">Delivery Summary</h4>
             </div>
-            <div className="p-4 space-y-3">
-              <div className="space-y-2 text-sm">
+            <div className="p-3 sm:p-4 space-y-3">
+              <div className="space-y-2 text-xs sm:text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500">Account</span>
-                  <span className="font-mono font-bold text-slate-800">{accountNumber}</span>
+                  <span className="font-mono font-bold text-slate-800 text-xs sm:text-sm">{accountNumber}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500">Type</span>
@@ -2659,11 +2690,11 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500">Period</span>
-                  <span className="font-medium text-slate-700 text-right text-xs">{fromYear} {fromMonth}<br/>→ {toYear} {toMonth}</span>
+                  <span className="font-medium text-slate-700 text-right text-[11px] sm:text-xs">{fromYear} {fromMonth}<br/>→ {toYear} {toMonth}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500">Channel</span>
-                  <Badge className={mode === 'email' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-green-100 text-green-700 border-green-200'}>
+                  <Badge className={`text-[10px] sm:text-xs ${mode === 'email' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-green-100 text-green-700 border-green-200'}`}>
                     {mode === 'email' ? 'Email (Mimecast)' : 'SMS Gateway'}
                   </Badge>
                 </div>
@@ -2729,11 +2760,11 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
             </div>
           </div>
 
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-            <p className="text-xs text-amber-700 font-medium flex items-start gap-1.5">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 sm:p-3">
+            <p className="text-[11px] sm:text-xs text-amber-700 font-medium flex items-start gap-1.5">
               <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
               <span>
-                Statement delivery services are not yet connected. Email will use <strong>Mimecast</strong> and SMS will use the <strong>SMS Gateway</strong> when integrated. Payloads are logged for migration to Angular.
+                Delivery services not yet connected. Email uses <strong>Mimecast</strong>, SMS uses <strong>SMS Gateway</strong> when integrated.
               </span>
             </p>
           </div>
@@ -2742,7 +2773,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
 
       {showPreview && (
         <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-          <div className="px-4 py-2.5 bg-gradient-to-r from-slate-700 to-slate-800 flex items-center justify-between">
+          <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-slate-700 to-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Eye className="w-4 h-4 text-white" />
               <h4 className="text-xs font-bold text-white uppercase tracking-wider">Message Preview</h4>
@@ -2753,27 +2784,27 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
           </div>
           <div className="p-3 sm:p-5">
             {mode === 'email' ? (
-              <div className="space-y-3 text-sm">
-                <div className="flex gap-3">
-                  <span className="text-slate-500 w-20 shrink-0 text-right">To:</span>
-                  <span className="text-slate-700 font-medium">{selectedEmails.map(e => e.address).join('; ') || '(none selected)'}</span>
+              <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
+                <div className="flex flex-col sm:flex-row gap-1 sm:gap-3">
+                  <span className="text-slate-500 sm:w-20 shrink-0 sm:text-right font-semibold sm:font-normal">To:</span>
+                  <span className="text-slate-700 font-medium break-all">{selectedEmails.map(e => e.address).join('; ') || '(none selected)'}</span>
                 </div>
-                <div className="flex gap-3">
-                  <span className="text-slate-500 w-20 shrink-0 text-right">Subject:</span>
-                  <span className="text-slate-700 font-medium">
+                <div className="flex flex-col sm:flex-row gap-1 sm:gap-3">
+                  <span className="text-slate-500 sm:w-20 shrink-0 sm:text-right font-semibold sm:font-normal">Subject:</span>
+                  <span className="text-slate-700 font-medium break-words">
                     Account Statement - {accountNumber} ({fromMonth} {fromYear} to {toMonth} {toYear})
                   </span>
                 </div>
                 {includeStatementPdf && (
-                  <div className="flex gap-3">
-                    <span className="text-slate-500 w-20 shrink-0 text-right">Attach:</span>
-                    <span className="flex items-center gap-1.5 text-orange-600">
-                      <FileText className="w-3.5 h-3.5" />
+                  <div className="flex flex-col sm:flex-row gap-1 sm:gap-3">
+                    <span className="text-slate-500 sm:w-20 shrink-0 sm:text-right font-semibold sm:font-normal">Attach:</span>
+                    <span className="flex items-center gap-1.5 text-orange-600 break-all text-[11px] sm:text-sm">
+                      <FileText className="w-3.5 h-3.5 shrink-0" />
                       Statement_{accountNumber}_{fromMonth}_{toMonth}.pdf
                     </span>
                   </div>
                 )}
-                <div className="mt-3 bg-slate-50 rounded-lg p-4 border whitespace-pre-wrap text-slate-700">
+                <div className="mt-2 sm:mt-3 bg-slate-50 rounded-lg p-3 sm:p-4 border whitespace-pre-wrap text-slate-700 text-xs sm:text-sm">
                   <p>Dear {accountHolder || 'Account Holder'},</p>
                   <br />
                   <p>Please find your {statementType === 'detailed' ? 'detailed ' : ''}account statement for the period {fromMonth} {fromYear} to {toMonth} {toYear}.</p>
