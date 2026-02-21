@@ -1455,6 +1455,14 @@ export async function platinumBulkReconcile(data: any): Promise<any> {
     });
 }
 
+export async function platinumBulkPrintProcessed(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/direct-deposit-bulk/print-processed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
 // --- Third Party Payments V2 ---
 
 export async function platinumThirdPartyImport(data: any): Promise<any> {
