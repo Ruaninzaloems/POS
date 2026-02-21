@@ -604,8 +604,373 @@ export function ConsumptionChart({ readings }: { readings: any[] }) {
   );
 }
 
+interface TariffTier {
+  from: number;
+  to: number;
+  rate: number;
+  label: string;
+}
+
+function parseTariffTiers(blocks: TariffBlock[]): TariffTier[] {
+  if (!blocks.length) return [];
+  const latest = blocks[blocks.length - 1];
+  const tiers: TariffTier[] = [];
+
+  for (const iv of latest.intervals) {
+    const rate = parseFloat(iv.cost);
+    if (isNaN(rate)) continue;
+
+    const rangeMatch = iv.interval.match(/^([\d.]+)\s*[-–]\s*([\d.]+)$/);
+    if (rangeMatch) {
+      tiers.push({ from: parseFloat(rangeMatch[1]), to: parseFloat(rangeMatch[2]), rate, label: iv.interval });
+      continue;
+    }
+
+    const aboveMatch = iv.interval.match(/^(?:above|over|>)\s*([\d.]+)/i);
+    if (aboveMatch) {
+      tiers.push({ from: parseFloat(aboveMatch[1]), to: Infinity, rate, label: iv.interval });
+      continue;
+    }
+
+    const upToMatch = iv.interval.match(/^(?:up\s*to|first|<=?)\s*([\d.]+)/i);
+    if (upToMatch) {
+      tiers.push({ from: 0, to: parseFloat(upToMatch[1]), rate, label: iv.interval });
+      continue;
+    }
+
+    if (/^remainder$/i.test(iv.interval.trim()) || iv.interval.trim() === '0') {
+      const lastTo = tiers.length > 0 ? tiers[tiers.length - 1].to : 0;
+      tiers.push({ from: lastTo === Infinity ? 0 : lastTo, to: Infinity, rate, label: iv.interval });
+      continue;
+    }
+
+    const singleNum = parseFloat(iv.interval);
+    if (!isNaN(singleNum)) {
+      const lastTo = tiers.length > 0 ? tiers[tiers.length - 1].to : 0;
+      tiers.push({ from: lastTo === Infinity ? 0 : lastTo, to: singleNum > 0 ? singleNum : Infinity, rate, label: iv.interval });
+    }
+  }
+
+  tiers.sort((a, b) => a.from - b.from);
+  return tiers;
+}
+
+function calculateTieredBilling(consumption: number, tiers: TariffTier[], factor: number = 1): { tierBreakdown: { label: string; units: number; rate: number; amount: number }[]; subtotal: number } {
+  if (!tiers.length || consumption <= 0) return { tierBreakdown: [], subtotal: 0 };
+
+  const breakdown: { label: string; units: number; rate: number; amount: number }[] = [];
+  let remaining = consumption;
+
+  for (const tier of tiers) {
+    if (remaining <= 0) break;
+    const tierCapacity = tier.to === Infinity ? remaining : Math.max(0, tier.to - tier.from);
+    const unitsInTier = Math.min(remaining, tierCapacity);
+    if (unitsInTier > 0) {
+      const amount = unitsInTier * tier.rate * factor;
+      breakdown.push({ label: tier.label, units: unitsInTier, rate: tier.rate, amount });
+      remaining -= unitsInTier;
+    }
+  }
+
+  const subtotal = breakdown.reduce((s, b) => s + b.amount, 0);
+  return { tierBreakdown: breakdown, subtotal };
+}
+
+function BillingEstimator({ readingHistory, selectedMeter, allReadings }: { readingHistory: any[]; selectedMeter: any; allReadings: any[] }) {
+  const [vatRate, setVatRate] = useState(15);
+  const [showDetails, setShowDetails] = useState(true);
+
+  const tariffInfo = useMemo(() => {
+    if (!selectedMeter) return { blocks: [] as TariffBlock[], tiers: [] as TariffTier[] };
+    const parsed = parseTariffRateData(selectedMeter);
+    const tiers = parseTariffTiers(parsed.blocks);
+    return { blocks: parsed.blocks, tiers };
+  }, [selectedMeter]);
+
+  const isReadingEstimate = useCallback((item: any) => {
+    const flag = (item.flag || '').toLowerCase();
+    const rs = (item.readingStatus || '').toLowerCase();
+    return flag.includes('estimate') || flag.includes('levy') || rs.includes('estimate');
+  }, []);
+
+  const unbilledReadings = useMemo(() => {
+    return allReadings.filter(item => {
+      const bm = (item.billingmonth || item.billingMonth || '').toLowerCase().trim();
+      const rs = (item.readingStatus || '').toLowerCase();
+      const flag = (item.flag || '').toLowerCase();
+
+      if (flag.includes('reversed') || flag.includes('cancel')) return false;
+      if (isReadingEstimate(item)) return false;
+
+      if (bm === 'current open period' || bm.includes('open period')) return true;
+      if (rs.includes('awaiting') || rs.includes('unbilled') || rs.includes('pending')) return true;
+      if (flag.includes('awaiting') || flag.includes('unbilled')) return true;
+
+      return false;
+    });
+  }, [allReadings, isReadingEstimate]);
+
+  const previouslyBilledEstimates = useMemo(() => {
+    return allReadings.filter(item => {
+      const bm = (item.billingmonth || item.billingMonth || '').toLowerCase().trim();
+      const flag = (item.flag || '').toLowerCase();
+      if (bm === 'current open period' || bm.includes('open period')) return false;
+      if (flag.includes('reversed') || flag.includes('cancel')) return false;
+      if (!isReadingEstimate(item)) return false;
+      const c = item.consumption ?? item.consumptionValue ?? item.units ?? 0;
+      const consNum = typeof c === 'number' ? c : parseFloat(c) || 0;
+      return consNum > 0;
+    });
+  }, [allReadings, isReadingEstimate]);
+
+  const estimateData = useMemo(() => {
+    if (!unbilledReadings.length || !tariffInfo.tiers.length) return null;
+
+    const factor = selectedMeter?.tarifffactor ?? selectedMeter?.factorQuantity ?? 1;
+    const factorNum = typeof factor === 'number' ? factor : parseFloat(factor) || 1;
+
+    const results = unbilledReadings.map(reading => {
+      const consumption = reading.consumption ?? reading.consumptionValue ?? reading.units ?? 0;
+      const consNum = typeof consumption === 'number' ? consumption : parseFloat(consumption) || 0;
+
+      if (consNum <= 0) return null;
+
+      const { tierBreakdown, subtotal } = calculateTieredBilling(consNum, tariffInfo.tiers, factorNum);
+      const vatAmount = subtotal * (vatRate / 100);
+      const total = subtotal + vatAmount;
+
+      return {
+        consumption: consNum,
+        billingMonth: reading.billingmonth || reading.billingMonth || 'Current',
+        readingDate: reading.reading2Date || reading.reading1Date || '',
+        newReading: reading.reading2 ?? '-',
+        oldReading: reading.reading1 ?? '-',
+        readingDays: reading.readingdays ?? '-',
+        tierBreakdown,
+        subtotal,
+        vatAmount,
+        total,
+        factor: factorNum,
+      };
+    }).filter(Boolean);
+
+    return results.length > 0 ? results : null;
+  }, [unbilledReadings, tariffInfo.tiers, selectedMeter, vatRate]);
+
+  const historicalAvg = useMemo(() => {
+    const billed = allReadings.filter(item => {
+      const bm = (item.billingmonth || item.billingMonth || '').toLowerCase().trim();
+      const flag = (item.flag || '').toLowerCase();
+      if (bm === 'current open period' || bm.includes('open period')) return false;
+      if (flag.includes('reversed') || flag.includes('cancel')) return false;
+      const c = item.consumption ?? item.consumptionValue ?? item.units ?? 0;
+      return typeof c === 'number' ? c > 0 : parseFloat(c) > 0;
+    });
+
+    if (billed.length < 2) return null;
+
+    const recent = billed.slice(0, 6);
+    const total = recent.reduce((s, r) => {
+      const c = r.consumption ?? r.consumptionValue ?? r.units ?? 0;
+      return s + (typeof c === 'number' ? c : parseFloat(c) || 0);
+    }, 0);
+
+    return { avg: total / recent.length, months: recent.length };
+  }, [allReadings]);
+
+  if (!tariffInfo.tiers.length) return null;
+  if (!estimateData && !historicalAvg) return null;
+
+  const fmt = (v: number) => v.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  return (
+    <div className="bg-white rounded-xl border border-indigo-200 shadow-sm overflow-hidden" data-testid="billing-estimator">
+      <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Scale className="w-4 h-4 text-white" />
+          <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Billing Estimation Calculator</h3>
+        </div>
+        <button
+          onClick={() => setShowDetails(!showDetails)}
+          className="inline-flex items-center gap-1 px-2 py-1 bg-white/20 hover:bg-white/30 text-white text-[10px] font-medium rounded-md transition-colors border border-white/20"
+        >
+          {showDetails ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          {showDetails ? 'Hide' : 'Show'}
+        </button>
+      </div>
+
+      {showDetails && (
+        <div className="p-3 sm:p-4 space-y-4">
+          {!estimateData && historicalAvg && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-xs text-blue-800">
+                No unbilled readings found. Based on the last {historicalAvg.months} billing periods, 
+                the average consumption is <span className="font-bold font-mono">{fmt(historicalAvg.avg)}</span> units per month.
+              </p>
+              <div className="mt-2">
+                <p className="text-[10px] text-blue-600 uppercase tracking-wider font-semibold mb-1">Projected next bill (at average consumption)</p>
+                {(() => {
+                  const factor = selectedMeter?.tarifffactor ?? selectedMeter?.factorQuantity ?? 1;
+                  const factorNum = typeof factor === 'number' ? factor : parseFloat(factor) || 1;
+                  const { tierBreakdown, subtotal } = calculateTieredBilling(historicalAvg.avg, tariffInfo.tiers, factorNum);
+                  const vatAmount = subtotal * (vatRate / 100);
+                  const total = subtotal + vatAmount;
+                  return (
+                    <div className="grid grid-cols-3 gap-2 mt-1">
+                      <div className="bg-white rounded-md px-2 py-1.5 border border-blue-100 text-center">
+                        <div className="text-[9px] text-slate-500 uppercase">Subtotal</div>
+                        <div className="text-xs font-mono font-bold text-slate-800">R {fmt(subtotal)}</div>
+                      </div>
+                      <div className="bg-white rounded-md px-2 py-1.5 border border-blue-100 text-center">
+                        <div className="text-[9px] text-slate-500 uppercase">VAT ({vatRate}%)</div>
+                        <div className="text-xs font-mono font-bold text-slate-800">R {fmt(vatAmount)}</div>
+                      </div>
+                      <div className="bg-indigo-50 rounded-md px-2 py-1.5 border border-indigo-200 text-center">
+                        <div className="text-[9px] text-indigo-600 uppercase font-bold">Est. Total</div>
+                        <div className="text-sm font-mono font-black text-indigo-700">R {fmt(total)}</div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+
+          {estimateData && estimateData.map((est: any, idx: number) => (
+            <div key={idx} className="space-y-3">
+              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-indigo-800">
+                    {est.billingMonth}
+                    <span className="ml-2 inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-100 text-green-700 border border-green-200">Actual Reading</span>
+                  </span>
+                  <span className="text-[10px] text-slate-500">{est.readingDate}</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                  <div className="bg-white rounded px-2 py-1 border border-indigo-100">
+                    <span className="text-slate-500 block text-[9px] uppercase">Old Reading</span>
+                    <span className="font-mono font-semibold">{est.oldReading}</span>
+                  </div>
+                  <div className="bg-white rounded px-2 py-1 border border-indigo-100">
+                    <span className="text-slate-500 block text-[9px] uppercase">New Reading</span>
+                    <span className="font-mono font-semibold">{est.newReading}</span>
+                  </div>
+                  <div className="bg-white rounded px-2 py-1 border border-indigo-100">
+                    <span className="text-slate-500 block text-[9px] uppercase">Consumption</span>
+                    <span className="font-mono font-bold text-blue-700">{est.consumption}</span>
+                  </div>
+                  <div className="bg-white rounded px-2 py-1 border border-indigo-100">
+                    <span className="text-slate-500 block text-[9px] uppercase">Days</span>
+                    <span className="font-mono">{est.readingDays}</span>
+                  </div>
+                </div>
+              </div>
+
+              {est.tierBreakdown.length > 0 && (
+                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                  <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200">
+                    <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Tariff Tier Calculation</span>
+                    {est.factor !== 1 && <span className="ml-2 text-[10px] text-indigo-600 font-medium">(Factor: {est.factor})</span>}
+                  </div>
+                  <table className="w-full text-[12px]">
+                    <thead>
+                      <tr className="bg-slate-50/50">
+                        <th className="text-left py-1.5 px-3 text-[10px] uppercase tracking-wider text-slate-500 font-bold">Tier</th>
+                        <th className="text-right py-1.5 px-3 text-[10px] uppercase tracking-wider text-slate-500 font-bold">Units</th>
+                        <th className="text-right py-1.5 px-3 text-[10px] uppercase tracking-wider text-slate-500 font-bold">Rate (R)</th>
+                        <th className="text-right py-1.5 px-3 text-[10px] uppercase tracking-wider text-slate-500 font-bold">Amount (R)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {est.tierBreakdown.map((tier: any, ti: number) => (
+                        <tr key={ti} className="border-t border-slate-100">
+                          <td className="py-1.5 px-3 text-slate-700">{tier.label}</td>
+                          <td className="py-1.5 px-3 text-right font-mono text-slate-700">{fmt(tier.units)}</td>
+                          <td className="py-1.5 px-3 text-right font-mono text-blue-600">{tier.rate.toFixed(6)}</td>
+                          <td className="py-1.5 px-3 text-right font-mono font-semibold text-slate-800">{fmt(tier.amount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-slate-50 rounded-lg px-3 py-2 border border-slate-200 text-center">
+                  <div className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Subtotal</div>
+                  <div className="text-sm font-mono font-bold text-slate-800 mt-0.5">R {fmt(est.subtotal)}</div>
+                </div>
+                <div className="bg-slate-50 rounded-lg px-3 py-2 border border-slate-200 text-center">
+                  <div className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">VAT ({vatRate}%)</div>
+                  <div className="text-sm font-mono font-bold text-slate-800 mt-0.5">R {fmt(est.vatAmount)}</div>
+                </div>
+                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg px-3 py-2 border border-indigo-300 text-center">
+                  <div className="text-[9px] text-indigo-600 uppercase tracking-wider font-bold">Estimated Total</div>
+                  <div className="text-base font-mono font-black text-indigo-700 mt-0.5">R {fmt(est.total)}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {previouslyBilledEstimates.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-2">
+              <p className="text-[11px] text-amber-800">
+                <span className="font-bold">Note:</span> There {previouslyBilledEstimates.length === 1 ? 'is' : 'are'}{' '}
+                <span className="font-mono font-bold">{previouslyBilledEstimates.length}</span> previously billed levy estimate{previouslyBilledEstimates.length !== 1 ? 's' : ''} that {previouslyBilledEstimates.length === 1 ? 'has' : 'have'} not been reversed.
+                Estimated billing below is based on actual unbilled readings only. Previously estimated amounts may be adjusted when actual readings are processed.
+              </p>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {previouslyBilledEstimates.slice(0, 3).map((est: any, i: number) => (
+                  <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 border border-amber-300 text-[10px] font-medium text-amber-800">
+                    {est.billingmonth || est.billingMonth || '?'}: {est.consumption ?? est.consumptionValue ?? '?'} units
+                  </span>
+                ))}
+                {previouslyBilledEstimates.length > 3 && (
+                  <span className="text-[10px] text-amber-600 self-center">+{previouslyBilledEstimates.length - 3} more</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {historicalAvg && estimateData && (
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mt-2">
+              <p className="text-[11px] text-slate-600">
+                <span className="font-semibold">Historical comparison:</span> Average consumption over last {historicalAvg.months} months was <span className="font-mono font-bold text-blue-700">{fmt(historicalAvg.avg)}</span> units/month.
+                {estimateData[0] && (
+                  <>
+                    {' '}Current unbilled consumption of <span className="font-mono font-bold">{estimateData[0].consumption}</span> is{' '}
+                    {estimateData[0].consumption > historicalAvg.avg
+                      ? <span className="text-red-600 font-semibold">{fmt(((estimateData[0].consumption - historicalAvg.avg) / historicalAvg.avg) * 100)}% above</span>
+                      : <span className="text-green-600 font-semibold">{fmt(((historicalAvg.avg - estimateData[0].consumption) / historicalAvg.avg) * 100)}% below</span>
+                    } average.
+                  </>
+                )}
+              </p>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+            <label className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">VAT Rate:</label>
+            <select
+              value={vatRate}
+              onChange={e => setVatRate(Number(e.target.value))}
+              className="text-xs border border-slate-200 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-300"
+              data-testid="select-vat-rate"
+            >
+              <option value={0}>0% (Exempt)</option>
+              <option value={15}>15% (Standard)</option>
+            </select>
+            <span className="text-[10px] text-amber-600 ml-auto">* Estimates only — actual billing may differ</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ConsumptionTab({ accountId, accountNumber }: { accountId: number; accountNumber?: string }) {
   const [meters, setMeters] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
   const [selectedMeter, setSelectedMeter] = useState<any | null>(null);
   const [readingHistory, setReadingHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -619,8 +984,12 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
     setLoading(true);
     setError(null);
     try {
-      const result = await getMeteredServicesOnAccount(accountId);
-      setMeters(result);
+      const [meterResult, svcResult] = await Promise.allSettled([
+        getMeteredServicesOnAccount(accountId),
+        getAllServices(accountId),
+      ]);
+      setMeters(meterResult.status === 'fulfilled' ? meterResult.value || [] : []);
+      setServices(svcResult.status === 'fulfilled' ? svcResult.value || [] : []);
       loaded.current = true;
     } catch (e: any) {
       setError(e.message || 'Failed to load consumption data');
@@ -711,6 +1080,23 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
     const months = (end.getFullYear() - finStart.getFullYear()) * 12 + (end.getMonth() - finStart.getMonth()) + 1;
     return Math.min(Math.max(months, 0), 12);
   }, [selectedFinYear]);
+
+  const matchedServiceForMeter = useMemo(() => {
+    if (!selectedMeter || !services.length) return selectedMeter;
+    const meterSvcDesc = (selectedMeter.serviceDesc || selectedMeter.serviceDescription || '').toLowerCase();
+    const meterTariff = (selectedMeter.tariff || '').toLowerCase();
+    const matched = services.find((svc: any) => {
+      const svcType = (svc.tariffType || svc.serviceDesc || svc.serviceDescription || '').toLowerCase();
+      const svcTariff = (svc.tariff || '').toLowerCase();
+      if (meterSvcDesc && svcType && meterSvcDesc.includes(svcType.split(' ')[0])) return true;
+      if (meterTariff && svcTariff && meterTariff === svcTariff) return true;
+      return false;
+    });
+    if (matched) {
+      return { ...selectedMeter, costInterVal: matched.costInterVal, endDate: matched.endDate, startDate: matched.startDate };
+    }
+    return selectedMeter;
+  }, [selectedMeter, services]);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
@@ -863,6 +1249,14 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
             )}
           </div>
         </div>
+      )}
+
+      {selectedMeter && !historyLoading && readingHistory.length > 0 && (
+        <BillingEstimator
+          readingHistory={filteredHistory}
+          selectedMeter={matchedServiceForMeter}
+          allReadings={readingHistory}
+        />
       )}
 
       {selectedMeter && !historyLoading && readingHistory.length > 0 && (
