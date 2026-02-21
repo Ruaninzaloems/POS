@@ -983,30 +983,30 @@ export default function ViewReceipts() {
                                         const accountNo = item.accountNumber || (item as any).account_Number || '';
                                         const debit = Number((item as any).debit) || 0;
                                         const credit = Number((item as any).credit) || 0;
-                                        const amount = item.amount ?? (debit > 0 ? debit : credit) ?? 0;
-                                        const txnDate = (item as any).postingDate || (item as any).receiptDate || item.transactionDate || '';
+                                        const postingDate = (item as any).postingDate || '';
+                                        const receiptDate = (item as any).receiptDate || '';
                                         const docNum = (item as any).documentNumber || '';
                                         const cashbookRef = (item as any).cashbookReference || '';
-                                        const scoaDesc = (item as any).scoaDesc || '';
                                         return (
                                             <div key={idx} className="bg-white border rounded-xl p-3 space-y-1.5" data-testid={`mobile-cashbook-card-${idx}`}>
                                                 <p className="font-mono text-xs text-slate-800 truncate" title={desc}>{desc || '(no description)'}</p>
                                                 <div className="flex justify-between items-center">
-                                                    <span className="font-mono text-sm font-bold text-blue-700" data-testid={`mobile-cashbook-receipt-no-${idx}`}>{receiptNo || docNum || '-'}</span>
+                                                    <span className="font-mono text-sm font-bold text-blue-700" data-testid={`mobile-cashbook-receipt-no-${idx}`}>
+                                                        {receiptNo ? `Receipt: ${receiptNo}` : docNum ? `Doc: ${docNum}` : '-'}
+                                                    </span>
                                                     <span className="font-mono text-sm font-bold text-right" data-testid={`mobile-cashbook-amount-${idx}`}>
                                                         {debit > 0 && <span className="text-red-600">R {debit.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>}
                                                         {credit > 0 && <span className="text-green-600">R {credit.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>}
-                                                        {debit === 0 && credit === 0 && typeof amount === 'number' && amount > 0 ? `R ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : debit === 0 && credit === 0 ? '-' : ''}
+                                                        {debit === 0 && credit === 0 && '-'}
                                                     </span>
                                                 </div>
                                                 {accountNo > 0 && <div className="text-xs text-slate-600" data-testid={`mobile-cashbook-account-no-${idx}`}>Account: {accountNo}</div>}
-                                                <div className="flex justify-between items-center text-xs text-slate-500">
-                                                    <span>{txnDate ? new Date(txnDate).toLocaleDateString('en-ZA') : '-'}</span>
-                                                    {cashbookRef && <span>Ref: {cashbookRef}</span>}
+                                                <div className="flex flex-wrap gap-x-3 text-xs text-slate-500">
+                                                    {receiptDate && <span>Receipt: {new Date(receiptDate).toLocaleDateString('en-ZA')}</span>}
+                                                    {postingDate && <span>Posted: {new Date(postingDate).toLocaleDateString('en-ZA')}</span>}
+                                                    {!receiptDate && !postingDate && <span>-</span>}
                                                 </div>
-                                                {scoaDesc && (
-                                                    <p className="text-[10px] text-slate-400 truncate" title={scoaDesc}>{scoaDesc}</p>
-                                                )}
+                                                {cashbookRef && <div className="text-[10px] text-slate-400">Ref: {cashbookRef}</div>}
                                                 {(receiptNo || accountNo) && (
                                                     <Button
                                                         variant="outline"
@@ -1029,11 +1029,12 @@ export default function ViewReceipts() {
                                             <TableRow className="bg-indigo-50/50">
                                                 <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Description</TableHead>
                                                 <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Receipt No</TableHead>
-                                                <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Account</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Account No</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Receipt Date</TableHead>
                                                 <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Doc No</TableHead>
                                                 <TableHead className="text-[10px] font-bold text-indigo-700 py-2 text-right">Debit</TableHead>
                                                 <TableHead className="text-[10px] font-bold text-indigo-700 py-2 text-right">Credit</TableHead>
-                                                <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Date</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Posting Date</TableHead>
                                                 <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Cashbook Ref</TableHead>
                                                 <TableHead className="text-[10px] font-bold text-indigo-700 py-2 text-center">Action</TableHead>
                                             </TableRow>
@@ -1045,7 +1046,8 @@ export default function ViewReceipts() {
                                                 const accountNo = item.accountNumber || (item as any).account_Number || '';
                                                 const debit = Number((item as any).debit) || 0;
                                                 const credit = Number((item as any).credit) || 0;
-                                                const txnDate = (item as any).postingDate || (item as any).receiptDate || item.transactionDate || '';
+                                                const postingDate = (item as any).postingDate || '';
+                                                const receiptDate = (item as any).receiptDate || '';
                                                 const docNum = (item as any).documentNumber || '';
                                                 const cashbookRef = (item as any).cashbookReference || '';
                                                 return (
@@ -1053,6 +1055,9 @@ export default function ViewReceipts() {
                                                         <TableCell className="text-[11px] font-mono max-w-[250px] truncate" title={desc}>{desc || '-'}</TableCell>
                                                         <TableCell className="text-[11px] font-mono font-semibold text-blue-700">{receiptNo || '-'}</TableCell>
                                                         <TableCell className="text-[11px] font-mono">{accountNo && accountNo > 0 ? accountNo : '-'}</TableCell>
+                                                        <TableCell className="text-[10px] text-slate-600">
+                                                            {receiptDate ? new Date(receiptDate).toLocaleDateString('en-ZA') : '-'}
+                                                        </TableCell>
                                                         <TableCell className="text-[11px] font-mono text-slate-600">{docNum || '-'}</TableCell>
                                                         <TableCell className="text-[11px] font-mono font-bold text-right text-red-600">
                                                             {debit > 0 ? `R ${debit.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
@@ -1061,7 +1066,7 @@ export default function ViewReceipts() {
                                                             {credit > 0 ? `R ${credit.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
                                                         </TableCell>
                                                         <TableCell className="text-[10px] text-slate-600">
-                                                            {txnDate ? new Date(txnDate).toLocaleDateString('en-ZA') : '-'}
+                                                            {postingDate ? new Date(postingDate).toLocaleDateString('en-ZA') : '-'}
                                                         </TableCell>
                                                         <TableCell className="text-[10px] text-slate-600">{cashbookRef || '-'}</TableCell>
                                                         <TableCell className="text-center">
