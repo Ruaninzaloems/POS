@@ -12,7 +12,7 @@ import {
   Layers, Home, Activity, Users, Receipt, CalendarDays, Banknote, Scale,
   Gauge, Filter, AlertCircle, Briefcase, Star, ScanBarcode, CheckCircle2,
   CircleDot, Wallet, Gauge as MeterIcon, CalendarCheck, Building2, Send,
-  BarChart3
+  BarChart3, ChevronDown, Check
 } from 'lucide-react';
 import {
   searchAccounts, getAccountBalance, multiAutocompleteSearch, getAutocompleteType,
@@ -134,6 +134,7 @@ function GeneralEnquiriesContent() {
   const [selectedAccount, setSelectedAccount] = useState<EnquirySearchResult | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [activeTab, setActiveTab] = useState('account');
+  const [mobileTabMenuOpen, setMobileTabMenuOpen] = useState(false);
   const [highlightIdx, setHighlightIdx] = useState(-1);
   const [showDropdown, setShowDropdown] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -686,7 +687,7 @@ function GeneralEnquiriesContent() {
 
         <div className="flex-1 overflow-auto">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <div className="shrink-0 bg-white border-b border-slate-200 sticky top-0 z-20">
+            <div className="shrink-0 bg-white border-b border-slate-200 sticky top-0 z-20 relative">
               <div className="px-3 sm:px-5 py-2 sm:py-3">
                 <TabsList className="h-auto bg-transparent p-0 w-full block">
                   <div className="hidden sm:grid sm:grid-cols-3 gap-x-6 gap-y-3">
@@ -722,38 +723,70 @@ function GeneralEnquiriesContent() {
                       </div>
                     ))}
                   </div>
-                  <div className="sm:hidden space-y-1.5">
-                    {tabGroups.map((group) => (
-                      <div key={group.heading}>
-                        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">{group.heading}</div>
-                        <div className="flex gap-1 overflow-x-auto pb-1 -mx-3 px-3 scrollbar-hide">
-                          {group.tabs.map(tab => {
-                            const colors = tabColorMap[tab.color] || tabColorMap.blue;
-                            const isTabActive = activeTab === tab.value;
-                            return (
-                              <TabsTrigger
-                                key={tab.value}
-                                value={tab.value}
-                                className={`
-                                  inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[10px] font-medium whitespace-nowrap shrink-0
-                                  transition-all duration-150 cursor-pointer
-                                  ${isTabActive
-                                    ? `${colors.activeBg} ${colors.activeBorder} ${colors.activeText} shadow-sm font-semibold`
-                                    : `${colors.bg} ${colors.border} ${colors.text}`
-                                  }
-                                `}
-                                data-testid={`tab-mobile-${tab.value}`}
-                              >
-                                <span className={`shrink-0 w-4 h-4 rounded flex items-center justify-center transition-colors ${isTabActive ? colors.activeIconBg : colors.iconBg}`}>
-                                  {tab.icon}
-                                </span>
-                                {tab.label}
-                              </TabsTrigger>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
+                  <div className="sm:hidden">
+                    {(() => {
+                      const allTabs = tabGroups.flatMap(g => g.tabs);
+                      const currentTab = allTabs.find(t => t.value === activeTab) || allTabs[0];
+                      const currentGroup = tabGroups.find(g => g.tabs.some(t => t.value === activeTab));
+                      const currentColors = tabColorMap[currentTab.color] || tabColorMap.blue;
+                      return (
+                        <>
+                          <button
+                            onClick={() => setMobileTabMenuOpen(!mobileTabMenuOpen)}
+                            className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border ${currentColors.activeBg} ${currentColors.activeBorder} ${currentColors.activeText}`}
+                            data-testid="button-mobile-tab-selector"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={`shrink-0 w-5 h-5 rounded flex items-center justify-center ${currentColors.activeIconBg}`}>
+                                {currentTab.icon}
+                              </span>
+                              <div className="min-w-0 text-left">
+                                <div className="text-xs font-semibold truncate">{currentTab.label}</div>
+                                <div className="text-[9px] text-slate-400 uppercase tracking-wider">{currentGroup?.heading}</div>
+                              </div>
+                            </div>
+                            <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${mobileTabMenuOpen ? 'rotate-180' : ''}`} />
+                          </button>
+                          {mobileTabMenuOpen && (
+                            <>
+                              <div className="fixed inset-0 z-30" onClick={() => setMobileTabMenuOpen(false)} />
+                              <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-2xl border border-slate-200 z-40 max-h-[60vh] overflow-y-auto">
+                                {tabGroups.map((group) => (
+                                  <div key={group.heading} className="py-1">
+                                    <div className="px-3 py-1 text-[9px] font-bold text-slate-400 uppercase tracking-widest">{group.heading}</div>
+                                    {group.tabs.map(tab => {
+                                      const colors = tabColorMap[tab.color] || tabColorMap.blue;
+                                      const isTabActive = activeTab === tab.value;
+                                      return (
+                                        <TabsTrigger
+                                          key={tab.value}
+                                          value={tab.value}
+                                          onClick={() => setMobileTabMenuOpen(false)}
+                                          className={`
+                                            w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium cursor-pointer transition-colors
+                                            ${isTabActive
+                                              ? `${colors.activeBg} ${colors.activeText} font-semibold`
+                                              : 'text-slate-600 hover:bg-slate-50'
+                                            }
+                                          `}
+                                          data-testid={`tab-mobile-${tab.value}`}
+                                        >
+                                          <span className={`shrink-0 w-5 h-5 rounded flex items-center justify-center ${isTabActive ? colors.activeIconBg : colors.iconBg}`}>
+                                            {tab.icon}
+                                          </span>
+                                          {tab.label}
+                                          {isTabActive && <Check className="w-3.5 h-3.5 ml-auto shrink-0" />}
+                                        </TabsTrigger>
+                                      );
+                                    })}
+                                  </div>
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </TabsList>
               </div>
