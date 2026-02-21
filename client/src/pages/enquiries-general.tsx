@@ -624,62 +624,72 @@ function GeneralEnquiriesContent() {
     return (
       <div className="flex flex-col h-full overflow-hidden bg-slate-50/80">
         <div className="shrink-0 bg-white border-b border-slate-200 shadow-sm">
-          <div className="px-4 sm:px-6 py-3 flex items-center gap-3">
-            <button
-              onClick={() => setSelectedAccount(null)}
-              className="inline-flex items-center gap-1 text-slate-500 hover:text-blue-600 text-sm font-medium transition-colors group"
-              data-testid="button-back-to-results"
-            >
-              <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-              <span>Back</span>
-            </button>
+          <div className="px-3 sm:px-6 py-2 sm:py-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                onClick={() => setSelectedAccount(null)}
+                className="inline-flex items-center gap-1 text-slate-500 hover:text-blue-600 text-sm font-medium transition-colors group shrink-0"
+                data-testid="button-back-to-results"
+              >
+                <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+                <span className="hidden sm:inline">Back</span>
+              </button>
 
-            <div className="h-8 w-px bg-slate-200" />
+              <div className="h-6 w-px bg-slate-200 hidden sm:block" />
 
-            <div className="shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
-              {accountName.charAt(0).toUpperCase()}
-            </div>
+              <div className="shrink-0 h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs sm:text-sm font-bold shadow-sm">
+                {accountName.charAt(0).toUpperCase()}
+              </div>
 
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-[15px] font-bold text-slate-900 truncate" data-testid="text-selected-account-name">
-                  {accountName}
-                </h2>
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${isActive ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200'}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-                  {selectedAccount.accountStatus || selectedAccount.statusDesc || 'Unknown'}
-                </span>
-                {(selectedAccount.accountType || selectedAccount.accountDesc) && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 ring-1 ring-blue-200" data-testid="badge-account-type">
-                    {selectedAccount.accountType || selectedAccount.accountDesc}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                  <h2 className="text-sm sm:text-[15px] font-bold text-slate-900 truncate max-w-[140px] sm:max-w-none" data-testid="text-selected-account-name">
+                    {accountName}
+                  </h2>
+                  <span className={`inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold ${isActive ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                    {selectedAccount.accountStatus || selectedAccount.statusDesc || 'Unknown'}
                   </span>
+                </div>
+                <div className="text-[10px] sm:text-xs text-slate-500 mt-0.5 font-mono truncate">
+                  Acc: {accountNum}
+                  {selectedAccount.oldAccountCode && <span className="text-slate-400"> | Old: {selectedAccount.oldAccountCode}</span>}
+                </div>
+              </div>
+
+              <div className="shrink-0 text-right" data-testid="header-balance-section">
+                <div className="text-[9px] sm:text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Balance</div>
+                {headerBalance !== null ? (
+                  <div className={`text-sm sm:text-xl font-bold font-mono tracking-tight ${headerBalance > 0 ? 'text-red-600' : headerBalance < 0 ? 'text-emerald-600' : 'text-slate-800'}`} data-testid="text-header-balance">
+                    R {headerBalance.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                ) : (
+                  <div className="h-5 w-16 sm:h-6 sm:w-24 bg-slate-100 rounded animate-pulse" />
                 )}
               </div>
-              <div className="text-xs text-slate-500 mt-0.5 font-mono">
-                Acc: {accountNum}
-                {selectedAccount.oldAccountCode && <span className="text-slate-400"> | Old: {selectedAccount.oldAccountCode}</span>}
-              </div>
             </div>
 
-            <div className="shrink-0 ml-auto text-right pl-4" data-testid="header-balance-section">
-              <div className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold mb-0.5">Outstanding Balance</div>
-              {headerBalance !== null ? (
-                <div className={`text-xl font-bold font-mono tracking-tight ${headerBalance > 0 ? 'text-red-600' : headerBalance < 0 ? 'text-emerald-600' : 'text-slate-800'}`} data-testid="text-header-balance">
-                  R {headerBalance.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
-              ) : (
-                <div className="h-6 w-24 bg-slate-100 rounded animate-pulse" />
-              )}
-            </div>
+            {(selectedAccount.accountType || selectedAccount.accountDesc) && (
+              <div className="mt-1 sm:hidden">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 ring-1 ring-blue-200" data-testid="badge-account-type">
+                  {selectedAccount.accountType || selectedAccount.accountDesc}
+                </span>
+              </div>
+            )}
+            {(selectedAccount.accountType || selectedAccount.accountDesc) && (
+              <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 ring-1 ring-blue-200 ml-[88px]" data-testid="badge-account-type-desktop">
+                {selectedAccount.accountType || selectedAccount.accountDesc}
+              </span>
+            )}
           </div>
         </div>
 
         <div className="flex-1 overflow-auto">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
             <div className="shrink-0 bg-white border-b border-slate-200 sticky top-0 z-20">
-              <div className="px-4 sm:px-5 py-3">
+              <div className="px-3 sm:px-5 py-2 sm:py-3">
                 <TabsList className="h-auto bg-transparent p-0 w-full block">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+                  <div className="hidden sm:grid sm:grid-cols-3 gap-x-6 gap-y-3">
                     {tabGroups.map((group) => (
                       <div key={group.heading}>
                         <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">{group.heading}</div>
@@ -702,6 +712,39 @@ function GeneralEnquiriesContent() {
                                 data-testid={`tab-${tab.value}`}
                               >
                                 <span className={`shrink-0 w-4.5 h-4.5 rounded flex items-center justify-center transition-colors ${isTabActive ? colors.activeIconBg : colors.iconBg}`}>
+                                  {tab.icon}
+                                </span>
+                                {tab.label}
+                              </TabsTrigger>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="sm:hidden space-y-1.5">
+                    {tabGroups.map((group) => (
+                      <div key={group.heading}>
+                        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">{group.heading}</div>
+                        <div className="flex gap-1 overflow-x-auto pb-1 -mx-3 px-3 scrollbar-hide">
+                          {group.tabs.map(tab => {
+                            const colors = tabColorMap[tab.color] || tabColorMap.blue;
+                            const isTabActive = activeTab === tab.value;
+                            return (
+                              <TabsTrigger
+                                key={tab.value}
+                                value={tab.value}
+                                className={`
+                                  inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[10px] font-medium whitespace-nowrap shrink-0
+                                  transition-all duration-150 cursor-pointer
+                                  ${isTabActive
+                                    ? `${colors.activeBg} ${colors.activeBorder} ${colors.activeText} shadow-sm font-semibold`
+                                    : `${colors.bg} ${colors.border} ${colors.text}`
+                                  }
+                                `}
+                                data-testid={`tab-mobile-${tab.value}`}
+                              >
+                                <span className={`shrink-0 w-4 h-4 rounded flex items-center justify-center transition-colors ${isTabActive ? colors.activeIconBg : colors.iconBg}`}>
                                   {tab.icon}
                                 </span>
                                 {tab.label}
@@ -753,7 +796,7 @@ function GeneralEnquiriesContent() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden relative">
-      <div className="shrink-0 bg-white border-b border-slate-200 px-4 sm:px-6 py-3">
+      <div className="shrink-0 bg-white border-b border-slate-200 px-3 sm:px-6 py-2 sm:py-3">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-sm font-semibold text-slate-700" data-testid="text-page-title">General Enquiries</h2>
           <div className="flex items-center gap-2">
@@ -783,8 +826,8 @@ function GeneralEnquiriesContent() {
               onChange={(e) => handleQuickQueryChange(e.target.value)}
               onKeyDown={handleQuickKeyDown}
               onFocus={() => { if (quickQuery.trim().length >= 2 || recentSearches.length > 0 || pinnedAccounts.length > 0) setShowDropdown(true); }}
-              placeholder="Search by account number, name, ID number, phone, email..."
-              className="w-full h-11 pl-10 pr-[180px] rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-800 placeholder:text-slate-400
+              placeholder="Search account, name, ID, phone..."
+              className="w-full h-10 sm:h-11 pl-9 sm:pl-10 pr-[100px] sm:pr-[180px] rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-800 placeholder:text-slate-400
                 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
               data-testid="input-smart-search"
               aria-label="Search accounts"
@@ -794,9 +837,9 @@ function GeneralEnquiriesContent() {
               role="combobox"
             />
 
-            <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            <div className="absolute right-1 sm:right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
               {quickQuery.trim().length >= 2 && (
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium whitespace-nowrap
+                <span className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium whitespace-nowrap
                   ${detectedType.unsupported
                     ? 'bg-amber-50 text-amber-600 border border-amber-200'
                     : 'bg-blue-50 text-blue-600 border border-blue-200'}`}
@@ -832,13 +875,13 @@ function GeneralEnquiriesContent() {
               <button
                 onClick={handleFullSearch}
                 disabled={searching || (quickQuery.trim().length < 2 && !Object.values(criteria).some(v => v && String(v).trim()))}
-                className="h-8 px-3 rounded-md bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white flex items-center gap-1.5 text-xs font-medium transition-colors shadow-sm"
+                className="h-7 sm:h-8 px-2 sm:px-3 rounded-md bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white flex items-center gap-1 sm:gap-1.5 text-xs font-medium transition-colors shadow-sm"
                 data-testid="button-search"
                 aria-label="Search"
                 tabIndex={0}
               >
                 {searching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
-                Search
+                <span className="hidden sm:inline">Search</span>
               </button>
             </div>
           </div>
@@ -862,7 +905,7 @@ function GeneralEnquiriesContent() {
                 More Fields
               </button>
             </div>
-            <div className="grid grid-cols-8 gap-1.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-1.5">
               {[
                 { key: 'accountNo', placeholder: 'Account No.' },
                 { key: 'name', placeholder: 'Name / Company' },
@@ -907,12 +950,12 @@ function GeneralEnquiriesContent() {
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 mt-2 flex-wrap" role="group" aria-label="Quick filters">
+          <div className="flex items-center gap-1.5 mt-2 overflow-x-auto scrollbar-hide pb-0.5 sm:flex-wrap sm:overflow-visible" role="group" aria-label="Quick filters">
             {QUICK_FILTER_CHIPS.map(chip => (
               <button
                 key={chip.key}
                 onClick={() => toggleQuickFilter(chip.key)}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all
+                className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all whitespace-nowrap
                   ${quickFilters.has(chip.key)
                     ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                     : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:border-slate-300'}`}
@@ -1024,17 +1067,17 @@ function GeneralEnquiriesContent() {
               </div>
             </div>
             <p className="text-sm font-medium text-slate-500 mb-3">Quick Start</p>
-            <div className="flex flex-wrap items-center justify-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-0">
               {EXAMPLE_SEARCHES.map((example, i) => (
                 <button
                   key={i}
                   onClick={() => { setQuickQuery(example.value); handleQuickQueryChange(example.value); inputRef.current?.focus(); }}
-                  className="group flex items-center gap-2 text-xs px-3.5 py-2 rounded-lg border border-slate-200 text-slate-500
+                  className="group flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg border border-slate-200 text-slate-500
                     hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 transition-all shadow-sm"
                   data-testid={`example-search-${i}`}
                 >
                   <span className="font-mono text-blue-600 group-hover:text-blue-800">{example.value}</span>
-                  <span className="text-[10px] text-slate-400 group-hover:text-blue-500">{example.label}</span>
+                  <span className="hidden sm:inline text-[10px] text-slate-400 group-hover:text-blue-500">{example.label}</span>
                 </button>
               ))}
             </div>
@@ -1105,42 +1148,88 @@ function GeneralEnquiriesContent() {
         )}
 
         {filteredResults.length > 0 && (
-          <div className="overflow-x-auto" data-testid="table-search-results">
-            <table className="w-full text-xs border-collapse min-w-[1100px]">
-              <thead className="sticky top-0 z-10">
-                <tr className="bg-slate-100 border-b-2 border-slate-200 text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
-                  <th className="w-8 px-1 py-2.5"></th>
-                  <th className="w-8 px-1 py-2.5"></th>
-                  <th className="text-left px-2 py-2.5 whitespace-nowrap w-[140px]">Account No.</th>
-                  <th className="text-left px-2 py-2.5 whitespace-nowrap">Name</th>
-                  <th className="text-left px-2 py-2.5 whitespace-nowrap w-[200px]">Address</th>
-                  <th className="text-center px-2 py-2.5 whitespace-nowrap w-[70px]">Status</th>
-                  <th className="text-center px-2 py-2.5 whitespace-nowrap w-[130px]">Type</th>
-                  <th className="text-right px-2 py-2.5 whitespace-nowrap w-[110px]">Outstanding</th>
-                  <th className="text-left px-2 py-2.5 whitespace-nowrap w-[100px]">Old Code</th>
-                  <th className="text-left px-2 py-2.5 whitespace-nowrap w-[180px]">SG Number</th>
-                  <th className="w-[60px] px-2 py-2.5"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredResults.map((account, i) => {
-                  const aid = account.accountID || account.account_ID || i;
-                  return (
-                    <ExpandableResultRow
-                      key={aid}
-                      account={account}
-                      onSelect={handleSelectAccount}
-                      isExpanded={expandedRowId === aid}
-                      onToggleExpand={() => setExpandedRowId(prev => prev === aid ? null : aid)}
-                      searchQuery={quickQuery}
-                      onPin={togglePinAccount}
-                      isPinned={isAccountPinned(account)}
-                    />
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className="sm:hidden p-2 space-y-2" data-testid="mobile-search-results">
+              {filteredResults.map((account, i) => {
+                const aid = account.accountID || account.account_ID || i;
+                const acctNum = account.accountNumber || account.accountID || account.account_ID;
+                const name = account.name || account.surname_Company || 'Unknown';
+                const address = account.locationAddress || account.propertyAddress || '';
+                const status = account.accountStatus || account.statusDesc || '';
+                const isActive = status.toLowerCase() === 'active';
+                const outstanding = account.outStandingAmount ?? account.outStandingAmt ?? 0;
+                const acctType = account.accountType || account.accountDesc || '';
+                return (
+                  <button
+                    key={aid}
+                    onClick={() => handleSelectAccount(account)}
+                    className="w-full text-left bg-white border border-slate-200 rounded-lg p-3 hover:bg-blue-50 hover:border-blue-200 transition-all shadow-sm active:scale-[0.99]"
+                    data-testid={`mobile-result-${i}`}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <div className="shrink-0 h-9 w-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold mt-0.5">
+                        {name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="text-sm font-semibold text-slate-900 truncate">{name}</span>
+                          <span className={`shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                            <span className={`w-1 h-1 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                            {status}
+                          </span>
+                        </div>
+                        <div className="text-[11px] font-mono text-blue-600 mb-0.5">{acctNum}</div>
+                        {address && <div className="text-[10px] text-slate-500 truncate">{address}</div>}
+                        {acctType && <div className="text-[10px] text-slate-400 mt-0.5">{acctType}</div>}
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <div className={`text-sm font-bold font-mono ${outstanding > 0 ? 'text-red-600' : outstanding < 0 ? 'text-emerald-600' : 'text-slate-600'}`}>
+                          R {outstanding.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                        </div>
+                        <ArrowRight className="w-3.5 h-3.5 text-slate-300 ml-auto mt-1" />
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="hidden sm:block overflow-x-auto" data-testid="table-search-results">
+              <table className="w-full text-xs border-collapse min-w-[1100px]">
+                <thead className="sticky top-0 z-10">
+                  <tr className="bg-slate-100 border-b-2 border-slate-200 text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
+                    <th className="w-8 px-1 py-2.5"></th>
+                    <th className="w-8 px-1 py-2.5"></th>
+                    <th className="text-left px-2 py-2.5 whitespace-nowrap w-[140px]">Account No.</th>
+                    <th className="text-left px-2 py-2.5 whitespace-nowrap">Name</th>
+                    <th className="text-left px-2 py-2.5 whitespace-nowrap w-[200px]">Address</th>
+                    <th className="text-center px-2 py-2.5 whitespace-nowrap w-[70px]">Status</th>
+                    <th className="text-center px-2 py-2.5 whitespace-nowrap w-[130px]">Type</th>
+                    <th className="text-right px-2 py-2.5 whitespace-nowrap w-[110px]">Outstanding</th>
+                    <th className="text-left px-2 py-2.5 whitespace-nowrap w-[100px]">Old Code</th>
+                    <th className="text-left px-2 py-2.5 whitespace-nowrap w-[180px]">SG Number</th>
+                    <th className="w-[60px] px-2 py-2.5"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredResults.map((account, i) => {
+                    const aid = account.accountID || account.account_ID || i;
+                    return (
+                      <ExpandableResultRow
+                        key={aid}
+                        account={account}
+                        onSelect={handleSelectAccount}
+                        isExpanded={expandedRowId === aid}
+                        onToggleExpand={() => setExpandedRowId(prev => prev === aid ? null : aid)}
+                        searchQuery={quickQuery}
+                        onPin={togglePinAccount}
+                        isPinned={isAccountPinned(account)}
+                      />
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
