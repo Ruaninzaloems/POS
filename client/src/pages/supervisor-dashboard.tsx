@@ -329,7 +329,8 @@ export default function SupervisorDashboard() {
     } finally {
       setIsLoadingShifts(false);
     }
-  }, [toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     loadCashierList();

@@ -741,7 +741,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (e) {
       console.error(`[SessionEnforcement] Failed to check validate-cashier:`, e);
     }
-  }, [platinumUser?.user_ID, platinumUser?.finYear, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [platinumUser?.user_ID, platinumUser?.finYear]);
 
   useEffect(() => {
     if (activeSession && platinumUser?.user_ID) {
