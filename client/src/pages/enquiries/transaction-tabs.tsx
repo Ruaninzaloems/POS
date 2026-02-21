@@ -49,29 +49,29 @@ function HtmlDetailMobileCards({ html }: { html: string }) {
     <div className="space-y-3">
       {tables.map((table, ti) => (
         <div key={ti} className="space-y-2">
-          {table.rows.map((row, ri) => {
-            return (
+          {table.rows.map((row, ri) => (
               <div key={ri} className="bg-white border border-slate-200 rounded-lg p-3 space-y-1.5">
                 {table.headers.length > 0 ? (
                   table.headers.map((header, ci) => {
                     const val = row[ci] ?? '';
                     if (!val.trim() && !header.trim()) return null;
-                    const isMultiLine = val.includes('\n') || val.length > 60;
+                    const isShortNumeric = /^-?[\d,.\s]+$/.test(val.trim()) && val.length < 20;
+                    const isShortVal = val.length <= 30 && !val.includes('\n');
+                    const isInline = isShortNumeric || (isShortVal && val !== '-');
                     return (
-                      <div key={ci} className={isMultiLine ? '' : 'flex justify-between items-baseline gap-2'}>
+                      <div key={ci} className={isInline && val !== '-' ? 'flex justify-between items-baseline gap-2' : ''}>
                         <span className="text-[10px] uppercase tracking-wider text-teal-700 font-semibold shrink-0">{header}</span>
-                        <span className={`text-xs text-slate-700 ${isMultiLine ? 'block mt-0.5 whitespace-pre-line leading-relaxed' : 'text-right'} ${/^-?\d/.test(val.replace(/[,\s]/g, '')) && val.length < 20 ? 'font-mono font-semibold' : ''}`}>{val || '-'}</span>
+                        <span className={`text-xs text-slate-700 break-all ${isInline ? 'text-right' : 'block mt-0.5 leading-relaxed'} ${isShortNumeric ? 'font-mono font-semibold' : ''}`}>{val || '-'}</span>
                       </div>
                     );
                   })
                 ) : (
                   row.map((cell, ci) => (
-                    <div key={ci} className="text-xs text-slate-700 whitespace-pre-line leading-relaxed">{cell}</div>
+                    <div key={ci} className="text-xs text-slate-700 break-all leading-relaxed">{cell}</div>
                   ))
                 )}
               </div>
-            );
-          })}
+          ))}
         </div>
       ))}
     </div>
