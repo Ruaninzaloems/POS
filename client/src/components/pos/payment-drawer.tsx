@@ -1,12 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { usePos } from '@/lib/pos-state';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { ArrowRight, CreditCard, Banknote, Trash2, Calculator, History, Lock, AlertTriangle, ChevronUp, ChevronDown, ShieldAlert, X } from 'lucide-react';
-import { VirtualNumpad } from '@/components/ui/virtual-numpad';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowRight, CreditCard, Banknote, Trash2, History, Lock, AlertTriangle, ChevronUp, ShieldAlert, X, Delete, Coins, CheckCircle2, Minus, Plus } from 'lucide-react';
 import { DayEndModal } from './day-end-modal';
 import { TransactionHistoryModal } from './transaction-history-modal';
 import { HelpTip } from '@/components/ui/help-tip';
@@ -32,6 +29,7 @@ export function PaymentDrawer() {
   const [showDayEnd, setShowDayEnd] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
+  const [mobileView, setMobileView] = useState<'payment' | 'items'>('payment');
 
   React.useEffect(() => {
       if (!cashAllowed && activeInput === 'cash' && cardAllowed) setActiveInput('card');
@@ -51,10 +49,12 @@ export function PaymentDrawer() {
       }
   }, [activeInput, payment.cashAmount, payment.cardAmount]);
 
+  const totalDue = useMemo(() => transactionItems.reduce((acc, i) => acc + i.amountToPay, 0), [transactionItems]);
+
   const isCompleteEnabled = 
     transactionItems.length > 0 && 
-    payment.tenderTotal >= transactionItems.reduce((acc, i) => acc + i.amountToPay, 0) &&
-    transactionItems.reduce((acc, i) => acc + i.amountToPay, 0) > 0 &&
+    payment.tenderTotal >= totalDue &&
+    totalDue > 0 &&
     dayEndStatus === 'OPEN' &&
     transactionItems.every(item => {
         if (item.type === 'DIRECT_INCOME') {
@@ -64,8 +64,6 @@ export function PaymentDrawer() {
         return true;
     }) &&
     payment.changeDue <= 200;
-
-  const totalDue = transactionItems.reduce((acc, i) => acc + i.amountToPay, 0);
 
   const handleNumpadInput = (val: string) => {
       let newStr = inputBuffer;
@@ -85,30 +83,58 @@ export function PaymentDrawer() {
       setPaymentAmount(activeInput, newStr === '' ? 0 : parseFloat(newStr) || 0);
   };
 
-  const QuickAmounts = [10, 20, 50, 100, 200, 500];
+  const handlePayExact = () => {
+      if (activeInput === 'cash') {
+          const remaining = Math.max(0, totalDue - payment.cardAmount);
+          setPaymentAmount('cash', remaining);
+          setInputBuffer(remaining > 0 ? remaining.toString() : "");
+      } else {
+          const remaining = Math.max(0, totalDue - payment.cashAmount);
+          setPaymentAmount('card', remaining);
+          setInputBuffer(remaining > 0 ? remaining.toString() : "");
+      }
+  };
+
+  const handleClearAmount = () => {
+      setPaymentAmount(activeInput, 0);
+      setInputBuffer("");
+  };
+
+  const handleDesktopInput = (type: 'cash' | 'card', val: string) => {
+      setInputBuffer(val);
+      setPaymentAmount(type, parseFloat(val) || 0);
+  };
+
+  const numKeys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'DEL'];
+
+  const hasMissingDirectIncomeFields = transactionItems.some(item => 
+      item.type === 'DIRECT_INCOME' && (!item.paidBy || item.paidBy.trim().length === 0 || !item.notes || item.notes.trim().length === 0)
+  );
+
+  const shortfall = Math.max(0, totalDue - payment.tenderTotal);
 
   return (
     <>
     {/* Mobile Bottom Bar (collapsed state) */}
     <div className={`${viewMode === 'desktop' ? 'lg:hidden' : ''} fixed bottom-0 left-0 right-0 z-40 bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 text-white shadow-[0_-4px_20px_rgba(0,0,0,0.15)] transition-transform duration-300 ${isMobileExpanded ? 'translate-y-full' : 'translate-y-0'}`}>
-        <div className="px-4 py-3 flex items-center justify-between gap-3" onClick={() => setIsMobileExpanded(true)}>
-             <div className="flex items-center gap-3 min-w-0">
-                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white/10 shrink-0">
-                  <Banknote className="w-5 h-5 text-white/80" />
+        <div className="px-3 py-2.5 flex items-center justify-between gap-2" onClick={() => setIsMobileExpanded(true)}>
+             <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-white/10 shrink-0">
+                  <Banknote className="w-4.5 h-4.5 text-white/80" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[10px] text-white/60 uppercase font-bold tracking-wider">Total Due</div>
+                  <div className="text-[9px] text-white/50 uppercase font-bold tracking-wider">Total Due</div>
                   <div className="text-lg font-mono font-bold text-white leading-tight">R {totalDue.toFixed(2)}</div>
                 </div>
              </div>
              <div className="flex items-center gap-2">
                 {transactionItems.length > 0 && (
-                  <span className="bg-white/20 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                    {transactionItems.length} item{transactionItems.length !== 1 ? 's' : ''}
+                  <span className="bg-white/15 text-white/90 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    {transactionItems.length}
                   </span>
                 )}
-                <Button size="default" className="bg-white text-blue-900 hover:bg-white/90 shadow-lg font-bold rounded-xl h-10 px-5 active:scale-95 transition-transform" onClick={(e) => { e.stopPropagation(); setIsMobileExpanded(true); }}>
-                    Pay <ChevronUp className="ml-1.5 w-4 h-4" />
+                <Button size="default" className="bg-white text-blue-900 hover:bg-white/90 shadow-lg font-bold rounded-xl h-9 px-4 text-sm active:scale-95 transition-transform touch-manipulation" onClick={(e) => { e.stopPropagation(); setIsMobileExpanded(true); }}>
+                    Pay <ChevronUp className="ml-1 w-3.5 h-3.5" />
                 </Button>
              </div>
         </div>
@@ -118,31 +144,49 @@ export function PaymentDrawer() {
     <aside className={`
         fixed inset-x-0 bottom-0 z-50 bg-white border-l border-slate-200/80 shadow-2xl transition-all duration-300 ease-out flex flex-col
         ${viewMode === 'desktop' ? 'lg:static lg:w-[420px] xl:w-[450px] lg:h-full lg:border-l lg:border-t-0 lg:shadow-none' : ''}
-        ${isMobileExpanded ? 'h-[90vh] rounded-t-3xl' : `h-0 ${viewMode === 'desktop' ? 'lg:h-full' : ''} overflow-hidden`}
+        ${isMobileExpanded ? 'h-[92vh] rounded-t-2xl' : `h-0 ${viewMode === 'desktop' ? 'lg:h-full' : ''} overflow-hidden`}
     `}>
-      {/* Mobile Swipe Handle + Header */}
+      {/* Mobile Header */}
       <div className={`${viewMode === 'desktop' ? 'lg:hidden' : ''} shrink-0`}>
-        <div className="w-full flex justify-center pt-2 pb-0 cursor-pointer" onClick={() => setIsMobileExpanded(false)}>
+        <div className="w-full flex justify-center pt-2 pb-1 cursor-pointer" onClick={() => setIsMobileExpanded(false)}>
             <div className="w-10 h-1 bg-slate-300 rounded-full" />
         </div>
-        <div className="px-4 py-2 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <h2 className="text-base font-bold text-slate-800">Payment</h2>
+        <div className="px-3 pb-2 flex justify-between items-center">
+          <div className="flex items-center gap-1.5">
+            <div className="flex bg-slate-100 rounded-lg p-0.5">
+              <button
+                onClick={() => setMobileView('payment')}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${mobileView === 'payment' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500'}`}
+                data-testid="tab-mobile-payment"
+              >
+                Payment
+              </button>
+              <button
+                onClick={() => setMobileView('items')}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all relative ${mobileView === 'items' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500'}`}
+                data-testid="tab-mobile-items"
+              >
+                Items
+                {transactionItems.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-[8px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{transactionItems.length}</span>
+                )}
+              </button>
+            </div>
             {dayEndStatus === 'RECONCILED' && (
-              <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full flex items-center gap-0.5 font-bold">
+              <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full flex items-center gap-0.5 font-bold">
                 <Lock className="w-2.5 h-2.5" /> Closed
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400" onClick={() => setShowHistory(true)}>
-              <History className="w-4 h-4" />
+          <div className="flex items-center gap-0.5">
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400" onClick={() => setShowHistory(true)}>
+              <History className="w-3.5 h-3.5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400" onClick={() => setShowDayEnd(true)}>
-              <Lock className="w-4 h-4" />
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400" onClick={() => setShowDayEnd(true)}>
+              <Lock className="w-3.5 h-3.5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500" onClick={() => setIsMobileExpanded(false)}>
-              <X className="w-5 h-5" />
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500" onClick={() => setIsMobileExpanded(false)}>
+              <X className="w-4 h-4" />
             </Button>
           </div>
         </div>
@@ -172,206 +216,113 @@ export function PaymentDrawer() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto overscroll-contain">
-        <Tabs defaultValue="payment" className="w-full">
-           <div className="px-4 lg:px-6 pt-2 lg:pt-4 shrink-0">
-                <TabsList className="grid w-full grid-cols-2 bg-slate-100/80 rounded-xl p-1 h-10 lg:h-11">
-                    <TabsTrigger value="items" className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-700 rounded-lg text-xs sm:text-sm font-medium gap-1">Items ({transactionItems.length}) <HelpTip text="View and manage items in your current transaction basket." size="sm" /></TabsTrigger>
-                    <TabsTrigger value="payment" className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-700 rounded-lg text-xs sm:text-sm font-medium">Payment</TabsTrigger>
-                </TabsList>
-           </div>
-
-           <TabsContent value="items" className="p-4 lg:p-6 space-y-3 lg:space-y-4">
-                {transactionItems.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-32 lg:h-48 text-muted-foreground border-2 border-dashed border-blue-200/50 rounded-2xl bg-blue-50/20">
-                      <Banknote className="w-8 h-8 text-blue-300 mb-2" />
-                      <p className="text-sm font-medium">No items added</p>
-                      <p className="text-xs mt-0.5 text-slate-400">Search to add items to basket</p>
-                    </div>
-                ) : (
-                    <div className="space-y-2">
-                    {transactionItems.map((item) => (
-                        <div key={item.id} className="relative group flex justify-between items-center p-3 lg:p-4 bg-white rounded-xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all hover:border-blue-200/50 active:scale-[0.99] touch-manipulation">
-                            <div className="flex-1 min-w-0 pr-3">
-                                <div className="font-semibold text-sm lg:text-lg truncate leading-tight mb-0.5">{item.description}</div>
-                                <div className="text-[11px] text-muted-foreground font-mono">{item.reference}</div>
-                            </div>
-                            <div className="flex flex-col items-end gap-1">
-                                <div className="font-mono font-bold text-sm lg:text-lg">
-                                R {item.amountToPay.toFixed(2)}
-                                </div>
-                            </div>
-                             <button 
-                                onClick={() => removeItem(item.id)}
-                                className="absolute -top-1.5 -right-1.5 bg-destructive text-white rounded-full p-1 lg:p-1.5 shadow-md lg:opacity-0 lg:group-hover:opacity-100 transition-opacity opacity-100"
-                            >
-                                <Trash2 className="w-3 h-3 lg:w-4 lg:h-4" />
-                            </button>
-                        </div>
-                    ))}
-                    </div>
-                )}
-           </TabsContent>
-
-           <TabsContent value="payment" className="p-4 lg:p-6 space-y-3 lg:space-y-5">
-                 {/* Total Display - Compact on mobile */}
-                 <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl lg:rounded-2xl p-3 lg:p-5 border border-blue-100/50 text-center">
-                    <div className="text-blue-600/80 uppercase tracking-widest font-bold text-[10px] lg:text-xs mb-0.5 lg:mb-1 flex items-center justify-center gap-1">TOTAL DUE <HelpTip text="The sum of all items in your basket, rounded to the nearest 10 cents." /></div>
-                    <div className="text-3xl lg:text-5xl font-mono font-bold text-blue-700">R {totalDue.toFixed(2)}</div>
-                 </div>
-
-                 {dayEndStatus === 'RECONCILED' ? (
-                     <div className="bg-red-50 border border-red-200 rounded-xl p-4 lg:p-6 text-center text-red-800 space-y-2">
-                         <Lock className="w-6 h-6 lg:w-8 lg:h-8 mx-auto opacity-50" />
-                         <h3 className="font-bold text-sm lg:text-base">Shift Closed</h3>
-                         <p className="text-xs lg:text-sm">Payments cannot be processed after day end reconciliation.</p>
-                     </div>
-                 ) : (
-                 <>
-                    {!cashAllowed && !cardAllowed && (
-                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center text-amber-800 text-xs">
-                            <AlertTriangle className="w-4 h-4 mx-auto mb-1 opacity-70" />
-                            No payment types enabled. Contact your supervisor.
-                        </div>
-                    )}
-
-                    {/* Cash / Card Input - Compact on mobile */}
-                    <div className={`grid gap-2 lg:gap-4 ${cashAllowed && cardAllowed ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                        {cashAllowed && (
-                        <div 
-                            onClick={() => setActiveInput('cash')}
-                            className={`p-3 lg:p-4 rounded-xl border-2 text-left transition-all cursor-pointer active:scale-[0.98] touch-manipulation ${activeInput === 'cash' ? 'border-green-500 bg-green-50/40 ring-2 ring-green-200/50 shadow-sm' : 'border-slate-200 bg-slate-50 hover:bg-slate-100/80'}`}
-                        >
-                            <div className={`flex items-center gap-1.5 mb-0.5 ${activeInput === 'cash' ? 'text-green-600' : 'text-muted-foreground'}`}>
-                                <Banknote className="w-4 h-4" />
-                                <span className="font-semibold text-xs uppercase tracking-wide">Cash</span>
-                            </div>
-                            <input
-                                type="text"
-                                inputMode="decimal"
-                                className="w-full bg-transparent text-xl lg:text-2xl font-mono font-bold focus:outline-none placeholder:text-slate-300"
-                                value={activeInput === 'cash' ? inputBuffer : (payment.cashAmount > 0 ? payment.cashAmount.toFixed(2).replace(/\.00$/, '') : "")}
-                                placeholder="0.00"
-                                onChange={(e) => {
-                                    if (activeInput !== 'cash') setActiveInput('cash');
-                                    const val = e.target.value;
-                                    if (/^[0-9]*\.?[0-9]*$/.test(val)) {
-                                        setInputBuffer(val);
-                                        setPaymentAmount('cash', parseFloat(val) || 0);
-                                    }
-                                }}
-                                onFocus={() => setActiveInput('cash')}
-                            />
-                        </div>
-                        )}
-
-                        {cardAllowed && (
-                        <div 
-                            onClick={() => setActiveInput('card')}
-                            className={`p-3 lg:p-4 rounded-xl border-2 text-left transition-all cursor-pointer active:scale-[0.98] touch-manipulation ${activeInput === 'card' ? 'border-blue-500 bg-blue-50/40 ring-2 ring-blue-200/50 shadow-sm' : 'border-slate-200 bg-slate-50 hover:bg-slate-100/80'}`}
-                        >
-                            <div className={`flex items-center gap-1.5 mb-0.5 ${activeInput === 'card' ? 'text-blue-600' : 'text-muted-foreground'}`}>
-                                <CreditCard className="w-4 h-4" />
-                                <span className="font-semibold text-xs uppercase tracking-wide">Card</span>
-                            </div>
-                            <input
-                                type="text"
-                                inputMode="decimal"
-                                className="w-full bg-transparent text-xl lg:text-2xl font-mono font-bold focus:outline-none placeholder:text-slate-300"
-                                value={activeInput === 'card' ? inputBuffer : (payment.cardAmount > 0 ? payment.cardAmount.toFixed(2).replace(/\.00$/, '') : "")}
-                                placeholder="0.00"
-                                onChange={(e) => {
-                                    if (activeInput !== 'card') setActiveInput('card');
-                                    const val = e.target.value;
-                                    if (/^[0-9]*\.?[0-9]*$/.test(val)) {
-                                        setInputBuffer(val);
-                                        setPaymentAmount('card', parseFloat(val) || 0);
-                                    }
-                                }}
-                                onFocus={() => setActiveInput('card')}
-                            />
-                        </div>
-                        )}
-                    </div>
-
-                    {payment.cardAmount > 0 && (
-                        <div>
-                            <Label className="text-[10px] lg:text-xs text-muted-foreground mb-1 flex items-center gap-1">Card Reference <HelpTip text="Enter the last 4 digits of the card or the slip number from the card machine for audit tracking." /></Label>
-                            <Input
-                                type="text"
-                                placeholder="e.g. last 4 digits or slip number"
-                                value={payment.cardReference}
-                                onChange={(e) => setCardReference(e.target.value)}
-                                className="h-9 lg:h-10 font-mono text-sm"
-                                data-testid="input-card-reference"
-                            />
-                        </div>
-                    )}
-                    
-                    {/* Quick Cash - compact grid on mobile */}
-                    {activeInput === 'cash' && cashAllowed && (
-                    <div className={`grid grid-cols-3 gap-1.5 lg:gap-2 ${viewMode === 'desktop' ? 'lg:hidden' : ''}`}>
-                        {QuickAmounts.map(amt => (
-                            <Button 
-                                key={amt}
-                                variant="outline"
-                                className="rounded-lg lg:rounded-xl bg-white border-slate-200 hover:bg-green-50 hover:text-green-700 hover:border-green-300 transition-all h-10 lg:h-12 text-sm lg:text-base font-mono font-semibold active:scale-95 touch-manipulation"
-                                onClick={() => setPaymentAmount('cash', payment.cashAmount + amt)}
-                            >
-                                +R{amt}
-                            </Button>
-                        ))}
-                    </div>
-                    )}
-
-                    {/* Virtual Numpad - compact on mobile */}
-                    <div className={`${viewMode === 'desktop' ? 'lg:hidden' : ''}`}>
-                        <VirtualNumpad 
-                            onInput={handleNumpadInput} 
-                            onClear={handleBackspace} 
-                            className="w-full"
-                        />
-                    </div>
-                 </>
-                 )}
-           </TabsContent>
-        </Tabs>
-      </div>
-
-      {/* Footer - Compact on mobile */}
-      <div className="px-4 py-3 lg:p-6 bg-white border-t border-slate-200/80 space-y-2 lg:space-y-4 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] z-30 relative shrink-0">
-        <div className="flex justify-between items-center">
-            <span className="text-xs lg:text-sm font-semibold text-slate-500 flex items-center gap-1">Change <HelpTip text="Change is calculated only on the cash portion. Maximum change allowed is R200.00." /></span>
-            <div className="flex items-center gap-2">
-                {payment.changeDue > 200 && (
-                    <span className="text-[10px] text-destructive font-medium flex items-center gap-0.5">
-                        <AlertTriangle className="w-3 h-3" />
-                        Max R200
-                    </span>
-                )}
-                <span className={`font-mono text-lg lg:text-2xl font-bold ${payment.changeDue > 200 ? 'text-destructive' : 'text-foreground'}`}>
-                    R {payment.changeDue.toFixed(2)}
-                </span>
-            </div>
+        
+        {/* === DESKTOP: Tabbed Layout === */}
+        <div className={`${viewMode === 'desktop' ? 'hidden lg:block' : 'hidden'} h-full`}>
+          <DesktopPaymentContent
+            transactionItems={transactionItems}
+            removeItem={removeItem}
+            totalDue={totalDue}
+            dayEndStatus={dayEndStatus}
+            cashAllowed={cashAllowed}
+            cardAllowed={cardAllowed}
+            activeInput={activeInput}
+            setActiveInput={setActiveInput}
+            inputBuffer={inputBuffer}
+            payment={payment}
+            setPaymentAmount={setPaymentAmount}
+            setCardReference={setCardReference}
+            handleNumpadInput={handleNumpadInput}
+            handleBackspace={handleBackspace}
+            handlePayExact={handlePayExact}
+            handleClearAmount={handleClearAmount}
+            handleDesktopInput={handleDesktopInput}
+          />
         </div>
 
-        {!isCompleteEnabled && transactionItems.length > 0 && transactionItems.some(item => 
-            item.type === 'DIRECT_INCOME' && (!item.paidBy || item.paidBy.trim().length === 0 || !item.notes || item.notes.trim().length === 0)
-        ) && (
-            <div className="flex items-center gap-2 text-[10px] lg:text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5 lg:px-3 lg:py-2">
+        {/* === MOBILE: Direct layout (no nested tabs) === */}
+        <div className={`${viewMode === 'desktop' ? 'lg:hidden' : ''}`}>
+          {mobileView === 'items' ? (
+            <MobileItemsList items={transactionItems} removeItem={removeItem} totalDue={totalDue} />
+          ) : (
+            <MobilePaymentView
+              totalDue={totalDue}
+              dayEndStatus={dayEndStatus}
+              cashAllowed={cashAllowed}
+              cardAllowed={cardAllowed}
+              activeInput={activeInput}
+              setActiveInput={setActiveInput}
+              inputBuffer={inputBuffer}
+              payment={payment}
+              setPaymentAmount={setPaymentAmount}
+              setCardReference={setCardReference}
+              handleNumpadInput={handleNumpadInput}
+              handleBackspace={handleBackspace}
+              handlePayExact={handlePayExact}
+              handleClearAmount={handleClearAmount}
+              numKeys={numKeys}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Footer - Always visible complete button */}
+      <div className="px-3 py-2.5 lg:p-5 bg-white border-t border-slate-200/80 space-y-1.5 lg:space-y-3 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] z-30 relative shrink-0">
+        {/* Change + Tender summary */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="text-center">
+              <div className="text-[9px] lg:text-[10px] text-slate-400 uppercase font-semibold tracking-wider">Tendered</div>
+              <div className="text-sm lg:text-base font-mono font-bold text-slate-700">R {payment.tenderTotal.toFixed(2)}</div>
+            </div>
+            {shortfall > 0 && (
+              <div className="text-center">
+                <div className="text-[9px] lg:text-[10px] text-amber-500 uppercase font-semibold tracking-wider">Short</div>
+                <div className="text-sm lg:text-base font-mono font-bold text-amber-600">R {shortfall.toFixed(2)}</div>
+              </div>
+            )}
+          </div>
+          <div className="text-right">
+            <div className="text-[9px] lg:text-[10px] text-slate-400 uppercase font-semibold tracking-wider flex items-center gap-1 justify-end">
+              Change
+              <HelpTip text="Change is calculated only on the cash portion. Maximum change allowed is R200.00." />
+            </div>
+            <div className="flex items-center gap-1.5 justify-end">
+              {payment.changeDue > 200 && (
+                <span className="text-[9px] text-destructive font-medium flex items-center gap-0.5">
+                  <AlertTriangle className="w-3 h-3" />
+                  Max R200
+                </span>
+              )}
+              <span className={`font-mono text-lg lg:text-2xl font-bold ${payment.changeDue > 200 ? 'text-destructive' : payment.changeDue > 0 ? 'text-emerald-600' : 'text-slate-700'}`}>
+                R {payment.changeDue.toFixed(2)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {hasMissingDirectIncomeFields && transactionItems.length > 0 && (
+            <div className="flex items-center gap-2 text-[10px] lg:text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">
                 <ShieldAlert className="w-3.5 h-3.5 flex-shrink-0" />
                 <span>Fill in <strong>Notes</strong> and <strong>Paid By</strong> for Direct Income items</span>
             </div>
         )}
 
         <Button 
-          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25 h-12 lg:h-16 text-base lg:text-xl font-bold rounded-xl disabled:from-slate-300 disabled:to-slate-400 disabled:shadow-none active:scale-[0.98] transition-all touch-manipulation" 
+          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25 h-12 lg:h-14 text-base lg:text-lg font-bold rounded-xl disabled:from-slate-300 disabled:to-slate-400 disabled:shadow-none active:scale-[0.98] transition-all touch-manipulation" 
           size="lg"
           disabled={!isCompleteEnabled}
           onClick={completeTransaction}
           data-testid="button-complete-transaction"
         >
-          COMPLETE (R {payment.tenderTotal.toFixed(2)})
-          <ArrowRight className="ml-2 w-5 h-5 lg:w-6 lg:h-6" />
+          {shortfall > 0 ? (
+            <>R {shortfall.toFixed(2)} still needed</>
+          ) : (
+            <>
+              COMPLETE (R {payment.tenderTotal.toFixed(2)})
+              <ArrowRight className="ml-2 w-5 h-5" />
+            </>
+          )}
         </Button>
       </div>
     </aside>
@@ -387,5 +338,412 @@ export function PaymentDrawer() {
     <DayEndModal isOpen={showDayEnd} onClose={() => setShowDayEnd(false)} />
     <TransactionHistoryModal isOpen={showHistory} onClose={() => setShowHistory(false)} />
     </>
+  );
+}
+
+function MobileItemsList({ items, removeItem, totalDue }: { items: any[]; removeItem: (id: string) => void; totalDue: number }) {
+  if (items.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 px-4 text-slate-400">
+        <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mb-3">
+          <Banknote className="w-7 h-7 text-blue-300" />
+        </div>
+        <p className="text-sm font-semibold text-slate-600">No items in basket</p>
+        <p className="text-xs text-slate-400 mt-0.5">Search for an account to add items</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-3 space-y-1.5">
+      {items.map((item) => (
+        <div key={item.id} className="flex items-center gap-2.5 p-2.5 bg-white rounded-xl border border-slate-200 shadow-sm group" data-testid={`item-${item.id}`}>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-sm truncate leading-tight text-slate-800">{item.description}</div>
+            <div className="text-[10px] text-slate-400 font-mono mt-0.5">{item.reference}</div>
+          </div>
+          <div className="font-mono font-bold text-sm text-slate-800 shrink-0">
+            R {item.amountToPay.toFixed(2)}
+          </div>
+          <button 
+            onClick={() => removeItem(item.id)}
+            className="w-7 h-7 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 rounded-lg transition-colors shrink-0 active:scale-90 touch-manipulation"
+            data-testid={`remove-item-${item.id}`}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ))}
+      <div className="flex justify-between items-center pt-2 px-1 border-t border-dashed border-slate-200 mt-2">
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{items.length} item{items.length !== 1 ? 's' : ''}</span>
+        <span className="font-mono font-bold text-base text-slate-800">R {totalDue.toFixed(2)}</span>
+      </div>
+    </div>
+  );
+}
+
+function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, activeInput, setActiveInput, inputBuffer, payment, setPaymentAmount, setCardReference, handleNumpadInput, handleBackspace, handlePayExact, handleClearAmount, numKeys }: any) {
+  if (dayEndStatus === 'RECONCILED') {
+    return (
+      <div className="p-4">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center text-red-800 space-y-2">
+          <Lock className="w-8 h-8 mx-auto opacity-50" />
+          <h3 className="font-bold">Shift Closed</h3>
+          <p className="text-sm">Payments cannot be processed after day end reconciliation.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const currentValue = activeInput === 'cash' ? payment.cashAmount : payment.cardAmount;
+  const otherValue = activeInput === 'cash' ? payment.cardAmount : payment.cashAmount;
+  const remaining = Math.max(0, totalDue - otherValue);
+
+  return (
+    <div className="flex flex-col px-3 pt-2 pb-1 gap-2">
+      {/* Total Due - compact */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-3 text-center text-white">
+        <div className="text-[9px] uppercase tracking-widest font-bold text-white/60 mb-0.5">Total Due</div>
+        <div className="text-3xl font-mono font-bold leading-none">R {totalDue.toFixed(2)}</div>
+      </div>
+
+      {!cashAllowed && !cardAllowed && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center text-amber-800 text-xs">
+          <AlertTriangle className="w-4 h-4 mx-auto mb-1 opacity-70" />
+          No payment types enabled. Contact your supervisor.
+        </div>
+      )}
+
+      {/* Payment Method Toggle */}
+      {cashAllowed && cardAllowed && (
+        <div className="grid grid-cols-2 gap-1.5">
+          <button
+            onClick={() => setActiveInput('cash')}
+            className={`flex items-center gap-2 p-2.5 rounded-xl border-2 transition-all active:scale-[0.97] touch-manipulation ${
+              activeInput === 'cash'
+                ? 'border-emerald-500 bg-emerald-50 shadow-sm'
+                : 'border-slate-200 bg-white'
+            }`}
+            data-testid="toggle-cash"
+          >
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeInput === 'cash' ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+              <Banknote className="w-4 h-4" />
+            </div>
+            <div className="text-left">
+              <div className={`text-[10px] uppercase font-bold tracking-wider ${activeInput === 'cash' ? 'text-emerald-600' : 'text-slate-400'}`}>Cash</div>
+              <div className={`text-sm font-mono font-bold ${activeInput === 'cash' ? 'text-emerald-700' : 'text-slate-600'}`}>
+                {payment.cashAmount > 0 ? `R ${payment.cashAmount.toFixed(2)}` : 'R 0.00'}
+              </div>
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveInput('card')}
+            className={`flex items-center gap-2 p-2.5 rounded-xl border-2 transition-all active:scale-[0.97] touch-manipulation ${
+              activeInput === 'card'
+                ? 'border-blue-500 bg-blue-50 shadow-sm'
+                : 'border-slate-200 bg-white'
+            }`}
+            data-testid="toggle-card"
+          >
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeInput === 'card' ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+              <CreditCard className="w-4 h-4" />
+            </div>
+            <div className="text-left">
+              <div className={`text-[10px] uppercase font-bold tracking-wider ${activeInput === 'card' ? 'text-blue-600' : 'text-slate-400'}`}>Card</div>
+              <div className={`text-sm font-mono font-bold ${activeInput === 'card' ? 'text-blue-700' : 'text-slate-600'}`}>
+                {payment.cardAmount > 0 ? `R ${payment.cardAmount.toFixed(2)}` : 'R 0.00'}
+              </div>
+            </div>
+          </button>
+        </div>
+      )}
+
+      {/* Single method display when only one allowed */}
+      {cashAllowed && !cardAllowed && (
+        <div className="flex items-center gap-2 p-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-50">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-500 text-white">
+            <Banknote className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-[10px] uppercase font-bold tracking-wider text-emerald-600">Cash Only</div>
+            <div className="text-sm font-mono font-bold text-emerald-700">
+              {payment.cashAmount > 0 ? `R ${payment.cashAmount.toFixed(2)}` : 'R 0.00'}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!cashAllowed && cardAllowed && (
+        <div className="flex items-center gap-2 p-2.5 rounded-xl border-2 border-blue-500 bg-blue-50">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-500 text-white">
+            <CreditCard className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-[10px] uppercase font-bold tracking-wider text-blue-600">Card Only</div>
+            <div className="text-sm font-mono font-bold text-blue-700">
+              {payment.cardAmount > 0 ? `R ${payment.cardAmount.toFixed(2)}` : 'R 0.00'}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Active Input Display + Pay Exact */}
+      <div className="flex items-center gap-1.5">
+        <div className={`flex-1 rounded-xl border-2 p-2 flex items-center gap-2 ${
+          activeInput === 'cash' ? 'border-emerald-300 bg-emerald-50/30' : 'border-blue-300 bg-blue-50/30'
+        }`}>
+          <span className={`text-xs font-bold uppercase ${activeInput === 'cash' ? 'text-emerald-500' : 'text-blue-500'}`}>R</span>
+          <input
+            type="text"
+            inputMode="decimal"
+            className="w-full bg-transparent text-xl font-mono font-bold focus:outline-none placeholder:text-slate-300 text-slate-800"
+            value={activeInput === 'cash'
+              ? inputBuffer
+              : inputBuffer
+            }
+            placeholder="0.00"
+            readOnly
+            data-testid="input-amount"
+          />
+        </div>
+        <button
+          onClick={handlePayExact}
+          className={`h-11 px-3 rounded-xl font-bold text-xs transition-all active:scale-95 touch-manipulation flex items-center gap-1 shrink-0 ${
+            activeInput === 'cash'
+              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+              : 'bg-blue-600 text-white hover:bg-blue-700'
+          }`}
+          data-testid="button-pay-exact"
+        >
+          <Coins className="w-3.5 h-3.5" />
+          Exact
+        </button>
+        {currentValue > 0 && (
+          <button
+            onClick={handleClearAmount}
+            className="h-11 w-11 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center active:scale-95 transition-all touch-manipulation shrink-0"
+            data-testid="button-clear"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Card Reference */}
+      {payment.cardAmount > 0 && (
+        <div>
+          <Label className="text-[10px] text-slate-400 mb-0.5 flex items-center gap-1">Card Ref <HelpTip text="Enter the last 4 digits of the card or the slip number from the card machine." /></Label>
+          <Input
+            type="text"
+            placeholder="Last 4 digits / slip no."
+            value={payment.cardReference}
+            onChange={(e) => setCardReference(e.target.value)}
+            className="h-9 font-mono text-sm"
+            data-testid="input-card-reference"
+          />
+        </div>
+      )}
+
+      {/* Quick Cash Buttons */}
+      {activeInput === 'cash' && cashAllowed && (
+        <div className="grid grid-cols-6 gap-1">
+          {[10, 20, 50, 100, 200, 500].map(amt => (
+            <button
+              key={amt}
+              onClick={() => setPaymentAmount('cash', payment.cashAmount + amt)}
+              className="h-9 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-mono font-bold hover:bg-emerald-100 active:scale-95 transition-all touch-manipulation"
+              data-testid={`quick-amount-${amt}`}
+            >
+              +{amt}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Numpad - Compact */}
+      <div className="grid grid-cols-3 gap-1">
+        {numKeys.map((key) => (
+          <button
+            key={key}
+            onClick={() => key === 'DEL' ? handleBackspace() : handleNumpadInput(key)}
+            className={`h-11 rounded-lg text-lg font-mono font-semibold active:scale-95 transition-all touch-manipulation ${
+              key === 'DEL'
+                ? 'bg-red-50 text-red-500 border border-red-200 hover:bg-red-100'
+                : 'bg-white text-slate-800 border border-slate-200 hover:bg-slate-50 shadow-sm'
+            }`}
+            data-testid={`numpad-${key}`}
+          >
+            {key === 'DEL' ? <Delete className="w-5 h-5 mx-auto" /> : key}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DesktopPaymentContent({ transactionItems, removeItem, totalDue, dayEndStatus, cashAllowed, cardAllowed, activeInput, setActiveInput, inputBuffer, payment, setPaymentAmount, setCardReference, handleNumpadInput, handleBackspace, handlePayExact, handleClearAmount, handleDesktopInput }: any) {
+  const [desktopTab, setDesktopTab] = useState<'payment' | 'items'>('payment');
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="px-5 pt-4 shrink-0">
+        <div className="flex bg-slate-100/80 rounded-xl p-1 h-11">
+          <button
+            onClick={() => setDesktopTab('items')}
+            className={`flex-1 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${desktopTab === 'items' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Items ({transactionItems.length})
+            <HelpTip text="View and manage items in your current transaction basket." size="sm" />
+          </button>
+          <button
+            onClick={() => setDesktopTab('payment')}
+            className={`flex-1 rounded-lg text-sm font-medium transition-all ${desktopTab === 'payment' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Payment
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-5">
+        {desktopTab === 'items' ? (
+          <>
+            {transactionItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-48 text-muted-foreground border-2 border-dashed border-blue-200/50 rounded-2xl bg-blue-50/20">
+                <Banknote className="w-8 h-8 text-blue-300 mb-2" />
+                <p className="text-sm font-medium">No items added</p>
+                <p className="text-xs mt-0.5 text-slate-400">Search to add items to basket</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {transactionItems.map((item: any) => (
+                  <div key={item.id} className="relative group flex justify-between items-center p-4 bg-white rounded-xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all hover:border-blue-200/50">
+                    <div className="flex-1 min-w-0 pr-3">
+                      <div className="font-semibold text-base truncate leading-tight mb-0.5">{item.description}</div>
+                      <div className="text-xs text-muted-foreground font-mono">{item.reference}</div>
+                    </div>
+                    <div className="font-mono font-bold text-lg">
+                      R {item.amountToPay.toFixed(2)}
+                    </div>
+                    <button 
+                      onClick={() => removeItem(item.id)}
+                      className="absolute -top-1.5 -right-1.5 bg-destructive text-white rounded-full p-1.5 shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="space-y-4">
+            {/* Total Display */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-5 border border-blue-100/50 text-center">
+              <div className="text-blue-600/80 uppercase tracking-widest font-bold text-xs mb-1 flex items-center justify-center gap-1">TOTAL DUE <HelpTip text="The sum of all items in your basket, rounded to the nearest 10 cents." /></div>
+              <div className="text-5xl font-mono font-bold text-blue-700">R {totalDue.toFixed(2)}</div>
+            </div>
+
+            {dayEndStatus === 'RECONCILED' ? (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center text-red-800 space-y-2">
+                <Lock className="w-8 h-8 mx-auto opacity-50" />
+                <h3 className="font-bold text-base">Shift Closed</h3>
+                <p className="text-sm">Payments cannot be processed after day end reconciliation.</p>
+              </div>
+            ) : (
+              <>
+                {!cashAllowed && !cardAllowed && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center text-amber-800 text-xs">
+                    <AlertTriangle className="w-4 h-4 mx-auto mb-1 opacity-70" />
+                    No payment types enabled. Contact your supervisor.
+                  </div>
+                )}
+
+                {/* Cash / Card Input */}
+                <div className={`grid gap-3 ${cashAllowed && cardAllowed ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  {cashAllowed && (
+                    <div 
+                      onClick={() => setActiveInput('cash')}
+                      className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${activeInput === 'cash' ? 'border-green-500 bg-green-50/40 ring-2 ring-green-200/50 shadow-sm' : 'border-slate-200 bg-slate-50 hover:bg-slate-100/80'}`}
+                    >
+                      <div className={`flex items-center gap-1.5 mb-1 ${activeInput === 'cash' ? 'text-green-600' : 'text-muted-foreground'}`}>
+                        <Banknote className="w-4 h-4" />
+                        <span className="font-semibold text-xs uppercase tracking-wide">Cash</span>
+                      </div>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        className="w-full bg-transparent text-2xl font-mono font-bold focus:outline-none placeholder:text-slate-300"
+                        value={activeInput === 'cash' ? inputBuffer : (payment.cashAmount > 0 ? payment.cashAmount.toFixed(2).replace(/\.00$/, '') : "")}
+                        placeholder="0.00"
+                        onChange={(e) => {
+                          if (activeInput !== 'cash') setActiveInput('cash');
+                          const val = e.target.value;
+                          if (/^[0-9]*\.?[0-9]*$/.test(val)) {
+                            handleDesktopInput('cash', val);
+                          }
+                        }}
+                        onFocus={() => setActiveInput('cash')}
+                      />
+                    </div>
+                  )}
+
+                  {cardAllowed && (
+                    <div 
+                      onClick={() => setActiveInput('card')}
+                      className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${activeInput === 'card' ? 'border-blue-500 bg-blue-50/40 ring-2 ring-blue-200/50 shadow-sm' : 'border-slate-200 bg-slate-50 hover:bg-slate-100/80'}`}
+                    >
+                      <div className={`flex items-center gap-1.5 mb-1 ${activeInput === 'card' ? 'text-blue-600' : 'text-muted-foreground'}`}>
+                        <CreditCard className="w-4 h-4" />
+                        <span className="font-semibold text-xs uppercase tracking-wide">Card</span>
+                      </div>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        className="w-full bg-transparent text-2xl font-mono font-bold focus:outline-none placeholder:text-slate-300"
+                        value={activeInput === 'card' ? inputBuffer : (payment.cardAmount > 0 ? payment.cardAmount.toFixed(2).replace(/\.00$/, '') : "")}
+                        placeholder="0.00"
+                        onChange={(e) => {
+                          if (activeInput !== 'card') setActiveInput('card');
+                          const val = e.target.value;
+                          if (/^[0-9]*\.?[0-9]*$/.test(val)) {
+                            handleDesktopInput('card', val);
+                          }
+                        }}
+                        onFocus={() => setActiveInput('card')}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Pay Exact button for desktop */}
+                <Button
+                  variant="outline"
+                  onClick={handlePayExact}
+                  className="w-full h-10 gap-2 text-sm font-semibold"
+                  data-testid="button-pay-exact-desktop"
+                >
+                  <Coins className="w-4 h-4" />
+                  Pay Exact Amount (R {Math.max(0, totalDue - (activeInput === 'cash' ? payment.cardAmount : payment.cashAmount)).toFixed(2)})
+                </Button>
+
+                {payment.cardAmount > 0 && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">Card Reference <HelpTip text="Enter the last 4 digits of the card or the slip number from the card machine for audit tracking." /></Label>
+                    <Input
+                      type="text"
+                      placeholder="e.g. last 4 digits or slip number"
+                      value={payment.cardReference}
+                      onChange={(e) => setCardReference(e.target.value)}
+                      className="h-10 font-mono text-sm"
+                      data-testid="input-card-reference"
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
