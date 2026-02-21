@@ -853,6 +853,7 @@ export function HandoverTab({ accountId }: { accountId: number }) {
   }, [accountId]);
 
   useEffect(() => { if (!loaded.current) load(); }, [load]);
+  useEffect(() => { setCurrentPage(1); }, [accountId]);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
@@ -862,8 +863,6 @@ export function HandoverTab({ accountId }: { accountId: number }) {
     return n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
   const fmtDate = (v: any) => v ? new Date(v).toLocaleDateString('en-ZA') : '-';
-
-  useEffect(() => { setCurrentPage(1); }, [accountId]);
 
   const infoItems = data ? (Array.isArray(data) ? data : [data]) : [];
   const enqItems = enquiry ? (Array.isArray(enquiry) ? enquiry : [enquiry]) : [];
