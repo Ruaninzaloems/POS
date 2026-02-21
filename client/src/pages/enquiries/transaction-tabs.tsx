@@ -2035,9 +2035,26 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
           const readings = await getMeterReadingHistory(accountId, meterNo);
           const readingsArr = Array.isArray(readings) ? readings : [];
 
+          const parseDDMMYYYY = (dateStr: string): Date => {
+            if (!dateStr) return new Date('1900-01-01');
+            if (dateStr.includes('/')) {
+              const parts = dateStr.split('/');
+              if (parts.length === 3) {
+                const day = parseInt(parts[0], 10);
+                const month = parseInt(parts[1], 10);
+                const year = parseInt(parts[2], 10);
+                if (day > 0 && month >= 1 && month <= 12 && year > 1900) {
+                  return new Date(year, month - 1, day);
+                }
+              }
+            }
+            const d = new Date(dateStr);
+            return isNaN(d.getTime()) ? new Date('1900-01-01') : d;
+          };
+
           const sortedReadings = [...readingsArr].sort((a, b) => {
-            const dateA = new Date(a.reading2Date || a.readingDate || '1900-01-01').getTime();
-            const dateB = new Date(b.reading2Date || b.readingDate || '1900-01-01').getTime();
+            const dateA = parseDDMMYYYY(a.reading2Date || a.readingDate || '').getTime();
+            const dateB = parseDDMMYYYY(b.reading2Date || b.readingDate || '').getTime();
             return dateB - dateA;
           });
 
@@ -2045,14 +2062,11 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
           const latestStatus = latestReading ? (latestReading.readingStatus || '').toLowerCase() : '';
 
           const getReadingMonthLabel = (r: any) => {
-            const dateStr = r?.reading2Date || r?.readingDate;
-            if (dateStr) {
-              const d = new Date(dateStr);
-              if (!isNaN(d.getTime())) {
-                return `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
-              }
-            }
-            return r?.billingmonth || 'unknown';
+            const bm = r?.billingmonth;
+            const fy = r?.financialYear;
+            if (bm && fy) return `${bm} ${fy}`;
+            if (bm) return bm;
+            return 'unknown';
           };
 
           if (!latestReading || latestStatus === 'billed' || latestStatus === '') {
