@@ -91,7 +91,10 @@ function downloadCsvTemplate() {
   const a = document.createElement('a');
   a.href = url;
   a.download = 'import_template.csv';
+  a.style.display = 'none';
+  (document.body || document.documentElement).appendChild(a);
   a.click();
+  a.remove();
   URL.revokeObjectURL(url);
 }
 

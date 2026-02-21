@@ -1974,6 +1974,7 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
   const [addIdNumber, setAddIdNumber] = useState('');
   const [addLoading, setAddLoading] = useState(false);
   const [removeLoading, setRemoveLoading] = useState<number | null>(null);
+  const [selectedOccupierIdx, setSelectedOccupierIdx] = useState<number | null>(null);
   const [proofData, setProofData] = useState<{ property: any; nameInfo: any } | null>(null);
   const [proofLoading, setProofLoading] = useState(false);
   const loaded = useRef(false);
@@ -2078,7 +2079,7 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
     <div className="p-3 sm:p-5 space-y-4 sm:space-y-5" data-testid="occupiers-panel">
       <div className="flex items-center justify-center gap-3 flex-wrap">
         <button onClick={() => setShowAddModal(true)} className="px-4 py-2 bg-slate-700 text-white text-sm rounded hover:bg-slate-600 transition-colors" data-testid="button-add-occupier">Add</button>
-        <button onClick={() => { const sel = data.find((_, i) => document.querySelector(`[data-testid="occupier-row-${i}"]`)?.classList.contains('bg-blue-50')); if (sel) handleRemove(sel); else if (data.length > 0) alert('Select an occupier to remove'); }} className="px-4 py-2 bg-slate-700 text-white text-sm rounded hover:bg-slate-600 transition-colors" data-testid="button-remove-occupier">Remove Occupiers</button>
+        <button onClick={() => { if (selectedOccupierIdx !== null && data[selectedOccupierIdx]) handleRemove(data[selectedOccupierIdx]); else if (data.length > 0) alert('Select an occupier to remove'); }} className="px-4 py-2 bg-slate-700 text-white text-sm rounded hover:bg-slate-600 transition-colors" data-testid="button-remove-occupier">Remove Occupiers</button>
         <button onClick={handleProofOfResidence} disabled={proofLoading} className="px-4 py-2 bg-slate-700 text-white text-sm rounded hover:bg-slate-600 transition-colors disabled:opacity-50" data-testid="button-proof-of-residence">
           {proofLoading ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : null}
           Proof of Residence
@@ -2107,9 +2108,8 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
             {data.length === 0 ? (
               <tr><td colSpan={2} className="text-center text-slate-400 py-4 italic">No records to display.</td></tr>
             ) : data.map((o: any, i: number) => (
-              <tr key={i} className="border-b border-slate-100 hover:bg-blue-50 cursor-pointer transition-colors" data-testid={`occupier-row-${i}`} onClick={e => {
-                document.querySelectorAll('[data-testid^="occupier-row-"]').forEach(el => el.classList.remove('bg-blue-50'));
-                (e.currentTarget as HTMLElement).classList.add('bg-blue-50');
+              <tr key={i} className={`border-b border-slate-100 hover:bg-blue-50 cursor-pointer transition-colors ${selectedOccupierIdx === i ? 'bg-blue-50' : ''}`} data-testid={`occupier-row-${i}`} onClick={() => {
+                setSelectedOccupierIdx(selectedOccupierIdx === i ? null : i);
               }}>
                 <td className="py-2 px-3 font-medium">{o.name || o.occupierName || o.surname || '-'}</td>
                 <td className="py-2 px-3 font-mono text-xs">{o.idNumber || o.idRegistrationNumber || o.idNo || '-'}</td>
