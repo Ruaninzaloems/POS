@@ -18,6 +18,7 @@ import UnmatchedQueue from "@/pages/direct-deposits/manual/unmatched-queue";
 import AllocateTransaction from "@/pages/direct-deposits/manual/allocate-transaction";
 import AllocationHistory from "@/pages/direct-deposits/manual/allocation-history";
 import ViewReceipts from "@/pages/view-receipts";
+import DirectDepositsAutoAllocation from "@/pages/direct-deposits/auto/auto-allocation";
 import ThirdPartyPaymentProcessing from "@/pages/third-party/payment-processing";
 
 import SettingsPage from "@/pages/settings";
@@ -75,7 +76,7 @@ function Router() {
       <Route path="/direct-deposits/manual/history" component={AllocationHistory} />
       
       <Route path="/direct-deposits/auto">
-        <PlaceholderPage title="Direct Deposits Auto" description="Automatic processing of direct deposits" />
+        <DirectDepositsAutoAllocation />
       </Route>
       <Route path="/third-party/processing" component={ThirdPartyPaymentProcessing} />
       <Route path="/third-party/utilipay-reconciliation">

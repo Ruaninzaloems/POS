@@ -137,7 +137,6 @@ function AutoAllocationContent() {
 
   const [unprocessedBatches, setUnprocessedBatches] = useState<UnprocessedBatch[]>([]);
   const [processedBatches, setProcessedBatches] = useState<ProcessedBatch[]>([]);
-  const [selectedUnprocessed, setSelectedUnprocessed] = useState<UnprocessedBatch | null>(null);
   const [expandedBatchNum, setExpandedBatchNum] = useState<number | null>(null);
   const [expandedProcessedNum, setExpandedProcessedNum] = useState<number | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
@@ -152,7 +151,6 @@ function AutoAllocationContent() {
     setLoading(true);
     setError(null);
     setHasSearched(true);
-    setSelectedUnprocessed(null);
     setExpandedBatchNum(null);
     try {
       const data = await platinumGetBulkUnprocessed({
@@ -175,17 +173,14 @@ function AutoAllocationContent() {
   }, [fromDate, toDate, toast]);
 
   const handleFetchProcessed = useCallback(async () => {
-    if (unprocessedBatches.length === 0 && !selectedUnprocessed) return;
+    if (unprocessedBatches.length === 0) return;
     setLoading(true);
     setError(null);
     try {
-      const payload: any = {
+      const payload = {
         unProcessedBatches: unprocessedBatches,
         processedBatches: processedBatches,
       };
-      if (selectedUnprocessed) {
-        payload.unProcessedData = selectedUnprocessed;
-      }
       const data = await platinumGetBulkProcessed(payload);
       const batches = Array.isArray(data) ? data : (data as any)?.processedBatches || [];
       setProcessedBatches(batches);
@@ -195,11 +190,11 @@ function AutoAllocationContent() {
     } finally {
       setLoading(false);
     }
-  }, [unprocessedBatches, selectedUnprocessed, processedBatches, toast]);
+  }, [unprocessedBatches, processedBatches, toast]);
 
   const handleReconcile = useCallback(async (batch: UnprocessedBatch) => {
-    if (!userId) {
-      toast({ title: 'Error', description: 'User ID not available', variant: 'destructive' });
+    if (!userId || isNaN(userId)) {
+      toast({ title: 'Error', description: 'Valid user ID not available. Please log in again.', variant: 'destructive' });
       return;
     }
     setProcessing(true);
