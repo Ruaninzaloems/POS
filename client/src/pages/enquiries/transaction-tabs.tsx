@@ -1937,19 +1937,52 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
     const warns: string[] = [];
 
     try {
-      const [svcSearchResult, meteredServices, ratesData, additionalBilling, detailTemplateResult] = await Promise.allSettled([
+      const now = new Date();
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      setBillingMonth(`${monthNames[now.getMonth()]} ${now.getFullYear()}`);
+
+      const finYearMonths = ['July','August','September','October','November','December','January','February','March','April','May','June'];
+
+      const [svcSearchResult, meteredServices, ratesData, additionalBilling, detailTemplateResult, billingMonthResult] = await Promise.allSettled([
         getServicesSearchResults(accountId),
         getMeteredServicesOnAccount(accountId),
         getAccountRatesDetails(accountId),
         getAdditionalBillingSearchResults(accountId),
         getDetailBillingTemplate(accountId),
+        getBillingProcessingMonth(),
       ]);
+
+      let prevMonthName = '';
+      let lastBilledFinYear = '';
+      const bpmData = billingMonthResult.status === 'fulfilled' ? billingMonthResult.value : null;
+      if (bpmData) {
+        const processingMonth = bpmData.billingMonth || bpmData.processingMonth || bpmData.month || '';
+        const processingFinYear = bpmData.finYear || bpmData.financialYear || '';
+        if (processingMonth) {
+          const pmIdx = finYearMonths.indexOf(processingMonth);
+          prevMonthName = pmIdx > 0 ? finYearMonths[pmIdx - 1] : finYearMonths[finYearMonths.length - 1];
+          lastBilledFinYear = processingFinYear;
+        }
+      }
+      if (!prevMonthName) {
+        const currentMonthName = monthNames[now.getMonth()];
+        const finYearIdx = finYearMonths.indexOf(currentMonthName);
+        prevMonthName = finYearIdx > 0 ? finYearMonths[finYearIdx - 1] : finYearMonths[finYearMonths.length - 1];
+      }
+      if (!lastBilledFinYear) {
+        lastBilledFinYear = now.getMonth() >= 6
+          ? `${now.getFullYear()}/${now.getFullYear() + 1}`
+          : `${now.getFullYear() - 1}/${now.getFullYear()}`;
+      }
+
+      const lastMonthTxnResult = await getBillingPeriodTransactions(accountId, lastBilledFinYear, prevMonthName).catch(() => [] as any[]);
 
       const searchServices = svcSearchResult.status === 'fulfilled' ? svcSearchResult.value : [];
       const meters = meteredServices.status === 'fulfilled' ? meteredServices.value : [];
       const rates = ratesData.status === 'fulfilled' ? ratesData.value : null;
       const addBilling = additionalBilling.status === 'fulfilled' ? additionalBilling.value : [];
       const detailTemplate = detailTemplateResult.status === 'fulfilled' ? detailTemplateResult.value : null;
+      const lastMonthTxns = Array.isArray(lastMonthTxnResult) ? lastMonthTxnResult : [];
 
       const activeServices = searchServices.filter((s: any) => {
         const status = (s.serviceStatus || s.statusDesc || s.status || '').toLowerCase();
@@ -1961,10 +1994,6 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
         setLoading(false);
         return;
       }
-
-      const now = new Date();
-      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-      setBillingMonth(`${monthNames[now.getMonth()]} ${now.getFullYear()}`);
 
       const items: EstimateLineItem[] = [];
       const processedServiceKeys = new Set<string>();
@@ -2190,7 +2219,61 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
         }
       }
 
-      if (rates && typeof rates === 'object' && !rates._error) {
+      const ratesLevyLines = lastMonthTxns.filter((t: any) => {
+        const desc = (t.description || '').toLowerCase();
+        const dd = (t.drilldown || '').toLowerCase();
+        return (dd === 'levy' || desc.startsWith('levy')) && (desc.includes('property') || desc.includes('rate'));
+      });
+      const ratesRebateLines = lastMonthTxns.filter((t: any) => {
+        const desc = (t.description || '').toLowerCase();
+        const dd = (t.drilldown || '').toLowerCase();
+        if (dd !== 'rebate' && !desc.startsWith('rebate')) return false;
+        return desc.includes('residential') || desc.includes('property') || desc.includes('rates') ||
+          desc.includes('pensioner') || desc.includes('indigent') || desc.includes('rebate -');
+      });
+
+      let usedLastMonthRates = false;
+      if (ratesLevyLines.length > 0) {
+        usedLastMonthRates = true;
+        processedServiceKeys.add('rates-property rates');
+
+        for (const levy of ratesLevyLines) {
+          const levyAmt = parseFloat(levy.amount ?? levy.totalAmount ?? 0) || 0;
+          const levyVat = parseFloat(levy.vatAmount ?? 0) || 0;
+          const levyDesc = levy.description || 'Levy - Property Rates';
+          const tariff = levy.tariff || '';
+          processedServiceKeys.add(`rates-${levyDesc.toLowerCase()}`);
+          items.push({
+            category: 'Property Rates',
+            serviceDesc: levyDesc,
+            icon: <Home className="w-3.5 h-3.5 text-orange-500" />,
+            amount: levyAmt,
+            vatAmount: levyVat,
+            total: levyAmt + levyVat,
+            detail: tariff ? `Tariff: ${tariff}` : `Based on ${prevMonthName} billing`,
+          });
+        }
+
+        for (const rebate of ratesRebateLines) {
+          const rebateAmt = parseFloat(rebate.amount ?? rebate.totalAmount ?? 0) || 0;
+          const rebateVat = parseFloat(rebate.vatAmount ?? 0) || 0;
+          const rebateDesc = rebate.description || 'Rebate';
+          const tariff = rebate.tariff || '';
+          processedServiceKeys.add(`rates-${rebateDesc.toLowerCase()}`);
+          items.push({
+            category: 'Property Rates',
+            serviceDesc: rebateDesc,
+            icon: <Minus className="w-3.5 h-3.5 text-green-600" />,
+            amount: rebateAmt,
+            vatAmount: rebateVat,
+            total: rebateAmt + rebateVat,
+            detail: tariff ? `Tariff: ${tariff}` : `Based on ${prevMonthName} billing`,
+            rebateAmount: Math.abs(rebateAmt),
+          });
+        }
+      }
+
+      if (!usedLastMonthRates && rates && typeof rates === 'object' && !rates._error) {
         const ratesObj = Array.isArray(rates) ? rates[0] : (rates.data ? (Array.isArray(rates.data) ? rates.data[0] : rates.data) : rates);
         if (ratesObj) {
           const annual = parseFloat(ratesObj.annualPropertyRates ?? ratesObj.annualRates ?? ratesObj.annualAmount ?? 0) || 0;
@@ -2215,9 +2298,8 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
           const remainingAmt = parseFloat(ratesObj.remaingAmount ?? ratesObj.remainingAmount ?? 0) || 0;
 
           if (netAmount > 0) {
-            const rateKey = `rates-${desc.toLowerCase()}`;
-            processedServiceKeys.add(rateKey);
             processedServiceKeys.add('rates-property rates');
+            processedServiceKeys.add(`rates-${desc.toLowerCase()}`);
             let detailParts: string[] = [];
             if (rebateTotal > 0) detailParts.push(`Levy R${fmt(grossInstallment || netAmount + rebateTotal)} less rebate R${fmt(rebateTotal)}`);
             else detailParts.push(`Monthly installment`);
