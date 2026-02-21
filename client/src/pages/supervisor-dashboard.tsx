@@ -696,7 +696,94 @@ export default function SupervisorDashboard() {
                         No pending cancellation requests
                     </div>
                 ) : (
-                    <div className="bg-white rounded border overflow-x-auto">
+                    <>
+                    <div className="sm:hidden space-y-2">
+                        {pendingCancelRequests.map(req => (
+                            <div key={`mobile-api-${req.id}`} className="bg-white border rounded-xl p-3 space-y-2" data-testid={`mobile-cancel-card-${req.id}`}>
+                                <div className="flex items-start justify-between">
+                                    <div>
+                                        <span className="font-mono font-bold text-slate-900">{req.receiptNo || `#${req.receiptId}`}</span>
+                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                            {req.paymentType && (
+                                                <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 uppercase text-[10px] tracking-wider font-semibold">{req.paymentType}</span>
+                                            )}
+                                            <Badge variant="outline" className="text-[10px] px-1 py-0 text-blue-700 border-blue-300 bg-blue-50">API</Badge>
+                                        </div>
+                                    </div>
+                                    <span className="font-bold text-slate-900 font-mono">R {req.amount.toFixed(2)}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                                    <span>{req.cashierName || 'Unknown'}</span>
+                                    <span className="text-xs">{req.requestDate ? new Date(req.requestDate).toLocaleTimeString('en-ZA', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit', hour12: false }) + ' · ' + new Date(req.requestDate).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', month: 'short', day: '2-digit' }) : '—'}</span>
+                                </div>
+                                {req.reason && <p className="text-xs text-red-600 truncate" title={req.reason}>{req.reason}</p>}
+                                <div className="flex gap-2">
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="flex-1 text-red-600 border-red-200 hover:bg-red-50 h-10 active:scale-[0.99]"
+                                        onClick={() => handleDeclineCancelRequest(req)}
+                                        disabled={cancelActionLoading === req.id}
+                                        data-testid={`mobile-reject-cancel-${req.id}`}
+                                    >
+                                        {cancelActionLoading === req.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
+                                        Reject
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        className="flex-1 bg-green-600 hover:bg-green-700 text-white h-10 active:scale-[0.99]"
+                                        onClick={() => handleApproveCancelRequest(req)}
+                                        disabled={cancelActionLoading === req.id}
+                                        data-testid={`mobile-approve-cancel-${req.id}`}
+                                    >
+                                        {cancelActionLoading === req.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
+                                        Approve Void
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                        {pendingCancellations.map(tx => {
+                            const cashier = referenceData.cashiers.find(c => c.id === tx.cashierId);
+                            const mainType = tx.items[0]?.type.replace('_', ' ') || 'Unknown';
+                            return (
+                            <div key={`mobile-local-${tx.id}`} className="bg-white border rounded-xl p-3 space-y-2">
+                                <div className="flex items-start justify-between">
+                                    <div>
+                                        <span className="font-mono font-bold text-slate-900">{tx.receiptNumber}</span>
+                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                            <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 uppercase text-[10px] tracking-wider font-semibold">{mainType}</span>
+                                            <Badge variant="outline" className="text-[10px] px-1 py-0 text-amber-700 border-amber-300 bg-amber-50">Local</Badge>
+                                        </div>
+                                    </div>
+                                    <span className="font-bold text-slate-900 font-mono">R {tx.totalAmount.toFixed(2)}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                                    <span>{cashier?.name || 'Unknown Cashier'}</span>
+                                    <span className="text-xs">{new Date(tx.timestamp).toLocaleTimeString('en-ZA', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit', hour12: false }) + ' · ' + new Date(tx.timestamp).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', month: 'short', day: '2-digit' })}</span>
+                                </div>
+                                {tx.cancellationReason && <p className="text-xs text-red-600 truncate" title={tx.cancellationReason}>{tx.cancellationReason}</p>}
+                                <div className="flex gap-2">
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="flex-1 text-red-600 border-red-200 hover:bg-red-50 h-10 active:scale-[0.99]"
+                                        onClick={() => approveCancellation(tx.id, false)}
+                                    >
+                                        Reject
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        className="flex-1 bg-green-600 hover:bg-green-700 text-white h-10 active:scale-[0.99]"
+                                        onClick={() => approveCancellation(tx.id, true)}
+                                    >
+                                        Approve Void
+                                    </Button>
+                                </div>
+                            </div>
+                            );
+                        })}
+                    </div>
+                    <div className="hidden sm:block bg-white rounded border overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -831,6 +918,7 @@ export default function SupervisorDashboard() {
                             </TableBody>
                         </Table>
                     </div>
+                    </>
                 )}
             </TabsContent>
             
@@ -840,7 +928,46 @@ export default function SupervisorDashboard() {
                         No cancellation history found
                     </div>
                 ) : (
-                    <div className="bg-white rounded border overflow-x-auto">
+                    <>
+                    <div className="sm:hidden space-y-2">
+                        {processedCancelRequests.map(req => (
+                            <div key={`mobile-hist-api-${req.id}`} className="bg-white border rounded-xl p-3 space-y-2" data-testid={`mobile-cancel-history-${req.id}`}>
+                                <div className="flex items-start justify-between">
+                                    <span className="font-mono font-bold text-slate-900">{req.receiptNo || `#${req.receiptId}`}</span>
+                                    <span className="font-bold font-mono">R {req.amount.toFixed(2)}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm text-muted-foreground">{req.cashierName || 'Unknown'}</span>
+                                    {req.status === 'APPROVED' ? (
+                                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Approved</Badge>
+                                    ) : (
+                                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Declined</Badge>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                        {processedCancellations.map(tx => {
+                            const cashier = referenceData.cashiers.find(c => c.id === tx.cashierId);
+                            const isRejected = tx.status === 'COMPLETED';
+                            return (
+                            <div key={`mobile-hist-local-${tx.id}`} className="bg-white border rounded-xl p-3 space-y-2" data-testid={`mobile-cancel-history-${tx.id}`}>
+                                <div className="flex items-start justify-between">
+                                    <span className="font-mono font-bold text-slate-900">{tx.receiptNumber}</span>
+                                    <span className="font-bold font-mono">R {tx.totalAmount.toFixed(2)}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm text-muted-foreground">{cashier?.name || 'Unknown Cashier'}</span>
+                                    {isRejected ? (
+                                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Rejected</Badge>
+                                    ) : (
+                                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Approved</Badge>
+                                    )}
+                                </div>
+                            </div>
+                            );
+                        })}
+                    </div>
+                    <div className="hidden sm:block bg-white rounded border overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -916,6 +1043,7 @@ export default function SupervisorDashboard() {
                             </TableBody>
                         </Table>
                     </div>
+                    </>
                 )}
             </TabsContent>
           </Tabs>
@@ -926,14 +1054,14 @@ export default function SupervisorDashboard() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input 
                   placeholder="Search cashier..." 
-                  className="pl-9"
+                  className="pl-9 h-10 sm:h-9"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   data-testid="input-search-cashier"
               />
           </div>
           <Select value={filterOffice} onValueChange={setFilterOffice}>
-              <SelectTrigger className="w-full md:w-[200px]" data-testid="select-filter-office">
+              <SelectTrigger className="w-full md:w-[200px] h-10 sm:h-9" data-testid="select-filter-office">
                   <SelectValue placeholder="Filter by Office" />
               </SelectTrigger>
               <SelectContent>
@@ -1027,6 +1155,46 @@ export default function SupervisorDashboard() {
                   No cashier shifts found. Cashiers may not have submitted day-end yet.
                 </div>
               ) : (
+              <>
+              <div className="sm:hidden space-y-2 p-3">
+                  {filteredShifts.map(shift => (
+                      <div key={`mobile-shift-${shift.id}`} className="bg-white border rounded-xl p-3 space-y-2" data-testid={`mobile-shift-card-${shift.id}`}>
+                          <div className="flex items-start justify-between">
+                              <div>
+                                  <span className="font-bold text-slate-900">{shift.cashierName}</span>
+                                  {shift.cashOffice && <p className="text-xs text-muted-foreground">{shift.cashOffice}</p>}
+                              </div>
+                              <StatusBadge status={shift.status} />
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">{new Date(shift.startTime).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' })}</span>
+                              <span className="text-muted-foreground">{shift.transactionCount} tx</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                              <div>
+                                  <span className="text-muted-foreground text-xs">System Total</span>
+                                  <p className="font-mono font-medium">{formatCurrency(shift.systemTotals.total)}</p>
+                              </div>
+                              <div className="text-right">
+                                  <span className="text-muted-foreground text-xs">Variance</span>
+                                  <p className={`font-mono font-bold ${(shift.variance?.total || 0) !== 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                      {(shift.variance?.total || 0) === 0 ? '-' : formatCurrency(shift.variance?.total || 0)}
+                                  </p>
+                              </div>
+                          </div>
+                          <Button
+                              size="sm"
+                              variant="ghost"
+                              className="w-full h-10 active:scale-[0.99]"
+                              data-testid={`mobile-review-${shift.id}`}
+                              onClick={() => handleReview(shift)}
+                          >
+                              Review
+                          </Button>
+                      </div>
+                  ))}
+              </div>
+              <div className="hidden sm:block">
               <Table>
                   <TableHeader>
                       <TableRow>
@@ -1069,6 +1237,8 @@ export default function SupervisorDashboard() {
                       ))}
                   </TableBody>
               </Table>
+              </div>
+              </>
               )}
           </div>
       ) : (
@@ -1088,6 +1258,36 @@ export default function SupervisorDashboard() {
                               </div>
                           </div>
                       </div>
+                      <div className="sm:hidden space-y-2 p-3">
+                          {data.shifts.map(shift => (
+                              <div key={`mobile-office-${shift.id}`} className="bg-white border rounded-xl p-3 space-y-2" data-testid={`mobile-office-shift-${shift.id}`}>
+                                  <div className="flex items-start justify-between">
+                                      <span className="font-bold text-slate-900">{shift.cashierName}</span>
+                                      <StatusBadge status={shift.status} />
+                                  </div>
+                                  <div className="flex items-center justify-between text-sm">
+                                      <div>
+                                          <span className="text-muted-foreground text-xs">System Total</span>
+                                          <p className="font-mono font-medium">{formatCurrency(shift.systemTotals.total)}</p>
+                                      </div>
+                                      <div className="text-right">
+                                          <span className="text-muted-foreground text-xs">Declared Total</span>
+                                          <p className="font-mono font-medium">{formatCurrency(shift.declaredTotals?.total || 0)}</p>
+                                      </div>
+                                  </div>
+                                  <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="w-full h-10 active:scale-[0.99]"
+                                      onClick={() => handleReview(shift)}
+                                      data-testid={`mobile-office-review-${shift.id}`}
+                                  >
+                                      Review
+                                  </Button>
+                              </div>
+                          ))}
+                      </div>
+                      <div className="hidden sm:block">
                       <Table>
                           <TableHeader>
                               <TableRow>
@@ -1114,6 +1314,7 @@ export default function SupervisorDashboard() {
                               ))}
                           </TableBody>
                       </Table>
+                      </div>
                   </div>
               ))}
           </div>

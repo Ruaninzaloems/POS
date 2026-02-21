@@ -258,7 +258,7 @@ export default function CashierDayEnd() {
                                 <div>
                                     <Label className="text-xs text-slate-500 font-semibold">Cashier Name *</Label>
                                     <Select value={selectedCashierId} onValueChange={setSelectedCashierId}>
-                                        <SelectTrigger data-testid="select-cashier" className="mt-1">
+                                        <SelectTrigger data-testid="select-cashier" className="mt-1 h-10 sm:h-9">
                                             <SelectValue placeholder={isLoadingCashiers ? "Loading..." : "Select cashier"} />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -283,7 +283,7 @@ export default function CashierDayEnd() {
                                 <div>
                                     <Label className="text-xs text-slate-500 font-semibold">Reason</Label>
                                     <Input
-                                        className="mt-1"
+                                        className="mt-1 h-10 sm:h-9"
                                         value={reason}
                                         onChange={e => setReason(e.target.value)}
                                         placeholder="Enter reason..."
@@ -320,7 +320,7 @@ export default function CashierDayEnd() {
                                             </h4>
                                             <Badge variant="secondary" className="text-xs">{cardList.length} record{cardList.length !== 1 ? 's' : ''}</Badge>
                                         </div>
-                                        <div className="border rounded-md overflow-auto max-h-[250px]">
+                                        <div className="hidden sm:block border rounded-md overflow-auto max-h-[250px]">
                                             <Table>
                                                 <TableHeader className="bg-gradient-to-b from-slate-600 to-slate-700 sticky top-0">
                                                     <TableRow className="hover:bg-transparent">
@@ -360,6 +360,30 @@ export default function CashierDayEnd() {
                                                 </TableBody>
                                             </Table>
                                         </div>
+                                        <div className="sm:hidden space-y-2">
+                                            {cardList.length === 0 ? (
+                                                <div className="text-center text-sm text-muted-foreground py-4">No records to display</div>
+                                            ) : cardList.map((item, idx) => (
+                                                <div key={idx} className="bg-white border rounded-lg p-3 space-y-1.5" data-testid={`mobile-card-card-${idx}`}>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-xs text-slate-500">Account</span>
+                                                        <span className="text-xs font-mono font-medium" data-testid={`text-card-account-${idx}`}>{item.accountNumber || item.accountId || item.invoiceNumber || '-'}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-xs text-slate-500">Receipt No</span>
+                                                        <span className="text-xs font-mono" data-testid={`text-card-receipt-${idx}`}>{item.receiptNo || item.receipt_no || '-'}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-xs text-slate-500">Card No</span>
+                                                        <span className="text-xs font-mono" data-testid={`text-card-cardno-${idx}`}>{item.cardNo || item.cardNumber || '-'}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center border-t pt-1.5">
+                                                        <span className="text-xs font-semibold text-slate-700">Amount</span>
+                                                        <span className="text-sm font-mono font-bold" data-testid={`text-card-amount-${idx}`}>R {Number(item.amount || 0).toFixed(2)}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
                                         <div className="flex justify-end mt-1 px-2">
                                             <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white px-4 py-1 rounded text-xs font-bold">
                                                 Total: R {totalCreditAmt.toFixed(2)}
@@ -374,7 +398,7 @@ export default function CashierDayEnd() {
                                             </h4>
                                             <Badge variant="secondary" className="text-xs">{chequeList.length} record{chequeList.length !== 1 ? 's' : ''}</Badge>
                                         </div>
-                                        <div className="border rounded-md overflow-auto max-h-[250px]">
+                                        <div className="hidden sm:block border rounded-md overflow-auto max-h-[250px]">
                                             <Table>
                                                 <TableHeader className="bg-gradient-to-b from-slate-600 to-slate-700 sticky top-0">
                                                     <TableRow className="hover:bg-transparent">
@@ -412,6 +436,30 @@ export default function CashierDayEnd() {
                                                 </TableBody>
                                             </Table>
                                         </div>
+                                        <div className="sm:hidden space-y-2">
+                                            {chequeList.length === 0 ? (
+                                                <div className="text-center text-sm text-muted-foreground py-4">No records to display</div>
+                                            ) : chequeList.map((item, idx) => (
+                                                <div key={idx} className="bg-white border rounded-lg p-3 space-y-1.5" data-testid={`mobile-cheque-card-${idx}`}>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-xs text-slate-500">Account</span>
+                                                        <span className="text-xs font-mono font-medium" data-testid={`text-cheque-account-${idx}`}>{item.accountNumber || item.accountId || item.invoiceNumber || '-'}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-xs text-slate-500">Receipt No</span>
+                                                        <span className="text-xs font-mono" data-testid={`text-cheque-receipt-${idx}`}>{item.receiptNo || item.receipt_no || '-'}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-xs text-slate-500">Cheque No</span>
+                                                        <span className="text-xs font-mono" data-testid={`text-cheque-chequeno-${idx}`}>{item.chequeNo || item.chequeNumber || '-'}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center border-t pt-1.5">
+                                                        <span className="text-xs font-semibold text-slate-700">Amount</span>
+                                                        <span className="text-sm font-mono font-bold" data-testid={`text-cheque-amount-${idx}`}>R {Number(item.amount || 0).toFixed(2)}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
                                         <div className="flex justify-end mt-1 px-2">
                                             <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white px-4 py-1 rounded text-xs font-bold">
                                                 Total: R {totalChequeAmt.toFixed(2)}
@@ -426,7 +474,7 @@ export default function CashierDayEnd() {
                                             </h4>
                                             <Badge variant="secondary" className="text-xs">{dropBoxList.length} record{dropBoxList.length !== 1 ? 's' : ''}</Badge>
                                         </div>
-                                        <div className="border rounded-md overflow-auto max-h-[200px]">
+                                        <div className="hidden sm:block border rounded-md overflow-auto max-h-[200px]">
                                             <Table>
                                                 <TableHeader className="bg-gradient-to-b from-slate-600 to-slate-700 sticky top-0">
                                                     <TableRow className="hover:bg-transparent">
@@ -456,6 +504,30 @@ export default function CashierDayEnd() {
                                                 </TableBody>
                                             </Table>
                                         </div>
+                                        <div className="sm:hidden space-y-2">
+                                            {dropBoxList.length === 0 ? (
+                                                <div className="text-center text-sm text-muted-foreground py-4">No records to display</div>
+                                            ) : dropBoxList.map((item, idx) => (
+                                                <div key={idx} className="bg-white border rounded-lg p-3 space-y-1.5" data-testid={`mobile-dropbox-card-${idx}`}>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-xs text-slate-500">Description</span>
+                                                        <span className="text-xs font-medium" data-testid={`text-dropbox-description-${idx}`}>{item.description || item.accountNumber || '-'}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-xs text-slate-500">Reference</span>
+                                                        <span className="text-xs font-mono" data-testid={`text-dropbox-reference-${idx}`}>{item.referenceNumber || item.receiptNo || item.receipt_no || '-'}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-xs text-slate-500">Status</span>
+                                                        <span className="text-xs" data-testid={`text-dropbox-status-${idx}`}>{item.status || '-'}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center border-t pt-1.5">
+                                                        <span className="text-xs font-semibold text-slate-700">Amount</span>
+                                                        <span className="text-sm font-mono font-bold" data-testid={`text-dropbox-amount-${idx}`}>R {Number(item.amount || 0).toFixed(2)}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
                                         <div className="flex justify-end mt-1 px-2">
                                             <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white px-4 py-1 rounded text-xs font-bold">
                                                 Total: R {dropBoxTotal.toFixed(2)}
@@ -479,12 +551,12 @@ export default function CashierDayEnd() {
                                                 </h4>
                                                 <div className="space-y-2">
                                                     {NOTE_DENOMINATIONS.map(d => (
-                                                        <div key={d.key} className="grid grid-cols-[70px_100px_1fr] items-center gap-3">
+                                                        <div key={d.key} className="grid grid-cols-[60px_80px_1fr] sm:grid-cols-[70px_100px_1fr] items-center gap-2 sm:gap-3">
                                                             <span className="text-sm font-semibold text-slate-700 text-right">{d.label}</span>
                                                             <Input
                                                                 type="number"
                                                                 min={0}
-                                                                className="h-9 text-center text-sm font-mono bg-white"
+                                                                className="h-10 sm:h-9 text-center text-sm font-mono bg-white"
                                                                 value={denominations[d.key as keyof DenominationState] || ''}
                                                                 onChange={e => updateDenomination(d.key, parseInt(e.target.value) || 0)}
                                                                 data-testid={`input-${d.key}`}
@@ -505,12 +577,12 @@ export default function CashierDayEnd() {
                                                 </h4>
                                                 <div className="space-y-2">
                                                     {COIN_DENOMINATIONS.map(d => (
-                                                        <div key={d.key} className="grid grid-cols-[70px_100px_1fr] items-center gap-3">
+                                                        <div key={d.key} className="grid grid-cols-[60px_80px_1fr] sm:grid-cols-[70px_100px_1fr] items-center gap-2 sm:gap-3">
                                                             <span className="text-sm font-semibold text-slate-700 text-right">{d.label}</span>
                                                             <Input
                                                                 type="number"
                                                                 min={0}
-                                                                className="h-9 text-center text-sm font-mono bg-white"
+                                                                className="h-10 sm:h-9 text-center text-sm font-mono bg-white"
                                                                 value={denominations[d.key as keyof DenominationState] || ''}
                                                                 onChange={e => updateDenomination(d.key, parseInt(e.target.value) || 0)}
                                                                 data-testid={`input-${d.key}`}
@@ -555,7 +627,7 @@ export default function CashierDayEnd() {
 
                             <Card className="shadow-sm border-2 border-slate-300">
                                 <CardContent className="py-5">
-                                    <div className="max-w-lg mx-auto space-y-3">
+                                    <div className="max-w-lg mx-auto px-1 sm:px-0 space-y-3">
                                         <div className="flex justify-between items-center py-2 border-b">
                                             <span className="text-sm font-semibold text-slate-700">Total Cash on Hand + Drop Box (R)</span>
                                             <span className="font-mono font-bold text-sm bg-slate-50 border px-4 py-1.5 rounded min-w-[120px] text-right">
@@ -582,9 +654,9 @@ export default function CashierDayEnd() {
                                         </div>
                                     </div>
 
-                                    <div className="flex justify-center gap-3 mt-6">
+                                    <div className="flex flex-col sm:flex-row justify-center gap-3 mt-6">
                                         <Button
-                                            className="bg-slate-700 hover:bg-slate-800 px-8 font-bold"
+                                            className="w-full sm:w-auto h-11 sm:h-10 bg-slate-700 hover:bg-slate-800 px-8 font-bold active:scale-[0.99]"
                                             onClick={handleSaveReconcile}
                                             disabled={isSaving || !selectedCashierId}
                                             data-testid="button-save-reconcile"
@@ -594,7 +666,7 @@ export default function CashierDayEnd() {
                                         </Button>
                                         <Button
                                             variant="outline"
-                                            className="px-8 font-bold"
+                                            className="w-full sm:w-auto h-11 sm:h-10 px-8 font-bold active:scale-[0.99]"
                                             onClick={() => {
                                                 setDenominations(INITIAL_DENOMINATIONS);
                                                 setTotalCashAmt(0);
@@ -633,7 +705,8 @@ export default function CashierDayEnd() {
                                             ) : reconcileList.length === 0 ? (
                                                 <div className="text-center py-6 text-muted-foreground text-sm">No reconcile data found.</div>
                                             ) : (
-                                                <div className="border rounded-md overflow-auto max-h-[400px]">
+                                                <>
+                                                <div className="hidden sm:block border rounded-md overflow-auto max-h-[400px]">
                                                     <Table>
                                                         <TableHeader className="bg-slate-100 sticky top-0">
                                                             <TableRow>
@@ -667,6 +740,37 @@ export default function CashierDayEnd() {
                                                         </TableBody>
                                                     </Table>
                                                 </div>
+                                                <div className="sm:hidden space-y-2">
+                                                    {reconcileList.map((item, idx) => (
+                                                        <div key={idx} className="bg-white border rounded-lg p-3 space-y-1.5" data-testid={`mobile-reconcile-card-${idx}`}>
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="text-xs text-slate-500">Receipt No</span>
+                                                                <span className="text-xs font-mono font-medium" data-testid={`text-reconcile-receipt-${idx}`}>{item.receiptNo || item.receipt_no || '-'}</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="text-xs text-slate-500">Account</span>
+                                                                <span className="text-xs font-mono" data-testid={`text-reconcile-account-${idx}`}>{item.accountNumber || item.accountId || '-'}</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="text-xs text-slate-500">Payment Type</span>
+                                                                <span className="text-xs" data-testid={`text-reconcile-paytype-${idx}`}>{item.paymentType || item.payMode || '-'}</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="text-xs text-slate-500">Status</span>
+                                                                {item.isCancelled === 1 || item.isCancelled === true ? (
+                                                                    <Badge variant="destructive" className="text-[9px]" data-testid={`badge-reconcile-status-${idx}`}>Cancelled</Badge>
+                                                                ) : (
+                                                                    <Badge variant="outline" className="text-[9px] text-green-700 border-green-300 bg-green-50" data-testid={`badge-reconcile-status-${idx}`}>Active</Badge>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex justify-between items-center border-t pt-1.5">
+                                                                <span className="text-xs font-semibold text-slate-700">Amount</span>
+                                                                <span className="text-sm font-mono font-bold" data-testid={`text-reconcile-amount-${idx}`}>R {Number(item.amount || 0).toFixed(2)}</span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                </>
                                             )}
                                         </CardContent>
                                     </Card>

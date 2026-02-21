@@ -675,7 +675,7 @@ export default function ViewReceipts() {
                                     <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] items-start sm:items-center gap-1 sm:gap-4">
                                         <label className="text-sm font-medium text-left sm:text-right text-slate-600">Cashier Name</label>
                                         <Select value={cashierFilter} onValueChange={setCashierFilter}>
-                                            <SelectTrigger className="h-9" data-testid="select-cashier-filter">
+                                            <SelectTrigger className="h-10 sm:h-9" data-testid="select-cashier-filter">
                                                 <SelectValue placeholder={loadingCashiers ? "Loading..." : "Select a cashier..."} />
                                             </SelectTrigger>
                                             <SelectContent className="max-h-[250px]">
@@ -694,7 +694,7 @@ export default function ViewReceipts() {
                                         <DatePicker
                                             date={fromDate}
                                             setDate={setFromDate}
-                                            className="h-9"
+                                            className="h-10 sm:h-9"
                                         />
                                     </div>
 
@@ -703,7 +703,7 @@ export default function ViewReceipts() {
                                         <div className="relative">
                                             <Input
                                                 ref={accountInputRef}
-                                                className="h-9"
+                                                className="h-10 sm:h-9"
                                                 value={accountFilter}
                                                 onChange={e => handleAccountSearch(e.target.value)}
                                                 onFocus={() => accountSuggestions.length > 0 && setShowAccountDropdown(true)}
@@ -725,7 +725,7 @@ export default function ViewReceipts() {
                                                     {accountSuggestions.map((acct, i) => (
                                                         <button
                                                             key={i}
-                                                            className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 font-mono"
+                                                            className="w-full text-left px-3 py-3 sm:py-2 text-sm hover:bg-blue-50 font-mono"
                                                             onMouseDown={() => {
                                                                 setAccountFilter(String(acct));
                                                                 setShowAccountDropdown(false);
@@ -749,7 +749,7 @@ export default function ViewReceipts() {
                                         <DatePicker
                                             date={toDate}
                                             setDate={setToDate}
-                                            className="h-9"
+                                            className="h-10 sm:h-9"
                                         />
                                     </div>
 
@@ -758,7 +758,7 @@ export default function ViewReceipts() {
                                         <div className="relative">
                                             <Input
                                                 ref={receiptInputRef}
-                                                className="h-9"
+                                                className="h-10 sm:h-9"
                                                 value={receiptFilter}
                                                 onChange={e => handleReceiptSearch(e.target.value)}
                                                 onFocus={() => receiptSuggestions.length > 0 && setShowReceiptDropdown(true)}
@@ -780,7 +780,7 @@ export default function ViewReceipts() {
                                                     {receiptSuggestions.map((rn, i) => (
                                                         <button
                                                             key={i}
-                                                            className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 font-mono"
+                                                            className="w-full text-left px-3 py-3 sm:py-2 text-sm hover:bg-blue-50 font-mono"
                                                             onMouseDown={() => {
                                                                 setReceiptFilter(String(rn));
                                                                 setShowReceiptDropdown(false);
@@ -806,7 +806,7 @@ export default function ViewReceipts() {
                                     <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
                                         <div className="relative" ref={suggestionsRef}>
                                             <Input
-                                                className="h-9 font-mono text-xs"
+                                                className="h-10 sm:h-9 font-mono text-xs"
                                                 value={cashbookSearchText}
                                                 onChange={e => setCashbookSearchText(e.target.value)}
                                                 onKeyDown={e => {
@@ -845,7 +845,7 @@ export default function ViewReceipts() {
                                                             <button
                                                                 key={idx}
                                                                 type="button"
-                                                                className="w-full text-left px-3 py-2 hover:bg-indigo-50 border-b border-slate-100 last:border-b-0 transition-colors"
+                                                                className="w-full text-left px-3 py-3 sm:py-2 hover:bg-indigo-50 border-b border-slate-100 last:border-b-0 transition-colors"
                                                                 onClick={() => {
                                                                     setShowSuggestions(false);
                                                                     setCashbookResults([item]);
@@ -883,7 +883,7 @@ export default function ViewReceipts() {
                                             )}
                                         </div>
                                         <Select value={cashbookFinYear} onValueChange={setCashbookFinYear}>
-                                            <SelectTrigger className="h-9 w-[130px] text-xs" data-testid="select-cashbook-finyear">
+                                            <SelectTrigger className="h-10 sm:h-9 w-full sm:w-[130px] text-xs" data-testid="select-cashbook-finyear">
                                                 <SelectValue placeholder="Fin Year" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -901,7 +901,7 @@ export default function ViewReceipts() {
                                             </SelectContent>
                                         </Select>
                                         <Select value={cashbookMonth} onValueChange={setCashbookMonth}>
-                                            <SelectTrigger className="h-9 w-[100px] text-xs" data-testid="select-cashbook-month">
+                                            <SelectTrigger className="h-10 sm:h-9 w-full sm:w-[100px] text-xs" data-testid="select-cashbook-month">
                                                 <SelectValue placeholder="Month" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -913,7 +913,7 @@ export default function ViewReceipts() {
                                         </Select>
                                         <Button
                                             size="sm"
-                                            className="bg-indigo-700 hover:bg-indigo-800 text-xs gap-1.5 whitespace-nowrap"
+                                            className="h-10 sm:h-8 w-full sm:w-auto bg-indigo-700 hover:bg-indigo-800 text-xs gap-1.5 whitespace-nowrap"
                                             onClick={handleCashbookTraceSearch}
                                             disabled={cashbookSearching || !cashbookSearchText}
                                             data-testid="button-cashbook-search"
@@ -926,11 +926,11 @@ export default function ViewReceipts() {
                                 <p className="text-[10px] text-slate-400 md:ml-[136px]">Search cashbook transactions by bank reference/description to find billing receipts</p>
                             </div>
 
-                            <div className="flex justify-center gap-3 mt-6 sm:mt-8">
-                                <Button className="bg-slate-800 hover:bg-slate-900 w-28 sm:w-32 text-sm" onClick={() => handleSearch(1)} disabled={isLoading} data-testid="button-load">
+                            <div className="flex flex-col sm:flex-row justify-center gap-3 mt-6 sm:mt-8">
+                                <Button className="h-11 sm:h-10 bg-slate-800 hover:bg-slate-900 w-full sm:w-32 text-sm active:scale-[0.99]" onClick={() => handleSearch(1)} disabled={isLoading} data-testid="button-load">
                                     {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />} Load
                                 </Button>
-                                <Button variant="outline" className="w-28 sm:w-32 bg-slate-100 hover:bg-slate-200 border-slate-300 text-sm" onClick={handleClear} data-testid="button-cancel">
+                                <Button variant="outline" className="h-11 sm:h-10 w-full sm:w-32 bg-slate-100 hover:bg-slate-200 border-slate-300 text-sm active:scale-[0.99]" onClick={handleClear} data-testid="button-cancel">
                                     <X className="w-4 h-4 mr-2" /> Cancel
                                 </Button>
                             </div>
@@ -970,69 +970,115 @@ export default function ViewReceipts() {
                                 No cashbook transactions matching this search were found.
                             </div>
                         ) : !cashbookSearching && cashbookResults && cashbookResults.length > 0 && (
-                            <div className="overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow className="bg-indigo-50/50">
-                                            <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Description</TableHead>
-                                            <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Receipt No</TableHead>
-                                            <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Account</TableHead>
-                                            <TableHead className="text-[10px] font-bold text-indigo-700 py-2 text-right">Amount</TableHead>
-                                            <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Date</TableHead>
-                                            <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Cashier</TableHead>
-                                            <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Payment Type</TableHead>
-                                            <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Cashbook</TableHead>
-                                            <TableHead className="text-[10px] font-bold text-indigo-700 py-2 text-center">Action</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {cashbookResults.map((item, idx) => {
-                                            const desc = item.description || (item as any).note || (item as any).bankReference || '';
-                                            const receiptNo = item.receiptNo || (item as any).receipt_No || (item as any).receiptNumber || '';
-                                            const accountNo = item.accountNumber || (item as any).account_Number || (item as any).accountNo || '';
-                                            const amount = item.amount ?? (item as any).transactionAmount ?? 0;
-                                            const txnDate = item.transactionDate || (item as any).transaction_Date || (item as any).dateOfTransaction || '';
-                                            const cashier = item.cashierName || (item as any).cashier_Name || (item as any).cashier || '';
-                                            const payType = item.paymentType || (item as any).payment_Type || (item as any).payMode || '';
-                                            const cashOffice = item.cashOffice || (item as any).cashOfficeName || (item as any).cashBook || (item as any).cash_Office || '';
-                                            return (
-                                                <TableRow key={idx} className="hover:bg-indigo-50/30" data-testid={`cashbook-result-${idx}`}>
-                                                    <TableCell className="text-[11px] font-mono max-w-[200px] truncate" title={desc}>{desc || '-'}</TableCell>
-                                                    <TableCell className="text-[11px] font-mono font-semibold text-blue-700">{receiptNo || '-'}</TableCell>
-                                                    <TableCell className="text-[11px] font-mono">{accountNo || '-'}</TableCell>
-                                                    <TableCell className="text-[11px] font-mono font-bold text-right">
+                            <>
+                                <div className="sm:hidden space-y-2">
+                                    {cashbookResults.map((item, idx) => {
+                                        const desc = item.description || (item as any).note || (item as any).bankReference || '';
+                                        const receiptNo = item.receiptNo || (item as any).receipt_No || (item as any).receiptNumber || '';
+                                        const accountNo = item.accountNumber || (item as any).account_Number || (item as any).accountNo || '';
+                                        const amount = item.amount ?? (item as any).transactionAmount ?? 0;
+                                        const txnDate = item.transactionDate || (item as any).transaction_Date || (item as any).dateOfTransaction || '';
+                                        const cashier = item.cashierName || (item as any).cashier_Name || (item as any).cashier || '';
+                                        const payType = item.paymentType || (item as any).payment_Type || (item as any).payMode || '';
+                                        const cashOffice = item.cashOffice || (item as any).cashOfficeName || (item as any).cashBook || (item as any).cash_Office || '';
+                                        return (
+                                            <div key={idx} className="bg-white border rounded-xl p-3 space-y-1.5" data-testid={`mobile-cashbook-card-${idx}`}>
+                                                <p className="font-mono text-xs text-slate-800 truncate" title={desc}>{desc || '(no description)'}</p>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="font-mono text-sm font-bold text-blue-700" data-testid={`mobile-cashbook-receipt-no-${idx}`}>{receiptNo || '-'}</span>
+                                                    <span className="font-mono text-sm font-bold text-right" data-testid={`mobile-cashbook-amount-${idx}`}>
                                                         {typeof amount === 'number' ? `R ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
-                                                    </TableCell>
-                                                    <TableCell className="text-[10px] text-slate-600">
-                                                        {txnDate ? new Date(txnDate).toLocaleDateString('en-ZA') : '-'}
-                                                    </TableCell>
-                                                    <TableCell className="text-[10px]">{cashier || '-'}</TableCell>
-                                                    <TableCell className="text-[10px]">
-                                                        {payType ? <Badge variant="outline" className="text-[9px] px-1.5 py-0">{payType}</Badge> : '-'}
-                                                    </TableCell>
-                                                    <TableCell className="text-[10px] text-slate-600">{cashOffice || '-'}</TableCell>
-                                                    <TableCell className="text-center">
-                                                        {(receiptNo || accountNo) ? (
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                className="h-6 text-[10px] px-2 gap-1 text-indigo-700 border-indigo-300 hover:bg-indigo-50"
-                                                                onClick={() => handleLoadReceiptsFromCashbook(item)}
-                                                                data-testid={`button-load-receipt-${idx}`}
-                                                            >
-                                                                <FileText className="w-3 h-3" />
-                                                                View Receipt
-                                                            </Button>
-                                                        ) : (
-                                                            <span className="text-[10px] text-slate-400">-</span>
-                                                        )}
-                                                    </TableCell>
-                                                </TableRow>
-                                            );
-                                        })}
-                                    </TableBody>
-                                </Table>
-                            </div>
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs text-slate-600" data-testid={`mobile-cashbook-account-no-${idx}`}>Account: {accountNo || '-'}</div>
+                                                <div className="flex justify-between items-center text-xs text-slate-500">
+                                                    <span>{txnDate ? new Date(txnDate).toLocaleDateString('en-ZA') : '-'}</span>
+                                                    {cashier && <span>Cashier: {cashier}</span>}
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-1.5">
+                                                    {payType && <Badge variant="outline" className="text-[9px] px-1.5 py-0">{payType}</Badge>}
+                                                    {cashOffice && <span className="text-[10px] text-slate-500">{cashOffice}</span>}
+                                                </div>
+                                                {(receiptNo || accountNo) && (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="w-full h-10 text-xs gap-1.5 text-indigo-700 border-indigo-300 hover:bg-indigo-50 active:scale-[0.99]"
+                                                        onClick={() => handleLoadReceiptsFromCashbook(item)}
+                                                        data-testid={`mobile-cashbook-view-${idx}`}
+                                                    >
+                                                        <FileText className="w-3.5 h-3.5" />
+                                                        View Receipt
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <div className="hidden sm:block overflow-x-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow className="bg-indigo-50/50">
+                                                <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Description</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Receipt No</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Account</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-indigo-700 py-2 text-right">Amount</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Date</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Cashier</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Payment Type</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Cashbook</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-indigo-700 py-2 text-center">Action</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {cashbookResults.map((item, idx) => {
+                                                const desc = item.description || (item as any).note || (item as any).bankReference || '';
+                                                const receiptNo = item.receiptNo || (item as any).receipt_No || (item as any).receiptNumber || '';
+                                                const accountNo = item.accountNumber || (item as any).account_Number || (item as any).accountNo || '';
+                                                const amount = item.amount ?? (item as any).transactionAmount ?? 0;
+                                                const txnDate = item.transactionDate || (item as any).transaction_Date || (item as any).dateOfTransaction || '';
+                                                const cashier = item.cashierName || (item as any).cashier_Name || (item as any).cashier || '';
+                                                const payType = item.paymentType || (item as any).payment_Type || (item as any).payMode || '';
+                                                const cashOffice = item.cashOffice || (item as any).cashOfficeName || (item as any).cashBook || (item as any).cash_Office || '';
+                                                return (
+                                                    <TableRow key={idx} className="hover:bg-indigo-50/30" data-testid={`cashbook-result-${idx}`}>
+                                                        <TableCell className="text-[11px] font-mono max-w-[200px] truncate" title={desc}>{desc || '-'}</TableCell>
+                                                        <TableCell className="text-[11px] font-mono font-semibold text-blue-700">{receiptNo || '-'}</TableCell>
+                                                        <TableCell className="text-[11px] font-mono">{accountNo || '-'}</TableCell>
+                                                        <TableCell className="text-[11px] font-mono font-bold text-right">
+                                                            {typeof amount === 'number' ? `R ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
+                                                        </TableCell>
+                                                        <TableCell className="text-[10px] text-slate-600">
+                                                            {txnDate ? new Date(txnDate).toLocaleDateString('en-ZA') : '-'}
+                                                        </TableCell>
+                                                        <TableCell className="text-[10px]">{cashier || '-'}</TableCell>
+                                                        <TableCell className="text-[10px]">
+                                                            {payType ? <Badge variant="outline" className="text-[9px] px-1.5 py-0">{payType}</Badge> : '-'}
+                                                        </TableCell>
+                                                        <TableCell className="text-[10px] text-slate-600">{cashOffice || '-'}</TableCell>
+                                                        <TableCell className="text-center">
+                                                            {(receiptNo || accountNo) ? (
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="h-6 text-[10px] px-2 gap-1 text-indigo-700 border-indigo-300 hover:bg-indigo-50"
+                                                                    onClick={() => handleLoadReceiptsFromCashbook(item)}
+                                                                    data-testid={`button-load-receipt-${idx}`}
+                                                                >
+                                                                    <FileText className="w-3 h-3" />
+                                                                    View Receipt
+                                                                </Button>
+                                                            ) : (
+                                                                <span className="text-[10px] text-slate-400">-</span>
+                                                            )}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </>
                         )}
                     </div>
                 )}
@@ -1083,7 +1129,7 @@ export default function ViewReceipts() {
                                 <div className="relative flex-1 max-w-xs">
                                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                                     <Input
-                                        className="h-8 pl-8 text-sm bg-white"
+                                        className="h-10 sm:h-8 pl-8 text-sm bg-white"
                                         placeholder="Quick search in results..."
                                         value={quickSearch}
                                         onChange={e => setQuickSearch(e.target.value)}
@@ -1103,7 +1149,7 @@ export default function ViewReceipts() {
                                 <Button
                                     variant={showFilters ? "default" : "outline"}
                                     size="sm"
-                                    className={cn("h-8 text-xs gap-1.5", showFilters && "bg-blue-600 hover:bg-blue-700")}
+                                    className={cn("h-10 sm:h-8 text-xs gap-1.5", showFilters && "bg-blue-600 hover:bg-blue-700")}
                                     onClick={() => setShowFilters(!showFilters)}
                                     data-testid="button-toggle-filters"
                                 >
@@ -1123,7 +1169,7 @@ export default function ViewReceipts() {
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        className="h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 px-2"
+                                        className="h-10 sm:h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 px-2"
                                         onClick={clearAllFilters}
                                         data-testid="button-clear-filters"
                                     >
@@ -1296,9 +1342,10 @@ export default function ViewReceipts() {
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            className="h-6 text-[10px] px-2"
+                                            className="h-10 text-xs px-3 active:scale-[0.99]"
                                             onClick={() => handlePrintReceipt(receipt)}
                                             disabled={printingReceiptId !== null}
+                                            data-testid={`mobile-receipt-print-${idx}`}
                                         >
                                             {printingReceiptId === serialNo ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Printer className="w-3 h-3 mr-1" />} Print
                                         </Button>
