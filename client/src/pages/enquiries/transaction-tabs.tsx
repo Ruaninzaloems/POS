@@ -4,7 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import {
   FileText, Receipt, Download, Eye, RefreshCw, ChevronDown, ChevronUp, Loader2,
   Layers, Activity, X, Banknote, CreditCard, CalendarDays, Clock, List, LayoutList,
-  ArrowDown, ArrowUp, Circle, CheckCircle2, XCircle, Filter
+  ArrowDown, ArrowUp, Circle, CheckCircle2, XCircle, Filter,
+  Calculator, Droplets, Zap, Home, Scale, Plus, Minus, AlertTriangle, Info
 } from 'lucide-react';
 import {
   getTransactionHistory, getDetailedTransactionResults, getBillingPeriodTransactions,
@@ -13,11 +14,15 @@ import {
   getOpenBalanceDetail, getCloseBalanceDetail, getJournalTransactionDetails,
   getRebateTransactionDetail, getInterestConsPaymentDetail,
   getBillingProcessingMonth,
+  getAllServices, getMeteredServicesOnAccount, getMeterReadingHistory,
+  getAccountRatesDetails, getAdditionalBillingSearchResults,
+  getBillingTemplate, getDetailBillingTemplate,
 } from '@/lib/enquiries-service';
 import { fetchPosMultiReceiptPrint, platinumPrintReceiptRaw } from '@/lib/external-api';
 import { openSlipPrintWindow, ReceiptPrintData } from '@/lib/receipt-print';
 import { LoadingSkeleton, EmptyState, ErrorState, PaginatedTable, getFinYearOptions, MONTHS } from './shared';
 import { downloadSummaryExcel, downloadTransactionExcel, downloadExcel } from '@/lib/excel-export';
+import { parseTariffRateData, parseTariffTiers, calculateTieredBilling, STANDARD_MONTH_DAYS, type TariffTier } from './service-tabs';
 
 function parseHtmlTables(html: string): { headers: string[]; rows: string[][] }[] {
   const parser = new DOMParser();
@@ -1856,6 +1861,536 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
           );
         })()
       )}
+    </div>
+  );
+}
+
+interface EstimateLineItem {
+  category: string;
+  serviceDesc: string;
+  icon: React.ReactNode;
+  amount: number;
+  vatAmount: number;
+  total: number;
+  detail?: string;
+  tierBreakdown?: { label: string; units: number; rate: number; amount: number; proRatedFrom?: number; proRatedTo?: number }[];
+  readingDays?: number;
+  consumption?: number;
+  rebateAmount?: number;
+  isProRated?: boolean;
+}
+
+export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: number; accountNumber?: string }) {
+  const [loading, setLoading] = useState(false);
+  const [calculated, setCalculated] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lineItems, setLineItems] = useState<EstimateLineItem[]>([]);
+  const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
+  const [vatRate] = useState(15);
+  const [billingMonth, setBillingMonth] = useState<string>('');
+  const [warnings, setWarnings] = useState<string[]>([]);
+
+  const fmt = (n: number) => n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const getServiceIcon = (desc: string) => {
+    const d = (desc || '').toLowerCase();
+    if (d.includes('water') || d.includes('sewerage') || d.includes('sanitation')) return <Droplets className="w-3.5 h-3.5 text-blue-500" />;
+    if (d.includes('electric') || d.includes('elec')) return <Zap className="w-3.5 h-3.5 text-amber-500" />;
+    if (d.includes('refuse') || d.includes('solid waste') || d.includes('waste')) return <Layers className="w-3.5 h-3.5 text-green-500" />;
+    if (d.includes('rate') || d.includes('property') || d.includes('valuation')) return <Home className="w-3.5 h-3.5 text-orange-500" />;
+    if (d.includes('fire') || d.includes('protection')) return <AlertTriangle className="w-3.5 h-3.5 text-red-500" />;
+    return <Scale className="w-3.5 h-3.5 text-slate-500" />;
+  };
+
+  const calculateEstimate = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    setWarnings([]);
+    setLineItems([]);
+    setCalculated(false);
+    const warns: string[] = [];
+
+    try {
+      const [allServices, meteredServices, ratesData, additionalBilling, billingTemplate] = await Promise.allSettled([
+        getAllServices(accountId),
+        getMeteredServicesOnAccount(accountId),
+        getAccountRatesDetails(accountId),
+        getAdditionalBillingSearchResults(accountId),
+        getBillingTemplate(accountId),
+      ]);
+
+      const services = allServices.status === 'fulfilled' ? allServices.value : [];
+      const meters = meteredServices.status === 'fulfilled' ? meteredServices.value : [];
+      const rates = ratesData.status === 'fulfilled' ? ratesData.value : null;
+      const addBilling = additionalBilling.status === 'fulfilled' ? additionalBilling.value : [];
+      const template = billingTemplate.status === 'fulfilled' ? billingTemplate.value : null;
+
+      const activeServices = services.filter((s: any) => {
+        const status = (s.serviceStatus || s.status || '').toLowerCase();
+        return !status.includes('inactive') && !status.includes('terminated') && !status.includes('closed');
+      });
+
+      if (!activeServices.length) {
+        setError('No active services found on this account.');
+        setLoading(false);
+        return;
+      }
+
+      const now = new Date();
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      setBillingMonth(`${monthNames[now.getMonth()]} ${now.getFullYear()}`);
+
+      const items: EstimateLineItem[] = [];
+
+      const meteredServiceDescs = new Set(meters.map((m: any) => (m.serviceDesc || m.serviceDescription || '').toLowerCase().trim()));
+
+      for (const meter of meters) {
+        const meterNo = meter.meterNumber || meter.meterNo || '';
+        if (!meterNo) continue;
+
+        const svcDesc = meter.serviceDesc || meter.serviceDescription || meter.tariff || 'Metered Service';
+        const factor = typeof meter.tarifffactor === 'number' ? meter.tarifffactor : parseFloat(meter.tarifffactor || meter.factorQuantity) || 1;
+
+        try {
+          const readings = await getMeterReadingHistory(accountId, meterNo);
+          const readingsArr = Array.isArray(readings) ? readings : [];
+
+          const unbilled = readingsArr.filter((r: any) => {
+            const bm = (r.billingmonth || r.billingMonth || '').toLowerCase().trim();
+            const flag = (r.flag || '').toLowerCase();
+            const rs = (r.readingStatus || '').toLowerCase();
+            if (flag.includes('reversed') || flag.includes('cancel')) return false;
+            if (flag.includes('estimate') || flag.includes('levy') || rs.includes('estimate')) return false;
+            if (bm === 'current open period' || bm.includes('open period')) return true;
+            if (rs.includes('awaiting') || rs.includes('unbilled') || rs.includes('pending')) return true;
+            if (flag.includes('awaiting') || flag.includes('unbilled')) return true;
+            return false;
+          });
+
+          if (unbilled.length === 0) {
+            warns.push(`${svcDesc} (${meterNo}): No unbilled actual readings found — using last billed as reference.`);
+            const lastBilled = readingsArr.find((r: any) => {
+              const bm = (r.billingmonth || r.billingMonth || '').toLowerCase().trim();
+              const flag = (r.flag || '').toLowerCase();
+              return bm !== 'current open period' && !bm.includes('open period') && !flag.includes('reversed') && !flag.includes('cancel');
+            });
+            if (lastBilled) {
+              const cons = parseFloat(lastBilled.consumption ?? lastBilled.consumptionValue ?? lastBilled.units ?? 0) || 0;
+              const rdNum = parseInt(lastBilled.readingdays) || 30;
+              if (cons > 0) {
+                const parsed = parseTariffRateData(meter);
+                const tiers = parseTariffTiers(parsed.blocks);
+                if (tiers.length) {
+                  const { tierBreakdown, subtotal, isProRated } = calculateTieredBilling(cons, tiers, factor, rdNum);
+                  const vat = subtotal * (vatRate / 100);
+                  items.push({
+                    category: 'Metered Services',
+                    serviceDesc: `${svcDesc} (${meterNo})`,
+                    icon: getServiceIcon(svcDesc),
+                    amount: subtotal,
+                    vatAmount: vat,
+                    total: subtotal + vat,
+                    detail: `Based on last billed: ${cons} units over ${rdNum} days`,
+                    tierBreakdown, readingDays: rdNum, consumption: cons, isProRated,
+                  });
+                }
+              }
+            }
+            continue;
+          }
+
+          for (const reading of unbilled) {
+            const cons = parseFloat(reading.consumption ?? reading.consumptionValue ?? reading.units ?? 0) || 0;
+            if (cons <= 0) continue;
+            const rdRaw = reading.readingdays;
+            const rdNum = typeof rdRaw === 'number' ? rdRaw : parseInt(rdRaw) || undefined;
+            const readingDays = rdNum && rdNum > 0 ? rdNum : undefined;
+
+            const parsed = parseTariffRateData(meter);
+            const tiers = parseTariffTiers(parsed.blocks);
+            if (!tiers.length) {
+              warns.push(`${svcDesc} (${meterNo}): No tariff tier data available.`);
+              continue;
+            }
+
+            const { tierBreakdown, subtotal, isProRated } = calculateTieredBilling(cons, tiers, factor, readingDays);
+            const vat = subtotal * (vatRate / 100);
+            items.push({
+              category: 'Metered Services',
+              serviceDesc: `${svcDesc} (${meterNo})`,
+              icon: getServiceIcon(svcDesc),
+              amount: subtotal,
+              vatAmount: vat,
+              total: subtotal + vat,
+              detail: `${cons} units × ${readingDays ?? STANDARD_MONTH_DAYS} days`,
+              tierBreakdown, readingDays, consumption: cons, isProRated,
+            });
+          }
+        } catch (e) {
+          warns.push(`${svcDesc} (${meterNo}): Failed to load reading history.`);
+        }
+      }
+
+      if (rates && typeof rates === 'object') {
+        const ratesArr = Array.isArray(rates) ? rates : rates.data ? (Array.isArray(rates.data) ? rates.data : [rates.data]) : [rates];
+        for (const rateItem of ratesArr) {
+          const installment = parseFloat(rateItem.installmentAmount ?? rateItem.instalment ?? rateItem.monthlyAmount ?? 0) || 0;
+          const rebate = parseFloat(rateItem.rebateAmount ?? rateItem.rebate ?? 0) || 0;
+          const desc = rateItem.rateDescription || rateItem.description || rateItem.serviceDesc || 'Property Rates';
+
+          if (installment > 0) {
+            const netAmount = installment - rebate;
+            const isVatable = (rateItem.vatApplicable === true || rateItem.vatApplicable === 'true' || rateItem.isVatable === true);
+            const vat = isVatable ? netAmount * (vatRate / 100) : 0;
+            items.push({
+              category: 'Property Rates',
+              serviceDesc: desc,
+              icon: <Home className="w-3.5 h-3.5 text-orange-500" />,
+              amount: netAmount,
+              vatAmount: vat,
+              total: netAmount + vat,
+              detail: rebate > 0 ? `Installment R${fmt(installment)} less rebate R${fmt(rebate)}` : `Monthly installment`,
+              rebateAmount: rebate > 0 ? rebate : undefined,
+            });
+          }
+        }
+      }
+
+      for (const svc of activeServices) {
+        const desc = (svc.serviceDesc || svc.serviceDescription || svc.description || '').toLowerCase().trim();
+        if (meteredServiceDescs.has(desc)) continue;
+
+        const isRatesRelated = desc.includes('rate') || desc.includes('property') || desc.includes('valuation');
+        if (isRatesRelated) continue;
+
+        const amount = parseFloat(svc.amount ?? svc.monthlyAmount ?? svc.levyAmount ?? svc.tariffAmount ?? 0) || 0;
+        if (amount <= 0) continue;
+
+        const isVatable = !(desc.includes('rate') || desc.includes('valuation'));
+        const vat = isVatable ? amount * (vatRate / 100) : 0;
+        items.push({
+          category: 'Fixed Charges',
+          serviceDesc: svc.serviceDesc || svc.serviceDescription || svc.description || 'Service',
+          icon: getServiceIcon(desc),
+          amount,
+          vatAmount: vat,
+          total: amount + vat,
+          detail: 'Fixed monthly charge',
+        });
+      }
+
+      const today = new Date();
+      for (const ab of addBilling) {
+        const desc = ab.description || ab.serviceDesc || ab.tariffDescription || 'Additional Billing';
+        const amount = parseFloat(ab.amount ?? ab.monthlyAmount ?? ab.totalAmount ?? 0) || 0;
+        if (amount <= 0) continue;
+
+        const termDate = ab.terminationDate || ab.endDate || ab.toDate;
+        if (termDate) {
+          const term = new Date(termDate);
+          if (!isNaN(term.getTime()) && term < today) {
+            continue;
+          }
+        }
+
+        const startDate = ab.startDate || ab.fromDate || ab.effectiveDate;
+        if (startDate) {
+          const start = new Date(startDate);
+          if (!isNaN(start.getTime()) && start > today) {
+            continue;
+          }
+        }
+
+        const isActive = (ab.status || ab.isActive || '').toString().toLowerCase();
+        if (isActive.includes('inactive') || isActive.includes('terminated') || isActive.includes('cancel')) continue;
+
+        const isVatable = !(desc.toLowerCase().includes('rate'));
+        const vat = isVatable ? amount * (vatRate / 100) : 0;
+        items.push({
+          category: 'Additional Billing',
+          serviceDesc: desc,
+          icon: <Plus className="w-3.5 h-3.5 text-indigo-500" />,
+          amount,
+          vatAmount: vat,
+          total: amount + vat,
+          detail: termDate ? `Active until ${new Date(termDate).toLocaleDateString('en-ZA')}` : 'Ongoing',
+        });
+      }
+
+      setLineItems(items);
+      setWarnings(warns);
+      setCalculated(true);
+    } catch (e: any) {
+      setError(e.message || 'Failed to calculate billing estimate.');
+    } finally {
+      setLoading(false);
+    }
+  }, [accountId, vatRate]);
+
+  const toggleExpand = (idx: number) => {
+    setExpandedItems(prev => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  };
+
+  const grouped = useMemo(() => {
+    const groups: Record<string, EstimateLineItem[]> = {};
+    for (const item of lineItems) {
+      if (!groups[item.category]) groups[item.category] = [];
+      groups[item.category].push(item);
+    }
+    return groups;
+  }, [lineItems]);
+
+  const grandTotal = useMemo(() => {
+    return lineItems.reduce((sum, item) => sum + item.total, 0);
+  }, [lineItems]);
+
+  const grandSubtotal = useMemo(() => {
+    return lineItems.reduce((sum, item) => sum + item.amount, 0);
+  }, [lineItems]);
+
+  const grandVat = useMemo(() => {
+    return lineItems.reduce((sum, item) => sum + item.vatAmount, 0);
+  }, [lineItems]);
+
+  const categoryIcons: Record<string, React.ReactNode> = {
+    'Metered Services': <Droplets className="w-4 h-4 text-blue-600" />,
+    'Property Rates': <Home className="w-4 h-4 text-orange-600" />,
+    'Fixed Charges': <Layers className="w-4 h-4 text-emerald-600" />,
+    'Additional Billing': <Plus className="w-4 h-4 text-indigo-600" />,
+  };
+
+  const categoryColors: Record<string, string> = {
+    'Metered Services': 'from-blue-600 to-blue-700',
+    'Property Rates': 'from-orange-500 to-orange-600',
+    'Fixed Charges': 'from-emerald-600 to-emerald-700',
+    'Additional Billing': 'from-indigo-600 to-indigo-700',
+  };
+
+  if (!calculated) {
+    return (
+      <div className="p-4 sm:p-6 max-w-3xl mx-auto" data-testid="next-bill-estimate-tab">
+        <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 border border-indigo-200 rounded-2xl p-6 sm:p-10 text-center space-y-4">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-indigo-200">
+            <Calculator className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+          </div>
+          <h2 className="text-lg sm:text-xl font-bold text-slate-800">Next Bill Estimate</h2>
+          <p className="text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
+            Calculate an estimated total for the upcoming billing period based on active services, metered consumption, property rates, rebates, and additional billing on this account.
+          </p>
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+          <Button
+            onClick={calculateEstimate}
+            disabled={loading}
+            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-indigo-200 transition-all"
+            data-testid="button-calculate-estimate"
+          >
+            {loading ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Calculating...</> : <><Calculator className="w-4 h-4 mr-2" /> Calculate Estimate</>}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-3 sm:p-4 space-y-4" data-testid="next-bill-estimate-results">
+      <div className="bg-gradient-to-r from-indigo-700 via-purple-700 to-indigo-800 rounded-xl p-4 sm:p-5 text-white shadow-lg">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center backdrop-blur-sm">
+              <Calculator className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-sm sm:text-base font-bold tracking-wide">Estimated Next Bill</h2>
+              <p className="text-[11px] text-white/70">{billingMonth} • Account {accountNumber || accountId}</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-[10px] uppercase tracking-wider text-white/60 font-semibold">Estimated Total</div>
+            <div className="text-2xl sm:text-3xl font-black font-mono tracking-tight">R {fmt(grandTotal)}</div>
+          </div>
+        </div>
+        <div className="mt-3 pt-3 border-t border-white/15 grid grid-cols-3 gap-3 text-center">
+          <div>
+            <div className="text-[9px] uppercase tracking-wider text-white/50 font-semibold">Subtotal (excl VAT)</div>
+            <div className="text-sm font-mono font-bold">R {fmt(grandSubtotal)}</div>
+          </div>
+          <div>
+            <div className="text-[9px] uppercase tracking-wider text-white/50 font-semibold">VAT ({vatRate}%)</div>
+            <div className="text-sm font-mono font-bold">R {fmt(grandVat)}</div>
+          </div>
+          <div>
+            <div className="text-[9px] uppercase tracking-wider text-white/50 font-semibold">Line Items</div>
+            <div className="text-sm font-mono font-bold">{lineItems.length}</div>
+          </div>
+        </div>
+      </div>
+
+      {warnings.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-1">
+          <div className="flex items-center gap-2 text-amber-800 font-bold text-xs">
+            <AlertTriangle className="w-3.5 h-3.5" />
+            Notes ({warnings.length})
+          </div>
+          {warnings.map((w, i) => (
+            <p key={i} className="text-[11px] text-amber-700 pl-5">• {w}</p>
+          ))}
+        </div>
+      )}
+
+      {Object.entries(grouped).map(([category, items]) => {
+        const catSubtotal = items.reduce((s, i) => s + i.amount, 0);
+        const catVat = items.reduce((s, i) => s + i.vatAmount, 0);
+        const catTotal = items.reduce((s, i) => s + i.total, 0);
+        const gradient = categoryColors[category] || 'from-slate-600 to-slate-700';
+        const icon = categoryIcons[category] || <Layers className="w-4 h-4 text-slate-600" />;
+
+        return (
+          <div key={category} className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            <div className={`px-4 py-2.5 bg-gradient-to-r ${gradient} flex items-center justify-between`}>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 bg-white/15 rounded-lg flex items-center justify-center">
+                  {React.cloneElement(icon as React.ReactElement<any>, { className: 'w-4 h-4 text-white' })}
+                </div>
+                <div>
+                  <h3 className="text-xs sm:text-sm font-bold text-white">{category}</h3>
+                  <span className="text-[10px] text-white/60">{items.length} item{items.length !== 1 ? 's' : ''}</span>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-[9px] text-white/50 uppercase tracking-wider font-semibold">Category Total</div>
+                <div className="text-sm sm:text-base font-mono font-black text-white">R {fmt(catTotal)}</div>
+              </div>
+            </div>
+
+            <div className="divide-y divide-slate-100">
+              {items.map((item, idx) => {
+                const globalIdx = lineItems.indexOf(item);
+                const isExpanded = expandedItems.has(globalIdx);
+                const hasTiers = item.tierBreakdown && item.tierBreakdown.length > 0;
+
+                return (
+                  <div key={idx} className="group">
+                    <div
+                      className={`px-4 py-3 flex items-center justify-between gap-3 ${hasTiers ? 'cursor-pointer hover:bg-slate-50' : ''} transition-colors`}
+                      onClick={() => hasTiers && toggleExpand(globalIdx)}
+                      data-testid={`estimate-line-${globalIdx}`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        {item.icon}
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-semibold text-slate-800 truncate">{item.serviceDesc}</div>
+                          {item.detail && <div className="text-[10px] text-slate-400 mt-0.5">{item.detail}</div>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        {item.rebateAmount && item.rebateAmount > 0 && (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-green-50 text-green-700 text-[9px] font-bold border border-green-200">
+                            <Minus className="w-2.5 h-2.5" /> R{fmt(item.rebateAmount)}
+                          </span>
+                        )}
+                        <div className="text-right">
+                          <div className="text-xs font-mono font-bold text-slate-800">R {fmt(item.total)}</div>
+                          {item.vatAmount > 0 && <div className="text-[9px] text-slate-400 font-mono">incl VAT R{fmt(item.vatAmount)}</div>}
+                        </div>
+                        {hasTiers && (
+                          isExpanded ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                        )}
+                      </div>
+                    </div>
+
+                    {isExpanded && hasTiers && (
+                      <div className="px-4 pb-3">
+                        <div className="bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
+                          <div className="px-3 py-1.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
+                            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Per-Day Tariff Breakdown</span>
+                            {item.isProRated && item.readingDays && (
+                              <span className="text-[10px] text-blue-600 font-medium">{item.readingDays} days / {STANDARD_MONTH_DAYS} std</span>
+                            )}
+                          </div>
+                          <table className="w-full text-[11px]">
+                            <thead>
+                              <tr className="bg-slate-50/50">
+                                <th className="text-left py-1.5 px-3 text-[9px] uppercase tracking-wider text-slate-500 font-bold">Tier</th>
+                                {item.isProRated && <th className="text-left py-1.5 px-3 text-[9px] uppercase tracking-wider text-slate-500 font-bold">Pro-Rated</th>}
+                                <th className="text-right py-1.5 px-3 text-[9px] uppercase tracking-wider text-slate-500 font-bold">Units</th>
+                                <th className="text-right py-1.5 px-3 text-[9px] uppercase tracking-wider text-slate-500 font-bold">Rate</th>
+                                <th className="text-right py-1.5 px-3 text-[9px] uppercase tracking-wider text-slate-500 font-bold">Amount</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {item.tierBreakdown!.map((tier, ti) => (
+                                <tr key={ti} className="border-t border-slate-100">
+                                  <td className="py-1.5 px-3 text-slate-700">{tier.label}</td>
+                                  {item.isProRated && (
+                                    <td className="py-1.5 px-3 text-slate-500 text-[10px] font-mono">
+                                      {tier.proRatedFrom != null ? `${fmt(tier.proRatedFrom)} – ${tier.proRatedTo != null ? fmt(tier.proRatedTo) : '∞'}` : '-'}
+                                    </td>
+                                  )}
+                                  <td className="py-1.5 px-3 text-right font-mono text-slate-700">{fmt(tier.units)}</td>
+                                  <td className="py-1.5 px-3 text-right font-mono text-blue-600">{tier.rate.toFixed(4)}</td>
+                                  <td className="py-1.5 px-3 text-right font-mono font-semibold text-slate-800">R {fmt(tier.amount)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          <div className="px-3 py-2 bg-slate-100 border-t border-slate-200 flex justify-between text-[11px]">
+                            <span className="text-slate-500 font-semibold">
+                              {item.consumption} units × {item.readingDays ?? STANDARD_MONTH_DAYS} days
+                            </span>
+                            <span className="font-mono font-bold text-slate-800">Subtotal: R {fmt(item.amount)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 grid grid-cols-3 gap-2 text-[10px]">
+              <div className="text-center"><span className="text-slate-400 uppercase tracking-wider font-semibold block">Subtotal</span><span className="font-mono font-bold text-slate-700">R {fmt(catSubtotal)}</span></div>
+              <div className="text-center"><span className="text-slate-400 uppercase tracking-wider font-semibold block">VAT</span><span className="font-mono font-bold text-slate-700">R {fmt(catVat)}</span></div>
+              <div className="text-center"><span className="text-slate-400 uppercase tracking-wider font-semibold block">Total</span><span className="font-mono font-bold text-slate-800">R {fmt(catTotal)}</span></div>
+            </div>
+          </div>
+        );
+      })}
+
+      <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-xl p-4 text-white">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
+              <Calculator className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <div className="text-xs font-bold uppercase tracking-wider text-white/60">Grand Total (incl VAT)</div>
+              <div className="text-xl sm:text-2xl font-black font-mono">R {fmt(grandTotal)}</div>
+            </div>
+          </div>
+          <Button
+            onClick={() => { setCalculated(false); setLineItems([]); }}
+            variant="outline"
+            className="border-white/20 text-white hover:bg-white/10 text-xs"
+            data-testid="button-recalculate"
+          >
+            <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Recalculate
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 px-2 text-[10px] text-amber-600">
+        <Info className="w-3.5 h-3.5 shrink-0" />
+        <span>This is an estimate only — actual billing may differ due to mid-cycle adjustments, rebate changes, or tariff updates.</span>
+      </div>
     </div>
   );
 }

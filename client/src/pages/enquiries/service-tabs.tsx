@@ -15,13 +15,13 @@ import {
 import { LoadingSkeleton, EmptyState, ErrorState, InfoField, SectionHeader, PaginatedTable, TabCard, getFinYearOptions, MONTHS } from './shared';
 import { downloadExcel } from '@/lib/excel-export';
 
-interface TariffBlock {
+export interface TariffBlock {
   startDate: string;
   endDate: string;
   intervals: { interval: string; cost: string }[];
 }
 
-function parseTariffRateData(svc: any): { startDate: string; endDate: string; intervals: { interval: string; cost: string }[]; blocks: TariffBlock[] } {
+export function parseTariffRateData(svc: any): { startDate: string; endDate: string; intervals: { interval: string; cost: string }[]; blocks: TariffBlock[] } {
   const blocks: TariffBlock[] = [];
 
   const html = svc.endDate || '';
@@ -604,14 +604,14 @@ export function ConsumptionChart({ readings }: { readings: any[] }) {
   );
 }
 
-interface TariffTier {
+export interface TariffTier {
   from: number;
   to: number;
   rate: number;
   label: string;
 }
 
-function parseTariffTiers(blocks: TariffBlock[]): TariffTier[] {
+export function parseTariffTiers(blocks: TariffBlock[]): TariffTier[] {
   if (!blocks.length) return [];
   const latest = blocks[blocks.length - 1];
   const tiers: TariffTier[] = [];
@@ -655,9 +655,9 @@ function parseTariffTiers(blocks: TariffBlock[]): TariffTier[] {
   return tiers;
 }
 
-const STANDARD_MONTH_DAYS = 30;
+export const STANDARD_MONTH_DAYS = 30;
 
-function calculateTieredBilling(
+export function calculateTieredBilling(
   consumption: number,
   tiers: TariffTier[],
   factor: number = 1,

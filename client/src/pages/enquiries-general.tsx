@@ -24,7 +24,7 @@ import {
 import { ErrorState } from './enquiries/shared';
 import { AccountInfoTab, NameTab, BalanceDebtTab, LinkedAccountsTab } from './enquiries/account-tabs';
 import { ServiceBalanceTab, ConsumptionTab, ServicesMetersTab } from './enquiries/service-tabs';
-import { TransactionSummaryTab, DetailedTransactionListTab, TransactionHistoryTab } from './enquiries/transaction-tabs';
+import { TransactionSummaryTab, DetailedTransactionListTab, TransactionHistoryTab, NextBillEstimateTab } from './enquiries/transaction-tabs';
 import { IncentivesTab, DepositsTab, PaymentPlansTab, PaymentExtensionHistoryTab, DebitOrdersTab, RatesValuationsTab, BilledVsPaidTab } from './enquiries/financial-tabs';
 import { PropertyDetailsTab, ContactInfoTab, HandoverTab, NotificationsTab, StatementsTab, ClearanceTab, DebtorNotesTab, Section129Tab, OccupiersTab, SendStatementsTab, IndigentHistoryTab } from './enquiries/other-tabs';
 import { SEARCH_FIELDS, detectSearchType, SmartSearchDropdown, ExpandableResultRow } from './enquiries/search-components';
@@ -600,6 +600,7 @@ function GeneralEnquiriesContent() {
       {
         heading: 'BILLING & TARIFFS',
         tabs: [
+          { value: 'next-bill', label: 'Next Bill Estimate', icon: <CalendarCheck className="w-3.5 h-3.5" />, color: 'purple', tip: 'Calculate an estimated total for the upcoming billing period based on active services, metered consumption, property rates, rebates, and additional billing.' },
           { value: 'rates', label: 'Rates', icon: <Scale className="w-3.5 h-3.5" />, color: 'orange', tip: 'View rates valuations and property assessment details.' },
           { value: 'debit-orders', label: 'Debit Orders', icon: <Landmark className="w-3.5 h-3.5" />, color: 'teal', tip: 'View debit order mandates and processing history.' },
           { value: 'statements', label: 'Statements', icon: <FileText className="w-3.5 h-3.5" />, color: 'blue', tip: 'View and download previous account statements.' },
@@ -834,6 +835,7 @@ function GeneralEnquiriesContent() {
               <TabsContent value="payment-extensions" className="m-0"><PaymentExtensionHistoryTab accountId={accountId} /></TabsContent>
               <TabsContent value="debit-orders" className="m-0"><DebitOrdersTab accountId={accountId} /></TabsContent>
               <TabsContent value="billed-vs-paid" className="m-0"><BilledVsPaidTab accountId={accountId} /></TabsContent>
+              <TabsContent value="next-bill" className="m-0"><NextBillEstimateTab accountId={accountId} accountNumber={selectedAccount.accountNumber || selectedAccount.oldAccountCode || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabsContent>
               <TabsContent value="rates" className="m-0"><RatesValuationsTab accountId={accountId} propertyId={propertyId} /></TabsContent>
               <TabsContent value="notifications" className="m-0"><NotificationsTab accountId={accountId} /></TabsContent>
               <TabsContent value="statements" className="m-0"><StatementsTab accountId={accountId} /></TabsContent>
