@@ -1400,40 +1400,42 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
         data.length === 0 ? <EmptyState message="No receipt history found" /> : (
           <div className="space-y-4">
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="px-4 sm:px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex flex-wrap items-center gap-2 sm:gap-3">
-                <div className="flex items-center gap-2">
-                  <Receipt className="w-4 h-4 text-white" />
-                  <h3 className="text-sm font-semibold text-white tracking-wide">Receipt History</h3>
-                  <Badge className="bg-white/20 text-white border-white/30 text-[10px]">{data.length} receipts</Badge>
-                </div>
-                <div className="ml-auto flex items-center gap-2">
-                  <div className="flex items-center bg-white/15 rounded-lg p-0.5">
-                    <button
-                      onClick={() => setReceiptView('timeline')}
-                      className={`flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold rounded-md transition-all ${receiptView === 'timeline' ? 'bg-white text-blue-700 shadow-sm' : 'text-white/80 hover:text-white hover:bg-white/10'}`}
-                      data-testid="button-receipt-view-timeline"
-                    >
-                      <Clock className="w-3 h-3" /> Timeline
-                    </button>
-                    <button
-                      onClick={() => setReceiptView('table')}
-                      className={`flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold rounded-md transition-all ${receiptView === 'table' ? 'bg-white text-blue-700 shadow-sm' : 'text-white/80 hover:text-white hover:bg-white/10'}`}
-                      data-testid="button-receipt-view-table"
-                    >
-                      <List className="w-3 h-3" /> Table
-                    </button>
+              <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <Receipt className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-white shrink-0" />
+                    <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Receipt History</h3>
+                    <Badge className="bg-white/20 text-white border-white/30 text-[9px] sm:text-[10px]">{data.length}</Badge>
                   </div>
-                  <div className="text-white text-xs sm:text-sm font-mono font-bold">
-                    R {totalAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                  <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+                    <div className="flex items-center bg-white/15 rounded-lg p-0.5">
+                      <button
+                        onClick={() => setReceiptView('timeline')}
+                        className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 text-[9px] sm:text-[10px] font-semibold rounded-md transition-all ${receiptView === 'timeline' ? 'bg-white text-blue-700 shadow-sm' : 'text-white/80 hover:text-white hover:bg-white/10'}`}
+                        data-testid="button-receipt-view-timeline"
+                      >
+                        <Clock className="w-3 h-3" /> <span className="hidden sm:inline">Timeline</span><span className="sm:hidden">Time</span>
+                      </button>
+                      <button
+                        onClick={() => setReceiptView('table')}
+                        className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 text-[9px] sm:text-[10px] font-semibold rounded-md transition-all ${receiptView === 'table' ? 'bg-white text-blue-700 shadow-sm' : 'text-white/80 hover:text-white hover:bg-white/10'}`}
+                        data-testid="button-receipt-view-table"
+                      >
+                        <List className="w-3 h-3" /> Table
+                      </button>
+                    </div>
+                    <div className="text-white text-[11px] sm:text-sm font-mono font-bold">
+                      R {totalAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                    </div>
                   </div>
                 </div>
               </div>
 
               {receiptView === 'timeline' && (
-                <div className="px-4 sm:px-5 py-2.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center gap-2">
+                <div className="px-2.5 sm:px-5 py-2 sm:py-2.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center gap-1.5 sm:gap-2">
                   <div className="flex items-center gap-1.5">
                     <Filter className="w-3 h-3 text-slate-400" />
-                    <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Filter:</span>
+                    <span className="text-[9px] sm:text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Filter:</span>
                   </div>
                   <div className="flex items-center gap-1">
                     {([
@@ -1447,7 +1449,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                         <button
                           key={f.key}
                           onClick={() => setTimelineFilter(f.key)}
-                          className={`flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold rounded-md transition-all ${timelineFilter === f.key ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}`}
+                          className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 text-[9px] sm:text-[10px] font-semibold rounded-md transition-all ${timelineFilter === f.key ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}`}
                           data-testid={`button-filter-${f.key}`}
                         >
                           {Icon && <Icon className="w-3 h-3" />}
@@ -1458,7 +1460,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                   </div>
                   <button
                     onClick={() => setTimelineSortAsc(prev => !prev)}
-                    className="ml-auto flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold rounded-md bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition-all"
+                    className="ml-auto flex items-center gap-1 px-2 sm:px-2.5 py-1 text-[9px] sm:text-[10px] font-semibold rounded-md bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition-all"
                     data-testid="button-sort-timeline"
                   >
                     {timelineSortAsc ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
@@ -1468,24 +1470,24 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
               )}
 
               {receiptView === 'timeline' ? (
-                <div className="px-3 sm:px-6 py-3 sm:py-4 space-y-4 sm:space-y-6 max-h-[70vh] overflow-y-auto" data-testid="receipt-timeline">
+                <div className="px-2.5 sm:px-6 py-3 sm:py-4 space-y-4 sm:space-y-6 max-h-[70vh] overflow-y-auto" data-testid="receipt-timeline">
                   {filteredReceipts.length === 0 ? (
                     <div className="py-8 text-center text-slate-400 text-sm italic">No receipts match the selected filter.</div>
                   ) : groupedByMonth.map(group => (
                     <div key={group.key} className="relative">
-                      <div className="sticky top-0 z-10 flex items-center gap-3 mb-3 bg-white/95 backdrop-blur-sm py-1">
-                        <div className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-3 py-1.5 rounded-lg shadow-sm">
-                          <CalendarDays className="w-3.5 h-3.5" />
-                          <span className="text-xs font-bold tracking-wide">{group.label}</span>
+                      <div className="sticky top-0 z-10 flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3 bg-white py-1.5 sm:py-1 border-b border-slate-100 sm:border-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-2.5 sm:px-3 py-1.5 rounded-lg shadow-sm shrink-0">
+                          <CalendarDays className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
+                          <span className="text-[11px] sm:text-xs font-bold tracking-wide">{group.label}</span>
                         </div>
-                        <div className="flex-1 h-px bg-slate-200" />
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-slate-400 font-medium">{group.items.length} receipt{group.items.length !== 1 ? 's' : ''}</span>
-                          <span className="text-xs font-mono font-bold text-slate-700">R {group.total.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                        <div className="hidden sm:block flex-1 h-px bg-slate-200" />
+                        <div className="flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0">
+                          <span className="text-[9px] sm:text-[10px] text-slate-400 font-medium">{group.items.length} receipt{group.items.length !== 1 ? 's' : ''}</span>
+                          <span className="text-[11px] sm:text-xs font-mono font-bold text-slate-700">R {group.total.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
                         </div>
                       </div>
 
-                      <div className="relative ml-4 sm:ml-6 border-l-2 border-blue-200 pl-4 sm:pl-6 space-y-3">
+                      <div className="relative ml-3 sm:ml-6 border-l-2 border-blue-200 pl-3 sm:pl-6 space-y-2.5 sm:space-y-3">
                         {group.items.map((item: any, i: number) => {
                           const pt = (item.paymentType || '').toLowerCase();
                           const isCash = pt.includes('cash');
@@ -1504,47 +1506,47 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
 
                           return (
                             <div key={item.receiptId || i} className="relative group" data-testid={`timeline-receipt-${i}`}>
-                              <div className={`absolute -left-[1.4rem] sm:-left-[1.65rem] top-3 w-3 h-3 rounded-full ${dotColor} ring-2 ring-white shadow-sm z-[1]`} />
+                              <div className={`absolute -left-[1.15rem] sm:-left-[1.65rem] top-3 w-2.5 sm:w-3 h-2.5 sm:h-3 rounded-full ${dotColor} ring-2 ring-white shadow-sm z-[1]`} />
 
-                              <div className={`rounded-xl border shadow-sm transition-all duration-200 ${cardBg}`}>
-                                <div className="px-3 sm:px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                                    <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                              <div className={`rounded-lg sm:rounded-xl border shadow-sm transition-all duration-200 ${cardBg}`}>
+                                <div className="px-2.5 sm:px-4 py-2.5 sm:py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 ${
                                       isCancelled ? 'bg-red-100 text-red-600' :
                                       isCash ? 'bg-green-100 text-green-700' :
                                       isCard ? 'bg-purple-100 text-purple-700' :
                                       isEft ? 'bg-blue-100 text-blue-700' :
                                       'bg-slate-100 text-slate-600'
                                     }`}>
-                                      {isCash ? <Banknote className="w-4 h-4 sm:w-5 sm:h-5" /> :
-                                       isCard ? <CreditCard className="w-4 h-4 sm:w-5 sm:h-5" /> :
-                                       <Receipt className="w-4 h-4 sm:w-5 sm:h-5" />}
+                                      {isCash ? <Banknote className="w-4 h-4" /> :
+                                       isCard ? <CreditCard className="w-4 h-4" /> :
+                                       <Receipt className="w-4 h-4" />}
                                     </div>
 
                                     <div className="min-w-0 flex-1">
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="font-mono text-xs font-bold text-blue-700">{item.receiptNo || '-'}</span>
+                                      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                                        <span className="font-mono text-[11px] sm:text-xs font-bold text-blue-700">{item.receiptNo || '-'}</span>
                                         {isCancelled && (
-                                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-red-100 text-red-700 border border-red-200">
+                                          <span className="inline-flex items-center gap-0.5 px-1 sm:px-1.5 py-0.5 rounded-full text-[8px] sm:text-[9px] font-bold bg-red-100 text-red-700 border border-red-200">
                                             <XCircle className="w-2.5 h-2.5" /> Cancelled
                                           </span>
                                         )}
                                         {!isCancelled && (
-                                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                          <span className="inline-flex items-center gap-0.5 px-1 sm:px-1.5 py-0.5 rounded-full text-[8px] sm:text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                             <CheckCircle2 className="w-2.5 h-2.5" /> Active
                                           </span>
                                         )}
                                       </div>
-                                      <div className="flex items-center gap-2 sm:gap-3 mt-0.5 flex-wrap">
-                                        <span className="text-[11px] text-slate-500">
+                                      <div className="flex items-center gap-1.5 sm:gap-3 mt-0.5 flex-wrap">
+                                        <span className="text-[10px] sm:text-[11px] text-slate-500">
                                           {receiptDate ? receiptDate.toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
                                         </span>
                                         {receiptDate && (
-                                          <span className="text-[10px] text-slate-400">
+                                          <span className="text-[9px] sm:text-[10px] text-slate-400">
                                             {receiptDate.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
                                           </span>
                                         )}
-                                        <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-medium ${
+                                        <span className={`inline-flex items-center gap-0.5 px-1 sm:px-1.5 py-0.5 rounded-md text-[9px] sm:text-[10px] font-medium ${
                                           isCash ? 'bg-green-50 text-green-700 border border-green-200' :
                                           isCard ? 'bg-purple-50 text-purple-700 border border-purple-200' :
                                           isEft ? 'bg-blue-50 text-blue-700 border border-blue-200' :
@@ -1556,16 +1558,16 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                                     </div>
                                   </div>
 
-                                  <div className="flex items-center gap-3 sm:gap-4 justify-between sm:justify-end">
+                                  <div className="flex items-center gap-2 sm:gap-4 justify-between sm:justify-end">
                                     <div className="text-right">
-                                      <div className={`font-mono text-base sm:text-lg font-bold ${isCancelled ? 'text-red-600 line-through' : 'text-slate-800'}`}>
+                                      <div className={`font-mono text-sm sm:text-lg font-bold ${isCancelled ? 'text-red-600 line-through' : 'text-slate-800'}`}>
                                         R {(item.amount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
                                       </div>
                                     </div>
                                     <button
                                       onClick={() => handlePrintReceipt(item)}
                                       disabled={printingId === String(item.receiptId || item.receipt_ID) || !item.receiptId}
-                                      className="flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-[10px] font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                                      className="flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-[9px] sm:text-[10px] font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                                       data-testid={`button-print-timeline-${i}`}
                                     >
                                       {printingId === String(item.receiptId || item.receipt_ID) ? (
@@ -1578,7 +1580,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                                   </div>
                                 </div>
 
-                                <div className="px-3 sm:px-4 py-2 bg-slate-50/70 rounded-b-xl border-t border-slate-100 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] sm:text-[11px] text-slate-500">
+                                <div className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-slate-50/70 rounded-b-lg sm:rounded-b-xl border-t border-slate-100 flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1 text-[9px] sm:text-[11px] text-slate-500">
                                   {item.cashierName && (
                                     <span><span className="font-semibold text-slate-600">Cashier:</span> {item.cashierName}</span>
                                   )}
