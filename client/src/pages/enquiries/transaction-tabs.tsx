@@ -1921,17 +1921,10 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
 
   const isMeteredService = (svc: any): boolean => {
     const desc = (svc.tariffType || svc.serviceDesc || svc.serviceDescription || '').toLowerCase();
+    if (desc.includes('basic') || desc.includes('fixed') || desc.includes('sanitation') || desc.includes('waste') || desc.includes('refuse') || desc.includes('sewerage')) return false;
     const hasMeter = !!(svc.meterNo || svc.meterNumber || svc.physicalMeterNo || svc.physicalMeterNumber);
-    if (hasMeter) return true;
+    if (hasMeter && (desc.includes('metered') || desc.includes('water') || desc.includes('electric') || desc.includes('consumption'))) return true;
     if (desc.includes('metered') || desc.includes('consumption')) return true;
-    const parsed = parseTariffRateData(svc);
-    if (parsed.blocks.length > 0) {
-      const latest = parsed.blocks[parsed.blocks.length - 1];
-      if (latest.intervals.length >= 2) {
-        const hasRanges = latest.intervals.some(iv => /^\d+\s*[-–]\s*\d+/.test(iv.interval) || /^(above|over|>)/i.test(iv.interval));
-        if (hasRanges) return true;
-      }
-    }
     return false;
   };
 
