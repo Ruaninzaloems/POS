@@ -37,15 +37,17 @@ Preferred communication style: Simple, everyday language.
 - **Framework**: Express 5 with TypeScript.
 - **API Pattern**: RESTful routes.
 - **Proxy Layer**: Proxies requests to Platinum Inzalo EMS API (authenticated via JWT for POS operations) and legacy Sebata Billing API (unauthenticated OData for backward compatibility).
+- **Session Management**: `express-session` with `connect-pg-simple` stores per-user sessions in PostgreSQL (`user_sessions` table, auto-created). Each user's Platinum JWT token, userData, posCashierId, and authMode are stored in `req.session.platinumAuth` (type `UserSession`). This enables 50+ concurrent users without session cross-contamination.
+- **Concurrency**: Global request queue limits concurrent Platinum API calls to 100. Response cache is user-aware: user-specific paths (validate-cashier, payment-options, etc.) are keyed by userId, shared data (BillingEnquiry) uses URL-only keys.
 - **Serving**: Serves production builds statically; uses Vite middleware for development.
 - **Storage Layer**: Implements `IStorage` interface with `DatabaseStorage` using Drizzle ORM, though currently not actively used for persistence as all transactions go to Platinum API.
 
 ### Database (PostgreSQL + Drizzle ORM)
 - **ORM**: Drizzle ORM for PostgreSQL.
 - **Schema**: Defined in `shared/schema.ts` with Zod validation.
-- **Tables**: `users`, `cashier_sessions`, `transactions`.
+- **Tables**: `users`, `cashier_sessions`, `transactions`, `user_sessions` (express-session store).
 - **Migrations**: Managed via `drizzle-kit push`.
-- **Note**: While a database layer is defined, the system primarily uses external APIs for transaction persistence and session management. The local database code is legacy and not actively used for core transaction/session data.
+- **Note**: While a database layer is defined, the system primarily uses external APIs for transaction persistence and session management. The local database code is legacy and not actively used for core transaction/session data. The `user_sessions` table is actively used for HTTP session storage.
 
 ### Key Business Logic Decisions
 - **Rounding**: Transaction totals are rounded up to the nearest 10 cents.
