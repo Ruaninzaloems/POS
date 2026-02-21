@@ -280,7 +280,7 @@ function ClearanceBasketExpander({ item, updateItemDetails, updateItemAmount }: 
     );
 }
 
-export function TransactionPanels() {
+export function TransactionPanels({ isSearchActive = false }: { isSearchActive?: boolean }) {
   const { activeTransactionType, transactionItems, removeItem, updateItemAmount, updateItemDetails, addItem, viewingItemId, setViewingItem } = usePos();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -446,6 +446,18 @@ export function TransactionPanels() {
   }
 
   if (activeTransactionType === 'NONE') {
+    if (isSearchActive) {
+      return (
+        <div className="flex-1 flex flex-col items-center justify-start pt-16 sm:pt-24 p-4 sm:p-8 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50/30" />
+          <div className="relative z-10 flex flex-col items-center">
+            <Loader2 className="w-6 h-6 text-blue-400 animate-spin mb-3" />
+            <p className="text-sm text-slate-400">Searching...</p>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50/30" />

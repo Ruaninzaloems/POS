@@ -12,6 +12,7 @@ import { EasyPayBill } from '@/lib/external-api';
 
 function PosPageContent() {
   const [isEasyPayOpen, setIsEasyPayOpen] = useState(false);
+  const [isSearchActive, setIsSearchActive] = useState(false);
   const { addItem, transactionItems } = usePos();
 
   const handleAddEasyPay = (bill: EasyPayBill) => {
@@ -36,13 +37,13 @@ function PosPageContent() {
           <div className="px-3 sm:px-5 lg:px-6 py-2.5 sm:py-3 bg-white border-b border-slate-100 z-10 shrink-0">
             <div className="flex gap-2 max-w-3xl mx-auto">
               <div className="flex-1">
-                <UnifiedSearch />
+                <UnifiedSearch onSearchActiveChange={setIsSearchActive} />
               </div>
             </div>
           </div>
 
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden pb-16 lg:pb-0">
-            <TransactionPanels />
+            <TransactionPanels isSearchActive={isSearchActive} />
           </div>
         </div>
 

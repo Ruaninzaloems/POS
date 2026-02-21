@@ -36,9 +36,10 @@ interface UnifiedSearchProps {
     institutions?: any[];
     userId?: number;
     finYear?: string;
+    onSearchActiveChange?: (isActive: boolean) => void;
 }
 
-export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, scope = 'ALL', institutions = [], userId, finYear }: UnifiedSearchProps) {
+export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, scope = 'ALL', institutions = [], userId, finYear, onSearchActiveChange }: UnifiedSearchProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -339,6 +340,10 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
     setExpandedGroupId(null);
     setScoaItems([]);
   }, [searchQuery]);
+
+  useEffect(() => {
+    onSearchActiveChange?.(isOpen || isSearchingExternal || searchQuery.length >= 2);
+  }, [isOpen, isSearchingExternal, searchQuery]);
 
   // Click outside to close
   useEffect(() => {
