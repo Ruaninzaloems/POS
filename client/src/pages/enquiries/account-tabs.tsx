@@ -1468,15 +1468,15 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
 
       {(propertyRatesItems.length > 0 || ratesData) && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2.5">
-            <Home className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Property Rates Section</h3>
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
+            <Home className="w-4 h-4 text-white shrink-0" />
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Property Rates Section</h3>
           </div>
-          <div className="p-5 space-y-5">
+          <div className="p-2.5 sm:p-5 space-y-3 sm:space-y-5">
             {ratesData && (
-              <div className="rounded-xl border border-slate-200 overflow-hidden">
-                <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
-                  <h4 className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Property Rates</h4>
+              <div className="rounded-lg sm:rounded-xl border border-slate-200 overflow-hidden">
+                <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-50 border-b border-slate-200">
+                  <h4 className="text-[10px] sm:text-[11px] font-bold text-slate-600 uppercase tracking-wider">Property Rates</h4>
                 </div>
                 <div className="divide-y divide-slate-100">
                   {[
@@ -1485,23 +1485,23 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
                     { label: 'Instalment', value: `R ${fmt(ratesData.installment ?? 0)}` },
                     { label: 'Remaining Instalments', value: ratesData.remainingInstallments ?? '-' },
                   ].map((row, idx) => (
-                    <div key={idx} className="flex justify-between items-center px-4 py-3 hover:bg-slate-50/50 transition-colors">
-                      <span className="text-[13px] text-slate-600">{row.label}</span>
-                      <span className="text-[13px] font-mono font-semibold text-slate-900">{row.value}</span>
+                    <div key={idx} className="flex justify-between items-center px-3 sm:px-4 py-2 sm:py-3 hover:bg-slate-50/50 transition-colors">
+                      <span className="text-[11px] sm:text-[13px] text-slate-600">{row.label}</span>
+                      <span className="text-[11px] sm:text-[13px] font-mono font-semibold text-slate-900">{row.value}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
             {propertyRatesItems.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
                 {propertyRatesItems.map((item: any, i: number) => (
-                  <div key={i} className="rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                    <div className="px-4 py-3 bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
-                      <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{item.serviceDescription}</div>
-                      <div className="text-xl font-bold text-red-600 font-mono mt-1">{fmt(item.totalOutStanding ?? 0)}</div>
+                  <div key={i} className="rounded-lg sm:rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                    <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
+                      <div className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider">{item.serviceDescription}</div>
+                      <div className="text-lg sm:text-xl font-bold text-red-600 font-mono mt-0.5 sm:mt-1">{fmt(item.totalOutStanding ?? 0)}</div>
                     </div>
-                    <div className="p-4 space-y-0 divide-y divide-slate-100">
+                    <div className="p-3 sm:p-4 space-y-0 divide-y divide-slate-100">
                       {[
                         { label: 'Current', value: fmtDash(getVal(item, ['current', 'currentAccount'])) },
                         { label: '30 Days', value: fmtDash(getVal(item, ['days30'])) },
@@ -1521,14 +1521,14 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
                           { label: '360+ Days', value: fmtDash(getVal(item, ['untill360', 'days180Plus', 'days360Plus'])) },
                         ] : []),
                       ].map((row, idx) => (
-                        <div key={idx} className="flex justify-between items-center py-2">
-                          <span className="text-xs text-slate-500">{row.label}</span>
-                          <span className="text-xs font-mono font-medium text-slate-700">{row.value}</span>
+                        <div key={idx} className="flex justify-between items-center py-1.5 sm:py-2">
+                          <span className="text-[11px] sm:text-xs text-slate-500">{row.label}</span>
+                          <span className="text-[11px] sm:text-xs font-mono font-medium text-slate-700">{row.value}</span>
                         </div>
                       ))}
-                      <div className="flex justify-between items-center py-2.5 !border-t-2 !border-slate-200">
-                        <span className="text-xs font-medium text-slate-600">Deposit</span>
-                        <span className="text-xs font-mono font-semibold text-slate-800">{fmtDash(item.deposit)}</span>
+                      <div className="flex justify-between items-center py-2 sm:py-2.5 !border-t-2 !border-slate-200">
+                        <span className="text-[11px] sm:text-xs font-medium text-slate-600">Deposit</span>
+                        <span className="text-[11px] sm:text-xs font-mono font-semibold text-slate-800">{fmtDash(item.deposit)}</span>
                       </div>
                     </div>
                   </div>
@@ -1540,10 +1540,10 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
       )}
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 flex items-center gap-2">
-          <CreditCard className="w-4 h-4 text-white" />
-          <h3 className="text-sm font-semibold text-white tracking-wide">Payments Received</h3>
-          <div className="ml-auto flex items-center gap-2">
+        <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-green-600 to-green-700 flex items-center gap-2">
+          <CreditCard className="w-4 h-4 text-white shrink-0" />
+          <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Payments Received</h3>
+          <div className="ml-auto flex items-center gap-1 sm:gap-2 shrink-0">
             {payments.length > 0 && (
               <SectionDownloadBtn onClick={() => {
                 const hdrs = ['Receipt No', 'Payment Type', 'Date', 'Amount', 'Cashier', 'Cash Book', 'Cancellation Reason'];
@@ -1575,7 +1575,38 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
             <Badge variant="outline" className="bg-white/20 text-white border-white/30 text-[10px]">{payments.length}</Badge>
           </div>
         </div>
-        <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+        <div className="sm:hidden p-2 space-y-2 max-h-[400px] overflow-y-auto">
+          {payments.length === 0 ? (
+            <div className="py-6 text-center text-slate-400 text-xs">No payments found</div>
+          ) : payments.map((p: any, i: number) => (
+            <div key={i} className="border border-slate-200 rounded-lg p-2.5 space-y-1.5" data-testid={`card-payment-${i}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono font-semibold text-slate-800">{p.receiptNumber || p.receiptNo || '-'}</span>
+                <span className="text-[12px] font-bold font-mono text-green-700">{fmt(p.amount || p.receiptAmount || 0)}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
+                <span className="text-slate-500">Type</span><span className="text-slate-700 text-right">{p.paymentType || p.receiptType || '-'}</span>
+                <span className="text-slate-500">Date</span><span className="text-slate-700 text-right">{p.receiptDate ? new Date(p.receiptDate).toLocaleDateString('en-ZA') : '-'}</span>
+                <span className="text-slate-500">Cashier</span><span className="text-slate-700 text-right truncate">{p.cashierName || p.cashier || '-'}</span>
+              </div>
+              <div className="flex justify-end pt-1 border-t border-slate-100">
+                <button
+                  onClick={() => handlePrintReceipt(p)}
+                  disabled={printingId === String(p.receiptId || p.receipt_ID || p.id)}
+                  className="text-blue-600 hover:text-blue-800 text-[10px] font-medium disabled:opacity-50 flex items-center gap-1"
+                  data-testid={`btn-print-receipt-${i}`}
+                >
+                  {printingId === String(p.receiptId || p.receipt_ID || p.id) ? (
+                    <><RefreshCw className="w-3 h-3 animate-spin" /> Loading...</>
+                  ) : (
+                    <><Printer className="w-3 h-3" /> Print Receipt</>
+                  )}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="hidden sm:block overflow-x-auto max-h-[400px] overflow-y-auto">
           {payments.length === 0 ? (
             <div className="p-6 text-center text-slate-400 text-sm">No payments found in recent history</div>
           ) : (
@@ -1625,10 +1656,10 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-white" />
-          <h3 className="text-sm font-semibold text-white tracking-wide">Payment Reversals</h3>
-          <div className="ml-auto flex items-center gap-2">
+        <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-red-600 to-red-700 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-white shrink-0" />
+          <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Payment Reversals</h3>
+          <div className="ml-auto flex items-center gap-1 sm:gap-2 shrink-0">
             {reversals.length > 0 && (
               <SectionDownloadBtn onClick={() => {
                 const hdrs = ['Date', 'Receipt #', 'Type', 'Amount'];
@@ -1657,7 +1688,20 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
             <Badge variant="outline" className="bg-white/20 text-white border-white/30 text-[10px]">{reversals.length}</Badge>
           </div>
         </div>
-        <div className="max-h-[300px] overflow-y-auto">
+        <div className="sm:hidden p-2 space-y-2 max-h-[300px] overflow-y-auto">
+          {reversals.length === 0 ? (
+            <div className="py-6 text-center text-slate-400 text-xs">No reversals found</div>
+          ) : reversals.slice(0, 20).map((rv: any, i: number) => (
+            <div key={i} className="border border-slate-200 rounded-lg p-2.5 flex items-center justify-between">
+              <div className="min-w-0">
+                <div className="text-[11px] font-mono font-semibold text-slate-800">{rv.receiptNumber || rv.receiptNo || '-'}</div>
+                <div className="text-[10px] text-slate-500">{rv.receiptDate ? new Date(rv.receiptDate).toLocaleDateString('en-ZA') : '-'} &middot; {rv.receiptType || rv.transactionType || '-'}</div>
+              </div>
+              <span className="text-[12px] font-bold font-mono text-red-700 shrink-0 ml-2">{fmt(rv.amount || rv.receiptAmount || 0)}</span>
+            </div>
+          ))}
+        </div>
+        <div className="hidden sm:block max-h-[300px] overflow-y-auto">
           {reversals.length === 0 ? (
             <div className="p-6 text-center text-slate-400 text-sm">No payment reversals found in recent history</div>
           ) : (
