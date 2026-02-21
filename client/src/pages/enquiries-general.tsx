@@ -767,35 +767,36 @@ function GeneralEnquiriesContent() {
                           {mobileTabMenuOpen && (
                             <>
                               <div className="fixed inset-0 z-30" onClick={() => setMobileTabMenuOpen(false)} />
-                              <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-2xl border border-slate-200 z-40 max-h-[60vh] overflow-y-auto">
+                              <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-2xl border border-slate-200 z-40 max-h-[70vh] overflow-y-auto overscroll-contain p-2">
                                 {tabGroups.map((group) => (
-                                  <div key={group.heading} className="py-1">
-                                    <div className="px-3 py-1 text-[9px] font-bold text-slate-400 uppercase tracking-widest">{group.heading}</div>
-                                    {group.tabs.map(tab => {
-                                      const colors = tabColorMap[tab.color] || tabColorMap.blue;
-                                      const isTabActive = activeTab === tab.value;
-                                      return (
-                                        <TabsTrigger
-                                          key={tab.value}
-                                          value={tab.value}
-                                          onClick={() => setMobileTabMenuOpen(false)}
-                                          className={`
-                                            w-full flex items-center gap-2 px-3 py-2 text-[11px] font-medium cursor-pointer transition-colors
-                                            ${isTabActive
-                                              ? `${colors.activeBg} ${colors.activeText} font-semibold`
-                                              : 'text-slate-600 hover:bg-slate-50'
-                                            }
-                                          `}
-                                          data-testid={`tab-mobile-${tab.value}`}
-                                        >
-                                          <span className={`shrink-0 w-5 h-5 rounded flex items-center justify-center ${isTabActive ? colors.activeIconBg : colors.iconBg}`}>
-                                            {tab.icon}
-                                          </span>
-                                          {tab.label}
-                                          {isTabActive && <Check className="w-3.5 h-3.5 ml-auto shrink-0" />}
-                                        </TabsTrigger>
-                                      );
-                                    })}
+                                  <div key={group.heading} className="mb-1.5">
+                                    <div className="px-1 py-0.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest">{group.heading}</div>
+                                    <div className="grid grid-cols-3 gap-1">
+                                      {group.tabs.map(tab => {
+                                        const colors = tabColorMap[tab.color] || tabColorMap.blue;
+                                        const isTabActive = activeTab === tab.value;
+                                        return (
+                                          <TabsTrigger
+                                            key={tab.value}
+                                            value={tab.value}
+                                            onClick={() => setMobileTabMenuOpen(false)}
+                                            className={`
+                                              flex flex-col items-center gap-0.5 px-1 py-2 rounded-lg border text-[10px] font-medium cursor-pointer transition-all active:scale-[0.97]
+                                              ${isTabActive
+                                                ? `${colors.activeBg} ${colors.activeBorder} ${colors.activeText} font-semibold shadow-sm`
+                                                : `bg-white border-slate-200 text-slate-600 hover:bg-slate-50`
+                                              }
+                                            `}
+                                            data-testid={`tab-mobile-${tab.value}`}
+                                          >
+                                            <span className={`w-6 h-6 rounded-md flex items-center justify-center ${isTabActive ? colors.activeIconBg : colors.iconBg}`}>
+                                              {tab.icon}
+                                            </span>
+                                            <span className="truncate w-full text-center leading-tight">{tab.label}</span>
+                                          </TabsTrigger>
+                                        );
+                                      })}
+                                    </div>
                                   </div>
                                 ))}
                               </div>
