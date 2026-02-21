@@ -119,7 +119,7 @@ export function SmartSearchDropdown({
               {results.length} account{results.length !== 1 ? 's' : ''} found
               {hasMore && <span className="text-slate-400 normal-case font-normal"> (showing {maxResults})</span>}
             </span>
-            <span className="text-[10px] text-slate-400">
+            <span className="text-[10px] text-slate-400 hidden sm:inline">
               <kbd className="px-1 py-0.5 bg-slate-200 rounded text-[9px] font-mono">↑↓</kbd> navigate
               <kbd className="px-1 py-0.5 bg-slate-200 rounded text-[9px] font-mono ml-1">Enter</kbd> select
               <kbd className="px-1 py-0.5 bg-slate-200 rounded text-[9px] font-mono ml-1">Esc</kbd> close
@@ -165,11 +165,11 @@ export function SmartSearchDropdown({
                       </div>
                     )}
                   </div>
-                  <div className="shrink-0 flex items-center gap-2">
+                  <div className="shrink-0 flex items-center gap-1 sm:gap-2">
                     {onPin && (
                       <button
                         onClick={(e) => { e.stopPropagation(); onPin(account); }}
-                        className={`p-1 rounded transition-colors ${pinned ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400'}`}
+                        className={`p-1 rounded transition-colors hidden sm:block ${pinned ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400'}`}
                         title={pinned ? 'Unpin account' : 'Pin account'}
                         aria-label={pinned ? 'Unpin account' : 'Pin account'}
                         data-testid={`btn-pin-dropdown-${i}`}
@@ -177,8 +177,8 @@ export function SmartSearchDropdown({
                         <Star className={`w-3.5 h-3.5 ${pinned ? 'fill-amber-500' : ''}`} />
                       </button>
                     )}
-                    <div className="text-right min-w-[90px]">
-                      <div className={`text-sm font-mono font-bold ${bal > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    <div className="text-right min-w-[60px] sm:min-w-[90px]">
+                      <div className={`text-xs sm:text-sm font-mono font-bold ${bal > 0 ? 'text-red-600' : 'text-green-600'}`}>
                         R {bal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
                       </div>
                     </div>
@@ -348,7 +348,7 @@ export function ExpandableResultRow({ account, onSelect, isExpanded, onToggleExp
       {isExpanded && (
         <tr>
           <td colSpan={11} className="p-0">
-            <div className="bg-gradient-to-b from-blue-50/50 to-white border-b border-slate-200 border-l-2 border-l-blue-500 px-4 py-4">
+            <div className="bg-gradient-to-b from-blue-50/50 to-white border-b border-slate-200 border-l-2 border-l-blue-500 px-2 sm:px-4 py-3 sm:py-4">
           {loading && (
             <div className="flex items-center gap-3 py-8 justify-center text-slate-400">
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -365,7 +365,7 @@ export function ExpandableResultRow({ account, onSelect, isExpanded, onToggleExp
           )}
 
           {loaded && !fetchError && enrichedData && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/60 shadow-sm overflow-hidden" data-testid={`panel-account-details-${aid}`}>
                 <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-2.5 flex items-center gap-2">
                   <User className="w-4 h-4 text-white/80" />

@@ -46,7 +46,33 @@ function TransferOfOwnershipSection({ transfers, fmt, fmtDate }: { transfers: an
         <h3 className="text-sm font-semibold text-slate-800" data-testid="text-transfer-title">Transfer of Ownership History:</h3>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="sm:hidden p-2 space-y-2">
+        {pageItems.length === 0 ? (
+          <div className="py-6 text-center text-slate-400 text-sm">No records to display.</div>
+        ) : pageItems.map((t: any, i: number) => {
+          const statusVal = t.status ?? t.transferStatus ?? '-';
+          const statusColor = statusVal === 'Approve' || statusVal === 'Approved' ? 'bg-green-100 text-green-700'
+            : statusVal === 'Rejected' || statusVal === 'Cancelled' ? 'bg-red-100 text-red-700'
+            : statusVal === 'Pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600';
+          return (
+            <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`mobile-transfer-${i}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-700">{t.financialYear ?? t.financial_Year ?? '-'}</span>
+                <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium ${statusColor}`}>{statusVal}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500">Transfer Date</span><span className="text-slate-800 font-medium text-right">{fmtDate(t.transferOfOwnershipDate ?? t.transferDate ?? t.dateOfTransfer ?? t.date)}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500">Old Owner</span><span className="text-slate-800 font-medium text-right truncate max-w-[100px]">{t.oldOwner ?? t.previousOwner ?? t.fromOwner ?? '-'}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500">Old Acct</span><span className="text-slate-800 font-mono text-right">{t.oldAccountNumber ?? t.oldAccount ?? '-'}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500">Title Deed</span><span className="text-slate-800 font-mono text-right truncate max-w-[100px]">{t.titleDeedNumber ?? t.titleDeed ?? '-'}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500">Purchase</span><span className="text-slate-800 font-mono font-semibold text-right">{fmt(t.purchasePrice ?? t.purchase_Price ?? 0)}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500">Purchase Date</span><span className="text-slate-800 text-right">{fmtDate(t.purchaseDate ?? t.purchase_Date)}</span></div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="hidden sm:block overflow-x-auto">
         <table className="w-full text-sm border-collapse" data-testid="table-transfer-ownership">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
@@ -194,13 +220,13 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
   };
 
   return (
-    <div className="p-5 space-y-5" data-testid="property-details-tab">
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5" data-testid="property-details-tab">
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
           <Building2 className="w-4 h-4 text-white" />
-          <h3 className="text-sm font-semibold text-white tracking-wide">Property Information</h3>
+          <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Property Information</h3>
         </div>
-        <div className="p-5">
+        <div className="p-3 sm:p-5">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-4">
             <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Property ID</span><div className="text-sm font-semibold text-slate-800">{prop.propertyId || prop.property_ID || cu.unit_ID || '-'}</div></div>
             <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Erf Number</span><div className="text-sm font-semibold text-slate-800">{prop.erfNumber || cu.erfNumber || '-'}</div></div>
@@ -238,11 +264,11 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-4 py-3 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
           <FileText className="w-4 h-4 text-white" />
-          <h3 className="text-sm font-semibold text-white tracking-wide">Property Letters & Certificates</h3>
+          <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Property Letters & Certificates</h3>
         </div>
-        <div className="p-5">
+        <div className="p-3 sm:p-5">
           <div className="flex flex-wrap gap-4">
             <button
               data-testid="button-section49-letter"
@@ -285,15 +311,29 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-4 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
           <Landmark className="w-4 h-4 text-white" />
-          <h3 className="text-sm font-semibold text-white tracking-wide">General Valuations</h3>
+          <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">General Valuations</h3>
           <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{valuations.length}</Badge>
         </div>
         {valuations.length === 0 ? (
           <div className="p-6 text-center text-slate-400 text-sm">No valuation records found</div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="sm:hidden p-2 space-y-2">
+            {valuations.map((v: any, i: number) => (
+              <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5">
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Type</span><span className="text-slate-800 font-semibold text-right">{v.type || '-'}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Status</span><span className="text-right"><Badge variant={v.valuationStatus === 'Active' ? 'default' : 'secondary'} className={`text-[10px] ${v.valuationStatus === 'Active' ? 'bg-green-100 text-green-800' : ''}`}>{v.valuationStatus || '-'}</Badge></span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Fin Year</span><span className="text-slate-800 font-semibold text-right">{v.financialYear || '-'}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Market Value</span><span className="text-slate-800 font-semibold text-right font-mono">{fmt(v.standMarketValue)}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Improvement</span><span className="text-slate-800 font-semibold text-right font-mono">{fmt(v.improvementValue)}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Stand Size (m²)</span><span className="text-slate-800 font-semibold text-right font-mono">{fmtInt(v.standSize)}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Tariff</span><span className="text-slate-800 font-semibold text-right">{v.ratesTariffCode || '-'}</span></div>
+              </div>
+            ))}
+          </div>
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
@@ -331,15 +371,16 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-4 py-3 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
           <Gift className="w-4 h-4 text-white" />
-          <h3 className="text-sm font-semibold text-white tracking-wide">Rebates & Levies</h3>
+          <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Rebates & Levies</h3>
         </div>
-        <div className="p-5">
+        <div className="p-3 sm:p-5">
           {ratesDetails ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="flex items-center justify-between p-3.5 bg-amber-50/50 rounded-xl border border-amber-100">
@@ -374,15 +415,35 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-4 py-3 bg-gradient-to-r from-cyan-600 to-cyan-700 flex items-center gap-2">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-cyan-600 to-cyan-700 flex items-center gap-2">
           <Zap className="w-4 h-4 text-white" />
-          <h3 className="text-sm font-semibold text-white tracking-wide">Meters</h3>
+          <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Meters</h3>
           <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{meters.length}</Badge>
         </div>
         {meters.length === 0 ? (
           <div className="p-6 text-center text-slate-400 text-sm">No meters linked to this property</div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="sm:hidden p-2 space-y-2">
+            {meters.map((m: any, i: number) => {
+              const meterNum = m.physicalMeterNo || m.physicalMeterNumber || m.meterNo || m.meterNumber || m.meter_Number || '-';
+              const service = m.serviceDesc || m.serviceType || m.serviceDescription || m.service || '-';
+              const status = m.serviceStatus || m.status || (m.isActive ? 'Active' : m.serviceStatusID === 1 ? 'Active' : 'Inactive') || '-';
+              const isActiveStatus = status === 'Active' || m.serviceStatusID === 1 || m.isActive;
+              const lastReading = m.lastReading ?? m.currentReading ?? '-';
+              const readDate = m.readDate || m.lastReadDate;
+              return (
+                <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5">
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Meter Number</span><span className="text-slate-800 font-semibold text-right font-mono">{meterNum}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Service</span><span className="text-slate-800 font-semibold text-right">{service}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Status</span><span className="text-right"><Badge variant={isActiveStatus ? 'default' : 'secondary'} className={`text-[10px] ${isActiveStatus ? 'bg-green-100 text-green-800' : ''}`}>{status}</Badge></span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Last Reading</span><span className="text-slate-800 font-semibold text-right font-mono">{lastReading}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Read Date</span><span className="text-slate-800 font-semibold text-right">{fmtDate(readDate)}</span></div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
@@ -419,6 +480,7 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 
@@ -504,13 +566,13 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
   );
 
   return (
-    <div className="p-5" data-testid="contact-info-panel">
-      <div className="flex items-center gap-3 mb-5">
+    <div className="p-3 sm:p-5" data-testid="contact-info-panel">
+      <div className="flex items-center gap-3 mb-4 sm:mb-5">
         <div className="h-1 w-8 bg-blue-600 rounded-full" />
         <h3 className="text-lg font-bold text-slate-800 tracking-tight">Contact & Delivery Information</h3>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-5" data-testid="contact-nav">
+      <div className="flex flex-wrap gap-2 mb-4 sm:mb-5" data-testid="contact-nav">
         {navItems.map(item => {
           const isActive = activeSection === item.id;
           const colorMap: Record<string, { active: string; inactive: string }> = {
@@ -540,14 +602,14 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
       </div>
 
       {activeSection === 'contact' && (
-        <div className="space-y-5 animate-in fade-in duration-200">
+        <div className="space-y-4 sm:space-y-5 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
               <Phone className="w-4 h-4 text-white" />
-              <h4 className="text-sm font-semibold text-white tracking-wide">Phone & Email</h4>
+              <h4 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Phone & Email</h4>
             </div>
 
-            <div className="p-5">
+            <div className="p-3 sm:p-5">
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                 <ContactField icon={<Phone className="w-4 h-4" />} label="Mobile" value={mobile} testId="input-tel-mobile" highlight />
                 <ContactField icon={<Phone className="w-4 h-4" />} label="Home" value={home} testId="input-tel-home" />
@@ -559,18 +621,18 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 flex items-center gap-2">
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 flex items-center gap-2">
               <Mail className="w-4 h-4 text-white" />
-              <h4 className="text-sm font-semibold text-white tracking-wide">Additional Statement Emails</h4>
+              <h4 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Additional Statement Emails</h4>
               {addEmails.length > 0 && <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{addEmails.length}</Badge>}
             </div>
 
-            <div className="px-5 py-3 bg-amber-50 border-b border-amber-100 flex items-start gap-2">
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-amber-50 border-b border-amber-100 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
               <p className="text-[11px] text-amber-700 leading-relaxed">The primary email address above must be populated before additional emails will be considered. Statements emailed to the primary address will also be sent to any additional emails listed below.</p>
             </div>
 
-            <div className="p-5">
+            <div className="p-3 sm:p-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <ContactField icon={<Mail className="w-4 h-4" />} label="Additional Email 1" value={c.additionalEmail1 || ''} testId="input-additional-email-1" />
                 <ContactField icon={<Mail className="w-4 h-4" />} label="Additional Email 2" value={c.additionalEmail2 || ''} testId="input-additional-email-2" />
@@ -585,7 +647,7 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
       {activeSection === 'delivery' && (
         <div className="space-y-5 animate-in fade-in duration-200">
           {fullAddr && (
-            <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border border-emerald-200 p-5 flex items-start gap-4">
+            <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border border-emerald-200 p-3 sm:p-5 flex items-start gap-4">
               <div className="w-12 h-12 rounded-xl bg-emerald-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-emerald-200">
                 <MapPin className="w-6 h-6 text-white" />
               </div>
@@ -598,12 +660,12 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
           )}
 
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2" data-testid="section-delivery-address">
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2" data-testid="section-delivery-address">
               <MapPin className="w-4 h-4 text-white" />
-              <h4 className="text-sm font-semibold text-white tracking-wide">Address Breakdown</h4>
+              <h4 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Address Breakdown</h4>
             </div>
 
-            <div className="p-5">
+            <div className="p-3 sm:p-5">
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                 <ContactField icon={<FileText className="w-4 h-4" />} label="Delivery Type" value={da.typeofDeliveryAddress || da.typeOfDeliveryAddress || ''} testId="input-delivery-type" />
                 <ContactField icon={<Building2 className="w-4 h-4" />} label="Complex Name" value={da.complexName || ''} testId="input-complex-name" />
@@ -624,14 +686,26 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
       {activeSection === 'contact-history' && (
         <div className="animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center gap-2">
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center gap-2">
               <Clock className="w-4 h-4 text-white" />
-              <h4 className="text-sm font-semibold text-white tracking-wide">Contact Details Change History</h4>
+              <h4 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Contact Details Change History</h4>
               {contactHistory.length > 0 && <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{contactHistory.length}</Badge>}
             </div>
 
             {contactHistory.length > 0 ? (
-              <div className="overflow-x-auto">
+              <>
+              <div className="sm:hidden p-2 space-y-2">
+                {contactHistory.map((r: any, i: number) => (
+                  <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`contact-history-card-${i}`}>
+                    <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Date</span><span className="text-slate-800 font-semibold text-right">{(() => { try { return r.changeDate ? new Date(r.changeDate).toLocaleDateString('en-ZA') : r.date || '-'; } catch { return r.changeDate || '-'; } })()}</span></div>
+                    <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Field</span><span className="text-slate-800 font-semibold text-right">{r.fieldName || r.field || r.description || '-'}</span></div>
+                    <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Old Value</span><span className="text-red-500 font-semibold text-right font-mono">{r.oldValue || r.previousValue || '-'}</span></div>
+                    <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">New Value</span><span className="text-emerald-600 font-semibold text-right font-mono">{r.newValue || r.currentValue || '-'}</span></div>
+                    <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Changed By</span><span className="text-slate-800 font-semibold text-right">{r.changedBy || r.user || '-'}</span></div>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full text-xs" data-testid="table-contact-history">
                   <thead>
                     <tr className="bg-slate-100 border-b-2 border-slate-200">
@@ -655,6 +729,8 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
                   </tbody>
                 </table>
               </div>
+              </>
+            
             ) : (
               <div className="py-12 px-5 flex flex-col items-center justify-center text-center">
                 <div className="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center mb-4">
@@ -678,9 +754,9 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
       {activeSection === 'address-history' && (
         <div className="animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-3 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
               <Clock className="w-4 h-4 text-white" />
-              <h4 className="text-sm font-semibold text-white tracking-wide">Delivery Address Change History</h4>
+              <h4 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Delivery Address Change History</h4>
               {addressHistory.length > 0 && <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{addressHistory.length}</Badge>}
             </div>
 
@@ -808,10 +884,10 @@ export function HandoverTab({ accountId }: { accountId: number }) {
   const thCls = "text-left py-2.5 px-3 text-[11px] font-semibold text-slate-600 whitespace-nowrap border-r border-slate-200 last:border-r-0 cursor-pointer hover:bg-slate-100 select-none";
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-3 sm:p-4 space-y-4 sm:space-y-4">
       <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-4 py-2.5 bg-slate-100 border-b border-slate-200">
-          <h3 className="text-sm font-semibold text-slate-800" data-testid="text-handover-title">Handover List per Billing Period</h3>
+        <div className="px-3 sm:px-4 py-2.5 bg-slate-100 border-b border-slate-200">
+          <h3 className="text-xs sm:text-sm font-semibold text-slate-800" data-testid="text-handover-title">Handover List per Billing Period</h3>
         </div>
 
         <div className="flex justify-center py-3 border-b border-slate-200 bg-white">
@@ -825,7 +901,22 @@ export function HandoverTab({ accountId }: { accountId: number }) {
           </select>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="sm:hidden p-2 space-y-2">
+          {pageItems.length === 0 ? (
+            <div className="py-6 text-center text-slate-400 text-sm">No records to display.</div>
+          ) : pageItems.map((h: any, i: number) => (
+            <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`card-handover-${i}`}>
+              <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Run Type</span><span className="text-slate-800 font-semibold text-right">{h.runType ?? h.type ?? '-'}</span></div>
+              <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Account</span><span className="text-slate-800 font-semibold text-right font-mono">{h.handoverAccount ?? h.accountNumber ?? h.account ?? '-'}</span></div>
+              <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Amount</span><span className="text-slate-800 font-semibold text-right font-mono">{fmt(h.handoverAmount ?? h.amount ?? 0)}</span></div>
+              <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Handed Over</span><span className="text-slate-800 font-semibold text-right">{fmtDate(h.handedOverDate ?? h.handoverDate)}</span></div>
+              <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Attorney</span><span className="text-slate-800 font-semibold text-right">{h.attorney ?? h.attorneyName ?? '-'}</span></div>
+              <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Status</span><span className="text-right"><span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${(h.status ?? h.handoverStatus) === 'Active' ? 'bg-green-100 text-green-700' : (h.status ?? h.handoverStatus) === 'Terminated' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}>{h.status ?? h.handoverStatus ?? '-'}</span></span></div>
+              <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Date Created</span><span className="text-slate-800 font-semibold text-right">{fmtDate(h.dateCreated ?? h.createdDate ?? h.capturedDate)}</span></div>
+            </div>
+          ))}
+        </div>
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm border-collapse" data-testid="table-handover-list">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
@@ -904,12 +995,23 @@ export function HandoverTab({ accountId }: { accountId: number }) {
 
       {transactions.length > 0 && (
         <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-4 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center gap-2">
+          <div className="px-3 sm:px-4 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center gap-2">
             <Receipt className="w-4 h-4 text-slate-600" />
-            <h3 className="text-sm font-semibold text-slate-800">Handover Transaction Detail</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-slate-800">Handover Transaction Detail</h3>
             <Badge variant="secondary" className="ml-auto text-[10px]">{transactions.length}</Badge>
           </div>
-          <div className="overflow-x-auto">
+          <div className="sm:hidden p-2 space-y-2">
+            {transactions.map((tx: any, i: number) => (
+              <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5">
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Date</span><span className="text-slate-800 font-semibold text-right">{fmtDate(tx.transactionDate ?? tx.date)}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Description</span><span className="text-slate-800 font-semibold text-right">{tx.description || tx.transactionDescription || '-'}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Amount</span><span className="text-slate-800 font-semibold text-right font-mono">{fmt(tx.amount ?? tx.transactionAmount ?? 0)}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Reference</span><span className="text-slate-800 font-semibold text-right">{tx.reference || '-'}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Type</span><span className="text-slate-800 font-semibold text-right">{tx.transactionType || tx.type || '-'}</span></div>
+              </div>
+            ))}
+          </div>
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-handover-transactions">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
@@ -975,7 +1077,7 @@ export function NotificationsTab({ accountId }: { accountId: number }) {
   if (!accountNotifs.length && !propertyNotif) return <EmptyState message="No notifications available" />;
 
   return (
-    <div className="p-5 space-y-5">
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5">
       {propertyNotif && (
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-slate-600">Property Notification</CardTitle></CardHeader>
@@ -993,22 +1095,33 @@ export function NotificationsTab({ accountId }: { accountId: number }) {
 
       {accountNotifs.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-orange-600 to-orange-700 flex items-center gap-2">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-orange-600 to-orange-700 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Account Notifications</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Account Notifications</h3>
             <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{accountNotifs.length}</Badge>
           </div>
           {accountNotifs.every((n: any) => typeof n === 'string') ? (
             <div className="divide-y divide-slate-100" data-testid="table-account-notifications">
               {accountNotifs.map((n: any, i: number) => (
-                <div key={i} className="flex items-center gap-3 px-5 py-3 hover:bg-orange-50/30 transition-colors">
+                <div key={i} className="flex items-center gap-3 px-3 sm:px-5 py-2.5 sm:py-3 hover:bg-orange-50/30 transition-colors">
                   <div className="w-2 h-2 rounded-full bg-orange-400 flex-shrink-0" />
                   <span className="text-sm text-slate-700">{n}</span>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="sm:hidden p-2 space-y-2">
+              {accountNotifs.map((n: any, i: number) => (
+                <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5">
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Date</span><span className="text-slate-800 font-semibold text-right">{n.notificationDate ? new Date(n.notificationDate).toLocaleDateString('en-ZA') : '-'}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Type</span><span className="text-slate-800 font-semibold text-right">{n.notificationType || n.type || '-'}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Message</span><span className="text-slate-800 font-semibold text-right max-w-[180px] truncate">{n.message || n.description || '-'}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Status</span><span className="text-right"><Badge variant="outline" className="text-[10px]">{n.status || '-'}</Badge></span></div>
+                </div>
+              ))}
+            </div>
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-sm" data-testid="table-account-notifications">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
@@ -1032,6 +1145,7 @@ export function NotificationsTab({ accountId }: { accountId: number }) {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </div>
       )}
@@ -1118,12 +1232,12 @@ export function StatementsTab({ accountId }: { accountId: number }) {
   if (error) return <ErrorState message={error} onRetry={load} />;
 
   return (
-    <div className="p-5 space-y-5" data-testid="statements-panel">
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5" data-testid="statements-panel">
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-between">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Generated Statements</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Generated Statements</h3>
             <Badge className="bg-white/20 text-white border-white/30 text-[10px]">{data.length}</Badge>
           </div>
           <button
@@ -1135,7 +1249,28 @@ export function StatementsTab({ accountId }: { accountId: number }) {
             Generate / Download
           </button>
         </div>
-        <div className="overflow-x-auto">
+        <div className="sm:hidden p-2 space-y-2">
+          {data.length === 0 ? (
+            <div className="py-8 flex flex-col items-center gap-2">
+              <FileText className="w-8 h-8 text-slate-300" />
+              <span className="text-sm text-slate-400">No generated statements available</span>
+              <button onClick={() => setShowModal(true)} className="text-xs text-blue-600 hover:text-blue-700 font-medium" data-testid="button-generate-first-mobile">Click here to generate a statement</button>
+            </div>
+          ) : data.map((s: any, i: number) => (
+            <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`statement-card-${i}`}>
+              <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Date</span><span className="text-slate-800 font-semibold text-right">{s.statementDate ? new Date(s.statementDate).toLocaleDateString('en-ZA') : '-'}</span></div>
+              <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Period</span><span className="text-slate-800 font-semibold text-right">{s.month ? `${s.financialYear} - ${s.month}` : s.period || '-'}</span></div>
+              <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Amount</span><span className="text-slate-800 font-semibold text-right font-mono">{(s.amount ?? s.totalAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span></div>
+              <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Type</span><span className="text-right"><span className="inline-flex px-2 py-0.5 rounded-md text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">{s.statementType || s.type || 'Standard'}</span></span></div>
+              <div className="flex justify-end pt-1">
+                <button onClick={() => handleDownload(s)} disabled={downloading === s.accountstatement_id} className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white text-[10px] font-semibold rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all shadow-sm disabled:opacity-40" data-testid={`btn-download-stmt-mobile-${i}`}>
+                  {downloading === s.accountstatement_id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />} PDF
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm" data-testid="table-statements">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
@@ -1202,7 +1337,7 @@ export function StatementsTab({ accountId }: { accountId: number }) {
                 <X className="w-4 h-4 text-white" />
               </button>
             </div>
-            <div className="p-6 space-y-5">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
               <div className="flex items-center gap-6 bg-slate-50 rounded-xl p-4 border border-slate-200">
                 <label className="flex items-center gap-2.5 text-sm cursor-pointer group">
                   <input type="radio" name="stmtType" checked={statementType === 'account'} onChange={() => setStatementType('account')} className="w-4 h-4 text-blue-600" data-testid="radio-account-statement" />
@@ -1350,16 +1485,38 @@ export function ClearanceTab({ accountId, propertyId, currentAccountNumber, curr
   };
 
   return (
-    <div className="p-5 space-y-5">
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5">
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
           <Shield className="w-4 h-4 text-white" />
-          <h3 className="text-sm font-semibold text-white tracking-wide">Clearance</h3>
+          <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Clearance</h3>
           {data.length > 0 && (
             <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{data.length} record{data.length !== 1 ? 's' : ''}</Badge>
           )}
         </div>
-        <div className="overflow-x-auto">
+        <div className="sm:hidden p-2 space-y-2">
+          {data.length === 0 ? (
+            <div className="py-8 text-center text-slate-400 text-sm italic">No clearance records to display.</div>
+          ) : data.map((c: any, i: number) => {
+            const scheduleId = c.clearanceStagingID ?? c.clearance_ID ?? c.costSchedule_ID ?? c.id;
+            const clearanceAccountName = c.accountName ?? c.buyername ?? c.buyerName ?? c.seller ?? '';
+            const isForThisAccount = isSameAccount(clearanceAccountName);
+            const cleanAddr = (c.address || c.propertyAddress || '-').replace(/\r\n/g, ', ');
+            return (
+              <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`card-clearance-${i}`}>
+                {isForThisAccount && <div className="flex items-center gap-1 text-[10px] text-green-700 font-medium"><CheckCircle2 className="w-3 h-3" />This account</div>}
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Schedule ID</span><span className="text-slate-800 font-semibold text-right font-mono">{scheduleId ?? '-'}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Buyer</span><span className="text-slate-800 font-semibold text-right">{c.buyername ?? c.buyerName ?? c.accountName ?? '-'}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Attorney</span><span className="text-slate-800 font-semibold text-right">{c.attorneyDesc ?? c.attorney ?? '-'}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Certificate No</span><span className="text-slate-800 font-semibold text-right font-mono">{c.certificateNo ?? c.clearance ?? '-'}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Status</span><span className="text-right"><Badge variant={(c.clearanceStatus ?? c.status) === 'Completed' || (c.clearanceStatus ?? c.status) === 'Approved' ? 'default' : 'secondary'} className="text-[10px]">{c.clearanceStatus ?? c.status ?? '-'}</Badge></span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Sell Date</span><span className="text-slate-800 font-semibold text-right">{fmtDate(c.sellDate)}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Valid Until</span><span className="text-slate-800 font-semibold text-right">{fmtDate(c.toDate)}</span></div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm" data-testid="table-clearance">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
@@ -1483,7 +1640,7 @@ export function ClearanceTab({ accountId, propertyId, currentAccountNumber, curr
                       <tr className="bg-emerald-50/20">
                         <td colSpan={15} className="p-0">
                           <div className="px-6 py-4 border-b border-emerald-200/50">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
                               <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
                                 <div className="px-4 py-2 bg-emerald-600 text-white text-xs font-semibold tracking-wide flex items-center gap-1.5">
                                   <Scale className="w-3.5 h-3.5" />
@@ -1641,8 +1798,8 @@ export function ClearanceTab({ accountId, propertyId, currentAccountNumber, curr
             </tbody>
           </table>
         </div>
-        <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-          <span className="text-xs text-slate-500">Click a row to view financial breakdown</span>
+        <div className="px-3 sm:px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+          <span className="text-xs text-slate-500 hidden sm:inline">Click a row to view financial breakdown</span>
           <span className="text-xs text-slate-500">{data.length} of {data.length} records</span>
         </div>
       </div>
@@ -1677,31 +1834,44 @@ export function DebtorNotesTab({ accountId }: { accountId: number }) {
   if (!data.length) return <EmptyState message="No debtor notes available" />;
 
   return (
-    <div className="p-4 overflow-x-auto">
-      <table className="w-full text-sm" data-testid="table-debtor-notes">
-        <thead>
-          <tr className="border-b-2 border-slate-200">
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Note Type</th>
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Description</th>
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Created By</th>
-            <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
-            <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((n: any, i: number) => (
-            <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-              <td className="py-2 px-3 text-slate-600">{n.noteDate ? new Date(n.noteDate).toLocaleDateString('en-ZA') : n.date || n.createdDate || '-'}</td>
-              <td className="py-2 px-3 font-medium">{n.noteType || n.type || '-'}</td>
-              <td className="py-2 px-3 max-w-[300px] truncate">{n.description || n.noteDescription || n.notes || '-'}</td>
-              <td className="py-2 px-3 text-slate-500 text-xs">{n.createdBy || n.user || '-'}</td>
-              <td className="py-2 px-3 text-right font-mono">{n.amount != null ? (n.amount).toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : '-'}</td>
-              <td className="py-2 px-3"><Badge variant="outline" className="text-[10px]">{n.status || '-'}</Badge></td>
+    <div className="p-3 sm:p-4">
+      <div className="sm:hidden space-y-2">
+        {data.map((n: any, i: number) => (
+          <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5">
+            <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Date</span><span className="text-slate-800 font-semibold text-right">{n.noteDate ? new Date(n.noteDate).toLocaleDateString('en-ZA') : n.date || n.createdDate || '-'}</span></div>
+            <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Note Type</span><span className="text-slate-800 font-semibold text-right">{n.noteType || n.type || '-'}</span></div>
+            <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Description</span><span className="text-slate-800 font-semibold text-right max-w-[180px] truncate">{n.description || n.noteDescription || n.notes || '-'}</span></div>
+            <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Amount</span><span className="text-slate-800 font-semibold text-right font-mono">{n.amount != null ? (n.amount).toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : '-'}</span></div>
+            <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Status</span><span className="text-right"><Badge variant="outline" className="text-[10px]">{n.status || '-'}</Badge></span></div>
+          </div>
+        ))}
+      </div>
+      <div className="hidden sm:block overflow-x-auto">
+        <table className="w-full text-sm" data-testid="table-debtor-notes">
+          <thead>
+            <tr className="border-b-2 border-slate-200">
+              <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
+              <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Note Type</th>
+              <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Description</th>
+              <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Created By</th>
+              <th className="text-right py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Amount</th>
+              <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Status</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {data.map((n: any, i: number) => (
+              <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                <td className="py-2 px-3 text-slate-600">{n.noteDate ? new Date(n.noteDate).toLocaleDateString('en-ZA') : n.date || n.createdDate || '-'}</td>
+                <td className="py-2 px-3 font-medium">{n.noteType || n.type || '-'}</td>
+                <td className="py-2 px-3 max-w-[300px] truncate">{n.description || n.noteDescription || n.notes || '-'}</td>
+                <td className="py-2 px-3 text-slate-500 text-xs">{n.createdBy || n.user || '-'}</td>
+                <td className="py-2 px-3 text-right font-mono">{n.amount != null ? (n.amount).toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : '-'}</td>
+                <td className="py-2 px-3"><Badge variant="outline" className="text-[10px]">{n.status || '-'}</Badge></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -1734,7 +1904,7 @@ export function Section129Tab({ accountId }: { accountId: number }) {
 
   const items = Array.isArray(data) ? data : [data];
   return (
-    <div className="p-5 space-y-5">
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5">
       {items.map((item: any, i: number) => (
         <Card key={i}>
           <CardContent className="pt-4 space-y-0">
@@ -1857,7 +2027,7 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
   if (error) return <ErrorState message={error} onRetry={load} />;
 
   return (
-    <div className="p-5 space-y-5" data-testid="occupiers-panel">
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5" data-testid="occupiers-panel">
       <div className="flex items-center justify-center gap-3 flex-wrap">
         <button onClick={() => setShowAddModal(true)} className="px-4 py-2 bg-slate-700 text-white text-sm rounded hover:bg-slate-600 transition-colors" data-testid="button-add-occupier">Add</button>
         <button onClick={() => { const sel = data.find((_, i) => document.querySelector(`[data-testid="occupier-row-${i}"]`)?.classList.contains('bg-blue-50')); if (sel) handleRemove(sel); else if (data.length > 0) alert('Select an occupier to remove'); }} className="px-4 py-2 bg-slate-700 text-white text-sm rounded hover:bg-slate-600 transition-colors" data-testid="button-remove-occupier">Remove Occupiers</button>
@@ -1899,10 +2069,10 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
       {showAddModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowAddModal(false)} data-testid="add-occupier-modal">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full" onClick={e => e.stopPropagation()}>
-            <div className="px-5 py-3 border-b border-slate-200 bg-slate-50">
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-200 bg-slate-50">
               <h4 className="text-sm font-bold text-slate-700">Add Occupier</h4>
             </div>
-            <div className="p-5 space-y-4">
+            <div className="p-3 sm:p-5 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
                 <input type="text" value={addName} onChange={e => setAddName(e.target.value)} className="w-full border border-slate-300 rounded px-3 py-2 text-sm" placeholder="Full name" data-testid="input-occupier-name" />
@@ -1925,14 +2095,14 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
       {showProofModal && proofData && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowProofModal(false)} data-testid="proof-of-residence-modal">
           <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
-            <div className="px-5 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
               <h4 className="text-sm font-bold text-slate-700">Proof of Residence</h4>
               <div className="flex gap-2">
                 <button onClick={handlePrintProof} className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700" data-testid="button-print-proof">Print</button>
                 <button onClick={() => setShowProofModal(false)} className="text-slate-400 hover:text-slate-700 text-lg">&times;</button>
               </div>
             </div>
-            <div className="p-5">
+            <div className="p-3 sm:p-5">
               <div ref={printRef}>
                 <div className="proof-container border border-slate-300 p-8 max-w-[700px] mx-auto bg-white" style={{ fontFamily: 'Arial, sans-serif' }}>
                   <div className="flex items-start justify-between border-b-2 border-slate-800 pb-4 mb-5">
@@ -2159,10 +2329,10 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
   if (contactError) return <ErrorState message={contactError} onRetry={loadContactInfo} />;
 
   return (
-    <div className="p-5 space-y-5" data-testid="send-statements-panel">
-      <div className="flex items-center justify-between">
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5" data-testid="send-statements-panel">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h3 className="text-lg font-bold text-slate-800">Send Account Statements</h3>
+          <h3 className="text-base sm:text-lg font-bold text-slate-800">Send Account Statements</h3>
           <p className="text-xs text-slate-500 mt-0.5">Generate and deliver statements via email or SMS</p>
         </div>
         <div className="flex bg-white rounded-lg border shadow-sm p-0.5">
@@ -2227,7 +2397,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                   </div>
                 </div>
               </div>
-              <div className="mt-4 flex items-center gap-5 bg-slate-50 rounded-lg p-3 border border-slate-200">
+              <div className="mt-4 flex items-center gap-3 sm:gap-5 bg-slate-50 rounded-lg p-3 border border-slate-200 flex-wrap">
                 <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Type:</span>
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input type="radio" name="sendStmtType" checked={statementType === 'account'} onChange={() => setStatementType('account')} className="w-3.5 h-3.5 text-blue-600" data-testid="radio-send-account" />
@@ -2550,7 +2720,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
               <X className="w-3.5 h-3.5 text-white" />
             </button>
           </div>
-          <div className="p-5">
+          <div className="p-3 sm:p-5">
             {mode === 'email' ? (
               <div className="space-y-3 text-sm">
                 <div className="flex gap-3">
@@ -2649,17 +2819,36 @@ export function IndigentHistoryTab({ accountId }: { accountId: number }) {
   const fmtAmt = (v: any) => v != null && v !== '' ? Number(v).toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : '0.00';
 
   return (
-    <div className="p-5 space-y-5" data-testid="indigent-history-panel">
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5" data-testid="indigent-history-panel">
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-teal-700 to-teal-800 flex items-center gap-2">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-teal-700 to-teal-800 flex items-center gap-2">
           <Shield className="w-4 h-4 text-white" />
-          <h3 className="text-sm font-semibold text-white tracking-wide">Indigent History</h3>
+          <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Indigent History</h3>
           {data.length > 0 && (
             <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{data.length}</Badge>
           )}
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="sm:hidden p-2 space-y-2">
+          {data.length === 0 ? (
+            <div className="py-10 text-center text-slate-400 text-sm">No records to display.</div>
+          ) : data.map((row: any, i: number) => {
+            const statusText = row.attpStatus || row.status || row.attpStatusDesc || '-';
+            const isActive = statusText.toLowerCase().includes('active') || statusText.toLowerCase().includes('approved');
+            const isTerminated = statusText.toLowerCase().includes('terminat') || statusText.toLowerCase().includes('disqualif') || statusText.toLowerCase().includes('cancel');
+            return (
+              <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`indigent-card-${i}`}>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Status</span><span className="text-right"><Badge variant="outline" className={`text-[10px] whitespace-nowrap ${isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : isTerminated ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>{statusText}</Badge></span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Indigent Type</span><span className="text-slate-800 font-semibold text-right">{row.indigentType || row.attpType || row.type || '-'}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Application Date</span><span className="text-slate-800 font-semibold text-right">{fmtDate(row.applicationDate || row.appDate)}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Write Off</span><span className="text-slate-800 font-semibold text-right font-mono">{fmtAmt(row.applicationWriteOffAmount || row.appWriteOffAmount || row.writeOffAmount)}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Total Write Off</span><span className="text-slate-800 font-semibold text-right font-mono">{fmtAmt(row.totalWriteOffAmount || row.totalWriteOff)}</span></div>
+                {(row.disqualifyReason || row.terminateReason || row.cancelReason || row.disqualifyTerminateCancelReason) && <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Reason</span><span className="text-slate-800 font-semibold text-right max-w-[180px] truncate">{row.disqualifyReason || row.terminateReason || row.cancelReason || row.disqualifyTerminateCancelReason || '-'}</span></div>}
+              </div>
+            );
+          })}
+        </div>
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-xs" data-testid="table-indigent-history">
             <thead>
               <tr className="bg-slate-100 border-b-2 border-slate-200">

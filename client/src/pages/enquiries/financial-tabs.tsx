@@ -50,13 +50,13 @@ export function IncentivesTab({ accountId }: { accountId: number }) {
 
   if (!hasIncentive) {
     return (
-      <div className="p-5">
+      <div className="p-3 sm:p-5">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
             <Gift className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Payment Incentive</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Payment Incentive</h3>
           </div>
-          <div className="py-12 px-5 flex flex-col items-center justify-center text-center">
+          <div className="py-12 px-3 sm:px-5 flex flex-col items-center justify-center text-center">
             <div className="w-14 h-14 rounded-full bg-purple-50 flex items-center justify-center mb-4">
               <Gift className="w-7 h-7 text-purple-300" />
             </div>
@@ -69,17 +69,17 @@ export function IncentivesTab({ accountId }: { accountId: number }) {
   }
 
   return (
-    <div className="p-5 space-y-5">
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5">
       {items.filter((item: any) => item.description || item.incentiveType || item.code || item.incentive || item.enable).map((item: any, i: number) => (
         <div key={i} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
             <Gift className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Payment Incentive</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Payment Incentive</h3>
             {item.enable && (
               <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">Active</Badge>
             )}
           </div>
-          <div className="p-5">
+          <div className="p-3 sm:p-5">
             <FieldRow label="Description" value={item.description} icon={<Gift className="w-3.5 h-3.5" />} />
             <FieldRow label="Incentive Type" value={item.incentiveType || item.code} icon={<Activity className="w-3.5 h-3.5" />} />
             <FieldRow label="Incentive" value={item.incentive} icon={<Banknote className="w-3.5 h-3.5" />} />
@@ -135,8 +135,8 @@ export function DepositsTab({ accountId }: { accountId: number }) {
   const totalPaid = deposits.reduce((s, d) => s + (d.paidAmount ?? 0), 0);
 
   return (
-    <div className="p-5 space-y-5" data-testid="deposits-tab">
-      <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-xl p-6 shadow-lg">
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5" data-testid="deposits-tab">
+      <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-xl p-4 sm:p-6 shadow-lg">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center backdrop-blur-sm">
             <Landmark className="w-5 h-5 text-white" />
@@ -151,41 +151,76 @@ export function DepositsTab({ accountId }: { accountId: number }) {
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/50">
-          <h3 className="text-sm font-bold text-slate-700">Deposit:</h3>
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-slate-50/50">
+          <h3 className="text-xs sm:text-sm font-bold text-slate-700">Deposit:</h3>
         </div>
         {deposits.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" data-testid="table-deposits">
-              <thead>
-                <tr className="border-b border-slate-200 bg-white">
-                  <th className="text-left py-3 px-5 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Service Type</th>
-                  <th className="text-left py-3 px-5 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Receipt No / Journal Transaction ID</th>
-                  <th className="text-left py-3 px-5 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Date Captured</th>
-                  <th className="text-right py-3 px-5 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Deposit Amount</th>
-                  <th className="text-right py-3 px-5 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Paid Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {deposits.map((dep: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/40 transition-colors" data-testid={`row-deposit-${i}`}>
-                    <td className="py-3 px-5 text-slate-700 font-medium">{dep.serviceDesc || dep.serviceDescription || dep.description || '-'}</td>
-                    <td className="py-3 px-5 text-slate-600 font-mono text-[13px]">{dep.docNumber || dep.receiptNo || dep.reference || ''}</td>
-                    <td className="py-3 px-5 text-slate-600">{dep.dateCaptured ? new Date(dep.dateCaptured).toLocaleDateString('en-ZA') : dep.depositDate ? new Date(dep.depositDate).toLocaleDateString('en-ZA') : '-'}</td>
-                    <td className="py-3 px-5 text-right font-mono text-slate-800 font-semibold">{fmt(dep.deposit ?? dep.depositAmount ?? dep.amount ?? 0)}</td>
-                    <td className="py-3 px-5 text-right font-mono text-slate-800 font-semibold">{fmt(dep.paidAmount ?? 0)}</td>
+          <>
+            <div className="sm:hidden p-2 space-y-2">
+              {deposits.map((dep: any, i: number) => (
+                <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`row-deposit-mobile-${i}`}>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-500 font-medium">Service Type</span>
+                    <span className="text-slate-800 font-semibold text-right">{dep.serviceDesc || dep.serviceDescription || dep.description || '-'}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-500 font-medium">Receipt No</span>
+                    <span className="text-slate-800 font-semibold text-right font-mono">{dep.docNumber || dep.receiptNo || dep.reference || ''}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-500 font-medium">Date Captured</span>
+                    <span className="text-slate-800 font-semibold text-right">{dep.dateCaptured ? new Date(dep.dateCaptured).toLocaleDateString('en-ZA') : dep.depositDate ? new Date(dep.depositDate).toLocaleDateString('en-ZA') : '-'}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-500 font-medium">Deposit Amount</span>
+                    <span className="text-slate-800 font-semibold text-right font-mono">{fmt(dep.deposit ?? dep.depositAmount ?? dep.amount ?? 0)}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-500 font-medium">Paid Amount</span>
+                    <span className="text-slate-800 font-semibold text-right font-mono">{fmt(dep.paidAmount ?? 0)}</span>
+                  </div>
+                </div>
+              ))}
+              <div className="border-t-2 border-slate-300 pt-2 px-1 flex justify-between text-xs font-bold text-slate-900">
+                <span>Total</span>
+                <div className="flex gap-4 font-mono">
+                  <span>{fmt(totalDeposit)}</span>
+                  <span>({fmt(Math.abs(totalPaid))})</span>
+                </div>
+              </div>
+            </div>
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-sm" data-testid="table-deposits">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-white">
+                    <th className="text-left py-3 px-5 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Service Type</th>
+                    <th className="text-left py-3 px-5 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Receipt No / Journal Transaction ID</th>
+                    <th className="text-left py-3 px-5 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Date Captured</th>
+                    <th className="text-right py-3 px-5 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Deposit Amount</th>
+                    <th className="text-right py-3 px-5 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Paid Amount</th>
                   </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-t-2 border-slate-300 bg-slate-50/80">
-                  <td colSpan={3} className="py-3 px-5"></td>
-                  <td className="py-3 px-5 text-right font-mono font-bold text-slate-900 text-[14px]">{fmt(totalDeposit)}</td>
-                  <td className="py-3 px-5 text-right font-mono font-bold text-slate-900 text-[14px]">({fmt(Math.abs(totalPaid))})</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {deposits.map((dep: any, i: number) => (
+                    <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/40 transition-colors" data-testid={`row-deposit-${i}`}>
+                      <td className="py-3 px-5 text-slate-700 font-medium">{dep.serviceDesc || dep.serviceDescription || dep.description || '-'}</td>
+                      <td className="py-3 px-5 text-slate-600 font-mono text-[13px]">{dep.docNumber || dep.receiptNo || dep.reference || ''}</td>
+                      <td className="py-3 px-5 text-slate-600">{dep.dateCaptured ? new Date(dep.dateCaptured).toLocaleDateString('en-ZA') : dep.depositDate ? new Date(dep.depositDate).toLocaleDateString('en-ZA') : '-'}</td>
+                      <td className="py-3 px-5 text-right font-mono text-slate-800 font-semibold">{fmt(dep.deposit ?? dep.depositAmount ?? dep.amount ?? 0)}</td>
+                      <td className="py-3 px-5 text-right font-mono text-slate-800 font-semibold">{fmt(dep.paidAmount ?? 0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-slate-300 bg-slate-50/80">
+                    <td colSpan={3} className="py-3 px-5"></td>
+                    <td className="py-3 px-5 text-right font-mono font-bold text-slate-900 text-[14px]">{fmt(totalDeposit)}</td>
+                    <td className="py-3 px-5 text-right font-mono font-bold text-slate-900 text-[14px]">({fmt(Math.abs(totalPaid))})</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </>
         ) : (
           <div className="p-8 text-center">
             <Landmark className="w-10 h-10 text-slate-200 mx-auto mb-3" />
@@ -251,22 +286,87 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
     : '0.00';
 
   return (
-    <div className="p-5 space-y-5">
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5">
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-slate-700 to-slate-800 flex items-center gap-2">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-slate-700 to-slate-800 flex items-center gap-2">
           <CreditCard className="w-4 h-4 text-white" />
-          <h3 className="text-sm font-semibold text-white tracking-wide">Payment Plans - Capital Cost</h3>
+          <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Payment Plans - Capital Cost</h3>
           {hasPlans && <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{plans.length}</Badge>}
         </div>
 
-        <div className="px-5 py-3 bg-slate-50 border-b border-slate-200">
-          <p className="text-sm text-slate-700">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-slate-50 border-b border-slate-200">
+          <p className="text-xs sm:text-sm text-slate-700">
             <span className="font-semibold">Initial Down Payment That Was Required:</span>{' '}
             <span className="font-mono font-bold text-slate-900">{initialDownPayment}</span>
           </p>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="sm:hidden p-2 space-y-2">
+          {hasPlans ? plans.map((p: any, i: number) => {
+            const isActive = p.status === 'Active' || p.isActive;
+            return (
+              <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`plan-card-${i}`}>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500 font-medium">Status</span>
+                  <Badge variant={isActive ? 'default' : 'secondary'} className={`text-[10px] ${isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                    {p.status || p.planStatus || (p.isActive ? 'Active' : 'Inactive')}
+                  </Badge>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500 font-medium">Capital Cost Type</span>
+                  <span className="text-slate-800 font-semibold text-right">{p.capitalCostType || p.planType || p.paymentPlanType || p.description || '-'}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500 font-medium">Service Type</span>
+                  <span className="text-slate-800 font-semibold text-right">{p.serviceType || p.additionalBillingType || p.billingType || '-'}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500 font-medium">Contract Number</span>
+                  <span className="text-slate-800 font-semibold text-right font-mono">{p.contractNumber || p.contractNo || p.agreementNo || '-'}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500 font-medium">Capital Amount</span>
+                  <span className="text-slate-800 font-semibold text-right font-mono">{fmtAmt(p.capitalAmount ?? p.amount ?? p.totalAmount)}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500 font-medium">Period</span>
+                  <span className="text-slate-800 font-semibold text-right font-mono">{p.period ?? p.numberOfInstalments ?? p.termMonths ?? '-'}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500 font-medium">Instalment Amount</span>
+                  <span className="text-slate-800 font-semibold text-right font-mono">{fmtAmt(p.instalmentAmount ?? p.instalment ?? p.monthlyAmount)}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500 font-medium">Commencement Date</span>
+                  <span className="text-slate-800 font-semibold text-right">{fmtDate(p.commencementDate ?? p.startDate ?? p.effectiveDate)}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500 font-medium">Expected End Date</span>
+                  <span className="text-slate-800 font-semibold text-right">{fmtDate(p.expectedEndDate ?? p.endDate ?? p.expiryDate)}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500 font-medium">Remaining Capital</span>
+                  <span className="text-slate-800 font-semibold text-right font-mono">{fmtAmt(p.remainingCapitalAmount ?? p.remainingCapital ?? p.outstandingAmount)}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500 font-medium">Remaining Period</span>
+                  <span className="text-slate-800 font-semibold text-right font-mono">{p.remainingPeriod ?? p.remainingInstalments ?? p.remainingMonths ?? '-'}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500 font-medium">Total Payments</span>
+                  <span className="text-slate-800 font-semibold text-right font-mono">{fmtAmt(p.totalPaymentsReceived ?? p.totalPaid ?? p.paymentsReceived)}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500 font-medium">Instalment Counter</span>
+                  <span className="text-slate-800 font-semibold text-right font-mono">{p.instalmentCounter ?? p.paidInstalments ?? p.instalmentsPaid ?? '-'}</span>
+                </div>
+              </div>
+            );
+          }) : (
+            <div className="py-10 text-center text-slate-400 text-sm">No records to display.</div>
+          )}
+        </div>
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-xs" data-testid="table-payment-plans">
             <thead>
               <tr className="bg-slate-100 border-b-2 border-slate-200">
@@ -324,13 +424,13 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-5">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
             <Shield className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Repayment Plan Status</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Repayment Plan Status</h3>
           </div>
-          <div className="p-5">
+          <div className="p-3 sm:p-5">
             {hasRepaymentData ? (
               <div className="space-y-3">
                 {repaymentStatus.map((item: any, i: number) => {
@@ -358,11 +458,11 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
             <Banknote className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Remaining Capital</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Remaining Capital</h3>
           </div>
-          <div className="p-5">
+          <div className="p-3 sm:p-5">
             {hasCapital ? (
               typeof remainingCapital === 'object' ? (
                 Object.entries(remainingCapital).filter(([k, v]) => !k.startsWith('_') && v != null && v !== 0).map(([key, val]) => (
@@ -386,9 +486,9 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
 
       {hasExtensions && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
             <CalendarDays className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Payment Extensions</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Payment Extensions</h3>
             <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{extensions.length}</Badge>
           </div>
           <div className="overflow-x-auto">
@@ -417,48 +517,92 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
       )}
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center gap-2">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center gap-2">
           <Banknote className="w-4 h-4 text-white" />
-          <h3 className="text-sm font-semibold text-white tracking-wide">Payment History</h3>
+          <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Payment History</h3>
           {hasPaymentAmounts && <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{paymentAmounts.length}</Badge>}
         </div>
         {hasPaymentAmounts ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs" data-testid="table-payment-amounts">
-              <thead>
-                <tr className="bg-slate-100 border-b border-slate-200">
-                  <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Receipt No</th>
-                  <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Date</th>
-                  <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Payment Type</th>
-                  <th className="text-right py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Amount</th>
-                  <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Cashier</th>
-                  <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Cash Book</th>
-                  <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Card/Cheque</th>
-                  <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Cancel Reason</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paymentAmounts.map((pa: any, i: number) => (
-                  <tr key={i} className={`border-b border-slate-100 hover:bg-indigo-50/30 transition-colors ${pa.cancelReson ? 'bg-red-50/30' : ''}`}>
-                    <td className="py-2.5 px-3 font-mono font-medium">{pa.receiptNo || '-'}</td>
-                    <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{pa.receiptDate ? new Date(pa.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
-                    <td className="py-2.5 px-3">
-                      <Badge variant="outline" className={`text-[10px] ${pa.paymentType === 'Cash' ? 'bg-green-50 text-green-700 border-green-200' : pa.paymentType === 'Credit Card' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
-                        {pa.paymentType || '-'}
-                      </Badge>
-                    </td>
-                    <td className="py-2.5 px-3 text-right font-mono font-semibold">{fmtAmt(pa.amount)}</td>
-                    <td className="py-2.5 px-3 text-slate-600">{pa.cashier || '-'}</td>
-                    <td className="py-2.5 px-3 text-slate-500">{pa.cashBook || '-'}</td>
-                    <td className="py-2.5 px-3 text-slate-500 font-mono">{pa.cardChequeDetail || '-'}</td>
-                    <td className="py-2.5 px-3">{pa.cancelReson ? <span className="text-red-600 font-medium">{pa.cancelReson}</span> : '-'}</td>
+          <>
+            <div className="sm:hidden p-2 space-y-2">
+              {paymentAmounts.map((pa: any, i: number) => (
+                <div key={i} className={`border border-slate-200 rounded-lg p-3 space-y-1.5 ${pa.cancelReson ? 'bg-red-50/30' : ''}`}>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-500 font-medium">Receipt No</span>
+                    <span className="text-slate-800 font-semibold text-right font-mono">{pa.receiptNo || '-'}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-500 font-medium">Date</span>
+                    <span className="text-slate-800 font-semibold text-right">{pa.receiptDate ? new Date(pa.receiptDate).toLocaleDateString('en-ZA') : '-'}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-500 font-medium">Payment Type</span>
+                    <Badge variant="outline" className={`text-[10px] ${pa.paymentType === 'Cash' ? 'bg-green-50 text-green-700 border-green-200' : pa.paymentType === 'Credit Card' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                      {pa.paymentType || '-'}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-500 font-medium">Amount</span>
+                    <span className="text-slate-800 font-semibold text-right font-mono">{fmtAmt(pa.amount)}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-500 font-medium">Cashier</span>
+                    <span className="text-slate-800 font-semibold text-right">{pa.cashier || '-'}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-500 font-medium">Cash Book</span>
+                    <span className="text-slate-800 font-semibold text-right">{pa.cashBook || '-'}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-500 font-medium">Card/Cheque</span>
+                    <span className="text-slate-800 font-semibold text-right font-mono">{pa.cardChequeDetail || '-'}</span>
+                  </div>
+                  {pa.cancelReson && (
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-slate-500 font-medium">Cancel Reason</span>
+                      <span className="text-red-600 font-semibold text-right">{pa.cancelReson}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-xs" data-testid="table-payment-amounts">
+                <thead>
+                  <tr className="bg-slate-100 border-b border-slate-200">
+                    <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Receipt No</th>
+                    <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Date</th>
+                    <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Payment Type</th>
+                    <th className="text-right py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Amount</th>
+                    <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Cashier</th>
+                    <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Cash Book</th>
+                    <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Card/Cheque</th>
+                    <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Cancel Reason</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {paymentAmounts.map((pa: any, i: number) => (
+                    <tr key={i} className={`border-b border-slate-100 hover:bg-indigo-50/30 transition-colors ${pa.cancelReson ? 'bg-red-50/30' : ''}`}>
+                      <td className="py-2.5 px-3 font-mono font-medium">{pa.receiptNo || '-'}</td>
+                      <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{pa.receiptDate ? new Date(pa.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
+                      <td className="py-2.5 px-3">
+                        <Badge variant="outline" className={`text-[10px] ${pa.paymentType === 'Cash' ? 'bg-green-50 text-green-700 border-green-200' : pa.paymentType === 'Credit Card' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                          {pa.paymentType || '-'}
+                        </Badge>
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono font-semibold">{fmtAmt(pa.amount)}</td>
+                      <td className="py-2.5 px-3 text-slate-600">{pa.cashier || '-'}</td>
+                      <td className="py-2.5 px-3 text-slate-500">{pa.cashBook || '-'}</td>
+                      <td className="py-2.5 px-3 text-slate-500 font-mono">{pa.cardChequeDetail || '-'}</td>
+                      <td className="py-2.5 px-3">{pa.cancelReson ? <span className="text-red-600 font-medium">{pa.cancelReson}</span> : '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         ) : (
-          <div className="py-8 px-5 flex flex-col items-center justify-center text-center">
+          <div className="py-8 px-3 sm:px-5 flex flex-col items-center justify-center text-center">
             <Banknote className="w-8 h-8 text-slate-200 mb-2" />
             <p className="text-xs text-slate-400">No payment records found</p>
           </div>
@@ -503,7 +647,7 @@ export function PaymentExtensionHistoryTab({ accountId }: { accountId: number })
   };
 
   return (
-    <div className="p-5 space-y-5" data-testid="payment-extension-history-panel">
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5" data-testid="payment-extension-history-panel">
       <h3 className="text-base font-bold text-slate-800">Payment Extension History</h3>
       <PaginatedTable
         data={extensions}
@@ -558,16 +702,78 @@ export function DebitOrdersTab({ accountId }: { accountId: number }) {
   const fmtDate = (v: any) => v ? new Date(v).toLocaleDateString('en-ZA') : '-';
 
   return (
-    <div className="p-5 space-y-5">
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5">
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-3 bg-gradient-to-r from-teal-600 to-teal-700 flex items-center gap-2">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-teal-600 to-teal-700 flex items-center gap-2">
           <Landmark className="w-4 h-4 text-white" />
-          <h3 className="text-sm font-semibold text-white tracking-wide">Debit Order Deduction List</h3>
+          <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Debit Order Deduction List</h3>
           {(deductions.length + debitOrders.length) > 0 && (
             <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{deductions.length + debitOrders.length} record{(deductions.length + debitOrders.length) !== 1 ? 's' : ''}</Badge>
           )}
         </div>
-        <div className="overflow-x-auto">
+        <div className="sm:hidden p-2 space-y-2">
+          {(deductions.length + debitOrders.length) === 0 ? (
+            <div className="py-8 text-center text-slate-400 text-sm italic">No records to display.</div>
+          ) : [...deductions, ...debitOrders].map((d: any, i: number) => (
+            <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`row-debit-mobile-${i}`}>
+              <div className="flex justify-between text-[11px]">
+                <span className="text-slate-500 font-medium">Nr</span>
+                <span className="text-slate-800 font-semibold text-right">{d.nr ?? d.number ?? i + 1}</span>
+              </div>
+              <div className="flex justify-between text-[11px]">
+                <span className="text-slate-500 font-medium">Status</span>
+                <Badge variant={d.status === 'Active' || d.status === 'Successful' ? 'default' : 'secondary'} className="text-[10px]">
+                  {d.status || d.deductionStatus || '-'}
+                </Badge>
+              </div>
+              <div className="flex justify-between text-[11px]">
+                <span className="text-slate-500 font-medium">Service Type</span>
+                <span className="text-slate-800 font-semibold text-right">{d.serviceType || d.serviceDescription || d.accountType || '-'}</span>
+              </div>
+              <div className="flex justify-between text-[11px]">
+                <span className="text-slate-500 font-medium">Maximum Amount</span>
+                <span className="text-slate-800 font-semibold text-right font-mono">{fmt(d.maximumAmount ?? d.amount ?? d.deductionAmount ?? 0)}</span>
+              </div>
+              <div className="flex justify-between text-[11px]">
+                <span className="text-slate-500 font-medium">Total Max Amount</span>
+                <span className="text-slate-800 font-semibold text-right font-mono">{fmt(d.totalMaximumAmount ?? d.debitOrderAmount ?? 0)}</span>
+              </div>
+              <div className="flex justify-between text-[11px]">
+                <span className="text-slate-500 font-medium">Ageing</span>
+                <span className="text-slate-800 font-semibold text-right">{d.ageing ?? d.aging ?? '-'}</span>
+              </div>
+              <div className="flex justify-between text-[11px]">
+                <span className="text-slate-500 font-medium">Commencement</span>
+                <span className="text-slate-800 font-semibold text-right">{fmtDate(d.commencementDate ?? d.startDate)}</span>
+              </div>
+              <div className="flex justify-between text-[11px]">
+                <span className="text-slate-500 font-medium">Deduction Date</span>
+                <span className="text-slate-800 font-semibold text-right">{fmtDate(d.deductionDate ?? d.date)}</span>
+              </div>
+              <div className="flex justify-between text-[11px]">
+                <span className="text-slate-500 font-medium">Date Captured</span>
+                <span className="text-slate-800 font-semibold text-right">{fmtDate(d.dateCaptured ?? d.capturedDate ?? d.createdDate)}</span>
+              </div>
+              <div className="flex justify-between text-[11px]">
+                <span className="text-slate-500 font-medium">Captured By</span>
+                <span className="text-slate-800 font-semibold text-right">{d.capturedBy ?? d.createdBy ?? '-'}</span>
+              </div>
+              <div className="flex justify-between text-[11px]">
+                <span className="text-slate-500 font-medium">Termination Date</span>
+                <span className="text-slate-800 font-semibold text-right">{fmtDate(d.terminationDate)}</span>
+              </div>
+              <div className="flex justify-between text-[11px]">
+                <span className="text-slate-500 font-medium">Termination Reason</span>
+                <span className="text-slate-800 font-semibold text-right">{d.terminationReason ?? '-'}</span>
+              </div>
+              <div className="flex justify-between text-[11px]">
+                <span className="text-slate-500 font-medium">Terminated By</span>
+                <span className="text-slate-800 font-semibold text-right">{d.terminatedBy ?? '-'}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm" data-testid="table-debit-order-deductions">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
@@ -613,7 +819,7 @@ export function DebitOrdersTab({ accountId }: { accountId: number }) {
             </tbody>
           </table>
         </div>
-        <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end">
+        <div className="px-3 sm:px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end">
           <span className="text-xs text-slate-500">{deductions.length + debitOrders.length} record{(deductions.length + debitOrders.length) !== 1 ? 's' : ''}</span>
         </div>
       </div>
@@ -655,13 +861,13 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
   const maxVal = Math.max(...data.map(d => Math.max(Math.abs(d.billingAmount ?? d.billedAmount ?? d.amount ?? 0), Math.abs(d.paidAmount ?? d.paymentAmount ?? 0))), 1);
 
   return (
-    <div className="p-5 space-y-5">
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5">
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center gap-2">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center gap-2">
           <BarChart3 className="w-4 h-4 text-white" />
-          <h3 className="text-sm font-semibold text-white tracking-wide">Billed vs Paid Amounts</h3>
+          <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Billed vs Paid Amounts</h3>
         </div>
-        <div className="px-5 py-3 bg-slate-50 border-b border-slate-200 flex items-center gap-3">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-slate-50 border-b border-slate-200 flex items-center gap-3">
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
@@ -672,7 +878,47 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
           </select>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="sm:hidden p-2 space-y-2">
+          {data.length === 0 ? (
+            <div className="py-8 text-center text-slate-400 text-sm italic">No records to display.</div>
+          ) : data.map((d: any, i: number) => {
+            const billed = d.billingAmount ?? d.billedAmount ?? d.amount ?? 0;
+            const paid = d.paidAmount ?? d.paymentAmount ?? 0;
+            return (
+              <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`row-billed-mobile-${i}`}>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500 font-medium">Financial Year</span>
+                  <span className="text-slate-800 font-semibold text-right">{d.financialYear || selectedYear}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500 font-medium">Month</span>
+                  <span className="text-slate-800 font-semibold text-right">{d.month || d.billingMonth || d.period || '-'}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-indigo-600 font-medium">Billing Amount</span>
+                  <span className="text-indigo-700 font-semibold text-right font-mono">{fmt(billed)}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-rose-600 font-medium">Paid Amount</span>
+                  <span className={`font-semibold text-right font-mono ${paid < 0 ? 'text-red-600' : 'text-rose-600'}`}>{fmt(paid)}</span>
+                </div>
+              </div>
+            );
+          })}
+          {data.length > 0 && (
+            <div className="border-t-2 border-indigo-200 pt-2 px-1 space-y-1">
+              <div className="flex justify-between text-xs font-bold">
+                <span className="text-slate-900">Total Billed</span>
+                <span className="text-indigo-700 font-mono">{fmt(totalBilled)}</span>
+              </div>
+              <div className="flex justify-between text-xs font-bold">
+                <span className="text-slate-900">Total Paid</span>
+                <span className={`font-mono ${totalPaid < 0 ? 'text-red-600' : 'text-rose-600'}`}>{fmt(totalPaid)}</span>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm" data-testid="table-billed-vs-paid">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
@@ -709,18 +955,18 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
             )}
           </table>
         </div>
-        <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end">
+        <div className="px-3 sm:px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end">
           <span className="text-xs text-slate-500">{data.length} of {data.length} records</span>
         </div>
       </div>
 
       {data.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
             <BarChart3 className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Account History</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Account History</h3>
           </div>
-          <div className="p-5">
+          <div className="p-3 sm:p-5">
             <div className="flex items-end gap-1 justify-center" style={{ height: '320px' }} data-testid="chart-billed-vs-paid">
               {data.map((d: any, i: number) => {
                 const billed = Math.abs(d.billingAmount ?? d.billedAmount ?? d.amount ?? 0);
@@ -853,7 +1099,7 @@ export function RatesValuationsTab({ accountId, propertyId }: { accountId: numbe
   if (!hasAny) return <EmptyState message="No rates & valuations data available" />;
 
   return (
-    <div className="p-5 space-y-5">
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5">
       <div className="flex items-center gap-3 mb-2">
         <label className="text-xs font-semibold text-slate-600">Financial Year:</label>
         <select
@@ -868,9 +1114,9 @@ export function RatesValuationsTab({ accountId, propertyId }: { accountId: numbe
 
       {valuations.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
             <Landmark className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Property Valuations</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Property Valuations</h3>
             <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{valuations.length}</Badge>
           </div>
           <div className="divide-y divide-slate-100">
@@ -944,9 +1190,9 @@ export function RatesValuationsTab({ accountId, propertyId }: { accountId: numbe
 
       {hasRatesObj && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
             <Scale className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Rates Summary ({selectedFinYear})</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Rates Summary ({selectedFinYear})</h3>
           </div>
           <div className="p-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -981,9 +1227,9 @@ export function RatesValuationsTab({ accountId, propertyId }: { accountId: numbe
 
       {valuationData && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-teal-600 to-teal-700 flex items-center gap-2">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-teal-600 to-teal-700 flex items-center gap-2">
             <FileText className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Valuation Roll Data</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Valuation Roll Data</h3>
           </div>
           <div className="p-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
@@ -1000,9 +1246,9 @@ export function RatesValuationsTab({ accountId, propertyId }: { accountId: numbe
 
       {valuationImport && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center gap-2">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center gap-2">
             <FileText className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Valuation Import Data</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Valuation Import Data</h3>
           </div>
           <div className="p-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
@@ -1019,12 +1265,38 @@ export function RatesValuationsTab({ accountId, propertyId }: { accountId: numbe
 
       {ratesHistory.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
             <Clock className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Rates Run History</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Rates Run History</h3>
             <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{ratesHistory.length}</Badge>
           </div>
-          <div className="overflow-x-auto">
+          <div className="sm:hidden p-2 space-y-2">
+            {ratesHistory.map((r: any, i: number) => (
+              <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5">
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500 font-medium">Run Date</span>
+                  <span className="text-slate-800 font-semibold text-right">{fmtDate(r.runDate || r.date)}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500 font-medium">Period</span>
+                  <span className="text-slate-800 font-semibold text-right">{r.period || r.billingPeriod || '-'}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500 font-medium">Description</span>
+                  <span className="text-slate-800 font-semibold text-right">{r.description || '-'}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500 font-medium">Amount</span>
+                  <span className="text-slate-800 font-semibold text-right font-mono">{fmt(r.amount ?? r.ratesAmount ?? 0)}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500 font-medium">Status</span>
+                  <Badge variant="outline" className="text-[10px]">{r.status || '-'}</Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-rates-run-history">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">

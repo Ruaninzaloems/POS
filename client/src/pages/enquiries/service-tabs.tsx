@@ -161,14 +161,14 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
     }));
 
     return (
-      <div className="p-4 space-y-6" data-testid="service-balance-detail">
+      <div className="p-3 sm:p-4 space-y-6" data-testid="service-balance-detail">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-3">
+          <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-3">
             <button onClick={() => setSelectedService(null)} className="text-white hover:text-blue-200 transition-colors" data-testid="button-back-services">
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <h3 className="text-sm font-semibold text-white tracking-wide">Service Type Balance</h3>
-            <span className="text-xs text-blue-200">- {svcDesc}</span>
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Service Type Balance</h3>
+            <span className="text-[10px] sm:text-xs text-blue-200 truncate">- {svcDesc}</span>
             <div className="ml-auto">
               <select value={finYear} onChange={e => setFinYear(e.target.value)} className="text-xs bg-white/20 text-white border border-white/30 rounded px-2 py-1 focus:outline-none" data-testid="select-fin-year-detail">
                 {yearOptions.map(y => <option key={y} value={y} className="text-slate-800">{y}</option>)}
@@ -178,60 +178,89 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
           {sorted.length === 0 ? (
             <div className="p-6 text-center text-slate-400 text-sm">No billing data for this service in {finYear}</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm" data-testid="table-service-detail">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service Description</th>
-                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Opening Balance</th>
-                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
-                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">VAT</th>
-                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Interest</th>
-                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Total Amount</th>
-                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Current Interest Charge</th>
-                    <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Current Charge</th>
-                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Month</th>
-                    <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Financial Year</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sorted.map((r: any, i: number) => (
-                    <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
-                      <td className="py-2 px-3 text-slate-700">{r.serviceDescription || svcDesc}</td>
-                      <td className="py-2 px-3 text-right font-mono">{fmt(r.openingBalance)}</td>
-                      <td className="py-2 px-3 text-right font-mono">{fmt(r.amount)}</td>
-                      <td className="py-2 px-3 text-right font-mono">{fmt(r.vat)}</td>
-                      <td className="py-2 px-3 text-right font-mono">{fmt(r.interestAmount)}</td>
-                      <td className="py-2 px-3 text-right font-mono font-semibold text-blue-700">{fmt(r.totalAmount)}</td>
-                      <td className="py-2 px-3 text-right font-mono">{fmt(r.currentInterestAmount)}</td>
-                      <td className="py-2 px-3 text-right font-mono">{fmt(r.currentCharge)}</td>
-                      <td className="py-2 px-3 text-slate-600">{r.month || '-'}</td>
-                      <td className="py-2 px-3 text-slate-600">{r.financialYear || '-'}</td>
+            <>
+              <div className="sm:hidden p-2 space-y-2" data-testid="table-service-detail-mobile">
+                {sorted.map((r: any, i: number) => (
+                  <div key={i} className="bg-white border border-slate-200 rounded-lg p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-slate-800">{r.serviceDescription || svcDesc}</span>
+                      <span className="text-[10px] text-slate-400">{r.month || '-'} · {r.financialYear || '-'}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                      <div className="flex justify-between text-[11px]"><span className="text-slate-500">Opening</span><span className="font-mono font-semibold text-slate-800">{fmt(r.openingBalance)}</span></div>
+                      <div className="flex justify-between text-[11px]"><span className="text-slate-500">Amount</span><span className="font-mono font-semibold text-slate-800">{fmt(r.amount)}</span></div>
+                      <div className="flex justify-between text-[11px]"><span className="text-slate-500">Interest</span><span className="font-mono font-semibold text-slate-800">{fmt(r.interestAmount)}</span></div>
+                      <div className="flex justify-between text-[11px]"><span className="text-slate-500">Total</span><span className="font-mono font-bold text-blue-700">{fmt(r.totalAmount)}</span></div>
+                      <div className="flex justify-between text-[11px]"><span className="text-slate-500">VAT</span><span className="font-mono text-slate-700">{fmt(r.vat)}</span></div>
+                      <div className="flex justify-between text-[11px]"><span className="text-slate-500">Cur. Charge</span><span className="font-mono text-slate-700">{fmt(r.currentCharge)}</span></div>
+                    </div>
+                  </div>
+                ))}
+                <div className="bg-slate-100 border border-slate-300 rounded-lg p-3">
+                  <div className="text-xs font-bold text-slate-800 mb-1.5">Total</div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                    <div className="flex justify-between text-[11px]"><span className="text-slate-500">Opening</span><span className="font-mono font-bold">{fmt(totals.openingBalance)}</span></div>
+                    <div className="flex justify-between text-[11px]"><span className="text-slate-500">Amount</span><span className="font-mono font-bold">{fmt(totals.amount)}</span></div>
+                    <div className="flex justify-between text-[11px]"><span className="text-slate-500">Interest</span><span className="font-mono font-bold">{fmt(totals.interestAmount)}</span></div>
+                    <div className="flex justify-between text-[11px]"><span className="text-slate-500">Total</span><span className="font-mono font-bold text-blue-700">{fmt(totals.totalAmount)}</span></div>
+                  </div>
+                </div>
+              </div>
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full text-sm" data-testid="table-service-detail">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200">
+                      <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service Description</th>
+                      <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Opening Balance</th>
+                      <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
+                      <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">VAT</th>
+                      <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Interest</th>
+                      <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Total Amount</th>
+                      <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Current Interest Charge</th>
+                      <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Current Charge</th>
+                      <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Month</th>
+                      <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Financial Year</th>
                     </tr>
-                  ))}
-                  <tr className="bg-slate-100 border-t-2 border-slate-300 font-bold">
-                    <td className="py-2.5 px-3 text-slate-800">Total</td>
-                    <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.openingBalance)}</td>
-                    <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.amount)}</td>
-                    <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.vat)}</td>
-                    <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.interestAmount)}</td>
-                    <td className="py-2.5 px-3 text-right font-mono text-blue-700">{fmt(totals.totalAmount)}</td>
-                    <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.currentInterestAmount)}</td>
-                    <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.currentCharge)}</td>
-                    <td className="py-2.5 px-3" colSpan={2}></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {sorted.map((r: any, i: number) => (
+                      <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
+                        <td className="py-2 px-3 text-slate-700">{r.serviceDescription || svcDesc}</td>
+                        <td className="py-2 px-3 text-right font-mono">{fmt(r.openingBalance)}</td>
+                        <td className="py-2 px-3 text-right font-mono">{fmt(r.amount)}</td>
+                        <td className="py-2 px-3 text-right font-mono">{fmt(r.vat)}</td>
+                        <td className="py-2 px-3 text-right font-mono">{fmt(r.interestAmount)}</td>
+                        <td className="py-2 px-3 text-right font-mono font-semibold text-blue-700">{fmt(r.totalAmount)}</td>
+                        <td className="py-2 px-3 text-right font-mono">{fmt(r.currentInterestAmount)}</td>
+                        <td className="py-2 px-3 text-right font-mono">{fmt(r.currentCharge)}</td>
+                        <td className="py-2 px-3 text-slate-600">{r.month || '-'}</td>
+                        <td className="py-2 px-3 text-slate-600">{r.financialYear || '-'}</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-slate-100 border-t-2 border-slate-300 font-bold">
+                      <td className="py-2.5 px-3 text-slate-800">Total</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.openingBalance)}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.amount)}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.vat)}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.interestAmount)}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-blue-700">{fmt(totals.totalAmount)}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.currentInterestAmount)}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.currentCharge)}</td>
+                      <td className="py-2.5 px-3" colSpan={2}></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
 
         {chartData.length > 0 && (
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700">
-              <h3 className="text-sm font-semibold text-white tracking-wide">Service Type Balance</h3>
+            <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700">
+              <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Service Type Balance</h3>
             </div>
-            <div className="p-4" style={{ height: 350 }}>
+            <div className="p-3 sm:p-4 h-[250px] sm:h-[350px]">
               <ServiceBalanceChart data={chartData} />
             </div>
           </div>
@@ -277,7 +306,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
   };
 
   return (
-    <div className="p-4 space-y-4" data-testid="service-balance-tab">
+    <div className="p-3 sm:p-4 space-y-4" data-testid="service-balance-tab">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-slate-800">Services</h3>
@@ -330,8 +359,8 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
                   </span>
                 </div>
 
-                <div className="px-4 py-3">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-4 gap-y-2.5">
+                <div className="px-3 sm:px-4 py-2.5 sm:py-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-2.5">
                     <div>
                       <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Tariff</div>
                       <div className="text-[12px] text-slate-700 mt-0.5 leading-snug">{svc.tariff || '-'}</div>
@@ -454,12 +483,12 @@ export function ServiceBalanceChart({ data }: { data: { month: string; amount: n
             <span key={i} className="text-[10px] text-slate-400 font-mono leading-none">{tick.toLocaleString('en-ZA')}</span>
           ))}
         </div>
-        <div className="flex-1 border-l border-b border-slate-200 relative flex items-end justify-around px-2 gap-1">
+        <div className="flex-1 border-l border-b border-slate-200 relative flex items-end justify-around px-1 sm:px-2 gap-0.5 sm:gap-1">
           {data.map((d, i) => {
             const height = maxVal > 0 ? (d.amount / maxVal) * 100 : 0;
             return (
               <div key={i} className="flex flex-col items-center flex-1" style={{ maxWidth: barWidth }}>
-                <div className="w-full flex items-end justify-center" style={{ height: '100%', minHeight: 200 }}>
+                <div className="w-full flex items-end justify-center" style={{ height: '100%', minHeight: 150 }}>
                   <div className="w-full bg-blue-600 rounded-t-sm transition-all hover:bg-blue-500 relative group" style={{ height: `${height}%`, minHeight: d.amount > 0 ? 4 : 0 }} data-testid={`bar-${i}`}>
                     <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
                       R {d.amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
@@ -725,11 +754,11 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
   ];
 
   return (
-    <div className="p-5 space-y-5" data-testid="consumption-tab">
+    <div className="p-3 sm:p-5 space-y-5" data-testid="consumption-tab">
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+        <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
           <Zap className="w-4 h-4 text-white" />
-          <h3 className="text-sm font-semibold text-white tracking-wide">Consumption</h3>
+          <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Consumption</h3>
           <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{meters.length} meter{meters.length !== 1 ? 's' : ''}</Badge>
         </div>
         <div className="overflow-x-auto">
@@ -770,12 +799,12 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
 
       {selectedMeter && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-4 py-3 bg-gradient-to-r from-slate-100 to-white border-b border-slate-200 flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-800">Meter Reading History Chart</h3>
+          <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-slate-100 to-white border-b border-slate-200 flex items-center justify-between">
+            <h3 className="text-xs sm:text-sm font-bold text-slate-800">Meter Reading History Chart</h3>
             <span className="text-xs text-slate-500 font-medium">{selectedFinYear} ({filteredHistory.length} of {openMonthsCount} months)</span>
           </div>
-          <div className="p-4">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-4 gap-y-2 mb-4 border border-slate-200 rounded-xl p-3 bg-slate-50">
+          <div className="p-3 sm:p-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-4 gap-y-2 mb-4 border border-slate-200 rounded-xl p-2.5 sm:p-3 bg-slate-50">
               <div><span className="text-[10px] text-slate-400 block">Service Type</span><span className="text-xs font-medium text-slate-700">{selectedMeter.serviceDesc || '-'}</span></div>
               <div><span className="text-[10px] text-slate-400 block">Meter Classification</span><span className="text-xs font-medium text-slate-700">{selectedMeter.meterClassificationDesc || '-'}</span></div>
               <div><span className="text-[10px] text-slate-400 block">Tariff</span><span className="text-xs font-medium text-slate-700 break-words">{selectedMeter.tariff || '-'}</span></div>
@@ -797,9 +826,9 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
 
       {selectedMeter && !historyLoading && readingHistory.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-4 py-3 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
+          <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
             <FileText className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Meter Reading History</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Meter Reading History</h3>
             <div className="ml-auto flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <label className="text-[10px] text-white/70 font-medium uppercase tracking-wider">Financial Year</label>
@@ -961,15 +990,28 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
   if (!hasData) return <EmptyState message="No services or meter data available" />;
 
   return (
-    <div className="p-5 space-y-5">
+    <div className="p-3 sm:p-5 space-y-5">
       {allServices.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
             <Zap className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">All Services</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">All Services</h3>
             <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{allServices.length}</Badge>
           </div>
-          <div className="overflow-x-auto">
+          <div className="sm:hidden p-2 space-y-2" data-testid="table-all-services-mobile">
+            {allServices.map((s: any, i: number) => (
+              <div key={i} className="bg-white border border-slate-200 rounded-lg p-3 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-800">{s.serviceType || s.serviceTypeDescription || '-'}</span>
+                  <Badge variant={s.status === 'Active' ? 'default' : 'secondary'} className="text-[10px]">{s.status || s.serviceStatus || '-'}</Badge>
+                </div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500">Service ID</span><span className="font-mono font-semibold text-blue-700">{s.serviceId || s.service_ID || s.serviceID || '-'}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500">Description</span><span className="text-slate-800 font-semibold text-right truncate ml-2">{s.description || s.serviceDescription || '-'}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500">Tariff</span><span className="text-slate-700">{s.tariff || s.tariffCode || s.tariffDescription || '-'}</span></div>
+              </div>
+            ))}
+          </div>
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-all-services">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
@@ -998,12 +1040,36 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
 
       {meters.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-teal-600 to-teal-700 flex items-center gap-2">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-teal-600 to-teal-700 flex items-center gap-2">
             <Gauge className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Meters</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Meters</h3>
             <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{meters.length}</Badge>
           </div>
-          <div className="overflow-x-auto">
+          <div className="sm:hidden p-2 space-y-2" data-testid="table-meters-mobile">
+            {meters.map((m: any, i: number) => (
+              <div key={i} className={`bg-white border rounded-lg p-3 space-y-2 ${consumptionMeter === m ? 'border-teal-300 bg-teal-50' : 'border-slate-200'}`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-800">{m.serviceType || m.serviceTypeDescription || '-'}</span>
+                  <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>{m.status || '-'}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-semibold text-blue-700">{m.meterNo || m.meterNumber || '-'}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Physical</span><span className="font-mono text-slate-700">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Classification</span><span className="text-slate-700">{m.classification || m.meterClassification || m.meterType || '-'}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Tariff</span><span className="text-slate-700 truncate ml-1">{m.tariffCode || m.tariff || m.tariffDescription || '-'}</span></div>
+                </div>
+                <button
+                  onClick={() => viewConsumption(m)}
+                  className="w-full inline-flex items-center justify-center gap-1 px-2.5 py-1.5 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 text-[11px] font-semibold rounded-md border border-cyan-200 transition-all"
+                  data-testid={`button-view-consumption-${i}`}
+                >
+                  <Activity className="w-3 h-3" />
+                  View Consumption
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-meters">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
@@ -1067,24 +1133,24 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
 
       {consumptionMeter && (
         <div className="bg-white rounded-xl border border-cyan-200 shadow-sm overflow-hidden" data-testid="consumption-detail-panel">
-          <div className="px-5 py-3 border-b border-cyan-100 bg-gradient-to-r from-cyan-600 to-cyan-700 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Activity className="w-4 h-4 text-white" />
-              <h3 className="text-sm font-semibold text-white tracking-wide">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-cyan-100 bg-gradient-to-r from-cyan-600 to-cyan-700 flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <Activity className="w-4 h-4 text-white shrink-0" />
+              <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide truncate">
                 Consumption — Meter {consumptionMeter.meterNo || consumptionMeter.meterNumber || consumptionMeter.physicalMeterNumber || ''}
               </h3>
             </div>
             <button
               onClick={() => { setConsumptionMeter(null); setConsumptionHistory([]); }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold rounded-lg transition-all border border-white/30"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold rounded-lg transition-all border border-white/30 shrink-0"
               data-testid="button-close-consumption"
             >
               Close
             </button>
           </div>
-          <div className="p-5">
-            <div className="bg-cyan-50 border border-cyan-200 rounded-xl p-4 mb-4">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+          <div className="p-3 sm:p-5">
+            <div className="bg-cyan-50 border border-cyan-200 rounded-xl p-3 sm:p-4 mb-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 text-sm">
                 <div>
                   <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Service Type</span>
                   <p className="font-medium text-slate-800 mt-0.5">{consumptionMeter.serviceType || consumptionMeter.serviceTypeDescription || '-'}</p>
@@ -1112,36 +1178,54 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
             ) : consumptionHistory.length === 0 ? (
               <div className="text-center py-8 text-slate-400">No consumption history found for this meter</div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm" data-testid="table-meter-consumption">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200">
-                      <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reading Date</th>
-                      <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reading</th>
-                      <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Consumption</th>
-                      <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Period</th>
-                      <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reading Type</th>
-                      <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Fin Year</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {consumptionHistory.map((h: any, i: number) => (
-                      <tr key={i} className="border-b border-slate-100 hover:bg-cyan-50/30 transition-colors" data-testid={`consumption-row-${i}`}>
-                        <td className="py-2 px-3 text-slate-600">{h.readingDate ? new Date(h.readingDate).toLocaleDateString('en-ZA') : h.date ? new Date(h.date).toLocaleDateString('en-ZA') : '-'}</td>
-                        <td className="py-2 px-3 text-right font-mono font-semibold">{h.reading ?? h.meterReading ?? h.currentReading ?? '-'}</td>
-                        <td className="py-2 px-3 text-right font-mono font-bold text-cyan-700">{h.consumption ?? h.units ?? h.consumptionUnits ?? '-'}</td>
-                        <td className="py-2 px-3">{h.period || h.billingPeriod || h.periodDescription || '-'}</td>
-                        <td className="py-2 px-3">
-                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(h.readingType || '').toLowerCase() === 'actual' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}`}>
-                            {h.readingType || h.type || '-'}
-                          </span>
-                        </td>
-                        <td className="py-2 px-3 text-slate-500">{h.finYear || h.financialYear || '-'}</td>
+              <>
+                <div className="sm:hidden space-y-2" data-testid="table-meter-consumption-mobile">
+                  {consumptionHistory.map((h: any, i: number) => (
+                    <div key={i} className="bg-white border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`consumption-row-${i}`}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-800">{h.readingDate ? new Date(h.readingDate).toLocaleDateString('en-ZA') : h.date ? new Date(h.date).toLocaleDateString('en-ZA') : '-'}</span>
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(h.readingType || '').toLowerCase() === 'actual' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}`}>{h.readingType || h.type || '-'}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                        <div className="flex justify-between text-[11px]"><span className="text-slate-500">Reading</span><span className="font-mono font-semibold">{h.reading ?? h.meterReading ?? h.currentReading ?? '-'}</span></div>
+                        <div className="flex justify-between text-[11px]"><span className="text-slate-500">Consumption</span><span className="font-mono font-bold text-cyan-700">{h.consumption ?? h.units ?? h.consumptionUnits ?? '-'}</span></div>
+                        <div className="flex justify-between text-[11px]"><span className="text-slate-500">Period</span><span className="text-slate-700">{h.period || h.billingPeriod || h.periodDescription || '-'}</span></div>
+                        <div className="flex justify-between text-[11px]"><span className="text-slate-500">Fin Year</span><span className="text-slate-700">{h.finYear || h.financialYear || '-'}</span></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden sm:block overflow-x-auto">
+                  <table className="w-full text-sm" data-testid="table-meter-consumption">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200">
+                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reading Date</th>
+                        <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reading</th>
+                        <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Consumption</th>
+                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Period</th>
+                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reading Type</th>
+                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Fin Year</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {consumptionHistory.map((h: any, i: number) => (
+                        <tr key={i} className="border-b border-slate-100 hover:bg-cyan-50/30 transition-colors" data-testid={`consumption-row-${i}`}>
+                          <td className="py-2 px-3 text-slate-600">{h.readingDate ? new Date(h.readingDate).toLocaleDateString('en-ZA') : h.date ? new Date(h.date).toLocaleDateString('en-ZA') : '-'}</td>
+                          <td className="py-2 px-3 text-right font-mono font-semibold">{h.reading ?? h.meterReading ?? h.currentReading ?? '-'}</td>
+                          <td className="py-2 px-3 text-right font-mono font-bold text-cyan-700">{h.consumption ?? h.units ?? h.consumptionUnits ?? '-'}</td>
+                          <td className="py-2 px-3">{h.period || h.billingPeriod || h.periodDescription || '-'}</td>
+                          <td className="py-2 px-3">
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(h.readingType || '').toLowerCase() === 'actual' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}`}>
+                              {h.readingType || h.type || '-'}
+                            </span>
+                          </td>
+                          <td className="py-2 px-3 text-slate-500">{h.finYear || h.financialYear || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -1149,10 +1233,10 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
 
       {prepaidMeters.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center justify-between">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Zap className="w-4 h-4 text-white" />
-              <h3 className="text-sm font-semibold text-white tracking-wide">Prepaid Meter Services</h3>
+              <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Prepaid Meter Services</h3>
               <Badge className="bg-white/20 text-white border-white/30 text-[10px]">{prepaidMeters.length}</Badge>
             </div>
             <button
@@ -1164,7 +1248,19 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
               Prepaid Sales
             </button>
           </div>
-          <div className="overflow-x-auto">
+          <div className="sm:hidden p-2 space-y-2" data-testid="table-prepaid-meters-mobile">
+            {prepaidMeters.map((m: any, i: number) => (
+              <div key={i} className="bg-white border border-slate-200 rounded-lg p-3 space-y-1.5 cursor-pointer active:bg-blue-50" onClick={() => { setShowPrepaidSales(true); setSelectedPrepaidMeter(null); setPrepaidRechargeDetails([]); }} data-testid={`prepaid-meter-row-${i}`}>
+                <div className="flex items-center justify-between">
+                  <span className="font-mono font-medium text-blue-700 text-xs">{m.meterNumber || m.physicalMeterNumber || '-'}</span>
+                  <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.meterStatus || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>{m.status || m.meterStatus || '-'}</span>
+                </div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500">Service</span><span className="text-slate-800 font-semibold">{m.serviceType || m.serviceDescription || '-'}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500">Last Recharge</span><span className="font-mono text-slate-700">{m.lastRechargeDate ? new Date(m.lastRechargeDate).toLocaleDateString('en-ZA') : (m.lastRechargeAmount ?? '-')}</span></div>
+              </div>
+            ))}
+          </div>
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-prepaid-meters">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
@@ -1194,12 +1290,12 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
       )}
 
       {showPrepaidSales && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowPrepaidSales(false)} data-testid="prepaid-sales-modal-overlay">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-2 sm:p-4" onClick={() => setShowPrepaidSales(false)} data-testid="prepaid-sales-modal-overlay">
           <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-emerald-700 to-emerald-800 rounded-t-2xl flex items-center justify-between">
+            <div className="px-3 sm:px-6 py-2.5 sm:py-4 border-b border-slate-200 bg-gradient-to-r from-emerald-700 to-emerald-800 rounded-t-2xl flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Zap className="w-5 h-5 text-white" />
-                <h4 className="text-base font-bold text-white">Prepaid Sales</h4>
+                <h4 className="text-sm sm:text-base font-bold text-white">Prepaid Sales</h4>
               </div>
               {selectedPrepaidMeter && (
                 <button
@@ -1212,7 +1308,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                 </button>
               )}
             </div>
-            <div className="p-6">
+            <div className="p-3 sm:p-6">
               {!selectedPrepaidMeter ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm" data-testid="table-prepaid-sales">
@@ -1278,8 +1374,8 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-                    <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 sm:p-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-sm">
                       <div>
                         <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Service Type</span>
                         <p className="font-medium text-slate-800 mt-0.5">{selectedPrepaidMeter.serviceType || selectedPrepaidMeter.serviceDescription || 'Electricity Pre-Paid'}</p>
@@ -1301,48 +1397,74 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                       <span className="text-sm">Loading recharge details...</span>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm" data-testid="table-prepaid-recharge-details">
-                        <thead>
-                          <tr className="bg-slate-50 border-b border-slate-200">
-                            <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Receipt Date</th>
-                            <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Receipt No</th>
-                            <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
-                            <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Vat Amount</th>
-                            <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Total</th>
-                            <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Prepaid Unit</th>
-                            <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Type</th>
-                            <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Prepaid Token No</th>
-                            <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Cancelled Status</th>
-                            <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reason For Cancel</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {prepaidRechargeDetails.length === 0 ? (
-                            <tr><td colSpan={10} className="text-center text-slate-400 py-6">No recharge details found for this meter</td></tr>
-                          ) : prepaidRechargeDetails.map((r: any, i: number) => (
-                            <tr key={i} className="border-b border-slate-100 hover:bg-emerald-50/30 transition-colors" data-testid={`recharge-detail-row-${i}`}>
-                              <td className="py-2.5 px-3 text-slate-600">{r.receiptDate ? new Date(r.receiptDate).toLocaleDateString('en-ZA') : r.rechargeDate ? new Date(r.rechargeDate).toLocaleDateString('en-ZA') : '-'}</td>
-                              <td className="py-2.5 px-3 font-mono text-blue-700 font-semibold text-xs">{r.receiptNo || r.receiptNumber || '-'}</td>
-                              <td className="py-2.5 px-3 text-right font-mono">{(r.amount ?? r.rechargeAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                              <td className="py-2.5 px-3 text-right font-mono">{(r.vatAmount ?? r.vat ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                              <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">{(r.total ?? r.totalAmount ?? ((r.amount ?? 0) + (r.vatAmount ?? 0))).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                              <td className="py-2.5 px-3 text-right font-mono">{r.prepaidUnit ?? r.units ?? r.kwhUnits ?? '-'}</td>
-                              <td className="py-2.5 px-3">{r.type || r.rechargeType || r.transactionType || '-'}</td>
-                              <td className="py-2.5 px-3 font-mono text-xs">{r.prepaidTokenNo || r.tokenNumber || r.token || '-'}</td>
-                              <td className="py-2.5 px-3">
-                                {r.isCancelled || r.cancelledStatus === 'Yes' ? (
-                                  <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 border border-red-200">Yes</span>
-                                ) : (
-                                  <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">No</span>
-                                )}
-                              </td>
-                              <td className="py-2.5 px-3 text-slate-500 text-xs">{r.reasonForCancel || r.cancelReason || '-'}</td>
+                    <>
+                      <div className="sm:hidden space-y-2" data-testid="table-prepaid-recharge-details-mobile">
+                        {prepaidRechargeDetails.length === 0 ? (
+                          <div className="text-center text-slate-400 py-6">No recharge details found for this meter</div>
+                        ) : prepaidRechargeDetails.map((r: any, i: number) => (
+                          <div key={i} className="bg-white border border-slate-200 rounded-lg p-3 space-y-2" data-testid={`recharge-detail-row-${i}`}>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-slate-600">{r.receiptDate ? new Date(r.receiptDate).toLocaleDateString('en-ZA') : r.rechargeDate ? new Date(r.rechargeDate).toLocaleDateString('en-ZA') : '-'}</span>
+                              {r.isCancelled || r.cancelledStatus === 'Yes' ? (
+                                <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 border border-red-200">Cancelled</span>
+                              ) : (
+                                <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">Active</span>
+                              )}
+                            </div>
+                            <div className="flex justify-between text-[11px]"><span className="text-slate-500">Receipt No</span><span className="font-mono font-semibold text-blue-700">{r.receiptNo || r.receiptNumber || '-'}</span></div>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                              <div className="flex justify-between text-[11px]"><span className="text-slate-500">Amount</span><span className="font-mono font-semibold">{(r.amount ?? r.rechargeAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span></div>
+                              <div className="flex justify-between text-[11px]"><span className="text-slate-500">VAT</span><span className="font-mono">{(r.vatAmount ?? r.vat ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span></div>
+                              <div className="flex justify-between text-[11px]"><span className="text-slate-500">Total</span><span className="font-mono font-bold text-slate-800">{(r.total ?? r.totalAmount ?? ((r.amount ?? 0) + (r.vatAmount ?? 0))).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span></div>
+                              <div className="flex justify-between text-[11px]"><span className="text-slate-500">Units</span><span className="font-mono">{r.prepaidUnit ?? r.units ?? r.kwhUnits ?? '-'}</span></div>
+                            </div>
+                            <div className="flex justify-between text-[11px]"><span className="text-slate-500">Token</span><span className="font-mono text-xs text-slate-700 truncate ml-2">{r.prepaidTokenNo || r.tokenNumber || r.token || '-'}</span></div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="hidden sm:block overflow-x-auto">
+                        <table className="w-full text-sm" data-testid="table-prepaid-recharge-details">
+                          <thead>
+                            <tr className="bg-slate-50 border-b border-slate-200">
+                              <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Receipt Date</th>
+                              <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Receipt No</th>
+                              <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
+                              <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Vat Amount</th>
+                              <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Total</th>
+                              <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Prepaid Unit</th>
+                              <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Type</th>
+                              <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Prepaid Token No</th>
+                              <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Cancelled Status</th>
+                              <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reason For Cancel</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          </thead>
+                          <tbody>
+                            {prepaidRechargeDetails.length === 0 ? (
+                              <tr><td colSpan={10} className="text-center text-slate-400 py-6">No recharge details found for this meter</td></tr>
+                            ) : prepaidRechargeDetails.map((r: any, i: number) => (
+                              <tr key={i} className="border-b border-slate-100 hover:bg-emerald-50/30 transition-colors" data-testid={`recharge-detail-row-${i}`}>
+                                <td className="py-2.5 px-3 text-slate-600">{r.receiptDate ? new Date(r.receiptDate).toLocaleDateString('en-ZA') : r.rechargeDate ? new Date(r.rechargeDate).toLocaleDateString('en-ZA') : '-'}</td>
+                                <td className="py-2.5 px-3 font-mono text-blue-700 font-semibold text-xs">{r.receiptNo || r.receiptNumber || '-'}</td>
+                                <td className="py-2.5 px-3 text-right font-mono">{(r.amount ?? r.rechargeAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                                <td className="py-2.5 px-3 text-right font-mono">{(r.vatAmount ?? r.vat ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                                <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">{(r.total ?? r.totalAmount ?? ((r.amount ?? 0) + (r.vatAmount ?? 0))).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                                <td className="py-2.5 px-3 text-right font-mono">{r.prepaidUnit ?? r.units ?? r.kwhUnits ?? '-'}</td>
+                                <td className="py-2.5 px-3">{r.type || r.rechargeType || r.transactionType || '-'}</td>
+                                <td className="py-2.5 px-3 font-mono text-xs">{r.prepaidTokenNo || r.tokenNumber || r.token || '-'}</td>
+                                <td className="py-2.5 px-3">
+                                  {r.isCancelled || r.cancelledStatus === 'Yes' ? (
+                                    <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 border border-red-200">Yes</span>
+                                  ) : (
+                                    <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">No</span>
+                                  )}
+                                </td>
+                                <td className="py-2.5 px-3 text-slate-500 text-xs">{r.reasonForCancel || r.cancelReason || '-'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
                   )}
                 </div>
               )}

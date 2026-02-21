@@ -125,16 +125,16 @@ function PeriodSection({ period, expanded, onToggle }: { period: PeriodData; exp
     <div className="border border-slate-200 rounded-lg overflow-hidden" data-testid={`period-section-${period.year}`}>
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-slate-50 to-white hover:from-slate-100 hover:to-slate-50 transition-colors"
+        className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-slate-50 to-white hover:from-slate-100 hover:to-slate-50 transition-colors gap-1 sm:gap-3"
         data-testid={`toggle-period-${period.year}`}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {expanded ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
-          <span className="font-semibold text-sm text-slate-800">{period.year}</span>
-          {!period.hasData && <span className="text-xs text-slate-400 italic">No transactions</span>}
+          <span className="font-semibold text-xs sm:text-sm text-slate-800">{period.year}</span>
+          {!period.hasData && <span className="text-[10px] sm:text-xs text-slate-400 italic">No transactions</span>}
         </div>
         {period.hasData && (
-          <div className="flex items-center gap-4 text-xs">
+          <div className="flex items-center gap-2 sm:gap-4 text-[10px] sm:text-xs ml-6 sm:ml-0">
             <span className="text-slate-500">Charges: <span className="font-mono font-semibold text-slate-700">{fmtAmount(chargesTotal)}</span></span>
             <span className={`font-mono font-bold ${closingTotal < 0 ? 'text-red-600' : closingTotal > 0 ? 'text-amber-600' : 'text-green-600'}`}>
               Balance: {fmtAmount(closingTotal)}
@@ -256,26 +256,28 @@ export function TransactionSummaryTab({ accountId, accountNumber }: { accountId:
   const collapseAll = () => setExpandedYears(new Set());
 
   return (
-    <div className="p-5 space-y-4" data-testid="transaction-summary-panel">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h3 className="text-base font-bold text-slate-800">Transaction Summary List per Fin-Year/Billing Period</h3>
+    <div className="p-3 sm:p-5 space-y-4" data-testid="transaction-summary-panel">
+      <div className="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
+        <h3 className="text-sm sm:text-base font-bold text-slate-800">Transaction Summary List per Fin-Year/Billing Period</h3>
         <div className="flex items-center gap-2">
           <div className="flex items-center bg-slate-100 rounded-lg p-0.5" data-testid="view-toggle">
             <button
               onClick={() => setMultiView(false)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${!multiView ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium rounded-md transition-all ${!multiView ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               data-testid="btn-single-view"
             >
-              <Layers className="w-3.5 h-3.5 inline mr-1" />
-              Single Period
+              <Layers className="w-3 h-3 sm:w-3.5 sm:h-3.5 inline mr-1" />
+              <span className="hidden sm:inline">Single Period</span>
+              <span className="sm:hidden">Single</span>
             </button>
             <button
               onClick={() => { setMultiView(true); if (selectedYears.length === 0) setSelectedYears([selectedYear]); }}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${multiView ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium rounded-md transition-all ${multiView ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               data-testid="btn-multi-view"
             >
-              <LayoutList className="w-3.5 h-3.5 inline mr-1" />
-              Multi-Period
+              <LayoutList className="w-3 h-3 sm:w-3.5 sm:h-3.5 inline mr-1" />
+              <span className="hidden sm:inline">Multi-Period</span>
+              <span className="sm:hidden">Multi</span>
             </button>
           </div>
         </div>
@@ -322,11 +324,12 @@ export function TransactionSummaryTab({ accountId, accountNumber }: { accountId:
           <button
             onClick={exportToExcel}
             disabled={anyLoading || !allPeriodsLoaded}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             data-testid="btn-export-txn-summary"
           >
-            <Download className="w-4 h-4" />
-            Export to Excel
+            <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Export to Excel</span>
+            <span className="sm:hidden">Export</span>
           </button>
         </div>
       </div>
@@ -682,37 +685,81 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
   if (error) return <ErrorState message={error} onRetry={() => load(selectedYear, selectedMonth)} />;
 
   return (
-    <div className="p-5 space-y-5" data-testid="detailed-transaction-panel">
+    <div className="p-3 sm:p-5 space-y-3 sm:space-y-5" data-testid="detailed-transaction-panel">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h3 className="text-base font-bold text-slate-800">Detailed Transaction List per Billing Period</h3>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleDownloadCurrentMonth} disabled={detailedRows.length === 0} className="text-xs gap-1.5" data-testid="button-download-current">
-            <Download className="w-3.5 h-3.5" />
-            Download {selectedMonth}
+        <h3 className="text-sm sm:text-base font-bold text-slate-800">Detailed Transaction List per Billing Period</h3>
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <Button variant="outline" size="sm" onClick={handleDownloadCurrentMonth} disabled={detailedRows.length === 0} className="text-[10px] sm:text-xs gap-1 sm:gap-1.5 px-2 sm:px-3" data-testid="button-download-current">
+            <Download className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            <span className="hidden sm:inline">Download {selectedMonth}</span>
+            <span className="sm:hidden">{selectedMonth?.slice(0, 3)}</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={openDownloadModal} className="text-xs gap-1.5 border-blue-200 text-blue-700 hover:bg-blue-50" data-testid="button-download-range">
-            <CalendarDays className="w-3.5 h-3.5" />
-            Download Range
+          <Button variant="outline" size="sm" onClick={openDownloadModal} className="text-[10px] sm:text-xs gap-1 sm:gap-1.5 px-2 sm:px-3 border-blue-200 text-blue-700 hover:bg-blue-50" data-testid="button-download-range">
+            <CalendarDays className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            <span className="hidden sm:inline">Download Range</span>
+            <span className="sm:hidden">Range</span>
           </Button>
         </div>
       </div>
 
-      <div className="flex items-center gap-4 flex-wrap">
-        <label className="flex items-center gap-2 text-xs text-slate-600">
+      <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
+        <label className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-slate-600">
           <input type="checkbox" checked={showCreditMeterOnly} onChange={e => setShowCreditMeterOnly(e.target.checked)} className="rounded" data-testid="checkbox-credit-meter" />
-          Show Credit Meter Consumption Journal only
+          <span className="hidden sm:inline">Show Credit Meter Consumption Journal only</span>
+          <span className="sm:hidden">Credit Meter only</span>
         </label>
-        <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)} className="border border-slate-300 rounded px-3 py-1.5 text-sm bg-white" data-testid="select-detail-year">
+        <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)} className="border border-slate-300 rounded px-2 sm:px-3 py-1.5 text-xs sm:text-sm bg-white" data-testid="select-detail-year">
           {years.map(y => <option key={y} value={y}>{y}</option>)}
           {years.length === 0 && <option value="">No data</option>}
         </select>
-        <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="border border-slate-300 rounded px-3 py-1.5 text-sm bg-white" data-testid="select-detail-month">
+        <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="border border-slate-300 rounded px-2 sm:px-3 py-1.5 text-xs sm:text-sm bg-white" data-testid="select-detail-month">
           {finYearMonths.map(m => <option key={m} value={m}>{m}</option>)}
         </select>
         {loading && <Loader2 className="w-4 h-4 animate-spin text-blue-500" />}
       </div>
 
-      <div className="overflow-x-auto border border-slate-200 rounded">
+      {/* Mobile card view */}
+      <div className="sm:hidden space-y-2" data-testid="detailed-transactions-mobile">
+        {detailedRows.length === 0 ? (
+          <div className="text-center text-slate-400 py-8 text-sm">No records to display</div>
+        ) : detailedRows.map((row: any, i: number) => {
+          if (row._dimmed) {
+            return (
+              <div key={i} className="text-center text-[10px] italic text-slate-400 py-1.5 border-b border-dashed border-slate-200" data-testid={`detail-card-${i}`}>{row.description}</div>
+            );
+          }
+          return (
+            <div
+              key={i}
+              onClick={() => handleRowClick(row)}
+              className={`border rounded-lg p-3 cursor-pointer transition-colors ${row.isBold ? 'bg-amber-50/50 border-amber-200' : row.isOpenBalance ? 'bg-blue-50/30 border-blue-200' : row.isCloseBalance ? 'bg-amber-50/50 border-amber-200' : row.isPayment ? 'border-red-200 bg-red-50/30' : 'border-slate-200 bg-white'}`}
+              data-testid={`detail-card-${i}`}
+            >
+              <div className="flex items-start justify-between gap-2 mb-1.5">
+                <div className="min-w-0 flex-1">
+                  <div className={`text-[11px] font-semibold truncate ${row.isBold ? 'font-bold text-slate-900' : row.isOpenBalance ? 'text-blue-600 italic' : row.isCloseBalance ? 'text-amber-800' : row.isPayment ? 'text-red-600' : 'text-slate-800'}`}>{row.description}</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">{row.transactionDate}</div>
+                </div>
+                <div className={`text-right shrink-0 font-mono text-sm font-bold ${row.isBold ? 'font-bold' : ''} ${(row.total || 0) < 0 ? 'text-red-600' : 'text-slate-800'}`}>{fmt(row.total)}</div>
+              </div>
+              <div className="grid grid-cols-3 gap-x-2 gap-y-1 text-[10px]">
+                <div><span className="text-slate-400">Amt:</span> <span className={`font-mono ${(row.amount || 0) < 0 ? 'text-red-600' : 'text-slate-700'}`}>{fmt(row.amount)}</span></div>
+                <div><span className="text-slate-400">Int:</span> <span className="font-mono text-slate-700">{fmt(row.interest)}</span></div>
+                <div><span className="text-slate-400">VAT:</span> <span className={`font-mono ${(row.vat || 0) < 0 ? 'text-red-600' : 'text-slate-700'}`}>{fmt(row.vat)}</span></div>
+              </div>
+              {(row.receiptId || row.tariff) && (
+                <div className="flex gap-3 mt-1 text-[10px] text-slate-500">
+                  {row.receiptId && <span>ID: {row.receiptId}</span>}
+                  {row.tariff && <span className="truncate">Tariff: {row.tariff}</span>}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop table view */}
+      <div className="hidden sm:block overflow-x-auto border border-slate-200 rounded">
         <table className="w-full text-xs" data-testid="detailed-transactions-table">
           <thead>
             <tr className="bg-slate-100 border-b border-slate-200">
@@ -761,22 +808,22 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
         </table>
       </div>
 
-      <div className="flex items-center justify-end gap-2 text-xs text-slate-500">
+      <div className="flex items-center justify-end gap-2 text-[10px] sm:text-xs text-slate-500">
         <span>Items per page: <span className="border rounded px-2 py-0.5">50</span></span>
         <span>{detailedRows.length === 0 ? '0 of 0' : `1 - ${detailedRows.length} of ${detailedRows.length}`}</span>
       </div>
 
       {showDownloadModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => !downloading && setShowDownloadModal(false)} data-testid="download-range-overlay">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-700 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center">
-                  <Download className="w-5 h-5 text-white" />
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm sm:max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-blue-600 to-indigo-700 flex items-center justify-between">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/15 flex items-center justify-center">
+                  <Download className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white">Download Transaction Data</h4>
-                  <p className="text-[11px] text-blue-200">Select a period range to export</p>
+                  <h4 className="text-xs sm:text-sm font-bold text-white">Download Transaction Data</h4>
+                  <p className="text-[10px] sm:text-[11px] text-blue-200">Select a period range to export</p>
                 </div>
               </div>
               {!downloading && (
@@ -784,24 +831,24 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
               )}
             </div>
 
-            <div className="p-6 space-y-5">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Financial Year</label>
-                <select value={downloadYear} onChange={e => setDownloadYear(e.target.value)} disabled={downloading} className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm bg-white disabled:opacity-50" data-testid="select-download-year">
+                <label className="block text-[10px] sm:text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5 sm:mb-2">Financial Year</label>
+                <select value={downloadYear} onChange={e => setDownloadYear(e.target.value)} disabled={downloading} className="w-full border border-slate-300 rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm bg-white disabled:opacity-50" data-testid="select-download-year">
                   {years.map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">From Period</label>
-                  <select value={downloadFromMonth} onChange={e => { setDownloadFromMonth(e.target.value); if (finYearMonths.indexOf(e.target.value) > finYearMonths.indexOf(downloadToMonth)) setDownloadToMonth(e.target.value); }} disabled={downloading} className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm bg-white disabled:opacity-50" data-testid="select-download-from">
+                  <label className="block text-[10px] sm:text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5 sm:mb-2">From Period</label>
+                  <select value={downloadFromMonth} onChange={e => { setDownloadFromMonth(e.target.value); if (finYearMonths.indexOf(e.target.value) > finYearMonths.indexOf(downloadToMonth)) setDownloadToMonth(e.target.value); }} disabled={downloading} className="w-full border border-slate-300 rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm bg-white disabled:opacity-50" data-testid="select-download-from">
                     {finYearMonths.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">To Period</label>
-                  <select value={downloadToMonth} onChange={e => setDownloadToMonth(e.target.value)} disabled={downloading} className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm bg-white disabled:opacity-50" data-testid="select-download-to">
+                  <label className="block text-[10px] sm:text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5 sm:mb-2">To Period</label>
+                  <select value={downloadToMonth} onChange={e => setDownloadToMonth(e.target.value)} disabled={downloading} className="w-full border border-slate-300 rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm bg-white disabled:opacity-50" data-testid="select-download-to">
                     {finYearMonths.filter(m => finYearMonths.indexOf(m) >= finYearMonths.indexOf(downloadFromMonth)).map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </div>
@@ -850,23 +897,23 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
       {selectedTxn && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setSelectedTxn(null); setTxnDetailData(null); }} data-testid="txn-detail-overlay">
           <div className="bg-white rounded-xl shadow-2xl max-w-[95vw] w-full max-h-[95vh] overflow-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-xl">
-              <div className="flex items-center gap-3">
-                <FileText className="w-5 h-5 text-white" />
-                <div>
-                  <h4 className="text-sm font-bold text-white">Transaction Detail & Ledger Posting</h4>
-                  <p className="text-[11px] text-blue-200">{selectedTxn.description} — {selectedTxn.transactionDate}</p>
+            <div className="flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-xl">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-white shrink-0" />
+                <div className="min-w-0">
+                  <h4 className="text-xs sm:text-sm font-bold text-white">Transaction Detail & Ledger Posting</h4>
+                  <p className="text-[10px] sm:text-[11px] text-blue-200 truncate">{selectedTxn.description} — {selectedTxn.transactionDate}</p>
                 </div>
               </div>
               <button onClick={() => { setSelectedTxn(null); setTxnDetailData(null); }} className="text-white/70 hover:text-white text-xl font-bold w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors" data-testid="button-close-detail">&times;</button>
             </div>
 
-            <div className="p-5 space-y-4">
+            <div className="p-3 sm:p-5 space-y-3 sm:space-y-4">
               <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-                <div className="px-4 py-2 bg-slate-50 border-b border-slate-200">
-                  <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Transaction Summary</h5>
+                <div className="px-3 sm:px-4 py-2 bg-slate-50 border-b border-slate-200">
+                  <h5 className="text-[10px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider">Transaction Summary</h5>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 p-3 sm:p-4">
                   <div>
                     <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Description</div>
                     <div className="text-sm font-medium text-slate-800 mt-0.5">{selectedTxn.description || '-'}</div>
@@ -1145,18 +1192,18 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
   };
 
   return (
-    <div className="p-5 space-y-5">
+    <div className="p-3 sm:p-5 space-y-3 sm:space-y-5">
       {receiptPreview && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setReceiptPreview(null)} data-testid="receipt-preview-overlay">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
-            <div className="px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-xl flex items-center justify-between">
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-xl flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-white" />
-                <h4 className="text-sm font-bold text-white">Receipt Preview</h4>
+                <h4 className="text-xs sm:text-sm font-bold text-white">Receipt Preview</h4>
               </div>
               <button onClick={() => setReceiptPreview(null)} className="text-white/70 hover:text-white text-xl font-bold w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center" data-testid="button-close-receipt-preview">&times;</button>
             </div>
-            <div className="p-5 space-y-3 font-mono text-sm">
+            <div className="p-3 sm:p-5 space-y-3 font-mono text-xs sm:text-sm">
               <div className="text-center">
                 <h3 className="font-bold text-slate-800">{receiptPreview.municipalityName || 'George Municipality'}</h3>
                 <p className="text-xs text-slate-500">{receiptPreview.address || ''}</p>
@@ -1189,9 +1236,9 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                 <span className="text-slate-500">Cashier:</span><span className="text-slate-700">{receiptPreview.cashierName || '-'}</span>
               </div>
             </div>
-            <div className="px-5 py-3 border-t border-slate-200 flex items-center justify-end gap-2">
-              <button onClick={() => setReceiptPreview(null)} className="px-4 py-2 border border-slate-300 text-slate-600 text-xs font-semibold rounded-lg hover:bg-slate-50" data-testid="button-close-receipt">Close</button>
-              <button onClick={handlePrintWindow} className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-xs font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 flex items-center gap-1.5 shadow-sm" data-testid="button-print-receipt-confirm">
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-t border-slate-200 flex items-center justify-end gap-2">
+              <button onClick={() => setReceiptPreview(null)} className="px-3 sm:px-4 py-1.5 sm:py-2 border border-slate-300 text-slate-600 text-[10px] sm:text-xs font-semibold rounded-lg hover:bg-slate-50" data-testid="button-close-receipt">Close</button>
+              <button onClick={handlePrintWindow} className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-[10px] sm:text-xs font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 flex items-center gap-1.5 shadow-sm" data-testid="button-print-receipt-confirm">
                 <FileText className="w-3.5 h-3.5" />
                 Print Receipt
               </button>
@@ -1200,23 +1247,24 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
         </div>
       )}
 
-      <div className="flex items-center gap-1 bg-white rounded-xl border border-slate-200 p-1.5 shadow-sm w-fit">
+      <div className="flex items-center gap-1 bg-white rounded-xl border border-slate-200 p-1 sm:p-1.5 shadow-sm w-full sm:w-fit overflow-x-auto">
         {[
-          { key: 'receipts', label: 'Receipt History', count: data.length, icon: Receipt },
-          { key: 'billing', label: 'Billing Period', count: billingPeriodTxns.length, icon: CalendarDays },
-          { key: 'detailed', label: 'Detailed Transactions', count: detailedTxns.length, icon: FileText },
+          { key: 'receipts', label: 'Receipt History', shortLabel: 'Receipts', count: data.length, icon: Receipt },
+          { key: 'billing', label: 'Billing Period', shortLabel: 'Billing', count: billingPeriodTxns.length, icon: CalendarDays },
+          { key: 'detailed', label: 'Detailed Transactions', shortLabel: 'Detailed', count: detailedTxns.length, icon: FileText },
         ].map(sub => {
           const Icon = sub.icon;
           return (
             <button
               key={sub.key}
               onClick={() => setActiveSubTab(sub.key)}
-              className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${activeSubTab === sub.key ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-semibold rounded-lg transition-all whitespace-nowrap ${activeSubTab === sub.key ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}
               data-testid={`button-subtab-${sub.key}`}
             >
-              <Icon className="w-3.5 h-3.5" />
-              {sub.label}
-              <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${activeSubTab === sub.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>{sub.count}</span>
+              <Icon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span className="hidden sm:inline">{sub.label}</span>
+              <span className="sm:hidden">{sub.shortLabel}</span>
+              <span className={`ml-0.5 sm:ml-1 px-1 sm:px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold ${activeSubTab === sub.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>{sub.count}</span>
             </button>
           );
         })}
@@ -1294,7 +1342,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
               )}
 
               {receiptView === 'timeline' ? (
-                <div className="px-4 sm:px-6 py-4 space-y-6 max-h-[70vh] overflow-y-auto" data-testid="receipt-timeline">
+                <div className="px-3 sm:px-6 py-3 sm:py-4 space-y-4 sm:space-y-6 max-h-[70vh] overflow-y-auto" data-testid="receipt-timeline">
                   {filteredReceipts.length === 0 ? (
                     <div className="py-8 text-center text-slate-400 text-sm italic">No receipts match the selected filter.</div>
                   ) : groupedByMonth.map(group => (
@@ -1424,7 +1472,49 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                   ))}
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <>
+                {/* Mobile card view for receipt table */}
+                <div className="sm:hidden p-2 space-y-2">
+                  {sortedReceipts.map((item: any, i: number) => (
+                    <div key={item.receiptId || i} className={`border rounded-lg p-3 ${item.isCancelled ? 'bg-red-50/30 border-red-200' : 'bg-white border-slate-200'}`} data-testid={`receipt-card-${i}`}>
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <div>
+                          <div className="font-mono text-xs font-bold text-blue-700">{item.receiptNo || '-'}</div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">{item.receiptDate ? new Date(item.receiptDate).toLocaleDateString('en-ZA') : '-'}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-mono text-sm font-bold text-slate-800">R {(item.amount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
+                          {item.isCancelled ? (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-red-100 text-red-700"><X className="w-2.5 h-2.5" /> Cancelled</span>
+                          ) : (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-100 text-emerald-700"><Activity className="w-2.5 h-2.5" /> Active</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 mt-2">
+                        <div className="flex flex-wrap gap-1 text-[10px] text-slate-500">
+                          <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md font-medium ${
+                            (item.paymentType || '').toLowerCase().includes('cash') ? 'bg-green-50 text-green-700' :
+                            (item.paymentType || '').toLowerCase().includes('card') ? 'bg-purple-50 text-purple-700' :
+                            'bg-slate-50 text-slate-600'
+                          }`}>{item.paymentType || '-'}</span>
+                          {item.cashierName && <span>• {item.cashierName}</span>}
+                        </div>
+                        <button
+                          onClick={() => handlePrintReceipt(item)}
+                          disabled={printingId === String(item.receiptId || item.receipt_ID) || !item.receiptId}
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-[10px] font-semibold rounded-lg disabled:opacity-40 shrink-0"
+                          data-testid={`button-print-receipt-mobile-${i}`}
+                        >
+                          {printingId === String(item.receiptId || item.receipt_ID) ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />}
+                          Print
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Desktop table view */}
+                <div className="hidden sm:block overflow-x-auto">
                   <table className="w-full text-sm" data-testid="table-transaction-history">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200">
@@ -1492,6 +1582,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                     </tbody>
                   </table>
                 </div>
+                </>
               )}
             </div>
           </div>
@@ -1501,12 +1592,36 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
       {activeSubTab === 'billing' && (
         billingPeriodTxns.length === 0 ? <EmptyState message="No billing period transactions found" /> : (
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
               <CalendarDays className="w-4 h-4 text-white" />
               <h3 className="text-sm font-semibold text-white tracking-wide">Billing Period Transactions</h3>
               <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{billingPeriodTxns.length}</Badge>
             </div>
-            <div className="overflow-x-auto">
+            {/* Mobile card view for billing period */}
+            <div className="sm:hidden p-2 space-y-2">
+              {billingPeriodTxns.map((item: any, i: number) => {
+                const isOpenClose = (item.description || '').toLowerCase().includes('balance');
+                const fmtAmt = (v: number) => v !== 0 ? v.toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : '0,00';
+                return (
+                  <div key={i} className={`border rounded-lg p-3 ${isOpenClose ? 'bg-slate-50/50 border-slate-300' : 'bg-white border-slate-200'}`} data-testid={`billing-card-${i}`}>
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <div className="min-w-0 flex-1">
+                        <div className={`text-[11px] font-semibold truncate ${isOpenClose ? 'font-bold text-slate-900' : 'text-slate-800'}`}>{item.description || '-'}</div>
+                        <div className="text-[10px] text-slate-500 mt-0.5">{item.transactionDate ? new Date(item.transactionDate).toLocaleDateString('en-ZA') : '-'}</div>
+                      </div>
+                      <div className="font-mono text-sm font-bold text-slate-800 shrink-0">{fmtAmt(item.totalAmount ?? 0)}</div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-x-2 text-[10px]">
+                      <div><span className="text-slate-400">Amt:</span> <span className="font-mono text-slate-700">{fmtAmt(item.amount ?? 0)}</span></div>
+                      <div><span className="text-slate-400">Int:</span> <span className="font-mono text-orange-600">{fmtAmt(item.interestAmount ?? 0)}</span></div>
+                      <div><span className="text-slate-400">VAT:</span> <span className="font-mono text-slate-500">{fmtAmt(item.vatAmount ?? 0)}</span></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Desktop table view */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-sm" data-testid="table-billing-period-transactions">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
@@ -1551,9 +1666,9 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
           const fmtPivot = (v: number) => v !== 0 ? v.toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : '-';
           return (
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-3 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
               <FileText className="w-4 h-4 text-white" />
-              <h3 className="text-sm font-semibold text-white tracking-wide">Detailed Transactions</h3>
+              <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Detailed Transactions</h3>
               <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{detailedTxns.length}</Badge>
             </div>
             <div className="overflow-x-auto">

@@ -221,11 +221,11 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
   const DetailItem = ({ label, value, icon, mono, accent }: { label: string; value: any; icon?: React.ReactNode; mono?: boolean; accent?: boolean }) => {
     const display = safeStr(value);
     return (
-      <div className="group flex items-start gap-3 py-2.5 px-3 rounded-lg hover:bg-slate-50/80 transition-all duration-200 cursor-default" data-testid={`field-${label.toLowerCase().replace(/\s+/g, '-')}`}>
-        {icon && <span className="mt-0.5 text-slate-400 group-hover:text-blue-500 transition-colors shrink-0">{icon}</span>}
+      <div className="group flex items-start gap-2 sm:gap-3 py-2 sm:py-2.5 px-2 sm:px-3 rounded-lg hover:bg-slate-50/80 transition-all duration-200 cursor-default" data-testid={`field-${label.toLowerCase().replace(/\s+/g, '-')}`}>
+        {icon && <span className="mt-0.5 text-slate-400 group-hover:text-blue-500 transition-colors shrink-0 hidden sm:block">{icon}</span>}
         <div className="flex-1 min-w-0">
-          <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-0.5">{label}</div>
-          <div className={`text-[13px] font-medium leading-snug break-words ${mono ? 'font-mono' : ''} ${accent ? 'text-blue-700' : 'text-slate-800'} ${display === '-' ? 'text-slate-300' : ''}`}>{display}</div>
+          <div className="text-[9px] sm:text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-0.5">{label}</div>
+          <div className={`text-[12px] sm:text-[13px] font-medium leading-snug break-words ${mono ? 'font-mono' : ''} ${accent ? 'text-blue-700' : 'text-slate-800'} ${display === '-' ? 'text-slate-300' : ''}`}>{display}</div>
         </div>
       </div>
     );
@@ -235,12 +235,12 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden transition-shadow hover:shadow-md" data-testid={`section-${id}`}>
       <button
         onClick={() => toggle(id)}
-        className={`w-full flex items-center gap-3 px-5 py-3.5 transition-all duration-200 ${openSections[id] ? `bg-gradient-to-r ${color} text-white` : 'bg-white hover:bg-slate-50 text-slate-700'}`}
+        className={`w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-3.5 transition-all duration-200 ${openSections[id] ? `bg-gradient-to-r ${color} text-white` : 'bg-white hover:bg-slate-50 text-slate-700'}`}
         data-testid={`btn-toggle-${id}`}
       >
         <span className={`${openSections[id] ? 'text-white/90' : 'text-slate-400'}`}>{icon}</span>
-        <span className={`text-sm font-semibold tracking-wide flex-1 text-left ${openSections[id] ? '' : ''}`}>{title}</span>
-        {badge}
+        <span className="text-xs sm:text-sm font-semibold tracking-wide flex-1 text-left">{title}</span>
+        <span className="hidden sm:flex">{badge}</span>
         <span className={openSections[id] ? 'text-white/70' : 'text-slate-300'}>
           {openSections[id] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </span>
@@ -568,13 +568,13 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
   const dob = n.dateOfBirth ? (() => { try { const d = new Date(n.dateOfBirth); return isNaN(d.getTime()) ? n.dateOfBirth : d.toLocaleDateString('en-ZA'); } catch { return n.dateOfBirth; } })() : '';
 
   return (
-    <div className="p-5 space-y-5" data-testid="name-info-panel">
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5" data-testid="name-info-panel">
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
           <User className="w-4 h-4 text-white" />
-          <h3 className="text-sm font-semibold text-white tracking-wide">Person Details</h3>
+          <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Person Details</h3>
         </div>
-        <div className="p-5">
+        <div className="p-3 sm:p-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
             <div>
               <InfoField label="ID Number" value={n.idNo_RegistrationNo} />
@@ -598,13 +598,13 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
             <Briefcase className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Employer Details</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Employer Details</h3>
           </div>
-          <div className="p-5">
+          <div className="p-3 sm:p-5">
             <InfoField label="Employment Status" value={n.employementStatusDesc} />
             <InfoField label="Employer" value={n.employer} />
             <InfoField label="Contact Person" value={n.contactPerson} />
@@ -614,22 +614,22 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
             <Heart className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Marital Details</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Marital Details</h3>
           </div>
-          <div className="p-5">
+          <div className="p-3 sm:p-5">
             <InfoField label="Marital Status" value={n.kinMarriedStatus} />
           </div>
         </div>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center gap-2">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center gap-2">
           <Users className="w-4 h-4 text-white" />
-          <h3 className="text-sm font-semibold text-white tracking-wide">Next of Kin</h3>
+          <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Next of Kin</h3>
         </div>
-        <div className="p-5">
+        <div className="p-3 sm:p-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
             <div>
               <InfoField label="Last Name" value={n.kinLastName} />
@@ -649,24 +649,25 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2 justify-between">
-          <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">All Accounts for This Person</h3>
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2 justify-between">
+          <div className="flex items-center gap-2 min-w-0">
+            <Layers className="w-4 h-4 text-white shrink-0" />
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide truncate">All Accounts for This Person</h3>
           </div>
           <Button
             size="sm"
             variant="secondary"
-            className="h-7 text-xs bg-white/20 text-white hover:bg-white/30 border-0 gap-1.5"
+            className="h-7 text-[10px] sm:text-xs bg-white/20 text-white hover:bg-white/30 border-0 gap-1 sm:gap-1.5 shrink-0"
             onClick={searchRelatedAccounts}
             disabled={relatedLoading}
             data-testid="button-find-related-accounts"
           >
             {relatedLoading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
-            {relatedLoading ? 'Searching...' : relatedSearched ? 'Refresh' : 'Find Accounts'}
+            <span className="hidden sm:inline">{relatedLoading ? 'Searching...' : relatedSearched ? 'Refresh' : 'Find Accounts'}</span>
+            <span className="sm:hidden">{relatedLoading ? '...' : relatedSearched ? 'Refresh' : 'Find'}</span>
           </Button>
         </div>
-        <div className="p-5">
+        <div className="p-3 sm:p-5">
           {!relatedSearched && !relatedLoading && (
             <div className="text-center py-6">
               <Layers className="w-8 h-8 text-slate-300 mx-auto mb-2" />
@@ -691,7 +692,27 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
           {relatedSearched && !relatedLoading && relatedAccounts.length > 0 && (
             <div>
               <div className="text-xs text-muted-foreground mb-3">{relatedAccounts.length} other account(s) found</div>
-              <div className="border rounded-lg overflow-hidden">
+              <div className="sm:hidden space-y-2">
+                {relatedAccounts.map((acc, idx) => {
+                  const aid = acc.account_ID || acc.accountID;
+                  const statusClass = acc.accountStatus?.toLowerCase() === 'active' ? 'bg-green-50 text-green-700' :
+                    acc.accountStatus?.toLowerCase() === 'closed' || acc.accountStatus?.toLowerCase() === 'inactive' ? 'bg-red-50 text-red-700' :
+                    'bg-slate-100 text-slate-600';
+                  return (
+                    <div key={`${aid}-${idx}`} className="border border-slate-200 rounded-lg p-3 space-y-1.5 active:bg-blue-50" onClick={() => onNavigateToAccount?.(acc)}>
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-xs font-semibold text-blue-700">{acc.accountNumber || acc.oldAccountCode || String(aid)}</span>
+                        <Badge variant="secondary" className={`text-[9px] ${statusClass}`}>{acc.accountStatus || '-'}</Badge>
+                      </div>
+                      <div className="text-[11px] font-medium text-slate-800">{acc.name || [acc.initials, acc.surname_Company].filter(Boolean).join(' ') || '-'}</div>
+                      {(acc.locationAddress || acc.deliveryAddress || acc.address) && (
+                        <div className="text-[10px] text-slate-500 truncate">{acc.locationAddress || acc.deliveryAddress || acc.address}</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="hidden sm:block border rounded-lg overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-slate-50 border-b">
@@ -1124,7 +1145,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
   };
 
   return (
-    <div className="p-5 space-y-5" data-testid="balance-debt-tab">
+    <div className="p-3 sm:p-5 space-y-4 sm:space-y-5" data-testid="balance-debt-tab">
       {receiptPreview && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setReceiptPreview(null)} data-testid="receipt-preview-overlay">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
@@ -1181,18 +1202,18 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
       <div className="flex items-center justify-end gap-2 mb-1">
         <button
           onClick={() => generateBalanceDebtPdf(accountId, balanceData, capitalPlans, ratesData, payments, reversals, agingCols, fmt, fmtDash, getVal, sumField)}
-          className="flex items-center gap-1.5 text-xs font-medium text-white bg-slate-700 hover:bg-slate-800 rounded-lg px-3.5 py-2 transition-colors shadow-sm"
+          className="flex items-center gap-1.5 text-[10px] sm:text-xs font-medium text-white bg-slate-700 hover:bg-slate-800 rounded-lg px-2.5 sm:px-3.5 py-1.5 sm:py-2 transition-colors shadow-sm"
           data-testid="btn-print-all-pdf"
         >
-          <Printer className="w-3.5 h-3.5" /> Print All to PDF
+          <Printer className="w-3 sm:w-3.5 h-3 sm:h-3.5" /> <span className="hidden sm:inline">Print All to</span> PDF
         </button>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
-          <Landmark className="w-4 h-4 text-white" />
-          <h3 className="text-sm font-semibold text-white tracking-wide">Total Balance / Debt Inquiry</h3>
-          <div className="ml-auto flex items-center gap-2">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+          <Landmark className="w-4 h-4 text-white shrink-0" />
+          <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide truncate">Total Balance / Debt</h3>
+          <div className="ml-auto flex items-center gap-1 sm:gap-2 shrink-0">
             {balanceData.length > 0 && (
               <SectionDownloadBtn onClick={() => {
                 const hdrs = ['Service', 'Total Outstanding', ...agingCols.map(c => c.label)];
@@ -1228,7 +1249,41 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
             </button>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="sm:hidden p-2 space-y-2">
+          {balanceData.length === 0 ? (
+            <div className="py-6 text-center text-slate-400 text-sm">No balance data available</div>
+          ) : (
+            <>
+              {balanceData.map((item: any, i: number) => (
+                <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-slate-800">{item.serviceDescription || `Service ${i + 1}`}</span>
+                    <span className="text-[12px] font-bold font-mono text-red-600">{fmt(item.totalOutStanding ?? item.totalOutstandingAmount ?? 0)}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 pt-1 border-t border-slate-100">
+                    {agingCols.map(col => {
+                      const v = getVal(item, col.keys);
+                      if (v === 0 || v === null || v === undefined) return null;
+                      return (
+                        <div key={col.label} className="flex justify-between text-[10px]">
+                          <span className="text-slate-500">{col.label}</span>
+                          <span className="font-mono font-medium text-slate-700">{fmtDash(v)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              <div className="border-2 border-blue-200 rounded-lg p-3 bg-blue-50/50">
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] font-bold text-slate-900">Total</span>
+                  <span className="text-[13px] font-bold font-mono text-red-700">{fmt(sumField(balanceData, 'totalOutStanding', 'totalOutstandingAmount'))}</span>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm" data-testid="table-balance-debt">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
@@ -1269,10 +1324,10 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden" data-testid="debtors-remaining-capital">
-        <div className="px-5 py-3 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
-          <Layers className="w-4 h-4 text-white" />
-          <h3 className="text-sm font-semibold text-white tracking-wide">Debtors - Remaining Capital Amounts</h3>
-          <div className="ml-auto flex items-center gap-2">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
+          <Layers className="w-4 h-4 text-white shrink-0" />
+          <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide truncate">Remaining Capital</h3>
+          <div className="ml-auto flex items-center gap-1 sm:gap-2 shrink-0">
             {capitalPlans.length > 0 && (
               <SectionDownloadBtn onClick={() => {
                 const hdrs = ['Service Description', 'Capital Amount', 'Remaining Capital Amount', 'Instalment Amount', 'Repayment Period', 'Remaining Period'];
@@ -1305,7 +1360,32 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
             )}
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="sm:hidden p-2 space-y-2">
+          {capitalPlans.length === 0 ? (
+            <div className="py-6 text-center text-slate-400 text-sm italic">No records to display.</div>
+          ) : (
+            <>
+              {capitalPlans.map((plan: any, i: number) => (
+                <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`card-capital-${i}`}>
+                  <div className="text-[11px] font-semibold text-slate-800 mb-1">{plan.serviceDescription || plan.description || plan.capitalCostType || plan.serviceType || `Service ${i + 1}`}</div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                    <div className="flex justify-between text-[10px]"><span className="text-slate-500">Capital</span><span className="font-mono font-medium text-slate-700">{fmt(plan.capitalAmount ?? plan.originalCapital ?? 0)}</span></div>
+                    <div className="flex justify-between text-[10px]"><span className="text-slate-500">Remaining</span><span className="font-mono font-semibold text-purple-700">{fmt(plan.remainingCapitalAmount ?? plan.remainingCapital ?? plan.capitalRemaining ?? 0)}</span></div>
+                    <div className="flex justify-between text-[10px]"><span className="text-slate-500">Instalment</span><span className="font-mono font-medium text-slate-700">{fmt(plan.instalmentAmount ?? plan.installmentAmount ?? plan.monthlyInstalment ?? 0)}</span></div>
+                    <div className="flex justify-between text-[10px]"><span className="text-slate-500">Period</span><span className="text-slate-700">{plan.repaymentPeriod ?? '-'} / {plan.remainingPeriod ?? '-'} left</span></div>
+                  </div>
+                </div>
+              ))}
+              <div className="border-2 border-purple-200 rounded-lg p-3 bg-purple-50/50">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-bold text-slate-900">Total Remaining</span>
+                  <span className="font-bold font-mono text-purple-700">{fmt(capitalPlans.reduce((s: number, p: any) => s + (p.remainingCapitalAmount ?? p.remainingCapital ?? p.capitalRemaining ?? 0), 0))}</span>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm" data-testid="table-remaining-capital">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
