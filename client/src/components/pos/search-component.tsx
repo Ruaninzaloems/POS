@@ -3,8 +3,7 @@ import { Search, CreditCard, Users, Zap, FileText, Layers, Info, Filter, Loader2
 import { getCategoryIcon } from '@/lib/category-icons';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Account, searchInstitutions, InstitutionSearchResult, fetchMiscPaymentGroups, fetchMiscPaymentScoaItems, MiscPaymentGroup, MiscPaymentScoaItem, platinumGetClearanceIds, platinumSearchAccountsWithSignal, fetchEnquiryResultsWithSignal } from '@/lib/external-api';
-import { autocomplete, getAutocompleteTypesForQuery } from '@/lib/enquiries-service';
+import { Account, searchInstitutions, InstitutionSearchResult, fetchMiscPaymentGroups, fetchMiscPaymentScoaItems, MiscPaymentGroup, MiscPaymentScoaItem, platinumGetClearanceIds, platinumSearchAccountsWithSignal } from '@/lib/external-api';
 
 export function parseMobileFromContactDetails(contactDetails: string | undefined | null): string {
     if (!contactDetails) return '';
@@ -129,47 +128,58 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
   const [externalResults, setExternalResults] = useState<SearchResult[]>([]);
   const [isSearchingExternal, setIsSearchingExternal] = useState(false);
 
+  const searchAbortRef = useRef<AbortController | null>(null);
+
   const searchExternalApi = async (query: string) => {
       if (query.length < 3) return;
+
+      if (searchAbortRef.current) {
+          searchAbortRef.current.abort();
+      }
+
+      const controller = new AbortController();
+      searchAbortRef.current = controller;
+
       setIsSearchingExternal(true);
       try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 35000);
+          const timeoutId = setTimeout(() => controller.abort(), 15000);
 
           const searchBody: Record<string, any> = {
               userId: userId || null,
               finYear: finYear || null,
           };
 
-          if (/^\d+$/.test(query)) {
+          const isNumeric = /^\d+$/.test(query);
+          if (isNumeric) {
               searchBody.accountNo = query;
           } else {
               searchBody.name = query;
           }
 
-          const acTypes = getAutocompleteTypesForQuery(query);
-
-          const oldAccSearchPromise = /^\d+$/.test(query)
-              ? platinumSearchAccountsWithSignal({ userId: userId || null, finYear: finYear || null, oldAccountCode: query }, controller.signal).catch(() => null)
-              : Promise.resolve(null);
-
-          const [searchData, oldAccData, institutionResults, clearanceResults, ...acResults] = await Promise.all([
+          const primarySearches: Promise<any>[] = [
               platinumSearchAccountsWithSignal(searchBody, controller.signal).catch((err: any) => {
                   if (err.name === 'AbortError') return null;
-                  throw err;
+                  return null;
               }),
-              oldAccSearchPromise,
-              searchInstitutions(query),
-              (scope === 'ALL' || scope === 'CLEARANCE') ? platinumGetClearanceIds({ clearanceId: query }).catch(() => []) : Promise.resolve([]),
-              ...acTypes.map(t => autocomplete(query, t).catch(() => [])),
-          ]);
+              searchInstitutions(query).catch(() => []),
+          ];
 
-          const acSuggestions = (acResults as { displayItem: string; accountId: number }[][]).flat();
+          if (isNumeric) {
+              primarySearches.push(
+                  platinumSearchAccountsWithSignal({ userId: userId || null, finYear: finYear || null, oldAccountCode: query }, controller.signal).catch(() => null)
+              );
+          }
+
+          if (scope === 'ALL' || scope === 'CLEARANCE') {
+              primarySearches.push(platinumGetClearanceIds({ clearanceId: query }).catch(() => []));
+          }
+
+          const [searchData, institutionResults, oldAccData, clearanceResults] = await Promise.all(primarySearches);
 
           clearTimeout(timeoutId);
+          if (controller.signal.aborted) return;
 
           let allAccountData: any[] = [];
-          const oldAccMatchedIds = new Set<number>();
           if (searchData) {
               if (Array.isArray(searchData)) {
                   allAccountData = searchData;
@@ -184,7 +194,6 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                   const existingPrimaryIds = new Set(allAccountData.map((item: any) => item.account_ID || item.accountID));
                   for (const item of oldItems) {
                       const itemId = item.account_ID || item.accountID;
-                      oldAccMatchedIds.add(itemId);
                       if (itemId && !existingPrimaryIds.has(itemId)) {
                           item._foundViaOldCode = true;
                           allAccountData.push(item);
@@ -197,31 +206,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
               } catch {}
           }
 
-          const acAccountIds = (acSuggestions || []).filter((s: any) => s.accountId && s.accountId > 0).map((s: any) => s.accountId);
-          const existingIds = new Set(allAccountData.map((item: any) => item.account_ID || item.accountID));
-          const missingAcIds = acAccountIds.filter((id: number) => !existingIds.has(id)).slice(0, 5);
-
-          if (missingAcIds.length > 0) {
-              const acLookups = await Promise.allSettled(
-                  missingAcIds.map((id: number) =>
-                      fetchEnquiryResultsWithSignal({ accountID: String(id) }, controller.signal)
-                  )
-              );
-              for (const r of acLookups) {
-                  if (r.status === 'fulfilled' && r.value) {
-                      const items = Array.isArray(r.value) ? r.value : [r.value];
-                      for (const item of items) {
-                          const itemId = item.account_ID || item.accountID;
-                          if (itemId && !existingIds.has(itemId)) {
-                              existingIds.add(itemId);
-                              allAccountData.push(item);
-                          }
-                      }
-                  }
-              }
-          }
-
-          if (allAccountData.length === 0 && /^\d+$/.test(query)) {
+          if (allAccountData.length === 0 && isNumeric && !controller.signal.aborted) {
               try {
                   const meterData = await platinumSearchAccountsWithSignal(
                       { userId: userId || null, finYear: finYear || null, physicalMeterNo: query },
@@ -232,6 +217,8 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                   }
               } catch {}
           }
+
+          if (controller.signal.aborted) return;
 
           const uniqueAccounts = Array.from(new Map(allAccountData.map(item => [item.account_ID, item])).values());
 
@@ -274,7 +261,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
           });
 
           const groupedInstitutions = new Map<number, { desc: string; members: InstitutionSearchResult[] }>();
-          for (const inst of institutionResults) {
+          for (const inst of (institutionResults || [])) {
               if (inst.institutionID != null) {
                   if (!groupedInstitutions.has(inst.institutionID)) {
                       groupedInstitutions.set(inst.institutionID, { desc: inst.institutionDesc || 'Unknown Group', members: [] });
@@ -324,7 +311,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
           } else {
               setExternalResults([]);
           }
-      }, 800); // 800ms debounce for network calls
+      }, 400);
 
       return () => clearTimeout(timer);
   }, [searchQuery]);
