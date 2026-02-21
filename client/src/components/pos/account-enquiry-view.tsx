@@ -342,353 +342,286 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
       });
   };
 
-  const Field = ({ label, value }: { label: string, value: string | number | undefined }) => (
-    <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] lg:grid-cols-[200px_1fr] border-b border-gray-100 last:border-0 py-1 text-sm">
-      <div className="font-semibold text-gray-800 px-2 text-xs sm:text-sm">{label}</div>
-      <div className="text-gray-600 px-2 break-words">{value || '-'}</div>
-    </div>
-  );
+  const isActive = (account.status || 'Active').toLowerCase() === 'active';
+  const accountName = account.name || 'Unknown';
 
-  const SectionHeader = ({ title }: { title: string }) => (
-    <div className="bg-gradient-to-b from-gray-200 to-gray-300 px-4 py-2 font-bold text-gray-800 border border-gray-300 mt-6 mb-2 text-sm shadow-sm">
-      {title}
+  const Field = ({ label, value }: { label: string, value: string | number | undefined }) => (
+    <div className="flex justify-between items-start py-1.5 border-b border-slate-100 last:border-0 gap-2">
+      <span className="text-[11px] sm:text-xs text-slate-500 shrink-0">{label}</span>
+      <span className="text-[11px] sm:text-xs text-slate-800 font-medium text-right break-words">{value || '-'}</span>
     </div>
   );
 
   return (
-    <div className="bg-white p-3 sm:p-6 shadow-sm border border-gray-200 text-sm relative">
-       <div className="flex flex-wrap gap-2 justify-end mb-3 sm:mb-0 sm:absolute sm:top-6 sm:right-6">
-          {hasPropertyRates && (
-              <Button 
-                variant="default" 
-                size="sm" 
-                onClick={handlePayRatesAdvance}
-                className="gap-1 sm:gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm"
-                data-testid="button-pay-rates-advance"
+    <div className="space-y-3">
+       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+         <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+           <div className="flex items-center gap-2.5">
+              <button
+                onClick={() => { if (viewingItemId) setViewingItem(null); else removeItem(item.id); }}
+                className="shrink-0 w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors"
+                data-testid="button-close-enquiry"
               >
-                <CalendarRange className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Pay Rates in Advance</span>
-                <span className="sm:hidden">Rates</span>
-              </Button>
-          )}
+                <ArrowLeft className="w-3.5 h-3.5" />
+              </button>
 
-          {account.prepaidMeterNo && (
-              <Button 
-                variant="default" 
-                size="sm" 
-                onClick={handleBuyPrepaid}
-                className={`gap-1 sm:gap-2 text-xs sm:text-sm ${account.prepaidType === 'Water' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-yellow-600 hover:bg-yellow-700 text-white'}`}
-                data-testid="button-buy-prepaid"
-              >
-                {account.prepaidType === 'Water' ? <Droplets className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
-                <span className="hidden sm:inline">Buy Prepaid {account.prepaidType || 'Electricity'}</span>
-                <span className="sm:hidden">Prepaid</span>
-              </Button>
-          )}
+              <div className="shrink-0 h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                {accountName.charAt(0).toUpperCase()}
+              </div>
 
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => {
-                if (viewingItemId) {
-                    setViewingItem(null);
-                } else {
-                    removeItem(item.id);
-                }
-            }}
-            className="gap-1 sm:gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 text-xs sm:text-sm"
-            data-testid="button-close-enquiry"
-          >
-            <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            {viewingItemId ? 'Back' : 'Close'}
-          </Button>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h3 className="text-sm font-bold text-slate-900 truncate max-w-[160px] sm:max-w-none" data-testid="text-account-name">
+                    {accountName}
+                  </h3>
+                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${isActive ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                    {account.status || 'Active'}
+                  </span>
+                </div>
+                <div className="text-[10px] text-slate-500 font-mono mt-0.5 truncate">
+                  Acc: {account.accountNo}
+                  {account.oldCode && <span className="text-slate-400"> | Old: {account.oldCode}</span>}
+                </div>
+              </div>
+
+              <div className="shrink-0 text-right">
+                <div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Balance</div>
+                <div className={`text-sm sm:text-base font-bold font-mono tracking-tight ${account.outstandingAmount > 0 ? 'text-red-600' : account.outstandingAmount < 0 ? 'text-emerald-600' : 'text-slate-800'}`} data-testid="text-total-outstanding">
+                  R {account.outstandingAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
+           </div>
+
+           <div className="flex gap-1.5 mt-2 flex-wrap">
+              {hasPropertyRates && (
+                <button onClick={handlePayRatesAdvance} className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100 transition-colors" data-testid="button-pay-rates-advance">
+                  <CalendarRange className="w-3 h-3" /> Rates Advance
+                </button>
+              )}
+              {account.prepaidMeterNo && (
+                <button onClick={handleBuyPrepaid} className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium ring-1 hover:opacity-90 transition-colors ${account.prepaidType === 'Water' ? 'bg-blue-50 text-blue-700 ring-blue-200' : 'bg-amber-50 text-amber-700 ring-amber-200'}`} data-testid="button-buy-prepaid">
+                  {account.prepaidType === 'Water' ? <Droplets className="w-3 h-3" /> : <Zap className="w-3 h-3" />}
+                  Prepaid {account.prepaidType || 'Electricity'}
+                </button>
+              )}
+              <button onClick={fetchBalanceData} disabled={balanceLoading} className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-orange-50 text-orange-700 ring-1 ring-orange-200 hover:bg-orange-100 transition-colors disabled:opacity-50" data-testid="button-refresh-account-transactions">
+                {balanceLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                Refresh
+              </button>
+           </div>
+         </div>
+
+         {account.prepaidBlocked && (
+           <div className="mx-3 mt-3 p-2.5 rounded-lg bg-red-50 border border-red-200">
+             <div className="flex items-start gap-2">
+               <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+               <div>
+                 <div className="text-xs font-bold text-red-800">
+                   Prepaid {account.blockedServices?.join(' & ') || account.prepaidType} Blocked
+                 </div>
+                 <div className="text-[10px] text-red-700 mt-0.5">Reason: {account.prepaidBlockReason}</div>
+               </div>
+             </div>
+           </div>
+         )}
+
+         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+           <CollapsibleTrigger asChild>
+             <button className="w-full flex items-center justify-between px-3 sm:px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors border-b border-slate-100" data-testid="button-toggle-details">
+               <span className="flex items-center gap-1.5">
+                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                 Account Details
+               </span>
+               {detailsLoading && <Loader2 className="w-3 h-3 animate-spin text-blue-400" />}
+             </button>
+           </CollapsibleTrigger>
+           <CollapsibleContent>
+             <div className="px-3 sm:px-4 py-2 space-y-3 bg-slate-50/50">
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+                 <div>
+                   <Field label="Account Number" value={account.accountNo} />
+                   <Field label="Account Type" value={account.accountType} />
+                   <Field label="Account Group" value={account.accountGroup || 'None - Normal'} />
+                   <Field label="Email" value={account.email} />
+                   <Field label="Contact" value={account.mobile} />
+                   <Field label="Deposit" value={`R${(account.paidDepositAmount ?? 0).toFixed(2)}`} />
+                 </div>
+                 <div>
+                   <Field label="Name" value={account.name} />
+                   <Field label="Status" value={account.status || 'Active'} />
+                   <Field label="Address" value={account.deliveryAddress || account.address} />
+                   <Field label="Handover" value={account.handoverStatus || handoverStatus} />
+                   <Field label="Incentive" value={account.incentiveSchemeCode || incentiveCode} />
+                   <Field label="SG Number" value={account.sgNo} />
+                 </div>
+               </div>
+
+               <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pt-1">Property</div>
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+                 <div>
+                   <Field label="Property ID" value={formatPropertyId(account.propertyId) || account.unitId} />
+                   <Field label="Property Type" value={account.propertyType || 'Erf'} />
+                   <Field label="Location" value={account.locationAddress || account.address} />
+                   <Field label="Billing Cycle" value={account.billingCycle || '1 Consumer Account Cycle'} />
+                 </div>
+                 <div>
+                   <Field label="Old Property Code" value={account.oldPropertyCode || account.oldCode} />
+                   <Field label="Type of Use" value={account.propertyTypeOfUse || 'RES'} />
+                   <Field label="Market Value" value={account.marketValue != null ? `R ${account.marketValue.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : undefined} />
+                   <Field label="Owner" value={(() => {
+                     const ownerName = account.accountableOwnerName || account.addName || account.name;
+                     const idNo = account.idNo || nameInfo?.idNo_RegistrationNo;
+                     if (idNo && ownerName && !ownerName.includes(idNo)) return `${ownerName} (${idNo})`;
+                     return ownerName;
+                   })()} />
+                 </div>
+               </div>
+             </div>
+           </CollapsibleContent>
+         </Collapsible>
        </div>
 
-       <div className="bg-gradient-to-b from-gray-200 to-gray-300 px-4 py-2 font-bold text-gray-800 border border-gray-300 mb-4 text-sm shadow-sm flex justify-between items-center">
-         <div className="flex items-center gap-3">
-             <Button variant="ghost" size="icon" className="h-6 w-6 -ml-1 text-gray-600 hover:bg-gray-300/50 rounded-sm" onClick={() => {
-                 if (viewingItemId) setViewingItem(null);
-                 else removeItem(item.id);
-             }}>
-                <ArrowLeft className="w-4 h-4" />
-             </Button>
-             <span>Account Information</span>
+       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+         <div className="px-3 sm:px-4 py-2 border-b border-slate-100 flex items-center justify-between">
+           <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Services & Balance</span>
+           {balanceError && (
+             <button onClick={fetchBalanceData} className="text-[10px] text-blue-600 font-medium hover:underline">Retry</button>
+           )}
+         </div>
+
+         {balanceLoading ? (
+           <div className="flex items-center justify-center py-6 text-slate-400 gap-2">
+             <Loader2 className="w-4 h-4 animate-spin" />
+             <span className="text-xs">Loading balance...</span>
+           </div>
+         ) : balanceError ? (
+           <div className="flex items-center justify-center py-4 text-red-500 gap-2 text-xs">
+             <AlertTriangle className="w-3.5 h-3.5" />
+             {balanceError}
+           </div>
+         ) : (
+           <>
+             <div className="sm:hidden divide-y divide-slate-100">
+               {(account.agingBreakdown && account.agingBreakdown.length > 0 ? account.agingBreakdown : [{
+                 serviceDescription: account.outstandingAmount < 0 ? 'Advance Payment' : 'Balance B/F',
+                 totalOutstanding: account.outstandingAmount, newCharge: 0, currentAccount: account.outstandingAmount,
+                 days30: 0, days60: 0, days90: 0, days120: 0, days150: 0, days180Plus: 0
+               }]).map((row, idx) => (
+                 <div key={idx} className="px-3 py-2" data-testid={`row-aging-${idx}`}>
+                   <div className="flex justify-between items-center mb-1">
+                     <span className="text-xs font-semibold text-slate-800">{row.totalOutstanding < 0 && row.serviceDescription === 'Balance B/F' ? 'Advance Payment' : row.serviceDescription}</span>
+                     <span className={`text-xs font-bold font-mono ${row.totalOutstanding > 0 ? 'text-red-600' : row.totalOutstanding < 0 ? 'text-emerald-600' : 'text-slate-600'}`}>
+                       R {(row.totalOutstanding || 0).toFixed(2)}
+                     </span>
+                   </div>
+                   <div className="grid grid-cols-4 gap-1 text-[9px]">
+                     {[
+                       { l: 'Current', v: row.currentAccount },
+                       { l: '30d', v: row.days30 },
+                       { l: '60d', v: row.days60 },
+                       { l: '90+', v: (row.days90 || 0) + (row.days120 || 0) + (row.days150 || 0) + (row.days180Plus || 0) },
+                     ].map(({ l, v }) => (
+                       <div key={l} className="text-center bg-slate-50 rounded px-1 py-0.5">
+                         <div className="text-slate-400 font-medium">{l}</div>
+                         <div className={`font-mono font-semibold ${(v || 0) > 0 ? 'text-slate-700' : 'text-slate-400'}`}>{(v || 0).toFixed(0)}</div>
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               ))}
+               {account.agingBreakdown && account.agingBreakdown.length > 1 && (
+                 <div className="px-3 py-2 bg-slate-50">
+                   <div className="flex justify-between items-center">
+                     <span className="text-xs font-bold text-slate-800">Total</span>
+                     <span className="text-sm font-bold font-mono text-red-600">
+                       R {account.agingBreakdown.reduce((s, i) => s + i.totalOutstanding, 0).toFixed(2)}
+                     </span>
+                   </div>
+                 </div>
+               )}
+             </div>
+
+             <div className="hidden sm:block overflow-x-auto text-xs">
+               <table className="w-full text-left border-collapse min-w-[800px]">
+                 <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                   <tr>
+                     <th className="p-2">Service</th>
+                     <th className="p-2 text-right">Outstanding</th>
+                     <th className="p-2 text-right">New Charge</th>
+                     <th className="p-2 text-right">Current</th>
+                     <th className="p-2 text-right">30d</th>
+                     <th className="p-2 text-right">60d</th>
+                     <th className="p-2 text-right">90d</th>
+                     <th className="p-2 text-right">120d</th>
+                     <th className="p-2 text-right">150d</th>
+                     <th className="p-2 text-right">180+</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                   {(account.agingBreakdown && account.agingBreakdown.length > 0 ? account.agingBreakdown : [{
+                     serviceDescription: account.outstandingAmount < 0 ? 'Advance Payment' : 'Balance B/F',
+                     totalOutstanding: account.outstandingAmount, newCharge: 0, currentAccount: account.outstandingAmount,
+                     days30: 0, days60: 0, days90: 0, days120: 0, days150: 0, days180Plus: 0
+                   }]).map((row, idx) => (
+                     <tr key={idx} className="border-b border-slate-100 last:border-0 hover:bg-blue-50/50" data-testid={`row-aging-desktop-${idx}`}>
+                       <td className="p-2">{row.totalOutstanding < 0 && row.serviceDescription === 'Balance B/F' ? 'Advance Payment' : row.serviceDescription}</td>
+                       <td className="p-2 text-right font-mono">{(row.totalOutstanding || 0).toFixed(2)}</td>
+                       <td className="p-2 text-right font-mono">{(row.newCharge || 0).toFixed(2)}</td>
+                       <td className="p-2 text-right font-mono">{(row.currentAccount || 0).toFixed(2)}</td>
+                       <td className="p-2 text-right font-mono">{(row.days30 || 0).toFixed(2)}</td>
+                       <td className="p-2 text-right font-mono">{(row.days60 || 0).toFixed(2)}</td>
+                       <td className="p-2 text-right font-mono">{(row.days90 || 0).toFixed(2)}</td>
+                       <td className="p-2 text-right font-mono">{(row.days120 || 0).toFixed(2)}</td>
+                       <td className="p-2 text-right font-mono">{(row.days150 || 0).toFixed(2)}</td>
+                       <td className="p-2 text-right font-mono">{(row.days180Plus || 0).toFixed(2)}</td>
+                     </tr>
+                   ))}
+                   {account.agingBreakdown && account.agingBreakdown.length > 1 && (
+                     <tr className="bg-slate-50 font-bold border-t border-slate-200">
+                       <td className="p-2">Total</td>
+                       <td className="p-2 text-right font-mono">{account.agingBreakdown.reduce((s, i) => s + i.totalOutstanding, 0).toFixed(2)}</td>
+                       <td className="p-2 text-right font-mono">{account.agingBreakdown.reduce((s, i) => s + i.newCharge, 0).toFixed(2)}</td>
+                       <td className="p-2 text-right font-mono">{account.agingBreakdown.reduce((s, i) => s + i.currentAccount, 0).toFixed(2)}</td>
+                       <td className="p-2 text-right font-mono">{account.agingBreakdown.reduce((s, i) => s + i.days30, 0).toFixed(2)}</td>
+                       <td className="p-2 text-right font-mono">{account.agingBreakdown.reduce((s, i) => s + i.days60, 0).toFixed(2)}</td>
+                       <td className="p-2 text-right font-mono">{account.agingBreakdown.reduce((s, i) => s + i.days90, 0).toFixed(2)}</td>
+                       <td className="p-2 text-right font-mono">{account.agingBreakdown.reduce((s, i) => s + i.days120, 0).toFixed(2)}</td>
+                       <td className="p-2 text-right font-mono">{account.agingBreakdown.reduce((s, i) => s + i.days150, 0).toFixed(2)}</td>
+                       <td className="p-2 text-right font-mono">{account.agingBreakdown.reduce((s, i) => s + i.days180Plus, 0).toFixed(2)}</td>
+                     </tr>
+                   )}
+                 </tbody>
+               </table>
+             </div>
+           </>
+         )}
+       </div>
+
+       <div className="bg-white rounded-xl border-2 border-blue-200 shadow-sm overflow-hidden">
+         <div className="px-3 sm:px-4 py-3 sm:py-4 bg-gradient-to-r from-blue-50 to-indigo-50/50">
+           <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+             <div className="flex-1">
+               <div className="text-[10px] uppercase tracking-wider text-blue-500 font-semibold mb-0.5">Payment Amount</div>
+               <PaymentInput
+                 id={`pay-${item.id}`}
+                 value={item.amountToPay}
+                 onChange={(val) => updateItemAmount(item.id, val)}
+               />
+             </div>
+             <div className="sm:w-40">
+               <div className="text-[10px] uppercase tracking-wider text-blue-500 font-semibold mb-0.5">Receipt Date</div>
+               <Input
+                 type="date"
+                 value={receiptDate}
+                 onChange={(e) => setReceiptDate(e.target.value)}
+                 className="h-10 bg-white border-blue-200 text-slate-800 font-mono text-sm focus:border-blue-400 focus:ring-blue-200"
+                 data-testid="input-receipt-date"
+               />
+             </div>
+           </div>
          </div>
        </div>
-
-       {account.prepaidBlocked && (
-           <Alert variant="destructive" className="mb-4 border-red-200 bg-red-50 text-red-800">
-               <AlertTriangle className="h-4 w-4 stroke-red-600" />
-               <AlertTitle className="text-red-900 font-bold ml-2">
-                   {account.blockedServices && account.blockedServices.length > 1 
-                    ? `Prepaid Services Blocked: ${account.blockedServices.join(' & ')}` 
-                    : `Prepaid ${account.blockedServices?.[0] || account.prepaidType || 'Service'} Blocked`}
-               </AlertTitle>
-               <AlertDescription className="ml-2 text-red-800">
-                   <div className="flex flex-col gap-1 mt-1">
-                       <span>
-                           Purchases are currently blocked for <strong>{account.blockedServices?.join(' and ') || account.prepaidType}</strong>.
-                       </span>
-                       <span className="font-medium bg-red-100 w-fit px-2 py-0.5 rounded text-xs border border-red-200">
-                           Reason: {account.prepaidBlockReason}
-                       </span>
-                   </div>
-               </AlertDescription>
-           </Alert>
-       )}
-
-       <Collapsible open={isOpen} onOpenChange={setIsOpen} className="space-y-2 mb-6">
-          <div className="flex items-center justify-between px-4 py-2 bg-slate-50 border rounded-md">
-              <div className="flex flex-col">
-                  <span className="font-semibold text-sm text-slate-900">{account.name}</span>
-                  <span className="text-xs text-muted-foreground">Acc: {account.accountNo}</span>
-              </div>
-              <CollapsibleTrigger asChild>
-                  <Button variant="outline" size="sm" className="w-9 p-0 h-8" data-testid="button-toggle-details">
-                      {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      <span className="sr-only">Toggle details</span>
-                  </Button>
-              </CollapsibleTrigger>
-          </div>
-          
-          <CollapsibleContent>
-               {detailsLoading && (
-                 <div className="flex items-center justify-center py-4 text-gray-500 gap-2">
-                   <Loader2 className="w-4 h-4 animate-spin" />
-                   Loading account details from billing system...
-                 </div>
-               )}
-
-               <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-0 pt-2">
-                 <div>
-                    <Field label="Account Number" value={account.accountNo} />
-                    <Field label="Account Group" value={account.accountGroup || 'None - Normal'} />
-                    <Field label="Payment Group" value={account.paymentGroup || 'Default'} />
-                    <Field label="Account Type" value={account.accountType} />
-                    <Field label="Incentive Scheme Code" value={account.incentiveSchemeCode || incentiveCode} />
-                    <Field label="Email" value={account.email} />
-                    <Field label="Paid Deposit Amount" value={`R${(account.paidDepositAmount ?? 0).toFixed(2)}`} />
-                    
-                    <div className="h-4"></div>
-                    <div className="border-t border-gray-300 my-2"></div>
-                    
-                    <Field label="Interest Waiver Status" value={account.interestWaiverStatus || 'No Interest Waiver on Account'} />
-                    <Field label="Indigent Subsidy Status" value={account.indigentSubsidyStatus} />
-                    <Field label="Consumer RPP Status" value={account.consumerRppStatus || 'N/A'} />
-                    <Field label="Departmental Account" value={account.departmentalAccount || 'Inactive'} />
-                 </div>
-
-                 <div>
-                    <Field label="Name" value={account.name} />
-                    <Field label="Sub Account Group" value={account.subAccountGroup} />
-                    <Field label="Account Status" value={account.status || 'Active'} />
-                    <Field label="Delivery Address" value={account.deliveryAddress || account.address} />
-                    <Field label="Contact Number" value={account.mobile} />
-                    
-                    <div className="mt-8 text-xs font-bold underline text-gray-500 mb-2">Additional Account Details</div>
-                    
-                    <Field label="Rebate Status" value={account.rebateStatus || 'No Rebate on Account'} />
-                    <Field label="Handover Status" value={account.handoverStatus || handoverStatus} />
-                    <Field label="Loan RPP Status" value={account.loanRppStatus || 'N/A'} />
-                 </div>
-               </div>
-
-               <div className="mt-4 text-center">
-                  <span className="font-bold underline text-gray-500 text-xs">Property</span>
-               </div>
-               <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 mt-1">
-                  <div>
-                     <Field label="SG Number" value={account.sgNo} />
-                     <Field label="Old Property Code" value={account.oldPropertyCode || account.oldCode} />
-                     <Field label="Billing Cycle" value={account.billingCycle || '1 Consumer Account Cycle'} />
-                     <Field label="Sectional Title Scheme" value={account.sectionalTitleScheme} />
-                     <Field label="Location Address" value={account.locationAddress || account.address} />
-                     <Field label="Longitude" value={propertyEnquiry?.longitude} />
-                     <Field label="Registration Status" value={account.registrationStatus || 'Registered'} />
-                  </div>
-                  <div>
-                     <Field label="Property ID" value={formatPropertyId(account.propertyId) || account.unitId} />
-                     <Field label="Property Status" value={account.propertyStatus || account.status || 'Active'} />
-                     <Field label="Allotment Area" value={account.allotmentArea || 'George'} />
-                     <Field label="Farm Name" value={account.farmName} />
-                     <Field label="Property Type" value={account.propertyType || 'Erf'} />
-                     <Field label="Latitude" value={propertyEnquiry?.latitude} />
-                     <Field label="Magisterial District" value={account.magisterialDistrict || 'WC044'} />
-                     <Field label="Property Market Value" value={account.marketValue != null ? `R ${account.marketValue.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : undefined} />
-                  </div>
-               </div>
-
-               <div className="mt-4 text-center">
-                  <span className="font-bold underline text-gray-500 text-xs">Partition</span>
-               </div>
-               <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 mt-1">
-                  <div>
-                     <Field label="Property Type of Use" value={account.propertyTypeOfUse || 'RES'} />
-                     <Field label="Property Category" value={account.propertyCategory || 'RES'} />
-                     <Field label="Accountable Owner Name" value={(() => {
-                        const ownerName = account.accountableOwnerName || account.addName || account.name;
-                        const idNo = account.idNo || nameInfo?.idNo_RegistrationNo;
-                        if (idNo && ownerName && !ownerName.includes(idNo)) {
-                          return `${ownerName} (${idNo})`;
-                        }
-                        return ownerName;
-                     })()} />
-                  </div>
-                  <div>
-                     <Field label="Valuation Category" value={account.valuationCategory || 'Individual Use'} />
-                     <Field label="Partition Description" value={account.partitionDescription || 'Individual Use'} />
-                     <Field label="Partition Market Value" value={(() => {
-                        const val = account.partitionMarketValue ?? account.marketValue;
-                        return val != null ? `R ${val.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : undefined;
-                     })()} />
-                  </div>
-               </div>
-          </CollapsibleContent>
-       </Collapsible>
-
-       <div className="flex justify-end mt-4">
-          <Button 
-            variant="secondary" 
-            size="sm" 
-            className="bg-orange-200 text-orange-900 border-orange-300 hover:bg-orange-300 font-semibold text-xs shadow-sm gap-1"
-            onClick={fetchBalanceData}
-            disabled={balanceLoading}
-            data-testid="button-refresh-account-transactions"
-          >
-             {balanceLoading && <Loader2 className="w-3 h-3 animate-spin" />}
-             Refresh Account Transactions
-          </Button>
-       </div>
-
-       <SectionHeader title="Total Balance/Debt" />
-       
-       <div className="border border-gray-300 overflow-x-auto text-xs">
-          <table className="w-full text-left border-collapse min-w-[800px]">
-             <thead className="bg-gray-100 text-gray-700 font-semibold border-b border-gray-300">
-               <tr>
-                 <th className="p-2 border-r border-gray-300">Service Description</th>
-                 <th className="p-2 border-r border-gray-300 text-right">Total Outstanding Amount</th>
-                 <th className="p-2 border-r border-gray-300 text-right">New Charge</th>
-                 <th className="p-2 border-r border-gray-300 text-right">Current Account</th>
-                 <th className="p-2 border-r border-gray-300 text-right">30 Days</th>
-                 <th className="p-2 border-r border-gray-300 text-right">60 Days</th>
-                 <th className="p-2 border-r border-gray-300 text-right">90 Days</th>
-                 <th className="p-2 border-r border-gray-300 text-right">120 Days</th>
-                 <th className="p-2 border-r border-gray-300 text-right">150 Days</th>
-                 <th className="p-2 text-right">180+ Days</th>
-               </tr>
-             </thead>
-             <tbody>
-               {balanceLoading ? (
-                    <tr>
-                        <td colSpan={10} className="p-4 text-center text-gray-500">
-                            <div className="flex items-center justify-center gap-2">
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                Loading balance data...
-                            </div>
-                        </td>
-                    </tr>
-               ) : balanceError ? (
-                    <tr>
-                        <td colSpan={10} className="p-4 text-center text-red-500">
-                            <div className="flex items-center justify-center gap-2">
-                                <AlertTriangle className="w-4 h-4" />
-                                {balanceError}
-                                <Button variant="link" size="sm" className="text-blue-600 p-0 h-auto" onClick={fetchBalanceData}>Retry</Button>
-                            </div>
-                        </td>
-                    </tr>
-               ) : account.agingBreakdown && account.agingBreakdown.length > 0 ? (
-                   <>
-                       {account.agingBreakdown.map((row, index) => (
-                           <tr key={index} className="border-b last:border-0 hover:bg-blue-50" data-testid={`row-aging-${index}`}>
-                               <td className="p-2 border-r border-gray-200">{row.totalOutstanding < 0 && row.serviceDescription === 'Balance B/F' ? 'Advance Payment' : row.serviceDescription}</td>
-                               <td className="p-2 border-r border-gray-200 text-right">{(row.totalOutstanding || 0).toFixed(2)}</td>
-                               <td className="p-2 border-r border-gray-200 text-right">{(row.newCharge || 0).toFixed(2)}</td>
-                               <td className="p-2 border-r border-gray-200 text-right">{(row.currentAccount || 0).toFixed(2)}</td>
-                               <td className="p-2 border-r border-gray-200 text-right">{(row.days30 || 0).toFixed(2)}</td>
-                               <td className="p-2 border-r border-gray-200 text-right">{(row.days60 || 0).toFixed(2)}</td>
-                               <td className="p-2 border-r border-gray-200 text-right">{(row.days90 || 0).toFixed(2)}</td>
-                               <td className="p-2 border-r border-gray-200 text-right">{(row.days120 || 0).toFixed(2)}</td>
-                               <td className="p-2 border-r border-gray-200 text-right">{(row.days150 || 0).toFixed(2)}</td>
-                               <td className="p-2 text-right">{(row.days180Plus || 0).toFixed(2)}</td>
-                           </tr>
-                       ))}
-                       <tr className="bg-gray-100 font-bold border-t border-gray-300">
-                           <td className="p-2 border-r border-gray-300">Total</td>
-                           <td className="p-2 border-r border-gray-300 text-right">{account.agingBreakdown.reduce((sum, item) => sum + item.totalOutstanding, 0).toFixed(2)}</td>
-                           <td className="p-2 border-r border-gray-300 text-right">{account.agingBreakdown.reduce((sum, item) => sum + item.newCharge, 0).toFixed(2)}</td>
-                           <td className="p-2 border-r border-gray-300 text-right">
-                               {account.agingBreakdown.reduce((sum, item) => sum + item.currentAccount, 0).toFixed(2)}
-                           </td>
-                           <td className="p-2 border-r border-gray-300 text-right">
-                               {account.agingBreakdown.reduce((sum, item) => sum + item.days30, 0).toFixed(2)}
-                           </td>
-                           <td className="p-2 border-r border-gray-300 text-right">
-                               {account.agingBreakdown.reduce((sum, item) => sum + item.days60, 0).toFixed(2)}
-                           </td>
-                           <td className="p-2 border-r border-gray-300 text-right">
-                               {account.agingBreakdown.reduce((sum, item) => sum + item.days90, 0).toFixed(2)}
-                           </td>
-                           <td className="p-2 border-r border-gray-300 text-right">
-                               {account.agingBreakdown.reduce((sum, item) => sum + item.days120, 0).toFixed(2)}
-                           </td>
-                           <td className="p-2 border-r border-gray-300 text-right">
-                               {account.agingBreakdown.reduce((sum, item) => sum + item.days150, 0).toFixed(2)}
-                           </td>
-                           <td className="p-2 text-right">
-                               {account.agingBreakdown.reduce((sum, item) => sum + item.days180Plus, 0).toFixed(2)}
-                           </td>
-                       </tr>
-                   </>
-               ) : (
-                    <tr className="border-b last:border-0 hover:bg-blue-50">
-                        <td className="p-2 border-r border-gray-200">{account.outstandingAmount < 0 ? 'Advance Payment' : 'Balance B/F'}</td>
-                        <td className="p-2 border-r border-gray-200 text-right">{account.outstandingAmount.toFixed(2)}</td>
-                        <td className="p-2 border-r border-gray-200 text-right">0.00</td>
-                        <td className="p-2 border-r border-gray-200 text-right">{account.outstandingAmount.toFixed(2)}</td>
-                        <td className="p-2 border-r border-gray-200 text-right">0.00</td>
-                        <td className="p-2 border-r border-gray-200 text-right">0.00</td>
-                        <td className="p-2 border-r border-gray-200 text-right">0.00</td>
-                        <td className="p-2 border-r border-gray-200 text-right">0.00</td>
-                        <td className="p-2 border-r border-gray-200 text-right">0.00</td>
-                        <td className="p-2 text-right">0.00</td>
-                    </tr>
-               )}
-             </tbody>
-          </table>
-       </div>
-       
-       <div className="mt-6 sm:mt-8 rounded-lg border-2 border-blue-300 bg-gradient-to-r from-blue-50 to-white p-4 sm:p-6 shadow-md">
-           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-               <div>
-                   <div className="text-xs uppercase tracking-wider text-blue-600 font-semibold mb-1">Total Outstanding</div>
-                   <div className="text-2xl sm:text-3xl font-bold text-red-600 font-mono" data-testid="text-total-outstanding">R {account.outstandingAmount.toFixed(2)}</div>
-               </div>
-
-               <div className="w-full sm:w-auto">
-                   <Label htmlFor="receipt-date" className="text-xs uppercase tracking-wider text-blue-600 font-semibold mb-1 block">Receipt Date</Label>
-                   <Input
-                       id="receipt-date"
-                       type="date"
-                       value={receiptDate}
-                       onChange={(e) => setReceiptDate(e.target.value)}
-                       className="w-full sm:w-[180px] bg-white border-2 border-blue-300 text-slate-800 font-mono text-sm h-10 focus:border-blue-500 focus:ring-blue-200"
-                       data-testid="input-receipt-date"
-                   />
-               </div>
-               
-               <div className="w-full sm:w-auto">
-                   <Label htmlFor={`pay-${item.id}`} className="text-xs uppercase tracking-wider text-blue-600 font-semibold mb-1 block">Payment Amount</Label>
-                   <PaymentInput
-                       id={`pay-${item.id}`}
-                       value={item.amountToPay}
-                       onChange={(val) => updateItemAmount(item.id, val)}
-                   />
-               </div>
-           </div>
-       </div>
-
     </div>
   );
 }

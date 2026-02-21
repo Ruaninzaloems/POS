@@ -42,7 +42,7 @@ function PosPageContent() {
             </div>
           </div>
 
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden pb-16 lg:pb-0 relative z-0">
+          <div className="flex-1 flex flex-col min-h-0 overflow-y-auto pb-20 lg:pb-0 relative z-0">
             <TransactionPanels isSearchActive={isSearchActive} />
           </div>
         </div>
