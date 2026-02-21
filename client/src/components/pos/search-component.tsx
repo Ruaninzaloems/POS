@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, CreditCard, Users, Zap, FileText, Layers, Info, Filter, Loader2, Building, ChevronRight } from 'lucide-react';
+import { getCategoryIcon } from '@/lib/category-icons';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Account, searchInstitutions, InstitutionSearchResult, fetchMiscPaymentGroups, fetchMiscPaymentScoaItems, MiscPaymentGroup, MiscPaymentScoaItem, platinumGetClearanceIds, platinumSearchAccountsWithSignal, fetchEnquiryResultsWithSignal } from '@/lib/external-api';
@@ -438,13 +439,17 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                       w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm
                       ${result.type === 'ACCOUNT' ? 'bg-blue-100 text-blue-700' : ''}
                       ${result.type === 'PREPAID' ? 'bg-amber-100 text-amber-700' : ''}
-                      ${result.type === 'DIRECT' ? 'bg-emerald-100 text-emerald-700' : ''}
+                      ${result.type === 'DIRECT' ? `${getCategoryIcon(result.label).bg} ${getCategoryIcon(result.label).color}` : ''}
                       ${result.type === 'GROUP' ? 'bg-purple-100 text-purple-700' : ''}
                       ${result.type === 'CLEARANCE' ? 'bg-rose-100 text-rose-700' : ''}
                     `}>
                       {result.type === 'ACCOUNT' && <HelpTip text="Consumer services accounts for rates, water, electricity, etc." side="left" icon="info"><span className="inline-flex items-center justify-center w-full h-full"><Users className="w-5 h-5" /></span></HelpTip>}
                       {result.type === 'PREPAID' && <HelpTip text="Purchase prepaid electricity or water tokens" side="left" icon="info"><span className="inline-flex items-center justify-center w-full h-full"><Zap className="w-5 h-5" /></span></HelpTip>}
-                      {result.type === 'DIRECT' && <HelpTip text="Miscellaneous income payments not linked to a consumer account" side="left" icon="info"><span className="inline-flex items-center justify-center w-full h-full"><CreditCard className="w-5 h-5" /></span></HelpTip>}
+                      {result.type === 'DIRECT' && (() => {
+                        const catIcon = getCategoryIcon(result.label);
+                        const DirIcon = catIcon.icon;
+                        return <span className="inline-flex items-center justify-center w-full h-full"><DirIcon className="w-5 h-5" /></span>;
+                      })()}
                       {result.type === 'GROUP' && <HelpTip text="Pay multiple accounts in a single transaction group" side="left" icon="info"><span className="inline-flex items-center justify-center w-full h-full"><Building className="w-5 h-5" /></span></HelpTip>}
                       {result.type === 'CLEARANCE' && <HelpTip text="Apply for clearance certificates for property transfers" side="left" icon="info"><span className="inline-flex items-center justify-center w-full h-full"><FileText className="w-5 h-5" /></span></HelpTip>}
                     </div>
@@ -504,9 +509,15 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                               });
                             }}
                           >
-                            <div className="w-6 h-6 rounded-full bg-green-200 text-green-700 flex items-center justify-center shrink-0">
-                              <CreditCard className="w-3 h-3" />
-                            </div>
+                            {(() => {
+                              const subIcon = getCategoryIcon(item.name);
+                              const SubIcon = subIcon.icon;
+                              return (
+                                <div className={`w-6 h-6 rounded-full ${subIcon.bg} ${subIcon.color} flex items-center justify-center shrink-0`}>
+                                  <SubIcon className="w-3 h-3" />
+                                </div>
+                              );
+                            })()}
                             <div className="flex-1 min-w-0">
                               <div className="text-sm font-medium truncate">{item.name}</div>
                               <div className="text-xs text-muted-foreground">SCOA Item ID: {item.id}</div>

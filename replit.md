@@ -18,6 +18,7 @@ Key capabilities include:
 - Send Statements feature in Enquiries — select period range, pick email/mobile recipients from account data (including additional emails), preview message, and queue for delivery via Mimecast (email) or SMS Gateway (both not yet connected; payload logged for Angular migration).
 - Integration with Platinum Inzalo EMS API and legacy Sebata Billing microservices for live account data.
 - Comprehensive contextual tooltips throughout all pages via a reusable `HelpTip` component (`client/src/components/ui/help-tip.tsx`) wrapping shadcn Tooltip, providing inline help for every major UI element.
+- Smart category-based icons for Direct Income items via keyword matching (`client/src/lib/category-icons.ts`), mapping 35+ municipal categories (building, fire, water, parks, etc.) to unique Lucide icons with distinct colors.
 
 ## User Preferences
 
