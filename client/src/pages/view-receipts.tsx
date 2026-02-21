@@ -122,7 +122,7 @@ export default function ViewReceipts() {
 
     const [cashbookSearchText, setCashbookSearchText] = useState('');
     const [cashbookFinYear, setCashbookFinYear] = useState('');
-    const [cashbookMonth, setCashbookMonth] = useState<string>('');
+    const [cashbookMonth, setCashbookMonth] = useState<string>(String(new Date().getMonth() + 1));
     const [cashbookSearching, setCashbookSearching] = useState(false);
     const [cashbookResults, setCashbookResults] = useState<CashbookTransactionTraceResult[] | null>(null);
     const [cashbookSearchStatus, setCashbookSearchStatus] = useState('');
@@ -167,7 +167,7 @@ export default function ViewReceipts() {
         setShowSuggestions(true);
         suggestionsTimerRef.current = setTimeout(async () => {
             try {
-                const monthNum = (cashbookMonth && cashbookMonth !== '__all__') ? parseInt(cashbookMonth, 10) : undefined;
+                const monthNum = cashbookMonth ? parseInt(cashbookMonth, 10) : new Date().getMonth() + 1;
                 const results = await searchCashbookTransactionTrace(
                     cashbookSearchText,
                     cashbookFinYear || undefined,
@@ -338,6 +338,10 @@ export default function ViewReceipts() {
             toast({ title: "Search Too Short", description: "Please enter at least 3 characters for the bank reference search.", variant: "destructive" });
             return;
         }
+        if (!cashbookMonth || cashbookMonth === '__all__') {
+            toast({ title: "Month Required", description: "Please select a specific month for cashbook trace.", variant: "destructive" });
+            return;
+        }
         setShowSuggestions(false);
         setCashbookSearching(true);
         setCashbookResults([]);
@@ -346,7 +350,7 @@ export default function ViewReceipts() {
         setTotalCount(0);
         setDataSource('none');
         try {
-            const monthNum = (cashbookMonth && cashbookMonth !== '__all__') ? parseInt(cashbookMonth, 10) : undefined;
+            const monthNum = parseInt(cashbookMonth, 10);
             setCashbookSearchStatus(`Querying Platinum API for "${cashbookSearchText}"...`);
             const results = await searchCashbookTransactionTrace(
                 cashbookSearchText,
@@ -836,11 +840,13 @@ export default function ViewReceipts() {
                                                         </div>
                                                     )}
                                                     {cashbookSuggestions.map((item, idx) => {
-                                                        const desc = (item as any).description || (item as any).transactionDescription || '';
-                                                        const receiptNo = (item as any).receiptNo || (item as any).receipt_No || (item as any).receiptNumber || '';
-                                                        const accNo = (item as any).accountNumber || (item as any).account_Number || (item as any).accountNo || '';
-                                                        const amount = (item as any).amount ?? (item as any).transactionAmount ?? 0;
-                                                        const cashbook = (item as any).cashbook || (item as any).cashbookName || '';
+                                                        const desc = (item as any).transactionDetails || (item as any).description || '';
+                                                        const receiptNo = (item as any).receiptNo || (item as any).receipt_No || '';
+                                                        const accNo = (item as any).accountNumber || (item as any).account_Number || '';
+                                                        const debit = Number((item as any).debit) || 0;
+                                                        const credit = Number((item as any).credit) || 0;
+                                                        const amount = (item as any).amount ?? (debit > 0 ? debit : credit) ?? 0;
+                                                        const cashbook = (item as any).cashbookReference || (item as any).documentNumber || '';
                                                         return (
                                                             <button
                                                                 key={idx}
@@ -905,7 +911,6 @@ export default function ViewReceipts() {
                                                 <SelectValue placeholder="Month" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="__all__">All</SelectItem>
                                                 {['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'].map((m, i) => (
                                                     <SelectItem key={i + 1} value={String(i + 1)}>{m} ({i + 1})</SelectItem>
                                                 ))}
@@ -973,32 +978,35 @@ export default function ViewReceipts() {
                             <>
                                 <div className="sm:hidden space-y-2">
                                     {cashbookResults.map((item, idx) => {
-                                        const desc = item.description || (item as any).note || (item as any).bankReference || '';
-                                        const receiptNo = item.receiptNo || (item as any).receipt_No || (item as any).receiptNumber || '';
-                                        const accountNo = item.accountNumber || (item as any).account_Number || (item as any).accountNo || '';
-                                        const amount = item.amount ?? (item as any).transactionAmount ?? 0;
-                                        const txnDate = item.transactionDate || (item as any).transaction_Date || (item as any).dateOfTransaction || '';
-                                        const cashier = item.cashierName || (item as any).cashier_Name || (item as any).cashier || '';
-                                        const payType = item.paymentType || (item as any).payment_Type || (item as any).payMode || '';
-                                        const cashOffice = item.cashOffice || (item as any).cashOfficeName || (item as any).cashBook || (item as any).cash_Office || '';
+                                        const desc = (item as any).transactionDetails || item.description || '';
+                                        const receiptNo = item.receiptNo || (item as any).receipt_No || '';
+                                        const accountNo = item.accountNumber || (item as any).account_Number || '';
+                                        const debit = Number((item as any).debit) || 0;
+                                        const credit = Number((item as any).credit) || 0;
+                                        const amount = item.amount ?? (debit > 0 ? debit : credit) ?? 0;
+                                        const txnDate = (item as any).postingDate || (item as any).receiptDate || item.transactionDate || '';
+                                        const docNum = (item as any).documentNumber || '';
+                                        const cashbookRef = (item as any).cashbookReference || '';
+                                        const scoaDesc = (item as any).scoaDesc || '';
                                         return (
                                             <div key={idx} className="bg-white border rounded-xl p-3 space-y-1.5" data-testid={`mobile-cashbook-card-${idx}`}>
                                                 <p className="font-mono text-xs text-slate-800 truncate" title={desc}>{desc || '(no description)'}</p>
                                                 <div className="flex justify-between items-center">
-                                                    <span className="font-mono text-sm font-bold text-blue-700" data-testid={`mobile-cashbook-receipt-no-${idx}`}>{receiptNo || '-'}</span>
+                                                    <span className="font-mono text-sm font-bold text-blue-700" data-testid={`mobile-cashbook-receipt-no-${idx}`}>{receiptNo || docNum || '-'}</span>
                                                     <span className="font-mono text-sm font-bold text-right" data-testid={`mobile-cashbook-amount-${idx}`}>
-                                                        {typeof amount === 'number' ? `R ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
+                                                        {debit > 0 && <span className="text-red-600">R {debit.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>}
+                                                        {credit > 0 && <span className="text-green-600">R {credit.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>}
+                                                        {debit === 0 && credit === 0 && typeof amount === 'number' && amount > 0 ? `R ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : debit === 0 && credit === 0 ? '-' : ''}
                                                     </span>
                                                 </div>
-                                                <div className="text-xs text-slate-600" data-testid={`mobile-cashbook-account-no-${idx}`}>Account: {accountNo || '-'}</div>
+                                                {accountNo > 0 && <div className="text-xs text-slate-600" data-testid={`mobile-cashbook-account-no-${idx}`}>Account: {accountNo}</div>}
                                                 <div className="flex justify-between items-center text-xs text-slate-500">
                                                     <span>{txnDate ? new Date(txnDate).toLocaleDateString('en-ZA') : '-'}</span>
-                                                    {cashier && <span>Cashier: {cashier}</span>}
+                                                    {cashbookRef && <span>Ref: {cashbookRef}</span>}
                                                 </div>
-                                                <div className="flex flex-wrap items-center gap-1.5">
-                                                    {payType && <Badge variant="outline" className="text-[9px] px-1.5 py-0">{payType}</Badge>}
-                                                    {cashOffice && <span className="text-[10px] text-slate-500">{cashOffice}</span>}
-                                                </div>
+                                                {scoaDesc && (
+                                                    <p className="text-[10px] text-slate-400 truncate" title={scoaDesc}>{scoaDesc}</p>
+                                                )}
                                                 {(receiptNo || accountNo) && (
                                                     <Button
                                                         variant="outline"
@@ -1022,40 +1030,40 @@ export default function ViewReceipts() {
                                                 <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Description</TableHead>
                                                 <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Receipt No</TableHead>
                                                 <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Account</TableHead>
-                                                <TableHead className="text-[10px] font-bold text-indigo-700 py-2 text-right">Amount</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Doc No</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-indigo-700 py-2 text-right">Debit</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-indigo-700 py-2 text-right">Credit</TableHead>
                                                 <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Date</TableHead>
-                                                <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Cashier</TableHead>
-                                                <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Payment Type</TableHead>
-                                                <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Cashbook</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-indigo-700 py-2">Cashbook Ref</TableHead>
                                                 <TableHead className="text-[10px] font-bold text-indigo-700 py-2 text-center">Action</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {cashbookResults.map((item, idx) => {
-                                                const desc = item.description || (item as any).note || (item as any).bankReference || '';
-                                                const receiptNo = item.receiptNo || (item as any).receipt_No || (item as any).receiptNumber || '';
-                                                const accountNo = item.accountNumber || (item as any).account_Number || (item as any).accountNo || '';
-                                                const amount = item.amount ?? (item as any).transactionAmount ?? 0;
-                                                const txnDate = item.transactionDate || (item as any).transaction_Date || (item as any).dateOfTransaction || '';
-                                                const cashier = item.cashierName || (item as any).cashier_Name || (item as any).cashier || '';
-                                                const payType = item.paymentType || (item as any).payment_Type || (item as any).payMode || '';
-                                                const cashOffice = item.cashOffice || (item as any).cashOfficeName || (item as any).cashBook || (item as any).cash_Office || '';
+                                                const desc = (item as any).transactionDetails || item.description || '';
+                                                const receiptNo = item.receiptNo || (item as any).receipt_No || '';
+                                                const accountNo = item.accountNumber || (item as any).account_Number || '';
+                                                const debit = Number((item as any).debit) || 0;
+                                                const credit = Number((item as any).credit) || 0;
+                                                const txnDate = (item as any).postingDate || (item as any).receiptDate || item.transactionDate || '';
+                                                const docNum = (item as any).documentNumber || '';
+                                                const cashbookRef = (item as any).cashbookReference || '';
                                                 return (
                                                     <TableRow key={idx} className="hover:bg-indigo-50/30" data-testid={`cashbook-result-${idx}`}>
-                                                        <TableCell className="text-[11px] font-mono max-w-[200px] truncate" title={desc}>{desc || '-'}</TableCell>
+                                                        <TableCell className="text-[11px] font-mono max-w-[250px] truncate" title={desc}>{desc || '-'}</TableCell>
                                                         <TableCell className="text-[11px] font-mono font-semibold text-blue-700">{receiptNo || '-'}</TableCell>
-                                                        <TableCell className="text-[11px] font-mono">{accountNo || '-'}</TableCell>
-                                                        <TableCell className="text-[11px] font-mono font-bold text-right">
-                                                            {typeof amount === 'number' ? `R ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
+                                                        <TableCell className="text-[11px] font-mono">{accountNo && accountNo > 0 ? accountNo : '-'}</TableCell>
+                                                        <TableCell className="text-[11px] font-mono text-slate-600">{docNum || '-'}</TableCell>
+                                                        <TableCell className="text-[11px] font-mono font-bold text-right text-red-600">
+                                                            {debit > 0 ? `R ${debit.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
+                                                        </TableCell>
+                                                        <TableCell className="text-[11px] font-mono font-bold text-right text-green-600">
+                                                            {credit > 0 ? `R ${credit.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
                                                         </TableCell>
                                                         <TableCell className="text-[10px] text-slate-600">
                                                             {txnDate ? new Date(txnDate).toLocaleDateString('en-ZA') : '-'}
                                                         </TableCell>
-                                                        <TableCell className="text-[10px]">{cashier || '-'}</TableCell>
-                                                        <TableCell className="text-[10px]">
-                                                            {payType ? <Badge variant="outline" className="text-[9px] px-1.5 py-0">{payType}</Badge> : '-'}
-                                                        </TableCell>
-                                                        <TableCell className="text-[10px] text-slate-600">{cashOffice || '-'}</TableCell>
+                                                        <TableCell className="text-[10px] text-slate-600">{cashbookRef || '-'}</TableCell>
                                                         <TableCell className="text-center">
                                                             {(receiptNo || accountNo) ? (
                                                                 <Button
