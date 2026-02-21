@@ -8,6 +8,7 @@ Key capabilities include:
 - A unified POS screen that auto-detects transaction types.
 - Split payments (cash + card) with change calculation on the cash portion.
 - Enforcement of a single active session per cashier.
+- Concurrency-optimized for 10+ simultaneous users with token mutex, server-side response caching, request concurrency limiting, and frontend in-flight deduplication.
 - All transaction storage handled via the Platinum API, not locally, ensuring data consistency for day-end reconciliation.
 - Cashier session management, float tracking, and day-end reconciliation.
 - Supervisor dashboard for transaction oversight and approvals.

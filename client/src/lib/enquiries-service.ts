@@ -6,6 +6,8 @@ const apiCache = new Map<string, { data: any; ts: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
 const SHORT_CACHE_TTL = 60 * 1000;
 
+const inflightRequests = new Map<string, Promise<any>>();
+
 function getCached(key: string, ttl: number = CACHE_TTL): any | null {
   const entry = apiCache.get(key);
   if (entry && Date.now() - entry.ts < ttl) return entry.data;
@@ -21,12 +23,40 @@ function setCache(key: string, data: any): void {
   }
 }
 
+async function deduplicatedFetch(cacheKey: string, fetcher: () => Promise<any>, ttl: number = CACHE_TTL): Promise<any> {
+  const cached = getCached(cacheKey, ttl);
+  if (cached !== null) return cached;
+
+  const inflight = inflightRequests.get(cacheKey);
+  if (inflight) return inflight;
+
+  const promise = fetcher().then(data => {
+    setCache(cacheKey, data);
+    inflightRequests.delete(cacheKey);
+    return data;
+  }).catch(err => {
+    inflightRequests.delete(cacheKey);
+    throw err;
+  });
+
+  inflightRequests.set(cacheKey, promise);
+  return promise;
+}
+
 export function clearEnquiryCache(accountId?: number): void {
-  if (!accountId) { apiCache.clear(); return; }
+  if (!accountId) {
+    apiCache.clear();
+    inflightRequests.clear();
+    return;
+  }
   const suffix = `-${accountId}`;
   const keys = Array.from(apiCache.keys());
   for (const key of keys) {
     if (key.endsWith(suffix) || key.includes(`${suffix}-`)) apiCache.delete(key);
+  }
+  const inflightKeys = Array.from(inflightRequests.keys());
+  for (const key of inflightKeys) {
+    if (key.endsWith(suffix) || key.includes(`${suffix}-`)) inflightRequests.delete(key);
   }
 }
 
@@ -322,174 +352,100 @@ export async function checkFileExists(params: Record<string, string>): Promise<a
 
 // === ACCOUNT INFO ===
 export async function getBasicAccountDetails(accountId: number): Promise<any> {
-  const cacheKey = `basic-account-${accountId}`;
-  const cached = getCached(cacheKey);
-  if (cached) return cached;
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/basic-account-details?accountId=${accountId}`);
-  setCache(cacheKey, data);
-  return data;
+  return deduplicatedFetch(`basic-account-${accountId}`,
+    () => fetchWithTimeout(`/api/platinum/billing-enquiry/basic-account-details?accountId=${accountId}`));
 }
 
 export async function getAccountInfoResult(accountId: number): Promise<any> {
-  const cacheKey = `account-info-result-${accountId}`;
-  const cached = getCached(cacheKey);
-  if (cached) return cached;
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/account-info-result?accountId=${accountId}`);
-  setCache(cacheKey, data);
-  return data;
+  return deduplicatedFetch(`account-info-result-${accountId}`,
+    () => fetchWithTimeout(`/api/platinum/billing-enquiry/account-info-result?accountId=${accountId}`));
 }
 
 export async function getAccountInformation(accountId: number): Promise<any> {
-  const cacheKey = `account-information-${accountId}`;
-  const cached = getCached(cacheKey);
-  if (cached) return cached;
-  const data = await fetchWithTimeout(`/api/platinum/billing-account-management/account-information?accountId=${accountId}`);
-  setCache(cacheKey, data);
-  return data;
+  return deduplicatedFetch(`account-information-${accountId}`,
+    () => fetchWithTimeout(`/api/platinum/billing-account-management/account-information?accountId=${accountId}`));
 }
 
 export async function getAccountDeliveryAddressDetail(accountId: number): Promise<any> {
-  const cacheKey = `account-delivery-addr-${accountId}`;
-  const cached = getCached(cacheKey);
-  if (cached) return cached;
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/account-delivery-address-detail?accountId=${accountId}`);
-  setCache(cacheKey, data);
-  return data;
+  return deduplicatedFetch(`account-delivery-addr-${accountId}`,
+    () => fetchWithTimeout(`/api/platinum/billing-enquiry/account-delivery-address-detail?accountId=${accountId}`));
 }
 
 export async function getDeliveryAccountDetailsById(accountId: number): Promise<any> {
-  const cacheKey = `delivery-account-details-${accountId}`;
-  const cached = getCached(cacheKey);
-  if (cached) return cached;
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/delivery-account-details-by-id?accountId=${accountId}`);
-  setCache(cacheKey, data);
-  return data;
+  return deduplicatedFetch(`delivery-account-details-${accountId}`,
+    () => fetchWithTimeout(`/api/platinum/billing-enquiry/delivery-account-details-by-id?accountId=${accountId}`));
 }
 
 export async function getAccountNotifications(accountId: number): Promise<any[]> {
-  const cacheKey = `account-notifications-${accountId}`;
-  const cached = getCached(cacheKey, SHORT_CACHE_TTL);
-  if (cached) return cached;
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/account-notifications?accountId=${accountId}`);
-  const result = normalizeArray(data);
-  setCache(cacheKey, result);
-  return result;
+  return deduplicatedFetch(`account-notifications-${accountId}`,
+    async () => normalizeArray(await fetchWithTimeout(`/api/platinum/billing-enquiry/account-notifications?accountId=${accountId}`)),
+    SHORT_CACHE_TTL);
 }
 
 export async function getAccountInquiries(accountId: number): Promise<any[]> {
-  const cacheKey = `account-inquiries-${accountId}`;
-  const cached = getCached(cacheKey);
-  if (cached) return cached;
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/account-inquiries?accountId=${accountId}`);
-  const result = normalizeArray(data);
-  setCache(cacheKey, result);
-  return result;
+  return deduplicatedFetch(`account-inquiries-${accountId}`,
+    async () => normalizeArray(await fetchWithTimeout(`/api/platinum/billing-enquiry/account-inquiries?accountId=${accountId}`)));
 }
 
 export async function getAccountStatus(accountId: number): Promise<any> {
-  const cacheKey = `account-status-${accountId}`;
-  const cached = getCached(cacheKey);
-  if (cached) return cached;
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/get-status?accountId=${accountId}`);
-  setCache(cacheKey, data);
-  return data;
+  return deduplicatedFetch(`account-status-${accountId}`,
+    () => fetchWithTimeout(`/api/platinum/billing-enquiry/get-status?accountId=${accountId}`));
 }
 
 // === CONTACT / NAME ===
 export async function getNameInfo(accountId: number): Promise<any> {
-  const cacheKey = `name-info-${accountId}`;
-  const cached = getCached(cacheKey);
-  if (cached) return cached;
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/name-info-by-account?accountId=${accountId}`);
-  setCache(cacheKey, data);
-  return data;
+  return deduplicatedFetch(`name-info-${accountId}`,
+    () => fetchWithTimeout(`/api/platinum/billing-enquiry/name-info-by-account?accountId=${accountId}`));
 }
 
 export async function getAccountsByNameId(accountId: number): Promise<{ nameId: number | null; accounts: any[] }> {
-  const cacheKey = `accounts-by-name-${accountId}`;
-  const cached = getCached(cacheKey);
-  if (cached) return cached;
-  const data = await fetchWithTimeout(`/api/proxy/accounts-by-name-id?accountId=${accountId}`);
-  setCache(cacheKey, data);
-  return data;
+  return deduplicatedFetch(`accounts-by-name-${accountId}`,
+    () => fetchWithTimeout(`/api/proxy/accounts-by-name-id?accountId=${accountId}`));
 }
 
 export async function getContactDetails(accountId: number): Promise<any> {
-  const cacheKey = `contact-details-${accountId}`;
-  const cached = getCached(cacheKey);
-  if (cached) return cached;
-  const data = await fetchWithTimeout(`/api/platinum/billing-account-management/get-contact-details?accountId=${accountId}`);
-  setCache(cacheKey, data);
-  return data;
+  return deduplicatedFetch(`contact-details-${accountId}`,
+    () => fetchWithTimeout(`/api/platinum/billing-account-management/get-contact-details?accountId=${accountId}`));
 }
 
 export async function getContactDetailsHistory(accountId: number): Promise<any[]> {
-  const cacheKey = `contact-details-history-${accountId}`;
-  const cached = getCached(cacheKey);
-  if (cached) return cached;
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/contact-details-history-by-id?accountId=${accountId}`);
-  const result = normalizeArray(data);
-  setCache(cacheKey, result);
-  return result;
+  return deduplicatedFetch(`contact-details-history-${accountId}`,
+    async () => normalizeArray(await fetchWithTimeout(`/api/platinum/billing-enquiry/contact-details-history-by-id?accountId=${accountId}`)));
 }
 
 export async function getDeliveryAddressHistory(accountId: number): Promise<any[]> {
-  const cacheKey = `delivery-addr-history-${accountId}`;
-  const cached = getCached(cacheKey);
-  if (cached) return cached;
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/delivery-address-history-by-id?accountId=${accountId}`);
-  const result = normalizeArray(data);
-  setCache(cacheKey, result);
-  return result;
+  return deduplicatedFetch(`delivery-addr-history-${accountId}`,
+    async () => normalizeArray(await fetchWithTimeout(`/api/platinum/billing-enquiry/delivery-address-history-by-id?accountId=${accountId}`)));
 }
 
 // === BALANCE & DEBT ===
 export async function getAccountBalance(accountId: number): Promise<any> {
-  const cacheKey = `account-balance-${accountId}`;
-  const cached = getCached(cacheKey, SHORT_CACHE_TTL);
-  if (cached) return cached;
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/total-balance-debt?accountId=${accountId}`);
-  setCache(cacheKey, data);
-  return data;
+  return deduplicatedFetch(`account-balance-${accountId}`,
+    () => fetchWithTimeout(`/api/platinum/billing-enquiry/total-balance-debt?accountId=${accountId}`),
+    SHORT_CACHE_TTL);
 }
 
 export async function getServiceTypeBalance(accountId: number, financialYear?: string): Promise<any[]> {
   const yr = financialYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
-  const cacheKey = `svc-type-bal-${accountId}-${yr}`;
-  const cached = getCached(cacheKey, SHORT_CACHE_TTL);
-  if (cached) return cached;
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/service-type-balance?accountId=${accountId}&financialYear=${encodeURIComponent(yr)}`);
-  const result = normalizeArray(data);
-  setCache(cacheKey, result);
-  return result;
+  return deduplicatedFetch(`svc-type-bal-${accountId}-${yr}`,
+    async () => normalizeArray(await fetchWithTimeout(`/api/platinum/billing-enquiry/service-type-balance?accountId=${accountId}&financialYear=${encodeURIComponent(yr)}`)),
+    SHORT_CACHE_TTL);
 }
 
 // === PROPERTY ===
 export async function getPropertyDetails(accountId: number): Promise<any> {
-  const cacheKey = `property-details-${accountId}`;
-  const cached = getCached(cacheKey);
-  if (cached) return cached;
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/property-details-by-account?AccountId=${accountId}`);
-  setCache(cacheKey, data);
-  return data;
+  return deduplicatedFetch(`property-details-${accountId}`,
+    () => fetchWithTimeout(`/api/platinum/billing-enquiry/property-details-by-account?AccountId=${accountId}`));
 }
 
 export async function getProperty(propertyId: number): Promise<any> {
-  const cacheKey = `property-${propertyId}`;
-  const cached = getCached(cacheKey);
-  if (cached) return cached;
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/property?propertyId=${propertyId}`);
-  setCache(cacheKey, data);
-  return data;
+  return deduplicatedFetch(`property-${propertyId}`,
+    () => fetchWithTimeout(`/api/platinum/billing-enquiry/property?propertyId=${propertyId}`));
 }
 
 export async function getPartitionDetails(accountId: number): Promise<any> {
-  const cacheKey = `partition-details-${accountId}`;
-  const cached = getCached(cacheKey);
-  if (cached) return cached;
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/partition-details?accountId=${accountId}`);
-  setCache(cacheKey, data);
-  return data;
+  return deduplicatedFetch(`partition-details-${accountId}`,
+    () => fetchWithTimeout(`/api/platinum/billing-enquiry/partition-details?accountId=${accountId}`));
 }
 
 export async function getPartitionDetailsByUnit(unitPartitionId: number): Promise<any> {
@@ -558,23 +514,13 @@ export async function getConsUnitSearch(query: string): Promise<any[]> {
 }
 
 export async function getAllServices(accountId: number): Promise<any[]> {
-  const cacheKey = `all-services-${accountId}`;
-  const cached = getCached(cacheKey);
-  if (cached) return cached;
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/all-services?accountId=${accountId}`);
-  const result = normalizeArray(data);
-  setCache(cacheKey, result);
-  return result;
+  return deduplicatedFetch(`all-services-${accountId}`,
+    async () => normalizeArray(await fetchWithTimeout(`/api/platinum/billing-enquiry/all-services?accountId=${accountId}`)));
 }
 
 export async function getServicesSearchResults(accountId: number): Promise<any[]> {
-  const cacheKey = `services-search-${accountId}`;
-  const cached = getCached(cacheKey);
-  if (cached) return cached;
-  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/services-search-results?accountId=${accountId}`);
-  const result = normalizeArray(data);
-  setCache(cacheKey, result);
-  return result;
+  return deduplicatedFetch(`services-search-${accountId}`,
+    async () => normalizeArray(await fetchWithTimeout(`/api/platinum/billing-enquiry/services-search-results?accountId=${accountId}`)));
 }
 
 export async function getMeteredServicesOnAccount(accountId: number): Promise<any[]> {
