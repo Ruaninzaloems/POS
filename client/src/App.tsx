@@ -21,7 +21,6 @@ import ViewReceipts from "@/pages/view-receipts";
 import DirectDepositsAutoAllocation from "@/pages/direct-deposits/auto/auto-allocation";
 import ThirdPartyPaymentProcessing from "@/pages/third-party/payment-processing";
 
-import SettingsPage from "@/pages/settings";
 import CashierDayEnd from "@/pages/cashier-day-end";
 import BillingDashboard from "@/pages/billing-dashboard";
 import GeneralEnquiries from "@/pages/enquiries-general";
@@ -68,7 +67,6 @@ function Router() {
       <Route path="/" component={HomePage} />
       <Route path="/pos" component={PosPage} />
       <Route path="/cashier-setup" component={CashierSetupPage} />
-      <Route path="/settings" component={SettingsPage} />
       
       {/* Direct Deposits Manual Module */}
       <Route path="/direct-deposits/manual" component={UnmatchedQueue} />

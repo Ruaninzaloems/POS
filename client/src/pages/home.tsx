@@ -10,7 +10,6 @@ import {
   FileBarChart,
   FileSearch,
   Search,
-  Settings,
   ShieldCheck,
   LogOut,
   Monitor,
@@ -31,7 +30,6 @@ const menuItems = [
   { label: 'View Receipts', href: '/view-receipts', icon: FileSearch, description: 'Search and view transaction receipts', helpTip: 'Search and reprint previously issued receipts' },
   { label: 'General Enquiries', href: '/enquiries/general', icon: Search, description: 'Search and view account details', helpTip: 'Look up account balances, transaction history, and billing details' },
   { label: 'Client Communications', href: '/communications', icon: MessageSquareMore, description: 'Send custom emails and SMS to account holders', helpTip: 'Send emails and SMS messages to account holders' },
-  { label: 'System Settings', href: '/settings', icon: Settings, description: 'Configure system preferences', helpTip: 'Configure system preferences and cashier profile settings' },
   { label: 'Supervisor', href: '/supervisor', icon: ShieldCheck, description: 'Supervisor dashboard and approvals', helpTip: 'Review and approve cashier day-end submissions and cancellation requests' },
 ];
 

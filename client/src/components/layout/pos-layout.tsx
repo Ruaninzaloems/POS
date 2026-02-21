@@ -15,7 +15,6 @@ import {
   Zap,
   FileBarChart,
   FileSearch,
-  Settings,
   Monitor,
   Smartphone,
   Home,
@@ -148,7 +147,6 @@ export function PosLayout({ children }: PosLayoutProps) {
     'Enquiries': 'Look up account details and balances',
     'General Enquiries': 'Look up account details and balances',
     'Client Communications': 'Send messages to account holders',
-    'System Settings': 'Configure system preferences',
     'Supervisor': 'Review cashier submissions (supervisor only)',
   };
 
@@ -177,7 +175,6 @@ export function PosLayout({ children }: PosLayoutProps) {
         ]
     },
     { label: 'Client Communications', href: '/communications', icon: MessageSquareMore },
-    { label: 'System Settings', href: '/settings', icon: Settings },
     { label: 'Supervisor', href: '/supervisor', icon: ShieldCheck },
   ];
 

@@ -229,6 +229,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
   const [receiptDate, setReceiptDate] = useState<string>(getSADateString());
   
+  // API-TODO: officeLimits — should be fetched from Platinum API endpoint for cash office configuration
+  // Endpoint needed: GET /api/platinum/pos-settings/office-limits or similar
+  // Returns: { officeId: string, maxTransactionLimit: number }[] per cash office
   const [officeLimits, setOfficeLimits] = useState<Record<string, number>>({});
   const [allowedPaymentOptions, setAllowedPaymentOptions] = useState<CashierPaymentOption[]>([]);
   const [allowedPaymentTypes, setAllowedPaymentTypes] = useState<CashierPaymentType[]>([]);
@@ -236,6 +239,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [paymentTypesSource, setPaymentTypesSource] = useState<string>('not-loaded');
 
   const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
+  // API-TODO: systemSettings — all settings should be driven by Platinum API
+  // Endpoint needed: GET /api/platinum/pos-settings/system-config or similar
+  // Expected fields:
+  //   - enableDenominationCounting: boolean (controls day-end cash counting mode)
+  //   - receiptConfig: { template, printDefaults, etc. } (receipt configuration)
+  //   - Any future system-wide POS settings
   const [systemSettings, setSystemSettings] = useState({
       enableDenominationCounting: false
   });
@@ -323,6 +332,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       loadData();
   }, []);
 
+  // API-TODO: currentTransactionLimit — currently defaults to 5000 (hardcoded fallback)
+  // Should be populated from the office-limits API endpoint during session startup
   const currentTransactionLimit = useMemo(() => {
       if (!sessionDetails?.officeId) return 5000;
       return officeLimits[sessionDetails.officeId] || 5000;
@@ -767,6 +778,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setPlatinumCashierId(null);
   };
 
+  // API-TODO: updateOfficeLimit — should persist to Platinum API
+  // Endpoint needed: PUT /api/platinum/pos-settings/office-limits/{officeId}
+  // Currently only updates in-memory (resets on page refresh)
   const updateOfficeLimit = (officeId: string, limit: number) => {
       setOfficeLimits(prev => ({ ...prev, [officeId]: limit }));
   };
