@@ -1000,11 +1000,12 @@ export default function ViewReceipts() {
                                                         {debit === 0 && credit === 0 && '-'}
                                                     </span>
                                                 </div>
-                                                {accountNo > 0 && <div className="text-xs text-slate-600" data-testid={`mobile-cashbook-account-no-${idx}`}>Account: {accountNo}</div>}
+                                                <div className="text-xs text-slate-600" data-testid={`mobile-cashbook-account-no-${idx}`}>
+                                                    Account: {accountNo && accountNo > 0 ? accountNo : <span className="text-orange-500 italic">Not Allocated</span>}
+                                                </div>
                                                 <div className="flex flex-wrap gap-x-3 text-xs text-slate-500">
-                                                    {receiptDate && <span>Receipt: {new Date(receiptDate).toLocaleDateString('en-ZA')}</span>}
+                                                    <span>Receipt Date: {receiptDate ? new Date(receiptDate).toLocaleDateString('en-ZA') : <span className="text-orange-500 italic">Not Allocated</span>}</span>
                                                     {postingDate && <span>Posted: {new Date(postingDate).toLocaleDateString('en-ZA')}</span>}
-                                                    {!receiptDate && !postingDate && <span>-</span>}
                                                 </div>
                                                 {cashbookRef && <div className="text-[10px] text-slate-400">Ref: {cashbookRef}</div>}
                                                 {(receiptNo || accountNo) && (
@@ -1053,10 +1054,10 @@ export default function ViewReceipts() {
                                                 return (
                                                     <TableRow key={idx} className="hover:bg-indigo-50/30" data-testid={`cashbook-result-${idx}`}>
                                                         <TableCell className="text-[11px] font-mono max-w-[250px] truncate" title={desc}>{desc || '-'}</TableCell>
-                                                        <TableCell className="text-[11px] font-mono font-semibold text-blue-700">{receiptNo || '-'}</TableCell>
-                                                        <TableCell className="text-[11px] font-mono">{accountNo && accountNo > 0 ? accountNo : '-'}</TableCell>
+                                                        <TableCell className="text-[11px] font-mono font-semibold text-blue-700">{receiptNo || <span className="text-orange-500 text-[10px] italic font-normal">Not Allocated</span>}</TableCell>
+                                                        <TableCell className="text-[11px] font-mono">{accountNo && accountNo > 0 ? accountNo : <span className="text-orange-500 text-[10px] italic">Not Allocated</span>}</TableCell>
                                                         <TableCell className="text-[10px] text-slate-600">
-                                                            {receiptDate ? new Date(receiptDate).toLocaleDateString('en-ZA') : '-'}
+                                                            {receiptDate ? new Date(receiptDate).toLocaleDateString('en-ZA') : <span className="text-orange-500 italic">Not Allocated</span>}
                                                         </TableCell>
                                                         <TableCell className="text-[11px] font-mono text-slate-600">{docNum || '-'}</TableCell>
                                                         <TableCell className="text-[11px] font-mono font-bold text-right text-red-600">
