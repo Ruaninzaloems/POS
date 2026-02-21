@@ -66,7 +66,7 @@ function FieldAutocompleteInput({ fieldKey, placeholder, value, onChange, onSele
         setSuggestions(items.slice(0, 25));
         setOpen(true);
         const withIds = items.filter(s => s.accountId && s.accountId > 0);
-        const uniqueIds = [...new Set(withIds.map(s => s.accountId))].slice(0, 5);
+        const uniqueIds = Array.from(new Set(withIds.map(s => s.accountId))).slice(0, 5);
         if (uniqueIds.length > 0 && onAutoResults) onAutoResults(fieldKey, uniqueIds);
       } catch {
         if (tokenRef.current === tok) setSuggestions([]);
@@ -79,11 +79,11 @@ function FieldAutocompleteInput({ fieldKey, placeholder, value, onChange, onSele
   const handleSelect = (selected: { displayItem: string; accountId: number }) => {
     onChange(fieldKey, selected.displayItem);
     setOpen(false);
-    const allLinkedIds = [...new Set(
+    const allLinkedIds = Array.from(new Set(
       suggestions
         .filter(s => s.displayItem === selected.displayItem && s.accountId > 0)
         .map(s => s.accountId)
-    )];
+    ));
     if (allLinkedIds.length > 0) {
       onSelectAllLinked(allLinkedIds);
     } else {
@@ -144,6 +144,7 @@ function GeneralEnquiriesContent() {
   const [pinnedAccounts, setPinnedAccounts] = useState<EnquirySearchResult[]>([]);
   const [quickFilters, setQuickFilters] = useState<Set<string>>(new Set());
   const [showFiltersPanel, setShowFiltersPanel] = useState(false);
+  const [mobileFormCollapsed, setMobileFormCollapsed] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -263,28 +264,39 @@ function GeneralEnquiriesContent() {
     const { field } = detectSearchType(query);
     const token = ++quickSearchTokenRef.current;
     try {
-      let data: EnquirySearchResult[];
-      const [multiAcData, enquiryData] = await Promise.allSettled([
-        multiAutocompleteSearch(query.trim()),
-        searchAccounts({ [field]: query.trim() } as any),
-      ]);
+      const enquiryPromise = searchAccounts({ [field]: query.trim() } as any).catch(() => [] as EnquirySearchResult[]);
+      const acPromise = multiAutocompleteSearch(query.trim()).catch(() => ({ suggestions: [], results: [] as EnquirySearchResult[] }));
+
+      const eqResults = await enquiryPromise;
       if (quickSearchTokenRef.current !== token) return;
-      const acResults = multiAcData.status === 'fulfilled' ? multiAcData.value.results : [];
-      const eqResults = enquiryData.status === 'fulfilled' ? enquiryData.value : [];
-      const seen = new Set<number>();
-      data = [];
-      for (const r of [...eqResults, ...acResults]) {
-        const id = r.account_ID || r.accountID;
-        if (id && !seen.has(id)) { seen.add(id); data.push(r); }
+      if (eqResults.length > 0) {
+        setDropdownResults(eqResults);
+        setShowDropdown(true);
+        setDropdownSearching(false);
+        enrichWithBalances(eqResults, quickSearchTokenRef, token, setDropdownResults);
       }
+
+      const acData = await acPromise;
       if (quickSearchTokenRef.current !== token) return;
-      setDropdownResults(data);
-      setShowDropdown(true);
-      enrichWithBalances(data, quickSearchTokenRef, token, setDropdownResults);
+      const acResults = acData.results || [];
+      if (acResults.length > 0 || eqResults.length > 0) {
+        const seen = new Set<number>();
+        const merged: EnquirySearchResult[] = [];
+        for (const r of [...eqResults, ...acResults]) {
+          const id = r.account_ID || r.accountID;
+          if (id && !seen.has(id)) { seen.add(id); merged.push(r); }
+        }
+        setDropdownResults(merged);
+        setShowDropdown(true);
+        enrichWithBalances(merged, quickSearchTokenRef, token, setDropdownResults);
+      } else {
+        setDropdownResults([]);
+        setShowDropdown(true);
+      }
     } catch (e: any) {
       if (quickSearchTokenRef.current === token) setDropdownResults([]);
     } finally {
-      setDropdownSearching(false);
+      if (quickSearchTokenRef.current === token) setDropdownSearching(false);
     }
   }, [enrichWithBalances]);
 
@@ -295,7 +307,7 @@ function GeneralEnquiriesContent() {
     if (val.trim().length >= 2) {
       setShowDropdown(true);
       setDropdownSearching(true);
-      debounceRef.current = setTimeout(() => doQuickSearch(val), 400);
+      debounceRef.current = setTimeout(() => doQuickSearch(val), 250);
     } else {
       setShowDropdown(val.trim().length > 0);
       setDropdownResults([]);
@@ -362,6 +374,7 @@ function GeneralEnquiriesContent() {
         const mainResults = await mainPromise;
         if (fullSearchTokenRef.current !== token) return;
         setResults(mainResults);
+        if (mainResults.length > 0) setMobileFormCollapsed(true);
         setSearching(false);
         enrichWithBalances(mainResults, fullSearchTokenRef, token, setResults);
         try {
@@ -385,6 +398,7 @@ function GeneralEnquiriesContent() {
       }
       if (fullSearchTokenRef.current !== token) return;
       setResults(data);
+      if (data.length > 0) setMobileFormCollapsed(true);
       enrichWithBalances(data, fullSearchTokenRef, token, setResults);
     } catch (e: any) {
       if (fullSearchTokenRef.current === token) {
@@ -497,6 +511,7 @@ function GeneralEnquiriesContent() {
     setQuickQuery('');
     setCriteria({});
     setResults([]);
+    setMobileFormCollapsed(false);
     setDropdownResults([]);
     setHasSearched(false);
     setSearchError(null);
@@ -921,7 +936,7 @@ function GeneralEnquiriesContent() {
             </div>
           </div>
 
-          <div className="mt-2 border border-slate-200 rounded-lg bg-slate-50/50 p-2">
+          <div className={`mt-2 border border-slate-200 rounded-lg bg-slate-50/50 p-2 ${mobileFormCollapsed ? 'sm:block' : ''}`}>
             <div className="flex items-center gap-1.5 mb-1.5">
               <Filter className="w-3 h-3 text-slate-400" />
               <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Billing Enquiry Search</span>
@@ -929,18 +944,30 @@ function GeneralEnquiriesContent() {
                 <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold">{activeFilterCount}</span>
               )}
               {activeFilterCount > 0 && (
-                <button onClick={() => setCriteria({})} className="text-[10px] text-blue-600 hover:text-blue-800 underline underline-offset-2 ml-auto" data-testid="button-clear-field-filters">Clear</button>
+                <button onClick={() => setCriteria({})} className="text-[10px] text-blue-600 hover:text-blue-800 underline underline-offset-2" data-testid="button-clear-field-filters">Clear</button>
               )}
-              <button
-                onClick={() => setShowFiltersPanel(prev => !prev)}
-                className="ml-auto text-[10px] text-slate-500 hover:text-slate-700 flex items-center gap-1"
-                data-testid="button-toggle-advanced"
-              >
-                <SlidersHorizontal className="w-3 h-3" />
-                More Fields
-              </button>
+              <div className="ml-auto flex items-center gap-2">
+                {mobileFormCollapsed && (
+                  <button
+                    onClick={() => setMobileFormCollapsed(false)}
+                    className="sm:hidden text-[10px] text-blue-600 hover:text-blue-800 flex items-center gap-1 font-medium"
+                    data-testid="button-expand-form"
+                  >
+                    <ChevronDown className="w-3 h-3" />
+                    Expand
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowFiltersPanel(prev => !prev)}
+                  className="text-[10px] text-slate-500 hover:text-slate-700 flex items-center gap-1"
+                  data-testid="button-toggle-advanced"
+                >
+                  <SlidersHorizontal className="w-3 h-3" />
+                  More Fields
+                </button>
+              </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-1.5">
+            <div className={`${mobileFormCollapsed ? 'hidden sm:grid' : 'grid'} grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-1.5`}>
               {[
                 { key: 'accountNo', placeholder: 'Account No.' },
                 { key: 'name', placeholder: 'Name / Company' },
@@ -964,28 +991,30 @@ function GeneralEnquiriesContent() {
                 />
               ))}
             </div>
-            <p className="text-[10px] text-red-500 mt-1.5 font-medium">** At Least One Search Parameter Must Be Entered</p>
-            <div className="flex items-center gap-2 mt-1.5">
-              <button
-                onClick={handleFullSearch}
-                disabled={searching || (quickQuery.trim().length < 2 && !Object.values(criteria).some(v => v && String(v).trim()))}
-                className="h-7 px-3 rounded bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white flex items-center gap-1.5 text-[11px] font-medium transition-colors"
-                data-testid="button-field-search"
-              >
-                {searching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
-                Search
-              </button>
-              <button
-                onClick={() => { setCriteria({}); setQuickQuery(''); setResults([]); setHasSearched(false); setSearchError(null); }}
-                className="h-7 px-3 rounded bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-medium transition-colors"
-                data-testid="button-field-clear"
-              >
-                Clear
-              </button>
+            <div className={`${mobileFormCollapsed ? 'hidden sm:block' : ''}`}>
+              <p className="text-[10px] text-red-500 mt-1.5 font-medium">** At Least One Search Parameter Must Be Entered</p>
+              <div className="flex items-center gap-2 mt-1.5">
+                <button
+                  onClick={handleFullSearch}
+                  disabled={searching || (quickQuery.trim().length < 2 && !Object.values(criteria).some(v => v && String(v).trim()))}
+                  className="h-7 px-3 rounded bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white flex items-center gap-1.5 text-[11px] font-medium transition-colors"
+                  data-testid="button-field-search"
+                >
+                  {searching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
+                  Search
+                </button>
+                <button
+                  onClick={() => { setCriteria({}); setQuickQuery(''); setResults([]); setHasSearched(false); setSearchError(null); setMobileFormCollapsed(false); }}
+                  className="h-7 px-3 rounded bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-medium transition-colors"
+                  data-testid="button-field-clear"
+                >
+                  Clear
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 mt-2 overflow-x-auto scrollbar-hide pb-0.5 sm:flex-wrap sm:overflow-visible" role="group" aria-label="Quick filters">
+          <div className={`flex items-center gap-1.5 mt-2 overflow-x-auto scrollbar-hide pb-0.5 sm:flex-wrap sm:overflow-visible ${mobileFormCollapsed ? 'hidden sm:flex' : ''}`} role="group" aria-label="Quick filters">
             {QUICK_FILTER_CHIPS.map(chip => (
               <button
                 key={chip.key}
@@ -1184,7 +1213,20 @@ function GeneralEnquiriesContent() {
 
         {filteredResults.length > 0 && (
           <>
-            <div className="sm:hidden p-2 space-y-2" data-testid="mobile-search-results">
+            <div className="sm:hidden px-3 pt-2 pb-1 flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{filteredResults.length} Account{filteredResults.length !== 1 ? 's' : ''} Found</span>
+              {mobileFormCollapsed && (
+                <button
+                  onClick={() => setMobileFormCollapsed(false)}
+                  className="text-[10px] text-blue-600 hover:text-blue-800 flex items-center gap-0.5 font-medium"
+                  data-testid="button-show-filters-mobile"
+                >
+                  <Filter className="w-2.5 h-2.5" />
+                  Filters
+                </button>
+              )}
+            </div>
+            <div className="sm:hidden p-2 pt-0 space-y-2" data-testid="mobile-search-results">
               {filteredResults.map((account, i) => {
                 const aid = account.accountID || account.account_ID || i;
                 const acctNum = account.accountNumber || account.accountID || account.account_ID;

@@ -1320,6 +1320,8 @@ export async function prefetchAccountData(accountId: number): Promise<void> {
     getNameInfo(accountId),
     getSectionalTitleScheme(accountId),
     getAccountNotifications(accountId),
+    getServiceTypeBalance(accountId),
+    getDeposits(accountId),
   ];
   await Promise.allSettled(calls);
 }
