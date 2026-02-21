@@ -655,25 +655,45 @@ function parseTariffTiers(blocks: TariffBlock[]): TariffTier[] {
   return tiers;
 }
 
-function calculateTieredBilling(consumption: number, tiers: TariffTier[], factor: number = 1): { tierBreakdown: { label: string; units: number; rate: number; amount: number }[]; subtotal: number } {
-  if (!tiers.length || consumption <= 0) return { tierBreakdown: [], subtotal: 0 };
+const STANDARD_MONTH_DAYS = 30;
 
-  const breakdown: { label: string; units: number; rate: number; amount: number }[] = [];
+function calculateTieredBilling(
+  consumption: number,
+  tiers: TariffTier[],
+  factor: number = 1,
+  readingDays?: number
+): { tierBreakdown: { label: string; units: number; rate: number; amount: number; proRatedFrom?: number; proRatedTo?: number }[]; subtotal: number; isProRated: boolean } {
+  if (!tiers.length || consumption <= 0) return { tierBreakdown: [], subtotal: 0, isProRated: false };
+
+  const days = readingDays && readingDays > 0 ? readingDays : STANDARD_MONTH_DAYS;
+  const dayRatio = days / STANDARD_MONTH_DAYS;
+  const isProRated = days !== STANDARD_MONTH_DAYS;
+
+  const breakdown: { label: string; units: number; rate: number; amount: number; proRatedFrom?: number; proRatedTo?: number }[] = [];
   let remaining = consumption;
 
   for (const tier of tiers) {
     if (remaining <= 0) break;
-    const tierCapacity = tier.to === Infinity ? remaining : Math.max(0, tier.to - tier.from);
+    const proFrom = tier.from * dayRatio;
+    const proTo = tier.to === Infinity ? Infinity : tier.to * dayRatio;
+    const tierCapacity = proTo === Infinity ? remaining : Math.max(0, proTo - proFrom);
     const unitsInTier = Math.min(remaining, tierCapacity);
     if (unitsInTier > 0) {
       const amount = unitsInTier * tier.rate * factor;
-      breakdown.push({ label: tier.label, units: unitsInTier, rate: tier.rate, amount });
+      breakdown.push({
+        label: tier.label,
+        units: unitsInTier,
+        rate: tier.rate,
+        amount,
+        proRatedFrom: Math.round(proFrom * 100) / 100,
+        proRatedTo: proTo === Infinity ? undefined : Math.round(proTo * 100) / 100,
+      });
       remaining -= unitsInTier;
     }
   }
 
   const subtotal = breakdown.reduce((s, b) => s + b.amount, 0);
-  return { tierBreakdown: breakdown, subtotal };
+  return { tierBreakdown: breakdown, subtotal, isProRated };
 }
 
 function BillingEstimator({ readingHistory, selectedMeter, allReadings }: { readingHistory: any[]; selectedMeter: any; allReadings: any[] }) {
@@ -735,9 +755,15 @@ function BillingEstimator({ readingHistory, selectedMeter, allReadings }: { read
 
       if (consNum <= 0) return null;
 
-      const { tierBreakdown, subtotal } = calculateTieredBilling(consNum, tariffInfo.tiers, factorNum);
+      const rdRaw = reading.readingdays;
+      const rdNum = typeof rdRaw === 'number' ? rdRaw : (rdRaw ? parseInt(rdRaw) : NaN);
+      const readingDaysNum = isNaN(rdNum) || rdNum <= 0 ? undefined : rdNum;
+
+      const { tierBreakdown, subtotal, isProRated } = calculateTieredBilling(consNum, tariffInfo.tiers, factorNum, readingDaysNum);
       const vatAmount = subtotal * (vatRate / 100);
       const total = subtotal + vatAmount;
+
+      const dailyConsumption = readingDaysNum ? (consNum / readingDaysNum) : undefined;
 
       return {
         consumption: consNum,
@@ -745,7 +771,9 @@ function BillingEstimator({ readingHistory, selectedMeter, allReadings }: { read
         readingDate: reading.reading2Date || reading.reading1Date || '',
         newReading: reading.reading2 ?? '-',
         oldReading: reading.reading1 ?? '-',
-        readingDays: reading.readingdays ?? '-',
+        readingDays: readingDaysNum ?? '-',
+        dailyConsumption,
+        isProRated,
         tierBreakdown,
         subtotal,
         vatAmount,
@@ -846,7 +874,7 @@ function BillingEstimator({ readingHistory, selectedMeter, allReadings }: { read
                   </span>
                   <span className="text-[10px] text-slate-500">{est.readingDate}</span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
                   <div className="bg-white rounded px-2 py-1 border border-indigo-100">
                     <span className="text-slate-500 block text-[9px] uppercase">Old Reading</span>
                     <span className="font-mono font-semibold">{est.oldReading}</span>
@@ -856,27 +884,40 @@ function BillingEstimator({ readingHistory, selectedMeter, allReadings }: { read
                     <span className="font-mono font-semibold">{est.newReading}</span>
                   </div>
                   <div className="bg-white rounded px-2 py-1 border border-indigo-100">
-                    <span className="text-slate-500 block text-[9px] uppercase">Consumption</span>
+                    <span className="text-slate-500 block text-[9px] uppercase">Total Units</span>
                     <span className="font-mono font-bold text-blue-700">{est.consumption}</span>
                   </div>
                   <div className="bg-white rounded px-2 py-1 border border-indigo-100">
-                    <span className="text-slate-500 block text-[9px] uppercase">Days</span>
-                    <span className="font-mono">{est.readingDays}</span>
+                    <span className="text-slate-500 block text-[9px] uppercase">Reading Days</span>
+                    <span className="font-mono font-semibold">{est.readingDays}</span>
+                  </div>
+                  <div className="bg-white rounded px-2 py-1 border border-indigo-100">
+                    <span className="text-slate-500 block text-[9px] uppercase">Daily Avg</span>
+                    <span className="font-mono font-semibold text-purple-700">{est.dailyConsumption ? fmt(est.dailyConsumption) : '-'} /day</span>
                   </div>
                 </div>
+                {est.isProRated && typeof est.readingDays === 'number' && (
+                  <div className="mt-2 px-2 py-1 bg-blue-50 border border-blue-100 rounded text-[10px] text-blue-700">
+                    Tariff tiers pro-rated for <span className="font-bold">{est.readingDays}</span> days (standard: {STANDARD_MONTH_DAYS} days). Tier boundaries adjusted proportionally.
+                  </div>
+                )}
               </div>
 
               {est.tierBreakdown.length > 0 && (
                 <div className="border border-slate-200 rounded-lg overflow-hidden">
-                  <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200">
-                    <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Tariff Tier Calculation</span>
-                    {est.factor !== 1 && <span className="ml-2 text-[10px] text-indigo-600 font-medium">(Factor: {est.factor})</span>}
+                  <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between flex-wrap gap-1">
+                    <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Per-Day Tariff Tier Calculation</span>
+                    <span className="text-[10px] text-slate-400">
+                      {est.factor !== 1 && <span className="text-indigo-600 font-medium mr-2">Factor: {est.factor}</span>}
+                      {est.isProRated && typeof est.readingDays === 'number' && <span>{est.readingDays} days / {STANDARD_MONTH_DAYS} std days</span>}
+                    </span>
                   </div>
                   <table className="w-full text-[12px]">
                     <thead>
                       <tr className="bg-slate-50/50">
-                        <th className="text-left py-1.5 px-3 text-[10px] uppercase tracking-wider text-slate-500 font-bold">Tier</th>
-                        <th className="text-right py-1.5 px-3 text-[10px] uppercase tracking-wider text-slate-500 font-bold">Units</th>
+                        <th className="text-left py-1.5 px-3 text-[10px] uppercase tracking-wider text-slate-500 font-bold">Tier (Std 30d)</th>
+                        {est.isProRated && <th className="text-left py-1.5 px-3 text-[10px] uppercase tracking-wider text-slate-500 font-bold">Pro-Rated</th>}
+                        <th className="text-right py-1.5 px-3 text-[10px] uppercase tracking-wider text-slate-500 font-bold">Units Used</th>
                         <th className="text-right py-1.5 px-3 text-[10px] uppercase tracking-wider text-slate-500 font-bold">Rate (R)</th>
                         <th className="text-right py-1.5 px-3 text-[10px] uppercase tracking-wider text-slate-500 font-bold">Amount (R)</th>
                       </tr>
@@ -885,6 +926,11 @@ function BillingEstimator({ readingHistory, selectedMeter, allReadings }: { read
                       {est.tierBreakdown.map((tier: any, ti: number) => (
                         <tr key={ti} className="border-t border-slate-100">
                           <td className="py-1.5 px-3 text-slate-700">{tier.label}</td>
+                          {est.isProRated && (
+                            <td className="py-1.5 px-3 text-slate-500 text-[10px] font-mono">
+                              {tier.proRatedFrom != null ? `${fmt(tier.proRatedFrom)} – ${tier.proRatedTo != null ? fmt(tier.proRatedTo) : '∞'}` : '-'}
+                            </td>
+                          )}
                           <td className="py-1.5 px-3 text-right font-mono text-slate-700">{fmt(tier.units)}</td>
                           <td className="py-1.5 px-3 text-right font-mono text-blue-600">{tier.rate.toFixed(6)}</td>
                           <td className="py-1.5 px-3 text-right font-mono font-semibold text-slate-800">{fmt(tier.amount)}</td>
