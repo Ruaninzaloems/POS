@@ -145,7 +145,7 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Day End Reconciliation</DialogTitle>
           <DialogDescription>
@@ -185,18 +185,19 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                         </div>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4 max-h-[300px] overflow-y-auto pr-2">
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4 max-h-[40vh] overflow-y-auto pr-1 sm:pr-2">
                         {/* Notes */}
-                        <div className="space-y-2">
+                        <div className="space-y-1.5 sm:space-y-2">
                             <Label className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Notes</Label>
                             {[200, 100, 50, 20, 10].map(val => (
-                                <div key={`note_${val}`} className="flex items-center gap-2">
-                                    <div className="w-16 text-sm font-medium text-right">R {val}</div>
+                                <div key={`note_${val}`} className="flex items-center gap-1.5 sm:gap-2">
+                                    <div className="w-12 sm:w-16 text-xs sm:text-sm font-medium text-right shrink-0">R {val}</div>
                                     <Input 
                                         type="number" 
+                                        inputMode="numeric"
                                         min="0"
                                         placeholder="0"
-                                        className="h-8 font-mono text-right"
+                                        className="h-10 sm:h-8 font-mono text-right"
                                         value={denominations[`note_${val}`]}
                                         onChange={(e) => handleDenominationChange(`note_${val}`, e.target.value)}
                                     />
@@ -205,18 +206,19 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                         </div>
 
                         {/* Coins */}
-                        <div className="space-y-2">
+                        <div className="space-y-1.5 sm:space-y-2">
                             <Label className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Coins</Label>
                             {[5, 2, 1, 0.5, 0.2, 0.1].map(val => (
-                                <div key={`coin_${val}`} className="flex items-center gap-2">
-                                    <div className="w-16 text-sm font-medium text-right">
+                                <div key={`coin_${val}`} className="flex items-center gap-1.5 sm:gap-2">
+                                    <div className="w-12 sm:w-16 text-xs sm:text-sm font-medium text-right shrink-0">
                                         {val >= 1 ? `R ${val}` : `${val * 100}c`}
                                     </div>
                                     <Input 
                                         type="number" 
+                                        inputMode="numeric"
                                         min="0"
                                         placeholder="0"
-                                        className="h-8 font-mono text-right"
+                                        className="h-10 sm:h-8 font-mono text-right"
                                         value={denominations[`coin_${val}`]}
                                         onChange={(e) => handleDenominationChange(`coin_${val}`, e.target.value)}
                                     />

@@ -81,18 +81,18 @@ export default function HomePage() {
       <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
         <div className="md:hidden p-4 bg-card border-b">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Modules</h2>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2.5">
             {menuItems.map((item, idx) => (
               <Link key={idx} href={item.href}>
                 <button
-                  className="w-full flex flex-col items-center gap-1.5 p-3 rounded-lg text-center hover:bg-accent transition-colors group border bg-background relative overflow-hidden"
+                  className="w-full flex flex-col items-center gap-2 p-3.5 rounded-xl text-center hover:bg-blue-50/50 active:scale-[0.97] transition-all group border border-slate-200/80 bg-white shadow-sm relative overflow-hidden touch-manipulation"
                   data-testid={`menu-item-${item.href.replace(/\//g, '-').slice(1) || 'home'}`}
                 >
                   <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover:bg-blue-100">
-                    <item.icon className="w-5 h-5 text-muted-foreground group-hover:text-blue-600" />
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center shrink-0 group-hover:from-blue-100 group-hover:to-indigo-100 transition-colors">
+                    <item.icon className="w-5 h-5 text-blue-600" />
                   </div>
-                  <div className="text-[11px] font-medium text-foreground leading-tight">{item.label}</div>
+                  <div className="text-[11px] font-medium text-slate-700 leading-tight">{item.label}</div>
                 </button>
               </Link>
             ))}

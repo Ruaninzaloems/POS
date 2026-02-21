@@ -323,8 +323,8 @@ export function UnifiedSearch() {
                       <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 text-sm font-medium">
                           Search Results ({advancedResults.length})
                       </div>
-                      <div className="max-h-80 overflow-y-auto">
-                          <table className="w-full text-sm" data-testid="table-advanced-results">
+                      <div className="max-h-80 overflow-y-auto overflow-x-auto">
+                          <table className="w-full text-sm min-w-[540px]" data-testid="table-advanced-results">
                               <thead className="bg-gradient-to-r from-blue-600 to-indigo-600 sticky top-0">
                                   <tr>
                                       <th className="text-left px-3 py-2 font-medium text-xs text-white">Account</th>
@@ -364,7 +364,7 @@ export function UnifiedSearch() {
 
   return (
       <>
-      <div className="flex gap-2 w-full max-w-2xl">
+      <div className="flex gap-2 w-full max-w-2xl lg:max-w-4xl">
           <SearchComponent onSelect={handleSelect} className="flex-1" institutions={referenceData.institutions} userId={platinumUser?.user_ID} finYear={platinumUser?.finYear} />
           <Button 
             variant="outline" 

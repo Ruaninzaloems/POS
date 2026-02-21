@@ -226,54 +226,54 @@ export function ReceiptModal() {
                 <p className="text-sm font-medium mb-2">Receipt Options</p>
                 
                 <div 
-                    className={`flex items-center space-x-3 border p-3 rounded-lg cursor-pointer transition-colors ${printSelected ? 'border-primary bg-primary/5' : 'border-input hover:bg-muted/50'}`}
+                    className={`flex items-center space-x-3 border p-4 rounded-xl cursor-pointer transition-colors touch-manipulation ${printSelected ? 'border-blue-500 bg-blue-50/50 ring-1 ring-blue-200' : 'border-input hover:bg-muted/50'}`}
                     onClick={() => setPrintSelected(!printSelected)}
                 >
                     <Checkbox id="print-opt" checked={printSelected} onCheckedChange={(c) => setPrintSelected(!!c)} />
                     <Label htmlFor="print-opt" className="flex-1 cursor-pointer flex items-center gap-2 font-medium">
-                        <Printer className="w-4 h-4 text-muted-foreground" /> Print Receipt
+                        <Printer className="w-5 h-5 text-blue-600" /> Print Receipt
                     </Label>
                 </div>
 
-                <div className={`border rounded-lg transition-all ${emailSelected ? 'border-primary bg-primary/5' : 'border-input'}`}>
+                <div className={`border rounded-xl transition-all ${emailSelected ? 'border-blue-500 bg-blue-50/50 ring-1 ring-blue-200' : 'border-input'}`}>
                     <div 
-                        className="flex items-center space-x-3 p-3 cursor-pointer hover:bg-muted/50 rounded-t-lg"
+                        className="flex items-center space-x-3 p-4 cursor-pointer hover:bg-muted/50 rounded-t-xl touch-manipulation"
                         onClick={() => setEmailSelected(!emailSelected)}
                     >
                         <Checkbox id="email-opt" checked={emailSelected} onCheckedChange={(c) => setEmailSelected(!!c)} />
                         <Label htmlFor="email-opt" className="flex-1 cursor-pointer flex items-center gap-2 font-medium">
-                            <Mail className="w-4 h-4 text-muted-foreground" /> Email Receipt
+                            <Mail className="w-5 h-5 text-blue-600" /> Email Receipt
                         </Label>
                     </div>
                     {emailSelected && (
-                        <div className="px-3 pb-3 pt-0 animate-in slide-in-from-top-2">
+                        <div className="px-4 pb-4 pt-0 animate-in slide-in-from-top-2">
                             <Input 
                                 value={emailAddress} 
                                 onChange={(e) => setEmailAddress(e.target.value)}
                                 placeholder="Enter email address"
-                                className="h-8 bg-white"
+                                className="h-11 bg-white rounded-lg"
                             />
                         </div>
                     )}
                 </div>
 
-                <div className={`border rounded-lg transition-all ${smsSelected ? 'border-primary bg-primary/5' : 'border-input'}`}>
+                <div className={`border rounded-xl transition-all ${smsSelected ? 'border-blue-500 bg-blue-50/50 ring-1 ring-blue-200' : 'border-input'}`}>
                     <div 
-                        className="flex items-center space-x-3 p-3 cursor-pointer hover:bg-muted/50 rounded-t-lg"
+                        className="flex items-center space-x-3 p-4 cursor-pointer hover:bg-muted/50 rounded-t-xl touch-manipulation"
                         onClick={() => setSmsSelected(!smsSelected)}
                     >
                         <Checkbox id="sms-opt" checked={smsSelected} onCheckedChange={(c) => setSmsSelected(!!c)} />
                         <Label htmlFor="sms-opt" className="flex-1 cursor-pointer flex items-center gap-2 font-medium">
-                            <MessageSquare className="w-4 h-4 text-muted-foreground" /> SMS Receipt
+                            <MessageSquare className="w-5 h-5 text-blue-600" /> SMS Receipt
                         </Label>
                     </div>
                     {smsSelected && (
-                        <div className="px-3 pb-3 pt-0 animate-in slide-in-from-top-2">
+                        <div className="px-4 pb-4 pt-0 animate-in slide-in-from-top-2">
                             <Input 
                                 value={mobileNumber} 
                                 onChange={(e) => setMobileNumber(e.target.value)}
                                 placeholder="Enter mobile number"
-                                className="h-8 bg-white"
+                                className="h-11 bg-white rounded-lg"
                             />
                         </div>
                     )}
@@ -282,9 +282,9 @@ export function ReceiptModal() {
         </div>
 
         <DialogFooter className="sm:justify-between gap-2 border-t pt-4">
-          <Button variant="ghost" onClick={closeReceiptModal} disabled={transactionProcessing}>Close</Button>
+          <Button variant="ghost" onClick={closeReceiptModal} disabled={transactionProcessing} className="h-12 sm:h-10 rounded-xl">Close</Button>
           {!paymentFailed && (
-            <Button onClick={handleComplete} className="min-w-[140px]" disabled={transactionProcessing}>
+            <Button onClick={handleComplete} className="min-w-[140px] h-12 sm:h-10 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/20 font-bold" disabled={transactionProcessing}>
                 {transactionProcessing ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />

@@ -237,7 +237,7 @@ export function PosLayout({ children }: PosLayoutProps) {
                   </div>
                   <div
                     title={apiSessionActive === true ? 'Session active (validate-cashier API — POS_Cashier.IsActive=1)' : apiSessionActive === false ? 'Session NOT active (validate-cashier API — POS_Cashier.IsActive=0)' : 'Checking session status...'}
-                    className={`hidden md:flex items-center gap-1.5 ml-1 px-2.5 py-1 text-[10px] font-semibold rounded-full border whitespace-nowrap transition-all duration-300 ${
+                    className={`flex items-center gap-1.5 ml-1 px-2 sm:px-2.5 py-1 text-[9px] sm:text-[10px] font-semibold rounded-full border whitespace-nowrap transition-all duration-300 ${
                       apiSessionActive === null
                         ? 'bg-slate-200 text-slate-600 border-slate-300'
                         : apiSessionActive === true

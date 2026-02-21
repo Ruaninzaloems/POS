@@ -597,7 +597,7 @@ export function TransactionPanels() {
                               Items in Basket
                           </div>
                       </CardHeader>
-                      <CardContent className="p-0">
+                      <CardContent className="p-2 sm:p-0">
                           {transactionItems
                             .sort((a, b) => {
                                 const getPriority = (type: string) => {
@@ -612,8 +612,8 @@ export function TransactionPanels() {
                                 };
                                 return getPriority(a.type) - getPriority(b.type);
                             })
-                            .map((item) => (
-                              <div key={item.id} className="border-b last:border-0 rounded-xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+                            .map((item, idx, arr) => (
+                              <div key={item.id} className={`rounded-xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all ${idx < arr.length - 1 ? 'mb-2' : ''}`}>
                                   <div className="sm:grid sm:grid-cols-[1fr_2fr_1fr_1fr_auto] sm:gap-4 sm:items-center p-3 sm:p-4">
                                       <div className="flex items-center justify-between sm:justify-start gap-2 mb-2 sm:mb-0">
                                           <div className="flex items-center gap-2">

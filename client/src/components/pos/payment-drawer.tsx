@@ -283,19 +283,21 @@ export function PaymentDrawer() {
                         </div>
                     )}
                     
-                    {/* Quick Cash */}
+                    {/* Quick Cash - only visible for cash input */}
+                    {activeInput === 'cash' && cashAllowed && (
                     <div className={`grid grid-cols-3 gap-2 ${viewMode === 'desktop' ? 'lg:hidden' : ''}`}>
                         {QuickAmounts.map(amt => (
                             <Button 
                                 key={amt}
                                 variant="outline"
                                 className="rounded-xl bg-white border-slate-200 hover:bg-green-50 hover:text-green-700 hover:border-green-300 hover:shadow-sm transition-all h-12 text-base font-mono font-semibold"
-                                onClick={() => setPaymentAmount(activeInput, (activeInput === 'cash' ? payment.cashAmount : payment.cardAmount) + amt)}
+                                onClick={() => setPaymentAmount('cash', payment.cashAmount + amt)}
                             >
                                 +R{amt}
                             </Button>
                         ))}
                     </div>
+                    )}
 
                     <Separator className={`${viewMode === 'desktop' ? 'lg:hidden' : ''}`} />
                     
