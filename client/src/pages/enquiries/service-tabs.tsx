@@ -149,11 +149,12 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
       openingBalance: acc.openingBalance + (r.openingBalance || 0),
       amount: acc.amount + (r.amount || 0),
       vat: acc.vat + (r.vat || 0),
-      interestAmount: acc.interestAmount + (r.interestAmount || 0),
-      totalAmount: acc.totalAmount + (r.totalAmount || 0),
+      interestAmount: acc.interestAmount + (r.interestAmount ?? r.interest ?? 0),
+      totalAmount: acc.totalAmount + (r.totalAmount ?? r.total ?? 0),
       currentInterestAmount: acc.currentInterestAmount + (r.currentInterestAmount || 0),
       currentCharge: acc.currentCharge + (r.currentCharge || 0),
-    }), { openingBalance: 0, amount: 0, vat: 0, interestAmount: 0, totalAmount: 0, currentInterestAmount: 0, currentCharge: 0 });
+      closingBalance: acc.closingBalance + (r.closingBalance ?? r.closingBal ?? 0),
+    }), { openingBalance: 0, amount: 0, vat: 0, interestAmount: 0, totalAmount: 0, currentInterestAmount: 0, currentCharge: 0, closingBalance: 0 });
 
     const chartData = sorted.filter(r => r.totalAmount > 0 || r.amount > 0).map(r => ({
       month: r.month,
@@ -189,10 +190,10 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
                       <div className="flex justify-between text-[11px]"><span className="text-slate-500">Opening</span><span className="font-mono font-semibold text-slate-800">{fmt(r.openingBalance)}</span></div>
                       <div className="flex justify-between text-[11px]"><span className="text-slate-500">Amount</span><span className="font-mono font-semibold text-slate-800">{fmt(r.amount)}</span></div>
-                      <div className="flex justify-between text-[11px]"><span className="text-slate-500">Interest</span><span className="font-mono font-semibold text-slate-800">{fmt(r.interestAmount)}</span></div>
-                      <div className="flex justify-between text-[11px]"><span className="text-slate-500">Total</span><span className="font-mono font-bold text-blue-700">{fmt(r.totalAmount)}</span></div>
+                      <div className="flex justify-between text-[11px]"><span className="text-slate-500">Interest</span><span className="font-mono font-semibold text-slate-800">{fmt(r.interestAmount ?? r.interest)}</span></div>
+                      <div className="flex justify-between text-[11px]"><span className="text-slate-500">Total</span><span className="font-mono font-bold text-blue-700">{fmt(r.totalAmount ?? r.total)}</span></div>
                       <div className="flex justify-between text-[11px]"><span className="text-slate-500">VAT</span><span className="font-mono text-slate-700">{fmt(r.vat)}</span></div>
-                      <div className="flex justify-between text-[11px]"><span className="text-slate-500">Cur. Charge</span><span className="font-mono text-slate-700">{fmt(r.currentCharge)}</span></div>
+                      <div className="flex justify-between text-[11px]"><span className="text-slate-500">Closing</span><span className="font-mono text-slate-700">{fmt(r.closingBalance ?? r.closingBal)}</span></div>
                     </div>
                   </div>
                 ))}
@@ -216,6 +217,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
                       <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">VAT</th>
                       <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Interest</th>
                       <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Total Amount</th>
+                      <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Closing Balance</th>
                       <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Current Interest Charge</th>
                       <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Current Charge</th>
                       <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Month</th>
@@ -229,8 +231,9 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
                         <td className="py-2 px-3 text-right font-mono">{fmt(r.openingBalance)}</td>
                         <td className="py-2 px-3 text-right font-mono">{fmt(r.amount)}</td>
                         <td className="py-2 px-3 text-right font-mono">{fmt(r.vat)}</td>
-                        <td className="py-2 px-3 text-right font-mono">{fmt(r.interestAmount)}</td>
-                        <td className="py-2 px-3 text-right font-mono font-semibold text-blue-700">{fmt(r.totalAmount)}</td>
+                        <td className="py-2 px-3 text-right font-mono">{fmt(r.interestAmount ?? r.interest)}</td>
+                        <td className="py-2 px-3 text-right font-mono font-semibold text-blue-700">{fmt(r.totalAmount ?? r.total)}</td>
+                        <td className="py-2 px-3 text-right font-mono">{fmt(r.closingBalance ?? r.closingBal)}</td>
                         <td className="py-2 px-3 text-right font-mono">{fmt(r.currentInterestAmount)}</td>
                         <td className="py-2 px-3 text-right font-mono">{fmt(r.currentCharge)}</td>
                         <td className="py-2 px-3 text-slate-600">{r.month || '-'}</td>
@@ -244,6 +247,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
                       <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.vat)}</td>
                       <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.interestAmount)}</td>
                       <td className="py-2.5 px-3 text-right font-mono text-blue-700">{fmt(totals.totalAmount)}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.closingBalance)}</td>
                       <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.currentInterestAmount)}</td>
                       <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.currentCharge)}</td>
                       <td className="py-2.5 px-3" colSpan={2}></td>
@@ -327,15 +331,16 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
             const isExpanded = expandedRates.has(i);
             const hasCostData = !!svc.costInterVal || (svc.endDate && typeof svc.endDate === 'string' && svc.endDate.includes('<'));
             const meterDisplay = hasCostData
-              ? (svc.meterNo || 'No Meter')
-              : `${svc.physicalMeterNo || 'No Meter'}${svc.meterNo ? ` - ${svc.meterNo}` : ''}`;
-            const status = svc.serviceStatus || svc.statusDesc || '-';
+              ? (svc.meterNo || svc.meterNumber || 'No Meter')
+              : `${svc.physicalMeterNo || svc.physicalMeterNumber || 'No Meter'}${svc.meterNo || svc.meterNumber ? ` - ${svc.meterNo || svc.meterNumber}` : ''}`;
+            const status = svc.serviceStatus || svc.statusDesc || svc.status || '-';
             const isActiveStatus = status.toLowerCase() === 'active';
             const requestDate = svc.serviceRequestedDate ? new Date(svc.serviceRequestedDate).toLocaleDateString('en-ZA') : '-';
             const commencementDate = svc.serviceCommencementDate || svc.commencementDate
               ? new Date(svc.serviceCommencementDate || svc.commencementDate).toLocaleDateString('en-ZA')
               : svc.startDate || '-';
-            const svcName = svc.tariffType || svc.serviceDesc || 'Service';
+            const svcName = svc.tariffType || svc.serviceDesc || svc.serviceDescription || svc.serviceType || 'Service';
+            const serviceMode = svc.serviceModeDesc || svc.serviceMode || '';
             const colors = getSvcColor(svcName);
 
             return (
@@ -391,8 +396,14 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
                     </div>
                     <div>
                       <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Tariff Type</div>
-                      <div className="text-[12px] text-slate-700 mt-0.5">{svc.tariffType || svc.serviceDesc || '-'}</div>
+                      <div className="text-[12px] text-slate-700 mt-0.5">{svc.tariffType || svc.serviceDesc || svc.serviceDescription || '-'}</div>
                     </div>
+                    {serviceMode && (
+                      <div>
+                        <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Service Mode</div>
+                        <div className="text-[12px] text-slate-700 mt-0.5">{serviceMode}</div>
+                      </div>
+                    )}
                   </div>
 
                   {tariffInfo.blocks.length > 0 && (
@@ -525,7 +536,7 @@ export function ConsumptionChart({ readings }: { readings: any[] }) {
   });
 
   const recent = sorted.slice(-12);
-  const maxVal = Math.max(...recent.map(r => r.consumption || 0), 1);
+  const maxVal = Math.max(...recent.map(r => r.consumption ?? r.consumptionValue ?? r.units ?? 0), 1);
   const yTicks: number[] = [];
   const step = Math.ceil(maxVal / 5);
   for (let i = 0; i <= maxVal + step; i += step) yTicks.push(i);
@@ -567,12 +578,13 @@ export function ConsumptionChart({ readings }: { readings: any[] }) {
         <div className="flex-1 relative border-l border-b border-slate-300" style={{ height: 200 }}>
           <div className="absolute inset-0 flex items-end justify-around px-1 gap-1">
             {recent.map((item, i) => {
-              const pct = maxVal > 0 ? ((item.consumption || 0) / (yTicks[yTicks.length - 1] || maxVal)) * 100 : 0;
+              const consumptionVal = item.consumption ?? item.consumptionValue ?? item.units ?? 0;
+              const pct = maxVal > 0 ? (consumptionVal / (yTicks[yTicks.length - 1] || maxVal)) * 100 : 0;
               const color = getBarColor(item);
               return (
                 <div key={i} className="flex flex-col items-center flex-1 min-w-0" style={{ height: '100%', justifyContent: 'flex-end' }}>
-                  <span className="text-[9px] font-mono text-slate-600 mb-0.5">{item.consumption || 0}</span>
-                  <div className={`w-full max-w-[40px] ${color.bg} rounded-t-sm transition-all`} style={{ height: `${Math.max(pct, 1)}%` }} title={`${formatMonth(item)}: ${item.consumption || 0} (${color.label})`} />
+                  <span className="text-[9px] font-mono text-slate-600 mb-0.5">{consumptionVal}</span>
+                  <div className={`w-full max-w-[40px] ${color.bg} rounded-t-sm transition-all`} style={{ height: `${Math.max(pct, 1)}%` }} title={`${formatMonth(item)}: ${consumptionVal} (${color.label})`} />
                 </div>
               );
             })}
@@ -623,7 +635,7 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
     setSelectedMeter(meter);
     setHistoryLoading(true);
     try {
-      const meterNo = (meter.meterNo || meter.meterNumber || '').replace(/^0+/, '');
+      const meterNo = (meter.meterNo || meter.meterNumber || meter.physicalMeterNo || meter.physicalMeterNumber || '').replace(/^0+/, '');
       const history = await getMeterReadingHistory(accountId, meterNo);
       setReadingHistory(history);
     } catch {
@@ -943,14 +955,14 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
     setLoading(true);
     setError(null);
     try {
-      const [mpp, svc, prepaid] = await Promise.all([
-        getAccountServiceMeterPerProperty(accountId).catch(() => []),
-        getAllServices(accountId).catch(() => []),
-        getPrepaidMeterServicesForAccount(accountId).catch(() => []),
+      const [mppResult, svcResult, prepaidResult] = await Promise.allSettled([
+        getAccountServiceMeterPerProperty(accountId),
+        getAllServices(accountId),
+        getPrepaidMeterServicesForAccount(accountId),
       ]);
-      setMeters(mpp);
-      setAllServices(svc);
-      setPrepaidMeters(prepaid);
+      setMeters(mppResult.status === 'fulfilled' ? mppResult.value || [] : []);
+      setAllServices(svcResult.status === 'fulfilled' ? svcResult.value || [] : []);
+      setPrepaidMeters(prepaidResult.status === 'fulfilled' ? prepaidResult.value || [] : []);
     } catch (e: any) {
       setError(e.message || 'Failed to load services & meters');
     } finally {
@@ -1049,12 +1061,12 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
             {meters.map((m: any, i: number) => (
               <div key={i} className={`bg-white border rounded-lg p-3 space-y-2 ${consumptionMeter === m ? 'border-teal-300 bg-teal-50' : 'border-slate-200'}`}>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-800">{m.serviceType || m.serviceTypeDescription || '-'}</span>
-                  <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>{m.status || '-'}</span>
+                  <span className="text-xs font-semibold text-slate-800">{m.serviceType || m.serviceTypeDescription || m.serviceDesc || m.serviceDescription || '-'}</span>
+                  <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.statusDesc || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>{m.status || m.statusDesc || '-'}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-semibold text-blue-700">{m.meterNo || m.meterNumber || '-'}</span></div>
-                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Physical</span><span className="font-mono text-slate-700">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-semibold text-blue-700">{m.meterNo || m.meterNumber || m.physicalMeterNumber || '-'}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Physical</span><span className="font-mono text-slate-700">{m.physicalMeterNumber || m.physicalMeterNo || m.meterNo || '-'}</span></div>
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">Classification</span><span className="text-slate-700">{m.classification || m.meterClassification || m.meterType || '-'}</span></div>
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">Tariff</span><span className="text-slate-700 truncate ml-1">{m.tariffCode || m.tariff || m.tariffDescription || '-'}</span></div>
                 </div>
@@ -1092,7 +1104,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
               <tbody>
                 {meters.map((m: any, i: number) => (
                   <tr key={i} className={`border-b border-slate-100 hover:bg-teal-50/30 transition-colors ${consumptionMeter === m ? 'bg-teal-50 ring-1 ring-teal-300' : ''}`}>
-                    <td className="py-2 px-3 font-medium">{m.serviceType || m.serviceTypeDescription || '-'}</td>
+                    <td className="py-2 px-3 font-medium">{m.serviceType || m.serviceTypeDescription || m.serviceDesc || m.serviceDescription || '-'}</td>
                     <td className="py-2 px-3">{m.classification || m.meterClassification || m.meterType || '-'}</td>
                     <td className="py-2 px-3 font-mono text-sm">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</td>
                     <td className="py-2 px-3 font-mono font-semibold text-blue-700">{m.meterNo || m.meterNumber || '-'}</td>
@@ -1101,13 +1113,13 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                     <td className="py-2 px-3">{m.mainMeter !== undefined ? String(m.mainMeter) : m.isMainMeter !== undefined ? String(m.isMainMeter) : '-'}</td>
                     <td className="py-2 px-3">{m.billable !== undefined ? String(m.billable) : m.isBillable !== undefined ? String(m.isBillable) : '-'}</td>
                     <td className="py-2 px-3">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
-                        {m.status || '-'}
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.statusDesc || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                        {m.status || m.statusDesc || '-'}
                       </span>
                     </td>
                     <td className="py-2 px-3">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.serviceStatus || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
-                        {m.serviceStatus || '-'}
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.serviceStatus || m.serviceStatusDesc || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                        {m.serviceStatus || m.serviceStatusDesc || '-'}
                       </span>
                     </td>
                     <td className="py-2 px-3">{m.replace !== undefined ? String(m.replace) : m.isReplaced !== undefined ? String(m.isReplaced) : '-'}</td>
@@ -1187,8 +1199,9 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                         <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(h.readingType || '').toLowerCase() === 'actual' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}`}>{h.readingType || h.type || '-'}</span>
                       </div>
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                        <div className="flex justify-between text-[11px]"><span className="text-slate-500">Reading</span><span className="font-mono font-semibold">{h.reading ?? h.meterReading ?? h.currentReading ?? '-'}</span></div>
-                        <div className="flex justify-between text-[11px]"><span className="text-slate-500">Consumption</span><span className="font-mono font-bold text-cyan-700">{h.consumption ?? h.units ?? h.consumptionUnits ?? '-'}</span></div>
+                        <div className="flex justify-between text-[11px]"><span className="text-slate-500">Reading</span><span className="font-mono font-semibold">{h.reading ?? h.meterReading ?? h.readingValue ?? h.currentReading ?? '-'}</span></div>
+                        <div className="flex justify-between text-[11px]"><span className="text-slate-500">Consumption</span><span className="font-mono font-bold text-cyan-700">{h.consumption ?? h.consumptionValue ?? h.units ?? h.consumptionUnits ?? '-'}</span></div>
+                        <div className="flex justify-between text-[11px]"><span className="text-slate-500">Est. Reading</span><span className="font-mono text-slate-600">{h.estimatedReading ?? h.estimateReading ?? '-'}</span></div>
                         <div className="flex justify-between text-[11px]"><span className="text-slate-500">Period</span><span className="text-slate-700">{h.period || h.billingPeriod || h.periodDescription || '-'}</span></div>
                         <div className="flex justify-between text-[11px]"><span className="text-slate-500">Fin Year</span><span className="text-slate-700">{h.finYear || h.financialYear || '-'}</span></div>
                       </div>
@@ -1202,6 +1215,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                         <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reading Date</th>
                         <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reading</th>
                         <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Consumption</th>
+                        <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Est. Reading</th>
                         <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Period</th>
                         <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Reading Type</th>
                         <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Fin Year</th>
@@ -1211,8 +1225,9 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                       {consumptionHistory.map((h: any, i: number) => (
                         <tr key={i} className="border-b border-slate-100 hover:bg-cyan-50/30 transition-colors" data-testid={`consumption-row-${i}`}>
                           <td className="py-2 px-3 text-slate-600">{h.readingDate ? new Date(h.readingDate).toLocaleDateString('en-ZA') : h.date ? new Date(h.date).toLocaleDateString('en-ZA') : '-'}</td>
-                          <td className="py-2 px-3 text-right font-mono font-semibold">{h.reading ?? h.meterReading ?? h.currentReading ?? '-'}</td>
-                          <td className="py-2 px-3 text-right font-mono font-bold text-cyan-700">{h.consumption ?? h.units ?? h.consumptionUnits ?? '-'}</td>
+                          <td className="py-2 px-3 text-right font-mono font-semibold">{h.reading ?? h.meterReading ?? h.readingValue ?? h.currentReading ?? '-'}</td>
+                          <td className="py-2 px-3 text-right font-mono font-bold text-cyan-700">{h.consumption ?? h.consumptionValue ?? h.units ?? h.consumptionUnits ?? '-'}</td>
+                          <td className="py-2 px-3 text-right font-mono text-slate-600">{h.estimatedReading ?? h.estimateReading ?? '-'}</td>
                           <td className="py-2 px-3">{h.period || h.billingPeriod || h.periodDescription || '-'}</td>
                           <td className="py-2 px-3">
                             <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(h.readingType || '').toLowerCase() === 'actual' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}`}>
@@ -1252,10 +1267,10 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
             {prepaidMeters.map((m: any, i: number) => (
               <div key={i} className="bg-white border border-slate-200 rounded-lg p-3 space-y-1.5 cursor-pointer active:bg-blue-50" onClick={() => { setShowPrepaidSales(true); setSelectedPrepaidMeter(null); setPrepaidRechargeDetails([]); }} data-testid={`prepaid-meter-row-${i}`}>
                 <div className="flex items-center justify-between">
-                  <span className="font-mono font-medium text-blue-700 text-xs">{m.meterNumber || m.physicalMeterNumber || '-'}</span>
-                  <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.meterStatus || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>{m.status || m.meterStatus || '-'}</span>
+                  <span className="font-mono font-medium text-blue-700 text-xs">{m.prepaidMeterNo || m.meterNumber || m.physicalMeterNumber || m.meterNo || '-'}</span>
+                  <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.meterStatus || m.statusDesc || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>{m.status || m.meterStatus || m.statusDesc || '-'}</span>
                 </div>
-                <div className="flex justify-between text-[11px]"><span className="text-slate-500">Service</span><span className="text-slate-800 font-semibold">{m.serviceType || m.serviceDescription || '-'}</span></div>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500">Service</span><span className="text-slate-800 font-semibold">{m.prepaidServiceDesc || m.serviceType || m.serviceDescription || m.serviceDesc || '-'}</span></div>
                 <div className="flex justify-between text-[11px]"><span className="text-slate-500">Last Recharge</span><span className="font-mono text-slate-700">{m.lastRechargeDate ? new Date(m.lastRechargeDate).toLocaleDateString('en-ZA') : (m.lastRechargeAmount ?? '-')}</span></div>
               </div>
             ))}
@@ -1273,11 +1288,11 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
               <tbody>
                 {prepaidMeters.map((m: any, i: number) => (
                   <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors cursor-pointer" onClick={() => { setShowPrepaidSales(true); setSelectedPrepaidMeter(null); setPrepaidRechargeDetails([]); }} data-testid={`prepaid-meter-row-${i}`}>
-                    <td className="py-2 px-3 font-mono font-medium text-blue-700">{m.meterNumber || m.physicalMeterNumber || '-'}</td>
-                    <td className="py-2 px-3">{m.serviceType || m.serviceDescription || '-'}</td>
+                    <td className="py-2 px-3 font-mono font-medium text-blue-700">{m.prepaidMeterNo || m.meterNumber || m.physicalMeterNumber || m.meterNo || '-'}</td>
+                    <td className="py-2 px-3">{m.prepaidServiceDesc || m.serviceType || m.serviceDescription || m.serviceDesc || '-'}</td>
                     <td className="py-2 px-3">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.meterStatus || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
-                        {m.status || m.meterStatus || '-'}
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.meterStatus || m.statusDesc || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                        {m.status || m.meterStatus || m.statusDesc || '-'}
                       </span>
                     </td>
                     <td className="py-2 px-3 text-right font-mono">{m.lastRechargeDate ? new Date(m.lastRechargeDate).toLocaleDateString('en-ZA') : (m.lastRechargeAmount ?? '-')}</td>

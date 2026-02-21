@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import {
   searchAccounts, getAccountBalance, multiAutocompleteSearch, getAutocompleteType,
-  autocomplete,
+  autocomplete, prefetchAccountData, clearEnquiryCache,
   type EnquirySearchCriteria, type EnquirySearchResult,
 } from '@/lib/enquiries-service';
 
@@ -311,6 +311,8 @@ function GeneralEnquiriesContent() {
     if (term && !recentSearches.includes(term)) {
       setRecentSearches(prev => [term, ...prev].slice(0, 8));
     }
+    const aid = account.account_ID || account.accountID;
+    if (aid) prefetchAccountData(aid);
   };
 
   const handleQuickKeyDown = (e: React.KeyboardEvent) => {

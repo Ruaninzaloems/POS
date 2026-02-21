@@ -35,6 +35,7 @@ import { downloadExcel } from '@/lib/excel-export';
 
 export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [basic, setBasic] = useState<any>(null);
   const [air, setAir] = useState<any>(null);
   const [prop, setProp] = useState<any>(null);
@@ -54,34 +55,54 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
   const [nameInfo, setNameInfo] = useState<any>(null);
   const [consUnit, setConsUnit] = useState<any>(null);
   const [suppValuations, setSuppValuations] = useState<any[]>([]);
-  const prevAccountId = useRef<number | null>(null);
+  const loaded = useRef(false);
 
   const accountId = account.account_ID || account.accountID;
 
-  useEffect(() => {
-    if (prevAccountId.current === accountId) return;
-    prevAccountId.current = accountId;
+  const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
+    try {
+      const results = await Promise.allSettled([
+        getBasicAccountDetails(accountId),
+        getAccountInfoResult(accountId),
+        getPropertyDetails(accountId),
+        getPartitionDetails(accountId),
+        getAccountInformation(accountId),
+        getPaymentIncentive(accountId),
+        getDepositAmount(accountId),
+        getHandoverInfo(accountId),
+        getDepartmentalAccountsById(accountId),
+        getSectionalTitleScheme(accountId),
+        getRepaymentPlanStatus(accountId),
+        getAccountDeliveryAddressDetail(accountId),
+        getServicesSearchResults(accountId),
+        getAdditionalBillingSearchResults(accountId),
+        getChequeFinalSearchList(accountId),
+        getNameInfo(accountId),
+        getConsumptionUnits(accountId),
+      ]);
 
-    Promise.all([
-      getBasicAccountDetails(accountId).catch(() => null),
-      getAccountInfoResult(accountId).catch(() => null),
-      getPropertyDetails(accountId).catch(() => null),
-      getPartitionDetails(accountId).catch(() => null),
-      getAccountInformation(accountId).catch(() => null),
-      getPaymentIncentive(accountId).catch(() => null),
-      getDepositAmount(accountId).catch(() => null),
-      getHandoverInfo(accountId).catch(() => null),
-      getDepartmentalAccountsById(accountId).catch(() => []),
-      getSectionalTitleScheme(accountId).catch(() => null),
-      getRepaymentPlanStatus(accountId).catch(() => null),
-      getAccountDeliveryAddressDetail(accountId).catch(() => []),
-      getServicesSearchResults(accountId).catch(() => []),
-      getAdditionalBillingSearchResults(accountId).catch(() => []),
-      getChequeFinalSearchList(accountId).catch(() => []),
-      getNameInfo(accountId).catch(() => null),
-      getConsumptionUnits(accountId).catch(() => null),
-    ]).then(([bas, airRes, propRes, partRes, mgmt, inc, dep, ho, dept, st, rpp, da, svc, ab, ai, ni, cu]) => {
+      const val = (r: PromiseSettledResult<any>, fallback: any = null) => r.status === 'fulfilled' ? r.value : fallback;
+
+      const bas = val(results[0]);
+      const airRes = val(results[1]);
+      const propRes = val(results[2]);
+      const partRes = val(results[3]);
+      const mgmt = val(results[4]);
+      const inc = val(results[5]);
+      const dep = val(results[6]);
+      const ho = val(results[7]);
+      const dept = val(results[8], []);
+      const st = val(results[9]);
+      const rpp = val(results[10]);
+      const da = val(results[11], []);
+      const svc = val(results[12], []);
+      const ab = val(results[13], []);
+      const ai = val(results[14], []);
+      const ni = val(results[15]);
+      const cu = val(results[16]);
+
       setBasic(bas);
       setAir(airRes);
       const propData = Array.isArray(propRes) ? propRes[0] : propRes;
@@ -101,7 +122,6 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
       setNameInfo(ni);
       const cuData = Array.isArray(cu) ? cu[0] : cu;
       setConsUnit(cuData);
-      setLoading(false);
 
       const rawUnitId = bas?.unitPartitionID || propData?.propertyId;
       const unitId = rawUnitId ? parseInt(String(rawUnitId), 10) : null;
@@ -112,8 +132,15 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
           if (pd) setPartition(Array.isArray(pd) ? pd[0] : pd);
         }).catch(() => {});
       }
-    });
+      loaded.current = true;
+    } catch (e: any) {
+      setError(e.message || 'Failed to load account information');
+    } finally {
+      setLoading(false);
+    }
   }, [accountId]);
+
+  useEffect(() => { if (!loaded.current) load(); }, [load]);
 
   const b = basic || {};
   const a = air || {};
@@ -146,14 +173,14 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
   const paymentGroup = f(b.paymentGroupDesc || mgmt.paymentGroupDesc);
   const accountType = f(b.accountDesc || a.accountDesc || mgmt.accountDesc);
   const incentiveCode = f(inc.code || inc.description);
-  const email = f(b.emailId || account.emailId);
+  const email = f(b.emailId || b.email || b.emailAddress || account.emailId || account.email || account.emailAddress);
   const depositDisplay = depositAmt !== null && depositAmt !== undefined ? formatCurrency(depositAmt) : '-';
 
-  const accName = f(b.fullNAME || a.name || account.name);
+  const accName = f(b.fullNAME || a.name || account.name || account.surname_Company || account.companyName);
   const subAccountGroup = f(b.groupCodeDesc || mgmt.groupCodeDesc);
-  const accountStatus = f(b.accountStatus || mgmt.accountStatus || account.accountStatus);
+  const accountStatus = f(b.accountStatus || mgmt.accountStatus || account.accountStatus || account.statusDesc || account.status);
   const deliveryAddr = f(b.deliveryAddress ? String(b.deliveryAddress).replace(/\r\n/g, ', ').replace(/\n/g, ', ').trim() : '');
-  const contactNo = f(b.contactNo || account.contactNo);
+  const contactNo = f(b.contactNo || b.contactNumber || b.tel_Mobile || b.mobileNumber || account.contactNo || account.contactNumber || account.tel_Mobile || account.mobileNumber);
 
   const interestWaiver = f(inc.reverseInterestLevied ? 'Interest Waiver Applied' : 'No Interest Waiver on Account');
   const indigentStatus = f(mgmt.indigentStatus || mgmt.indigentSubsidyStatus);
@@ -251,7 +278,7 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
 
   return (
     <div className="p-4 sm:p-5 space-y-4" data-testid="account-info-panel">
-      {loading ? <LoadingSkeleton /> : (
+      {loading ? <LoadingSkeleton /> : error ? <ErrorState message={error} onRetry={load} /> : (
         <>
           <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-2xl shadow-lg overflow-hidden" data-testid="account-hero">
             <div className="p-5 sm:p-6">
@@ -514,7 +541,7 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const prevAccountId = useRef<number | null>(null);
+  const loaded = useRef(false);
   const [relatedAccounts, setRelatedAccounts] = useState<EnquirySearchResult[]>([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
   const [relatedSearched, setRelatedSearched] = useState(false);
@@ -525,8 +552,23 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
     setRelatedAccounts([]);
     setRelatedSearched(false);
     try {
-      const result = await getNameInfo(accountId);
-      setData(result);
+      const [nameResult, relatedResult] = await Promise.allSettled([
+        getNameInfo(accountId),
+        getAccountsByNameId(accountId),
+      ]);
+      if (nameResult.status === 'fulfilled') {
+        setData(nameResult.value);
+      } else {
+        setError('Failed to load name details');
+      }
+      if (relatedResult.status === 'fulfilled') {
+        const r = relatedResult.value;
+        if (r && Array.isArray(r.accounts)) {
+          setRelatedAccounts(r.accounts as EnquirySearchResult[]);
+          setRelatedSearched(true);
+        }
+      }
+      loaded.current = true;
     } catch (e: any) {
       setError(e.message || 'Failed to load name details');
     } finally {
@@ -534,12 +576,7 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
     }
   }, [accountId]);
 
-  useEffect(() => {
-    if (prevAccountId.current !== accountId) {
-      prevAccountId.current = accountId;
-      load();
-    }
-  }, [accountId, load]);
+  useEffect(() => { if (!loaded.current) load(); }, [load]);
 
   const searchRelatedAccounts = useCallback(async () => {
     if (!data) return;
@@ -564,7 +601,7 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
   if (!data) return <EmptyState message="No name details available" />;
 
   const n = data;
-  const fullName = [n.firstNames, n.surname_Company].filter(Boolean).join(' ').trim();
+  const fullName = [n.firstNames || n.initials, n.surname_Company || n.companyName || n.name].filter(Boolean).join(' ').trim();
   const dob = n.dateOfBirth ? (() => { try { const d = new Date(n.dateOfBirth); return isNaN(d.getTime()) ? n.dateOfBirth : d.toLocaleDateString('en-ZA'); } catch { return n.dateOfBirth; } })() : '';
 
   return (
@@ -577,8 +614,8 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
         <div className="p-3 sm:p-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
             <div>
-              <InfoField label="ID Number" value={n.idNo_RegistrationNo} />
-              <InfoField label="Passport Number" value={n.passportNo} />
+              <InfoField label="ID Number" value={n.idNo_RegistrationNo || n.idRegistrationNumber || n.idNumber} />
+              <InfoField label="Passport Number" value={n.passportNo || n.passportNumber} />
               <InfoField label="Country Name" value={n.nameCountry} />
               <InfoField label="Title" value={n.title} />
               <InfoField label="Last Name" value={n.surname_Company} />
@@ -1691,7 +1728,10 @@ export function LinkedAccountsTab({ accountId, onSelectAccount }: { accountId: n
   if (error) return <ErrorState message={error} onRetry={load} />;
   if (!linkedAccounts.length) return <EmptyState message="No other accounts found linked to this property" />;
 
-  const totalCombined = linkedAccounts.reduce((sum, a) => sum + (a.totalOutstanding || 0), 0);
+  const totalCombined = linkedAccounts.reduce((sum, a) => {
+    const raw = a.totalOutstanding ?? a.outStandingAmount ?? a.outStandingAmt ?? a.outstanding ?? 0;
+    return sum + (typeof raw === 'number' ? raw : (parseFloat(String(raw)) || 0));
+  }, 0);
 
   return (
     <div className="p-5 space-y-4" data-testid="linked-accounts-tab">
@@ -1721,10 +1761,11 @@ export function LinkedAccountsTab({ accountId, onSelectAccount }: { accountId: n
           {linkedAccounts.map((acct, idx) => {
             const aId = acct.account_ID || acct.accountID;
             const accNum = acct.accountNumber || String(aId).padStart(12, '0');
-            const name = acct.name || acct.surname_Company || 'Unknown';
-            const status = acct.accountStatus || acct.statusDesc || '';
+            const name = acct.name || acct.surname_Company || acct.companyName || 'Unknown';
+            const status = acct.accountStatus || acct.statusDesc || acct.status || '';
             const accType = acct.accountType || acct.accountDesc || '';
-            const outstanding = acct.totalOutstanding || 0;
+            const rawOutstanding = acct.totalOutstanding ?? acct.outStandingAmount ?? acct.outStandingAmt ?? acct.outstanding ?? 0;
+            const outstanding = typeof rawOutstanding === 'number' ? rawOutstanding : (parseFloat(String(rawOutstanding)) || 0);
             const balanceDetails = acct.balanceDetails || [];
             const isExpanded = expandedRow === idx;
 

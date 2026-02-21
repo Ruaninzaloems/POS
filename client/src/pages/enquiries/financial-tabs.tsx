@@ -13,23 +13,34 @@ import {
   getAccountRatesDetails, getRatesRunHistory,
   getSupplementaryValuations, getValuationById, getValuationImportById,
   getRebateTransactionDetail,
-  getDeposits, getDepositAmount, getPaymentIncentive,
+  getDeposits, getDepositAmount, getPaymentIncentive, getPaymentIncentiveJournals,
   getBilledVsPaidAmounts,
 } from '@/lib/enquiries-service';
 import { LoadingSkeleton, EmptyState, ErrorState, InfoField, SectionHeader, PaginatedTable, TabCard, FieldRow, getFinYearOptions, MONTHS } from './shared';
 
 export function IncentivesTab({ accountId }: { accountId: number }) {
   const [data, setData] = useState<any>(null);
+  const [journals, setJournals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const loaded = useRef(false);
+
+  const fmtAmt = (v: any) => {
+    if (v == null || v === '') return '0.00';
+    const n = Number(v);
+    return isNaN(n) ? '0.00' : n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await getPaymentIncentive(accountId);
+      const [result, journalResult] = await Promise.all([
+        getPaymentIncentive(accountId),
+        getPaymentIncentiveJournals(accountId).catch(() => []),
+      ]);
       setData(result);
+      setJournals(Array.isArray(journalResult) ? journalResult : journalResult ? [journalResult] : []);
       loaded.current = true;
     } catch (e: any) {
       setError(e.message || 'Failed to load incentive data');
@@ -45,7 +56,7 @@ export function IncentivesTab({ accountId }: { accountId: number }) {
 
   const items = Array.isArray(data) ? data : data ? [data] : [];
   const hasIncentive = items.length > 0 && items.some((item: any) =>
-    item.description || item.incentiveType || item.code || item.incentive || item.enable
+    item.description || item.incentiveType || item.code || item.incentive || item.incentiveAmount || item.enable
   );
 
   if (!hasIncentive) {
@@ -70,7 +81,7 @@ export function IncentivesTab({ accountId }: { accountId: number }) {
 
   return (
     <div className="p-3 sm:p-5 space-y-4 sm:space-y-5">
-      {items.filter((item: any) => item.description || item.incentiveType || item.code || item.incentive || item.enable).map((item: any, i: number) => (
+      {items.filter((item: any) => item.description || item.incentiveType || item.code || item.incentive || item.incentiveAmount || item.enable).map((item: any, i: number) => (
         <div key={i} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
             <Gift className="w-4 h-4 text-white" />
@@ -82,7 +93,7 @@ export function IncentivesTab({ accountId }: { accountId: number }) {
           <div className="p-3 sm:p-5">
             <FieldRow label="Description" value={item.description} icon={<Gift className="w-3.5 h-3.5" />} />
             <FieldRow label="Incentive Type" value={item.incentiveType || item.code} icon={<Activity className="w-3.5 h-3.5" />} />
-            <FieldRow label="Incentive" value={item.incentive} icon={<Banknote className="w-3.5 h-3.5" />} />
+            <FieldRow label="Incentive Amount" value={item.incentiveAmount != null || item.incentive != null ? `R ${fmtAmt(item.incentiveAmount ?? item.incentive)}` : null} icon={<Banknote className="w-3.5 h-3.5" />} />
             <FieldRow label="Financial Year" value={item.financialYear} icon={<CalendarDays className="w-3.5 h-3.5" />} />
             <FieldRow label="Valid From" value={item.validPeriodFrom ? new Date(item.validPeriodFrom).toLocaleDateString('en-ZA') : null} icon={<CalendarDays className="w-3.5 h-3.5" />} />
             <FieldRow label="Valid To" value={item.validPeriodTo ? new Date(item.validPeriodTo).toLocaleDateString('en-ZA') : null} icon={<CalendarDays className="w-3.5 h-3.5" />} />
@@ -91,6 +102,40 @@ export function IncentivesTab({ accountId }: { accountId: number }) {
           </div>
         </div>
       ))}
+
+      {journals.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-purple-500 to-purple-600 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-white" />
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Incentive Journals</h3>
+            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{journals.length}</Badge>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs" data-testid="table-incentive-journals">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Date</th>
+                  <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Description</th>
+                  <th className="text-right py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Journal Amount</th>
+                  <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Reference</th>
+                  <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {journals.map((j: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-purple-50/30 transition-colors" data-testid={`row-journal-${i}`}>
+                    <td className="py-2 px-3 text-slate-600 whitespace-nowrap">{j.journalDate || j.date || j.transactionDate ? new Date(j.journalDate || j.date || j.transactionDate).toLocaleDateString('en-ZA') : '-'}</td>
+                    <td className="py-2 px-3 text-slate-700">{j.description || j.journalDescription || '-'}</td>
+                    <td className="py-2 px-3 text-right font-mono font-semibold">{fmtAmt(j.journalAmount ?? j.amount ?? j.incentiveAmount ?? 0)}</td>
+                    <td className="py-2 px-3 text-slate-600 font-mono">{j.reference || j.journalReference || j.docNumber || '-'}</td>
+                    <td className="py-2 px-3"><Badge variant="outline" className="text-[10px]">{j.status || j.journalStatus || '-'}</Badge></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -130,9 +175,9 @@ export function DepositsTab({ accountId }: { accountId: number }) {
     return n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  const totalAmt = typeof depositAmount === 'number' ? depositAmount : (depositAmount?.totalDeposit ?? depositAmount?.amount ?? 0);
-  const totalDeposit = deposits.reduce((s, d) => s + (d.deposit ?? d.depositAmount ?? d.amount ?? 0), 0);
-  const totalPaid = deposits.reduce((s, d) => s + (d.paidAmount ?? 0), 0);
+  const totalAmt = typeof depositAmount === 'number' ? depositAmount : Number(depositAmount?.totalDeposit ?? depositAmount?.amount ?? 0) || 0;
+  const totalDeposit = deposits.reduce((s, d) => s + (Number(d.deposit ?? d.depositAmount ?? d.amount ?? 0) || 0), 0);
+  const totalPaid = deposits.reduce((s, d) => s + (Number(d.paidAmount ?? 0) || 0), 0);
 
   return (
     <div className="p-3 sm:p-5 space-y-4 sm:space-y-5" data-testid="deposits-tab">
@@ -165,15 +210,23 @@ export function DepositsTab({ accountId }: { accountId: number }) {
                   </div>
                   <div className="flex justify-between text-[11px]">
                     <span className="text-slate-500 font-medium">Receipt No</span>
-                    <span className="text-slate-800 font-semibold text-right font-mono">{dep.docNumber || dep.receiptNo || dep.reference || ''}</span>
+                    <span className="text-slate-800 font-semibold text-right font-mono">{dep.receiptNo || dep.docNumber || dep.reference || ''}</span>
                   </div>
                   <div className="flex justify-between text-[11px]">
-                    <span className="text-slate-500 font-medium">Date Captured</span>
-                    <span className="text-slate-800 font-semibold text-right">{dep.dateCaptured ? new Date(dep.dateCaptured).toLocaleDateString('en-ZA') : dep.depositDate ? new Date(dep.depositDate).toLocaleDateString('en-ZA') : '-'}</span>
+                    <span className="text-slate-500 font-medium">Receipt Date</span>
+                    <span className="text-slate-800 font-semibold text-right">{dep.receiptDate || dep.dateCaptured || dep.depositDate ? new Date(dep.receiptDate || dep.dateCaptured || dep.depositDate).toLocaleDateString('en-ZA') : '-'}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-500 font-medium">Payment Type</span>
+                    <span className="text-slate-800 font-semibold text-right">{dep.paymentType || dep.paymentMethod || dep.type || '-'}</span>
                   </div>
                   <div className="flex justify-between text-[11px]">
                     <span className="text-slate-500 font-medium">Deposit Amount</span>
                     <span className="text-slate-800 font-semibold text-right font-mono">{fmt(dep.deposit ?? dep.depositAmount ?? dep.amount ?? 0)}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-500 font-medium">Cashier</span>
+                    <span className="text-slate-800 font-semibold text-right">{dep.cashierName || dep.cashier || dep.capturedBy || '-'}</span>
                   </div>
                   <div className="flex justify-between text-[11px]">
                     <span className="text-slate-500 font-medium">Paid Amount</span>
@@ -194,9 +247,11 @@ export function DepositsTab({ accountId }: { accountId: number }) {
                 <thead>
                   <tr className="border-b border-slate-200 bg-white">
                     <th className="text-left py-3 px-5 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Service Type</th>
-                    <th className="text-left py-3 px-5 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Receipt No / Journal Transaction ID</th>
-                    <th className="text-left py-3 px-5 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Date Captured</th>
+                    <th className="text-left py-3 px-5 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Receipt No</th>
+                    <th className="text-left py-3 px-5 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Receipt Date</th>
+                    <th className="text-left py-3 px-5 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Payment Type</th>
                     <th className="text-right py-3 px-5 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Deposit Amount</th>
+                    <th className="text-left py-3 px-5 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Cashier</th>
                     <th className="text-right py-3 px-5 text-[11px] uppercase tracking-wider text-blue-700 font-bold">Paid Amount</th>
                   </tr>
                 </thead>
@@ -204,17 +259,20 @@ export function DepositsTab({ accountId }: { accountId: number }) {
                   {deposits.map((dep: any, i: number) => (
                     <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/40 transition-colors" data-testid={`row-deposit-${i}`}>
                       <td className="py-3 px-5 text-slate-700 font-medium">{dep.serviceDesc || dep.serviceDescription || dep.description || '-'}</td>
-                      <td className="py-3 px-5 text-slate-600 font-mono text-[13px]">{dep.docNumber || dep.receiptNo || dep.reference || ''}</td>
-                      <td className="py-3 px-5 text-slate-600">{dep.dateCaptured ? new Date(dep.dateCaptured).toLocaleDateString('en-ZA') : dep.depositDate ? new Date(dep.depositDate).toLocaleDateString('en-ZA') : '-'}</td>
+                      <td className="py-3 px-5 text-slate-600 font-mono text-[13px]">{dep.receiptNo || dep.docNumber || dep.reference || ''}</td>
+                      <td className="py-3 px-5 text-slate-600">{dep.receiptDate || dep.dateCaptured || dep.depositDate ? new Date(dep.receiptDate || dep.dateCaptured || dep.depositDate).toLocaleDateString('en-ZA') : '-'}</td>
+                      <td className="py-3 px-5 text-slate-600">{dep.paymentType || dep.paymentMethod || dep.type || '-'}</td>
                       <td className="py-3 px-5 text-right font-mono text-slate-800 font-semibold">{fmt(dep.deposit ?? dep.depositAmount ?? dep.amount ?? 0)}</td>
+                      <td className="py-3 px-5 text-slate-600">{dep.cashierName || dep.cashier || dep.capturedBy || '-'}</td>
                       <td className="py-3 px-5 text-right font-mono text-slate-800 font-semibold">{fmt(dep.paidAmount ?? 0)}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 border-slate-300 bg-slate-50/80">
-                    <td colSpan={3} className="py-3 px-5"></td>
+                    <td colSpan={4} className="py-3 px-5"></td>
                     <td className="py-3 px-5 text-right font-mono font-bold text-slate-900 text-[14px]">{fmt(totalDeposit)}</td>
+                    <td className="py-3 px-5"></td>
                     <td className="py-3 px-5 text-right font-mono font-bold text-slate-900 text-[14px]">({fmt(Math.abs(totalPaid))})</td>
                   </tr>
                 </tfoot>
@@ -272,7 +330,7 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
 
-  const fmtAmt = (v: any) => v != null && v !== '' ? Number(v).toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : '0.00';
+  const fmtAmt = (v: any) => { if (v == null || v === '') return '0.00'; const n = Number(v); return isNaN(n) ? '0.00' : n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
   const fmtDate = (v: any) => v ? new Date(v).toLocaleDateString('en-ZA') : '-';
   const hasPlans = plans.length > 0;
   const hasExtensions = extensions.length > 0;
@@ -680,8 +738,8 @@ export function DebitOrdersTab({ accountId }: { accountId: number }) {
         getDebitOrderDeductionByAccount(accountId).catch(() => []),
         getDebitOrderDeduction(accountId).catch(() => []),
       ]);
-      setDeductions(ded);
-      setDebitOrders(dob);
+      setDeductions(Array.isArray(ded) ? ded : ded ? [ded] : []);
+      setDebitOrders(Array.isArray(dob) ? dob : dob ? [dob] : []);
       loaded.current = true;
     } catch (e: any) {
       setError(e.message || 'Failed to load debit order data');
@@ -725,6 +783,22 @@ export function DebitOrdersTab({ accountId }: { accountId: number }) {
                 <Badge variant={d.status === 'Active' || d.status === 'Successful' ? 'default' : 'secondary'} className="text-[10px]">
                   {d.status || d.deductionStatus || '-'}
                 </Badge>
+              </div>
+              <div className="flex justify-between text-[11px]">
+                <span className="text-slate-500 font-medium">Bank Name</span>
+                <span className="text-slate-800 font-semibold text-right">{d.bankName || d.bank || '-'}</span>
+              </div>
+              <div className="flex justify-between text-[11px]">
+                <span className="text-slate-500 font-medium">Branch Code</span>
+                <span className="text-slate-800 font-semibold text-right font-mono">{d.branchCode || d.branchNumber || '-'}</span>
+              </div>
+              <div className="flex justify-between text-[11px]">
+                <span className="text-slate-500 font-medium">Account Number</span>
+                <span className="text-slate-800 font-semibold text-right font-mono">{d.accountNumber || d.bankAccountNumber || d.bankAccount || '-'}</span>
+              </div>
+              <div className="flex justify-between text-[11px]">
+                <span className="text-slate-500 font-medium">Deduction Day</span>
+                <span className="text-slate-800 font-semibold text-right">{d.deductionDay ?? d.dayOfDeduction ?? '-'}</span>
               </div>
               <div className="flex justify-between text-[11px]">
                 <span className="text-slate-500 font-medium">Service Type</span>
@@ -779,6 +853,10 @@ export function DebitOrdersTab({ accountId }: { accountId: number }) {
               <tr className="bg-slate-50 border-b border-slate-200">
                 <th className="text-center py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold w-[40px]">Nr</th>
                 <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[80px]">Status</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Bank Name</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[90px]">Branch Code</th>
+                <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[110px]">Account Number</th>
+                <th className="text-center py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[80px]">Deduction Day</th>
                 <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Service Type</th>
                 <th className="text-right py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Maximum Amount</th>
                 <th className="text-right py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[120px]">Total Maximum Amount</th>
@@ -794,7 +872,7 @@ export function DebitOrdersTab({ accountId }: { accountId: number }) {
             </thead>
             <tbody>
               {(deductions.length + debitOrders.length) === 0 ? (
-                <tr><td colSpan={13} className="py-8 text-center text-slate-400 text-sm italic">No records to display.</td></tr>
+                <tr><td colSpan={17} className="py-8 text-center text-slate-400 text-sm italic">No records to display.</td></tr>
               ) : [...deductions, ...debitOrders].map((d: any, i: number) => (
                 <tr key={i} className="border-b border-slate-100 hover:bg-teal-50/30 transition-colors" data-testid={`row-debit-${i}`}>
                   <td className="py-2 px-2 text-center text-slate-500 text-[13px]">{d.nr ?? d.number ?? i + 1}</td>
@@ -803,6 +881,10 @@ export function DebitOrdersTab({ accountId }: { accountId: number }) {
                       {d.status || d.deductionStatus || '-'}
                     </Badge>
                   </td>
+                  <td className="py-2 px-2 text-[13px] text-slate-700">{d.bankName || d.bank || '-'}</td>
+                  <td className="py-2 px-2 text-[13px] text-slate-600 font-mono">{d.branchCode || d.branchNumber || '-'}</td>
+                  <td className="py-2 px-2 text-[13px] text-slate-600 font-mono">{d.accountNumber || d.bankAccountNumber || d.bankAccount || '-'}</td>
+                  <td className="py-2 px-2 text-center text-[13px] text-slate-600">{d.deductionDay ?? d.dayOfDeduction ?? '-'}</td>
                   <td className="py-2 px-2 text-[13px] text-slate-700">{d.serviceType || d.serviceDescription || d.accountType || '-'}</td>
                   <td className="py-2 px-2 text-right font-mono text-[13px]">{fmt(d.maximumAmount ?? d.amount ?? d.deductionAmount ?? 0)}</td>
                   <td className="py-2 px-2 text-right font-mono text-[13px]">{fmt(d.totalMaximumAmount ?? d.debitOrderAmount ?? 0)}</td>
@@ -856,9 +938,9 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
     return n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  const totalBilled = data.reduce((s, d) => s + (d.billingAmount ?? d.billedAmount ?? d.amount ?? 0), 0);
-  const totalPaid = data.reduce((s, d) => s + (d.paidAmount ?? d.paymentAmount ?? 0), 0);
-  const maxVal = Math.max(...data.map(d => Math.max(Math.abs(d.billingAmount ?? d.billedAmount ?? d.amount ?? 0), Math.abs(d.paidAmount ?? d.paymentAmount ?? 0))), 1);
+  const totalBilled = data.reduce((s, d) => s + (Number(d.billingAmount ?? d.billedAmount ?? d.amount ?? 0) || 0), 0);
+  const totalPaid = data.reduce((s, d) => s + (Number(d.paidAmount ?? d.paymentAmount ?? 0) || 0), 0);
+  const maxVal = Math.max(...data.map(d => Math.max(Math.abs(Number(d.billingAmount ?? d.billedAmount ?? d.amount ?? 0) || 0), Math.abs(Number(d.paidAmount ?? d.paymentAmount ?? 0) || 0))), 1);
 
   return (
     <div className="p-3 sm:p-5 space-y-4 sm:space-y-5">
@@ -882,8 +964,8 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
           {data.length === 0 ? (
             <div className="py-8 text-center text-slate-400 text-sm italic">No records to display.</div>
           ) : data.map((d: any, i: number) => {
-            const billed = d.billingAmount ?? d.billedAmount ?? d.amount ?? 0;
-            const paid = d.paidAmount ?? d.paymentAmount ?? 0;
+            const billed = Number(d.billingAmount ?? d.billedAmount ?? d.amount ?? 0) || 0;
+            const paid = Number(d.paidAmount ?? d.paymentAmount ?? 0) || 0;
             return (
               <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`row-billed-mobile-${i}`}>
                 <div className="flex justify-between text-[11px]">
@@ -969,8 +1051,8 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
           <div className="p-3 sm:p-5">
             <div className="flex items-end gap-1 justify-center" style={{ height: '320px' }} data-testid="chart-billed-vs-paid">
               {data.map((d: any, i: number) => {
-                const billed = Math.abs(d.billingAmount ?? d.billedAmount ?? d.amount ?? 0);
-                const paid = Math.abs(d.paidAmount ?? d.paymentAmount ?? 0);
+                const billed = Math.abs(Number(d.billingAmount ?? d.billedAmount ?? d.amount ?? 0) || 0);
+                const paid = Math.abs(Number(d.paidAmount ?? d.paymentAmount ?? 0) || 0);
                 const billedPct = maxVal > 0 ? (billed / maxVal) * 100 : 0;
                 const paidPct = maxVal > 0 ? (paid / maxVal) * 100 : 0;
                 const month = d.month || d.billingMonth || d.period || '';
@@ -1062,7 +1144,7 @@ export function RatesValuationsTab({ accountId, propertyId }: { accountId: numbe
   const loaded = useRef(false);
 
   const propId = propertyId || accountId;
-  const fmt = (v: any) => v != null ? Number(v).toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : '0.00';
+  const fmt = (v: any) => { if (v == null || v === '') return '0.00'; const n = Number(v); return isNaN(n) ? '0.00' : n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
   const fmtDate = (v: any) => v ? new Date(v).toLocaleDateString('en-ZA') : '-';
 
   const load = useCallback(async () => {
@@ -1145,7 +1227,7 @@ export function RatesValuationsTab({ accountId, propertyId }: { accountId: numbe
                     <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-0.5">Land Size</div>
                     <div className="font-mono text-slate-800">{v.landSize ?? '-'} ha</div>
                   </div>
-                  {v.agriculturalValue > 0 && (
+                  {Number(v.agriculturalValue || 0) > 0 && (
                     <div>
                       <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-0.5">Agricultural Value</div>
                       <div className="font-mono text-slate-800">R {fmt(v.agriculturalValue)}</div>

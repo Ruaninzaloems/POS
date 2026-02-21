@@ -166,11 +166,13 @@ export function TransactionSummaryTab({ accountId, accountNumber }: { accountId:
     setLoadingYears(prev => new Set(prev).add(finYear));
     setErrorYears(prev => { const n = { ...prev }; delete n[finYear]; return n; });
     try {
-      const fetches = MONTHS.map(async (month) => {
-        const records = await getBillingPeriodTransactions(accountId, finYear, month).catch(() => []);
-        return { month, records: Array.isArray(records) ? records : [] };
-      });
-      const allResults = await Promise.all(fetches);
+      const results = await Promise.allSettled(
+        MONTHS.map(month => getBillingPeriodTransactions(accountId, finYear, month))
+      );
+      const allResults = MONTHS.map((month, i) => ({
+        month,
+        records: results[i].status === 'fulfilled' ? (Array.isArray(results[i].value) ? results[i].value : []) : [],
+      }));
       setPeriodsCache(prev => ({ ...prev, [`${accountId}-${finYear}`]: { data: allResults } }));
     } catch (e: any) {
       setErrorYears(prev => ({ ...prev, [finYear]: e.message || 'Failed to load' }));
@@ -642,16 +644,16 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
     setDownloading(true);
     const monthsToFetch = finYearMonths.slice(fromIdx, toIdx + 1);
     const acctLabel = accountNumber || String(accountId);
-    const monthGroups: { month: string; rows: (string | number)[][] }[] = [];
 
     try {
-      for (let i = 0; i < monthsToFetch.length; i++) {
-        const month = monthsToFetch[i];
-        setDownloadProgress(`Fetching ${month} (${i + 1} of ${monthsToFetch.length})...`);
-        const result = await getBillingPeriodTransactions(accountId, downloadYear, month);
-        const rows = Array.isArray(result) ? result : [];
-        monthGroups.push({ month: `${month} ${downloadYear}`, rows: mapTxnRows(rows) });
-      }
+      setDownloadProgress(`Fetching ${monthsToFetch.length} month${monthsToFetch.length > 1 ? 's' : ''} in parallel...`);
+      const results = await Promise.allSettled(
+        monthsToFetch.map(month => getBillingPeriodTransactions(accountId, downloadYear, month))
+      );
+      const monthGroups = monthsToFetch.map((month, i) => {
+        const rows = results[i].status === 'fulfilled' ? (Array.isArray(results[i].value) ? results[i].value : []) : [];
+        return { month: `${month} ${downloadYear}`, rows: mapTxnRows(rows) };
+      });
       setDownloadProgress('Preparing download...');
       const fromLabel = downloadFromMonth.slice(0, 3);
       const toLabel = downloadToMonth.slice(0, 3);

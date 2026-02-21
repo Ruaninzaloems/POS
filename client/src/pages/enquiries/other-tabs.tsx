@@ -165,9 +165,12 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
     setLoading(true);
     setError(null);
     try {
-      const [propResult, consResult] = await Promise.allSettled([
+      const [propResult, consResult, ratesResult, meterResult, transferResult] = await Promise.allSettled([
         getPropertyDetails(accountId),
         getConsumptionUnits(accountId),
+        getAccountRatesDetails(accountId),
+        getMeteredServicesOnAccount(accountId),
+        getTransferOwnership(accountId),
       ]);
       let propVal = propResult.status === 'fulfilled' ? propResult.value : null;
       if (Array.isArray(propVal)) propVal = propVal[0] || null;
@@ -175,19 +178,18 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
       const cu = consResult.status === 'fulfilled' ? consResult.value : null;
       const cuData = Array.isArray(cu) ? cu[0] : cu;
       setConsUnit(cuData);
+      setRatesDetails(ratesResult.status === 'fulfilled' ? ratesResult.value : null);
+      setMeters(meterResult.status === 'fulfilled' ? (Array.isArray(meterResult.value) ? meterResult.value : []) : []);
+      setTransfers(transferResult.status === 'fulfilled' ? (Array.isArray(transferResult.value) ? transferResult.value : []) : []);
 
       const propertyId = propVal?.propertyId || propVal?.property_ID || cuData?.unit_ID;
 
-      const [valResult, ratesResult, meterResult, transferResult] = await Promise.allSettled([
-        propertyId ? getSupplementaryValuations(propertyId).catch(() => []) : Promise.resolve([]),
-        getAccountRatesDetails(accountId).catch(() => null),
-        getMeteredServicesOnAccount(accountId).catch(() => []),
-        getTransferOwnership(accountId).catch(() => []),
-      ]);
-      if (valResult.status === 'fulfilled') setValuations(Array.isArray(valResult.value) ? valResult.value : valResult.value ? [valResult.value] : []);
-      if (ratesResult.status === 'fulfilled') setRatesDetails(ratesResult.value);
-      if (meterResult.status === 'fulfilled') setMeters(Array.isArray(meterResult.value) ? meterResult.value : []);
-      if (transferResult.status === 'fulfilled') setTransfers(Array.isArray(transferResult.value) ? transferResult.value : []);
+      if (propertyId) {
+        const [valResult] = await Promise.allSettled([
+          getSupplementaryValuations(propertyId),
+        ]);
+        setValuations(valResult.status === 'fulfilled' ? (Array.isArray(valResult.value) ? valResult.value : valResult.value ? [valResult.value] : []) : []);
+      }
       loaded.current = true;
     } catch (e: any) {
       setError(e.message || 'Failed to load property details');
@@ -234,9 +236,10 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
             <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Street Address</span><div className="text-sm font-semibold text-slate-800">{prop.streetNumber ? `${prop.streetNumber} ${prop.streetName}` : prop.streetName || cu.nonStandAddLine1 || '-'}</div></div>
             <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Suburb</span><div className="text-sm font-semibold text-slate-800">{prop.subSuburb || prop.suburb || cu.nonStandAddSuburb || '-'}</div></div>
             <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Town</span><div className="text-sm font-semibold text-slate-800">{prop.town || '-'}</div></div>
-            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Property Type / Zoning</span><div className="text-sm font-semibold text-slate-800">{prop.typeofUse || prop.townPlanningZoneType || '-'}</div></div>
-            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Market Value</span><div className="text-sm font-bold text-blue-700 font-mono">{fmt(prop.marketValue || cu.marketValue)}</div></div>
-            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Stand Size (m²)</span><div className="text-sm font-semibold text-slate-800">{fmtInt(prop.standSize || cu.standSize)}</div></div>
+            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Property Type / Zoning</span><div className="text-sm font-semibold text-slate-800">{prop.typeOfUse ?? prop.typeofUse ?? prop.townPlanningZoneType ?? prop.townPlanningZone ?? '-'}</div></div>
+            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Market Value</span><div className="text-sm font-bold text-blue-700 font-mono">{fmt(prop.marketValue ?? cu.marketValue)}</div></div>
+            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Stand Size (m²)</span><div className="text-sm font-semibold text-slate-800">{fmtInt(prop.standSize ?? cu.standSize)}</div></div>
+            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Extent (m²)</span><div className="text-sm font-semibold text-slate-800">{fmtInt(prop.extentM2 ?? prop.extent_M2 ?? cu.extentM2 ?? cu.extent_M2)}</div></div>
             <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Land Size (ha)</span><div className="text-sm font-semibold text-slate-800">{prop.landSize ?? cu.landSize ?? '-'}</div></div>
             <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Rates Tariff</span><div className="text-sm font-semibold text-slate-800">{prop.ratesTariff || '-'}</div></div>
             <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Owner</span><div className="text-sm font-semibold text-slate-800">{prop.name || '-'}</div></div>
@@ -253,7 +256,7 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
               <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Electoral & Classification Details</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-4">
-              <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Ward</span><div className="text-sm font-semibold text-slate-800">{cu.wardID ? `Ward ${cu.wardID}` : '-'}</div></div>
+              <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Ward</span><div className="text-sm font-semibold text-slate-800">{cu.wardID ? `Ward ${cu.wardID}` : prop.ward ? `Ward ${prop.ward}` : '-'}</div></div>
               <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Polling Station</span><div className="text-sm font-semibold text-slate-800">{cu.pollingStationID ? `Station ${cu.pollingStationID}` : '-'}</div></div>
               <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Magisterial District</span><div className="text-sm font-semibold text-slate-800">{cu.magisterialID ? `District ${cu.magisterialID}` : '-'}</div></div>
               <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">NT Property Category</span><div className="text-sm font-semibold text-slate-800">{(() => { const id = cu.ntPropertyCategoryID; if (id === null || id === undefined) return '-'; const catMap: Record<number, string> = { 1: 'Residential', 2: 'Commercial', 3: 'Industrial', 4: 'Agricultural', 5: 'Mining', 6: 'Government', 7: 'Municipal', 8: 'Public Service Infrastructure', 9: 'Public Benefit Organisation', 10: 'State Trust Land' }; return catMap[id] || cu.ntPropertyCategoryDescription || `Category ${id}`; })()}</div></div>
@@ -504,18 +507,19 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
     setLoading(true);
     setError(null);
     try {
-      const [nameResult, contactResult, daResult, chResult, ahResult] = await Promise.all([
-        getNameInfo(accountId).catch(() => null),
-        getContactDetails(accountId).catch(() => null),
-        getAccountDeliveryAddressDetail(accountId).catch(() => []),
-        getContactDetailsHistory(accountId).catch(() => []),
-        getDeliveryAddressHistory(accountId).catch(() => []),
+      const [nameResult, contactResult, daResult, chResult, ahResult] = await Promise.allSettled([
+        getNameInfo(accountId),
+        getContactDetails(accountId),
+        getAccountDeliveryAddressDetail(accountId),
+        getContactDetailsHistory(accountId),
+        getDeliveryAddressHistory(accountId),
       ]);
-      setNameData(nameResult);
-      setContactData(contactResult);
-      setDeliveryAddr(Array.isArray(daResult) ? daResult : daResult ? [daResult] : []);
-      setContactHistory(Array.isArray(chResult) ? chResult : []);
-      setAddressHistory(Array.isArray(ahResult) ? ahResult : []);
+      setNameData(nameResult.status === 'fulfilled' ? nameResult.value : null);
+      setContactData(contactResult.status === 'fulfilled' ? contactResult.value : null);
+      const daVal = daResult.status === 'fulfilled' ? daResult.value : [];
+      setDeliveryAddr(Array.isArray(daVal) ? daVal : daVal ? [daVal] : []);
+      setContactHistory(chResult.status === 'fulfilled' ? (Array.isArray(chResult.value) ? chResult.value : []) : []);
+      setAddressHistory(ahResult.status === 'fulfilled' ? (Array.isArray(ahResult.value) ? ahResult.value : []) : []);
     } catch (e: any) {
       setError(e.message || 'Failed to load contact information');
     } finally {
@@ -819,14 +823,14 @@ export function HandoverTab({ accountId }: { accountId: number }) {
     setLoading(true);
     setError(null);
     try {
-      const [info, enq, txns] = await Promise.all([
-        getHandoverInfo(accountId).catch(() => null),
-        getHandoverAccountEnquiry(accountId).catch(() => null),
-        getConsHandoverTransactionDetail(accountId).catch(() => []),
+      const [infoResult, enqResult, txnsResult] = await Promise.allSettled([
+        getHandoverInfo(accountId),
+        getHandoverAccountEnquiry(accountId),
+        getConsHandoverTransactionDetail(accountId),
       ]);
-      setData(info);
-      setEnquiry(enq);
-      setTransactions(txns);
+      setData(infoResult.status === 'fulfilled' ? infoResult.value : null);
+      setEnquiry(enqResult.status === 'fulfilled' ? enqResult.value : null);
+      setTransactions(txnsResult.status === 'fulfilled' ? (Array.isArray(txnsResult.value) ? txnsResult.value : []) : []);
       loaded.current = true;
     } catch (e: any) {
       setError(e.message || 'Failed to load handover information');
@@ -1052,16 +1056,17 @@ export function NotificationsTab({ accountId }: { accountId: number }) {
     setLoading(true);
     setError(null);
     try {
-      const [an, pn] = await Promise.all([
-        getAccountNotifications(accountId).catch(() => []),
-        getPropertyNotification(accountId).catch(() => null),
+      const [anResult, pnResult] = await Promise.allSettled([
+        getAccountNotifications(accountId),
+        getPropertyNotification(accountId),
       ]);
+      const an = anResult.status === 'fulfilled' ? anResult.value : [];
       const filtered = Array.isArray(an) ? an.filter((item: any) => {
         if (typeof item === 'string') return item.trim() !== '';
         return true;
       }) : [];
       setAccountNotifs(filtered);
-      setPropertyNotif(pn);
+      setPropertyNotif(pnResult.status === 'fulfilled' ? pnResult.value : null);
       loaded.current = true;
     } catch (e: any) {
       setError(e.message || 'Failed to load notifications');
@@ -1456,12 +1461,12 @@ export function ClearanceTab({ accountId, propertyId, currentAccountNumber, curr
     setLoading(true);
     setError(null);
     try {
-      const [result, linked] = await Promise.all([
+      const [resultSettled, linkedSettled] = await Promise.allSettled([
         getClearanceInquiries(accountId, propertyId),
-        getLinkedAccountsOnProperty(accountId).catch(() => []),
+        getLinkedAccountsOnProperty(accountId),
       ]);
-      setData(result);
-      setLinkedAccounts(Array.isArray(linked) ? linked : []);
+      setData(resultSettled.status === 'fulfilled' ? (Array.isArray(resultSettled.value) ? resultSettled.value : []) : []);
+      setLinkedAccounts(linkedSettled.status === 'fulfilled' ? (Array.isArray(linkedSettled.value) ? linkedSettled.value : []) : []);
       loaded.current = true;
     } catch (e: any) {
       setError(e.message || 'Failed to load clearance data');
@@ -1984,10 +1989,12 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
     setProofLoading(true);
     try {
       const { getPropertyDetails, getNameInfo } = await import('@/lib/enquiries-service');
-      const [propResp, nameResp] = await Promise.all([
-        getPropertyDetails(accountId).catch(() => null),
-        getNameInfo(accountId).catch(() => null),
+      const [propSettled, nameSettled] = await Promise.allSettled([
+        getPropertyDetails(accountId),
+        getNameInfo(accountId),
       ]);
+      const propResp = propSettled.status === 'fulfilled' ? propSettled.value : null;
+      const nameResp = nameSettled.status === 'fulfilled' ? nameSettled.value : null;
       setProofData({ property: propResp, nameInfo: nameResp });
       setShowProofModal(true);
     } catch {
@@ -2200,12 +2207,13 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
     setContactLoading(true);
     setContactError(null);
     try {
-      const [nameResult, contactResult] = await Promise.all([
-        getNameInfo(accountId).catch(() => null),
-        getContactDetails(accountId).catch(() => null),
+      const [nameSettled, contactSettled] = await Promise.allSettled([
+        getNameInfo(accountId),
+        getContactDetails(accountId),
       ]);
 
-      const n = nameResult || {};
+      const n = nameSettled.status === 'fulfilled' ? (nameSettled.value || {}) : {};
+      const contactResult = contactSettled.status === 'fulfilled' ? contactSettled.value : null;
       const c = Array.isArray(contactResult) ? contactResult[0] : (contactResult || {});
 
       const name = [n.initials, n.surname || n.lastName].filter(Boolean).join(' ') || c.name || '';

@@ -2,7 +2,35 @@ import { resolveApiUrl, getAuthHeaders } from "./pos-config-context";
 
 const TIMEOUT_MS = 30000;
 
-async function fetchWithTimeout(url: string, options?: RequestInit): Promise<any> {
+const apiCache = new Map<string, { data: any; ts: number }>();
+const CACHE_TTL = 5 * 60 * 1000;
+const SHORT_CACHE_TTL = 60 * 1000;
+
+function getCached(key: string, ttl: number = CACHE_TTL): any | null {
+  const entry = apiCache.get(key);
+  if (entry && Date.now() - entry.ts < ttl) return entry.data;
+  if (entry) apiCache.delete(key);
+  return null;
+}
+
+function setCache(key: string, data: any): void {
+  apiCache.set(key, { data, ts: Date.now() });
+  if (apiCache.size > 200) {
+    const oldest = Array.from(apiCache.entries()).sort((a, b) => a[1].ts - b[1].ts);
+    for (let i = 0; i < 50; i++) apiCache.delete(oldest[i][0]);
+  }
+}
+
+export function clearEnquiryCache(accountId?: number): void {
+  if (!accountId) { apiCache.clear(); return; }
+  const suffix = `-${accountId}`;
+  const keys = Array.from(apiCache.keys());
+  for (const key of keys) {
+    if (key.endsWith(suffix) || key.includes(`${suffix}-`)) apiCache.delete(key);
+  }
+}
+
+async function fetchOnce(url: string, options?: RequestInit): Promise<any> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
@@ -23,6 +51,24 @@ async function fetchWithTimeout(url: string, options?: RequestInit): Promise<any
     if (e.name === 'AbortError') throw new Error('Request timed out');
     throw e;
   }
+}
+
+const MAX_RETRIES = 1;
+const RETRY_DELAY = 800;
+
+async function fetchWithTimeout(url: string, options?: RequestInit): Promise<any> {
+  let lastError: any;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await fetchOnce(url, options);
+    } catch (e: any) {
+      lastError = e;
+      const isRetryable = e.message?.includes('timed out') || e.message?.includes('502') || e.message?.includes('503') || e.message?.includes('Failed to fetch') || e.message?.includes('NetworkError');
+      if (!isRetryable || attempt >= MAX_RETRIES) throw e;
+      await new Promise(r => setTimeout(r, RETRY_DELAY * (attempt + 1)));
+    }
+  }
+  throw lastError;
 }
 
 function normalizeArray(data: any): any[] {
@@ -252,11 +298,21 @@ export async function multiAutocompleteSearch(search: string): Promise<{ suggest
 
 // === CONFIG ===
 export async function getConfigSetting(keyName: string): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/get-config-setting?strKeyName=${encodeURIComponent(keyName)}`);
+  const cacheKey = `config-setting-${keyName}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/get-config-setting?strKeyName=${encodeURIComponent(keyName)}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getAppSetting(key: string): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/get-app-setting?key=${encodeURIComponent(key)}`);
+  const cacheKey = `app-setting-${key}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/get-app-setting?key=${encodeURIComponent(key)}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function checkFileExists(params: Record<string, string>): Promise<any> {
@@ -266,100 +322,210 @@ export async function checkFileExists(params: Record<string, string>): Promise<a
 
 // === ACCOUNT INFO ===
 export async function getBasicAccountDetails(accountId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/basic-account-details?accountId=${accountId}`);
+  const cacheKey = `basic-account-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/basic-account-details?accountId=${accountId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getAccountInfoResult(accountId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/account-info-result?accountId=${accountId}`);
+  const cacheKey = `account-info-result-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/account-info-result?accountId=${accountId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getAccountInformation(accountId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-account-management/account-information?accountId=${accountId}`);
+  const cacheKey = `account-information-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-account-management/account-information?accountId=${accountId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getAccountDeliveryAddressDetail(accountId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/account-delivery-address-detail?accountId=${accountId}`);
+  const cacheKey = `account-delivery-addr-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/account-delivery-address-detail?accountId=${accountId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getDeliveryAccountDetailsById(accountId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/delivery-account-details-by-id?accountId=${accountId}`);
+  const cacheKey = `delivery-account-details-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/delivery-account-details-by-id?accountId=${accountId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getAccountNotifications(accountId: number): Promise<any[]> {
+  const cacheKey = `account-notifications-${accountId}`;
+  const cached = getCached(cacheKey, SHORT_CACHE_TTL);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/account-notifications?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getAccountInquiries(accountId: number): Promise<any[]> {
+  const cacheKey = `account-inquiries-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/account-inquiries?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getAccountStatus(accountId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/get-status?accountId=${accountId}`);
+  const cacheKey = `account-status-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/get-status?accountId=${accountId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 // === CONTACT / NAME ===
 export async function getNameInfo(accountId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/name-info-by-account?accountId=${accountId}`);
+  const cacheKey = `name-info-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/name-info-by-account?accountId=${accountId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getAccountsByNameId(accountId: number): Promise<{ nameId: number | null; accounts: any[] }> {
-  return fetchWithTimeout(`/api/proxy/accounts-by-name-id?accountId=${accountId}`);
+  const cacheKey = `accounts-by-name-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/proxy/accounts-by-name-id?accountId=${accountId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getContactDetails(accountId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-account-management/get-contact-details?accountId=${accountId}`);
+  const cacheKey = `contact-details-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-account-management/get-contact-details?accountId=${accountId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getContactDetailsHistory(accountId: number): Promise<any[]> {
+  const cacheKey = `contact-details-history-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/contact-details-history-by-id?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getDeliveryAddressHistory(accountId: number): Promise<any[]> {
+  const cacheKey = `delivery-addr-history-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/delivery-address-history-by-id?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 // === BALANCE & DEBT ===
 export async function getAccountBalance(accountId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/total-balance-debt?accountId=${accountId}`);
+  const cacheKey = `account-balance-${accountId}`;
+  const cached = getCached(cacheKey, SHORT_CACHE_TTL);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/total-balance-debt?accountId=${accountId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getServiceTypeBalance(accountId: number, financialYear?: string): Promise<any[]> {
   const yr = financialYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
+  const cacheKey = `svc-type-bal-${accountId}-${yr}`;
+  const cached = getCached(cacheKey, SHORT_CACHE_TTL);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/service-type-balance?accountId=${accountId}&financialYear=${encodeURIComponent(yr)}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 // === PROPERTY ===
 export async function getPropertyDetails(accountId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/property-details-by-account?AccountId=${accountId}`);
+  const cacheKey = `property-details-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/property-details-by-account?AccountId=${accountId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getProperty(propertyId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/property?propertyId=${propertyId}`);
+  const cacheKey = `property-${propertyId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/property?propertyId=${propertyId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getPartitionDetails(accountId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/partition-details?accountId=${accountId}`);
+  const cacheKey = `partition-details-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/partition-details?accountId=${accountId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getPartitionDetailsByUnit(unitPartitionId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/partition-details?unitPartitionId=${unitPartitionId}`);
+  const cacheKey = `partition-details-unit-${unitPartitionId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/partition-details?unitPartitionId=${unitPartitionId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getUnitPartitionOwner(unitPartitionId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/unit-partition-owner?unitPartitionId=${unitPartitionId}`);
+  const cacheKey = `unit-partition-owner-${unitPartitionId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/unit-partition-owner?unitPartitionId=${unitPartitionId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getAllotmentDescription(allotmentId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/allotment-description-by-id?allotmentId=${allotmentId}`);
+  const cacheKey = `allotment-desc-${allotmentId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/allotment-description-by-id?allotmentId=${allotmentId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getSectionalTitleScheme(accountId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/sectional-title-scheme?accountId=${accountId}`);
+  const cacheKey = `sectional-title-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/sectional-title-scheme?accountId=${accountId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getPropertyNotification(accountId: number, finYear?: string): Promise<any> {
@@ -367,13 +533,23 @@ export async function getPropertyNotification(accountId: number, finYear?: strin
   const yr = finYear || (now.getMonth() >= 6
     ? `${now.getFullYear()}/${now.getFullYear() + 1}`
     : `${now.getFullYear() - 1}/${now.getFullYear()}`);
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/property-notification?accountId=${accountId}&finYear=${encodeURIComponent(yr)}`);
+  const cacheKey = `property-notification-${accountId}-${yr}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/property-notification?accountId=${accountId}&finYear=${encodeURIComponent(yr)}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 // === SERVICES & METERS ===
 export async function getConsumptionUnits(accountId: number): Promise<any[]> {
+  const cacheKey = `cons-units-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/cons-unit-by-account?AccountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getConsUnitSearch(query: string): Promise<any[]> {
@@ -382,81 +558,141 @@ export async function getConsUnitSearch(query: string): Promise<any[]> {
 }
 
 export async function getAllServices(accountId: number): Promise<any[]> {
+  const cacheKey = `all-services-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/all-services?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getServicesSearchResults(accountId: number): Promise<any[]> {
+  const cacheKey = `services-search-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/services-search-results?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getMeteredServicesOnAccount(accountId: number): Promise<any[]> {
+  const cacheKey = `metered-services-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/metered-services-on-account?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getAccountServiceMeterPerProperty(accountId: number): Promise<any[]> {
+  const cacheKey = `account-svc-meter-prop-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/account-service-meter-per-property?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getUnitLinkedMeters(unitId: number): Promise<any[]> {
+  const cacheKey = `unit-linked-meters-${unitId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/unit-linked-meters?unitId=${unitId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getMeterReadingHistory(accountId: number, meterNo: string): Promise<any[]> {
+  const cacheKey = `meter-history-${accountId}-${meterNo}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/meter-reading-history?accountId=${accountId}&meterNo=${meterNo}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getMeterReadingHistoryBarchart(accountId: number, meterNo: string): Promise<any[]> {
+  const cacheKey = `meter-history-bar-${accountId}-${meterNo}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/meter-reading-history-barchart?accountId=${accountId}&meterNo=${meterNo}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getMeterInfoById(meterId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/meter-info-by-id?meterId=${meterId}`);
+  const cacheKey = `meter-info-${meterId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/meter-info-by-id?meterId=${meterId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getPrepaidMeterServicesForAccount(accountId: number): Promise<any[]> {
+  const cacheKey = `prepaid-meter-svc-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/prepaid-meter-services-for-account?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getPrepaidRechargeDetailsForMeter(meterId: number): Promise<any[]> {
+  const cacheKey = `prepaid-recharge-${meterId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/prepaid-recharge-details-for-meter?meterId=${meterId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 // === TRANSACTIONS ===
 export async function getDetailedTransactionResults(accountId: number, finYear: string): Promise<any[]> {
+  const cacheKey = `detailed-txn-${accountId}-${finYear}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/detailed-transaction-results?accountId=${accountId}&finYear=${encodeURIComponent(finYear)}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getBillingPeriodTransactions(accountId: number, finYear: string, billingMonth: string, balanceType: number = 3): Promise<any[]> {
+  const cacheKey = `billing-period-txn-${accountId}-${finYear}-${billingMonth}-${balanceType}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/get-billing-period-transactions?accountId=${accountId}&finYear=${encodeURIComponent(finYear)}&billingMonth=${encodeURIComponent(billingMonth)}&balanceType=${balanceType}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getAllBillingPeriodTransactions(accountId: number, finYear: string): Promise<any[]> {
   const months = ['July','August','September','October','November','December','January','February','March','April','May','June'];
-  const results: any[] = [];
-  const fetches = months.map(month =>
-    getBillingPeriodTransactions(accountId, finYear, month).catch(() => [])
+  const results = await Promise.allSettled(
+    months.map(month => getBillingPeriodTransactions(accountId, finYear, month))
   );
-  const allResults = await Promise.allSettled(fetches);
-  allResults.forEach(r => {
-    if (r.status === 'fulfilled') results.push(...r.value);
-  });
-  return results;
+  return results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
 }
 
 export async function getReceiptTransactionDetail(primaryId: number): Promise<any> {
+  const cacheKey = `receipt-txn-detail-${primaryId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/receipt-transaction-detail?primaryId=${primaryId}`);
-  return normalizeDetailResponse(data);
+  const result = normalizeDetailResponse(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 function normalizeDetailResponse(data: any): any[] | string {
@@ -471,53 +707,92 @@ function normalizeDetailResponse(data: any): any[] | string {
 }
 
 export async function getLevyTransactionDetail(primaryId: number): Promise<any[] | string> {
+  const cacheKey = `levy-txn-detail-${primaryId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/levy-transaction-detail?primaryId=${primaryId}`);
-  return normalizeDetailResponse(data);
+  const result = normalizeDetailResponse(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getOpenBalanceDetail(primaryId: number | string, billingMonth?: number): Promise<any[] | string> {
   const params = new URLSearchParams({ primaryId: String(primaryId) });
   if (billingMonth !== undefined) params.append('billingMonth', String(billingMonth));
+  const cacheKey = `open-bal-detail-${primaryId}-${billingMonth ?? ''}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/open-balance-detail?${params.toString()}`);
-  return normalizeDetailResponse(data);
+  const result = normalizeDetailResponse(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getCloseBalanceDetail(primaryId: number | string, billingMonth?: number): Promise<any[] | string> {
   const params = new URLSearchParams({ primaryId: String(primaryId) });
   if (billingMonth !== undefined) params.append('billingMonth', String(billingMonth));
+  const cacheKey = `close-bal-detail-${primaryId}-${billingMonth ?? ''}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/close-balance-detail?${params.toString()}`);
-  return normalizeDetailResponse(data);
+  const result = normalizeDetailResponse(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getJournalTransactionDetails(primaryId: number | string, accountId: number): Promise<any[] | string> {
+  const cacheKey = `journal-txn-detail-${primaryId}-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/journal-transaction-details?primaryId=${primaryId}&accountId=${accountId}`);
-  return normalizeDetailResponse(data);
+  const result = normalizeDetailResponse(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getRebateTransactionDetail(primaryId: number | string): Promise<any[] | string> {
+  const cacheKey = `rebate-txn-detail-${primaryId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/rebate-transaction-detail?primaryId=${primaryId}`);
-  return normalizeDetailResponse(data);
+  const result = normalizeDetailResponse(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getInterestConsPaymentDetail(accountId: number, finYear?: string): Promise<any[] | string> {
   const params = new URLSearchParams({ accountId: String(accountId) });
   if (finYear) params.append('finYear', finYear);
+  const cacheKey = `interest-cons-payment-${accountId}-${finYear ?? ''}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/interest-cons-payment-detail?${params.toString()}`);
-  return normalizeDetailResponse(data);
+  const result = normalizeDetailResponse(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getInterestLatePaymentDetail(accountId: number): Promise<any[]> {
+  const cacheKey = `interest-late-payment-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/interest-late-payment-detail?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getTransactionHistory(accountNumber: string, accountId?: number): Promise<any[]> {
+  const cacheKey = `txn-history-${accountNumber}-${accountId ?? ''}`;
+  const cached = getCached(cacheKey, SHORT_CACHE_TTL);
+  if (cached) return cached;
+
   if (accountId) {
     try {
       const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/payment-amount-by-account-ids?accountId=${accountId}`);
       const items = normalizeArray(data);
       if (items.length > 0) {
-        return items.map((r: any) => ({
+        const result = items.map((r: any) => ({
           receiptNo: r.receiptNo || '-',
           receiptId: r.receiptID || r.receiptId,
           receiptDate: r.receiptDate,
@@ -532,6 +807,8 @@ export async function getTransactionHistory(accountNumber: string, accountId?: n
           isCancelled: !!(r.cancelReson || r.isCancelled),
           cancelReason: r.cancelReson || r.cancelReason || '',
         }));
+        setCache(cacheKey, result);
+        return result;
       }
     } catch {}
   }
@@ -554,7 +831,10 @@ export async function getTransactionHistory(accountNumber: string, accountId?: n
       body: JSON.stringify(body),
     });
     const items = normalizeArray(data);
-    if (items.length > 0) return items;
+    if (items.length > 0) {
+      setCache(cacheKey, items);
+      return items;
+    }
   } catch {}
 
   return [];
@@ -562,100 +842,200 @@ export async function getTransactionHistory(accountNumber: string, accountId?: n
 
 // === PAYMENTS ===
 export async function getPaymentAmountByAccountIds(accountId: number): Promise<any[]> {
+  const cacheKey = `payment-amount-${accountId}`;
+  const cached = getCached(cacheKey, SHORT_CACHE_TTL);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/payment-amount-by-account-ids?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getPaymentPlansByAccountId(accountId: number): Promise<any[]> {
+  const cacheKey = `payment-plans-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/payment-plans-by-account-id?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getPaymentPlanRemainingCapital(accountId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/payment-plan-remaining-capital?accountId=${accountId}`);
+  const cacheKey = `payment-plan-remaining-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/payment-plan-remaining-capital?accountId=${accountId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getRepaymentPlanStatus(accountId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/repayment-plan-status?accountId=${accountId}`);
+  const cacheKey = `repayment-plan-status-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/repayment-plan-status?accountId=${accountId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getPaymentExtensionSearchResults(accountId: number): Promise<any[]> {
+  const cacheKey = `payment-ext-search-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/payment-extension-search-results?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 // === INCENTIVES ===
 export async function getPaymentIncentive(accountId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/payment-incentive-by-account?accountId=${accountId}`);
+  const cacheKey = `payment-incentive-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/payment-incentive-by-account?accountId=${accountId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getPaymentIncentiveJournals(accountId: number): Promise<any[]> {
+  const cacheKey = `payment-incentive-journals-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/payment-incentive-journals?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 // === DEPOSITS ===
 export async function getDeposits(accountId: number): Promise<any[]> {
+  const cacheKey = `deposits-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/deposits-by-account-id?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getDepositAmount(accountId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/deposit-amount?accountId=${accountId}`);
+  const cacheKey = `deposit-amount-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/deposit-amount?accountId=${accountId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 // === HANDOVER ===
 export async function getHandoverInfo(accountId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/handover-by-account?accountId=${accountId}`);
+  const cacheKey = `handover-info-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/handover-by-account?accountId=${accountId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getHandoverAccountEnquiry(accountId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/handover-account-enquiry?accountId=${accountId}`);
+  const cacheKey = `handover-account-enquiry-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/handover-account-enquiry?accountId=${accountId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getConsHandoverTransactionDetail(accountId: number): Promise<any[]> {
+  const cacheKey = `cons-handover-txn-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/cons-handover-transaction-detail?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 // === DEBIT ORDERS ===
 export async function getDebitOrderDeductionByAccount(accountId: number): Promise<any[]> {
+  const cacheKey = `debit-order-by-account-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/debit-order-deduction-by-account?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getDebitOrderDeduction(accountId: number): Promise<any[]> {
+  const cacheKey = `debit-order-deduction-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/get-debit-order-deduction?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 // === RATES & VALUATIONS ===
 export async function getValuationById(propertyId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/valuation-by-id?propertyId=${propertyId}`);
+  const cacheKey = `valuation-${propertyId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/valuation-by-id?propertyId=${propertyId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getValuationByUnit(unitId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/valuation-by-unit?unitId=${unitId}`);
+  const cacheKey = `valuation-unit-${unitId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/valuation-by-unit?unitId=${unitId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getValuationImportById(propertyId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/valuation-import-by-id?propertyId=${propertyId}`);
+  const cacheKey = `valuation-import-${propertyId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/valuation-import-by-id?propertyId=${propertyId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getSupplementaryValuations(propertyId: number): Promise<any[]> {
+  const cacheKey = `supplementary-valuations-${propertyId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/supplementary-valuations?propertyId=${propertyId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getRatesRunHistory(accountId: number, finYear?: string): Promise<any[]> {
   const yr = finYear || getCurrentFinYear();
+  const cacheKey = `rates-run-history-${accountId}-${yr}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/rates-run-history?accountId=${accountId}&finYear=${encodeURIComponent(yr)}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getAccountRatesDetails(accountId: number, finYear?: string): Promise<any> {
   const yr = finYear || getCurrentFinYear();
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/account-rates-details?accountId=${accountId}&finYear=${encodeURIComponent(yr)}`);
+  const cacheKey = `account-rates-details-${accountId}-${yr}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/account-rates-details?accountId=${accountId}&finYear=${encodeURIComponent(yr)}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 function getCurrentFinYear(): string {
@@ -666,20 +1046,35 @@ function getCurrentFinYear(): string {
 
 // === CHEQUES ===
 export async function getChequeFinalSearchList(accountId: number): Promise<any[]> {
+  const cacheKey = `cheque-final-search-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/cheque-final-search-list?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function getChequeWriteBackDetail(chequeId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/cheque-write-back-detail?chequeId=${chequeId}`);
+  const cacheKey = `cheque-write-back-${chequeId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/cheque-write-back-detail?chequeId=${chequeId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 // === BILLED VS PAID ===
 export async function getBilledVsPaidAmounts(accountId: number, financialYear?: string): Promise<any[]> {
   const yr = financialYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
+  const cacheKey = `billed-vs-paid-${accountId}-${yr}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   try {
     const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/billed-vs-paid-amounts?accountId=${accountId}&financialYear=${encodeURIComponent(yr)}`);
-    return normalizeArray(data);
+    const result = normalizeArray(data);
+    setCache(cacheKey, result);
+    return result;
   } catch (e: any) {
     if (e.message?.includes('500')) {
       throw new Error('The Billed vs Paid endpoint is currently unavailable on the Platinum API. This may be a temporary server issue — please try again later or contact your system administrator.');
@@ -690,12 +1085,19 @@ export async function getBilledVsPaidAmounts(accountId: number, financialYear?: 
 
 // === CLEARANCE ===
 export async function getClearanceInquiries(accountId: number, propertyId?: number): Promise<any[]> {
+  const cacheKey = propertyId ? `clearance-inquiries-prop-${propertyId}` : `clearance-inquiries-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   if (propertyId) {
     const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/clearance-inquiries?propertyId=${propertyId}`);
-    return normalizeArray(data);
+    const result = normalizeArray(data);
+    setCache(cacheKey, result);
+    return result;
   }
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/clearance-inquiries?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export function downloadClearanceDocument(costScheduleId: number | string, type: 'cost-schedule' | 'clearance-certificate'): void {
@@ -704,104 +1106,184 @@ export function downloadClearanceDocument(costScheduleId: number | string, type:
 
 // === BANK GUARANTEE ===
 export async function getBankGuaranteeHistory(accountId: number): Promise<any[]> {
+  const cacheKey = `bank-guarantee-history-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/bank-guarantee-history?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 // === SECTION 129 ===
 export async function getSection129AccountEnquiry(accountId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/section129-account-enquiry?accountId=${accountId}`);
+  const cacheKey = `section129-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/section129-account-enquiry?accountId=${accountId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 // === OCCUPIERS ===
 export async function getOccupiers(accountId: number): Promise<any[]> {
+  const cacheKey = `occupiers-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/add-occupiers?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 export async function addOccupier(body: any): Promise<any> {
-  return fetchWithTimeout('/api/platinum/billing-enquiry/add-occupier', {
+  const result = await fetchWithTimeout('/api/platinum/billing-enquiry/add-occupier', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
+  clearEnquiryCache(body.accountId);
+  return result;
 }
 
 export async function deleteOccupier(occupierId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/add-occupier?occupierId=${occupierId}`, {
+  const result = await fetchWithTimeout(`/api/platinum/billing-enquiry/add-occupier?occupierId=${occupierId}`, {
     method: 'DELETE',
   });
+  return result;
 }
 
 // === STATEMENTS ===
 export async function getGeneratedStatements(accountId: number): Promise<any[]> {
+  const cacheKey = `generated-statements-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/generated-statements-by-id?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 // === BILLING TEMPLATES ===
 export async function getBillingTemplate(accountId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/billing-template?accountId=${accountId}`);
+  const cacheKey = `billing-template-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/billing-template?accountId=${accountId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getDetailBillingTemplate(accountId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/detail-billing-template?accountId=${accountId}`);
+  const cacheKey = `detail-billing-template-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/detail-billing-template?accountId=${accountId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 // === BILLING ===
 export async function getBillingProcessingMonth(): Promise<any> {
-  return fetchWithTimeout('/api/platinum/billing-enquiry/billing-processing-month');
+  const cacheKey = `billing-processing-month`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout('/api/platinum/billing-enquiry/billing-processing-month');
+  setCache(cacheKey, data);
+  return data;
 }
 
 export async function getBillingCalculationPopupData(accountId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/billing-calculation-popup-data?accountId=${accountId}`);
+  const cacheKey = `billing-calc-popup-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/billing-calculation-popup-data?accountId=${accountId}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 // === ADDITIONAL BILLING ===
 export async function getAdditionalBillingSearchResults(accountId: number): Promise<any[]> {
+  const cacheKey = `additional-billing-search-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/additional-billing-search-results?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 // === PERIODS ===
 export async function getPeriods(): Promise<any[]> {
+  const cacheKey = `periods`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout('/api/platinum/billing-enquiry/periods');
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 // === DEBTOR NOTES ===
 export async function getDebtorNoteLists(accountId: number): Promise<any[]> {
+  const cacheKey = `debtor-note-lists-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/debtor-note-lists?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 // === ATTP APPLICATION HISTORY ===
 export async function getAttpApplicationHistory(accountId: number): Promise<any[]> {
+  const cacheKey = `attp-app-history-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/attp-application-history?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 // === TRANSFER OWNERSHIP ===
 export async function getTransferOwnership(accountId: number): Promise<any[]> {
+  const cacheKey = `transfer-ownership-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/transfer-ownership?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 // === LINKED ACCOUNTS ON PROPERTY ===
 export async function getLinkedAccountsOnProperty(accountId: number): Promise<any[]> {
+  const cacheKey = `linked-accounts-prop-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/linked-accounts-on-property?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 // === DEPARTMENTAL ACCOUNTS ===
 export async function getDepartmentalAccountsById(accountId: number): Promise<any[]> {
+  const cacheKey = `departmental-accounts-${accountId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
   const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/departmental-accounts-by-id?accountId=${accountId}`);
-  return normalizeArray(data);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 // === REBUILD / CONFIG ===
 export async function rebuildFullAccount(accountId: number): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/rebuild-full-account?accountId=${accountId}`);
+  const result = await fetchWithTimeout(`/api/platinum/billing-enquiry/rebuild-full-account?accountId=${accountId}`);
+  clearEnquiryCache(accountId);
+  return result;
 }
 
 export async function getRebuildAccountSSCheck(accountId: number): Promise<any> {
@@ -809,13 +1291,35 @@ export async function getRebuildAccountSSCheck(accountId: number): Promise<any> 
 }
 
 export async function reconcile(receiptId: number, body?: any): Promise<any> {
-  return fetchWithTimeout(`/api/platinum/billing-enquiry/reconcile/${receiptId}`, {
+  const result = await fetchWithTimeout(`/api/platinum/billing-enquiry/reconcile/${receiptId}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body || {}),
   });
+  if (body?.accountId) clearEnquiryCache(body.accountId);
+  return result;
 }
 
 export async function getLookups(): Promise<any> {
-  return fetchWithTimeout('/api/platinum/billing-enquiry/lookups');
+  const cacheKey = `lookups`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await fetchWithTimeout('/api/platinum/billing-enquiry/lookups');
+  setCache(cacheKey, data);
+  return data;
+}
+
+// === PREFETCH ===
+export async function prefetchAccountData(accountId: number): Promise<void> {
+  const calls = [
+    getBasicAccountDetails(accountId),
+    getAccountBalance(accountId),
+    getPropertyDetails(accountId),
+    getAllServices(accountId),
+    getContactDetails(accountId),
+    getNameInfo(accountId),
+    getSectionalTitleScheme(accountId),
+    getAccountNotifications(accountId),
+  ];
+  await Promise.allSettled(calls);
 }
