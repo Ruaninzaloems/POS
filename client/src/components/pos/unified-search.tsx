@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-export function UnifiedSearch() {
+export function UnifiedSearch({ onSearchActiveChange }: { onSearchActiveChange?: (active: boolean) => void } = {}) {
   const { addItem, clearTransaction, referenceData, platinumUser } = usePos();
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -365,7 +365,7 @@ export function UnifiedSearch() {
   return (
       <>
       <div className="flex gap-2 w-full max-w-2xl lg:max-w-4xl">
-          <SearchComponent onSelect={handleSelect} className="flex-1" institutions={referenceData.institutions} userId={platinumUser?.user_ID} finYear={platinumUser?.finYear} />
+          <SearchComponent onSelect={handleSelect} className="flex-1" institutions={referenceData.institutions} userId={platinumUser?.user_ID} finYear={platinumUser?.finYear} onSearchActiveChange={onSearchActiveChange} />
           <Button 
             variant="outline" 
             size="icon" 

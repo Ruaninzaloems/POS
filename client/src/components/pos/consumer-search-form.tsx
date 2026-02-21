@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Loader2 } from 'lucide-react';
+import { Search, Loader2, X, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface ConsumerSearchFormProps {
   onSearch: (criteria: any) => void;
@@ -25,6 +25,7 @@ export function ConsumerSearchForm({ onSearch, onCancel, isLoading }: ConsumerSe
     mobileNumber: '',
     physicalMeterNumber: '',
   });
+  const [showMore, setShowMore] = useState(false);
 
   const handleChange = (field: string, value: string) => {
     setCriteria(prev => ({ ...prev, [field]: value }));
@@ -38,6 +39,7 @@ export function ConsumerSearchForm({ onSearch, onCancel, isLoading }: ConsumerSe
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleSearch();
+    if (e.key === 'Escape') onCancel();
   };
 
   const handleClear = () => {
@@ -58,156 +60,180 @@ export function ConsumerSearchForm({ onSearch, onCancel, isLoading }: ConsumerSe
     });
   };
 
+  const filledCount = Object.values(criteria).filter(v => v.trim().length > 0).length;
+
   return (
-    <div className="w-full bg-white rounded-2xl shadow-lg border border-slate-200/80 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-3 text-sm font-medium flex items-center shadow-md">
-             <span className="mr-2 transform rotate-90 inline-block text-[10px]">&#9654;</span> Billing Enquiry Search
+    <div className="w-full bg-white rounded-xl shadow-lg border border-slate-200/80 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-2 text-sm font-medium flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+                <Search className="w-3.5 h-3.5" />
+                Advanced Search
+                {filledCount > 0 && <span className="bg-white/20 text-[10px] px-1.5 py-0.5 rounded-full">{filledCount} field{filledCount > 1 ? 's' : ''}</span>}
+            </span>
+            <button 
+                onClick={onCancel} 
+                className="p-1 hover:bg-white/20 rounded-md transition-colors"
+                data-testid="button-close-advanced"
+            >
+                <X className="w-4 h-4" />
+            </button>
         </div>
         
-        <div className="p-6 space-y-6 bg-gray-50/50" onKeyDown={handleKeyDown}>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide" data-testid="label-accountNo">Account ID</label>
+        <div className="p-3 space-y-2 max-h-[50vh] overflow-y-auto" onKeyDown={handleKeyDown}>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div>
+                    <label className="text-[10px] font-semibold text-slate-500 uppercase" data-testid="label-accountNo">Account ID</label>
                     <Input 
                         placeholder="Account ID"
                         value={criteria.accountNo}
                         onChange={(e) => handleChange('accountNo', e.target.value)}
-                        className="h-10 rounded-lg border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white"
+                        className="h-8 text-sm rounded-lg border-slate-200 focus:border-blue-500"
                         data-testid="input-accountNo"
                     />
                 </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide" data-testid="label-oldAccount">Old Account</label>
+                <div>
+                    <label className="text-[10px] font-semibold text-slate-500 uppercase" data-testid="label-oldAccount">Old Account</label>
                     <Input 
-                        placeholder="Old Account Code"
+                        placeholder="Old Code"
                         value={criteria.oldAccountCode}
                         onChange={(e) => handleChange('oldAccountCode', e.target.value)}
-                        className="h-10 rounded-lg border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white"
+                        className="h-8 text-sm rounded-lg border-slate-200 focus:border-blue-500"
                         data-testid="input-oldAccount"
                     />
                 </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide" data-testid="label-name">Company Name</label>
+                <div className="col-span-2 sm:col-span-1">
+                    <label className="text-[10px] font-semibold text-slate-500 uppercase" data-testid="label-name">Name</label>
                     <Input 
-                        placeholder="Company / Person Name"
+                        placeholder="Company / Person"
                         value={criteria.name}
                         onChange={(e) => handleChange('name', e.target.value)}
-                        className="h-10 rounded-lg border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white"
+                        className="h-8 text-sm rounded-lg border-slate-200 focus:border-blue-500"
                         data-testid="input-name"
                     />
                 </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide" data-testid="label-idNo">ID / Registration Number</label>
+                <div>
+                    <label className="text-[10px] font-semibold text-slate-500 uppercase" data-testid="label-idNo">ID Number</label>
                     <Input 
-                        placeholder="ID / Registration Number"
+                        placeholder="ID / Reg No"
                         value={criteria.idNo}
                         onChange={(e) => handleChange('idNo', e.target.value)}
-                        className="h-10 rounded-lg border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white"
+                        className="h-8 text-sm rounded-lg border-slate-200 focus:border-blue-500"
                         data-testid="input-idNo"
                     />
                 </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide" data-testid="label-passport">Passport Number</label>
+                <div>
+                    <label className="text-[10px] font-semibold text-slate-500 uppercase" data-testid="label-meter">Meter No</label>
                     <Input 
-                        placeholder="Passport Number"
-                        value={criteria.passportNumber}
-                        onChange={(e) => handleChange('passportNumber', e.target.value)}
-                        className="h-10 rounded-lg border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white"
-                        data-testid="input-passport"
-                    />
-                </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide" data-testid="label-deliveryAddress">Delivery Address</label>
-                    <Input 
-                        placeholder="Delivery Address"
-                        value={criteria.deliveryAddress}
-                        onChange={(e) => handleChange('deliveryAddress', e.target.value)}
-                        className="h-10 rounded-lg border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white"
-                        data-testid="input-deliveryAddress"
-                    />
-                </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide" data-testid="label-locationAddress">Location Address</label>
-                    <Input 
-                        placeholder="Location Address"
-                        value={criteria.locationAddress}
-                        onChange={(e) => handleChange('locationAddress', e.target.value)}
-                        className="h-10 rounded-lg border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white"
-                        data-testid="input-locationAddress"
-                    />
-                </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide" data-testid="label-allotment">Allotment Area</label>
-                    <Input 
-                        placeholder="Allotment Area"
-                        value={criteria.allotmentArea}
-                        onChange={(e) => handleChange('allotmentArea', e.target.value)}
-                        className="h-10 rounded-lg border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white"
-                        data-testid="input-allotment"
-                    />
-                </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide" data-testid="label-erf">ERF Number</label>
-                    <Input 
-                        placeholder="ERF Number"
-                        value={criteria.erfNumber}
-                        onChange={(e) => handleChange('erfNumber', e.target.value)}
-                        className="h-10 rounded-lg border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white"
-                        data-testid="input-erf"
-                    />
-                </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide" data-testid="label-trading">Trading</label>
-                    <Input 
-                        placeholder="Trading"
-                        value={criteria.trading}
-                        onChange={(e) => handleChange('trading', e.target.value)}
-                        className="h-10 rounded-lg border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white"
-                        data-testid="input-trading"
-                    />
-                </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide" data-testid="label-email">Email Address</label>
-                    <Input 
-                        placeholder="Email Address"
-                        value={criteria.emailAddress}
-                        onChange={(e) => handleChange('emailAddress', e.target.value)}
-                        className="h-10 rounded-lg border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white"
-                        data-testid="input-email"
-                    />
-                </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide" data-testid="label-mobile">Mobile Number</label>
-                    <Input 
-                        placeholder="Mobile Number"
-                        value={criteria.mobileNumber}
-                        onChange={(e) => handleChange('mobileNumber', e.target.value)}
-                        className="h-10 rounded-lg border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white"
-                        data-testid="input-mobile"
-                    />
-                </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide" data-testid="label-meter">Physical Meter Number</label>
-                    <Input 
-                        placeholder="Physical Meter Number"
+                        placeholder="Meter Number"
                         value={criteria.physicalMeterNumber}
                         onChange={(e) => handleChange('physicalMeterNumber', e.target.value)}
-                        className="h-10 rounded-lg border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white"
+                        className="h-8 text-sm rounded-lg border-slate-200 focus:border-blue-500"
                         data-testid="input-meter"
                     />
                 </div>
+                <div>
+                    <label className="text-[10px] font-semibold text-slate-500 uppercase" data-testid="label-erf">ERF Number</label>
+                    <Input 
+                        placeholder="ERF No"
+                        value={criteria.erfNumber}
+                        onChange={(e) => handleChange('erfNumber', e.target.value)}
+                        className="h-8 text-sm rounded-lg border-slate-200 focus:border-blue-500"
+                        data-testid="input-erf"
+                    />
+                </div>
             </div>
 
-            <div className="text-red-600 text-xs font-semibold tracking-tight">
-                ** At Least One Search Parameter Must Be Entered
-            </div>
+            {showMore && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 border-t border-slate-100 animate-in fade-in slide-in-from-top-2 duration-150">
+                    <div>
+                        <label className="text-[10px] font-semibold text-slate-500 uppercase" data-testid="label-passport">Passport</label>
+                        <Input 
+                            placeholder="Passport No"
+                            value={criteria.passportNumber}
+                            onChange={(e) => handleChange('passportNumber', e.target.value)}
+                            className="h-8 text-sm rounded-lg border-slate-200 focus:border-blue-500"
+                            data-testid="input-passport"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-semibold text-slate-500 uppercase" data-testid="label-deliveryAddress">Delivery Addr</label>
+                        <Input 
+                            placeholder="Delivery Address"
+                            value={criteria.deliveryAddress}
+                            onChange={(e) => handleChange('deliveryAddress', e.target.value)}
+                            className="h-8 text-sm rounded-lg border-slate-200 focus:border-blue-500"
+                            data-testid="input-deliveryAddress"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-semibold text-slate-500 uppercase" data-testid="label-locationAddress">Location Addr</label>
+                        <Input 
+                            placeholder="Location Address"
+                            value={criteria.locationAddress}
+                            onChange={(e) => handleChange('locationAddress', e.target.value)}
+                            className="h-8 text-sm rounded-lg border-slate-200 focus:border-blue-500"
+                            data-testid="input-locationAddress"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-semibold text-slate-500 uppercase" data-testid="label-allotment">Allotment</label>
+                        <Input 
+                            placeholder="Allotment Area"
+                            value={criteria.allotmentArea}
+                            onChange={(e) => handleChange('allotmentArea', e.target.value)}
+                            className="h-8 text-sm rounded-lg border-slate-200 focus:border-blue-500"
+                            data-testid="input-allotment"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-semibold text-slate-500 uppercase" data-testid="label-trading">Trading</label>
+                        <Input 
+                            placeholder="Trading"
+                            value={criteria.trading}
+                            onChange={(e) => handleChange('trading', e.target.value)}
+                            className="h-8 text-sm rounded-lg border-slate-200 focus:border-blue-500"
+                            data-testid="input-trading"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-semibold text-slate-500 uppercase" data-testid="label-email">Email</label>
+                        <Input 
+                            placeholder="Email Address"
+                            value={criteria.emailAddress}
+                            onChange={(e) => handleChange('emailAddress', e.target.value)}
+                            className="h-8 text-sm rounded-lg border-slate-200 focus:border-blue-500"
+                            data-testid="input-email"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-semibold text-slate-500 uppercase" data-testid="label-mobile">Mobile</label>
+                        <Input 
+                            placeholder="Mobile Number"
+                            value={criteria.mobileNumber}
+                            onChange={(e) => handleChange('mobileNumber', e.target.value)}
+                            className="h-8 text-sm rounded-lg border-slate-200 focus:border-blue-500"
+                            data-testid="input-mobile"
+                        />
+                    </div>
+                </div>
+            )}
 
-            <div className="flex gap-2 pt-2 border-t border-gray-100">
-                <Button onClick={handleSearch} disabled={isLoading} className="w-24 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/20 rounded-xl h-10" data-testid="button-search">
-                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Search'}
+            <div className="flex items-center gap-2 pt-1">
+                <Button onClick={handleSearch} disabled={isLoading} size="sm" className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-sm rounded-lg h-8 px-4 text-xs" data-testid="button-search">
+                    {isLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Search className="w-3 h-3 mr-1" />}
+                    Search
                 </Button>
-                <Button variant="outline" onClick={handleClear} className="w-24 rounded-xl h-10 border-slate-200" data-testid="button-clear">Clear</Button>
-                <Button variant="ghost" onClick={onCancel} className="w-24 rounded-xl h-10 border-slate-200" data-testid="button-cancel">Cancel</Button>
+                <Button variant="outline" size="sm" onClick={handleClear} className="rounded-lg h-8 px-3 text-xs border-slate-200" data-testid="button-clear">Clear</Button>
+                <Button variant="ghost" size="sm" onClick={onCancel} className="rounded-lg h-8 px-3 text-xs" data-testid="button-cancel">Cancel</Button>
+                <div className="flex-1" />
+                <button 
+                    onClick={() => setShowMore(!showMore)}
+                    className="text-[11px] text-blue-600 hover:text-blue-700 flex items-center gap-0.5 font-medium"
+                    data-testid="button-toggle-more-fields"
+                >
+                    {showMore ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    {showMore ? 'Less' : 'More'}
+                </button>
             </div>
         </div>
     </div>
