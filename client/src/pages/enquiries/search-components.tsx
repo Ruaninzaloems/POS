@@ -88,23 +88,23 @@ export function SmartSearchDropdown({
 
   return (
     <div
-      className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-slate-200 z-50 max-h-[420px] overflow-hidden flex flex-col"
+      className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-slate-200 z-50 max-h-[60vh] sm:max-h-[420px] overflow-hidden flex flex-col"
       data-testid="smart-search-dropdown"
       role="listbox"
       id="search-dropdown"
     >
       {loading && results.length === 0 && (
-        <div className="flex items-center gap-3 px-4 py-3 text-sm text-slate-500 border-b border-slate-100">
+        <div className="flex items-center gap-3 px-3 sm:px-4 py-3 text-sm text-slate-500 border-b border-slate-100">
           <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-          Searching accounts...
+          <span className="text-xs sm:text-sm">Searching accounts...</span>
         </div>
       )}
 
       {!loading && query.length >= 2 && results.length === 0 && (
-        <div className="flex flex-col items-center py-6 text-slate-400 px-4">
-          <Search className="w-7 h-7 mb-2 opacity-20" />
-          <p className="text-sm font-semibold text-slate-600 mb-1">No results found</p>
-          <ul className="text-[11px] text-slate-400 space-y-0.5 text-center">
+        <div className="flex flex-col items-center py-5 sm:py-6 text-slate-400 px-4">
+          <Search className="w-6 sm:w-7 h-6 sm:h-7 mb-2 opacity-20" />
+          <p className="text-xs sm:text-sm font-semibold text-slate-600 mb-1">No results found</p>
+          <ul className="text-[10px] sm:text-[11px] text-slate-400 space-y-0.5 text-center">
             <li>Check your spelling</li>
             <li>Try fewer words or characters</li>
             <li>Search by account number for exact results</li>
@@ -114,10 +114,10 @@ export function SmartSearchDropdown({
 
       {capped.length > 0 && (
         <>
-          <div className="px-4 py-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-              {results.length} account{results.length !== 1 ? 's' : ''} found
-              {hasMore && <span className="text-slate-400 normal-case font-normal"> (showing {maxResults})</span>}
+          <div className="px-3 sm:px-4 py-1.5 sm:py-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+            <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+              {results.length} account{results.length !== 1 ? 's' : ''}
+              {hasMore && <span className="text-slate-400 normal-case font-normal"> (top {maxResults})</span>}
             </span>
             <span className="text-[10px] text-slate-400 hidden sm:inline">
               <kbd className="px-1 py-0.5 bg-slate-200 rounded text-[9px] font-mono">↑↓</kbd> navigate
@@ -125,7 +125,7 @@ export function SmartSearchDropdown({
               <kbd className="px-1 py-0.5 bg-slate-200 rounded text-[9px] font-mono ml-1">Esc</kbd> close
             </span>
           </div>
-          <div ref={listRef} className="overflow-y-auto flex-1" role="listbox">
+          <div ref={listRef} className="overflow-y-auto flex-1 overscroll-contain" role="listbox">
             {capped.map((account, i) => {
               const bal = account.outStandingAmount ?? account.outStandingAmt ?? 0;
               const acctNum = String(account.accountNumber || account.accountID || account.account_ID || '');
@@ -137,30 +137,30 @@ export function SmartSearchDropdown({
                 <div
                   key={account.accountID || account.account_ID || i}
                   onClick={() => onSelect(account)}
-                  className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all border-b border-slate-50 last:border-0
+                  className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-2.5 cursor-pointer transition-all border-b border-slate-50 last:border-0 active:bg-blue-100/60
                     ${highlightIdx === i ? 'bg-blue-50 border-l-3 border-l-blue-500' : 'hover:bg-slate-50 border-l-3 border-l-transparent'}`}
                   data-testid={`dropdown-account-${account.accountID || account.account_ID || i}`}
                   role="option"
                   aria-selected={highlightIdx === i}
                   tabIndex={-1}
                 >
-                  <div className={`shrink-0 h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold
+                  <div className={`shrink-0 h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold
                     ${isActive ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>
                     {name.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono text-blue-600 font-semibold"><HighlightMatch text={acctNum} query={query} /></span>
-                      <span className="text-sm font-medium text-slate-800 truncate"><HighlightMatch text={name} query={query} /></span>
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <span className="text-[11px] sm:text-xs font-mono text-blue-600 font-semibold"><HighlightMatch text={acctNum} query={query} /></span>
+                      <span className="text-[12px] sm:text-sm font-medium text-slate-800 truncate"><HighlightMatch text={name} query={query} /></span>
                       <Badge
                         variant={isActive ? 'default' : 'secondary'}
-                        className="text-[9px] shrink-0 h-4 px-1.5"
+                        className="text-[8px] sm:text-[9px] shrink-0 h-3.5 sm:h-4 px-1 sm:px-1.5 hidden sm:inline-flex"
                       >
                         {account.accountStatus || account.statusDesc || '?'}
                       </Badge>
                     </div>
                     {addr && (
-                      <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                      <div className="text-[9px] sm:text-[10px] text-slate-400 truncate mt-0.5">
                         <HighlightMatch text={addr} query={query} />
                       </div>
                     )}
@@ -169,7 +169,7 @@ export function SmartSearchDropdown({
                     {onPin && (
                       <button
                         onClick={(e) => { e.stopPropagation(); onPin(account); }}
-                        className={`p-1 rounded transition-colors hidden sm:block ${pinned ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400'}`}
+                        className={`p-1.5 rounded transition-colors hidden sm:block ${pinned ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400'}`}
                         title={pinned ? 'Unpin account' : 'Pin account'}
                         aria-label={pinned ? 'Unpin account' : 'Pin account'}
                         data-testid={`btn-pin-dropdown-${i}`}
@@ -177,8 +177,8 @@ export function SmartSearchDropdown({
                         <Star className={`w-3.5 h-3.5 ${pinned ? 'fill-amber-500' : ''}`} />
                       </button>
                     )}
-                    <div className="text-right min-w-[60px] sm:min-w-[90px]">
-                      <div className={`text-xs sm:text-sm font-mono font-bold ${bal > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    <div className="text-right min-w-[55px] sm:min-w-[90px]">
+                      <div className={`text-[11px] sm:text-sm font-mono font-bold ${bal > 0 ? 'text-red-600' : 'text-green-600'}`}>
                         R {bal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
                       </div>
                     </div>
@@ -190,7 +190,7 @@ export function SmartSearchDropdown({
           {hasMore && onViewAll && (
             <button
               onClick={onViewAll}
-              className="w-full px-4 py-2.5 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors border-t border-slate-100 font-medium text-center"
+              className="w-full px-4 py-2.5 sm:py-2.5 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 active:bg-blue-100 transition-colors border-t border-slate-100 font-medium text-center"
               data-testid="button-view-all-results"
             >
               View all {results.length} results

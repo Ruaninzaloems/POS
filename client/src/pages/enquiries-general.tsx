@@ -100,17 +100,17 @@ function FieldAutocompleteInput({ fieldKey, placeholder, value, onChange, onSele
         onChange={(e) => handleChange(e.target.value)}
         onFocus={() => { if (suggestions.length > 0) setOpen(true); }}
         onKeyDown={(e) => { if (e.key === 'Enter') { setOpen(false); onEnter(); } if (e.key === 'Escape') setOpen(false); }}
-        className="w-full h-8 px-2 text-xs rounded border border-slate-300 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+        className="w-full h-9 sm:h-8 px-2.5 sm:px-2 text-xs rounded-lg sm:rounded border border-slate-300 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 sm:focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
         data-testid={`input-field-${fieldKey}`}
       />
-      {loading && <Loader2 className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-blue-400 animate-spin" />}
+      {loading && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-blue-400 animate-spin" />}
       {open && suggestions.length > 0 && (
-        <div className="absolute left-0 right-0 top-full mt-0.5 bg-white border border-slate-200 rounded shadow-lg z-50 max-h-[200px] overflow-y-auto">
+        <div className="absolute left-0 right-0 top-full mt-0.5 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-[200px] overflow-y-auto overscroll-contain">
           {suggestions.map((s, i) => (
             <button
               key={`${s.accountId}-${i}`}
               onClick={() => handleSelect(s)}
-              className="w-full text-left px-2.5 py-1.5 text-xs text-slate-700 hover:bg-blue-50 transition-colors border-b border-slate-100 last:border-0"
+              className="w-full text-left px-2.5 py-2 sm:py-1.5 text-xs text-slate-700 hover:bg-blue-50 active:bg-blue-100 transition-colors border-b border-slate-100 last:border-0"
               data-testid={`suggestion-${fieldKey}-${i}`}
             >
               {s.displayItem}
@@ -848,23 +848,33 @@ function GeneralEnquiriesContent() {
     <div className="flex flex-col h-full overflow-hidden relative">
       <div className="shrink-0 bg-white border-b border-slate-200 px-3 sm:px-6 py-2 sm:py-3">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-semibold text-slate-700" data-testid="text-page-title">General Enquiries</h2>
-          <div className="flex items-center gap-2">
+          <h2 className="text-xs sm:text-sm font-semibold text-slate-700" data-testid="text-page-title">General Enquiries</h2>
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {hasSearched && (
-              <Badge variant="outline" className="text-[10px] h-5" data-testid="text-result-count">
+              <Badge variant="outline" className="text-[9px] sm:text-[10px] h-5" data-testid="text-result-count">
                 {filteredResults.length} result{filteredResults.length !== 1 ? 's' : ''}
-                {quickFilters.size > 0 && ` (filtered from ${results.length})`}
+                {quickFilters.size > 0 && ` (of ${results.length})`}
               </Badge>
+            )}
+            {recentSearches.length > 0 && (
+              <button
+                onClick={() => { setShowDropdown(true); inputRef.current?.focus(); }}
+                className="sm:hidden p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                aria-label="Recent searches"
+                data-testid="button-recent-mobile"
+              >
+                <Clock className="w-3.5 h-3.5" />
+              </button>
             )}
           </div>
         </div>
 
         <div ref={dropdownContainerRef} className="relative">
           <div className="relative flex items-stretch" role="search" aria-label="Account search">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" aria-hidden="true" />
+            <Search className="absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" aria-hidden="true" />
 
             {dropdownSearching && (
-              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+              <div className="absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
                 <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
               </div>
             )}
@@ -877,7 +887,7 @@ function GeneralEnquiriesContent() {
               onKeyDown={handleQuickKeyDown}
               onFocus={() => { if (quickQuery.trim().length >= 2 || recentSearches.length > 0 || pinnedAccounts.length > 0) setShowDropdown(true); }}
               placeholder="Search account, name, ID, phone..."
-              className="w-full h-10 sm:h-11 pl-9 sm:pl-10 pr-[100px] sm:pr-[180px] rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-800 placeholder:text-slate-400
+              className="w-full h-11 sm:h-11 pl-9 sm:pl-10 pr-[88px] sm:pr-[180px] rounded-xl sm:rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-800 placeholder:text-slate-400
                 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
               data-testid="input-smart-search"
               aria-label="Search accounts"
@@ -887,7 +897,7 @@ function GeneralEnquiriesContent() {
               role="combobox"
             />
 
-            <div className="absolute right-1 sm:right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5 sm:gap-1">
               {quickQuery.trim().length >= 2 && (
                 <span className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium whitespace-nowrap
                   ${detectedType.unsupported
@@ -903,7 +913,7 @@ function GeneralEnquiriesContent() {
               {quickQuery && (
                 <button
                   onClick={handleClear}
-                  className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                  className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 active:bg-slate-200 transition-colors"
                   data-testid="button-clear-quick"
                   aria-label="Clear search"
                   tabIndex={0}
@@ -913,7 +923,7 @@ function GeneralEnquiriesContent() {
               )}
 
               <button
-                className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                className="hidden sm:flex p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
                 title="Scan ID / Barcode"
                 data-testid="button-scan-barcode"
                 aria-label="Scan ID or barcode"
@@ -925,19 +935,54 @@ function GeneralEnquiriesContent() {
               <button
                 onClick={handleFullSearch}
                 disabled={searching || (quickQuery.trim().length < 2 && !Object.values(criteria).some(v => v && String(v).trim()))}
-                className="h-7 sm:h-8 px-2 sm:px-3 rounded-md bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white flex items-center gap-1 sm:gap-1.5 text-xs font-medium transition-colors shadow-sm"
+                className="h-8 w-8 sm:h-8 sm:w-auto sm:px-3 rounded-lg sm:rounded-md bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-slate-300 text-white flex items-center justify-center gap-1.5 text-xs font-medium transition-colors shadow-sm"
                 data-testid="button-search"
                 aria-label="Search"
                 tabIndex={0}
               >
-                {searching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                 <span className="hidden sm:inline">Search</span>
               </button>
             </div>
           </div>
 
-          <div className={`mt-2 border border-slate-200 rounded-lg bg-slate-50/50 p-2 ${mobileFormCollapsed ? 'sm:block' : ''}`}>
-            <div className="flex items-center gap-1.5 mb-1.5">
+          {quickQuery.trim().length >= 2 && (
+            <div className="sm:hidden flex items-center gap-1.5 mt-1.5">
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-medium
+                ${detectedType.unsupported
+                  ? 'bg-amber-50 text-amber-600 border border-amber-200'
+                  : 'bg-blue-50 text-blue-600 border border-blue-200'}`}
+                data-testid="badge-detected-type-mobile"
+              >
+                {detectedType.unsupported ? <AlertTriangle className="w-2.5 h-2.5" /> : <CircleDot className="w-2.5 h-2.5" />}
+                {detectedType.label}
+              </span>
+              <button
+                className="p-1 rounded-md text-slate-400 hover:text-slate-600 transition-colors"
+                title="Scan ID / Barcode"
+                data-testid="button-scan-barcode-mobile"
+              >
+                <ScanBarcode className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          <div className={`mt-2 border border-slate-200 rounded-xl sm:rounded-lg bg-slate-50/50 overflow-hidden ${mobileFormCollapsed ? 'sm:block' : ''}`}>
+            <button
+              onClick={() => setMobileFormCollapsed(prev => !prev)}
+              className="sm:hidden w-full flex items-center justify-between gap-1.5 px-3 py-2.5 active:bg-slate-100 transition-colors"
+              data-testid="button-toggle-filters-mobile"
+            >
+              <div className="flex items-center gap-1.5">
+                <Filter className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-[11px] font-semibold text-slate-600">Field Search</span>
+                {activeFilterCount > 0 && (
+                  <span className="inline-flex items-center justify-center w-4.5 h-4.5 rounded-full bg-blue-600 text-white text-[9px] font-bold px-1">{activeFilterCount}</span>
+                )}
+              </div>
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${!mobileFormCollapsed ? 'rotate-180' : ''}`} />
+            </button>
+            <div className="hidden sm:flex items-center gap-1.5 px-2 pt-2 pb-1">
               <Filter className="w-3 h-3 text-slate-400" />
               <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Billing Enquiry Search</span>
               {activeFilterCount > 0 && (
@@ -947,16 +992,6 @@ function GeneralEnquiriesContent() {
                 <button onClick={() => setCriteria({})} className="text-[10px] text-blue-600 hover:text-blue-800 underline underline-offset-2" data-testid="button-clear-field-filters">Clear</button>
               )}
               <div className="ml-auto flex items-center gap-2">
-                {mobileFormCollapsed && (
-                  <button
-                    onClick={() => setMobileFormCollapsed(false)}
-                    className="sm:hidden text-[10px] text-blue-600 hover:text-blue-800 flex items-center gap-1 font-medium"
-                    data-testid="button-expand-form"
-                  >
-                    <ChevronDown className="w-3 h-3" />
-                    Expand
-                  </button>
-                )}
                 <button
                   onClick={() => setShowFiltersPanel(prev => !prev)}
                   className="text-[10px] text-slate-500 hover:text-slate-700 flex items-center gap-1"
@@ -967,59 +1002,76 @@ function GeneralEnquiriesContent() {
                 </button>
               </div>
             </div>
-            <div className={`${mobileFormCollapsed ? 'hidden sm:grid' : 'grid'} grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-1.5`}>
-              {[
-                { key: 'accountNo', placeholder: 'Account No.' },
-                { key: 'name', placeholder: 'Name / Company' },
-                { key: 'emailAddress', placeholder: 'Email Address' },
-                { key: 'physicalMeterNumber', placeholder: 'Meter Number' },
-                { key: 'oldAccountCode', placeholder: 'Old Account Code' },
-                { key: 'idNo', placeholder: 'ID / Reg. Number' },
-                { key: 'locationAddress', placeholder: 'Location Address' },
-                { key: 'sgNumber', placeholder: 'Erf/SG Number' },
-              ].map(f => (
-                <FieldAutocompleteInput
-                  key={f.key}
-                  fieldKey={f.key}
-                  placeholder={f.placeholder}
-                  value={(criteria as any)[f.key] || ''}
-                  onChange={handleFieldChange}
-                  onSelectAllLinked={handleSelectAllLinked}
-                  onSelectByFieldValue={handleSelectByFieldValue}
-                  onEnter={handleFullSearch}
-                  onAutoResults={handleAutoResults}
-                />
-              ))}
-            </div>
-            <div className={`${mobileFormCollapsed ? 'hidden sm:block' : ''}`}>
-              <p className="text-[10px] text-red-500 mt-1.5 font-medium">** At Least One Search Parameter Must Be Entered</p>
+            <div className={`${mobileFormCollapsed ? 'hidden' : 'block'} sm:block px-2 pb-2`}>
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-1.5">
+                {[
+                  { key: 'accountNo', placeholder: 'Account No.' },
+                  { key: 'name', placeholder: 'Name / Company' },
+                  { key: 'emailAddress', placeholder: 'Email Address' },
+                  { key: 'physicalMeterNumber', placeholder: 'Meter Number' },
+                  { key: 'oldAccountCode', placeholder: 'Old Account Code' },
+                  { key: 'idNo', placeholder: 'ID / Reg. Number' },
+                  { key: 'locationAddress', placeholder: 'Location Address' },
+                  { key: 'sgNumber', placeholder: 'Erf/SG Number' },
+                ].map(f => (
+                  <FieldAutocompleteInput
+                    key={f.key}
+                    fieldKey={f.key}
+                    placeholder={f.placeholder}
+                    value={(criteria as any)[f.key] || ''}
+                    onChange={handleFieldChange}
+                    onSelectAllLinked={handleSelectAllLinked}
+                    onSelectByFieldValue={handleSelectByFieldValue}
+                    onEnter={handleFullSearch}
+                    onAutoResults={handleAutoResults}
+                  />
+                ))}
+              </div>
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-[9px] sm:text-[10px] text-red-500 font-medium">** At Least One Parameter Required</p>
+                <div className="sm:hidden">
+                  <button
+                    onClick={() => setShowFiltersPanel(prev => !prev)}
+                    className="text-[10px] text-slate-500 hover:text-slate-700 flex items-center gap-1"
+                    data-testid="button-toggle-advanced-mobile"
+                  >
+                    <SlidersHorizontal className="w-3 h-3" />
+                    More
+                  </button>
+                </div>
+              </div>
               <div className="flex items-center gap-2 mt-1.5">
                 <button
                   onClick={handleFullSearch}
                   disabled={searching || (quickQuery.trim().length < 2 && !Object.values(criteria).some(v => v && String(v).trim()))}
-                  className="h-7 px-3 rounded bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white flex items-center gap-1.5 text-[11px] font-medium transition-colors"
+                  className="h-8 sm:h-7 px-4 sm:px-3 rounded-lg sm:rounded bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-slate-300 text-white flex items-center gap-1.5 text-xs sm:text-[11px] font-medium transition-colors shadow-sm"
                   data-testid="button-field-search"
                 >
-                  {searching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
+                  {searching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
                   Search
                 </button>
                 <button
                   onClick={() => { setCriteria({}); setQuickQuery(''); setResults([]); setHasSearched(false); setSearchError(null); setMobileFormCollapsed(false); }}
-                  className="h-7 px-3 rounded bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-medium transition-colors"
+                  className="h-8 sm:h-7 px-4 sm:px-3 rounded-lg sm:rounded bg-slate-200 hover:bg-slate-300 active:bg-slate-400 text-slate-700 text-xs sm:text-[11px] font-medium transition-colors"
                   data-testid="button-field-clear"
                 >
                   Clear
                 </button>
+                {activeFilterCount > 0 && (
+                  <button onClick={() => setCriteria({})} className="sm:hidden text-[10px] text-blue-600 hover:text-blue-800 underline underline-offset-2 ml-auto" data-testid="button-clear-field-filters-mobile">
+                    Clear Filters ({activeFilterCount})
+                  </button>
+                )}
               </div>
             </div>
           </div>
 
-          <div className={`flex items-center gap-1.5 mt-2 overflow-x-auto scrollbar-hide pb-0.5 sm:flex-wrap sm:overflow-visible ${mobileFormCollapsed ? 'hidden sm:flex' : ''}`} role="group" aria-label="Quick filters">
+          <div className={`flex items-center gap-1.5 mt-2 overflow-x-auto scrollbar-hide pb-0.5 sm:flex-wrap sm:overflow-visible ${mobileFormCollapsed && hasSearched ? 'hidden sm:flex' : ''}`} role="group" aria-label="Quick filters">
             {QUICK_FILTER_CHIPS.map(chip => (
               <button
                 key={chip.key}
                 onClick={() => toggleQuickFilter(chip.key)}
-                className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all whitespace-nowrap
+                className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 sm:py-1 rounded-full text-[11px] font-medium border transition-all whitespace-nowrap active:scale-95
                   ${quickFilters.has(chip.key)
                     ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                     : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:border-slate-300'}`}
@@ -1123,33 +1175,63 @@ function GeneralEnquiriesContent() {
         )}
 
         {!hasSearched && !searchError && (
-          <div className="flex flex-col items-center justify-center h-full text-slate-400 px-8 py-12">
-            <div className="relative mb-4">
-              <Search className="w-12 h-12 opacity-10" />
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                <Zap className="w-3 h-3 text-blue-600" />
+          <div className="flex flex-col items-center justify-center h-full text-slate-400 px-4 sm:px-8 py-8 sm:py-12">
+            <div className="relative mb-3 sm:mb-4">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center border border-blue-100">
+                <Search className="w-7 h-7 sm:w-9 sm:h-9 text-blue-300" />
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center shadow-sm">
+                <Zap className="w-3 h-3 text-white" />
               </div>
             </div>
-            <p className="text-sm font-medium text-slate-500 mb-3">Quick Start</p>
-            <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-0">
-              {EXAMPLE_SEARCHES.map((example, i) => (
-                <button
-                  key={i}
-                  onClick={() => { setQuickQuery(example.value); handleQuickQueryChange(example.value); inputRef.current?.focus(); }}
-                  className="group flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg border border-slate-200 text-slate-500
-                    hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 transition-all shadow-sm"
-                  data-testid={`example-search-${i}`}
-                >
-                  <span className="font-mono text-blue-600 group-hover:text-blue-800">{example.value}</span>
-                  <span className="hidden sm:inline text-[10px] text-slate-400 group-hover:text-blue-500">{example.label}</span>
-                </button>
-              ))}
+            <p className="text-xs sm:text-sm font-semibold text-slate-600 mb-1">Search Municipal Accounts</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 mb-4 sm:mb-5 text-center max-w-xs">Search by account number, name, ID, phone, address or meter number</p>
+
+            <div className="w-full max-w-sm sm:max-w-none">
+              <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 text-center">Try an example</p>
+              <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-stretch sm:items-center justify-center gap-1.5 sm:gap-2">
+                {EXAMPLE_SEARCHES.map((example, i) => (
+                  <button
+                    key={i}
+                    onClick={() => { setQuickQuery(example.value); handleQuickQueryChange(example.value); inputRef.current?.focus(); }}
+                    className="group flex flex-col sm:flex-row items-start sm:items-center gap-0.5 sm:gap-2 text-[11px] sm:text-xs px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl sm:rounded-lg border border-slate-200 text-slate-500
+                      hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 active:bg-blue-100 transition-all shadow-sm bg-white"
+                    data-testid={`example-search-${i}`}
+                  >
+                    <span className="font-mono text-blue-600 group-hover:text-blue-800 text-[11px]">{example.value}</span>
+                    <span className="text-[9px] sm:text-[10px] text-slate-400 group-hover:text-blue-500">{example.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-            {pinnedAccounts.length > 0 && (
-              <div className="mt-6 w-full max-w-md">
+
+            {recentSearches.length > 0 && (
+              <div className="mt-5 sm:mt-6 w-full max-w-sm">
                 <div className="flex items-center gap-2 mb-2">
-                  <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                  <span className="text-xs font-semibold text-slate-500">Pinned Accounts</span>
+                  <Clock className="w-3 h-3 text-slate-400" />
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Recent</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {recentSearches.map((term, i) => (
+                    <button
+                      key={i}
+                      onClick={() => { setQuickQuery(term); handleQuickQueryChange(term); inputRef.current?.focus(); }}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-slate-200 text-[11px] text-slate-600 hover:bg-blue-50 hover:border-blue-200 active:bg-blue-100 transition-all"
+                      data-testid={`recent-chip-${i}`}
+                    >
+                      <Clock className="w-2.5 h-2.5 text-slate-300" />
+                      <span className="font-mono">{term}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {pinnedAccounts.length > 0 && (
+              <div className="mt-5 sm:mt-6 w-full max-w-sm sm:max-w-md">
+                <div className="flex items-center gap-2 mb-2">
+                  <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Pinned Accounts</span>
                 </div>
                 <div className="grid gap-1.5">
                   {pinnedAccounts.map((acct, i) => {
@@ -1159,14 +1241,14 @@ function GeneralEnquiriesContent() {
                       <button
                         key={i}
                         onClick={() => handleSelectAccount(acct)}
-                        className="flex items-center gap-3 px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-blue-50 hover:border-blue-200 transition-all text-left"
+                        className="flex items-center gap-2.5 sm:gap-3 px-3 py-2 rounded-xl sm:rounded-lg border border-slate-200 bg-white hover:bg-blue-50 hover:border-blue-200 active:bg-blue-100 transition-all text-left shadow-sm"
                         data-testid={`pinned-home-${i}`}
                       >
-                        <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 text-sm font-bold">
+                        <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 text-xs sm:text-sm font-bold ring-1 ring-amber-200">
                           {(acct.name || '?').charAt(0).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-slate-800 truncate">{acct.name || 'Unknown'}</div>
+                          <div className="text-[13px] sm:text-sm font-medium text-slate-800 truncate">{acct.name || 'Unknown'}</div>
                           <div className="text-[10px] font-mono text-slate-400">{acctNum}</div>
                         </div>
                         <div className={`text-xs font-mono font-semibold ${bal > 0 ? 'text-red-600' : 'text-green-600'}`}>
@@ -1213,20 +1295,35 @@ function GeneralEnquiriesContent() {
 
         {filteredResults.length > 0 && (
           <>
-            <div className="sm:hidden px-3 pt-2 pb-1 flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{filteredResults.length} Account{filteredResults.length !== 1 ? 's' : ''} Found</span>
-              {mobileFormCollapsed && (
+            <div className="sm:hidden px-3 pt-2.5 pb-1.5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{filteredResults.length} Account{filteredResults.length !== 1 ? 's' : ''}</span>
+                {quickFilters.size > 0 && (
+                  <span className="text-[9px] text-blue-600 font-medium">(filtered)</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {mobileFormCollapsed && (
+                  <button
+                    onClick={() => setMobileFormCollapsed(false)}
+                    className="text-[10px] text-blue-600 hover:text-blue-800 flex items-center gap-0.5 font-medium active:text-blue-900"
+                    data-testid="button-show-filters-mobile"
+                  >
+                    <Filter className="w-2.5 h-2.5" />
+                    Filters
+                  </button>
+                )}
                 <button
-                  onClick={() => setMobileFormCollapsed(false)}
-                  className="text-[10px] text-blue-600 hover:text-blue-800 flex items-center gap-0.5 font-medium"
-                  data-testid="button-show-filters-mobile"
+                  onClick={handleClear}
+                  className="text-[10px] text-slate-400 hover:text-slate-600 flex items-center gap-0.5"
+                  data-testid="button-new-search-mobile"
                 >
-                  <Filter className="w-2.5 h-2.5" />
-                  Filters
+                  <Search className="w-2.5 h-2.5" />
+                  New
                 </button>
-              )}
+              </div>
             </div>
-            <div className="sm:hidden p-2 pt-0 space-y-2" data-testid="mobile-search-results">
+            <div className="sm:hidden px-2.5 pb-2 pt-0 space-y-1.5" data-testid="mobile-search-results">
               {filteredResults.map((account, i) => {
                 const aid = account.accountID || account.account_ID || i;
                 const acctNum = account.accountNumber || account.accountID || account.account_ID;
@@ -1236,34 +1333,44 @@ function GeneralEnquiriesContent() {
                 const isActive = status.toLowerCase() === 'active';
                 const outstanding = account.outStandingAmount ?? account.outStandingAmt ?? 0;
                 const acctType = account.accountType || account.accountDesc || '';
+                const borderColor = isActive
+                  ? (outstanding > 0 ? 'border-l-amber-400' : 'border-l-emerald-400')
+                  : 'border-l-slate-300';
                 return (
                   <button
                     key={aid}
                     onClick={() => handleSelectAccount(account)}
-                    className="w-full text-left bg-white border border-slate-200 rounded-lg p-3 hover:bg-blue-50 hover:border-blue-200 transition-all shadow-sm active:scale-[0.99]"
+                    className={`w-full text-left bg-white border border-slate-200 ${borderColor} border-l-[3px] rounded-lg p-2.5 hover:bg-blue-50/50 hover:border-blue-200 transition-all shadow-sm active:scale-[0.99] active:shadow-none`}
                     data-testid={`mobile-result-${i}`}
                   >
                     <div className="flex items-start gap-2.5">
-                      <div className="shrink-0 h-9 w-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold mt-0.5">
+                      <div className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold mt-0.5 ${
+                        isActive ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white' : 'bg-slate-200 text-slate-500'
+                      }`}>
                         {name.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-0.5">
-                          <span className="text-sm font-semibold text-slate-900 truncate">{name}</span>
-                          <span className={`shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                          <span className="text-[13px] font-semibold text-slate-900 truncate">{name}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-[11px] font-mono text-blue-600 font-medium">{acctNum}</span>
+                          <span className={`shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wide ${isActive ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200'}`}>
                             <span className={`w-1 h-1 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                             {status}
                           </span>
                         </div>
-                        <div className="text-[11px] font-mono text-blue-600 mb-0.5">{acctNum}</div>
-                        {address && <div className="text-[10px] text-slate-500 truncate">{address}</div>}
-                        {acctType && <div className="text-[10px] text-slate-400 mt-0.5">{acctType}</div>}
+                        {address && <div className="text-[10px] text-slate-500 truncate leading-tight">{address.replace(/\r\n/g, ', ')}</div>}
+                        {acctType && <div className="text-[9px] text-slate-400 mt-0.5 uppercase tracking-wide font-medium">{acctType}</div>}
                       </div>
-                      <div className="shrink-0 text-right">
-                        <div className={`text-sm font-bold font-mono ${outstanding > 0 ? 'text-red-600' : outstanding < 0 ? 'text-emerald-600' : 'text-slate-600'}`}>
+                      <div className="shrink-0 flex flex-col items-end gap-1">
+                        <div className={`text-[13px] font-bold font-mono ${outstanding > 0 ? 'text-red-600' : outstanding < 0 ? 'text-emerald-600' : 'text-slate-600'}`}>
                           R {outstanding.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
                         </div>
-                        <ArrowRight className="w-3.5 h-3.5 text-slate-300 ml-auto mt-1" />
+                        <div className="flex items-center gap-0.5 text-[9px] text-slate-400">
+                          <span>View</span>
+                          <ArrowRight className="w-3 h-3 text-blue-400" />
+                        </div>
                       </div>
                     </div>
                   </button>
@@ -1313,27 +1420,28 @@ function GeneralEnquiriesContent() {
       {showFiltersPanel && (
         <>
           <div
-            className="fixed inset-0 bg-black/20 z-40"
+            className="fixed inset-0 bg-black/30 sm:bg-black/20 z-40 backdrop-blur-[1px] sm:backdrop-blur-none"
             onClick={() => setShowFiltersPanel(false)}
           />
-          <div className="fixed right-0 top-0 bottom-0 w-[380px] max-w-[90vw] bg-white shadow-2xl border-l border-slate-200 z-50 flex flex-col animate-in slide-in-from-right duration-200" role="dialog" aria-label="Advanced Filters">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+          <div className="fixed inset-x-0 bottom-0 sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[380px] sm:max-w-[90vw] max-h-[85vh] sm:max-h-none bg-white shadow-2xl border-t sm:border-t-0 sm:border-l border-slate-200 z-50 flex flex-col rounded-t-2xl sm:rounded-none animate-in slide-in-from-bottom sm:slide-in-from-right duration-200" role="dialog" aria-label="Advanced Filters">
+            <div className="sm:hidden w-10 h-1 bg-slate-300 rounded-full mx-auto mt-2 mb-1" />
+            <div className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 border-b border-slate-200">
               <div className="flex items-center gap-2">
                 <SlidersHorizontal className="w-4 h-4 text-slate-500" />
-                <h3 className="text-sm font-semibold text-slate-800">Advanced Filters</h3>
+                <h3 className="text-sm font-semibold text-slate-800">All Search Fields</h3>
                 {activeFilterCount > 0 && (
                   <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold">{activeFilterCount}</span>
                 )}
               </div>
               <button
                 onClick={() => setShowFiltersPanel(false)}
-                className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                className="p-2 sm:p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 active:bg-slate-200 transition-colors"
                 aria-label="Close filters panel"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+            <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-3 sm:space-y-4">
               {SEARCH_FIELDS.map((field) => (
                 <div key={field.key}>
                   <Label htmlFor={`search-${field.key}`} className="text-[11px] uppercase tracking-wider text-slate-500 font-medium mb-1.5 flex items-center gap-1.5">
@@ -1346,22 +1454,22 @@ function GeneralEnquiriesContent() {
                     value={(criteria as any)[field.key] || ''}
                     onChange={(e) => setCriteria(prev => ({ ...prev, [field.key]: e.target.value }))}
                     onKeyDown={(e) => { if (e.key === 'Enter') { handleFullSearch(); setShowFiltersPanel(false); } }}
-                    className="h-9 text-sm"
+                    className="h-10 sm:h-9 text-sm rounded-lg sm:rounded-md"
                     data-testid={`input-search-${field.key}`}
                   />
                 </div>
               ))}
             </div>
-            <div className="shrink-0 border-t border-slate-200 px-5 py-3 flex items-center gap-2">
+            <div className="shrink-0 border-t border-slate-200 px-4 sm:px-5 py-3 sm:py-3 flex items-center gap-2 pb-safe">
               {activeFilterCount > 0 && (
-                <Button variant="ghost" size="sm" onClick={() => setCriteria({})} className="text-xs" data-testid="button-clear-filters">
+                <Button variant="ghost" size="sm" onClick={() => setCriteria({})} className="text-xs h-10 sm:h-8" data-testid="button-clear-filters">
                   Clear All
                 </Button>
               )}
               <Button
                 onClick={() => { handleFullSearch(); setShowFiltersPanel(false); }}
                 disabled={searching}
-                className="flex-1 h-9 gap-2"
+                className="flex-1 h-10 sm:h-9 gap-2 rounded-lg sm:rounded-md"
                 data-testid="button-apply-filters"
               >
                 {searching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
