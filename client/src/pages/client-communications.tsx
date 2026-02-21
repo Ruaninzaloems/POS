@@ -794,7 +794,7 @@ export default function ClientCommunications() {
                         value={messageBody}
                         onChange={e => setMessageBody(e.target.value)}
                         placeholder={mode === 'email' ? "Type your email message here..." : "Type your SMS message here (160 char limit)..."}
-                        rows={mode === 'email' ? 6 : 4}
+                        rows={6}
                         className="text-sm resize-none rounded-lg sm:rounded-md"
                         maxLength={mode === 'sms' ? 160 : undefined}
                         data-testid="input-message-body"
