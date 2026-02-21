@@ -19,6 +19,65 @@ import { openSlipPrintWindow, ReceiptPrintData } from '@/lib/receipt-print';
 import { LoadingSkeleton, EmptyState, ErrorState, PaginatedTable, getFinYearOptions, MONTHS } from './shared';
 import { downloadSummaryExcel, downloadTransactionExcel, downloadExcel } from '@/lib/excel-export';
 
+function parseHtmlTables(html: string): { headers: string[]; rows: string[][] }[] {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  const tables = doc.querySelectorAll('table');
+  const result: { headers: string[]; rows: string[][] }[] = [];
+  tables.forEach(table => {
+    const headers: string[] = [];
+    const headerCells = table.querySelectorAll('thead th, thead td, tr:first-child th');
+    headerCells.forEach(th => headers.push((th as HTMLElement).innerText || th.textContent || ''));
+    const rows: string[][] = [];
+    const bodyRows = table.querySelectorAll('tbody tr');
+    const allRows = bodyRows.length > 0 ? bodyRows : table.querySelectorAll('tr');
+    allRows.forEach((tr, idx) => {
+      if (idx === 0 && headers.length > 0 && tr.querySelector('th')) return;
+      const cells: string[] = [];
+      tr.querySelectorAll('td, th').forEach(td => cells.push((td as HTMLElement).innerText || td.textContent || ''));
+      if (cells.length > 0) rows.push(cells);
+    });
+    if (headers.length > 0 || rows.length > 0) result.push({ headers, rows });
+  });
+  return result;
+}
+
+function HtmlDetailMobileCards({ html }: { html: string }) {
+  const tables = useMemo(() => parseHtmlTables(html), [html]);
+  if (tables.length === 0) return null;
+  return (
+    <div className="space-y-3">
+      {tables.map((table, ti) => (
+        <div key={ti} className="space-y-2">
+          {table.rows.map((row, ri) => {
+            return (
+              <div key={ri} className="bg-white border border-slate-200 rounded-lg p-3 space-y-1.5">
+                {table.headers.length > 0 ? (
+                  table.headers.map((header, ci) => {
+                    const val = row[ci] ?? '';
+                    if (!val.trim() && !header.trim()) return null;
+                    const isMultiLine = val.includes('\n') || val.length > 60;
+                    return (
+                      <div key={ci} className={isMultiLine ? '' : 'flex justify-between items-baseline gap-2'}>
+                        <span className="text-[10px] uppercase tracking-wider text-teal-700 font-semibold shrink-0">{header}</span>
+                        <span className={`text-xs text-slate-700 ${isMultiLine ? 'block mt-0.5 whitespace-pre-line leading-relaxed' : 'text-right'} ${/^-?\d/.test(val.replace(/[,\s]/g, '')) && val.length < 20 ? 'font-mono font-semibold' : ''}`}>{val || '-'}</span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  row.map((cell, ci) => (
+                    <div key={ci} className="text-xs text-slate-700 whitespace-pre-line leading-relaxed">{cell}</div>
+                  ))
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function extractServiceType(desc: string): string {
   const levyMatch = desc.match(/^Levy\s*-\s*(.+)/i);
   if (levyMatch) return levyMatch[1].trim();
@@ -991,9 +1050,9 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
               </div>
 
               <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-                <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
-                  <Layers className="w-3.5 h-3.5 text-slate-500" />
-                  <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Transaction Detail & Ledger Postings</h5>
+                <div className="px-3 sm:px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center gap-1.5 sm:gap-2">
+                  <Layers className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-500 shrink-0" />
+                  <h5 className="text-[10px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider">Detail & Ledger Postings</h5>
                 </div>
                 {txnDetailLoading ? (
                   <div className="p-8 flex items-center justify-center gap-2">
@@ -1001,7 +1060,12 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
                     <span className="text-sm text-slate-500">Loading detail...</span>
                   </div>
                 ) : typeof txnDetailData === 'string' && txnDetailData.length > 0 ? (
-                  <div className="p-2 sm:p-4 overflow-x-auto platinum-detail-html platinum-detail-mobile" dangerouslySetInnerHTML={{ __html: txnDetailData }} />
+                  <>
+                    <div className="sm:hidden p-2">
+                      <HtmlDetailMobileCards html={txnDetailData} />
+                    </div>
+                    <div className="hidden sm:block p-2 sm:p-4 overflow-x-auto platinum-detail-html" dangerouslySetInnerHTML={{ __html: txnDetailData }} />
+                  </>
                 ) : Array.isArray(txnDetailData) && txnDetailData.length > 0 ? (
                   <>
                     <div className="sm:hidden p-2 space-y-2">
