@@ -2165,19 +2165,33 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
         }
       }
 
-      if (rates && typeof rates === 'object') {
-        const ratesArr = Array.isArray(rates) ? rates : rates.data ? (Array.isArray(rates.data) ? rates.data : [rates.data]) : [rates];
-        for (const rateItem of ratesArr) {
-          const installment = parseFloat(rateItem.installmentAmount ?? rateItem.instalment ?? rateItem.monthlyAmount ?? 0) || 0;
-          const rebate = parseFloat(rateItem.rebateAmount ?? rateItem.rebate ?? 0) || 0;
-          const desc = rateItem.rateDescription || rateItem.description || rateItem.serviceDesc || 'Property Rates';
+      if (rates && typeof rates === 'object' && !rates._error) {
+        const ratesObj = Array.isArray(rates) ? rates[0] : (rates.data ? (Array.isArray(rates.data) ? rates.data[0] : rates.data) : rates);
+        if (ratesObj) {
+          let installment = parseFloat(ratesObj.installment ?? ratesObj.installmentAmount ?? ratesObj.instalment ?? ratesObj.monthlyAmount ?? 0) || 0;
+          if (installment <= 0) {
+            const annual = parseFloat(ratesObj.annualPropertyRates ?? ratesObj.annualRates ?? ratesObj.annualAmount ?? 0) || 0;
+            if (annual > 0) {
+              const remaining = parseInt(ratesObj.remainingInstallments ?? 12) || 12;
+              installment = annual / Math.max(remaining, 1);
+            }
+          }
+          const rebate = parseFloat(ratesObj.rebateAmount ?? ratesObj.rebate ?? 0) || 0;
+          const desc = ratesObj.rateDescription || ratesObj.description || ratesObj.tariffDescription || ratesObj.serviceDesc || 'Property Rates';
+          const remaining = ratesObj.remainingInstallments;
+          const remainingAmt = parseFloat(ratesObj.remaingAmount ?? ratesObj.remainingAmount ?? 0) || 0;
 
           if (installment > 0) {
-            const netAmount = installment - rebate;
-            const isVatable = (rateItem.vatApplicable === true || rateItem.vatApplicable === 'true' || rateItem.isVatable === true);
-            const vat = isVatable ? netAmount * (vatRate / 100) : 0;
+            const netAmount = Math.max(0, installment - rebate);
+            const vat = 0;
             const rateKey = `rates-${desc.toLowerCase()}`;
             processedServiceKeys.add(rateKey);
+            processedServiceKeys.add('rates-property rates');
+            let detailParts: string[] = [];
+            if (rebate > 0) detailParts.push(`Levy R${fmt(installment)} less rebate R${fmt(rebate)}`);
+            else detailParts.push(`Monthly installment`);
+            if (remaining) detailParts.push(`${remaining} installments remaining`);
+            if (remainingAmt > 0) detailParts.push(`R${fmt(remainingAmt)} outstanding`);
             items.push({
               category: 'Property Rates',
               serviceDesc: desc,
@@ -2185,7 +2199,7 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
               amount: netAmount,
               vatAmount: vat,
               total: netAmount + vat,
-              detail: rebate > 0 ? `Installment R${fmt(installment)} less rebate R${fmt(rebate)}` : `Monthly installment`,
+              detail: detailParts.join(' · '),
               rebateAmount: rebate > 0 ? rebate : undefined,
             });
           }
