@@ -1,12 +1,15 @@
 import React, { useState, useMemo } from 'react';
-import { usePos } from '@/lib/pos-state';
+import { usePos, TransactionItem } from '@/lib/pos-state';
+import { Account } from '@/lib/external-api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowRight, CreditCard, Banknote, Trash2, History, Lock, AlertTriangle, ChevronUp, ShieldAlert, X, Delete, Coins, CheckCircle2, Minus, Plus } from 'lucide-react';
+import { ArrowRight, CreditCard, Banknote, Trash2, History, Lock, AlertTriangle, ChevronUp, ShieldAlert, X, Delete, Coins, CheckCircle2, Minus, Plus, User, MapPin, FileCheck, Zap, Droplets, ChevronDown, Package, Hash, Building2, Receipt } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { DayEndModal } from './day-end-modal';
 import { TransactionHistoryModal } from './transaction-history-modal';
 import { HelpTip } from '@/components/ui/help-tip';
+import { getCategoryIcon } from '@/lib/category-icons';
 
 export function PaymentDrawer() {
   const { 
@@ -16,6 +19,8 @@ export function PaymentDrawer() {
     completeTransaction, 
     transactionItems, 
     removeItem,
+    updateItemAmount,
+    updateItemDetails,
     dayEndStatus,
     viewMode,
     isPaymentTypeAllowed
@@ -222,6 +227,8 @@ export function PaymentDrawer() {
           <DesktopPaymentContent
             transactionItems={transactionItems}
             removeItem={removeItem}
+            updateItemAmount={updateItemAmount}
+            updateItemDetails={updateItemDetails}
             totalDue={totalDue}
             dayEndStatus={dayEndStatus}
             cashAllowed={cashAllowed}
@@ -243,7 +250,7 @@ export function PaymentDrawer() {
         {/* === MOBILE: Direct layout (no nested tabs) === */}
         <div className={`${viewMode === 'desktop' ? 'lg:hidden' : ''}`}>
           {mobileView === 'items' ? (
-            <MobileItemsList items={transactionItems} removeItem={removeItem} totalDue={totalDue} />
+            <MobileItemsList items={transactionItems} removeItem={removeItem} updateItemAmount={updateItemAmount} updateItemDetails={updateItemDetails} totalDue={totalDue} />
           ) : (
             <MobilePaymentView
               totalDue={totalDue}
@@ -341,7 +348,386 @@ export function PaymentDrawer() {
   );
 }
 
-function MobileItemsList({ items, removeItem, totalDue }: { items: any[]; removeItem: (id: string) => void; totalDue: number }) {
+function getTypeBadge(type: string, originalData?: any) {
+  switch (type) {
+    case 'CONSUMER_SERVICES':
+      return { label: 'Account', color: 'bg-blue-50 text-blue-700 border-blue-200', icon: User };
+    case 'PREPAID': {
+      const isWater = originalData?.prepaidType === 'Water';
+      return { label: isWater ? 'Prepaid Water' : 'Prepaid Elec', color: isWater ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200', icon: isWater ? Droplets : Zap };
+    }
+    case 'CLEARANCE':
+      return { label: 'Clearance', color: 'bg-amber-50 text-amber-700 border-amber-200', icon: FileCheck };
+    case 'DIRECT_INCOME':
+      return { label: 'Direct Income', color: 'bg-green-50 text-green-700 border-green-200', icon: Receipt };
+    case 'ACCOUNT_GROUP':
+      return { label: 'Group', color: 'bg-purple-50 text-purple-700 border-purple-200', icon: Building2 };
+    default:
+      return { label: type, color: 'bg-slate-50 text-slate-700 border-slate-200', icon: Package };
+  }
+}
+
+function MobileItemCard({ item, removeItem, updateItemAmount, updateItemDetails }: {
+  item: TransactionItem;
+  removeItem: (id: string) => void;
+  updateItemAmount: (id: string, amount: number) => void;
+  updateItemDetails: (id: string, details: Partial<TransactionItem>) => void;
+}) {
+  const hasRequiredFieldsMissing = item.type === 'DIRECT_INCOME' && (!item.paidBy?.trim() || !item.notes?.trim());
+  const [expanded, setExpanded] = useState(hasRequiredFieldsMissing);
+  const badge = getTypeBadge(item.type, item.originalData);
+  const BadgeIcon = badge.icon;
+  const od = item.originalData || {};
+
+  const hasRequiredFields = item.type === 'DIRECT_INCOME';
+  const missingRequired = hasRequiredFields && (!item.paidBy?.trim() || !item.notes?.trim());
+
+  let categoryIcon = null;
+  if (item.type === 'DIRECT_INCOME') {
+    const ci = getCategoryIcon(item.description);
+    const CatIcon = ci.icon;
+    categoryIcon = <CatIcon className="w-5 h-5" style={{ color: ci.color }} />;
+  }
+
+  return (
+    <div className={`bg-white rounded-xl border shadow-sm overflow-hidden transition-all ${missingRequired ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-200'}`} data-testid={`item-${item.id}`}>
+      <div className="p-3">
+        <div className="flex items-start gap-2.5">
+          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${badge.color}`}>
+            {categoryIcon || <BadgeIcon className="w-4.5 h-4.5" />}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <Badge variant="outline" className={`text-[9px] px-1.5 py-0 h-4 font-bold uppercase tracking-wider border ${badge.color}`}>
+                {badge.label}
+              </Badge>
+              {missingRequired && (
+                <span className="text-[8px] text-amber-600 font-bold uppercase">Required fields</span>
+              )}
+            </div>
+            <div className="font-semibold text-sm leading-tight text-slate-800 line-clamp-2">{item.description}</div>
+            <div className="text-[10px] text-slate-400 font-mono mt-0.5">{item.reference}</div>
+          </div>
+
+          <button 
+            onClick={() => removeItem(item.id)}
+            className="w-7 h-7 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 rounded-lg transition-colors shrink-0 active:scale-90 touch-manipulation"
+            data-testid={`remove-item-${item.id}`}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
+          <div className="flex items-center gap-3">
+            {item.amountDue > 0 && item.type !== 'DIRECT_INCOME' && (
+              <div>
+                <div className="text-[9px] text-slate-400 uppercase font-semibold tracking-wider">Due</div>
+                <div className="text-xs font-mono text-slate-500">R {item.amountDue.toFixed(2)}</div>
+              </div>
+            )}
+            <div>
+              <div className="text-[9px] text-blue-500 uppercase font-semibold tracking-wider">Pay</div>
+              <div className="text-sm font-mono font-bold text-blue-700">R {item.amountToPay.toFixed(2)}</div>
+            </div>
+          </div>
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="flex items-center gap-1 text-[10px] text-blue-600 font-semibold px-2 py-1 rounded-lg bg-blue-50 active:bg-blue-100 touch-manipulation"
+          >
+            {expanded ? 'Less' : 'Details'}
+            <ChevronDown className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="border-t border-slate-100 bg-slate-50/50 p-3 space-y-3">
+          {item.type === 'CONSUMER_SERVICES' || item.type === 'ACCOUNT_GROUP' ? (
+            <ConsumerDetailsSection item={item} od={od} updateItemAmount={updateItemAmount} />
+          ) : item.type === 'PREPAID' ? (
+            <PrepaidDetailsSection item={item} od={od} updateItemAmount={updateItemAmount} />
+          ) : item.type === 'CLEARANCE' ? (
+            <ClearanceDetailsSection item={item} od={od} updateItemAmount={updateItemAmount} updateItemDetails={updateItemDetails} />
+          ) : item.type === 'DIRECT_INCOME' ? (
+            <DirectIncomeDetailsSection item={item} od={od} updateItemAmount={updateItemAmount} updateItemDetails={updateItemDetails} />
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ConsumerDetailsSection({ item, od, updateItemAmount }: { item: TransactionItem; od: any; updateItemAmount: (id: string, amount: number) => void }) {
+  return (
+    <div className="space-y-2">
+      {od.name && (
+        <div className="flex items-center gap-2">
+          <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <span className="text-xs font-medium text-slate-700">{od.name}</span>
+        </div>
+      )}
+      {od.address && (
+        <div className="flex items-start gap-2">
+          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+          <span className="text-xs text-slate-600">{od.address}</span>
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-2">
+        {(od.accountNumber || od.accountNo) && (
+          <div>
+            <div className="text-[9px] text-slate-400 uppercase font-semibold">Account No</div>
+            <div className="text-xs font-mono">{od.accountNumber || od.accountNo}</div>
+          </div>
+        )}
+        {od.outStandingAmount != null && (
+          <div>
+            <div className="text-[9px] text-slate-400 uppercase font-semibold">Outstanding</div>
+            <div className="text-xs font-mono font-bold text-red-600">R {Number(od.outStandingAmount).toFixed(2)}</div>
+          </div>
+        )}
+        {od.status && (
+          <div>
+            <div className="text-[9px] text-slate-400 uppercase font-semibold">Status</div>
+            <div className="text-xs">{od.status}</div>
+          </div>
+        )}
+        {od.institutionDesc && (
+          <div>
+            <div className="text-[9px] text-slate-400 uppercase font-semibold">Institution</div>
+            <div className="text-xs">{od.institutionDesc}</div>
+          </div>
+        )}
+      </div>
+      <div>
+        <Label className="text-[9px] text-blue-600 uppercase font-semibold tracking-wider">Pay Amount (R)</Label>
+        <div className="relative mt-0.5">
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-mono">R</span>
+          <Input
+            type="text"
+            inputMode="decimal"
+            className="h-9 pl-7 text-right font-mono text-sm rounded-lg"
+            defaultValue={item.amountToPay > 0 ? item.amountToPay.toString() : ''}
+            placeholder="0.00"
+            onBlur={(e) => {
+              const val = parseFloat(e.target.value) || 0;
+              updateItemAmount(item.id, val);
+            }}
+            data-testid={`input-mobile-pay-${item.id}`}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PrepaidDetailsSection({ item, od, updateItemAmount }: { item: TransactionItem; od: any; updateItemAmount: (id: string, amount: number) => void }) {
+  const account = od as Account;
+  const isWater = account?.prepaidType === 'Water';
+  return (
+    <div className="space-y-2">
+      {account.name && (
+        <div className="flex items-center gap-2">
+          <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <span className="text-xs font-medium text-slate-700">{account.name}</span>
+        </div>
+      )}
+      {account.address && (
+        <div className="flex items-start gap-2">
+          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+          <span className="text-xs text-slate-600">{account.address}</span>
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <div className="text-[9px] text-slate-400 uppercase font-semibold">Meter No</div>
+          <div className="text-xs font-mono font-bold">{account.prepaidMeterNo}</div>
+        </div>
+        <div>
+          <div className="text-[9px] text-slate-400 uppercase font-semibold">Type</div>
+          <div className="text-xs flex items-center gap-1">
+            {isWater ? <Droplets className="w-3 h-3 text-blue-500" /> : <Zap className="w-3 h-3 text-yellow-500" />}
+            {isWater ? 'Water' : 'Electricity'}
+          </div>
+        </div>
+        {account.accountNo && (
+          <div>
+            <div className="text-[9px] text-slate-400 uppercase font-semibold">Account</div>
+            <div className="text-xs font-mono">{account.accountNo}</div>
+          </div>
+        )}
+      </div>
+      <div>
+        <Label className={`text-[9px] uppercase font-semibold tracking-wider ${isWater ? 'text-blue-600' : 'text-yellow-600'}`}>Recharge Amount (R)</Label>
+        <div className="relative mt-0.5">
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-mono">R</span>
+          <Input
+            type="text"
+            inputMode="decimal"
+            className="h-9 pl-7 text-right font-mono text-sm rounded-lg"
+            defaultValue={item.amountToPay > 0 ? item.amountToPay.toString() : ''}
+            placeholder="0.00"
+            onBlur={(e) => {
+              const val = parseFloat(e.target.value) || 0;
+              updateItemAmount(item.id, val);
+            }}
+            data-testid={`input-mobile-pay-${item.id}`}
+          />
+        </div>
+        <div className="flex gap-1.5 mt-1.5">
+          {[50, 100, 200, 500].map(amt => (
+            <button
+              key={amt}
+              onClick={() => updateItemAmount(item.id, amt)}
+              className={`flex-1 text-xs font-bold py-1.5 rounded-lg border transition-colors active:scale-95 touch-manipulation ${isWater ? 'bg-blue-50 border-blue-200 text-blue-700 active:bg-blue-100' : 'bg-yellow-50 border-yellow-200 text-yellow-700 active:bg-yellow-100'}`}
+            >
+              R{amt}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ClearanceDetailsSection({ item, od, updateItemAmount, updateItemDetails }: { item: TransactionItem; od: any; updateItemAmount: (id: string, amount: number) => void; updateItemDetails: (id: string, details: Partial<TransactionItem>) => void }) {
+  const clr = od;
+  const paidItems = clr.paidItems || [];
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        {clr.ownerName && (
+          <div>
+            <div className="text-[9px] text-amber-600 uppercase font-semibold">Owner</div>
+            <div className="text-xs font-medium">{clr.ownerName}</div>
+          </div>
+        )}
+        {clr.scheduleNo && (
+          <div>
+            <div className="text-[9px] text-amber-600 uppercase font-semibold">Schedule</div>
+            <div className="text-xs font-mono">{clr.scheduleNo}</div>
+          </div>
+        )}
+        {clr.sgNumber && (
+          <div>
+            <div className="text-[9px] text-amber-600 uppercase font-semibold">SG Number</div>
+            <div className="text-xs font-mono">{clr.sgNumber}</div>
+          </div>
+        )}
+        {clr.propertyAddress && (
+          <div className="col-span-2">
+            <div className="text-[9px] text-amber-600 uppercase font-semibold">Property</div>
+            <div className="text-xs">{clr.propertyAddress}</div>
+          </div>
+        )}
+        {clr.status && (
+          <div>
+            <div className="text-[9px] text-amber-600 uppercase font-semibold">Status</div>
+            <Badge variant="outline" className="text-[9px] h-4 px-1.5">{clr.status}</Badge>
+          </div>
+        )}
+        {clr.expiryDate && (
+          <div>
+            <div className="text-[9px] text-amber-600 uppercase font-semibold">Valid Until</div>
+            <div className="text-xs">{clr.expiryDate}</div>
+          </div>
+        )}
+      </div>
+      {paidItems.length > 0 && (
+        <div className="bg-amber-50 rounded-lg border border-amber-200 overflow-hidden">
+          <div className="text-[9px] text-amber-700 font-bold uppercase tracking-wider px-2.5 py-1.5 bg-amber-100/60">{paidItems.length} line item{paidItems.length !== 1 ? 's' : ''}</div>
+          <div className="divide-y divide-amber-200">
+            {paidItems.map((pi: any, i: number) => (
+              <div key={i} className="flex items-center justify-between px-2.5 py-1.5">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[10px] font-mono text-amber-800">{pi.accountNumber || pi.account_ID || 'N/A'}</div>
+                  <div className="text-[9px] text-amber-600">{pi.debT_TYPE || pi.debtType || '-'}</div>
+                </div>
+                <div className="text-xs font-mono font-bold text-amber-800">R {(pi.paymentAmount ?? pi.amount ?? 0).toFixed(2)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="flex items-center justify-between bg-amber-50 rounded-lg px-3 py-2 border border-amber-200">
+        <span className="text-[10px] text-amber-700 font-bold uppercase">Total Pay</span>
+        <span className="text-sm font-mono font-bold text-amber-900">R {item.amountToPay.toFixed(2)}</span>
+      </div>
+    </div>
+  );
+}
+
+function DirectIncomeDetailsSection({ item, od, updateItemAmount, updateItemDetails }: { item: TransactionItem; od: any; updateItemAmount: (id: string, amount: number) => void; updateItemDetails: (id: string, details: Partial<TransactionItem>) => void }) {
+  return (
+    <div className="space-y-2.5">
+      <div className="grid grid-cols-2 gap-2">
+        {od.groupName && (
+          <div>
+            <div className="text-[9px] text-green-600 uppercase font-semibold">Group</div>
+            <div className="text-xs font-medium">{od.groupName}</div>
+          </div>
+        )}
+        {od.scoaItem && (
+          <div>
+            <div className="text-[9px] text-green-600 uppercase font-semibold">SCOA Item</div>
+            <div className="text-xs">{od.scoaItem}</div>
+          </div>
+        )}
+        {od.vatRate != null && (
+          <div>
+            <div className="text-[9px] text-green-600 uppercase font-semibold">VAT Rate</div>
+            <div className="text-xs font-mono">{od.vatRate}%</div>
+          </div>
+        )}
+      </div>
+      <div>
+        <Label className="text-[9px] text-green-600 uppercase font-semibold tracking-wider">Pay Amount (R)</Label>
+        <div className="relative mt-0.5">
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-mono">R</span>
+          <Input
+            type="text"
+            inputMode="decimal"
+            className="h-9 pl-7 text-right font-mono text-sm rounded-lg border-green-200"
+            defaultValue={item.amountToPay > 0 ? item.amountToPay.toString() : ''}
+            placeholder="0.00"
+            onBlur={(e) => {
+              const val = parseFloat(e.target.value) || 0;
+              updateItemAmount(item.id, val);
+            }}
+            data-testid={`input-mobile-pay-${item.id}`}
+          />
+        </div>
+      </div>
+      <div>
+        <Label className={`text-[9px] uppercase font-semibold tracking-wider flex items-center gap-1 ${!item.paidBy?.trim() ? 'text-red-500' : 'text-green-600'}`}>
+          Paid By (Last Name) *
+        </Label>
+        <Input
+          placeholder="Surname / Company"
+          className={`h-9 text-sm rounded-lg mt-0.5 ${!item.paidBy?.trim() ? 'border-red-300 ring-1 ring-red-200' : 'border-green-200'}`}
+          value={item.paidBy || ''}
+          onChange={(e) => updateItemDetails(item.id, { paidBy: e.target.value })}
+          data-testid={`input-mobile-paidby-${item.id}`}
+        />
+      </div>
+      <div>
+        <Label className={`text-[9px] uppercase font-semibold tracking-wider flex items-center gap-1 ${!item.notes?.trim() ? 'text-red-500' : 'text-green-600'}`}>
+          Description/Notes *
+        </Label>
+        <Input
+          placeholder="Payment description..."
+          className={`h-9 text-sm rounded-lg mt-0.5 ${!item.notes?.trim() ? 'border-red-300 ring-1 ring-red-200' : 'border-green-200'}`}
+          value={item.notes || ''}
+          onChange={(e) => updateItemDetails(item.id, { notes: e.target.value })}
+          data-testid={`input-mobile-notes-${item.id}`}
+        />
+      </div>
+    </div>
+  );
+}
+
+function MobileItemsList({ items, removeItem, updateItemAmount, updateItemDetails, totalDue }: { items: TransactionItem[]; removeItem: (id: string) => void; updateItemAmount: (id: string, amount: number) => void; updateItemDetails: (id: string, details: Partial<TransactionItem>) => void; totalDue: number }) {
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4 text-slate-400">
@@ -354,25 +740,24 @@ function MobileItemsList({ items, removeItem, totalDue }: { items: any[]; remove
     );
   }
 
+  const hasDirectIncomeIssues = items.some(i => i.type === 'DIRECT_INCOME' && (!i.paidBy?.trim() || !i.notes?.trim()));
+
   return (
-    <div className="p-3 space-y-1.5">
-      {items.map((item) => (
-        <div key={item.id} className="flex items-center gap-2.5 p-2.5 bg-white rounded-xl border border-slate-200 shadow-sm group" data-testid={`item-${item.id}`}>
-          <div className="flex-1 min-w-0">
-            <div className="font-semibold text-sm truncate leading-tight text-slate-800">{item.description}</div>
-            <div className="text-[10px] text-slate-400 font-mono mt-0.5">{item.reference}</div>
-          </div>
-          <div className="font-mono font-bold text-sm text-slate-800 shrink-0">
-            R {item.amountToPay.toFixed(2)}
-          </div>
-          <button 
-            onClick={() => removeItem(item.id)}
-            className="w-7 h-7 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 rounded-lg transition-colors shrink-0 active:scale-90 touch-manipulation"
-            data-testid={`remove-item-${item.id}`}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+    <div className="p-3 space-y-2">
+      {hasDirectIncomeIssues && (
+        <div className="flex items-center gap-2 text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2">
+          <ShieldAlert className="w-3.5 h-3.5 flex-shrink-0" />
+          <span>Expand Direct Income items to fill in required <strong>Paid By</strong> and <strong>Notes</strong> fields</span>
         </div>
+      )}
+      {items.map((item) => (
+        <MobileItemCard
+          key={item.id}
+          item={item}
+          removeItem={removeItem}
+          updateItemAmount={updateItemAmount}
+          updateItemDetails={updateItemDetails}
+        />
       ))}
       <div className="flex justify-between items-center pt-2 px-1 border-t border-dashed border-slate-200 mt-2">
         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{items.length} item{items.length !== 1 ? 's' : ''}</span>
@@ -562,7 +947,7 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
 
       {/* Numpad - Compact */}
       <div className="grid grid-cols-3 gap-1">
-        {numKeys.map((key) => (
+        {numKeys.map((key: string) => (
           <button
             key={key}
             onClick={() => key === 'DEL' ? handleBackspace() : handleNumpadInput(key)}
@@ -581,8 +966,83 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
   );
 }
 
-function DesktopPaymentContent({ transactionItems, removeItem, totalDue, dayEndStatus, cashAllowed, cardAllowed, activeInput, setActiveInput, inputBuffer, payment, setPaymentAmount, setCardReference, handleNumpadInput, handleBackspace, handlePayExact, handleClearAmount, handleDesktopInput }: any) {
+function DesktopItemCard({ item, removeItem, updateItemAmount, updateItemDetails }: {
+  item: TransactionItem;
+  removeItem: (id: string) => void;
+  updateItemAmount: (id: string, amount: number) => void;
+  updateItemDetails: (id: string, details: Partial<TransactionItem>) => void;
+}) {
+  const hasRequiredFieldsMissing = item.type === 'DIRECT_INCOME' && (!item.paidBy?.trim() || !item.notes?.trim());
+  const [expanded, setExpanded] = useState(hasRequiredFieldsMissing);
+  const badge = getTypeBadge(item.type, item.originalData);
+  const BadgeIcon = badge.icon;
+  const od = item.originalData || {};
+
+  let categoryIcon = null;
+  if (item.type === 'DIRECT_INCOME') {
+    const ci = getCategoryIcon(item.description);
+    const CatIcon = ci.icon;
+    categoryIcon = <CatIcon className="w-5 h-5" style={{ color: ci.color }} />;
+  }
+
+  return (
+    <div className={`bg-white rounded-xl border shadow-sm overflow-hidden transition-all group ${hasRequiredFieldsMissing ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-200/80 hover:border-blue-200/50 hover:shadow-md'}`}>
+      <div className="p-3.5 flex items-start gap-3">
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${badge.color}`}>
+          {categoryIcon || <BadgeIcon className="w-5 h-5" />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <Badge variant="outline" className={`text-[9px] px-1.5 py-0 h-4 font-bold uppercase tracking-wider border ${badge.color}`}>
+              {badge.label}
+            </Badge>
+            {hasRequiredFieldsMissing && <span className="text-[8px] text-amber-600 font-bold">Fill required</span>}
+          </div>
+          <div className="font-semibold text-sm leading-tight text-slate-800 truncate">{item.description}</div>
+          <div className="text-[10px] text-slate-400 font-mono mt-0.5">{item.reference}</div>
+        </div>
+        <div className="text-right shrink-0">
+          <div className="font-mono font-bold text-base text-slate-800">R {item.amountToPay.toFixed(2)}</div>
+          {item.amountDue > 0 && item.type !== 'DIRECT_INCOME' && item.amountDue !== item.amountToPay && (
+            <div className="text-[10px] text-slate-400 font-mono">Due: R {item.amountDue.toFixed(2)}</div>
+          )}
+        </div>
+        <div className="flex flex-col gap-1 shrink-0">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="w-7 h-7 flex items-center justify-center text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+          >
+            <ChevronDown className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+          </button>
+          <button
+            onClick={() => removeItem(item.id)}
+            className="w-7 h-7 flex items-center justify-center text-red-400 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+      {expanded && (
+        <div className="border-t border-slate-100 bg-slate-50/50 p-3.5 space-y-3">
+          {item.type === 'CONSUMER_SERVICES' || item.type === 'ACCOUNT_GROUP' ? (
+            <ConsumerDetailsSection item={item} od={od} updateItemAmount={updateItemAmount} />
+          ) : item.type === 'PREPAID' ? (
+            <PrepaidDetailsSection item={item} od={od} updateItemAmount={updateItemAmount} />
+          ) : item.type === 'CLEARANCE' ? (
+            <ClearanceDetailsSection item={item} od={od} updateItemAmount={updateItemAmount} updateItemDetails={updateItemDetails} />
+          ) : item.type === 'DIRECT_INCOME' ? (
+            <DirectIncomeDetailsSection item={item} od={od} updateItemAmount={updateItemAmount} updateItemDetails={updateItemDetails} />
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount, updateItemDetails, totalDue, dayEndStatus, cashAllowed, cardAllowed, activeInput, setActiveInput, inputBuffer, payment, setPaymentAmount, setCardReference, handleNumpadInput, handleBackspace, handlePayExact, handleClearAmount, handleDesktopInput }: any) {
   const [desktopTab, setDesktopTab] = useState<'payment' | 'items'>('payment');
+
+  const hasDirectIncomeIssues = transactionItems.some((i: TransactionItem) => i.type === 'DIRECT_INCOME' && (!i.paidBy?.trim() || !i.notes?.trim()));
 
   return (
     <div className="h-full flex flex-col">
@@ -590,9 +1050,10 @@ function DesktopPaymentContent({ transactionItems, removeItem, totalDue, dayEndS
         <div className="flex bg-slate-100/80 rounded-xl p-1 h-11">
           <button
             onClick={() => setDesktopTab('items')}
-            className={`flex-1 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${desktopTab === 'items' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`flex-1 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 relative ${desktopTab === 'items' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
           >
             Items ({transactionItems.length})
+            {hasDirectIncomeIssues && <span className="w-2 h-2 bg-amber-400 rounded-full absolute -top-0.5 -right-0.5" />}
             <HelpTip text="View and manage items in your current transaction basket." size="sm" />
           </button>
           <button
@@ -614,24 +1075,20 @@ function DesktopPaymentContent({ transactionItems, removeItem, totalDue, dayEndS
                 <p className="text-xs mt-0.5 text-slate-400">Search to add items to basket</p>
               </div>
             ) : (
-              <div className="space-y-2">
-                {transactionItems.map((item: any) => (
-                  <div key={item.id} className="relative group flex justify-between items-center p-4 bg-white rounded-xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all hover:border-blue-200/50">
-                    <div className="flex-1 min-w-0 pr-3">
-                      <div className="font-semibold text-base truncate leading-tight mb-0.5">{item.description}</div>
-                      <div className="text-xs text-muted-foreground font-mono">{item.reference}</div>
-                    </div>
-                    <div className="font-mono font-bold text-lg">
-                      R {item.amountToPay.toFixed(2)}
-                    </div>
-                    <button 
-                      onClick={() => removeItem(item.id)}
-                      className="absolute -top-1.5 -right-1.5 bg-destructive text-white rounded-full p-1.5 shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+              <div className="space-y-2.5">
+                {hasDirectIncomeIssues && (
+                  <div className="flex items-center gap-2 text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2">
+                    <ShieldAlert className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>Fill in <strong>Paid By</strong> and <strong>Notes</strong> for Direct Income items</span>
                   </div>
+                )}
+                {transactionItems.map((item: TransactionItem) => (
+                  <DesktopItemCard key={item.id} item={item} removeItem={removeItem} updateItemAmount={updateItemAmount} updateItemDetails={updateItemDetails} />
                 ))}
+                <div className="flex justify-between items-center pt-3 px-1 border-t border-dashed border-slate-200">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{transactionItems.length} item{transactionItems.length !== 1 ? 's' : ''}</span>
+                  <span className="font-mono font-bold text-lg text-slate-800">R {totalDue.toFixed(2)}</span>
+                </div>
               </div>
             )}
           </>
