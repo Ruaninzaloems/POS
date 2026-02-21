@@ -147,6 +147,7 @@ function GeneralEnquiriesContent() {
   const [showFiltersPanel, setShowFiltersPanel] = useState(false);
   const [mobileFormCollapsed, setMobileFormCollapsed] = useState(true);
   const [fieldSearchOpen, setFieldSearchOpen] = useState(false);
+  const [showAllFields, setShowAllFields] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -364,7 +365,7 @@ function GeneralEnquiriesContent() {
         if (fullSearchTokenRef.current !== token) return;
       }
       setResults(data);
-      if (data.length > 0) { setMobileFormCollapsed(true); setFieldSearchOpen(false); }
+      setMobileFormCollapsed(true); setFieldSearchOpen(false);
       enrichWithBalances(data.slice(0, 20), fullSearchTokenRef, token, setResults);
     } catch (e: any) {
       if (fullSearchTokenRef.current === token) {
@@ -819,8 +820,8 @@ function GeneralEnquiriesContent() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden relative">
-      <div className="shrink-0 bg-white border-b border-slate-200 px-3 sm:px-6 py-2 sm:py-3">
-        <div className="flex items-center justify-between mb-2">
+      <div className="shrink-0 bg-white border-b border-slate-200 px-3 sm:px-6 py-1.5 sm:py-3">
+        <div className="flex items-center justify-between mb-1 sm:mb-2">
           <h2 className="text-xs sm:text-sm font-semibold text-slate-700 flex items-center gap-1" data-testid="text-page-title">General Enquiries <HelpTip text="Look up consumer account details, balances, transaction history, and billing information." side="bottom" /></h2>
           <div className="flex items-center gap-1.5 sm:gap-2">
             {hasSearched && (
@@ -843,7 +844,7 @@ function GeneralEnquiriesContent() {
         </div>
 
         <div ref={dropdownContainerRef} className="relative">
-          <div className="flex items-center gap-1 mb-0.5">
+          <div className="hidden sm:flex items-center gap-1 mb-0.5">
             <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Quick Search</span>
             <HelpTip text="Enter an account number, property reference, or customer name for a quick lookup." side="right" />
           </div>
@@ -864,7 +865,7 @@ function GeneralEnquiriesContent() {
               onKeyDown={handleQuickKeyDown}
               onFocus={() => { if (quickQuery.trim().length >= 2 || recentSearches.length > 0 || pinnedAccounts.length > 0) setShowDropdown(true); }}
               placeholder="Search account, name, ID, phone..."
-              className="w-full h-11 sm:h-11 pl-9 sm:pl-10 pr-[88px] sm:pr-[180px] rounded-xl sm:rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-800 placeholder:text-slate-400
+              className="w-full h-10 sm:h-11 pl-9 sm:pl-10 pr-[88px] sm:pr-[180px] rounded-xl sm:rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-800 placeholder:text-slate-400
                 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
               data-testid="input-smart-search"
               aria-label="Search accounts"
@@ -985,43 +986,46 @@ function GeneralEnquiriesContent() {
               </div>
             </button>
             <div className={`${fieldSearchOpen ? 'block animate-in fade-in slide-in-from-top-2 duration-200' : 'hidden'} px-2 sm:px-2.5 pt-2 pb-2 border-t border-slate-200/60`}>
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-1.5">
-                {[
+              {(() => {
+                const allFields = [
                   { key: 'accountNo', placeholder: 'Account No.' },
                   { key: 'name', placeholder: 'Name / Company' },
-                  { key: 'emailAddress', placeholder: 'Email Address' },
                   { key: 'physicalMeterNumber', placeholder: 'Meter Number' },
-                  { key: 'oldAccountCode', placeholder: 'Old Account Code' },
                   { key: 'idNo', placeholder: 'ID / Reg. Number' },
+                  { key: 'emailAddress', placeholder: 'Email Address' },
                   { key: 'locationAddress', placeholder: 'Location Address' },
+                  { key: 'oldAccountCode', placeholder: 'Old Account Code' },
                   { key: 'sgNumber', placeholder: 'Erf/SG Number' },
-                ].map(f => (
-                  <FieldAutocompleteInput
-                    key={f.key}
-                    fieldKey={f.key}
-                    placeholder={f.placeholder}
-                    value={(criteria as any)[f.key] || ''}
-                    onChange={handleFieldChange}
-                    onSelectAllLinked={handleSelectAllLinked}
-                    onSelectByFieldValue={handleSelectByFieldValue}
-                    onEnter={handleFullSearch}
-                    onAutoResults={handleAutoResults}
-                  />
-                ))}
-              </div>
-              <div className="flex items-center justify-between mt-2">
-                <p className="text-[9px] sm:text-[10px] text-red-500 font-medium">** At Least One Parameter Required</p>
-                <div className="sm:hidden">
-                  <button
-                    onClick={() => setShowFiltersPanel(prev => !prev)}
-                    className="text-[10px] text-slate-500 hover:text-slate-700 flex items-center gap-1"
-                    data-testid="button-toggle-advanced-mobile"
-                  >
-                    <SlidersHorizontal className="w-3 h-3" />
-                    More
-                  </button>
-                </div>
-              </div>
+                ];
+                return (
+                  <>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-1.5">
+                      {allFields.map((f, i) => (
+                        <div key={f.key} className={i >= 4 && !showAllFields ? 'hidden sm:block' : undefined}>
+                          <FieldAutocompleteInput
+                            fieldKey={f.key}
+                            placeholder={f.placeholder}
+                            value={(criteria as any)[f.key] || ''}
+                            onChange={handleFieldChange}
+                            onSelectAllLinked={handleSelectAllLinked}
+                            onSelectByFieldValue={handleSelectByFieldValue}
+                            onEnter={handleFullSearch}
+                            onAutoResults={handleAutoResults}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => setShowAllFields(prev => !prev)}
+                      className="sm:hidden mt-1.5 text-[10px] text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                      data-testid="button-toggle-more-fields"
+                    >
+                      <SlidersHorizontal className="w-3 h-3" />
+                      {showAllFields ? 'Fewer fields' : `More fields (${allFields.length - 4})`}
+                    </button>
+                  </>
+                );
+              })()}
               <div className="flex items-center gap-2 mt-1.5">
                 <button
                   onClick={handleFullSearch}
@@ -1039,8 +1043,16 @@ function GeneralEnquiriesContent() {
                 >
                   Clear
                 </button>
+                <button
+                  onClick={() => setShowFiltersPanel(prev => !prev)}
+                  className="sm:hidden h-8 px-3 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 active:bg-slate-100 text-[10px] font-medium flex items-center gap-1 transition-colors ml-auto"
+                  data-testid="button-toggle-advanced-mobile"
+                >
+                  <SlidersHorizontal className="w-3 h-3" />
+                  More
+                </button>
                 {activeFilterCount > 0 && (
-                  <button onClick={() => setCriteria({})} className="sm:hidden text-[10px] text-blue-600 hover:text-blue-800 underline underline-offset-2 ml-auto" data-testid="button-clear-field-filters-mobile">
+                  <button onClick={() => setCriteria({})} className="sm:hidden text-[10px] text-blue-600 hover:text-blue-800 underline underline-offset-2" data-testid="button-clear-field-filters-mobile">
                     Clear Filters ({activeFilterCount})
                   </button>
                 )}
