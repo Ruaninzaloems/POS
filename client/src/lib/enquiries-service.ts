@@ -1047,7 +1047,7 @@ export async function getClearanceInquiries(accountId: number, propertyId?: numb
 }
 
 export function downloadClearanceDocument(costScheduleId: number | string, type: 'cost-schedule' | 'clearance-certificate'): void {
-  window.open(`/api/platinum/clearance-document-download?costScheduleId=${costScheduleId}&type=${type}`, '_blank');
+  window.open(resolveApiUrl(`/api/platinum/clearance-document-download?costScheduleId=${costScheduleId}&type=${type}`), '_blank');
 }
 
 // === BANK GUARANTEE ===

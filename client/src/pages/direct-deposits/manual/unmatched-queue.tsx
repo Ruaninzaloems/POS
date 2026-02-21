@@ -156,8 +156,8 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
     searchPromises.push(
       platinumSearchAccountsPayment({ accountNo: accNum })
         .catch(() => [])
-        .then(data => {
-          const items = Array.isArray(data) ? data : data?.value || [];
+        .then((rawData: any) => {
+          const items = Array.isArray(rawData) ? rawData : rawData?.value || [];
           for (const item of items.slice(0, 3)) {
             const accId = item.account_ID || item.accountID || item.id;
             if (accId && !seenIds.has(accId)) {
@@ -185,8 +185,8 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
     searchPromises.push(
       platinumSearchAccountsPayment({ oldAccountCode: accNum })
         .catch(() => [])
-        .then(data => {
-          const items = Array.isArray(data) ? data : data?.value || [];
+        .then((rawData: any) => {
+          const items = Array.isArray(rawData) ? rawData : rawData?.value || [];
           for (const item of items.slice(0, 2)) {
             const accId = item.account_ID || item.accountID || item.id;
             if (accId && !seenIds.has(accId)) {
@@ -216,8 +216,8 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
       searchPromises.push(
         platinumSearchAccountsPayment({ name: erfSearch })
           .catch(() => [])
-          .then(data => {
-            const items = Array.isArray(data) ? data : data?.value || [];
+          .then((rawData: any) => {
+            const items = Array.isArray(rawData) ? rawData : rawData?.value || [];
             for (const item of items.slice(0, 3)) {
               const accId = item.account_ID || item.accountID || item.id;
               if (accId && !seenIds.has(accId)) {
@@ -249,8 +249,8 @@ async function searchForSuggestions(note: string, reference: string): Promise<Su
       searchPromises.push(
         platinumSearchAccountsPayment({ name: keyword })
           .catch(() => [])
-          .then(data => {
-            const items = Array.isArray(data) ? data : data?.value || [];
+          .then((rawData: any) => {
+            const items = Array.isArray(rawData) ? rawData : rawData?.value || [];
             for (const item of items.slice(0, 2)) {
               const accId = item.account_ID || item.accountID || item.id;
               if (accId && !seenIds.has(accId)) {
@@ -444,9 +444,10 @@ export default function UnmatchedQueue() {
     const fileBlob = new Blob([fileContent], { type: fmt === 'excel' ? "text/csv" : "text/plain" });
     element.href = URL.createObjectURL(fileBlob);
     element.download = `bank_recon_positems.${fmt === 'excel' ? 'csv' : 'txt'}`;
-    document.body.appendChild(element);
+    element.style.display = 'none';
+    (document.body || document.documentElement).appendChild(element);
     element.click();
-    document.body.removeChild(element);
+    element.remove();
   };
 
   const getConfidenceColor = (confidence: number) => {

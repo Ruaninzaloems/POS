@@ -292,9 +292,10 @@ export function TransactionPanels() {
       const link = document.createElement("a");
       link.setAttribute("href", url);
       link.setAttribute("download", "receipt_import_template.csv");
-      document.body.appendChild(link);
+      link.style.display = 'none';
+      (document.body || document.documentElement).appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      link.remove();
   };
 
   const [importingCSV, setImportingCSV] = useState(false);

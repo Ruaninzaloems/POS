@@ -151,9 +151,10 @@ export default function AllocationHistory() {
       const fileBlob = new Blob([fileContent], { type: fmt === 'excel' ? "text/csv" : "text/plain" });
       element.href = URL.createObjectURL(fileBlob);
       element.download = `allocation_history.${fmt === 'excel' ? 'csv' : 'txt'}`;
-      document.body.appendChild(element);
+      element.style.display = 'none';
+      (document.body || document.documentElement).appendChild(element);
       element.click();
-      document.body.removeChild(element);
+      element.remove();
   };
 
   const getProcessBadgeColor = (process: string) => {
