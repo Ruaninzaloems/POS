@@ -25,6 +25,7 @@ import {
   MessageSquareMore
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { HelpTip } from '@/components/ui/help-tip';
 import { Link, useLocation } from "wouter";
 import { usePos } from '@/lib/pos-state';
 import { logoutUser } from '@/lib/external-api';
@@ -126,6 +127,25 @@ export function PosLayout({ children }: PosLayoutProps) {
     return 'Menu';
   };
 
+  const navItemTooltips: Record<string, string> = {
+    'Home': 'Return to the main dashboard',
+    'POS': 'Open the point-of-sale receipting screen',
+    'Direct Deposits Manual': 'Allocate EFT payments to accounts',
+    'Direct Deposits Auto': 'Allocate EFT payments to accounts',
+    'Third Party Payments': 'Process third-party payment integrations',
+    'Third Party Payment Processing': 'Process third-party payment integrations',
+    'Utilipay Distribution Reconciliation Processing': 'Reconcile Utilipay distribution payments',
+    'Bulk Allocation Progress': 'Track bulk allocation batch progress',
+    'View Receipts': 'Search and reprint receipts',
+    'Day-End Reconciliation': 'Submit your end-of-shift reconciliation',
+    'Billing Dashboard': 'View billing statistics and reports',
+    'Enquiries': 'Look up account details and balances',
+    'General Enquiries': 'Look up account details and balances',
+    'Client Communications': 'Send messages to account holders',
+    'System Settings': 'Configure system preferences',
+    'Supervisor': 'Review cashier submissions (supervisor only)',
+  };
+
   const navItems = [
     { label: 'Home', href: '/', icon: Home },
     { label: 'POS', href: '/pos', icon: Layers },
@@ -188,12 +208,14 @@ export function PosLayout({ children }: PosLayoutProps) {
                        <DropdownMenuLabel className="gap-2 flex items-center text-xs text-muted-foreground font-normal pt-2 pb-1">
                          <item.icon className="w-4 h-4" />
                          <span>{item.label}</span>
+                         {navItemTooltips[item.label] && <HelpTip text={navItemTooltips[item.label]} side="right" />}
                        </DropdownMenuLabel>
                        {item.children.map((child, childIdx) => (
                          <Link key={childIdx} href={child.href}>
                            <DropdownMenuItem className="gap-2 cursor-pointer pl-8">
                              {child.icon && <child.icon className="w-4 h-4 text-muted-foreground" />}
                              <span className="text-sm">{child.label}</span>
+                             {navItemTooltips[child.label] && <HelpTip text={navItemTooltips[child.label]} side="right" />}
                            </DropdownMenuItem>
                          </Link>
                        ))}
@@ -203,6 +225,7 @@ export function PosLayout({ children }: PosLayoutProps) {
                        <DropdownMenuItem className="gap-2 cursor-pointer">
                          <item.icon className="w-4 h-4 text-muted-foreground" />
                          <span>{item.label}</span>
+                         {navItemTooltips[item.label] && <HelpTip text={navItemTooltips[item.label]} side="right" />}
                        </DropdownMenuItem>
                      </Link>
                    )
@@ -213,85 +236,103 @@ export function PosLayout({ children }: PosLayoutProps) {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4">
-           <Button 
-             variant="ghost" 
-             size="icon" 
-             className="text-white/70 hover:text-white hover:bg-white/10 hidden sm:inline-flex" 
-             onClick={toggleViewMode} 
-             title={viewMode === 'desktop' ? "Switch to Mobile View" : "Switch to Desktop View"}
-           >
-             {viewMode === 'desktop' ? <Smartphone className="w-5 h-5" /> : <Monitor className="w-5 h-5" />}
-           </Button>
+           <HelpTip text="Switch between desktop and mobile-optimized layouts." side="bottom">
+             <Button 
+               variant="ghost" 
+               size="icon" 
+               className="text-white/70 hover:text-white hover:bg-white/10 hidden sm:inline-flex" 
+               onClick={toggleViewMode} 
+               title={viewMode === 'desktop' ? "Switch to Mobile View" : "Switch to Desktop View"}
+             >
+               {viewMode === 'desktop' ? <Smartphone className="w-5 h-5" /> : <Monitor className="w-5 h-5" />}
+             </Button>
+           </HelpTip>
 
            <div className="h-6 w-px bg-white/20 hidden sm:block" />
 
            {activeSession ? (
              <>
                <div className="flex items-center gap-2 sm:gap-3 px-1 sm:px-2">
-                  <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-white/20 flex items-center justify-center text-white text-xs font-mono border border-white/30 shrink-0">
-                    {currentUser.name?.charAt(0) || 'C'}
-                  </div>
-                  <div className="hidden sm:flex flex-col items-start text-sm leading-tight">
-                    <span className="font-medium text-white">{currentUser.name}</span>
-                    <span className="text-xs text-white/70">{sessionDetails?.officeDesc || currentUser.cashOffice}</span>
-                  </div>
-                  <div
-                    title={apiSessionActive === true ? 'Session active (validate-cashier API — POS_Cashier.IsActive=1)' : apiSessionActive === false ? 'Session NOT active (validate-cashier API — POS_Cashier.IsActive=0)' : 'Checking session status...'}
-                    className={`flex items-center gap-1.5 ml-1 px-2 sm:px-2.5 py-1 text-[9px] sm:text-[10px] font-semibold rounded-full border whitespace-nowrap transition-all duration-300 ${
-                      apiSessionActive === null
-                        ? 'bg-slate-200 text-slate-600 border-slate-300'
-                        : apiSessionActive === true
-                          ? 'bg-emerald-100 text-emerald-700 border-emerald-400'
-                          : 'border-red-400 text-red-700 bg-red-100 animate-pulse'
-                    }`}
-                    data-testid="badge-session-status"
-                  >
-                    <span className={`inline-block w-2 h-2 rounded-full ${
-                      apiSessionActive === null ? 'bg-slate-400' : apiSessionActive ? 'bg-emerald-500' : 'bg-red-500'
-                    }`} />
-                    {apiSessionActive === true ? 'SESSION ACTIVE' : apiSessionActive === false ? 'SESSION INACTIVE' : 'CHECKING...'}
-                  </div>
+                  <HelpTip text="Logged in as this cashier. Your permissions determine available payment types." side="bottom">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-white/20 flex items-center justify-center text-white text-xs font-mono border border-white/30 shrink-0">
+                        {currentUser.name?.charAt(0) || 'C'}
+                      </div>
+                      <div className="hidden sm:flex flex-col items-start text-sm leading-tight">
+                        <span className="font-medium text-white">{currentUser.name}</span>
+                        <span className="text-xs text-white/70">{sessionDetails?.officeDesc || currentUser.cashOffice}</span>
+                      </div>
+                    </div>
+                  </HelpTip>
+                  <HelpTip text="Your current cashier session status. An active session is required for receipting." side="bottom">
+                    <div
+                      title={apiSessionActive === true ? 'Session active (validate-cashier API — POS_Cashier.IsActive=1)' : apiSessionActive === false ? 'Session NOT active (validate-cashier API — POS_Cashier.IsActive=0)' : 'Checking session status...'}
+                      className={`flex items-center gap-1.5 ml-1 px-2 sm:px-2.5 py-1 text-[9px] sm:text-[10px] font-semibold rounded-full border whitespace-nowrap transition-all duration-300 ${
+                        apiSessionActive === null
+                          ? 'bg-slate-200 text-slate-600 border-slate-300'
+                          : apiSessionActive === true
+                            ? 'bg-emerald-100 text-emerald-700 border-emerald-400'
+                            : 'border-red-400 text-red-700 bg-red-100 animate-pulse'
+                      }`}
+                      data-testid="badge-session-status"
+                    >
+                      <span className={`inline-block w-2 h-2 rounded-full ${
+                        apiSessionActive === null ? 'bg-slate-400' : apiSessionActive ? 'bg-emerald-500' : 'bg-red-500'
+                      }`} />
+                      {apiSessionActive === true ? 'SESSION ACTIVE' : apiSessionActive === false ? 'SESSION INACTIVE' : 'CHECKING...'}
+                    </div>
+                  </HelpTip>
                </div>
 
                <div className="h-6 w-px bg-white/20 hidden sm:block" />
 
                {dayEndStatus === 'RECONCILED' ? (
-                 <Button variant="ghost" size="icon" className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10" onClick={endSession} title="End Session">
-                   <LogOut className="w-4 h-4" />
-                 </Button>
+                 <HelpTip text="Shift closed — day-end reconciliation is complete. You may end your session." side="bottom">
+                   <Button variant="ghost" size="icon" className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10" onClick={endSession} title="End Session">
+                     <LogOut className="w-4 h-4" />
+                   </Button>
+                 </HelpTip>
                ) : (
-                 <Button variant="ghost" size="icon" className="h-8 w-8 text-white/70 opacity-40 cursor-not-allowed hover:bg-white/10" onClick={endSession} title="Session active until day-end reconciliation is completed">
-                   <LogOut className="w-4 h-4" />
-                 </Button>
+                 <HelpTip text="Session is open — you can still process transactions. Complete day-end reconciliation before ending." side="bottom">
+                   <Button variant="ghost" size="icon" className="h-8 w-8 text-white/70 opacity-40 cursor-not-allowed hover:bg-white/10" onClick={endSession} title="Session active until day-end reconciliation is completed">
+                     <LogOut className="w-4 h-4" />
+                   </Button>
+                 </HelpTip>
                )}
-               <Button
-                 variant="ghost"
-                 size="sm"
-                 className="h-8 text-xs text-white/60 hover:text-white hover:bg-white/10"
-                 onClick={async () => { await logoutUser(); window.location.reload(); }}
-                 title="Sign out and switch user"
-                 data-testid="button-sign-out"
-               >
-                 Sign Out
-               </Button>
+               <HelpTip text="Sign out and return to the login screen. Make sure to complete day-end first." side="bottom">
+                 <Button
+                   variant="ghost"
+                   size="sm"
+                   className="h-8 text-xs text-white/60 hover:text-white hover:bg-white/10"
+                   onClick={async () => { await logoutUser(); window.location.reload(); }}
+                   title="Sign out and switch user"
+                   data-testid="button-sign-out"
+                 >
+                   Sign Out
+                 </Button>
+               </HelpTip>
              </>
            ) : (
              <div className="flex items-center gap-2">
-               <Button variant="outline" size="sm" onClick={() => setLocation('/cashier-setup')} className="gap-1 sm:gap-2 text-xs sm:text-sm bg-white/15 border-white/30 text-white hover:bg-white/20">
-                 <Layers className="w-4 h-4" />
-                 <span className="hidden sm:inline">Start POS Session</span>
-                 <span className="sm:hidden">Start</span>
-               </Button>
-               <Button
-                 variant="ghost"
-                 size="sm"
-                 className="h-8 text-xs text-white/60 hover:text-white hover:bg-white/10"
-                 onClick={async () => { await logoutUser(); window.location.reload(); }}
-                 title="Sign out and switch user"
-                 data-testid="button-sign-out-no-session"
-               >
-                 Sign Out
-               </Button>
+               <HelpTip text="Begin a new cashier session to start processing receipts." side="bottom">
+                 <Button variant="outline" size="sm" onClick={() => setLocation('/cashier-setup')} className="gap-1 sm:gap-2 text-xs sm:text-sm bg-white/15 border-white/30 text-white hover:bg-white/20">
+                   <Layers className="w-4 h-4" />
+                   <span className="hidden sm:inline">Start POS Session</span>
+                   <span className="sm:hidden">Start</span>
+                 </Button>
+               </HelpTip>
+               <HelpTip text="Sign out and return to the login screen. Make sure to complete day-end first." side="bottom">
+                 <Button
+                   variant="ghost"
+                   size="sm"
+                   className="h-8 text-xs text-white/60 hover:text-white hover:bg-white/10"
+                   onClick={async () => { await logoutUser(); window.location.reload(); }}
+                   title="Sign out and switch user"
+                   data-testid="button-sign-out-no-session"
+                 >
+                   Sign Out
+                 </Button>
+               </HelpTip>
              </div>
            )}
         </div>

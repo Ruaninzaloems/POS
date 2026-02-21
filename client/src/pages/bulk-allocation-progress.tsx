@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { HelpTip } from '@/components/ui/help-tip';
 import {
   Search, Filter, RotateCcw, Eye, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   Loader2, AlertCircle, CheckCircle2, Clock, XCircle, Activity, FileBarChart, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw
@@ -471,6 +472,10 @@ export default function BulkAllocationProgress() {
 
         {hasSearched && allocationData.length > 0 && (
           <div data-testid="summary-cards">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-sm font-medium text-muted-foreground">Status Overview</span>
+              <HelpTip text="Shows the status of each account being processed in the bulk allocation." side="right" />
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
               {statusCards.filter(c => c.key === 'all' || c.count > 0).map((card) => {
                 const IconComp = card.icon;
@@ -733,7 +738,7 @@ export default function BulkAllocationProgress() {
                                           )}
                                         </Button>
                                       </TooltipTrigger>
-                                      <TooltipContent>Retry Failed Job</TooltipContent>
+                                      <TooltipContent>Skip failed items or retry the allocation for specific accounts.</TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>
                                 )}

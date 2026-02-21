@@ -7,6 +7,7 @@ import { Search, ArrowRight, Filter, FileSpreadsheet, FileText, X, HelpCircle, L
 import { Link, useLocation } from 'wouter';
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay, isValid } from 'date-fns';
 import { Label } from '@/components/ui/label';
+import { HelpTip } from '@/components/ui/help-tip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -475,7 +476,7 @@ export default function UnmatchedQueue() {
         <div className="px-4 sm:px-6 py-3 sm:py-4 border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3">
             <div>
-              <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-slate-900" data-testid="text-page-title">Direct Deposits: Manual Allocation</h1>
+              <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-slate-900" data-testid="text-page-title">Direct Deposits: Manual Allocation <HelpTip text="Unallocated EFT and direct deposits awaiting manual allocation to consumer accounts." side="right" /></h1>
               <p className="text-xs text-muted-foreground mt-0.5">Bank Recon POS Items <span className="font-mono font-medium">({totalCount.toLocaleString()} total)</span></p>
             </div>
             <div className="flex items-center gap-2">
@@ -528,6 +529,7 @@ export default function UnmatchedQueue() {
                   onChange={e => setSearchTerm(e.target.value)}
                   data-testid="input-search"
                 />
+                <HelpTip text="Search by reference, amount, or depositor name to find the deposit to allocate." side="bottom" className="absolute right-10 top-1/2 -translate-y-1/2" />
                 {searchTerm && (
                   <button className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" onClick={() => setSearchTerm('')}>
                     <X className="w-4 h-4" />
@@ -553,7 +555,7 @@ export default function UnmatchedQueue() {
                             )}
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs">Transaction Date Range</Label>
+                            <Label className="text-xs">Transaction Date Range <HelpTip text="Filter deposits by date range to find specific transactions." side="right" /></Label>
                             <div className="flex gap-2 items-center">
                                 <div className="flex-1"><DatePicker date={txnDateFrom} setDate={setTxnDateFrom} placeholder="From" className="h-9 text-xs" /></div>
                                 <span className="text-muted-foreground text-xs">to</span>
@@ -758,6 +760,7 @@ export default function UnmatchedQueue() {
                                 ) : null}
                                 Allocate <ArrowRight className="w-3 h-3" />
                               </Button>
+                              <HelpTip text="Open the allocation form to assign this deposit to one or more consumer accounts." side="left" />
                             </div>
                           )}
                         </td>

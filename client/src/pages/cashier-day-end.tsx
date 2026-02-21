@@ -22,6 +22,7 @@ import {
     Loader2, CreditCard, FileText,
     Banknote, Coins, Save, Box, ChevronDown, ChevronUp
 } from 'lucide-react';
+import { HelpTip } from '@/components/ui/help-tip';
 
 interface DenominationState {
     n200: number; n100: number; n50: number; n20: number; n10: number;
@@ -248,7 +249,7 @@ export default function CashierDayEnd() {
         <PosLayout>
             <div className="flex-1 flex flex-col h-full bg-slate-100 overflow-y-auto">
                 <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white px-4 sm:px-6 py-3">
-                    <h1 className="text-base sm:text-lg font-bold" data-testid="text-page-title">Cashier Day End Reconcile</h1>
+                    <h1 className="text-base sm:text-lg font-bold flex items-center gap-2" data-testid="text-page-title">Cashier Day End Reconcile <HelpTip text="Submit your end-of-day cash count and reconciliation. Your supervisor will review and approve." side="bottom" className="text-white/60 hover:text-white" /></h1>
                 </div>
 
                 <div className="p-3 sm:p-6 space-y-4">
@@ -281,7 +282,7 @@ export default function CashierDayEnd() {
                                     <div className="mt-1 text-sm font-mono bg-slate-50 border rounded px-3 py-2">{today}</div>
                                 </div>
                                 <div>
-                                    <Label className="text-xs text-slate-500 font-semibold">Reason</Label>
+                                    <Label className="text-xs text-slate-500 font-semibold flex items-center gap-1">Reason <HelpTip text="Provide an explanation if there is a variance in your cash count." /></Label>
                                     <Input
                                         className="mt-1 h-10 sm:h-9"
                                         value={reason}
@@ -316,7 +317,7 @@ export default function CashierDayEnd() {
                                     <div>
                                         <div className="flex items-center justify-between mb-2">
                                             <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                                                <CreditCard className="w-4 h-4" /> Credit Card Receipts
+                                                <CreditCard className="w-4 h-4" /> Credit Card Receipts <HelpTip text="Enter the total of all card transactions processed during your shift." />
                                             </h4>
                                             <Badge variant="secondary" className="text-xs">{cardList.length} record{cardList.length !== 1 ? 's' : ''}</Badge>
                                         </div>
@@ -394,7 +395,7 @@ export default function CashierDayEnd() {
                                     <div>
                                         <div className="flex items-center justify-between mb-2">
                                             <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                                                <FileText className="w-4 h-4" /> Cheque Receipts
+                                                <FileText className="w-4 h-4" /> Cheque Receipts <HelpTip text="Enter the total of all cheque payments received during your shift." />
                                             </h4>
                                             <Badge variant="secondary" className="text-xs">{chequeList.length} record{chequeList.length !== 1 ? 's' : ''}</Badge>
                                         </div>
@@ -470,7 +471,7 @@ export default function CashierDayEnd() {
                                     <div>
                                         <div className="flex items-center justify-between mb-2">
                                             <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                                                <Box className="w-4 h-4" /> Dropbox Payment
+                                                <Box className="w-4 h-4" /> Dropbox Payment <HelpTip text="Cash removed from the drawer and placed in the safe during your shift." />
                                             </h4>
                                             <Badge variant="secondary" className="text-xs">{dropBoxList.length} record{dropBoxList.length !== 1 ? 's' : ''}</Badge>
                                         </div>
@@ -538,7 +539,7 @@ export default function CashierDayEnd() {
                             </Card>
 
                             <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white px-4 py-2 text-sm font-semibold rounded-t-md flex items-center gap-2">
-                                <Banknote className="w-4 h-4" /> Cash Information
+                                <Banknote className="w-4 h-4" /> Cash Information <HelpTip text="Count each denomination of notes and coins in your cash drawer. The system calculates the total automatically." className="text-white/60 hover:text-white" />
                             </div>
 
                             <Card className="shadow-sm rounded-t-none -mt-4">
@@ -616,7 +617,7 @@ export default function CashierDayEnd() {
 
                                     <div className="flex justify-end mt-4">
                                         <div className="bg-slate-100 border-2 border-slate-300 rounded-lg px-6 py-3 text-right">
-                                            <span className="text-sm text-slate-600 mr-4">Total Cash</span>
+                                            <span className="text-sm text-slate-600 mr-4 flex items-center gap-1">Total Cash <HelpTip text="The total cash calculated from your denomination count above." /></span>
                                             <span className="text-lg font-bold font-mono text-slate-800">
                                                 R {cashOnHand.toFixed(2)}
                                             </span>
@@ -629,7 +630,7 @@ export default function CashierDayEnd() {
                                 <CardContent className="py-5">
                                     <div className="max-w-lg mx-auto px-1 sm:px-0 space-y-3">
                                         <div className="flex justify-between items-center py-2 border-b">
-                                            <span className="text-sm font-semibold text-slate-700">Total Cash on Hand + Drop Box (R)</span>
+                                            <span className="text-sm font-semibold text-slate-700 flex items-center gap-1">Total Cash on Hand + Drop Box (R) <HelpTip text="The starting cash amount in your drawer at the beginning of your shift." /></span>
                                             <span className="font-mono font-bold text-sm bg-slate-50 border px-4 py-1.5 rounded min-w-[120px] text-right">
                                                 {totalCashOnHandPlusDropBox.toFixed(2)}
                                             </span>
@@ -647,14 +648,17 @@ export default function CashierDayEnd() {
                                             </span>
                                         </div>
                                         <div className="flex justify-between items-center py-2 border-b-2 border-slate-400">
-                                            <span className="text-sm font-bold text-slate-800">Grand Total (R)</span>
+                                            <span className="text-sm font-bold text-slate-800 flex items-center gap-1">Grand Total (R) <HelpTip text="The difference between your counted cash and the system's expected amount. A zero variance is ideal." /></span>
                                             <span className="font-mono font-bold text-base bg-blue-50 border-2 border-blue-300 px-4 py-1.5 rounded min-w-[120px] text-right text-blue-900">
                                                 {grandTotal.toFixed(2)}
                                             </span>
                                         </div>
                                     </div>
 
-                                    <div className="flex flex-col sm:flex-row justify-center gap-3 mt-6">
+                                    <div className="flex flex-col sm:flex-row justify-center gap-3 mt-6 relative">
+                                        <div className="absolute -top-1 right-0">
+                                            <HelpTip text="Submit your reconciliation for supervisor approval. This will close your shift." side="left" />
+                                        </div>
                                         <Button
                                             className="w-full sm:w-auto h-11 sm:h-10 bg-slate-700 hover:bg-slate-800 px-8 font-bold active:scale-[0.99]"
                                             onClick={handleSaveReconcile}

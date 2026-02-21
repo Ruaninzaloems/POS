@@ -13,6 +13,7 @@ export function parseMobileFromContactDetails(contactDetails: string | undefined
     if (telMatch && telMatch[1].trim()) return telMatch[1].trim();
     return '';
 }
+import { HelpTip } from '@/components/ui/help-tip';
 import {
   Popover,
   PopoverContent,
@@ -361,11 +362,12 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
     <div className={`relative w-full z-50 flex gap-2 ${className || ''}`} ref={wrapperRef}>
       <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-blue-400" />
+        <HelpTip text="Search by account number, name, or ID number. Results are grouped by transaction type." side="bottom" icon="info" className="absolute left-9 top-1/2 -translate-y-1/2 z-10" />
         <Input 
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder={placeholder || "Search Account / Meter / Group..."}
-          className="h-12 rounded-xl border-2 border-slate-200 bg-white pl-11 pr-4 text-base focus:border-blue-500 focus:ring-4 focus:ring-blue-100 shadow-sm placeholder:text-slate-400 transition-all"
+          className="h-12 rounded-xl border-2 border-slate-200 bg-white pl-14 pr-4 text-base focus:border-blue-500 focus:ring-4 focus:ring-blue-100 shadow-sm placeholder:text-slate-400 transition-all"
           autoFocus={autoFocus}
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex gap-1">
@@ -440,11 +442,11 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                       ${result.type === 'GROUP' ? 'bg-purple-100 text-purple-700' : ''}
                       ${result.type === 'CLEARANCE' ? 'bg-rose-100 text-rose-700' : ''}
                     `}>
-                      {result.type === 'ACCOUNT' && <Users className="w-5 h-5" />}
-                      {result.type === 'PREPAID' && <Zap className="w-5 h-5" />}
-                      {result.type === 'DIRECT' && <CreditCard className="w-5 h-5" />}
-                      {result.type === 'GROUP' && <Building className="w-5 h-5" />}
-                      {result.type === 'CLEARANCE' && <FileText className="w-5 h-5" />}
+                      {result.type === 'ACCOUNT' && <HelpTip text="Consumer services accounts for rates, water, electricity, etc." side="left" icon="info"><span className="inline-flex items-center justify-center w-full h-full"><Users className="w-5 h-5" /></span></HelpTip>}
+                      {result.type === 'PREPAID' && <HelpTip text="Purchase prepaid electricity or water tokens" side="left" icon="info"><span className="inline-flex items-center justify-center w-full h-full"><Zap className="w-5 h-5" /></span></HelpTip>}
+                      {result.type === 'DIRECT' && <HelpTip text="Miscellaneous income payments not linked to a consumer account" side="left" icon="info"><span className="inline-flex items-center justify-center w-full h-full"><CreditCard className="w-5 h-5" /></span></HelpTip>}
+                      {result.type === 'GROUP' && <HelpTip text="Pay multiple accounts in a single transaction group" side="left" icon="info"><span className="inline-flex items-center justify-center w-full h-full"><Building className="w-5 h-5" /></span></HelpTip>}
+                      {result.type === 'CLEARANCE' && <HelpTip text="Apply for clearance certificates for property transfers" side="left" icon="info"><span className="inline-flex items-center justify-center w-full h-full"><FileText className="w-5 h-5" /></span></HelpTip>}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-sm group-hover:text-primary transition-colors flex items-center gap-2">

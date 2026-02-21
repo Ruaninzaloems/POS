@@ -47,6 +47,7 @@ import { PosLayout } from '@/components/layout/pos-layout';
 import { cn } from '@/lib/utils';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { HelpTip } from '@/components/ui/help-tip';
 
 type DayEndStatus = 'NOT_SUBMITTED' | 'PENDING_APPROVAL' | 'RETURNED' | 'COMPLETED';
 type ReconMode = 'PER_CASHIER' | 'CASH_OFFICE';
@@ -562,7 +563,7 @@ export default function SupervisorDashboard() {
       <div className="flex flex-col gap-3 sm:gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Supervisor Dashboard</h1>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">Supervisor Dashboard <HelpTip text="Monitor cashier activities, review day-end submissions, and approve cancellation requests." side="right" /></h1>
               <p className="text-xs sm:text-sm text-muted-foreground">Reconciliation & Approvals</p>
             </div>
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border shadow-sm">
@@ -612,6 +613,7 @@ export default function SupervisorDashboard() {
                   >
                       Cash Office
                   </Button>
+                  <HelpTip text="Switch between pending submissions needing review and completed/approved submissions." className="ml-1" />
               </div>
           </div>
       </div>
@@ -619,7 +621,7 @@ export default function SupervisorDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card className="border-l-4 border-l-blue-600">
           <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Pending Approvals</CardTitle>
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-1">Pending Approvals <HelpTip text="Total number of cashier day-end submissions and cancellation requests awaiting supervisor review." /></CardTitle>
           </CardHeader>
           <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
             <div className="text-2xl sm:text-3xl font-bold text-blue-600">{pendingCount + allPendingCancellationCount}</div>
@@ -631,7 +633,7 @@ export default function SupervisorDashboard() {
         
         <Card className="border-l-4 border-l-red-600">
           <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Variances Detected</CardTitle>
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-1">Variances Detected <HelpTip text="Number of pending shifts where the cashier's declared amount differs from the system total." /></CardTitle>
           </CardHeader>
           <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
             <div className="text-2xl sm:text-3xl font-bold text-red-600">{varianceCount}</div>
@@ -643,7 +645,7 @@ export default function SupervisorDashboard() {
 
         <Card className="border-l-4 border-l-green-600">
           <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Total Posted (Today)</CardTitle>
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-1">Total Posted (Today) <HelpTip text="Sum of all successfully reconciled and approved cashier shift totals for today." /></CardTitle>
           </CardHeader>
           <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
             <div className="text-xl sm:text-3xl font-bold text-green-600">{formatCurrency(totalPosted)}</div>
@@ -655,7 +657,7 @@ export default function SupervisorDashboard() {
 
         <Card className="border-l-4 border-l-purple-600">
           <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Total System Revenue</CardTitle>
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-1">Total System Revenue <HelpTip text="Combined system-recorded revenue across all active cashier shifts, regardless of approval status." /></CardTitle>
           </CardHeader>
           <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
             <div className="text-xl sm:text-3xl font-bold text-purple-600">{formatCurrency(totalSystemRevenue)}</div>
@@ -672,6 +674,7 @@ export default function SupervisorDashboard() {
                 <h3 className="font-semibold text-orange-900 flex items-center gap-2 text-sm sm:text-base">
                     <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5" />
                     Cancellation Requests
+                    <HelpTip text="Transactions that cashiers have requested to void. Review the reason before approving." />
                     <Button variant="ghost" size="sm" className="h-6 px-2 text-orange-700 hover:bg-orange-100" onClick={loadPendingCancelRequests} disabled={cancelRequestsLoading}>
                         <RefreshCcw className={`w-3 h-3 ${cancelRequestsLoading ? 'animate-spin' : ''}`} />
                     </Button>
@@ -1059,6 +1062,7 @@ export default function SupervisorDashboard() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   data-testid="input-search-cashier"
               />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2"><HelpTip text="Filter the cashier list by name. Type to search." /></span>
           </div>
           <Select value={filterOffice} onValueChange={setFilterOffice}>
               <SelectTrigger className="w-full md:w-[200px] h-10 sm:h-9" data-testid="select-filter-office">
@@ -1084,7 +1088,7 @@ export default function SupervisorDashboard() {
                   </PopoverTrigger>
                   <PopoverContent className="w-80" align="end">
                       <div className="space-y-4">
-                          <h4 className="font-medium text-sm border-b pb-2">Filter Shifts</h4>
+                          <h4 className="font-medium text-sm border-b pb-2 flex items-center gap-1">Filter Shifts <HelpTip text="Narrow down the cashier shift list by date or variance status." /></h4>
                           
                           <div className="space-y-2">
                               <Label htmlFor="date">Date Period</Label>
@@ -1127,6 +1131,7 @@ export default function SupervisorDashboard() {
       
       <Tabs value={filterStatus} onValueChange={setFilterStatus} className="w-full">
         <TabsList className="bg-white border w-full justify-start h-auto p-1 flex-wrap gap-1">
+            <HelpTip text="Active = currently working, Pending = awaiting approval, Reconciled = shift approved and closed." className="ml-1" />
             <TabsTrigger value="All" className="text-xs sm:text-sm data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900">
                 All Active
             </TabsTrigger>
@@ -1203,7 +1208,7 @@ export default function SupervisorDashboard() {
                           <TableHead className="whitespace-nowrap">Date</TableHead>
                           <TableHead className="text-right whitespace-nowrap">Tx Count</TableHead>
                           <TableHead className="text-right whitespace-nowrap">System Total</TableHead>
-                          <TableHead className="text-right whitespace-nowrap">Variance</TableHead>
+                          <TableHead className="text-right whitespace-nowrap"><span className="inline-flex items-center gap-1">Variance <HelpTip text="The difference between counted and expected cash. Positive = over, Negative = short." /></span></TableHead>
                           <TableHead className="text-center whitespace-nowrap">Status</TableHead>
                           <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
                       </TableRow>
@@ -1646,22 +1651,28 @@ export default function SupervisorDashboard() {
                   ) : null}
 
                   <DialogFooter className="gap-2 sm:gap-0">
-                      <Button 
-                          variant="destructive" 
-                          className="mr-auto w-32"
-                          onClick={handleReturn}
-                          disabled={!returnReason.trim() || actionLoading}
-                      >
-                          {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Return to Cashier'}
-                      </Button>
+                      <div className="flex items-center gap-1 mr-auto">
+                        <Button 
+                            variant="destructive" 
+                            className="w-32"
+                            onClick={handleReturn}
+                            disabled={!returnReason.trim() || actionLoading}
+                        >
+                            {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Return to Cashier'}
+                        </Button>
+                        <HelpTip text="Send this submission back to the cashier for correction." />
+                      </div>
                       <Button variant="outline" onClick={() => { setSelectedShift(null); setReviewData(null); }}>Cancel</Button>
-                      <Button 
-                          className="bg-green-600 hover:bg-green-700 w-32"
-                          onClick={() => handleApprove(selectedShift.id)}
-                          disabled={actionLoading}
-                      >
-                          {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Approve & Post'}
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button 
+                            className="bg-green-600 hover:bg-green-700 w-32"
+                            onClick={() => handleApprove(selectedShift.id)}
+                            disabled={actionLoading}
+                        >
+                            {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Approve & Post'}
+                        </Button>
+                        <HelpTip text="Accept this cashier's day-end reconciliation and close their shift." />
+                      </div>
                   </DialogFooter>
               </DialogContent>
           </Dialog>

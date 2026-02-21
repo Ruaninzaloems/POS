@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { Search, Printer, Loader2, X, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, FileText, CheckCircle2, AlertCircle, BookOpen } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { cn } from '@/lib/utils';
+import { HelpTip } from '@/components/ui/help-tip';
 import {
     fetchViewReceiptCashiers,
     searchAccountNumbers,
@@ -665,7 +666,7 @@ export default function ViewReceipts() {
             <div className="w-full h-full bg-slate-100 overflow-y-auto">
                 <div className="bg-white border-b shadow-sm">
                     <div className="px-3 sm:px-6 py-3 sm:py-4 border-b">
-                        <h1 className="text-lg sm:text-xl font-bold text-slate-800" data-testid="text-page-title">View Receipts</h1>
+                        <h1 className="text-lg sm:text-xl font-bold text-slate-800 flex items-center gap-2" data-testid="text-page-title">View Receipts <HelpTip text="Search and reprint previously issued receipts. Filter by date, cashier, or receipt number." /></h1>
                     </div>
 
                     <div className="p-3 sm:p-6 bg-slate-50/50">
@@ -677,7 +678,7 @@ export default function ViewReceipts() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4 sm:gap-y-6">
                                 <div className="space-y-3 sm:space-y-4">
                                     <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] items-start sm:items-center gap-1 sm:gap-4">
-                                        <label className="text-sm font-medium text-left sm:text-right text-slate-600">Cashier Name</label>
+                                        <label className="text-sm font-medium text-left sm:text-right text-slate-600 flex items-center gap-1 sm:justify-end">Cashier Name <HelpTip text="Filter receipts by the cashier who processed the transaction." /></label>
                                         <Select value={cashierFilter} onValueChange={setCashierFilter}>
                                             <SelectTrigger className="h-10 sm:h-9" data-testid="select-cashier-filter">
                                                 <SelectValue placeholder={loadingCashiers ? "Loading..." : "Select a cashier..."} />
@@ -694,7 +695,7 @@ export default function ViewReceipts() {
                                     </div>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] items-start sm:items-center gap-1 sm:gap-4">
-                                        <label className="text-sm font-medium text-left sm:text-right text-slate-600">From Date <span className="text-red-500">*</span></label>
+                                        <label className="text-sm font-medium text-left sm:text-right text-slate-600 flex items-center gap-1 sm:justify-end">From Date <span className="text-red-500">*</span> <HelpTip text="Select the date range to search for receipts. Defaults to today's transactions." /></label>
                                         <DatePicker
                                             date={fromDate}
                                             setDate={setFromDate}
@@ -758,7 +759,7 @@ export default function ViewReceipts() {
                                     </div>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] items-start sm:items-center gap-1 sm:gap-4">
-                                        <label className="text-sm font-medium text-left sm:text-right text-slate-600">Receipt Number</label>
+                                        <label className="text-sm font-medium text-left sm:text-right text-slate-600 flex items-center gap-1 sm:justify-end">Receipt Number <HelpTip text="Search for a specific receipt by its number." /></label>
                                         <div className="relative">
                                             <Input
                                                 ref={receiptInputRef}
@@ -806,6 +807,7 @@ export default function ViewReceipts() {
                                     <label className="text-sm font-medium text-left md:text-right text-slate-600 whitespace-nowrap flex items-center gap-1">
                                         <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
                                         Cashbook Trace
+                                        <HelpTip text="Look up a receipt using the cashbook reference number from the financial system." />
                                     </label>
                                     <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
                                         <div className="relative" ref={suggestionsRef}>
@@ -1377,16 +1379,16 @@ export default function ViewReceipts() {
                                 <TableRow>
                                     <TableHead className="w-[50px] font-bold text-slate-700">No</TableHead>
                                     <TableHead className="min-w-[120px] font-bold text-slate-700 cursor-pointer select-none hover:text-blue-700" onClick={() => handleSort('accountNumber')}>
-                                        <span className="inline-flex items-center">Account ID <SortIcon field="accountNumber" /></span>
+                                        <span className="inline-flex items-center">Account ID <HelpTip text="The municipal account number linked to this receipt." size="sm" /> <SortIcon field="accountNumber" /></span>
                                     </TableHead>
                                     <TableHead className="min-w-[140px] font-bold text-slate-700 cursor-pointer select-none hover:text-blue-700" onClick={() => handleSort('receiptNo')}>
-                                        <span className="inline-flex items-center">Receipt No <SortIcon field="receiptNo" /></span>
+                                        <span className="inline-flex items-center">Receipt No <HelpTip text="The unique receipt number issued for this transaction." size="sm" /> <SortIcon field="receiptNo" /></span>
                                     </TableHead>
                                     <TableHead className="min-w-[100px] font-bold text-slate-700">
-                                        <span className="inline-flex items-center">Method</span>
+                                        <span className="inline-flex items-center">Method <HelpTip text="The payment method used (Cash, Credit Card, EFT, Cheque, etc.)." size="sm" /></span>
                                     </TableHead>
                                     <TableHead className="min-w-[100px] font-bold text-slate-700 cursor-pointer select-none hover:text-blue-700" onClick={() => handleSort('paymentType')}>
-                                        <span className="inline-flex items-center">Payment Type <SortIcon field="paymentType" /></span>
+                                        <span className="inline-flex items-center">Payment Type <HelpTip text="The type of payment classification for this transaction." size="sm" /> <SortIcon field="paymentType" /></span>
                                     </TableHead>
                                     <TableHead className="min-w-[150px] font-bold text-slate-700 cursor-pointer select-none hover:text-blue-700" onClick={() => handleSort('paymentOption')}>
                                         <span className="inline-flex items-center">Payment Option <SortIcon field="paymentOption" /></span>
@@ -1396,7 +1398,7 @@ export default function ViewReceipts() {
                                     </TableHead>
                                     <TableHead className="min-w-[80px] font-bold text-slate-700">Staged</TableHead>
                                     <TableHead className="min-w-[100px] text-right font-bold text-slate-700 cursor-pointer select-none hover:text-blue-700" onClick={() => handleSort('amount')}>
-                                        <span className="inline-flex items-center justify-end w-full">Amount <SortIcon field="amount" /></span>
+                                        <span className="inline-flex items-center justify-end w-full">Amount <HelpTip text="The total amount paid on this receipt." size="sm" /> <SortIcon field="amount" /></span>
                                     </TableHead>
                                     <TableHead className="min-w-[100px] text-right font-bold text-slate-700">Tender</TableHead>
                                     <TableHead className="min-w-[100px] text-right font-bold text-slate-700">Change</TableHead>
@@ -1405,7 +1407,7 @@ export default function ViewReceipts() {
                                     </TableHead>
                                     <TableHead className="min-w-[200px] font-bold text-slate-700">Cash Book</TableHead>
                                     <TableHead className="min-w-[150px] font-bold text-slate-700">Cashier Office</TableHead>
-                                    <TableHead className="min-w-[100px] font-bold text-slate-700 sticky right-[120px] bg-slate-100">Action</TableHead>
+                                    <TableHead className="min-w-[100px] font-bold text-slate-700 sticky right-[120px] bg-slate-100"><span className="inline-flex items-center">Action <HelpTip text="Generate a new copy of this receipt for the customer." size="sm" /></span></TableHead>
                                     <TableHead className="min-w-[120px] font-bold text-slate-700 sticky right-0 bg-slate-100">Status</TableHead>
                                 </TableRow>
                             </TableHeader>

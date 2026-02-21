@@ -9,6 +9,7 @@ import { VirtualNumpad } from '@/components/ui/virtual-numpad';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DayEndModal } from './day-end-modal';
 import { TransactionHistoryModal } from './transaction-history-modal';
+import { HelpTip } from '@/components/ui/help-tip';
 
 export function PaymentDrawer() {
   const { 
@@ -119,7 +120,7 @@ export function PaymentDrawer() {
 
       <div className="p-3 sm:p-4 lg:p-6 bg-gradient-to-br from-blue-50 to-indigo-50/50 border-b border-blue-100/50 flex justify-between items-center">
         <div>
-           <h2 className="text-lg lg:text-xl font-bold tracking-tight text-slate-800">Payment Drawer</h2>
+           <h2 className="text-lg lg:text-xl font-bold tracking-tight text-slate-800 flex items-center gap-1.5">Payment Drawer <HelpTip text="Enter cash and/or card amounts to pay for items in your basket. The system calculates change automatically." /></h2>
            <div className="flex items-center gap-2">
                <p className={`text-sm text-muted-foreground ${viewMode === 'desktop' ? 'hidden lg:block' : 'hidden'}`}>Touch-enabled checkout</p>
                {dayEndStatus === 'RECONCILED' && (
@@ -152,7 +153,7 @@ export function PaymentDrawer() {
         <Tabs defaultValue="payment" className="w-full">
            <div className="px-6 pt-4">
                 <TabsList className="grid w-full grid-cols-2 bg-slate-100/80 rounded-xl p-1 h-11">
-                    <TabsTrigger value="items" className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-700 rounded-lg text-sm font-medium">Line Items ({transactionItems.length})</TabsTrigger>
+                    <TabsTrigger value="items" className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-700 rounded-lg text-sm font-medium gap-1">Line Items ({transactionItems.length}) <HelpTip text="View and manage items in your current transaction basket." size="sm" /></TabsTrigger>
                     <TabsTrigger value="payment" className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-700 rounded-lg text-sm font-medium">Payment</TabsTrigger>
                 </TabsList>
            </div>
@@ -191,7 +192,7 @@ export function PaymentDrawer() {
            <TabsContent value="payment" className="p-6 space-y-6">
                  {/* Total Display */}
                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-5 border border-blue-100/50 text-center">
-                    <div className="text-blue-600/80 uppercase tracking-widest font-bold text-xs mb-1">TOTAL DUE</div>
+                    <div className="text-blue-600/80 uppercase tracking-widest font-bold text-xs mb-1 flex items-center justify-center gap-1">TOTAL DUE <HelpTip text="The sum of all items in your basket, rounded to the nearest 10 cents." /></div>
                     <div className="text-5xl font-mono font-bold text-blue-700">R {totalDue.toFixed(2)}</div>
                  </div>
 
@@ -271,7 +272,7 @@ export function PaymentDrawer() {
 
                     {payment.cardAmount > 0 && (
                         <div className="px-1">
-                            <Label className="text-xs text-muted-foreground mb-1 block">Card Machine Reference / Receipt No</Label>
+                            <Label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">Card Machine Reference / Receipt No <HelpTip text="Enter the last 4 digits of the card or the slip number from the card machine for audit tracking." /></Label>
                             <Input
                                 type="text"
                                 placeholder="e.g. last 4 digits or slip number"
@@ -318,7 +319,7 @@ export function PaymentDrawer() {
       {/* Footer Actions */}
       <div className="p-4 sm:p-6 bg-white border-t border-slate-200/80 space-y-3 sm:space-y-4 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] z-30 relative pb-8 lg:pb-6">
         <div className="flex justify-between items-baseline">
-            <span className="text-sm font-semibold text-slate-500">Change Due</span>
+            <span className="text-sm font-semibold text-slate-500 flex items-center gap-1">Change Due <HelpTip text="Change is calculated only on the cash portion. Maximum change allowed is R200.00." /></span>
             <div className="flex flex-col items-end">
                 <span className={`font-mono text-2xl font-bold ${payment.changeDue > 200 ? 'text-destructive' : 'text-foreground'}`}>
                     R {payment.changeDue.toFixed(2)}

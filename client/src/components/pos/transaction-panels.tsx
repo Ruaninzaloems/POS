@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { AccountEnquiryView } from '@/components/pos/account-enquiry-view';
 import { Checkbox } from '@/components/ui/checkbox';
+import { HelpTip } from '@/components/ui/help-tip';
 import {
   Dialog,
   DialogContent,
@@ -470,7 +471,7 @@ export function TransactionPanels() {
                     </DialogHeader>
                     
                     <div className="bg-blue-50/50 border-blue-100 p-4 rounded-md border text-sm space-y-3">
-                        <div className="font-semibold text-slate-700">Required CSV Format:</div>
+                        <div className="font-semibold text-slate-700 flex items-center gap-1">Required CSV Format: <HelpTip text="Your CSV file must have 3 columns in this exact order. The first row (header) is automatically skipped." /></div>
                         <div className="bg-white rounded-xl border border-blue-200 p-2 font-mono text-xs text-slate-600">
                             Receipt Date, Account Number, Amount
                         </div>
@@ -481,7 +482,7 @@ export function TransactionPanels() {
                         </div>
                         <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-100">
                             <Info className="w-4 h-4" />
-                            Duplicate accounts allowed (e.g. multiple receipts for same account).
+                            Duplicate accounts allowed (e.g. multiple receipts for same account). <HelpTip text="Each row creates a separate transaction. You can import multiple payments for the same account number." icon="info" />
                         </div>
                     </div>
 
@@ -543,7 +544,7 @@ export function TransactionPanels() {
                                 </DialogHeader>
                                 
                                 <div className="bg-blue-50/50 border-blue-100 p-4 rounded-md border text-sm space-y-3">
-                                    <div className="font-semibold text-slate-700">Required CSV Format:</div>
+                                    <div className="font-semibold text-slate-700 flex items-center gap-1">Required CSV Format: <HelpTip text="Your CSV file must have 3 columns in this exact order. The first row (header) is automatically skipped." /></div>
                                     <div className="bg-white rounded-xl border border-blue-200 p-2 font-mono text-xs text-slate-600">
                                         Receipt Date, Account Number, Amount
                                     </div>
@@ -554,7 +555,7 @@ export function TransactionPanels() {
                                     </div>
                                     <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-100">
                                         <Info className="w-4 h-4" />
-                                        Duplicate accounts allowed (e.g. multiple receipts for same account).
+                                        Duplicate accounts allowed (e.g. multiple receipts for same account). <HelpTip text="Each row creates a separate transaction. You can import multiple payments for the same account number." icon="info" />
                                     </div>
                                 </div>
 
@@ -587,10 +588,10 @@ export function TransactionPanels() {
                   <Card>
                       <CardHeader className="py-3 sm:py-4 border-b bg-muted/20">
                           <div className="hidden sm:grid grid-cols-[1fr_2fr_1fr_1fr_auto] gap-4 font-medium text-sm text-muted-foreground uppercase tracking-wider px-2">
-                              <div>Type</div>
+                              <div className="flex items-center gap-1">Type <HelpTip text="Transaction category: ACC=Account, ELEC/H2O=Prepaid, CLR=Clearance, INC=Direct Income, GRP=Group" /></div>
                               <div>Description / Ref</div>
-                              <div className="text-right">Amount Due</div>
-                              <div className="text-right">Pay Amount</div>
+                              <div className="text-right flex items-center justify-end gap-1">Amount Due <HelpTip text="The outstanding balance on this account or the cost of this item" /></div>
+                              <div className="text-right flex items-center justify-end gap-1">Pay Amount <HelpTip text="The amount you want to pay now. You can pay less than the full amount due." /></div>
                               <div className="w-8"></div>
                           </div>
                           <div className="sm:hidden font-medium text-sm text-muted-foreground uppercase tracking-wider px-2">
@@ -684,7 +685,7 @@ export function TransactionPanels() {
                                           <div className="bg-green-50 border border-green-200 rounded-md p-3 space-y-2">
                                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                                   <div>
-                                                      <Label className="text-[10px] font-semibold text-green-700 uppercase">Paid By (Last Name) *</Label>
+                                                      <Label className="text-[10px] font-semibold text-green-700 uppercase flex items-center gap-1">Paid By (Last Name) * <HelpTip text="Enter the surname or company name of the person making this payment. Required for audit." /></Label>
                                                       <Input
                                                           placeholder="Surname / Company"
                                                           className={`h-9 rounded-lg text-sm bg-white ${(item as any).paidByError ? 'border-red-400 ring-1 ring-red-400' : 'border-green-200'}`}
@@ -694,7 +695,7 @@ export function TransactionPanels() {
                                                       />
                                                   </div>
                                                   <div>
-                                                      <Label className="text-[10px] font-semibold text-green-700 uppercase">Description/Notes *</Label>
+                                                      <Label className="text-[10px] font-semibold text-green-700 uppercase flex items-center gap-1">Description/Notes * <HelpTip text="Describe what this payment is for. Required for financial records." /></Label>
                                                       <Input
                                                           placeholder="Payment description..."
                                                           className={`h-9 rounded-lg text-sm bg-white ${(item as any).notesError ? 'border-red-400 ring-1 ring-red-400' : 'border-green-200'}`}
@@ -727,11 +728,11 @@ export function TransactionPanels() {
         
         {/* Header Badge */}
         <div className="flex justify-between items-center">
-            <h2 className="text-lg sm:text-2xl font-bold tracking-tight text-foreground">
-              {activeTransactionType === 'CONSUMER_SERVICES' && 'Consumer Account'}
-              {activeTransactionType === 'DIRECT_INCOME' && 'Direct Income'}
-              {activeTransactionType === 'CLEARANCE' && 'Clearance Certificate'}
-              {activeTransactionType === 'PREPAID' && 'Prepaid Recharge'}
+            <h2 className="text-lg sm:text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+              {activeTransactionType === 'CONSUMER_SERVICES' && <><span>Consumer Account</span> <HelpTip text="Payment against a municipal consumer account for rates, utilities, and services." /></>}
+              {activeTransactionType === 'DIRECT_INCOME' && <><span>Direct Income</span> <HelpTip text="Ad-hoc income not linked to a consumer account, e.g. hall hire, plan fees, or sundry payments." /></>}
+              {activeTransactionType === 'CLEARANCE' && <><span>Clearance Certificate</span> <HelpTip text="Payment for a Section 118 clearance certificate required for property transfers." /></>}
+              {activeTransactionType === 'PREPAID' && <><span>Prepaid Recharge</span> <HelpTip text="Purchase prepaid electricity or water tokens for a specific meter number." /></>}
             </h2>
             <Badge variant="outline" className="text-sm px-3 py-1 font-mono uppercase">
                {activeTransactionType.replace('_', ' ')}

@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { HelpTip } from '@/components/ui/help-tip';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { platinumSearchAccountsPayment, platinumGetContactDetails, platinumGetNameInfoByAccount, fetchAdditionalEmailsByAccountId } from '@/lib/external-api';
 import {
@@ -507,10 +508,12 @@ export default function ClientCommunications() {
                       <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
                     </div>
                     Client Communications
+                    <HelpTip text="Send custom emails and SMS messages to account holders. Messages are queued for delivery." side="right" />
                   </h1>
                   <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1 ml-9 sm:ml-[42px]">Send custom emails and SMS to account holders</p>
                 </div>
-                <div className="flex bg-slate-100 rounded-lg p-0.5 self-start sm:self-auto shrink-0">
+                <div className="flex items-center gap-1.5 bg-slate-100 rounded-lg p-0.5 self-start sm:self-auto shrink-0">
+                  <HelpTip text="Choose whether to send via email (Mimecast) or SMS gateway." side="bottom" />
                   <button
                     onClick={() => setMode('email')}
                     className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${mode === 'email' ? 'bg-white text-blue-700 shadow-sm border border-blue-200' : 'text-slate-500 hover:text-slate-700 active:bg-slate-200'}`}
@@ -554,6 +557,7 @@ export default function ClientCommunications() {
                           {importing ? <Loader2 className="w-3 h-3 animate-spin mr-0.5 sm:mr-1" /> : <Upload className="w-3 h-3 mr-0.5 sm:mr-1" />}
                           Import
                         </Button>
+                        <HelpTip text="Upload a CSV file with multiple account numbers or contact details for bulk messaging." side="bottom" />
                         <input ref={csvInputRef} type="file" accept=".csv,.txt,.xlsx" className="hidden" onChange={handleCsvImport} />
                       </div>
                     </div>
@@ -583,6 +587,10 @@ export default function ClientCommunications() {
                     )}
 
                     <div className="mt-2 sm:mt-2.5 relative" ref={searchContainerRef}>
+                      <div className="flex items-center gap-1 mb-1">
+                        <span className="text-[11px] sm:text-xs font-medium text-slate-600">Search Account</span>
+                        <HelpTip text="Search for the consumer account to send a message to." />
+                      </div>
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                         <Input
@@ -743,6 +751,7 @@ export default function ClientCommunications() {
                   {recipients.length > 0 && (
                     <div className="px-2.5 sm:px-3 py-2 border-t bg-gradient-to-r from-slate-50 to-white shrink-0">
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] sm:text-[11px]">
+                        <HelpTip text="Contact information pulled from the account. Additional emails can be added." />
                         <span className="flex items-center gap-1 text-slate-500">
                           <Mail className="w-3 h-3" />
                           <span className="font-medium">{validEmailRecipients.length}</span> email
@@ -781,14 +790,15 @@ export default function ClientCommunications() {
                   <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
                     {mode === 'email' && (
                       <div>
-                        <Label className="text-[11px] sm:text-xs font-medium text-slate-600 mb-1 sm:mb-1.5 block">Subject</Label>
+                        <Label className="text-[11px] sm:text-xs font-medium text-slate-600 mb-1 sm:mb-1.5 flex items-center gap-1">Subject <HelpTip text="The email subject line. Not used for SMS messages." /></Label>
                         <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Enter email subject..." className="h-10 sm:h-9 text-sm rounded-lg sm:rounded-md" data-testid="input-subject" />
                       </div>
                     )}
 
                     <div>
-                      <Label className="text-[11px] sm:text-xs font-medium text-slate-600 mb-1 sm:mb-1.5 block">
+                      <Label className="text-[11px] sm:text-xs font-medium text-slate-600 mb-1 sm:mb-1.5 flex items-center gap-1">
                         Message {mode === 'sms' && <span className="text-slate-400 font-normal ml-1">({messageBody.length}/160)</span>}
+                        <HelpTip text="Type your message content. For SMS, keep under 160 characters for a single message." />
                       </Label>
                       <Textarea
                         value={messageBody}
@@ -816,6 +826,7 @@ export default function ClientCommunications() {
                             {attachments.length > 0 && (
                               <span className="text-[9px] sm:text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-bold">{attachments.length}</span>
                             )}
+                            <HelpTip text="Attach files to email messages. Not available for SMS." />
                           </Label>
                           <Button variant="outline" size="sm" className="h-8 sm:h-7 text-xs rounded-lg sm:rounded-md" onClick={() => fileInputRef.current?.click()} data-testid="button-add-attachment">
                             <Plus className="w-3 h-3 mr-1" />
@@ -873,20 +884,24 @@ export default function ClientCommunications() {
                       )}
                     </div>
                     <div className="flex gap-2 self-end sm:self-auto">
-                      <Button variant="outline" size="sm" onClick={() => setShowPreview(!showPreview)} className="text-xs h-9 sm:h-8 rounded-lg sm:rounded-md" data-testid="button-preview">
-                        <Eye className="w-3.5 h-3.5 mr-1.5" />
-                        Preview
-                      </Button>
-                      <Button
-                        onClick={handleSend}
-                        size="sm"
-                        className={`text-xs h-9 sm:h-8 rounded-lg sm:rounded-md ${mode === 'email' ? 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800' : 'bg-green-600 hover:bg-green-700 active:bg-green-800'}`}
-                        disabled={selectedRecipients.length === 0 || !messageBody.trim()}
-                        data-testid="button-send"
-                      >
-                        <Send className="w-3.5 h-3.5 mr-1.5" />
-                        {mode === 'email' ? 'Send Email' : 'Send SMS'}
-                      </Button>
+                      <HelpTip text="Review your message before sending to verify content and recipient details." side="bottom">
+                        <Button variant="outline" size="sm" onClick={() => setShowPreview(!showPreview)} className="text-xs h-9 sm:h-8 rounded-lg sm:rounded-md" data-testid="button-preview">
+                          <Eye className="w-3.5 h-3.5 mr-1.5" />
+                          Preview
+                        </Button>
+                      </HelpTip>
+                      <HelpTip text="Queue the message for delivery. Email via Mimecast, SMS via gateway." side="bottom">
+                        <Button
+                          onClick={handleSend}
+                          size="sm"
+                          className={`text-xs h-9 sm:h-8 rounded-lg sm:rounded-md ${mode === 'email' ? 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800' : 'bg-green-600 hover:bg-green-700 active:bg-green-800'}`}
+                          disabled={selectedRecipients.length === 0 || !messageBody.trim()}
+                          data-testid="button-send"
+                        >
+                          <Send className="w-3.5 h-3.5 mr-1.5" />
+                          {mode === 'email' ? 'Send Email' : 'Send SMS'}
+                        </Button>
+                      </HelpTip>
                     </div>
                   </div>
                 </div>

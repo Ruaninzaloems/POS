@@ -19,6 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from '@/components/ui/date-picker';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { HelpTip } from '@/components/ui/help-tip';
 
 interface AllocationRecord {
   directDepositJob_ID: number;
@@ -225,7 +226,7 @@ export default function AllocationHistory() {
                         </Button>
                      </Link>
                      <div>
-                         <h1 className="text-base sm:text-xl font-bold">Allocation History</h1>
+                         <h1 className="text-base sm:text-xl font-bold">Allocation History <HelpTip text="View previously completed deposit allocations and their status." side="right" /></h1>
                          <p className="text-xs sm:text-sm text-muted-foreground">
                            {totalCount > 0 ? `${totalCount.toLocaleString()} allocations found` : 'Processed allocations (Manual & Bulk)'}
                          </p>
@@ -244,7 +245,7 @@ export default function AllocationHistory() {
 
              <div className="bg-slate-50 p-3 sm:p-4 rounded-lg border border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 items-end">
                 <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Search</Label>
+                    <Label className="text-xs text-muted-foreground">Search <HelpTip text="Filter by date, status, or cashier to find specific allocations." side="right" /></Label>
                     <div className="relative">
                         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input 

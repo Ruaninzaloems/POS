@@ -38,6 +38,7 @@ interface DDSearchResult {
 }
 
 import { validateAllocationAmount, calculateAllocationTotals } from '@/lib/allocation-logic';
+import { HelpTip } from '@/components/ui/help-tip';
 
 export default function AllocateTransaction() {
   const [, params] = useRoute('/direct-deposits/manual/allocate/:id');
@@ -1137,6 +1138,7 @@ export default function AllocateTransaction() {
                   >
                     <CheckCircle className="w-4 h-4" />
                     Post Allocation
+                    <HelpTip text="Confirm and post this allocation to the selected account(s)." side="top" className="ml-1" />
                   </Button>
                 )}
               </div>
@@ -1153,6 +1155,7 @@ export default function AllocateTransaction() {
                     </div>
 
                     <div className="flex items-center gap-1 sm:gap-1.5 mb-3 overflow-x-auto pb-0.5">
+                        <HelpTip text="Choose whether to allocate to a specific account, group, or clearance." side="bottom" className="mr-1" />
                         {scopeOptions.map(opt => {
                             const Icon = opt.icon;
                             const isActive = searchScope === opt.value;
@@ -1176,6 +1179,7 @@ export default function AllocateTransaction() {
 
                     <div className="relative" ref={ddSearchRef}>
                         <Search className="absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <HelpTip text="Search for the consumer account to receive this deposit allocation." side="top" className="absolute right-10 top-1/2 -translate-y-1/2 z-10" />
                         <Input
                             data-testid="input-dd-search"
                             placeholder={
@@ -1270,6 +1274,7 @@ export default function AllocateTransaction() {
                             <div className="flex items-center gap-2 sm:shrink-0">
                                 <div className="relative flex-1 sm:w-36">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-medium">R</span>
+                                    <HelpTip text="Enter the amount to allocate to this account. Cannot exceed the unallocated balance." side="top" className="absolute right-2 top-1/2 -translate-y-1/2 z-10" />
                                     <Input
                                         ref={inputRef}
                                         type="number"

@@ -19,19 +19,20 @@ import {
   MessageSquareMore,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { HelpTip } from '@/components/ui/help-tip';
 
 const menuItems = [
-  { label: 'POS', href: '/pos', icon: Layers, description: 'Point of sale receipting and payments' },
-  { label: 'Direct Deposits Manual', href: '/direct-deposits/manual', icon: Banknote, description: 'Manual allocation of direct deposits' },
-  { label: 'Direct Deposits Auto', href: '/direct-deposits/auto', icon: RefreshCw, description: 'Automatic processing of direct deposits' },
-  { label: 'Third Party Payment Processing', href: '/third-party/processing', icon: Users, description: 'Process third party payments' },
-  { label: 'Utilipay Distribution Reconciliation', href: '/third-party/utilipay-reconciliation', icon: Zap, description: 'Reconcile Utilipay distribution records' },
-  { label: 'Bulk Allocation Progress', href: '/bulk-allocation', icon: FileBarChart, description: 'View bulk allocation progress and errors' },
-  { label: 'View Receipts', href: '/view-receipts', icon: FileSearch, description: 'Search and view transaction receipts' },
-  { label: 'General Enquiries', href: '/enquiries/general', icon: Search, description: 'Search and view account details' },
-  { label: 'Client Communications', href: '/communications', icon: MessageSquareMore, description: 'Send custom emails and SMS to account holders' },
-  { label: 'System Settings', href: '/settings', icon: Settings, description: 'Configure system preferences' },
-  { label: 'Supervisor', href: '/supervisor', icon: ShieldCheck, description: 'Supervisor dashboard and approvals' },
+  { label: 'POS', href: '/pos', icon: Layers, description: 'Point of sale receipting and payments', helpTip: 'Process payments for consumer accounts, prepaid, clearance, and direct income' },
+  { label: 'Direct Deposits Manual', href: '/direct-deposits/manual', icon: Banknote, description: 'Manual allocation of direct deposits', helpTip: 'Allocate EFT and direct deposit payments to consumer accounts' },
+  { label: 'Direct Deposits Auto', href: '/direct-deposits/auto', icon: RefreshCw, description: 'Automatic processing of direct deposits', helpTip: 'Allocate EFT and direct deposit payments to consumer accounts automatically' },
+  { label: 'Third Party Payment Processing', href: '/third-party/processing', icon: Users, description: 'Process third party payments', helpTip: 'Import and process bulk payment files from external sources' },
+  { label: 'Utilipay Distribution Reconciliation', href: '/third-party/utilipay-reconciliation', icon: Zap, description: 'Reconcile Utilipay distribution records', helpTip: 'Import and process bulk payment files from external sources' },
+  { label: 'Bulk Allocation Progress', href: '/bulk-allocation', icon: FileBarChart, description: 'View bulk allocation progress and errors', helpTip: 'Track the progress and status of bulk deposit allocations being processed' },
+  { label: 'View Receipts', href: '/view-receipts', icon: FileSearch, description: 'Search and view transaction receipts', helpTip: 'Search and reprint previously issued receipts' },
+  { label: 'General Enquiries', href: '/enquiries/general', icon: Search, description: 'Search and view account details', helpTip: 'Look up account balances, transaction history, and billing details' },
+  { label: 'Client Communications', href: '/communications', icon: MessageSquareMore, description: 'Send custom emails and SMS to account holders', helpTip: 'Send emails and SMS messages to account holders' },
+  { label: 'System Settings', href: '/settings', icon: Settings, description: 'Configure system preferences', helpTip: 'Configure system preferences and cashier profile settings' },
+  { label: 'Supervisor', href: '/supervisor', icon: ShieldCheck, description: 'Supervisor dashboard and approvals', helpTip: 'Review and approve cashier day-end submissions and cancellation requests' },
 ];
 
 export default function HomePage() {
@@ -47,28 +48,32 @@ export default function HomePage() {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-white/70 hover:text-white hover:bg-white/10 hidden sm:inline-flex"
-            onClick={toggleViewMode}
-            title={viewMode === 'desktop' ? "Switch to Mobile View" : "Switch to Desktop View"}
-          >
-            {viewMode === 'desktop' ? <Smartphone className="w-5 h-5" /> : <Monitor className="w-5 h-5" />}
-          </Button>
+          <HelpTip text={viewMode === 'desktop' ? "Switch to mobile-optimized layout with touch-friendly controls" : "Switch to desktop layout with full sidebar navigation"} side="bottom" className="hidden sm:inline-flex">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white/70 hover:text-white hover:bg-white/10 hidden sm:inline-flex"
+              onClick={toggleViewMode}
+              title={viewMode === 'desktop' ? "Switch to Mobile View" : "Switch to Desktop View"}
+            >
+              {viewMode === 'desktop' ? <Smartphone className="w-5 h-5" /> : <Monitor className="w-5 h-5" />}
+            </Button>
+          </HelpTip>
 
           {activeSession && (
             <>
               <div className="h-6 w-px bg-white/20 hidden sm:block" />
-              <div className="flex items-center gap-2 sm:gap-3 px-1 sm:px-2">
-                <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-white/20 flex items-center justify-center text-white text-xs font-mono border border-white/30 shrink-0">
-                  {currentUser.name?.charAt(0) || 'C'}
+              <HelpTip text="You have an active cashier session. All transactions will be recorded under your user profile until you end the session." side="bottom" className="text-white/60 hover:text-white/80">
+                <div className="flex items-center gap-2 sm:gap-3 px-1 sm:px-2 cursor-help">
+                  <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-white/20 flex items-center justify-center text-white text-xs font-mono border border-white/30 shrink-0">
+                    {currentUser.name?.charAt(0) || 'C'}
+                  </div>
+                  <div className="hidden sm:flex flex-col items-start text-sm leading-tight">
+                    <span className="font-medium text-white">{currentUser.name}</span>
+                    <span className="text-xs text-white/60">{currentUser.cashOffice}</span>
+                  </div>
                 </div>
-                <div className="hidden sm:flex flex-col items-start text-sm leading-tight">
-                  <span className="font-medium text-white">{currentUser.name}</span>
-                  <span className="text-xs text-white/60">{currentUser.cashOffice}</span>
-                </div>
-              </div>
+              </HelpTip>
               <div className="h-6 w-px bg-white/20 hidden sm:block" />
               <Button variant="ghost" size="icon" className="h-8 w-8 text-white/70 hover:text-red-300 hover:bg-white/10" onClick={endSession} title="End Session">
                 <LogOut className="w-4 h-4" />
@@ -92,7 +97,7 @@ export default function HomePage() {
                   <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center shrink-0 group-hover:from-blue-100 group-hover:to-indigo-100 transition-colors">
                     <item.icon className="w-5 h-5 text-blue-600" />
                   </div>
-                  <div className="text-[11px] font-medium text-slate-700 leading-tight">{item.label}</div>
+                  <div className="text-[11px] font-medium text-slate-700 leading-tight inline-flex items-center gap-0.5">{item.label} <HelpTip text={item.helpTip} side="bottom" /></div>
                 </button>
               </Link>
             ))}
@@ -114,7 +119,7 @@ export default function HomePage() {
                     <item.icon className="w-5 h-5 text-muted-foreground group-hover:text-blue-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-foreground">{item.label}</div>
+                    <div className="text-sm font-medium text-foreground inline-flex items-center gap-1">{item.label} <HelpTip text={item.helpTip} side="right" /></div>
                     <div className="text-xs text-muted-foreground truncate">{item.description}</div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
@@ -132,7 +137,7 @@ export default function HomePage() {
             <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-500/10">
               <Layers className="w-10 h-10 text-blue-600" />
             </div>
-            <h2 className="text-2xl font-semibold mb-2">Platinum POS System</h2>
+            <h2 className="text-2xl font-semibold mb-2 inline-flex items-center gap-2 justify-center">Platinum POS System <HelpTip text="Your central dashboard for municipal receipting, payments, and account management. Select a module from the sidebar to begin." side="bottom" icon="info" size="md" /></h2>
             <p className="text-muted-foreground mb-6">
               Select a module from the menu to get started.
             </p>

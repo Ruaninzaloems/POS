@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { HelpTip } from '@/components/ui/help-tip';
 import { Badge } from '@/components/ui/badge';
 import {
   Search, X, ChevronLeft, User, Phone,
@@ -557,66 +558,66 @@ function GeneralEnquiriesContent() {
     const accountName = selectedAccount.name || selectedAccount.surname_Company || 'Unknown';
     const accountNum = selectedAccount.accountNumber || selectedAccount.accountID || selectedAccount.account_ID;
 
-    type TabItem = { value: string; label: string; icon: React.ReactNode; color: string };
+    type TabItem = { value: string; label: string; icon: React.ReactNode; color: string; tip?: string };
     type TabGroup = { heading: string; tabs: TabItem[] };
 
     const tabGroups: TabGroup[] = [
       {
         heading: 'ACCOUNT & PARTY',
         tabs: [
-          { value: 'account', label: 'Account', icon: <User className="w-3.5 h-3.5" />, color: 'blue' },
-          { value: 'name', label: 'Name', icon: <Users className="w-3.5 h-3.5" />, color: 'indigo' },
-          { value: 'property', label: 'Property', icon: <Home className="w-3.5 h-3.5" />, color: 'amber' },
-          { value: 'linked-accounts', label: 'Linked Accounts', icon: <Building2 className="w-3.5 h-3.5" />, color: 'purple' },
-          { value: 'occupiers', label: 'Occupiers', icon: <Users className="w-3.5 h-3.5" />, color: 'violet' },
-          { value: 'contact', label: 'Contact', icon: <Phone className="w-3.5 h-3.5" />, color: 'violet' },
-          { value: 'handover', label: 'Handover', icon: <ArrowRight className="w-3.5 h-3.5" />, color: 'orange' },
+          { value: 'account', label: 'Account', icon: <User className="w-3.5 h-3.5" />, color: 'blue', tip: 'View account holder details, status, and registration information.' },
+          { value: 'name', label: 'Name', icon: <Users className="w-3.5 h-3.5" />, color: 'indigo', tip: 'View and search account holder name details.' },
+          { value: 'property', label: 'Property', icon: <Home className="w-3.5 h-3.5" />, color: 'amber', tip: 'View property details, address, and zoning information.' },
+          { value: 'linked-accounts', label: 'Linked Accounts', icon: <Building2 className="w-3.5 h-3.5" />, color: 'purple', tip: 'View other accounts linked to this property or owner.' },
+          { value: 'occupiers', label: 'Occupiers', icon: <Users className="w-3.5 h-3.5" />, color: 'violet', tip: 'View current and previous property occupiers.' },
+          { value: 'contact', label: 'Contact', icon: <Phone className="w-3.5 h-3.5" />, color: 'violet', tip: 'View contact details such as phone, email, and postal address.' },
+          { value: 'handover', label: 'Handover', icon: <ArrowRight className="w-3.5 h-3.5" />, color: 'orange', tip: 'View handover history and debt collection status.' },
         ],
       },
       {
         heading: 'SERVICES & CONSUMPTION',
         tabs: [
-          { value: 'services', label: 'Services', icon: <Layers className="w-3.5 h-3.5" />, color: 'emerald' },
-          { value: 'services-meters', label: 'Meters', icon: <Gauge className="w-3.5 h-3.5" />, color: 'emerald' },
-          { value: 'consumption', label: 'Consumption', icon: <Droplets className="w-3.5 h-3.5" />, color: 'cyan' },
+          { value: 'services', label: 'Services', icon: <Layers className="w-3.5 h-3.5" />, color: 'emerald', tip: 'View active services and their current balances.' },
+          { value: 'services-meters', label: 'Meters', icon: <Gauge className="w-3.5 h-3.5" />, color: 'emerald', tip: 'View meter details, readings, and meter history.' },
+          { value: 'consumption', label: 'Consumption', icon: <Droplets className="w-3.5 h-3.5" />, color: 'cyan', tip: 'View water and electricity consumption trends and history.' },
         ],
       },
       {
         heading: 'FINANCIAL',
         tabs: [
-          { value: 'balance', label: 'Balance / Debt', icon: <CreditCard className="w-3.5 h-3.5" />, color: 'red' },
-          { value: 'txn-detailed', label: 'Transaction Detail', icon: <Activity className="w-3.5 h-3.5" />, color: 'indigo' },
-          { value: 'txn-summary', label: 'Transaction Summary', icon: <FileText className="w-3.5 h-3.5" />, color: 'slate' },
-          { value: 'transactions', label: 'Receipts', icon: <Receipt className="w-3.5 h-3.5" />, color: 'blue' },
-          { value: 'deposits', label: 'Deposits', icon: <Banknote className="w-3.5 h-3.5" />, color: 'lime' },
-          { value: 'payment-plans', label: 'Payment Plans', icon: <CalendarDays className="w-3.5 h-3.5" />, color: 'purple' },
-          { value: 'payment-extensions', label: 'Extensions', icon: <Clock className="w-3.5 h-3.5" />, color: 'amber' },
-          { value: 'billed-vs-paid', label: 'Billed vs Paid', icon: <BarChart3 className="w-3.5 h-3.5" />, color: 'indigo' },
+          { value: 'balance', label: 'Balance / Debt', icon: <CreditCard className="w-3.5 h-3.5" />, color: 'red', tip: 'View outstanding balances, debt age analysis, and arrears breakdown.' },
+          { value: 'txn-detailed', label: 'Transaction Detail', icon: <Activity className="w-3.5 h-3.5" />, color: 'indigo', tip: 'View detailed individual transactions with full line-item breakdown.' },
+          { value: 'txn-summary', label: 'Transaction Summary', icon: <FileText className="w-3.5 h-3.5" />, color: 'slate', tip: 'View summarised transaction totals grouped by period.' },
+          { value: 'transactions', label: 'Receipts', icon: <Receipt className="w-3.5 h-3.5" />, color: 'blue', tip: 'View payment receipts and receipt history.' },
+          { value: 'deposits', label: 'Deposits', icon: <Banknote className="w-3.5 h-3.5" />, color: 'lime', tip: 'View deposit amounts held on the account.' },
+          { value: 'payment-plans', label: 'Payment Plans', icon: <CalendarDays className="w-3.5 h-3.5" />, color: 'purple', tip: 'View active and historical payment arrangements.' },
+          { value: 'payment-extensions', label: 'Extensions', icon: <Clock className="w-3.5 h-3.5" />, color: 'amber', tip: 'View payment extension requests and their status.' },
+          { value: 'billed-vs-paid', label: 'Billed vs Paid', icon: <BarChart3 className="w-3.5 h-3.5" />, color: 'indigo', tip: 'Compare billed amounts against payments received per period.' },
         ],
       },
       {
         heading: 'BILLING & TARIFFS',
         tabs: [
-          { value: 'rates', label: 'Rates', icon: <Scale className="w-3.5 h-3.5" />, color: 'orange' },
-          { value: 'debit-orders', label: 'Debit Orders', icon: <Landmark className="w-3.5 h-3.5" />, color: 'teal' },
-          { value: 'statements', label: 'Statements', icon: <FileText className="w-3.5 h-3.5" />, color: 'blue' },
-          { value: 'send-statements', label: 'Send Statements', icon: <Send className="w-3.5 h-3.5" />, color: 'indigo' },
+          { value: 'rates', label: 'Rates', icon: <Scale className="w-3.5 h-3.5" />, color: 'orange', tip: 'View rates valuations and property assessment details.' },
+          { value: 'debit-orders', label: 'Debit Orders', icon: <Landmark className="w-3.5 h-3.5" />, color: 'teal', tip: 'View debit order mandates and processing history.' },
+          { value: 'statements', label: 'Statements', icon: <FileText className="w-3.5 h-3.5" />, color: 'blue', tip: 'View and download previous account statements.' },
+          { value: 'send-statements', label: 'Send Statements', icon: <Send className="w-3.5 h-3.5" />, color: 'indigo', tip: 'Generate and send a statement for the selected period to the account holder\'s email or mobile.' },
         ],
       },
       {
         heading: 'COMPLIANCE & LEGAL',
         tabs: [
-          { value: 'clearance', label: 'Clearance', icon: <Shield className="w-3.5 h-3.5" />, color: 'emerald' },
-          { value: 'debtor-notes', label: 'Debtor Notes', icon: <Briefcase className="w-3.5 h-3.5" />, color: 'red' },
-          { value: 'section129', label: 'Section 129', icon: <AlertTriangle className="w-3.5 h-3.5" />, color: 'rose' },
+          { value: 'clearance', label: 'Clearance', icon: <Shield className="w-3.5 h-3.5" />, color: 'emerald', tip: 'View clearance certificate status and history.' },
+          { value: 'debtor-notes', label: 'Debtor Notes', icon: <Briefcase className="w-3.5 h-3.5" />, color: 'red', tip: 'View internal notes and flags on the debtor account.' },
+          { value: 'section129', label: 'Section 129', icon: <AlertTriangle className="w-3.5 h-3.5" />, color: 'rose', tip: 'View Section 129 legal notice history and status.' },
         ],
       },
       {
         heading: 'NOTIFICATIONS & SUBSIDIES',
         tabs: [
-          { value: 'notifications', label: 'Notifications', icon: <AlertCircle className="w-3.5 h-3.5" />, color: 'yellow' },
-          { value: 'incentives', label: 'Incentives', icon: <Gift className="w-3.5 h-3.5" />, color: 'pink' },
-          { value: 'indigent', label: 'Indigent Subsidy', icon: <Shield className="w-3.5 h-3.5" />, color: 'teal' },
+          { value: 'notifications', label: 'Notifications', icon: <AlertCircle className="w-3.5 h-3.5" />, color: 'yellow', tip: 'View SMS, email, and letter notifications sent to this account.' },
+          { value: 'incentives', label: 'Incentives', icon: <Gift className="w-3.5 h-3.5" />, color: 'pink', tip: 'View incentive and discount programmes applied to this account.' },
+          { value: 'indigent', label: 'Indigent Subsidy', icon: <Shield className="w-3.5 h-3.5" />, color: 'teal', tip: 'View indigent subsidy registration and benefit history.' },
         ],
       },
     ];
@@ -664,10 +665,12 @@ function GeneralEnquiriesContent() {
                   <h2 className="text-sm sm:text-[15px] font-bold text-slate-900 truncate max-w-[140px] sm:max-w-none" data-testid="text-selected-account-name">
                     {accountName}
                   </h2>
-                  <span className={`inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold ${isActive ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200'}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-                    {selectedAccount.accountStatus || selectedAccount.statusDesc || 'Unknown'}
-                  </span>
+                  <HelpTip text="Current status of this municipal account — Active, Inactive, or Closed." side="bottom">
+                    <span className={`inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold cursor-help ${isActive ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                      {selectedAccount.accountStatus || selectedAccount.statusDesc || 'Unknown'}
+                    </span>
+                  </HelpTip>
                 </div>
                 <div className="text-[10px] sm:text-xs text-slate-500 mt-0.5 font-mono truncate">
                   Acc: {accountNum}
@@ -676,7 +679,7 @@ function GeneralEnquiriesContent() {
               </div>
 
               <div className="shrink-0 text-right" data-testid="header-balance-section">
-                <div className="text-[9px] sm:text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Balance</div>
+                <div className="text-[9px] sm:text-[10px] uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1 justify-end">Balance <HelpTip text="Total outstanding balance across all services on this account." side="left" /></div>
                 {headerBalance !== null ? (
                   <div className={`text-sm sm:text-xl font-bold font-mono tracking-tight ${headerBalance > 0 ? 'text-red-600' : headerBalance < 0 ? 'text-emerald-600' : 'text-slate-800'}`} data-testid="text-header-balance">
                     R {headerBalance.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -716,24 +719,25 @@ function GeneralEnquiriesContent() {
                             const colors = tabColorMap[tab.color] || tabColorMap.blue;
                             const isTabActive = activeTab === tab.value;
                             return (
-                              <TabsTrigger
-                                key={tab.value}
-                                value={tab.value}
-                                className={`
-                                  inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[11px] font-medium
-                                  transition-all duration-150 cursor-pointer
-                                  ${isTabActive
-                                    ? `${colors.activeBg} ${colors.activeBorder} ${colors.activeText} shadow-sm font-semibold`
-                                    : `${colors.bg} ${colors.border} ${colors.text} hover:border-slate-300 hover:bg-slate-50`
-                                  }
-                                `}
-                                data-testid={`tab-${tab.value}`}
-                              >
-                                <span className={`shrink-0 w-4.5 h-4.5 rounded flex items-center justify-center transition-colors ${isTabActive ? colors.activeIconBg : colors.iconBg}`}>
-                                  {tab.icon}
-                                </span>
-                                {tab.label}
-                              </TabsTrigger>
+                              <HelpTip key={tab.value} text={tab.tip || tab.label} side="bottom">
+                                <TabsTrigger
+                                  value={tab.value}
+                                  className={`
+                                    inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[11px] font-medium
+                                    transition-all duration-150 cursor-pointer
+                                    ${isTabActive
+                                      ? `${colors.activeBg} ${colors.activeBorder} ${colors.activeText} shadow-sm font-semibold`
+                                      : `${colors.bg} ${colors.border} ${colors.text} hover:border-slate-300 hover:bg-slate-50`
+                                    }
+                                  `}
+                                  data-testid={`tab-${tab.value}`}
+                                >
+                                  <span className={`shrink-0 w-4.5 h-4.5 rounded flex items-center justify-center transition-colors ${isTabActive ? colors.activeIconBg : colors.iconBg}`}>
+                                    {tab.icon}
+                                  </span>
+                                  {tab.label}
+                                </TabsTrigger>
+                              </HelpTip>
                             );
                           })}
                         </div>
@@ -849,7 +853,7 @@ function GeneralEnquiriesContent() {
     <div className="flex flex-col h-full overflow-hidden relative">
       <div className="shrink-0 bg-white border-b border-slate-200 px-3 sm:px-6 py-2 sm:py-3">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-xs sm:text-sm font-semibold text-slate-700" data-testid="text-page-title">General Enquiries</h2>
+          <h2 className="text-xs sm:text-sm font-semibold text-slate-700 flex items-center gap-1" data-testid="text-page-title">General Enquiries <HelpTip text="Look up consumer account details, balances, transaction history, and billing information." side="bottom" /></h2>
           <div className="flex items-center gap-1.5 sm:gap-2">
             {hasSearched && (
               <Badge variant="outline" className="text-[9px] sm:text-[10px] h-5" data-testid="text-result-count">
@@ -871,6 +875,10 @@ function GeneralEnquiriesContent() {
         </div>
 
         <div ref={dropdownContainerRef} className="relative">
+          <div className="flex items-center gap-1 mb-0.5">
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Quick Search</span>
+            <HelpTip text="Enter an account number, property reference, or customer name for a quick lookup." side="right" />
+          </div>
           <div className="relative flex items-stretch" role="search" aria-label="Account search">
             <Search className="absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" aria-hidden="true" />
 
@@ -923,15 +931,17 @@ function GeneralEnquiriesContent() {
                 </button>
               )}
 
-              <button
-                className="hidden sm:flex p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-                title="Scan ID / Barcode"
-                data-testid="button-scan-barcode"
-                aria-label="Scan ID or barcode"
-                tabIndex={0}
-              >
-                <ScanBarcode className="w-4 h-4" />
-              </button>
+              <HelpTip text="Scan a barcode or ID document to auto-fill the search field." side="bottom">
+                <button
+                  className="hidden sm:flex p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                  title="Scan ID / Barcode"
+                  data-testid="button-scan-barcode"
+                  aria-label="Scan ID or barcode"
+                  tabIndex={0}
+                >
+                  <ScanBarcode className="w-4 h-4" />
+                </button>
+              </HelpTip>
 
               <button
                 onClick={handleFullSearch}
@@ -977,6 +987,7 @@ function GeneralEnquiriesContent() {
               <div className="flex items-center gap-1.5">
                 <Filter className="w-3.5 h-3.5 text-slate-400" />
                 <span className="text-[11px] font-semibold text-slate-600">Field Search</span>
+                <HelpTip text="Use additional filters like property type, area, or billing status for more precise results." side="right" />
                 {activeFilterCount > 0 && (
                   <span className="inline-flex items-center justify-center w-4.5 h-4.5 rounded-full bg-blue-600 text-white text-[9px] font-bold px-1">{activeFilterCount}</span>
                 )}
@@ -986,6 +997,7 @@ function GeneralEnquiriesContent() {
             <div className="hidden sm:flex items-center gap-1.5 px-2 pt-2 pb-1">
               <Filter className="w-3 h-3 text-slate-400" />
               <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Billing Enquiry Search</span>
+              <HelpTip text="Use additional filters like property type, area, or billing status for more precise results." side="right" />
               {activeFilterCount > 0 && (
                 <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold">{activeFilterCount}</span>
               )}
@@ -993,14 +1005,16 @@ function GeneralEnquiriesContent() {
                 <button onClick={() => setCriteria({})} className="text-[10px] text-blue-600 hover:text-blue-800 underline underline-offset-2" data-testid="button-clear-field-filters">Clear</button>
               )}
               <div className="ml-auto flex items-center gap-2">
-                <button
-                  onClick={() => setShowFiltersPanel(prev => !prev)}
-                  className="text-[10px] text-slate-500 hover:text-slate-700 flex items-center gap-1"
-                  data-testid="button-toggle-advanced"
-                >
-                  <SlidersHorizontal className="w-3 h-3" />
-                  More Fields
-                </button>
+                <HelpTip text="Use additional filters like property type, area, or billing status for more precise results." side="left">
+                  <button
+                    onClick={() => setShowFiltersPanel(prev => !prev)}
+                    className="text-[10px] text-slate-500 hover:text-slate-700 flex items-center gap-1"
+                    data-testid="button-toggle-advanced"
+                  >
+                    <SlidersHorizontal className="w-3 h-3" />
+                    More Fields
+                  </button>
+                </HelpTip>
               </div>
             </div>
             <div className={`${mobileFormCollapsed ? 'hidden' : 'block'} sm:block px-2 pb-2`}>
@@ -1068,6 +1082,7 @@ function GeneralEnquiriesContent() {
           </div>
 
           <div className={`flex items-center gap-1.5 mt-2 overflow-x-auto scrollbar-hide pb-0.5 sm:flex-wrap sm:overflow-visible ${mobileFormCollapsed && hasSearched ? 'hidden sm:flex' : ''}`} role="group" aria-label="Quick filters">
+            <HelpTip text="Active search filters. Click to remove a filter." side="bottom" className="shrink-0" />
             {QUICK_FILTER_CHIPS.map(chip => (
               <button
                 key={chip.key}
@@ -1117,6 +1132,7 @@ function GeneralEnquiriesContent() {
                   <div className="px-4 py-1.5 flex items-center gap-2 border-b border-slate-100">
                     <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
                     <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Pinned Accounts</span>
+                    <HelpTip text="Quick access to frequently viewed accounts. Pin accounts for easy reference." side="right" />
                   </div>
                   {pinnedAccounts.map((acct, i) => {
                     const acctNum = acct.accountNumber || acct.accountID || acct.account_ID;
@@ -1233,6 +1249,7 @@ function GeneralEnquiriesContent() {
                 <div className="flex items-center gap-2 mb-2">
                   <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
                   <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Pinned Accounts</span>
+                  <HelpTip text="Quick access to frequently viewed accounts. Pin accounts for easy reference." side="right" />
                 </div>
                 <div className="grid gap-1.5">
                   {pinnedAccounts.map((acct, i) => {

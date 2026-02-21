@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Download, Upload, AlertCircle, CheckCircle2, Search, RefreshCw, ChevronLeft, Edit2, Save, X, Loader2, FileCheck, Send, ArrowRight, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { HelpTip } from '@/components/ui/help-tip';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
@@ -457,7 +458,7 @@ export default function ThirdPartyPaymentProcessing() {
         <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
 
           <div className="flex justify-between items-center">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900" data-testid="text-page-title">Third Party Payment Processing</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2" data-testid="text-page-title">Third Party Payment Processing <HelpTip text="Import and process bulk payment files from banks and external payment providers." /></h1>
             {step !== 'import' && (
               <Button variant="outline" onClick={handleNewImport} className="gap-2" data-testid="button-new-import">
                 <ChevronLeft className="h-4 w-4" /> New Import
@@ -527,8 +528,8 @@ export default function ThirdPartyPaymentProcessing() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="thirdParty" className="after:content-['*'] after:ml-0.5 after:text-red-500">
-                      Select Third Party
+                    <Label htmlFor="thirdParty" className="after:content-['*'] after:ml-0.5 after:text-red-500 flex items-center gap-1">
+                      Select Third Party <HelpTip text="Select the payment method used for these transactions (e.g., EFT, debit order)." />
                     </Label>
                     {loadingTypes ? (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
@@ -551,7 +552,7 @@ export default function ThirdPartyPaymentProcessing() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="fileUpload">Select File</Label>
+                    <Label htmlFor="fileUpload" className="flex items-center gap-1">Select File <HelpTip text="Upload a CSV or payment file from the bank containing bulk payment transactions." /></Label>
                     <Input
                       id="fileUpload"
                       type="file"
@@ -702,6 +703,7 @@ export default function ThirdPartyPaymentProcessing() {
                         {validating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileCheck className="h-3.5 w-3.5" />}
                         Validate
                       </Button>
+                      <HelpTip text="Check all imported transactions against the system before processing." />
                       <Button
                         size="sm"
                         onClick={handleCommit}
@@ -712,6 +714,7 @@ export default function ThirdPartyPaymentProcessing() {
                         {committing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                         Commit & Allocate
                       </Button>
+                      <HelpTip text="Post all validated transactions to the consumer accounts. This action cannot be undone." />
                     </div>
                   </div>
                 </CardHeader>
@@ -739,19 +742,19 @@ export default function ThirdPartyPaymentProcessing() {
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-slate-50">
-                            <TableHead className="w-[50px]">#</TableHead>
-                            <TableHead>Account Number</TableHead>
-                            <TableHead>Owner / Name</TableHead>
-                            <TableHead className="text-right">Amount</TableHead>
-                            <TableHead>Reference</TableHead>
-                            <TableHead>Comment</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="text-center w-[120px]">Actions</TableHead>
+                            <TableHead className="w-[50px]"><span className="flex items-center gap-1"># <HelpTip text="Row number of the imported transaction." /></span></TableHead>
+                            <TableHead><span className="flex items-center gap-1">Account Number <HelpTip text="The consumer account number this payment will be allocated to." /></span></TableHead>
+                            <TableHead><span className="flex items-center gap-1">Owner / Name <HelpTip text="The registered owner or account holder name." /></span></TableHead>
+                            <TableHead className="text-right"><span className="flex items-center justify-end gap-1">Amount <HelpTip text="Payment amount in Rands to be allocated." /></span></TableHead>
+                            <TableHead><span className="flex items-center gap-1">Reference <HelpTip text="The payment reference from the import file." /></span></TableHead>
+                            <TableHead><span className="flex items-center gap-1">Comment <HelpTip text="System or user comments, including account migration notes." /></span></TableHead>
+                            <TableHead><span className="flex items-center gap-1">Status <HelpTip text="Transaction status: Pending (awaiting validation), Account Updated (account number was migrated), Valid (ready to commit), or Error (needs correction)." /></span></TableHead>
+                            <TableHead className="text-center w-[120px]"><span className="flex items-center justify-center gap-1">Actions <HelpTip text="Edit the account number or search for the correct account." /></span></TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {transactions.map((txn) => (
-                            <TableRow key={txn.index} className={`${!txn.isValid ? 'bg-red-50/50' : ''}`}>
+                            <TableRow key={txn.index} className={`${!txn.isValid ? 'bg-red-50/50' : ''}`} title={!txn.isValid ? 'Transactions with errors need to be corrected or removed before committing.' : ''}>
                               <TableCell className="text-xs text-muted-foreground">{txn.index + 1}</TableCell>
                               <TableCell>
                                 {editingIdx === txn.index ? (
@@ -782,9 +785,12 @@ export default function ThirdPartyPaymentProcessing() {
                               <TableCell>
                                 <div className="space-y-0.5">
                                   {txn.isDuplicate && (
-                                    <Badge variant="destructive" className="text-[10px]">
-                                      Duplicate
-                                    </Badge>
+                                    <span className="flex items-center gap-0.5">
+                                      <Badge variant="destructive" className="text-[10px]">
+                                        Duplicate
+                                      </Badge>
+                                      <HelpTip text="This transaction appears to be a duplicate of another entry in the file." />
+                                    </span>
                                   )}
                                   <Badge
                                     variant={txn.isValid ? "default" : "destructive"}
