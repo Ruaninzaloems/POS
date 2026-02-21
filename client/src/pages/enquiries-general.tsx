@@ -773,8 +773,8 @@ function GeneralEnquiriesContent() {
                           </button>
                           {mobileTabMenuOpen && (
                             <>
-                              <div className="fixed inset-0 z-30" onClick={() => setMobileTabMenuOpen(false)} />
-                              <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-2xl border border-slate-200 z-40 max-h-[70vh] overflow-y-auto overscroll-contain p-2">
+                              <div className="fixed inset-0 z-30 bg-black/20" onClick={() => setMobileTabMenuOpen(false)} />
+                              <div className="fixed left-2 right-2 z-40 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-y-auto overscroll-contain p-2" style={{ top: '140px', maxHeight: 'calc(100vh - 160px)' }}>
                                 {tabGroups.map((group) => (
                                   <div key={group.heading} className="mb-1.5">
                                     <div className="px-1 py-0.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest">{group.heading}</div>
