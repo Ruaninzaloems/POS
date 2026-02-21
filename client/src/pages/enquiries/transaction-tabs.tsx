@@ -2044,6 +2044,17 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
           const latestReading = sortedReadings[0];
           const latestStatus = latestReading ? (latestReading.readingStatus || '').toLowerCase() : '';
 
+          const getReadingMonthLabel = (r: any) => {
+            const dateStr = r?.reading2Date || r?.readingDate;
+            if (dateStr) {
+              const d = new Date(dateStr);
+              if (!isNaN(d.getTime())) {
+                return `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+              }
+            }
+            return r?.billingmonth || 'unknown';
+          };
+
           if (!latestReading || latestStatus === 'billed' || latestStatus === '') {
             items.push({
               category: 'Metered Services',
@@ -2053,7 +2064,7 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
               vatAmount: 0,
               total: 0,
               detail: latestReading
-                ? `Latest reading (${latestReading.billingmonth || 'unknown'}) already billed — awaiting new reading`
+                ? `Latest reading (${getReadingMonthLabel(latestReading)}) already billed — awaiting new reading`
                 : 'No reading history — awaiting first meter reading',
             });
             continue;
@@ -2076,7 +2087,7 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
               amount: 0,
               vatAmount: 0,
               total: 0,
-              detail: `Latest reading (${latestReading?.billingmonth || 'unknown'}) already billed — awaiting new reading`,
+              detail: `Latest reading (${getReadingMonthLabel(latestReading)}) already billed — awaiting new reading`,
             });
             continue;
           }
@@ -2168,27 +2179,33 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
       if (rates && typeof rates === 'object' && !rates._error) {
         const ratesObj = Array.isArray(rates) ? rates[0] : (rates.data ? (Array.isArray(rates.data) ? rates.data[0] : rates.data) : rates);
         if (ratesObj) {
-          let installment = parseFloat(ratesObj.installment ?? ratesObj.installmentAmount ?? ratesObj.instalment ?? ratesObj.monthlyAmount ?? 0) || 0;
-          if (installment <= 0) {
-            const annual = parseFloat(ratesObj.annualPropertyRates ?? ratesObj.annualRates ?? ratesObj.annualAmount ?? 0) || 0;
-            if (annual > 0) {
-              const remaining = parseInt(ratesObj.remainingInstallments ?? 12) || 12;
-              installment = annual / Math.max(remaining, 1);
+          const annual = parseFloat(ratesObj.annualPropertyRates ?? ratesObj.annualRates ?? ratesObj.annualAmount ?? 0) || 0;
+          const freq = parseInt(ratesObj.frequency ?? 12) || 12;
+          const grossInstallment = parseFloat(ratesObj.installment ?? ratesObj.installmentAmount ?? ratesObj.instalment ?? 0) || 0;
+          let netAmount = 0;
+          let rebateTotal = 0;
+
+          if (annual > 0) {
+            netAmount = annual / Math.max(freq, 1);
+            if (grossInstallment > netAmount) {
+              rebateTotal = grossInstallment - netAmount;
             }
+          } else if (grossInstallment > 0) {
+            const explicitRebate = parseFloat(ratesObj.rebateAmount ?? ratesObj.rebate ?? 0) || 0;
+            netAmount = Math.max(0, grossInstallment - explicitRebate);
+            rebateTotal = explicitRebate;
           }
-          const rebate = parseFloat(ratesObj.rebateAmount ?? ratesObj.rebate ?? 0) || 0;
+
           const desc = ratesObj.rateDescription || ratesObj.description || ratesObj.tariffDescription || ratesObj.serviceDesc || 'Property Rates';
           const remaining = ratesObj.remainingInstallments;
           const remainingAmt = parseFloat(ratesObj.remaingAmount ?? ratesObj.remainingAmount ?? 0) || 0;
 
-          if (installment > 0) {
-            const netAmount = Math.max(0, installment - rebate);
-            const vat = 0;
+          if (netAmount > 0) {
             const rateKey = `rates-${desc.toLowerCase()}`;
             processedServiceKeys.add(rateKey);
             processedServiceKeys.add('rates-property rates');
             let detailParts: string[] = [];
-            if (rebate > 0) detailParts.push(`Levy R${fmt(installment)} less rebate R${fmt(rebate)}`);
+            if (rebateTotal > 0) detailParts.push(`Levy R${fmt(grossInstallment || netAmount + rebateTotal)} less rebate R${fmt(rebateTotal)}`);
             else detailParts.push(`Monthly installment`);
             if (remaining) detailParts.push(`${remaining} installments remaining`);
             if (remainingAmt > 0) detailParts.push(`R${fmt(remainingAmt)} outstanding`);
@@ -2197,10 +2214,10 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
               serviceDesc: desc,
               icon: <Home className="w-3.5 h-3.5 text-orange-500" />,
               amount: netAmount,
-              vatAmount: vat,
-              total: netAmount + vat,
+              vatAmount: 0,
+              total: netAmount,
               detail: detailParts.join(' · '),
-              rebateAmount: rebate > 0 ? rebate : undefined,
+              rebateAmount: rebateTotal > 0 ? rebateTotal : undefined,
             });
           }
         }
