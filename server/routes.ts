@@ -1,8 +1,25 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { platinumGet, platinumPost, platinumDelete, getPlatinumUserInfo, getPlatinumToken, getPlatinumApiUrl, getPlatinumAuthMode, loginWithCredentials, logoutUser, isAuthenticated } from "./platinum-auth";
+import { platinumGet, platinumPost, platinumPut, platinumDelete, loginWithCredentials, logoutSession, isSessionAuthenticated, refreshSessionToken, getSessionPosCashierId, getPlatinumApiUrl, getPlatinumDbName, createEmptySession, type UserSession } from "./platinum-auth";
 import { execSync } from "child_process";
 import { writeFileSync, unlinkSync, existsSync } from "fs";
+import type { Request } from "express";
+
+function getSession(req: Request): UserSession {
+  if (!req.session.platinumAuth) {
+    req.session.platinumAuth = createEmptySession();
+  }
+  return req.session.platinumAuth;
+}
+
+function requireAuth(req: Request, res: any): UserSession | null {
+  const session = getSession(req);
+  if (!isSessionAuthenticated(session)) {
+    res.status(401).json({ message: "Not authenticated" });
+    return null;
+  }
+  return session;
+}
 
 const EXTERNAL_API_BASE = "https://george-uat-ems-billing-api.azurewebsites.net";
 
@@ -133,7 +150,8 @@ export async function registerRoutes(
       }
       const result = await loginWithCredentials(username, password, dbName);
       if (result.success) {
-        res.json({ success: true, user: result.userData });
+        req.session.platinumAuth = result.session!;
+        res.json({ success: true, user: result.session!.userData });
       } else {
         res.status(401).json({ success: false, error: result.error });
       }
@@ -142,16 +160,18 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/auth/logout", async (_req, res) => {
-    logoutUser();
+  app.post("/api/auth/logout", async (req, res) => {
+    const session = getSession(req);
+    logoutSession(session);
+    req.session.destroy(() => {});
     res.json({ success: true });
   });
 
-  app.get("/api/auth/status", async (_req, res) => {
-    const authenticated = isAuthenticated();
+  app.get("/api/auth/status", async (req, res) => {
+    const session = getSession(req);
+    const authenticated = isSessionAuthenticated(session);
     if (authenticated) {
-      const userData = await getPlatinumUserInfo();
-      res.json({ authenticated: true, user: userData });
+      res.json({ authenticated: true, user: session.userData });
     } else {
       res.json({ authenticated: false });
     }
@@ -163,7 +183,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/auth/user-info", async (req, res) => {
     try {
-      const userData = await getPlatinumUserInfo();
+      const session = getSession(req);
+      const userData = session.userData;
       if (!userData) {
         return res.status(503).json({ message: "Platinum user data not available" });
       }
@@ -177,7 +198,7 @@ export async function registerRoutes(
         superUser: userData.superUser,
         cashFloat: userData.cashFloat,
         finYear: userData.finYear,
-        authMode: getPlatinumAuthMode(),
+        authMode: session.authMode,
       });
     } catch (e: any) {
       res.status(502).json({ message: "Failed to get Platinum user info", detail: e.message });
@@ -186,17 +207,19 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth/ensure-cashier", async (req, res) => {
     try {
-      const userData = await getPlatinumUserInfo();
+      const session = requireAuth(req, res);
+      if (!session) return;
+      const userData = session.userData;
       if (!userData) {
         return res.status(503).json({ success: false, message: "Platinum user data not available" });
       }
 
       const userId = userData.user_ID;
 
-      const activeCashierId = await platinumGet("/api/billing/auth-day-end-reconcile/active-cashierid-by-userid", { userid: String(userId) });
+      const activeCashierId = await platinumGet(session, "/api/billing/auth-day-end-reconcile/active-cashierid-by-userid", { userid: String(userId) });
       
       if (activeCashierId && activeCashierId !== 0 && !activeCashierId._error) {
-        const details = await platinumGet(`/api/ReceiptPrepaid/cashier-detailsById`, { cashierId: String(activeCashierId) });
+        const details = await platinumGet(session, `/api/ReceiptPrepaid/cashier-detailsById`, { cashierId: String(activeCashierId) });
         const cashOffice = details?.const_CashOffice || null;
         const hasPOSCashierRecord = details?.user_Id != null && details?.id !== 0;
         
@@ -225,6 +248,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/auth/active-cashier-by-userid", async (req, res) => {
     try {
+      const session = requireAuth(req, res);
+      if (!session) return;
       const userId = req.query.userid as string;
       const finYear = (req.query.finYear as string) || '2025/2026';
       if (!userId) {
@@ -232,7 +257,7 @@ export async function registerRoutes(
       }
 
       console.log(`[active-cashier] Using validate-cashier API as single source of truth — userId=${userId}, finYear=${finYear}`);
-      const vcData = await platinumGet("/api/ReceiptPrepaid/validate-cashier", { userId, finYear });
+      const vcData = await platinumGet(session, "/api/ReceiptPrepaid/validate-cashier", { userId, finYear });
 
       if (!vcData || vcData._error) {
         console.error(`[active-cashier] validate-cashier API failed or returned error:`, vcData?._error || 'no data');
@@ -285,7 +310,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/receipt-prepaid/validate-cashier", async (req, res) => {
     try {
-      const data = await platinumGet("/api/ReceiptPrepaid/validate-cashier", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/ReceiptPrepaid/validate-cashier", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -296,6 +322,7 @@ export async function registerRoutes(
   // Uses billing-payment/payment-options to verify cashier has valid setup with receipt range allocated
   app.get("/api/platinum/receipt-prepaid/validate-receipt-range", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const userId = req.query.userId as string;
       const cashierId = req.query.cashierId as string;
       const finYear = req.query.finYear as string;
@@ -311,7 +338,7 @@ export async function registerRoutes(
 
       console.log(`[validate-receipt-range] Using billing-payment/payment-options — userId=${userId}, cashierId=${cashierId}, officeId=${requestedOfficeId}`);
 
-      const paymentOptionsResult = await platinumGet("/api/billing-payment/payment-options", {
+      const paymentOptionsResult = await platinumGet(session, "/api/billing-payment/payment-options", {
         userId,
         cashofficeId: requestedOfficeId,
         cashierId
@@ -375,7 +402,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/receipt-prepaid/cons-accounts", async (req, res) => {
     try {
-      const data = await platinumGet("/api/ReceiptPrepaid/cons-accounts", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/ReceiptPrepaid/cons-accounts", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -384,7 +412,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/receipt-prepaid/cons-account-details", async (req, res) => {
     try {
-      const data = await platinumGet("/api/ReceiptPrepaid/cons-account-details", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/ReceiptPrepaid/cons-account-details", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -393,7 +422,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/receipt-prepaid/prepaid-account-details", async (req, res) => {
     try {
-      const data = await platinumGet("/api/ReceiptPrepaid/prepaid-account-details", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/ReceiptPrepaid/prepaid-account-details", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -402,7 +432,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/receipt-prepaid/cashier-details-by-id", async (req, res) => {
     try {
-      const data = await platinumGet("/api/ReceiptPrepaid/cashier-detailsById", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/ReceiptPrepaid/cashier-detailsById", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -411,7 +442,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/receipt-prepaid/active-cashier-details", async (req, res) => {
     try {
-      const data = await platinumGet("/api/ReceiptPrepaid/active-cashier-details", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/ReceiptPrepaid/active-cashier-details", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -420,7 +452,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/receipt-prepaid/active-cash-office-details", async (req, res) => {
     try {
-      const data = await platinumGet("/api/ReceiptPrepaid/active-cashOffice-details", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/ReceiptPrepaid/active-cashOffice-details", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -429,7 +462,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/receipt-prepaid/pos-payment-type", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing-payment-clearance/pos-payment-type", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-payment-clearance/pos-payment-type", req.query as Record<string, string>);
       if (data && data._error) {
         console.error(`[pos-payment-type] Fallback billing-payment-clearance also failed: status=${data.status}, detail=${JSON.stringify(data.detail)}`);
       }
@@ -442,7 +476,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/receipt-prepaid/is-billing", async (req, res) => {
     try {
-      const data = await platinumGet("/api/ReceiptPrepaid/is-billing");
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/ReceiptPrepaid/is-billing");
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -451,7 +486,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/receipt-prepaid/search-property-rates-payment", async (req, res) => {
     try {
-      const data = await platinumGet("/api/ReceiptPrepaid/search-property-rates-payment", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/ReceiptPrepaid/search-property-rates-payment", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -460,7 +496,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/receipt-prepaid/validate-cashier-day-end-recon", async (req, res) => {
     try {
-      const data = await platinumGet("/api/ReceiptPrepaid/ValidateCashierDayEndRecon", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/ReceiptPrepaid/ValidateCashierDayEndRecon", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -469,7 +506,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/receipt-prepaid/get-billing-runs", async (req, res) => {
     try {
-      const data = await platinumGet("/api/ReceiptPrepaid/GetBillingRuns");
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/ReceiptPrepaid/GetBillingRuns");
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -478,7 +516,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/receipt-prepaid/service-type-wise-prepaid-list", async (req, res) => {
     try {
-      const data = await platinumGet("/api/ReceiptPrepaid/ServiceTypeWisePrepaidList", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/ReceiptPrepaid/ServiceTypeWisePrepaidList", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -487,7 +526,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/active-fin-year", async (req, res) => {
     try {
-      const data = await platinumGet("/api/UserPermission/ActiveFinYear", {});
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/UserPermission/ActiveFinYear", {});
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -496,10 +536,11 @@ export async function registerRoutes(
 
   app.get("/api/platinum/receipt-prepaid/cash-offices", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       let query = req.query as Record<string, string>;
 
       if (!query.finYear) {
-        const finYearData = await platinumGet("/api/UserPermission/ActiveFinYear", {});
+        const finYearData = await platinumGet(session, "/api/UserPermission/ActiveFinYear", {});
         if (finYearData && !finYearData._error) {
           const finYear = typeof finYearData === 'string' ? finYearData.replace(/"/g, '') : String(finYearData);
           query = { ...query, finYear };
@@ -507,7 +548,7 @@ export async function registerRoutes(
       }
 
       console.log(`[cash-offices] Calling Platinum cash-offices with finYear=${query.finYear}`);
-      const primaryData = await platinumGet("/api/ReceiptPrepaid/cash-offices", query);
+      const primaryData = await platinumGet(session, "/api/ReceiptPrepaid/cash-offices", query);
 
       const officeMap = new Map<number, any>();
       const addOffice = (office: any) => {
@@ -536,7 +577,7 @@ export async function registerRoutes(
         const probeResults = await Promise.all(
           probeIds.map(async (id) => {
             try {
-              const office = await platinumGet("/api/ReceiptPrepaid/active-cashOffice-details", { cashierId: String(id) });
+              const office = await platinumGet(session, "/api/ReceiptPrepaid/active-cashOffice-details", { cashierId: String(id) });
               if (office && !office._error && office.cashOffice_ID) return office;
             } catch {}
             return null;
@@ -556,7 +597,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/receipt-prepaid/cheque-amend-list", async (req, res) => {
     try {
-      const data = await platinumGet("/api/ReceiptPrepaid/cheque-amendList", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/ReceiptPrepaid/cheque-amendList", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -565,7 +607,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/receipt-prepaid/utilipay-breakdown-request", async (req, res) => {
     try {
-      const data = await platinumPost("/api/ReceiptPrepaid/UtiliPayBreakdownRequest", req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/ReceiptPrepaid/UtiliPayBreakdownRequest", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -574,7 +617,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/receipt-prepaid/utilipay-token-request", async (req, res) => {
     try {
-      const data = await platinumPost("/api/ReceiptPrepaid/UtiliPayTokenRequest", req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/ReceiptPrepaid/UtiliPayTokenRequest", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -583,7 +627,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/receipt-prepaid/submit-prepaid-payment", async (req, res) => {
     try {
-      const data = await platinumPost("/api/ReceiptPrepaid/SubmitPrepaidPayment", req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/ReceiptPrepaid/SubmitPrepaidPayment", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -592,6 +637,7 @@ export async function registerRoutes(
 
   app.post("/api/platinum/receipt-prepaid/submit-cashier-setup", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const body = { ...req.body };
       body.isActive = true;
       body.isVirtual = null;
@@ -601,7 +647,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "user_Id is required" });
       }
 
-      const userDetail = await platinumGet(`/api/User/${userId}`);
+      const userDetail = await platinumGet(session, `/api/User/${userId}`);
       if (!userDetail || userDetail._error || !userDetail.enabled) {
         return res.status(400).json({
           message: "User not valid",
@@ -611,7 +657,7 @@ export async function registerRoutes(
 
       console.log(`[submit-cashier-setup] Submitting for user ${userDetail.firstName} ${userDetail.lastName} (ID: ${userId}), office: ${body.officeId}`);
       console.log(`[submit-cashier-setup] Payload:`, JSON.stringify(body));
-      const data = await platinumPost("/api/ReceiptPrepaid/submit-cashier-setup", body);
+      const data = await platinumPost(session, "/api/ReceiptPrepaid/submit-cashier-setup", body);
       console.log(`[submit-cashier-setup] Response:`, JSON.stringify(data));
 
       if (data && data._error) {
@@ -629,7 +675,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/user/:id", async (req, res) => {
     try {
-      const data = await platinumGet(`/api/User/${req.params.id}`);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, `/api/User/${req.params.id}`);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -638,8 +685,8 @@ export async function registerRoutes(
 
   app.put("/api/platinum/user/:id", async (req, res) => {
     try {
-      const { platinumPut } = await import("./platinum-auth");
-      const data = await platinumPut(`/api/User/${req.params.id}`, req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPut(session, `/api/User/${req.params.id}`, req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -650,6 +697,7 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment/submit-consumer-payment/:userId", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const userId = req.params.userId;
       const body = req.body;
       const acct = body?.account || {};
@@ -664,7 +712,7 @@ export async function registerRoutes(
       console.log(`[submit-consumer-payment] account: account_ID=${acct.account_ID}, accountNumber=${acct.accountNumber}, name=${acct.name}, outStandingAmt=${acct.outStandingAmt}, billId=${acct.billId}, cutOffID=${acct.cutOffID}, cutOffAmount=${acct.cutOffAmount}, debtAmount=${acct.debtAmount}, debtArrangementId=${acct.debtArrangementId}, sundryDebtorsId=${acct.sundryDebtorsId}, billingCycleId=${acct.billingCycleId}`);
       console.log(`[submit-consumer-payment] requestModel: finYear=${rm.finYear}, receiptDate=${rm.receiptDate}, totalAmount=${rm.totalAmount}, tenderAmount=${rm.tenderAmount}, changeAmount=${rm.changeAmount}, paymentType=${rm.paymentType}, paymentOption=${rm.paymentOption}, outStandingAmount=${rm.outStandingAmount}, cutOffID=${rm.cutOffID}, cutOffAmount=${rm.cutOffAmount}, debtAmount=${rm.debtAmount}, debtArrangementId=${rm.debtArrangementId}, sundryDebtorsId=${rm.sundryDebtorsId}, cardNumber=${rm.cardNumber ? '***' : '(empty)'}, apiTransactionID=${rm.apiTransactionID}, isReconciled=${rm.isReconciled}, isCancelled=${rm.isCancelled}`);
       console.log(`[submit-consumer-payment] full payload:`, JSON.stringify(body, null, 2));
-      const data = await platinumPost(`/api/billing-payment/submit-consumer-payment/${userId}`, body);
+      const data = await platinumPost(session, `/api/billing-payment/submit-consumer-payment/${userId}`, body);
       console.log(`[submit-consumer-payment] response:`, JSON.stringify(data));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -675,9 +723,10 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment/submit-multiple-payment/:userId", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const userId = req.params.userId;
       console.log(`[submit-multiple-payment] userId=${userId}, payload:`, JSON.stringify(req.body, null, 2).substring(0, 2000));
-      const data = await platinumPost(`/api/billing-payment/submit-multiple-payment/${userId}`, req.body);
+      const data = await platinumPost(session, `/api/billing-payment/submit-multiple-payment/${userId}`, req.body);
       console.log(`[submit-multiple-payment] response:`, JSON.stringify(data).substring(0, 2000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -688,11 +737,12 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment/save-multiple-account-payment", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const accounts = Array.isArray(req.body) ? req.body : [];
       for (const acct of accounts) {
         console.log(`[save-multiple-account-payment] account_ID=${acct.account_ID}, outStandingAmt=${acct.outStandingAmt}, name=${acct.name}`);
       }
-      const data = await platinumPost("/api/billing-payment/save-multiple-account-payment", req.body, req.query as Record<string, string>);
+      const data = await platinumPost(session, "/api/billing-payment/save-multiple-account-payment", req.body, req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -701,8 +751,9 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-payment/get-multiple-account-payment", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[get-multiple-account-payment] query:`, req.query);
-      const data = await platinumGet("/api/billing-payment/get-multiple-account-payment", req.query as Record<string, string>);
+      const data = await platinumGet(session, "/api/billing-payment/get-multiple-account-payment", req.query as Record<string, string>);
       console.log(`[get-multiple-account-payment] response:`, JSON.stringify(data));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -713,7 +764,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment/search-accounts", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing-payment/search-accounts", req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing-payment/search-accounts", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -722,12 +774,13 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment/print-receipt", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const receiptIds = req.body;
       if (!Array.isArray(receiptIds) || receiptIds.length === 0) {
         return res.status(400).json({ message: "Request body must be an array of receipt serial numbers" });
       }
 
-      const token = await getPlatinumToken();
+      const token = await refreshSessionToken(session);
       const apiUrl = getPlatinumApiUrl();
 
       const pdfRes = await fetch(`${apiUrl}/api/billing-payment/print-receipt`, {
@@ -765,12 +818,13 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-payment/receipt-allocations", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const receiptId = req.query.receiptId as string;
       if (!receiptId) {
         return res.status(400).json({ message: "receiptId is required" });
       }
 
-      const token = await getPlatinumToken();
+      const token = await refreshSessionToken(session);
       const apiUrl = getPlatinumApiUrl();
 
       const pdfRes = await fetch(`${apiUrl}/api/billing-payment/print-receipt`, {
@@ -813,8 +867,9 @@ export async function registerRoutes(
 
   app.get("/api/platinum/view-receipt/get-cashiers", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[view-receipt/get-cashiers] Calling cashier-list (POS cashiers only)`);
-      const data = await platinumGet("/api/billing/auth-day-end-reconcile/cashier-list");
+      const data = await platinumGet(session, "/api/billing/auth-day-end-reconcile/cashier-list");
 
       if (data && !data._error && Array.isArray(data) && data.length > 0) {
         const normalized = data.map((c: any) => ({
@@ -827,7 +882,7 @@ export async function registerRoutes(
       }
 
       console.warn(`[view-receipt/get-cashiers] cashier-list returned no data, falling back to ViewReceipt/get-cashiers`);
-      const fallbackData = await platinumGet("/api/ViewReceipt/get-cashiers");
+      const fallbackData = await platinumGet(session, "/api/ViewReceipt/get-cashiers");
       if (fallbackData && !fallbackData._error) {
         let cashiers: any[] = [];
         if (Array.isArray(fallbackData)) {
@@ -856,7 +911,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/view-receipt/search-account-numbers", async (req, res) => {
     try {
-      const data = await platinumGet("/api/ViewReceipt/search-account-numbers", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/ViewReceipt/search-account-numbers", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -865,7 +921,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/view-receipt/search-receipt-numbers", async (req, res) => {
     try {
-      const data = await platinumGet("/api/ViewReceipt/search-recept-numbers", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/ViewReceipt/search-recept-numbers", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -874,6 +931,7 @@ export async function registerRoutes(
 
   app.post("/api/platinum/view-receipt/get-receipt-list", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const body = req.body;
       const params: Record<string, string> = {};
       if (body.fromDate || body.FromDate) params.FromDate = body.fromDate || body.FromDate;
@@ -889,7 +947,7 @@ export async function registerRoutes(
 
       console.log(`[get-receipt-list] Request params (GET):`, JSON.stringify(params));
 
-      const data = await platinumGet("/api/ViewReceipt/get-receipt-list", params, { timeoutMs: 90000 });
+      const data = await platinumGet(session, "/api/ViewReceipt/get-receipt-list", params, { timeoutMs: 90000 });
 
       console.log(`[get-receipt-list] Response type: ${typeof data}, isArray: ${Array.isArray(data)}, keys: ${data && typeof data === 'object' ? Object.keys(data).join(',') : 'N/A'}`);
       if (data && typeof data === 'object' && '_error' in data) {
@@ -921,7 +979,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment/print-miscellaneous-receipt", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing-payment/print-miscellaneous-receipt", req.body, req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing-payment/print-miscellaneous-receipt", req.body, req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -932,7 +991,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-payment-clearance/get-clearanceids", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing-payment-clearance/get-clearanceids", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-payment-clearance/get-clearanceids", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -941,7 +1001,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-payment-clearance/pos-payment-type", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing-payment-clearance/pos-payment-type");
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-payment-clearance/pos-payment-type");
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -952,6 +1013,7 @@ export async function registerRoutes(
   // GET /api/billing-payment/payment-options?userId={userId}&cashofficeId={cashofficeId}&cashierId={cashierId}
   app.get("/api/platinum/receipt-prepaid/cashier-payment-options", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const userId = req.query.userId as string;
       const cashofficeId = req.query.cashofficeId as string;
       const cashierId = req.query.cashierId as string;
@@ -963,7 +1025,7 @@ export async function registerRoutes(
 
       const effectiveCashierId = officeOnly === 'true' ? '0' : cashierId;
       console.log(`[cashier-payment-options] Calling Platinum billing-payment/payment-options — userId=${userId}, cashofficeId=${cashofficeId}, cashierId=${effectiveCashierId}, officeOnly=${officeOnly}`);
-      const data = await platinumGet("/api/billing-payment/payment-options", { userId, cashofficeId, cashierId: effectiveCashierId });
+      const data = await platinumGet(session, "/api/billing-payment/payment-options", { userId, cashofficeId, cashierId: effectiveCashierId });
 
       if (data && !data._error) {
         console.log(`[cashier-payment-options] RAW Platinum response:`, JSON.stringify(data).substring(0, 2000));
@@ -1028,6 +1090,7 @@ export async function registerRoutes(
   // GET /api/billing-payment/payment-types?userId={userId}&cashofficeId={cashofficeId}&cashierId={cashierId}
   app.get("/api/platinum/receipt-prepaid/cashier-payment-types", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const userId = req.query.userId as string;
       const cashofficeId = req.query.cashofficeId as string;
       const cashierId = req.query.cashierId as string;
@@ -1039,7 +1102,7 @@ export async function registerRoutes(
 
       const effectiveCashierId = officeOnly === 'true' ? '0' : cashierId;
       console.log(`[cashier-payment-types] Calling Platinum billing-payment/payment-types — userId=${userId}, cashofficeId=${cashofficeId}, cashierId=${effectiveCashierId}, officeOnly=${officeOnly}`);
-      const data = await platinumGet("/api/billing-payment/payment-types", { userId, cashofficeId, cashierId: effectiveCashierId });
+      const data = await platinumGet(session, "/api/billing-payment/payment-types", { userId, cashofficeId, cashierId: effectiveCashierId });
 
       if (data && !data._error) {
         console.log(`[cashier-payment-types] RAW Platinum response:`, JSON.stringify(data).substring(0, 1000));
@@ -1095,7 +1158,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-payment-clearance/get-banks", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing-payment-clearance/get-banks");
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-payment-clearance/get-banks");
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1104,7 +1168,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-payment-clearance/get-branches-by-bank", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing-payment-clearance/get-brances-by-bank", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-payment-clearance/get-brances-by-bank", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1113,8 +1178,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment-clearance/get-clearance-data", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[clearance-data] Request:`, JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing-payment-clearance/get-clearance-data", req.body);
+      const data = await platinumPost(session, "/api/billing-payment-clearance/get-clearance-data", req.body);
       console.log(`[clearance-data] Response:`, JSON.stringify(data).substring(0, 2000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1124,8 +1190,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment-clearance/get-accounts-for-clearance", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[clearance-accounts] Request:`, JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing-payment-clearance/get-accounts-for-clearance", req.body);
+      const data = await platinumPost(session, "/api/billing-payment-clearance/get-accounts-for-clearance", req.body);
       console.log(`[clearance-accounts] Response:`, JSON.stringify(data).substring(0, 2000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1135,9 +1202,10 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment-clearance/submit-payment", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[clearance-submit] Request payload:`, JSON.stringify(req.body));
 
-      const token = await getPlatinumToken();
+      const token = await refreshSessionToken(session);
       const apiUrl = getPlatinumApiUrl();
       const url = `${apiUrl}/api/billing-payment-clearance/submit-payment`;
 
@@ -1184,7 +1252,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-payment-miscellaneous/get-groups", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing-payment-miscellaneous/get-groups");
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-payment-miscellaneous/get-groups");
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1193,7 +1262,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-payment-miscellaneous/get-scoa-items", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing-payment-miscellaneous/get-scoa-items", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-payment-miscellaneous/get-scoa-items", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1202,7 +1272,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-payment-miscellaneous/get-vat-rate", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing-payment-miscellaneous/get-vat-rate");
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-payment-miscellaneous/get-vat-rate");
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1211,7 +1282,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment-miscellaneous/submit", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing-payment-miscellaneous/submit", req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing-payment-miscellaneous/submit", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1222,6 +1294,7 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-enquiry/enquiry-results", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const sgNumber = req.body.sgNumber ? String(req.body.sgNumber).trim() : '';
       const erfNumber = req.body.erfNumber ? String(req.body.erfNumber).trim() : '';
 
@@ -1247,7 +1320,7 @@ export async function registerRoutes(
           const matchedAccountIds = new Set<number>();
           for (const term of searchTerms) {
             try {
-              const acResults = await platinumGet("/api/BillingEnquiry/Autocomplete", { search: term, type: 'erfNumber' });
+              const acResults = await platinumGet(session, "/api/BillingEnquiry/Autocomplete", { search: term, type: 'erfNumber' });
               const acArr = Array.isArray(acResults) ? acResults : [];
               for (const item of acArr) {
                 if (item.displayItem === sgNumber && item.accountId) {
@@ -1264,7 +1337,7 @@ export async function registerRoutes(
             console.log(`[enquiry-results] Found ${matchedAccountIds.size} account(s) with exact SG match via autocomplete: ${Array.from(matchedAccountIds).join(', ')}`);
             const lookups = await Promise.allSettled(
               Array.from(matchedAccountIds).map(id =>
-                platinumPost("/api/BillingEnquiry/EnquiryResults", { accountID: String(id) })
+                platinumPost(session, "/api/BillingEnquiry/EnquiryResults", { accountID: String(id) })
               )
             );
             const allAccounts: any[] = [];
@@ -1289,7 +1362,7 @@ export async function registerRoutes(
         if (erfNumber) {
           console.log(`[enquiry-results] Trying Platinum API with erfNumber...`);
           try {
-            const erfResult = await platinumPost("/api/BillingEnquiry/EnquiryResults", { erfNumber });
+            const erfResult = await platinumPost(session, "/api/BillingEnquiry/EnquiryResults", { erfNumber });
             const erfAccounts = Array.isArray(erfResult) ? erfResult : (erfResult && !erfResult._error ? [erfResult] : []);
             if (erfAccounts.length > 0) {
               console.log(`[enquiry-results] ERF search found ${erfAccounts.length} matching accounts`);
@@ -1315,7 +1388,7 @@ export async function registerRoutes(
         return res.json([]);
       }
       console.log(`[enquiry-results] Search body:`, JSON.stringify(cleanBody));
-      const data = await platinumPost("/api/BillingEnquiry/EnquiryResults", cleanBody);
+      const data = await platinumPost(session, "/api/BillingEnquiry/EnquiryResults", cleanBody);
       const count = Array.isArray(data) ? data.length : (data?._error ? 'ERROR' : '1');
       console.log(`[enquiry-results] Results: ${count}`);
       handlePlatinumResult(res, data);
@@ -1329,7 +1402,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-enquiry/get-app-setting", async (req, res) => {
     try {
-      const data = await platinumGet("/api/BillingEnquiry/GetAppSetting", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingEnquiry/GetAppSetting", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1338,7 +1412,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-enquiry/get-config-setting", async (req, res) => {
     try {
-      const data = await platinumGet("/api/BillingEnquiry/GetAAAA_ConfigSetting", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingEnquiry/GetAAAA_ConfigSetting", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1347,6 +1422,7 @@ export async function registerRoutes(
 
   app.get("/api/platinum/receipt-info", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const settings: Record<string, string> = {};
 
       const appSettingKeys = [
@@ -1362,7 +1438,7 @@ export async function registerRoutes(
       const results = await Promise.allSettled(
         appSettingKeys.map(async (key) => {
           try {
-            const val = await platinumGet("/api/BillingEnquiry/GetAppSetting", { key });
+            const val = await platinumGet(session, "/api/BillingEnquiry/GetAppSetting", { key });
             return { key, value: val };
           } catch {
             return { key, value: null };
@@ -1388,7 +1464,7 @@ export async function registerRoutes(
         const configResults = await Promise.allSettled(
           configKeys.map(async (key) => {
             try {
-              const val = await platinumGet("/api/BillingEnquiry/GetAAAA_ConfigSetting", { strKeyName: key });
+              const val = await platinumGet(session, "/api/BillingEnquiry/GetAAAA_ConfigSetting", { strKeyName: key });
               return { key, value: val };
             } catch {
               return { key, value: null };
@@ -1417,7 +1493,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-enquiry/autocomplete", async (req, res) => {
     try {
-      const data = await platinumGet("/api/BillingEnquiry/Autocomplete", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingEnquiry/Autocomplete", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1428,7 +1505,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-enquiry/rebuild-full-account", async (req, res) => {
     try {
-      const data = await platinumGet("/api/BillingEnquiry/rebuildFullAccount", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingEnquiry/rebuildFullAccount", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1437,7 +1515,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-enquiry/get-rebuild-account-ss-check", async (req, res) => {
     try {
-      const data = await platinumGet("/api/BillingEnquiry/getRebuildAccountSSCheck", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingEnquiry/getRebuildAccountSSCheck", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1448,7 +1527,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-payment-day-end/get-cashier-list", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing-payment-day-end-reconcile/get-cashier-list");
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-payment-day-end-reconcile/get-cashier-list");
       console.log(`[dayend-cashier-list] Response:`, JSON.stringify(data).substring(0, 1000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1458,8 +1538,9 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-payment-day-end/get-cashier-details", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[dayend-cashier-details] Query:`, req.query);
-      const data = await platinumGet("/api/billing-payment-day-end-reconcile/get-cashier-details", req.query as Record<string, string>);
+      const data = await platinumGet(session, "/api/billing-payment-day-end-reconcile/get-cashier-details", req.query as Record<string, string>);
       console.log(`[dayend-cashier-details] Response:`, JSON.stringify(data).substring(0, 1000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1469,8 +1550,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment-day-end/get-cashier-receipt-cheque-list", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[dayend-cheque] Query: id=${req.query.id}, Body:`, JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing-payment-day-end-reconcile/get-cashier-receipt-cheque-list", req.body, req.query as Record<string, string>);
+      const data = await platinumPost(session, "/api/billing-payment-day-end-reconcile/get-cashier-receipt-cheque-list", req.body, req.query as Record<string, string>);
       console.log(`[dayend-cheque] Response:`, JSON.stringify(data).substring(0, 1000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1480,8 +1562,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment-day-end/get-cashier-receipt-card-list", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[dayend-card] Query: id=${req.query.id}, Body:`, JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing-payment-day-end-reconcile/get-cashier-receipt-card-list", req.body, req.query as Record<string, string>);
+      const data = await platinumPost(session, "/api/billing-payment-day-end-reconcile/get-cashier-receipt-card-list", req.body, req.query as Record<string, string>);
       console.log(`[dayend-card] Response:`, JSON.stringify(data).substring(0, 1000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1491,8 +1574,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment-day-end/get-cashier-receipt-drop-box-list", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[dayend-dropbox] Query: id=${req.query.id}, Body:`, JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing-payment-day-end-reconcile/get-cashier-receipt-drop-box-list", req.body, req.query as Record<string, string>);
+      const data = await platinumPost(session, "/api/billing-payment-day-end-reconcile/get-cashier-receipt-drop-box-list", req.body, req.query as Record<string, string>);
       console.log(`[dayend-dropbox] Response:`, JSON.stringify(data).substring(0, 1000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1502,8 +1586,9 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-payment-day-end/get-cashier-receipt-reconcile-list", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[dayend-reconcile-list] Query:`, req.query);
-      const data = await platinumGet("/api/billing-payment-day-end-reconcile/get-cashier-receipt-reconcile-list", req.query as Record<string, string>);
+      const data = await platinumGet(session, "/api/billing-payment-day-end-reconcile/get-cashier-receipt-reconcile-list", req.query as Record<string, string>);
       console.log(`[dayend-reconcile-list] Response:`, JSON.stringify(data).substring(0, 1000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1513,8 +1598,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-payment-day-end/save-reconcile-data", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[dayend-save] Query: userId=${req.query.userId}, Payload:`, JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing-payment-day-end-reconcile/save-Reconcile-data", req.body, req.query as Record<string, string>);
+      const data = await platinumPost(session, "/api/billing-payment-day-end-reconcile/save-Reconcile-data", req.body, req.query as Record<string, string>);
       console.log(`[dayend-save] Response:`, JSON.stringify(data).substring(0, 1000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1526,8 +1612,9 @@ export async function registerRoutes(
 
   app.get("/api/platinum/auth-day-end/cashier-list", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[auth-dayend-cashier-list] Fetching...`);
-      const data = await platinumGet("/api/billing/auth-day-end-reconcile/cashier-list");
+      const data = await platinumGet(session, "/api/billing/auth-day-end-reconcile/cashier-list");
       console.log(`[auth-dayend-cashier-list] Response:`, JSON.stringify(data).substring(0, 1000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1537,8 +1624,9 @@ export async function registerRoutes(
 
   app.get("/api/platinum/auth-day-end/cashier-reconcile-by-cashierid", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[auth-dayend-reconcile] Query:`, req.query);
-      const data = await platinumGet("/api/billing/auth-day-end-reconcile/cashier-reconcile-by-cashierid", req.query as Record<string, string>);
+      const data = await platinumGet(session, "/api/billing/auth-day-end-reconcile/cashier-reconcile-by-cashierid", req.query as Record<string, string>);
       console.log(`[auth-dayend-reconcile] Response:`, JSON.stringify(data).substring(0, 1000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1548,7 +1636,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/auth-day-end/pos-cashier", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing/auth-day-end-reconcile/pos-cashier", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing/auth-day-end-reconcile/pos-cashier", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1557,7 +1646,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/auth-day-end/active-cashierid-by-userid", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing/auth-day-end-reconcile/active-cashierid-by-userid", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing/auth-day-end-reconcile/active-cashierid-by-userid", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1566,8 +1656,9 @@ export async function registerRoutes(
 
   app.get("/api/platinum/auth-day-end/cashier-details", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[auth-dayend-details] Query:`, req.query);
-      const data = await platinumGet("/api/billing/auth-day-end-reconcile/cashier-details", req.query as Record<string, string>);
+      const data = await platinumGet(session, "/api/billing/auth-day-end-reconcile/cashier-details", req.query as Record<string, string>);
       console.log(`[auth-dayend-details] Response:`, JSON.stringify(data).substring(0, 1000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1577,8 +1668,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/cashier-receipt-cash-list", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[auth-dayend-cash] Query: id=${req.query.id}, Body:`, JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cashier-receipt-cash-list", req.body, req.query as Record<string, string>);
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile/cashier-receipt-cash-list", req.body, req.query as Record<string, string>);
       console.log(`[auth-dayend-cash] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1588,8 +1680,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/cashier-receipt-cheque-list", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[auth-dayend-cheque] Query: id=${req.query.id}, Body:`, JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cashier-receipt-cheque-list", req.body, req.query as Record<string, string>);
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile/cashier-receipt-cheque-list", req.body, req.query as Record<string, string>);
       console.log(`[auth-dayend-cheque] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1599,8 +1692,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/cashier-receipt-card-list", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[auth-dayend-card] Query: id=${req.query.id}, Body:`, JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cashier-receipt-card-list", req.body, req.query as Record<string, string>);
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile/cashier-receipt-card-list", req.body, req.query as Record<string, string>);
       console.log(`[auth-dayend-card] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1610,8 +1704,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/cashier-receipt-postal-order-list", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[auth-dayend-postal] Query: id=${req.query.id}, Body:`, JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cashier-receipt-postal-order-list", req.body, req.query as Record<string, string>);
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile/cashier-receipt-postal-order-list", req.body, req.query as Record<string, string>);
       console.log(`[auth-dayend-postal] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1621,8 +1716,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/cashier-receipt-offline-data-list", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[auth-dayend-offline] Query: id=${req.query.id}, Body:`, JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cashier-receipt-offline-data-list", req.body, req.query as Record<string, string>);
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile/cashier-receipt-offline-data-list", req.body, req.query as Record<string, string>);
       console.log(`[auth-dayend-offline] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1632,8 +1728,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/cashier-receipt-drop-box-list", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[auth-dayend-dropbox] Query: id=${req.query.id}, Body:`, JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cashier-receipt-drop-box-list", req.body, req.query as Record<string, string>);
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile/cashier-receipt-drop-box-list", req.body, req.query as Record<string, string>);
       console.log(`[auth-dayend-dropbox] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1643,8 +1740,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/system-vs-cashier-data-list", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[auth-dayend-sys-vs-cashier] Query: id=${req.query.id}, Body:`, JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/system-vs-cashier-data-list", req.body, req.query as Record<string, string>);
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile/system-vs-cashier-data-list", req.body, req.query as Record<string, string>);
       console.log(`[auth-dayend-sys-vs-cashier] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1654,8 +1752,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/finish-day-end-reconcile", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[auth-dayend-finish] Query: userId=${req.query.userId}`);
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/finish-day-end-reconcile", req.body, req.query as Record<string, string>);
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile/finish-day-end-reconcile", req.body, req.query as Record<string, string>);
       console.log(`[auth-dayend-finish] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1665,8 +1764,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/return-day-end-reconcile", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[auth-dayend-return] Body:`, JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/return-day-end-reconcile", req.body);
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile/return-day-end-reconcile", req.body);
       console.log(`[auth-dayend-return] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1676,8 +1776,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/validate-cashbook", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[auth-dayend-validate] Query: cashierId=${req.query.cashierId}`);
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/validate-cashbook", req.body, req.query as Record<string, string>);
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile/validate-cashbook", req.body, req.query as Record<string, string>);
       console.log(`[auth-dayend-validate] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1687,8 +1788,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/submit-day-auth-reconcile", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[auth-dayend-submit] Query:`, req.query);
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/submit-day-auth-reconcile", req.body, req.query as Record<string, string>);
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile/submit-day-auth-reconcile", req.body, req.query as Record<string, string>);
       console.log(`[auth-dayend-submit] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1698,8 +1800,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/cancel-receipt", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[auth-dayend-cancel] Body:`, JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/cancel-day-auth-reconcile-receipt", req.body);
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile/cancel-day-auth-reconcile-receipt", req.body);
       console.log(`[auth-dayend-cancel] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1709,8 +1812,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/request-cancel-receipt", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[request-cancel-receipt] Body:`, JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/request-cancel-receipt", req.body);
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile/request-cancel-receipt", req.body);
       console.log(`[request-cancel-receipt] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1720,8 +1824,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/approve-cancel-receipt", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[approve-cancel-receipt] Body:`, JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/approve-cancel-receipt", req.body);
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile/approve-cancel-receipt", req.body);
       console.log(`[approve-cancel-receipt] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1731,8 +1836,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/decline-cancel-receipt", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[decline-cancel-receipt] Body:`, JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/decline-cancel-receipt", req.body);
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile/decline-cancel-receipt", req.body);
       console.log(`[decline-cancel-receipt] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1742,8 +1848,9 @@ export async function registerRoutes(
 
   app.get("/api/platinum/auth-day-end/pending-cancel-requests", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log(`[pending-cancel-requests] Query:`, JSON.stringify(req.query));
-      const data = await platinumGet("/api/billing/auth-day-end-reconcile/pending-cancel-requests", req.query as Record<string, string>);
+      const data = await platinumGet(session, "/api/billing/auth-day-end-reconcile/pending-cancel-requests", req.query as Record<string, string>);
       console.log(`[pending-cancel-requests] Response:`, JSON.stringify(data).substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1753,7 +1860,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/print-receipt", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/print-receipt", req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile/print-receipt", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1762,7 +1870,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/print-cash-report", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/print-cash-report", req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile/print-cash-report", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1771,7 +1880,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/auth-day-end/print-deposit-slip", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing/auth-day-end-reconcile/print-deposit-slip", req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile/print-deposit-slip", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1782,7 +1892,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/direct-deposit-allocation/get-bank-recon-positem-list", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing-direct-deposit-allocation/get-bank-recon-positem-list", req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/get-bank-recon-positem-list", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1791,7 +1902,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/direct-deposit-allocation/check-selected-item-processed", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing-direct-deposit-allocation/check-selected-item-processed", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-direct-deposit-allocation/check-selected-item-processed", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1800,7 +1912,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/direct-deposit-allocation/get-misc-payment-group", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing-direct-deposit-allocation/get-misc-payment-group");
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-direct-deposit-allocation/get-misc-payment-group");
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1809,7 +1922,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/direct-deposit-allocation/get-misc-vote-id-by-group", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing-direct-deposit-allocation/get-misc-vote-id-by-group", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-direct-deposit-allocation/get-misc-vote-id-by-group", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1818,7 +1932,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/direct-deposit-allocation/get-group-payment-details", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing-direct-deposit-allocation/get-group-payment-details", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-direct-deposit-allocation/get-group-payment-details", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1827,7 +1942,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/direct-deposit-allocation/get-vat-rate", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing-direct-deposit-allocation/get-vat-rate");
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-direct-deposit-allocation/get-vat-rate");
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1836,7 +1952,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/direct-deposit-allocation/get-pos-item-details", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing-direct-deposit-allocation/get-pos-item-details", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-direct-deposit-allocation/get-pos-item-details", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1845,7 +1962,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/direct-deposit-allocation/get-account-autocomplete", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing-direct-deposit-allocation/get-account-autocomplete", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-direct-deposit-allocation/get-account-autocomplete", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1854,7 +1972,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/direct-deposit-allocation/get-clearance-autocomplete", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing-direct-deposit-allocation/get-clearence-autocomplete", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-direct-deposit-allocation/get-clearence-autocomplete", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1863,7 +1982,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/direct-deposit-allocation/get-old-account-autocomplete", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing-direct-deposit-allocation/get-old-account-autocomplete", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-direct-deposit-allocation/get-old-account-autocomplete", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1872,8 +1992,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/direct-deposit-allocation/load-details-payment-grouping", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log('[DD Prep] load-details-payment-grouping — body:', JSON.stringify(req.body), 'query:', JSON.stringify(req.query));
-      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-details-payment-grouping", req.body, req.query as Record<string, string>, { timeout: 55000 });
+      const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/load-details-payment-grouping", req.body, req.query as Record<string, string>, { timeout: 55000 });
       console.log('[DD Prep] load-details-payment-grouping — response status:', data?._error ? 'ERROR' : 'OK');
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1884,7 +2005,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/direct-deposit-allocation/load-details-payment-grouping-institution-data", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-details-payment-grouping-institution-data", req.body, req.query as Record<string, string>, { timeout: 55000 });
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/load-details-payment-grouping-institution-data", req.body, req.query as Record<string, string>, { timeout: 55000 });
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1893,8 +2015,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/direct-deposit-allocation/load-details-consumer-services", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log('[DD Prep] load-details-consumer-services — body:', JSON.stringify(req.body), 'query:', JSON.stringify(req.query));
-      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-details-consumer-services", req.body, req.query as Record<string, string>, { timeout: 55000 });
+      const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/load-details-consumer-services", req.body, req.query as Record<string, string>, { timeout: 55000 });
       console.log('[DD Prep] load-details-consumer-services — response status:', data?._error ? 'ERROR' : 'OK');
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1905,8 +2028,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/direct-deposit-allocation/load-details-clearance", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log('[DD Prep] load-details-clearance — body:', JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-details-clearance", req.body, undefined, { timeout: 55000 });
+      const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/load-details-clearance", req.body, undefined, { timeout: 55000 });
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1915,7 +2039,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/direct-deposit-allocation/get-clearance-details-info", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing-direct-deposit-allocation/get-clearance-details-info", req.body, undefined, { timeout: 55000 });
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/get-clearance-details-info", req.body, undefined, { timeout: 55000 });
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1924,8 +2049,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/direct-deposit-allocation/get-consumer-details-data", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log('[DD Prep] get-consumer-details-data — body:', JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing-direct-deposit-allocation/get-consumer-details-data", req.body, undefined, { timeout: 55000 });
+      const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/get-consumer-details-data", req.body, undefined, { timeout: 55000 });
       console.log('[DD Prep] get-consumer-details-data — response status:', data?._error ? 'ERROR' : 'OK');
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1936,8 +2062,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/direct-deposit-allocation/load-confirm-payment-details", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log('[DD Confirm] Query params:', JSON.stringify(req.query), 'Body:', JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing-direct-deposit-allocation/load-confirm-payment-details", req.body, req.query as Record<string, string>, { timeout: 55000 });
+      const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/load-confirm-payment-details", req.body, req.query as Record<string, string>, { timeout: 55000 });
       console.log('[DD Confirm] API response:', data?._error ? `ERROR: ${JSON.stringify(data)}` : 'OK');
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1948,8 +2075,9 @@ export async function registerRoutes(
 
   app.post("/api/platinum/direct-deposit-allocation/submit-details-data", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log('[DD Submit] Request body:', JSON.stringify(req.body));
-      const data = await platinumPost("/api/billing-direct-deposit-allocation/submit-details-data", req.body, undefined, { timeout: 55000 });
+      const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/submit-details-data", req.body, undefined, { timeout: 55000 });
       console.log('[DD Submit] API response:', data?._error ? `ERROR: ${JSON.stringify(data)}` : 'OK');
       handlePlatinumResult(res, data);
     } catch (e: any) {
@@ -1960,7 +2088,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/direct-deposit-allocation/get-misc-receipt-data", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing-direct-deposit-allocation/get-misc-receipt-data", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-direct-deposit-allocation/get-misc-receipt-data", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1969,6 +2098,7 @@ export async function registerRoutes(
 
   app.post("/api/platinum/view-receipt/search-by-eft-description", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const { description, fromDate, toDate } = req.body;
       if (!description || description.length < 3) {
         return res.status(400).json({ message: "Description must be at least 3 characters" });
@@ -1982,7 +2112,7 @@ export async function registerRoutes(
       const maxPages = 10;
 
       while (currentPage <= maxPages) {
-        const listData = await platinumPost("/api/billing-direct-deposit-allocation/get-bank-recon-positem-list", {
+        const listData = await platinumPost(session, "/api/billing-direct-deposit-allocation/get-bank-recon-positem-list", {
           page: currentPage,
           pageSize,
           orderby: 'dateOfTransaction',
@@ -2058,6 +2188,7 @@ export async function registerRoutes(
 
   app.get("/api/platinum/cashbook-transaction-trace/search", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const { searchText, finYear, month } = req.query as Record<string, string>;
       if (!searchText) {
         return res.status(400).json({ message: "searchText is required" });
@@ -2065,7 +2196,7 @@ export async function registerRoutes(
       const params: Record<string, string> = { searchText };
       if (finYear) params.finYear = finYear;
       if (month) params.month = month;
-      const data = await platinumGet("/api/billing/cashbook-transaction-trace/search", params);
+      const data = await platinumGet(session, "/api/billing/cashbook-transaction-trace/search", params);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2074,7 +2205,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/direct-deposit-allocation/vote-details", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing-direct-deposit-allocation/vote-details", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-direct-deposit-allocation/vote-details", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2085,7 +2217,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/direct-deposit-bulk/get-unprocessed", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing/direct-deposit-bulk-allocation/get-unprocessed-direct-deposits", req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing/direct-deposit-bulk-allocation/get-unprocessed-direct-deposits", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2094,7 +2227,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/direct-deposit-bulk/get-processed", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing/direct-deposit-bulk-allocation/get-processed-deposits", req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing/direct-deposit-bulk-allocation/get-processed-deposits", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2103,7 +2237,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/direct-deposit-bulk/reconcile", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing/direct-deposit-bulk-allocation/reconcile-processed-data", req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing/direct-deposit-bulk-allocation/reconcile-processed-data", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2112,7 +2247,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/direct-deposit-bulk/print-processed", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing/direct-deposit-bulk-allocation/print-processed-deposits", req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing/direct-deposit-bulk-allocation/print-processed-deposits", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2121,27 +2257,30 @@ export async function registerRoutes(
 
   // --- Bulk Progress ---
 
-  app.get("/api/platinum/bulk-progress/get-financial-years", async (_req, res) => {
+  app.get("/api/platinum/bulk-progress/get-financial-years", async (req, res) => {
     try {
-      const data = await platinumGet("/api/BulkProgress/get-financial-years");
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BulkProgress/get-financial-years");
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
-  app.get("/api/platinum/bulk-progress/get-month-list", async (_req, res) => {
+  app.get("/api/platinum/bulk-progress/get-month-list", async (req, res) => {
     try {
-      const data = await platinumGet("/api/BulkProgress/get-month-list");
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BulkProgress/get-month-list");
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
-  app.get("/api/platinum/bulk-progress/get-process-list", async (_req, res) => {
+  app.get("/api/platinum/bulk-progress/get-process-list", async (req, res) => {
     try {
-      const data = await platinumGet("/api/BulkProgress/get-process-list");
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BulkProgress/get-process-list");
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2150,7 +2289,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/bulk-progress/get-bulk-allocation-list", async (req, res) => {
     try {
-      const data = await platinumPost("/api/BulkProgress/get-bulk-allocation-list", req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/BulkProgress/get-bulk-allocation-list", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2159,7 +2299,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/bulk-progress/direct-deposit/:jobId", async (req, res) => {
     try {
-      const data = await platinumGet(`/api/BulkProgress/direct-deposit/${req.params.jobId}`);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, `/api/BulkProgress/direct-deposit/${req.params.jobId}`);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2170,7 +2311,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/direct-deposit-errors/failed-jobs", async (req, res) => {
     try {
-      const data = await platinumGet("/api/DirectDepositErrors/failed-jobs");
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/DirectDepositErrors/failed-jobs");
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2179,7 +2321,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/direct-deposit-errors/job-details/:jobId", async (req, res) => {
     try {
-      const data = await platinumGet(`/api/DirectDepositErrors/job-details/${req.params.jobId}`);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, `/api/DirectDepositErrors/job-details/${req.params.jobId}`);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2188,7 +2331,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/direct-deposit-errors/account-details/:jobId", async (req, res) => {
     try {
-      const data = await platinumGet(`/api/DirectDepositErrors/account-details/${req.params.jobId}`);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, `/api/DirectDepositErrors/account-details/${req.params.jobId}`);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2197,7 +2341,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/direct-deposit-errors/retry/:jobId/:userId", async (req, res) => {
     try {
-      const data = await platinumPost(`/api/DirectDepositErrors/retry/${req.params.jobId}/${req.params.userId}`, req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, `/api/DirectDepositErrors/retry/${req.params.jobId}/${req.params.userId}`, req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2208,7 +2353,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/third-party-payments/import", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing/pos/third-party-payments/import", req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing/pos/third-party-payments/import", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2217,7 +2363,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/third-party-payments/:importId/transactions", async (req, res) => {
     try {
-      const data = await platinumGet(`/api/billing/pos/third-party-payments/${req.params.importId}/transactions`);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, `/api/billing/pos/third-party-payments/${req.params.importId}/transactions`);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2226,7 +2373,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/third-party-payments/validate-account", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing/pos/third-party-payments/validate-account", req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing/pos/third-party-payments/validate-account", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2235,7 +2383,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/third-party-payments/:importId/reconcile", async (req, res) => {
     try {
-      const data = await platinumPost(`/api/billing/pos/third-party-payments/${req.params.importId}/reconcile`, req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, `/api/billing/pos/third-party-payments/${req.params.importId}/reconcile`, req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2244,7 +2393,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/third-party-payments/:importId/commit", async (req, res) => {
     try {
-      const data = await platinumPost(`/api/billing/pos/third-party-payments/${req.params.importId}/commit`, req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, `/api/billing/pos/third-party-payments/${req.params.importId}/commit`, req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2253,7 +2403,8 @@ export async function registerRoutes(
 
   app.put("/api/platinum/third-party-payments/:importId/transactions/:index", async (req, res) => {
     try {
-      const token = await getPlatinumToken();
+      const session = requireAuth(req, res); if (!session) return;
+      const token = await refreshSessionToken(session);
       const apiUrl = getPlatinumApiUrl();
       const url = `${apiUrl}/api/billing/pos/third-party-payments/${req.params.importId}/transactions/${req.params.index}`;
 
@@ -2287,7 +2438,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/third-party-payments/:importId/validate-for-reconcile", async (req, res) => {
     try {
-      const data = await platinumPost(`/api/billing/pos/third-party-payments/${req.params.importId}/validate-for-reconcile`, req.body || {});
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, `/api/billing/pos/third-party-payments/${req.params.importId}/validate-for-reconcile`, req.body || {});
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2296,7 +2448,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/third-party-payments/account-search", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing/pos/third-party-payments/account-search", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing/pos/third-party-payments/account-search", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2307,7 +2460,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/third-party-payments/is-cashier-active", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing/pos/third-party-payments/is-cashier-active", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing/pos/third-party-payments/is-cashier-active", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2316,7 +2470,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/third-party-payments/cashier-details", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing/pos/third-party-payments/cashier-details", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing/pos/third-party-payments/cashier-details", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2325,7 +2480,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/third-party-payments/import-file", async (req, res) => {
     try {
-      const token = await getPlatinumToken();
+      const session = requireAuth(req, res); if (!session) return;
+      const token = await refreshSessionToken(session);
       const apiUrl = getPlatinumApiUrl();
       const url = `${apiUrl}/api/billing/pos/third-party-payments/import`;
 
@@ -2378,7 +2534,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/third-party-payments/types", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing/pos/third-party-payments/types");
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing/pos/third-party-payments/types");
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2389,7 +2546,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-enquiry/deposit-amount", async (req, res) => {
     try {
-      const data = await platinumGet("/api/BillingEnquiry/DepositAmount", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingEnquiry/DepositAmount", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2398,7 +2556,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-enquiry/deposits-by-account-id", async (req, res) => {
     try {
-      const data = await platinumGet("/api/BillingEnquiry/DepositsByAccountId", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingEnquiry/DepositsByAccountId", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2407,7 +2566,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-enquiry/receipt-transaction-detail", async (req, res) => {
     try {
-      const data = await platinumGet("/api/BillingEnquiry/getReceiptTransactionDetail", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingEnquiry/getReceiptTransactionDetail", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2416,12 +2576,13 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-enquiry/total-balance-debt", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const accountId = req.query.accountId as string;
-      const data = await platinumGet("/api/BillingEnquiry/TotalBalanceDebtInquiry", { accountId });
+      const data = await platinumGet(session, "/api/BillingEnquiry/TotalBalanceDebtInquiry", { accountId });
       
       // If no data or error, fallback to enquiry results which might have some info
       if (!data || data._error || (Array.isArray(data) && data.length === 0)) {
-         const enquiryData = await platinumPost("/api/BillingEnquiry/EnquiryResults", { accountID: accountId });
+         const enquiryData = await platinumPost(session, "/api/BillingEnquiry/EnquiryResults", { accountID: accountId });
          if (enquiryData && !enquiryData._error) {
             const results = Array.isArray(enquiryData) ? enquiryData : (enquiryData.results || [enquiryData]);
             const match = results.find((r: any) => String(r.accountID) === accountId);
@@ -2445,8 +2606,9 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-enquiry/service-type-balance", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       console.log('[ServiceTypeBalance] Query params:', JSON.stringify(req.query));
-      const data = await platinumGet("/api/BillingEnquiry/ServiceTypeBalanceDetails", req.query as Record<string, string>);
+      const data = await platinumGet(session, "/api/BillingEnquiry/ServiceTypeBalanceDetails", req.query as Record<string, string>);
       console.log('[ServiceTypeBalance] Response type:', typeof data, Array.isArray(data) ? `array(${data.length})` : '');
       if (data && typeof data === 'object') {
         const sample = Array.isArray(data) ? data.slice(0, 2) : data;
@@ -2461,7 +2623,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-enquiry/reconcile/:receiptId", async (req, res) => {
     try {
-      const data = await platinumPost(`/api/BillingEnquiry/reconcile/${req.params.receiptId}`, req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, `/api/BillingEnquiry/reconcile/${req.params.receiptId}`, req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2470,11 +2633,12 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-enquiry/linked-accounts-on-property", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const accountId = req.query.accountId as string;
       if (!accountId) return res.status(400).json({ message: "accountId is required" });
 
       console.log(`[linked-accounts] Getting property details for accountId: ${accountId}`);
-      const propData = await platinumGet("/api/BillingEnquiry/PropertyDetailsByAccountId", { accountId });
+      const propData = await platinumGet(session, "/api/BillingEnquiry/PropertyDetailsByAccountId", { accountId });
       if (!propData || propData._error) {
         console.log(`[linked-accounts] PropertyDetailsByAccountId failed`);
         return res.json([]);
@@ -2504,7 +2668,7 @@ export async function registerRoutes(
         const matchedAccountIds = new Set<number>();
         for (const term of searchTerms) {
           try {
-            const acResults = await platinumGet("/api/BillingEnquiry/Autocomplete", { search: term, type: 'erfNumber' });
+            const acResults = await platinumGet(session, "/api/BillingEnquiry/Autocomplete", { search: term, type: 'erfNumber' });
             const acArr = Array.isArray(acResults) ? acResults : [];
             for (const item of acArr) {
               if (item.displayItem === sgNumber && item.accountId) {
@@ -2521,7 +2685,7 @@ export async function registerRoutes(
           console.log(`[linked-accounts] Found ${matchedAccountIds.size} account(s) via SG autocomplete: ${Array.from(matchedAccountIds).join(', ')}`);
           const lookups = await Promise.allSettled(
             Array.from(matchedAccountIds).map(id =>
-              platinumPost("/api/BillingEnquiry/EnquiryResults", { accountID: String(id) })
+              platinumPost(session, "/api/BillingEnquiry/EnquiryResults", { accountID: String(id) })
             )
           );
           for (const r of lookups) {
@@ -2539,7 +2703,7 @@ export async function registerRoutes(
 
       if (accounts.length <= 1 && ownerName) {
         console.log(`[linked-accounts] Trying owner name search: ${ownerName}`);
-        const nameResults = await platinumPost("/api/BillingEnquiry/EnquiryResults", {
+        const nameResults = await platinumPost(session, "/api/BillingEnquiry/EnquiryResults", {
           companyName: ownerName,
         });
         let nameAccounts: any[] = [];
@@ -2577,7 +2741,7 @@ export async function registerRoutes(
         linkedAccounts.slice(0, 20).map(async (acct: any) => {
           const aId = acct.account_ID || acct.accountID;
           try {
-            const balance = await platinumGet("/api/BillingEnquiry/TotalBalanceDebtInquiry", { accountId: String(aId) });
+            const balance = await platinumGet(session, "/api/BillingEnquiry/TotalBalanceDebtInquiry", { accountId: String(aId) });
             const balanceArr = Array.isArray(balance) ? balance : [];
             const totalOutstanding = balanceArr.reduce((sum: number, b: any) => sum + (b.totalOutStanding || 0), 0);
             return { ...acct, balanceDetails: balanceArr, totalOutstanding };
@@ -2596,7 +2760,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-enquiry/property-details-by-account", async (req, res) => {
     try {
-      const data = await platinumGet("/api/BillingEnquiry/PropertyDetailsByAccountId", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingEnquiry/PropertyDetailsByAccountId", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2605,7 +2770,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-enquiry/cons-unit-by-account", async (req, res) => {
     try {
-      const data = await platinumGet("/api/BillingEnquiry/ConsUnitByAccountId", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingEnquiry/ConsUnitByAccountId", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2614,7 +2780,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-enquiry/name-info-by-account", async (req, res) => {
     try {
-      const data = await platinumGet("/api/BillingEnquiry/NameInfoByAccountId", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingEnquiry/NameInfoByAccountId", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2623,7 +2790,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-enquiry/handover-by-account", async (req, res) => {
     try {
-      const data = await platinumGet("/api/BillingEnquiry/HandoverByAccountId", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingEnquiry/HandoverByAccountId", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2632,7 +2800,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-enquiry/payment-incentive-by-account", async (req, res) => {
     try {
-      const data = await platinumGet("/api/BillingEnquiry/PaymentIncentiveByAccountId", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingEnquiry/PaymentIncentiveByAccountId", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2719,7 +2888,8 @@ export async function registerRoutes(
   for (const [localPath, platinumPath] of billingEnquiryGetEndpoints) {
     app.get(`/api/platinum/billing-enquiry/${localPath}`, async (req, res) => {
       try {
-        const data = await platinumGet(`/api/BillingEnquiry/${platinumPath}`, req.query as Record<string, string>);
+        const session = requireAuth(req, res); if (!session) return;
+        const data = await platinumGet(session, `/api/BillingEnquiry/${platinumPath}`, req.query as Record<string, string>);
         handlePlatinumResult(res, data);
       } catch (e: any) {
         res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2729,6 +2899,7 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-enquiry/generate-statement", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const { accountId, statementType, financialYear, month } = req.body;
       const endpoint = statementType === 'detailed'
         ? "/api/BillingEnquiry/getDetailBillingTemplate"
@@ -2736,7 +2907,7 @@ export async function registerRoutes(
       const params: Record<string, string> = { accountId: String(accountId) };
       if (financialYear) params.financialYear = financialYear;
       if (month) params.month = month;
-      const data = await platinumGet(endpoint, params);
+      const data = await platinumGet(session, endpoint, params);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2745,11 +2916,12 @@ export async function registerRoutes(
 
   app.get("/api/platinum/clearance-document-download", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const { costScheduleId, type } = req.query as Record<string, string>;
       if (!costScheduleId || !type) {
         return res.status(400).json({ message: "costScheduleId and type are required" });
       }
-      const token = await getPlatinumToken();
+      const token = await refreshSessionToken(session);
       const apiUrl = getPlatinumApiUrl();
       const endpoint = type === 'cost-schedule'
         ? `/api/BillingEnquiry/DownloadCostSchedule`
@@ -2780,6 +2952,7 @@ export async function registerRoutes(
 
   app.get("/api/platinum/statement-download", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const fileUrl = req.query.fileUrl as string;
       if (!fileUrl) {
         return res.status(400).json({ message: "fileUrl is required" });
@@ -2798,7 +2971,7 @@ export async function registerRoutes(
       } catch {
         return res.status(400).json({ message: "Invalid file URL" });
       }
-      const token = await getPlatinumToken();
+      const token = await refreshSessionToken(session);
       const response = await fetch(fullUrl, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -2822,7 +2995,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-enquiry/search", async (req, res) => {
     try {
-      const data = await platinumPost("/api/BillingEnquiry/search", req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/BillingEnquiry/search", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2831,7 +3005,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-enquiry/add-occupier", async (req, res) => {
     try {
-      const data = await platinumPost("/api/BillingEnquiry/AddOccupier", req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/BillingEnquiry/AddOccupier", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2840,7 +3015,8 @@ export async function registerRoutes(
 
   app.delete("/api/platinum/billing-enquiry/add-occupier", async (req, res) => {
     try {
-      const data = await platinumDelete("/api/BillingEnquiry/AddOccupier", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumDelete(session, "/api/BillingEnquiry/AddOccupier", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2851,7 +3027,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-dashboard/pos-count", async (req, res) => {
     try {
-      const data = await platinumGet("/api/BillingDashboard/pos-count");
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingDashboard/pos-count");
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2860,7 +3037,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-dashboard/pos-tab-item-details-count", async (req, res) => {
     try {
-      const data = await platinumGet("/api/BillingDashboard/get-pos-tab-item-details-count");
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingDashboard/get-pos-tab-item-details-count");
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2869,7 +3047,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-dashboard/get-deposit-table-data", async (req, res) => {
     try {
-      const data = await platinumPost("/api/BillingDashboard/get-deposit-table-data", req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/BillingDashboard/get-deposit-table-data", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2878,7 +3057,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-dashboard/get-direct-deposits-allocation-table-data", async (req, res) => {
     try {
-      const data = await platinumPost("/api/BillingDashboard/get-direct-deposits-allocation-table-data", req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/BillingDashboard/get-direct-deposits-allocation-table-data", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2887,7 +3067,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-dashboard/get-third-party-payment-pending-table-data", async (req, res) => {
     try {
-      const data = await platinumPost("/api/BillingDashboard/get-third-party-payment-pending-table-data", req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/BillingDashboard/get-third-party-payment-pending-table-data", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2896,7 +3077,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-dashboard/get-alert-counts", async (req, res) => {
     try {
-      const data = await platinumGet("/api/BillingDashboard/get-alert-counts");
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingDashboard/get-alert-counts");
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2905,7 +3087,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-dashboard/get-notification-counts", async (req, res) => {
     try {
-      const data = await platinumGet("/api/BillingDashboard/get-notification-counts");
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingDashboard/get-notification-counts");
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2914,7 +3097,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-dashboard/get-billing-payment-by-type-of-use", async (req, res) => {
     try {
-      const data = await platinumGet("/api/BillingDashboard/get-billing-payment-by-type-of-use");
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingDashboard/get-billing-payment-by-type-of-use");
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2923,7 +3107,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-dashboard/account-count", async (req, res) => {
     try {
-      const data = await platinumGet("/api/BillingDashboard/account-count");
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/BillingDashboard/account-count");
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2932,7 +3117,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-dashboard/get-post-dated-cheque-search-table-data", async (req, res) => {
     try {
-      const data = await platinumPost("/api/BillingDashboard/get-post-dated-cheque-search-table-data", req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/BillingDashboard/get-post-dated-cheque-search-table-data", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2943,7 +3129,8 @@ export async function registerRoutes(
 
   app.post("/api/platinum/billing-account-management/search-accounts", async (req, res) => {
     try {
-      const data = await platinumPost("/api/billing/account-management/search-accounts", req.body);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing/account-management/search-accounts", req.body);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2952,7 +3139,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-account-management/account-details", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing/account-management/account-details", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing/account-management/account-details", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2961,7 +3149,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-account-management/account-information", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing/account-management/account-information", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing/account-management/account-information", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2970,7 +3159,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-account-management/get-contact-details", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing/account-management/get-contact-details", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing/account-management/get-contact-details", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2979,7 +3169,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-account-management/get-property-details", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing/account-management/get-property-details", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing/account-management/get-property-details", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2988,7 +3179,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-account-management/get-account-grouping", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing/account-management/get-account-grouping", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing/account-management/get-account-grouping", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -2997,7 +3189,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-account-management/get-sub-account-grouping", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing/account-management/get-sub-account-grouping", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing/account-management/get-sub-account-grouping", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -3006,7 +3199,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-account-management/get-payment-group-list", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing/account-management/get-payment-group-list");
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing/account-management/get-payment-group-list");
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -3015,7 +3209,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/billing-account-management/get-additional-emails", async (req, res) => {
     try {
-      const data = await platinumGet("/api/billing/account-management/get-additional-emails", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing/account-management/get-additional-emails", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -3024,7 +3219,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/receipting-account-group/get-account-groups", async (req, res) => {
     try {
-      const data = await platinumGet("/api/receipting-account-group/get-account-groups", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/receipting-account-group/get-account-groups", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -3033,7 +3229,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/receipting-account-group/get-account-sub-groups", async (req, res) => {
     try {
-      const data = await platinumGet("/api/receipting-account-group/get-account-sub-groups", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/receipting-account-group/get-account-sub-groups", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -3042,7 +3239,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/receipting-account-group/search", async (req, res) => {
     try {
-      const data = await platinumGet("/api/receipting-account-group/search", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/receipting-account-group/search", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -3051,7 +3249,8 @@ export async function registerRoutes(
 
   app.get("/api/platinum/receipting-account-group-payment/search-accounts-by-group", async (req, res) => {
     try {
-      const data = await platinumGet("/api/receipting-account-group-payment/search-accounts-by-group", req.query as Record<string, string>);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/receipting-account-group-payment/search-accounts-by-group", req.query as Record<string, string>);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
