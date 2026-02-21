@@ -1885,7 +1885,6 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
   const [calculated, setCalculated] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lineItems, setLineItems] = useState<EstimateLineItem[]>([]);
-  const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
   const [vatRate] = useState(15);
   const [billingMonth, setBillingMonth] = useState<string>('');
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -1998,11 +1997,18 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
         if (tariffKey) meteredTariffKeys.add(tariffKey);
       }
 
+      const isPrepaidService = (desc: string): boolean => {
+        const d = desc.toLowerCase();
+        return d.includes('prepaid') || d.includes('pre-paid') || d.includes('pre paid') || d.includes('token') || d.includes('vend');
+      };
+
       for (const meter of meters) {
         const meterNo = meter.meterNumber || meter.meterNo || '';
         if (!meterNo) continue;
 
         const svcDesc = meter.serviceDesc || meter.serviceDescription || meter.tariff || 'Metered Service';
+        if (isPrepaidService(svcDesc)) continue;
+
         const factor = typeof meter.tarifffactor === 'number' ? meter.tarifffactor : parseFloat(meter.tarifffactor || meter.factorQuantity) || 1;
         const svcKey = `metered-${svcDesc.toLowerCase()}-${meterNo.toLowerCase()}`;
         processedServiceKeys.add(svcKey);
@@ -2160,6 +2166,8 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
         const svcNameLower = svcName.toLowerCase().trim();
         const tariff = (svc.tariff || svc.tariffCode || '').toLowerCase().trim();
 
+        if (isPrepaidService(svcNameLower) || isPrepaidService(tariff)) continue;
+
         const hasMeter = !!(svc.meterNo || svc.meterNumber || svc.physicalMeterNo || svc.physicalMeterNumber);
         const svcMeterNo = (svc.meterNo || svc.meterNumber || '').toLowerCase().trim();
         if (hasMeter && meteredMeterNos.has(svcMeterNo)) continue;
@@ -2171,6 +2179,19 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
         const svcKey = `fixed-${svcNameLower}-${tariff}`;
         if (processedServiceKeys.has(svcKey)) continue;
         processedServiceKeys.add(svcKey);
+
+        if (isMeteredService(svc)) {
+          items.push({
+            category: 'Metered Services',
+            serviceDesc: svcName || 'Metered Service',
+            icon: getServiceIcon(svcNameLower),
+            amount: 0,
+            vatAmount: 0,
+            total: 0,
+            detail: 'Awaiting meter reading — will calculate once reading is captured',
+          });
+          continue;
+        }
 
         let amount = 0;
         let detail = '';
@@ -2193,19 +2214,6 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
             amount = parseFloat(templateMatch.amount ?? templateMatch.totalAmount ?? templateMatch.levyAmount ?? 0) || 0;
             if (amount > 0) detail = 'From billing template';
           }
-        }
-
-        if (amount <= 0 && isMeteredService(svc)) {
-          items.push({
-            category: 'Metered Services',
-            serviceDesc: svcName || 'Metered Service',
-            icon: getServiceIcon(svcNameLower),
-            amount: 0,
-            vatAmount: 0,
-            total: 0,
-            detail: 'Awaiting meter reading — will calculate once reading is captured',
-          });
-          continue;
         }
 
         if (amount <= 0) {
@@ -2269,15 +2277,6 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
       setLoading(false);
     }
   }, [accountId, vatRate]);
-
-  const toggleExpand = (idx: number) => {
-    setExpandedItems(prev => {
-      const next = new Set(prev);
-      if (next.has(idx)) next.delete(idx);
-      else next.add(idx);
-      return next;
-    });
-  };
 
   const grouped = useMemo(() => {
     const groups: Record<string, EstimateLineItem[]> = {};
@@ -2417,21 +2416,19 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
             <div className="divide-y divide-slate-100">
               {items.map((item, idx) => {
                 const globalIdx = lineItems.indexOf(item);
-                const isExpanded = expandedItems.has(globalIdx);
                 const hasTiers = item.tierBreakdown && item.tierBreakdown.length > 0;
 
                 return (
                   <div key={idx} className="group">
                     <div
-                      className={`px-4 py-3 flex items-center justify-between gap-3 ${hasTiers ? 'cursor-pointer hover:bg-slate-50' : ''} transition-colors`}
-                      onClick={() => hasTiers && toggleExpand(globalIdx)}
+                      className="px-4 py-3 flex items-center justify-between gap-3"
                       data-testid={`estimate-line-${globalIdx}`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         {item.icon}
                         <div className="min-w-0 flex-1">
                           <div className="text-xs font-semibold text-slate-800 truncate">{item.serviceDesc}</div>
-                          {item.detail && <div className="text-[10px] text-slate-400 mt-0.5">{item.detail}</div>}
+                          {item.detail && !hasTiers && <div className="text-[10px] text-slate-400 mt-0.5">{item.detail}</div>}
                         </div>
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
@@ -2444,24 +2441,27 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
                           <div className="text-xs font-mono font-bold text-slate-800">R {fmt(item.total)}</div>
                           {item.vatAmount > 0 && <div className="text-[9px] text-slate-400 font-mono">incl VAT R{fmt(item.vatAmount)}</div>}
                         </div>
-                        {hasTiers && (
-                          isExpanded ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                        )}
                       </div>
                     </div>
 
-                    {isExpanded && hasTiers && (
+                    {hasTiers && (
                       <div className="px-4 pb-3">
                         <div className="bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
-                          <div className="px-3 py-1.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
-                            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Per-Day Tariff Breakdown</span>
-                            {item.isProRated && item.readingDays && (
-                              <span className="text-[10px] text-blue-600 font-medium">{item.readingDays} days / {STANDARD_MONTH_DAYS} std</span>
-                            )}
+                          <div className="px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-slate-200 flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <Layers className="w-3 h-3 text-blue-500" />
+                              <span className="text-[10px] uppercase tracking-wider text-blue-700 font-bold">Tariff Tier Breakdown</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {item.isProRated && item.readingDays && (
+                                <span className="text-[10px] text-blue-600 font-medium bg-blue-100 px-1.5 py-0.5 rounded">{item.readingDays} days / {STANDARD_MONTH_DAYS} std</span>
+                              )}
+                              <span className="text-[10px] text-slate-500 font-mono">{item.consumption} units</span>
+                            </div>
                           </div>
                           <table className="w-full text-[11px]">
                             <thead>
-                              <tr className="bg-slate-50/50">
+                              <tr className="bg-slate-100/80">
                                 <th className="text-left py-1.5 px-3 text-[9px] uppercase tracking-wider text-slate-500 font-bold">Tier</th>
                                 {item.isProRated && <th className="text-left py-1.5 px-3 text-[9px] uppercase tracking-wider text-slate-500 font-bold">Pro-Rated</th>}
                                 <th className="text-right py-1.5 px-3 text-[9px] uppercase tracking-wider text-slate-500 font-bold">Units</th>
@@ -2471,8 +2471,8 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
                             </thead>
                             <tbody>
                               {item.tierBreakdown!.map((tier, ti) => (
-                                <tr key={ti} className="border-t border-slate-100">
-                                  <td className="py-1.5 px-3 text-slate-700">{tier.label}</td>
+                                <tr key={ti} className={`border-t border-slate-100 ${ti % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                                  <td className="py-1.5 px-3 text-slate-700 font-medium">{tier.label}</td>
                                   {item.isProRated && (
                                     <td className="py-1.5 px-3 text-slate-500 text-[10px] font-mono">
                                       {tier.proRatedFrom != null ? `${fmt(tier.proRatedFrom)} – ${tier.proRatedTo != null ? fmt(tier.proRatedTo) : '∞'}` : '-'}
@@ -2485,7 +2485,7 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
                               ))}
                             </tbody>
                           </table>
-                          <div className="px-3 py-2 bg-slate-100 border-t border-slate-200 flex justify-between text-[11px]">
+                          <div className="px-3 py-2 bg-gradient-to-r from-slate-100 to-slate-50 border-t border-slate-200 flex justify-between items-center text-[11px]">
                             <span className="text-slate-500 font-semibold">
                               {item.consumption} units × {item.readingDays ?? STANDARD_MONTH_DAYS} days
                             </span>
