@@ -84,9 +84,9 @@ export default function HomePage() {
       </header>
 
       <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
-        <div className="md:hidden p-4 bg-card border-b">
+        <div className="md:hidden flex-1 overflow-y-auto overscroll-contain p-4 bg-card">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Modules</h2>
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 gap-2.5 pb-4">
             {menuItems.map((item, idx) => (
               <Link key={idx} href={item.href}>
                 <button
