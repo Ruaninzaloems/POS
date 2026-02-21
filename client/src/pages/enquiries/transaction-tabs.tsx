@@ -1983,11 +1983,19 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
 
       const meteredMeterNos = new Set<string>();
       const meteredTariffKeys = new Set<string>();
+      const processedPhysicalMeters = new Set<string>();
+      const uniqueMeters = new Map<string, any>();
       for (const meter of meters) {
-        const meterNo = meter.meterNumber || meter.meterNo || '';
-        if (meterNo) meteredMeterNos.add(meterNo.toLowerCase().trim());
+        const physicalNo = (meter.physicalMeterNo || meter.physicalMeterNumber || '').toString().trim();
+        const meterNo = (meter.meterNumber || meter.meterNo || '').toString().trim();
+        const uniqueKey = physicalNo || meterNo;
+        if (!uniqueKey) continue;
+        if (meterNo) meteredMeterNos.add(meterNo.toLowerCase());
         const tariffKey = (meter.serviceDesc || meter.serviceDescription || meter.tariffType || '').toLowerCase().trim();
         if (tariffKey) meteredTariffKeys.add(tariffKey);
+        if (!uniqueMeters.has(uniqueKey.toLowerCase())) {
+          uniqueMeters.set(uniqueKey.toLowerCase(), meter);
+        }
       }
 
       const isPrepaidService = (desc: string): boolean => {
@@ -1995,15 +2003,24 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
         return d.includes('prepaid') || d.includes('pre-paid') || d.includes('pre paid') || d.includes('token') || d.includes('vend');
       };
 
-      for (const meter of meters) {
-        const meterNo = meter.meterNumber || meter.meterNo || '';
+      const uniqueMetersArr = Array.from(uniqueMeters.values());
+      for (const meter of uniqueMetersArr) {
+        const meterNo = (meter.meterNumber || meter.meterNo || '').toString().trim();
+        const physicalNo = (meter.physicalMeterNo || meter.physicalMeterNumber || '').toString().trim();
         if (!meterNo) continue;
+
+        if (processedPhysicalMeters.has((physicalNo || meterNo).toLowerCase())) continue;
+        processedPhysicalMeters.add((physicalNo || meterNo).toLowerCase());
 
         const svcDesc = meter.serviceDesc || meter.serviceDescription || meter.tariff || 'Metered Service';
         if (isPrepaidService(svcDesc)) continue;
 
+        const meterStatus = (meter.meterStatus || meter.status || '').toLowerCase();
+        if (meterStatus.includes('inactive') || meterStatus.includes('removed') || meterStatus.includes('decommission')) continue;
+
         const factor = typeof meter.tarifffactor === 'number' ? meter.tarifffactor : parseFloat(meter.tarifffactor || meter.factorQuantity) || 1;
-        const svcKey = `metered-${svcDesc.toLowerCase()}-${meterNo.toLowerCase()}`;
+        const displayMeter = physicalNo || meterNo;
+        const svcKey = `metered-${svcDesc.toLowerCase()}-${displayMeter.toLowerCase()}`;
         processedServiceKeys.add(svcKey);
 
         const matchingSvc = searchServices.find((s: any) => {
@@ -2018,27 +2035,48 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
           const readings = await getMeterReadingHistory(accountId, meterNo);
           const readingsArr = Array.isArray(readings) ? readings : [];
 
-          const unbilled = readingsArr.filter((r: any) => {
-            const bm = (r.billingmonth || r.billingMonth || '').toLowerCase().trim();
+          const sortedReadings = [...readingsArr].sort((a, b) => {
+            const dateA = new Date(a.reading2Date || a.readingDate || '1900-01-01').getTime();
+            const dateB = new Date(b.reading2Date || b.readingDate || '1900-01-01').getTime();
+            return dateB - dateA;
+          });
+
+          const latestReading = sortedReadings[0];
+          const latestStatus = latestReading ? (latestReading.readingStatus || '').toLowerCase() : '';
+
+          if (!latestReading || latestStatus === 'billed' || latestStatus === '') {
+            items.push({
+              category: 'Metered Services',
+              serviceDesc: `${svcDesc} (${displayMeter})`,
+              icon: getServiceIcon(svcDesc),
+              amount: 0,
+              vatAmount: 0,
+              total: 0,
+              detail: latestReading
+                ? `Latest reading (${latestReading.billingmonth || 'unknown'}) already billed — awaiting new reading`
+                : 'No reading history — awaiting first meter reading',
+            });
+            continue;
+          }
+
+          const unbilled = sortedReadings.filter((r: any) => {
             const flag = (r.flag || '').toLowerCase();
             const rs = (r.readingStatus || '').toLowerCase();
             if (flag.includes('reversed') || flag.includes('cancel')) return false;
-            if (flag.includes('estimate') || flag.includes('levy') || rs.includes('estimate')) return false;
-            if (bm === 'current open period' || bm.includes('open period')) return true;
-            if (rs.includes('awaiting') || rs.includes('unbilled') || rs.includes('pending')) return true;
-            if (flag.includes('awaiting') || flag.includes('unbilled')) return true;
+            if (rs === 'billed') return false;
+            if (rs.includes('awaiting') || rs.includes('unbilled') || rs.includes('pending') || rs.includes('captured')) return true;
             return false;
           });
 
           if (unbilled.length === 0) {
             items.push({
               category: 'Metered Services',
-              serviceDesc: `${svcDesc} (${meterNo})`,
+              serviceDesc: `${svcDesc} (${displayMeter})`,
               icon: getServiceIcon(svcDesc),
               amount: 0,
               vatAmount: 0,
               total: 0,
-              detail: 'Awaiting meter reading — will calculate once reading is captured',
+              detail: `Latest reading (${latestReading?.billingmonth || 'unknown'}) already billed — awaiting new reading`,
             });
             continue;
           }
@@ -2048,7 +2086,7 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
             if (cons <= 0) {
               items.push({
                 category: 'Metered Services',
-                serviceDesc: `${svcDesc} (${meterNo})`,
+                serviceDesc: `${svcDesc} (${displayMeter})`,
                 icon: getServiceIcon(svcDesc),
                 amount: 0,
                 vatAmount: 0,
@@ -2064,7 +2102,7 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
             const parsed = parseTariffRateData(tariffSource);
             const tiers = parseTariffTiers(parsed.blocks);
             if (!tiers.length) {
-              warns.push(`${svcDesc} (${meterNo}): No tariff tier data available on this service. Trying to find tariff from other sources.`);
+              warns.push(`${svcDesc} (${displayMeter}): No tariff tier data available on this service. Trying to find tariff from other sources.`);
               const templateMatch = templateByTariff.get(svcDesc.toLowerCase().trim());
               if (templateMatch) {
                 const tAmt = parseFloat(templateMatch.amount ?? templateMatch.totalAmount ?? 0) || 0;
@@ -2076,7 +2114,7 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
                   const netVat = useGross ? tVat : tAmt * (vatRate / 100);
                   items.push({
                     category: 'Metered Services',
-                    serviceDesc: `${svcDesc} (${meterNo})`,
+                    serviceDesc: `${svcDesc} (${displayMeter})`,
                     icon: getServiceIcon(svcDesc),
                     amount: netAmt,
                     vatAmount: netVat,
@@ -2089,7 +2127,7 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
               }
               items.push({
                 category: 'Metered Services',
-                serviceDesc: `${svcDesc} (${meterNo})`,
+                serviceDesc: `${svcDesc} (${displayMeter})`,
                 icon: getServiceIcon(svcDesc),
                 amount: 0,
                 vatAmount: 0,
@@ -2104,7 +2142,7 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
             const vat = subtotal * (vatRate / 100);
             items.push({
               category: 'Metered Services',
-              serviceDesc: `${svcDesc} (${meterNo})`,
+              serviceDesc: `${svcDesc} (${displayMeter})`,
               icon: getServiceIcon(svcDesc),
               amount: subtotal,
               vatAmount: vat,
@@ -2114,10 +2152,10 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
             });
           }
         } catch (e) {
-          warns.push(`${svcDesc} (${meterNo}): Failed to load reading history.`);
+          warns.push(`${svcDesc} (${displayMeter}): Failed to load reading history.`);
           items.push({
             category: 'Metered Services',
-            serviceDesc: `${svcDesc} (${meterNo})`,
+            serviceDesc: `${svcDesc} (${displayMeter})`,
             icon: getServiceIcon(svcDesc),
             amount: 0,
             vatAmount: 0,
