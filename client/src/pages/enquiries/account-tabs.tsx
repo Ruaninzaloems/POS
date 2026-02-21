@@ -1734,26 +1734,29 @@ export function LinkedAccountsTab({ accountId, onSelectAccount }: { accountId: n
   }, 0);
 
   return (
-    <div className="p-5 space-y-4" data-testid="linked-accounts-tab">
+    <div className="p-3 sm:p-5 space-y-4" data-testid="linked-accounts-tab">
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center justify-between">
+        <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-purple-600 to-purple-700">
           <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-white" />
-            <h3 className="text-sm font-semibold text-white tracking-wide">Linked Accounts on Same Property</h3>
-            <Badge variant="outline" className="bg-white/20 text-white border-white/30 text-[10px]">
+            <Building2 className="w-4 h-4 text-white shrink-0" />
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Linked Accounts on Same Property</h3>
+            <Badge variant="outline" className="hidden sm:inline-flex bg-white/20 text-white border-white/30 text-[10px]">
               {linkedAccounts.length} account{linkedAccounts.length !== 1 ? 's' : ''}
             </Badge>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <div className="text-[10px] text-purple-200 uppercase tracking-wide">Combined Outstanding</div>
-              <div className={`text-sm font-bold ${totalCombined > 0 ? 'text-red-200' : 'text-green-200'}`}>
-                {formatCurrency(totalCombined)}
-              </div>
-            </div>
-            <button onClick={load} className="p-1.5 rounded-md hover:bg-white/20 text-white transition-colors" title="Refresh" data-testid="button-refresh-linked">
+            <button onClick={load} className="ml-auto p-1.5 rounded-md hover:bg-white/20 text-white transition-colors shrink-0" title="Refresh" data-testid="button-refresh-linked">
               <RefreshCw className="w-3.5 h-3.5" />
             </button>
+          </div>
+          <div className="flex items-center justify-between mt-1.5">
+            <Badge variant="outline" className="sm:hidden bg-white/20 text-white border-white/30 text-[10px]">
+              {linkedAccounts.length} account{linkedAccounts.length !== 1 ? 's' : ''}
+            </Badge>
+            <div className="text-right ml-auto">
+              <span className="text-[10px] text-purple-200 uppercase tracking-wide mr-2">Combined Outstanding</span>
+              <span className={`text-xs sm:text-sm font-bold ${totalCombined > 0 ? 'text-red-200' : 'text-green-200'}`}>
+                {formatCurrency(totalCombined)}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -1772,42 +1775,45 @@ export function LinkedAccountsTab({ accountId, onSelectAccount }: { accountId: n
             return (
               <div key={aId || idx}>
                 <div
-                  className={`px-4 py-3 flex items-center gap-4 hover:bg-slate-50 transition-colors cursor-pointer ${isExpanded ? 'bg-purple-50/50' : ''}`}
+                  className={`px-3 sm:px-4 py-3 cursor-pointer transition-colors ${isExpanded ? 'bg-purple-50/50' : 'hover:bg-slate-50'}`}
                   onClick={() => setExpandedRow(isExpanded ? null : idx)}
                   data-testid={`linked-account-row-${aId}`}
                 >
-                  <button className="shrink-0 p-0.5 text-slate-400">
-                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  </button>
-
-                  <div className="flex-1 min-w-0 grid grid-cols-[1fr_1.5fr_auto_auto_auto] gap-4 items-center">
-                    <div>
-                      <div className="text-xs font-semibold text-slate-800 font-mono">{accNum}</div>
-                      <div className="text-[10px] text-slate-400">{accType}</div>
+                  <div className="flex items-start gap-2 sm:gap-4">
+                    <button className="shrink-0 p-0.5 text-slate-400 mt-0.5">
+                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="text-xs font-semibold text-slate-800 font-mono">{accNum}</div>
+                          <div className="text-[10px] text-slate-400">{accType}</div>
+                        </div>
+                        <div className={`text-xs sm:text-sm font-bold shrink-0 ${outstanding > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                          {formatCurrency(outstanding)}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-slate-700 font-medium truncate">{name}</span>
+                        <Badge variant="outline" className={`text-[10px] shrink-0 ${status.toLowerCase() === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                          {status}
+                        </Badge>
+                      </div>
+                      {onSelectAccount && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onSelectAccount(acct); }}
+                          className="mt-2 px-3 py-1.5 text-[11px] font-medium bg-blue-50 text-blue-600 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors w-full sm:w-auto"
+                          data-testid={`button-view-account-${aId}`}
+                        >
+                          View Account
+                        </button>
+                      )}
                     </div>
-                    <div className="truncate">
-                      <div className="text-xs text-slate-700 font-medium truncate">{name}</div>
-                    </div>
-                    <Badge variant="outline" className={`text-[10px] ${status.toLowerCase() === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-                      {status}
-                    </Badge>
-                    <div className={`text-sm font-bold text-right min-w-[100px] ${outstanding > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      {formatCurrency(outstanding)}
-                    </div>
-                    {onSelectAccount && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onSelectAccount(acct); }}
-                        className="px-2 py-1 text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100 transition-colors"
-                        data-testid={`button-view-account-${aId}`}
-                      >
-                        View
-                      </button>
-                    )}
                   </div>
                 </div>
 
                 {isExpanded && balanceDetails.length > 0 && (
-                  <div className="px-8 pb-3 bg-purple-50/30">
+                  <div className="px-4 sm:px-8 pb-3 bg-purple-50/30">
                     <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 mt-1">Balance Breakdown</div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                       {balanceDetails.map((b: any, bi: number) => (
@@ -1822,7 +1828,7 @@ export function LinkedAccountsTab({ accountId, onSelectAccount }: { accountId: n
                   </div>
                 )}
                 {isExpanded && balanceDetails.length === 0 && (
-                  <div className="px-8 pb-3 bg-purple-50/30">
+                  <div className="px-4 sm:px-8 pb-3 bg-purple-50/30">
                     <div className="text-[11px] text-slate-400 italic">No detailed balance breakdown available</div>
                   </div>
                 )}

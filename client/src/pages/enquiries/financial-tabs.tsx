@@ -110,7 +110,26 @@ export function IncentivesTab({ accountId }: { accountId: number }) {
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Incentive Journals</h3>
             <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{journals.length}</Badge>
           </div>
-          <div className="overflow-x-auto">
+          <div className="sm:hidden p-2 space-y-2" data-testid="table-incentive-journals-mobile">
+            {journals.map((j: any, i: number) => (
+              <div key={i} className="bg-white border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`row-journal-${i}`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-600">{j.journalDate || j.date || j.transactionDate ? new Date(j.journalDate || j.date || j.transactionDate).toLocaleDateString('en-ZA') : '-'}</span>
+                  <Badge variant="outline" className="text-[10px]">{j.status || j.journalStatus || '-'}</Badge>
+                </div>
+                <div className="text-xs text-slate-700 font-medium">{j.description || j.journalDescription || '-'}</div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500">Amount</span>
+                  <span className="font-mono font-semibold">{fmtAmt(j.journalAmount ?? j.amount ?? j.incentiveAmount ?? 0)}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500">Reference</span>
+                  <span className="font-mono text-slate-600">{j.reference || j.journalReference || j.docNumber || '-'}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-xs" data-testid="table-incentive-journals">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
@@ -549,7 +568,22 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Payment Extensions</h3>
             <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{extensions.length}</Badge>
           </div>
-          <div className="overflow-x-auto">
+          <div className="sm:hidden p-2 space-y-2" data-testid="table-payment-extensions-mobile">
+            {extensions.map((ext: any, i: number) => (
+              <div key={i} className="bg-white border border-slate-200 rounded-lg p-3 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-600">{fmtDate(ext.extensionDate ?? ext.date)}</span>
+                  <Badge variant="outline" className="text-[10px]">{ext.status || '-'}</Badge>
+                </div>
+                <div className="text-xs text-slate-700 font-medium">{ext.extensionType || ext.type || ext.description || '-'}</div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500">Amount</span>
+                  <span className="font-mono font-semibold">{fmtAmt(ext.amount ?? ext.extensionAmount)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-xs" data-testid="table-payment-extensions">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">

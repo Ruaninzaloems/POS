@@ -691,7 +691,7 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
       const fy = getRecordFinYear(item);
       if (fy) years.add(fy);
     });
-    const allYears = [...new Set([...finYears, ...years])];
+    const allYears = Array.from(new Set([...finYears, ...Array.from(years)]));
     allYears.sort((a, b) => {
       const ya = parseInt(a.split('/')[0]);
       const yb = parseInt(b.split('/')[0]);
@@ -773,7 +773,36 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Consumption</h3>
           <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{meters.length} meter{meters.length !== 1 ? 's' : ''}</Badge>
         </div>
-        <div className="overflow-x-auto">
+        <div className="sm:hidden p-2 space-y-2" data-testid="table-consumption-meters-mobile">
+          {meters.map((meter: any, i: number) => {
+            const isSelected = selectedMeter && (selectedMeter.meterNo === meter.meterNo && selectedMeter.serviceDesc === meter.serviceDesc);
+            return (
+              <div
+                key={i}
+                onClick={() => loadHistory(meter)}
+                className={`border rounded-lg p-3 space-y-2 cursor-pointer active:scale-[0.99] transition-all ${isSelected ? 'border-blue-400 bg-blue-50 shadow-sm' : 'border-slate-200 bg-white'}`}
+                data-testid={`row-meter-${i}`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-800">{meter.serviceDesc || meter.serviceDescription || '-'}</span>
+                  <div className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 ${isSelected ? 'border-blue-600 bg-blue-600' : 'border-slate-300'}`}>
+                    {isSelected && <div className="w-full h-full flex items-center justify-center"><div className="w-1.5 h-1.5 bg-white rounded-full" /></div>}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-semibold text-blue-700">{meter.meterNo || '-'}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Physical</span><span className="font-mono text-slate-700">{meter.physicalMeterNo || '-'}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Tariff</span><span className="text-slate-700 truncate ml-1">{meter.tariff || '-'}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Classification</span><span className="text-slate-700">{meter.meterClassificationDesc || '-'}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Status</span><span className="text-slate-700">{meter.serviceStatus || '-'}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Factor</span><span className="font-mono text-slate-700">{meter.tarifffactor ?? '-'}</span></div>
+                </div>
+                <div className="text-center text-[10px] text-blue-600 font-semibold pt-1">Tap to view readings</div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm" data-testid="table-consumption-meters">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
@@ -838,62 +867,100 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
 
       {selectedMeter && !historyLoading && readingHistory.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
-            <FileText className="w-4 h-4 text-white" />
-            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Meter Reading History</h3>
-            <div className="ml-auto flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <label className="text-[10px] text-white/70 font-medium uppercase tracking-wider">Financial Year</label>
-                <select
-                  value={selectedFinYear}
-                  onChange={e => setSelectedFinYear(e.target.value)}
-                  className="bg-white/20 text-white text-xs border border-white/30 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-white/50 appearance-none cursor-pointer"
-                  data-testid="select-meter-finyear"
-                  style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")", backgroundRepeat: 'no-repeat', backgroundPosition: 'right 6px center', paddingRight: '22px' }}
-                >
-                  {availableFinYears.map(fy => (
-                    <option key={fy} value={fy} className="text-slate-800 bg-white">{fy}</option>
-                  ))}
-                </select>
-              </div>
-              <Badge variant="outline" className="bg-white/20 text-white border-white/30 text-[10px]">
+          <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-slate-600 to-slate-700">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-white shrink-0" />
+              <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Meter Reading History</h3>
+              <Badge variant="outline" className="hidden sm:inline-flex ml-auto bg-white/20 text-white border-white/30 text-[10px]">
                 {filteredHistory.length} of {openMonthsCount} months
               </Badge>
-              <button
-                onClick={() => {
-                  const hdrs = historyCols.map(c => c.label);
-                  const dataRows = filteredHistory.map((item: any) =>
-                    historyCols.map(col => {
-                      let val = item[col.key];
-                      if ((val === undefined || val === null || val === '') && (col as any).fallback) val = (col as any).fallback();
-                      return val ?? '';
-                    })
-                  );
-                  const acctLabel = accountNumber || String(accountId);
-                  const meterLabel = selectedMeter?.physicalMeterNo || selectedMeter?.meterNo || 'N/A';
-                  downloadExcel({
-                    filename: `MeterReadingHistory_${acctLabel}_${selectedFinYear}_${meterLabel || 'export'}`,
-                    sheetName: 'Meter Readings',
-                    title: 'Meter Reading History',
-                    infoRows: [
-                      { label: 'Account Number:', value: acctLabel },
-                      { label: 'Meter No:', value: meterLabel },
-                      { label: 'Financial Year:', value: selectedFinYear },
-                    ],
-                    headers: hdrs,
-                    rows: dataRows,
-                    headerColor: '00695C',
-                  });
-                }}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/20 hover:bg-white/30 text-white text-[11px] font-medium rounded-md transition-colors border border-white/20"
-                data-testid="btn-download-meter-history"
+            </div>
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              <select
+                value={selectedFinYear}
+                onChange={e => setSelectedFinYear(e.target.value)}
+                className="bg-white/20 text-white text-xs border border-white/30 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-white/50 appearance-none cursor-pointer"
+                data-testid="select-meter-finyear"
+                style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")", backgroundRepeat: 'no-repeat', backgroundPosition: 'right 6px center', paddingRight: '22px' }}
               >
-                <FileSpreadsheet className="w-3.5 h-3.5" />
-                Excel
-              </button>
+                {availableFinYears.map(fy => (
+                  <option key={fy} value={fy} className="text-slate-800 bg-white">{fy}</option>
+                ))}
+              </select>
+              <Badge variant="outline" className="sm:hidden bg-white/20 text-white border-white/30 text-[10px]">
+                {filteredHistory.length}/{openMonthsCount} months
+              </Badge>
+              <div className="ml-auto">
+                <button
+                  onClick={() => {
+                    const hdrs = historyCols.map(c => c.label);
+                    const dataRows = filteredHistory.map((item: any) =>
+                      historyCols.map(col => {
+                        let val = item[col.key];
+                        if ((val === undefined || val === null || val === '') && (col as any).fallback) val = (col as any).fallback();
+                        return val ?? '';
+                      })
+                    );
+                    const acctLabel = accountNumber || String(accountId);
+                    const meterLabel = selectedMeter?.physicalMeterNo || selectedMeter?.meterNo || 'N/A';
+                    downloadExcel({
+                      filename: `MeterReadingHistory_${acctLabel}_${selectedFinYear}_${meterLabel || 'export'}`,
+                      sheetName: 'Meter Readings',
+                      title: 'Meter Reading History',
+                      infoRows: [
+                        { label: 'Account Number:', value: acctLabel },
+                        { label: 'Meter No:', value: meterLabel },
+                        { label: 'Financial Year:', value: selectedFinYear },
+                      ],
+                      headers: hdrs,
+                      rows: dataRows,
+                      headerColor: '00695C',
+                    });
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white text-[11px] font-medium rounded-md transition-colors border border-white/20"
+                  data-testid="btn-download-meter-history"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  Excel
+                </button>
+              </div>
             </div>
           </div>
-          <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+          <div className="sm:hidden p-2 space-y-2 max-h-[500px] overflow-y-auto" data-testid="table-meter-reading-history-mobile">
+            {filteredHistory.length === 0 ? (
+              <div className="py-8 text-center text-slate-400 text-sm">No meter readings found for {selectedFinYear}</div>
+            ) : filteredHistory.map((item: any, i: number) => {
+              let consumption = item.consumption;
+              if ((consumption === undefined || consumption === null || consumption === '') && selectedMeter?.tarifffactor) consumption = '';
+              const flag = String(item.flag || '').toLowerCase();
+              const flagColor = flag.includes('reversed') || flag.includes('cancel') ? 'bg-red-100 text-red-700 border-red-200' : flag.includes('estimate') || flag.includes('levy') ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-green-100 text-green-700 border-green-200';
+              return (
+                <div key={i} className="bg-white border border-slate-200 rounded-lg p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-800">{item.billingmonth || item.billingMonth || '-'}</span>
+                    {item.flag && <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${flagColor}`}>{item.flag}</span>}
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                    <div className="flex justify-between text-[11px]"><span className="text-slate-500">Old Date</span><span className="font-mono text-slate-700">{item.reading1Date || '-'}</span></div>
+                    <div className="flex justify-between text-[11px]"><span className="text-slate-500">New Date</span><span className="font-mono text-slate-700">{item.reading2Date || '-'}</span></div>
+                    <div className="flex justify-between text-[11px]"><span className="text-slate-500">Old Reading</span><span className="font-mono font-semibold">{item.reading1 ?? '-'}</span></div>
+                    <div className="flex justify-between text-[11px]"><span className="text-slate-500">New Reading</span><span className="font-mono font-semibold">{item.reading2 ?? '-'}</span></div>
+                    <div className="flex justify-between text-[11px]"><span className="text-slate-500">Consumption</span><span className="font-mono font-bold text-blue-700">{item.consumption ?? '-'}</span></div>
+                    <div className="flex justify-between text-[11px]"><span className="text-slate-500">Days</span><span className="font-mono text-slate-700">{item.readingdays ?? '-'}</span></div>
+                    <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter Status</span><span className="text-slate-700">{item.meterStatus || '-'}</span></div>
+                    <div className="flex justify-between text-[11px]"><span className="text-slate-500">Reading Status</span><span className="text-slate-700">{item.readingStatus || '-'}</span></div>
+                  </div>
+                  {(item.meterChange || item.disconnectionStatus) && (
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 pt-1 border-t border-slate-100">
+                      {item.meterChange && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter Change</span><span className="text-slate-700">{item.meterChange}</span></div>}
+                      {item.disconnectionStatus && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Disconnection</span><span className="text-slate-700">{item.disconnectionStatus}</span></div>}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="hidden sm:block overflow-x-auto max-h-[500px] overflow-y-auto">
             <table className="w-full text-sm" data-testid="table-meter-reading-history">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-slate-50 border-b border-slate-200">
@@ -1325,68 +1392,111 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
             </div>
             <div className="p-3 sm:p-6">
               {!selectedPrepaidMeter ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm" data-testid="table-prepaid-sales">
-                    <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200">
-                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service Type</th>
-                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter No</th>
-                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Phase</th>
-                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Tariff</th>
-                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Physical Meter No</th>
-                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Connection Size</th>
-                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Status</th>
-                        <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Factor</th>
-                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Classification</th>
-                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">STS Code</th>
-                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Supplier Group Code</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {prepaidMeters.length === 0 ? (
-                        <tr><td colSpan={11} className="text-center text-slate-400 py-6">No prepaid meters found</td></tr>
-                      ) : prepaidMeters.map((m: any, i: number) => (
-                        <tr
-                          key={i}
-                          className="border-b border-slate-100 hover:bg-emerald-50/40 transition-colors cursor-pointer"
-                          onClick={async () => {
-                            setSelectedPrepaidMeter(m);
-                            setLoadingRecharge(true);
-                            setPrepaidRechargeDetails([]);
-                            try {
-                              const meterId = m.meterId || m.meter_id || m.id;
-                              if (meterId) {
-                                const details = await getPrepaidRechargeDetailsForMeter(meterId);
-                                setPrepaidRechargeDetails(Array.isArray(details) ? details : []);
-                              }
-                            } catch (e) {
-                              console.error('Failed to load recharge details:', e);
-                            } finally {
-                              setLoadingRecharge(false);
-                            }
-                          }}
-                          data-testid={`prepaid-sales-row-${i}`}
-                        >
-                          <td className="py-2.5 px-3 font-medium">{m.serviceType || m.serviceDescription || 'Electricity Pre-Paid'}</td>
-                          <td className="py-2.5 px-3 font-mono text-blue-700 font-semibold">{m.meterNumber || m.meterNo || '-'}</td>
-                          <td className="py-2.5 px-3">{m.meterPhase || m.phase || '-'}</td>
-                          <td className="py-2.5 px-3 text-xs">{m.tariff || m.tariffDescription || '-'}</td>
-                          <td className="py-2.5 px-3 font-mono text-xs">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</td>
-                          <td className="py-2.5 px-3">{m.meterConnectionSize || m.connectionSize || '-'}</td>
-                          <td className="py-2.5 px-3">
+                <>
+                  <div className="sm:hidden space-y-2" data-testid="table-prepaid-sales-mobile">
+                    {prepaidMeters.length === 0 ? (
+                      <div className="text-center text-slate-400 py-6">No prepaid meters found</div>
+                    ) : prepaidMeters.map((m: any, i: number) => {
+                      const handleClick = async () => {
+                        setSelectedPrepaidMeter(m);
+                        setLoadingRecharge(true);
+                        setPrepaidRechargeDetails([]);
+                        try {
+                          const meterId = m.meterId || m.meter_id || m.id;
+                          if (meterId) {
+                            const details = await getPrepaidRechargeDetailsForMeter(meterId);
+                            setPrepaidRechargeDetails(Array.isArray(details) ? details : []);
+                          }
+                        } catch (e) {
+                          console.error('Failed to load recharge details:', e);
+                        } finally {
+                          setLoadingRecharge(false);
+                        }
+                      };
+                      return (
+                        <div key={i} onClick={handleClick} className="bg-white border border-slate-200 rounded-lg p-3 space-y-2 cursor-pointer active:bg-emerald-50" data-testid={`prepaid-sales-row-${i}`}>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-slate-800">{m.serviceType || m.serviceDescription || 'Electricity Pre-Paid'}</span>
                             <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.meterStatus || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
                               {m.status || m.meterStatus || '-'}
                             </span>
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-mono">{m.factor ?? '-'}</td>
-                          <td className="py-2.5 px-3">{m.meterClassification || m.classification || '-'}</td>
-                          <td className="py-2.5 px-3 font-mono">{m.stsCode ?? '-'}</td>
-                          <td className="py-2.5 px-3 font-mono">{m.supplierGroupCode ?? '-'}</td>
+                          </div>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                            <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-semibold text-blue-700">{m.meterNumber || m.meterNo || '-'}</span></div>
+                            <div className="flex justify-between text-[11px]"><span className="text-slate-500">Physical</span><span className="font-mono text-slate-700">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</span></div>
+                            <div className="flex justify-between text-[11px]"><span className="text-slate-500">Tariff</span><span className="text-slate-700 truncate ml-1">{m.tariff || m.tariffDescription || '-'}</span></div>
+                            <div className="flex justify-between text-[11px]"><span className="text-slate-500">Phase</span><span className="text-slate-700">{m.meterPhase || m.phase || '-'}</span></div>
+                            <div className="flex justify-between text-[11px]"><span className="text-slate-500">Classification</span><span className="text-slate-700">{m.meterClassification || m.classification || '-'}</span></div>
+                            <div className="flex justify-between text-[11px]"><span className="text-slate-500">Factor</span><span className="font-mono text-slate-700">{m.factor ?? '-'}</span></div>
+                          </div>
+                          <div className="text-center text-[10px] text-emerald-600 font-semibold pt-1">Tap to view recharge details</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="hidden sm:block overflow-x-auto">
+                    <table className="w-full text-sm" data-testid="table-prepaid-sales">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200">
+                          <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service Type</th>
+                          <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter No</th>
+                          <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Phase</th>
+                          <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Tariff</th>
+                          <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Physical Meter No</th>
+                          <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Connection Size</th>
+                          <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Status</th>
+                          <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Factor</th>
+                          <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Classification</th>
+                          <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">STS Code</th>
+                          <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Supplier Group Code</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {prepaidMeters.length === 0 ? (
+                          <tr><td colSpan={11} className="text-center text-slate-400 py-6">No prepaid meters found</td></tr>
+                        ) : prepaidMeters.map((m: any, i: number) => (
+                          <tr
+                            key={i}
+                            className="border-b border-slate-100 hover:bg-emerald-50/40 transition-colors cursor-pointer"
+                            onClick={async () => {
+                              setSelectedPrepaidMeter(m);
+                              setLoadingRecharge(true);
+                              setPrepaidRechargeDetails([]);
+                              try {
+                                const meterId = m.meterId || m.meter_id || m.id;
+                                if (meterId) {
+                                  const details = await getPrepaidRechargeDetailsForMeter(meterId);
+                                  setPrepaidRechargeDetails(Array.isArray(details) ? details : []);
+                                }
+                              } catch (e) {
+                                console.error('Failed to load recharge details:', e);
+                              } finally {
+                                setLoadingRecharge(false);
+                              }
+                            }}
+                            data-testid={`prepaid-sales-row-${i}`}
+                          >
+                            <td className="py-2.5 px-3 font-medium">{m.serviceType || m.serviceDescription || 'Electricity Pre-Paid'}</td>
+                            <td className="py-2.5 px-3 font-mono text-blue-700 font-semibold">{m.meterNumber || m.meterNo || '-'}</td>
+                            <td className="py-2.5 px-3">{m.meterPhase || m.phase || '-'}</td>
+                            <td className="py-2.5 px-3 text-xs">{m.tariff || m.tariffDescription || '-'}</td>
+                            <td className="py-2.5 px-3 font-mono text-xs">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</td>
+                            <td className="py-2.5 px-3">{m.meterConnectionSize || m.connectionSize || '-'}</td>
+                            <td className="py-2.5 px-3">
+                              <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.meterStatus || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                                {m.status || m.meterStatus || '-'}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-mono">{m.factor ?? '-'}</td>
+                            <td className="py-2.5 px-3">{m.meterClassification || m.classification || '-'}</td>
+                            <td className="py-2.5 px-3 font-mono">{m.stsCode ?? '-'}</td>
+                            <td className="py-2.5 px-3 font-mono">{m.supplierGroupCode ?? '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               ) : (
                 <div className="space-y-4">
                   <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 sm:p-4">

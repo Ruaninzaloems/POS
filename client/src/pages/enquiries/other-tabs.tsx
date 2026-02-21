@@ -765,26 +765,39 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
             </div>
 
             {addressHistory.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs" data-testid="table-address-history">
-                  <thead>
-                    <tr className="bg-slate-100 border-b-2 border-slate-200">
-                      <th className="text-left py-2.5 px-4 font-bold text-slate-700 whitespace-nowrap">Date</th>
-                      <th className="text-left py-2.5 px-4 font-bold text-slate-700 whitespace-nowrap">Address</th>
-                      <th className="text-left py-2.5 px-4 font-bold text-slate-700 whitespace-nowrap">Changed By</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {addressHistory.map((r: any, i: number) => (
-                      <tr key={i} className="border-b border-slate-100 hover:bg-amber-50/30 transition-colors" data-testid={`address-history-row-${i}`}>
-                        <td className="py-2.5 px-4 text-slate-600 whitespace-nowrap">{(() => { try { return r.changeDate ? new Date(r.changeDate).toLocaleDateString('en-ZA') : r.date || '-'; } catch { return r.changeDate || '-'; } })()}</td>
-                        <td className="py-2.5 px-4 text-slate-800">{(r.address || r.deliveryAddress || '-').replace(/\r\n/g, ', ')}</td>
-                        <td className="py-2.5 px-4 text-slate-500">{r.changedBy || r.user || '-'}</td>
+              <>
+                <div className="sm:hidden p-2 space-y-2" data-testid="table-address-history-mobile">
+                  {addressHistory.map((r: any, i: number) => (
+                    <div key={i} className="bg-white border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`address-history-row-${i}`}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-600">{(() => { try { return r.changeDate ? new Date(r.changeDate).toLocaleDateString('en-ZA') : r.date || '-'; } catch { return r.changeDate || '-'; } })()}</span>
+                        <span className="text-[10px] text-slate-400">{r.changedBy || r.user || '-'}</span>
+                      </div>
+                      <div className="text-xs text-slate-800">{(r.address || r.deliveryAddress || '-').replace(/\r\n/g, ', ')}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden sm:block overflow-x-auto">
+                  <table className="w-full text-xs" data-testid="table-address-history">
+                    <thead>
+                      <tr className="bg-slate-100 border-b-2 border-slate-200">
+                        <th className="text-left py-2.5 px-4 font-bold text-slate-700 whitespace-nowrap">Date</th>
+                        <th className="text-left py-2.5 px-4 font-bold text-slate-700 whitespace-nowrap">Address</th>
+                        <th className="text-left py-2.5 px-4 font-bold text-slate-700 whitespace-nowrap">Changed By</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {addressHistory.map((r: any, i: number) => (
+                        <tr key={i} className="border-b border-slate-100 hover:bg-amber-50/30 transition-colors" data-testid={`address-history-row-${i}`}>
+                          <td className="py-2.5 px-4 text-slate-600 whitespace-nowrap">{(() => { try { return r.changeDate ? new Date(r.changeDate).toLocaleDateString('en-ZA') : r.date || '-'; } catch { return r.changeDate || '-'; } })()}</td>
+                          <td className="py-2.5 px-4 text-slate-800">{(r.address || r.deliveryAddress || '-').replace(/\r\n/g, ', ')}</td>
+                          <td className="py-2.5 px-4 text-slate-500">{r.changedBy || r.user || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             ) : (
               <div className="py-12 px-5 flex flex-col items-center justify-center text-center">
                 <div className="w-14 h-14 rounded-full bg-amber-50 flex items-center justify-center mb-4">
@@ -2044,7 +2057,17 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
         </button>
       </div>
 
-      <div className="overflow-x-auto border border-slate-200 rounded">
+      <div className="sm:hidden space-y-2" data-testid="table-occupiers-mobile">
+        {data.length === 0 ? (
+          <p className="text-center text-slate-400 py-4 italic text-sm">No records to display.</p>
+        ) : data.map((o: any, i: number) => (
+          <div key={i} className="bg-white border border-slate-200 rounded-lg p-3 cursor-pointer hover:bg-blue-50 transition-colors" data-testid={`occupier-row-${i}`}>
+            <div className="text-sm font-medium text-slate-800">{o.name || o.occupierName || o.surname || '-'}</div>
+            <div className="text-xs font-mono text-slate-500 mt-0.5">{o.idNumber || o.idRegistrationNumber || o.idNo || '-'}</div>
+          </div>
+        ))}
+      </div>
+      <div className="hidden sm:block overflow-x-auto border border-slate-200 rounded">
         <table className="w-full text-sm" data-testid="table-occupiers">
           <thead>
             <tr className="bg-slate-100 border-b border-slate-200">
