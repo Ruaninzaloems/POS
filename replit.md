@@ -40,14 +40,12 @@ Preferred communication style: Simple, everyday language.
 - **Session Management**: `express-session` with `connect-pg-simple` stores per-user sessions in PostgreSQL (`user_sessions` table, auto-created). Each user's Platinum JWT token, userData, posCashierId, and authMode are stored in `req.session.platinumAuth` (type `UserSession`). This enables 50+ concurrent users without session cross-contamination.
 - **Concurrency**: Global request queue limits concurrent Platinum API calls to 100. Response cache is user-aware: user-specific paths (validate-cashier, payment-options, etc.) are keyed by userId, shared data (BillingEnquiry) uses URL-only keys.
 - **Serving**: Serves production builds statically; uses Vite middleware for development.
-- **Storage Layer**: Implements `IStorage` interface with `DatabaseStorage` using Drizzle ORM, though currently not actively used for persistence as all transactions go to Platinum API.
+- **No Local Database for Business Data**: All transaction storage, cashier sessions, account data, receipts, day-end reconciliation, and every other business operation is handled exclusively via the Platinum API. The local PostgreSQL database is used ONLY for HTTP session storage (`user_sessions` table via `connect-pg-simple`). Local database schemas (`storage.ts`, `db.ts`, `shared/schema.ts`) are dead code — never called from routes or client.
 
-### Database (PostgreSQL + Drizzle ORM)
-- **ORM**: Drizzle ORM for PostgreSQL.
-- **Schema**: Defined in `shared/schema.ts` with Zod validation.
-- **Tables**: `users`, `cashier_sessions`, `transactions`, `user_sessions` (express-session store).
-- **Migrations**: Managed via `drizzle-kit push`.
-- **Note**: While a database layer is defined, the system primarily uses external APIs for transaction persistence and session management. The local database code is legacy and not actively used for core transaction/session data. The `user_sessions` table is actively used for HTTP session storage.
+### Database (PostgreSQL)
+- **Purpose**: HTTP session storage ONLY. The `user_sessions` table (auto-created by `connect-pg-simple`) stores express-session data for multi-user support.
+- **NOT used for**: Transactions, cashier sessions, account data, receipts, or any business logic. All persistence goes through Platinum API.
+- **Legacy code**: `shared/schema.ts`, `server/storage.ts`, `server/db.ts` define unused tables (`users`, `cashier_sessions`, `transactions`). These are dead code kept for reference only.
 
 ### Key Business Logic Decisions
 - **Rounding**: Transaction totals are rounded up to the nearest 10 cents.
