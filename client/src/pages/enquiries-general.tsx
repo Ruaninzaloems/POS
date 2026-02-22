@@ -85,20 +85,40 @@ function RiskFlagsBanner({ accountId }: { accountId: number }) {
       }).catch(() => {}),
 
       getAccountBalance(accountId).then((bal: any) => {
-        let total = 0;
-        if (Array.isArray(bal)) {
-          total = bal.reduce((s: number, b: any) => s + (b.totalOutStanding || b.totalBalance || 0), 0);
-        } else if (bal) {
-          total = bal.totalBalance ?? bal.totalDue ?? bal.balance ?? bal.outstandingBalance ?? 0;
+        const items = Array.isArray(bal) ? bal : bal ? [bal] : [];
+        if (!items.length) return;
+        const getNum = (obj: any, ...keys: string[]) => {
+          for (const k of keys) { const v = obj[k]; if (v !== undefined && v !== null) return typeof v === 'number' ? v : parseFloat(v) || 0; }
+          return 0;
+        };
+        let totalOutstanding = 0;
+        let totalArrears = 0;
+        for (const item of items) {
+          totalOutstanding += getNum(item, 'totalOutStanding', 'totalOutstandingAmount', 'totalBalance');
+          const d30 = getNum(item, 'days30', '30days');
+          const d60 = getNum(item, 'days60', '60days');
+          const d90 = getNum(item, 'days90', '90days');
+          const d120 = getNum(item, 'days120', '120days');
+          const d150 = getNum(item, 'days150', '150days');
+          const d180plus = getNum(item, 'untill360', 'days180Plus', 'days360Plus', 'days180', 'days210', 'days240', 'days270', 'days300', 'days330', 'days360');
+          totalArrears += d30 + d60 + d90 + d120 + d150 + d180plus;
         }
-        if (total > 10000) {
-          const formatted = Number(total).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const fmtR = (v: number) => `R ${v.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        if (totalArrears > 10000) {
           detected.push({
             id: 'high-arrears',
             label: 'High Arrears',
-            detail: `Outstanding balance: R ${formatted}`,
-            severity: total > 50000 ? 'critical' : 'warning',
+            detail: `Arrears (30+ days): ${fmtR(totalArrears)} of ${fmtR(totalOutstanding)} total`,
+            severity: totalArrears > 50000 ? 'critical' : 'warning',
             icon: <AlertTriangle className="w-4 h-4" />,
+          });
+        } else if (totalArrears > 0) {
+          detected.push({
+            id: 'arrears',
+            label: 'Arrears',
+            detail: `Overdue (30+ days): ${fmtR(totalArrears)} of ${fmtR(totalOutstanding)} total`,
+            severity: 'warning',
+            icon: <HandCoins className="w-4 h-4" />,
           });
         }
       }).catch(() => {}),
