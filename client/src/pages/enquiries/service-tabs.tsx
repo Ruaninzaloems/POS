@@ -1894,7 +1894,12 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
           const tariff = (s.tariff || s.tariffCode || s.tariffDescription || s.description || '').toLowerCase();
           return tariff.includes('basic') || tariff.includes('fixed') || tariff.includes('availability') || tariff.includes('service charge');
         };
-        const meteredServices = allServices.filter((s: any) => !isBasicOrFixedCharge(s) && !isServicePrepaid(s));
+        const hasRealMeter = (s: any) => {
+          const phys = (s.physicalMeterNo || s.physicalMeterNumber || s.meterNo || s.meterNumber || '').toLowerCase().trim();
+          if (!phys || phys === 'no meter' || phys === 'none' || phys === '-' || phys === '0') return false;
+          return true;
+        };
+        const meteredServices = allServices.filter((s: any) => !isBasicOrFixedCharge(s) && !isServicePrepaid(s) && hasRealMeter(s));
         if (meteredServices.length === 0) return null;
         return (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
