@@ -2224,12 +2224,21 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
         const dd = (t.drilldown || '').toLowerCase();
         return (dd === 'levy' || desc.startsWith('levy')) && (desc.includes('property') || desc.includes('rate'));
       });
+      const isWaterOrElecRebate = (desc: string) =>
+        desc.includes('water') || desc.includes('electricity') || desc.includes('electric') || desc.includes('elec ') || desc.includes('sewerage') || desc.includes('sewer');
       const ratesRebateLines = lastMonthTxns.filter((t: any) => {
         const desc = (t.description || '').toLowerCase();
         const dd = (t.drilldown || '').toLowerCase();
         if (dd !== 'rebate' && !desc.startsWith('rebate')) return false;
+        if (isWaterOrElecRebate(desc)) return false;
         return desc.includes('residential') || desc.includes('property') || desc.includes('rates') ||
           desc.includes('pensioner') || desc.includes('indigent') || desc.includes('rebate -');
+      });
+      const serviceRebateLines = lastMonthTxns.filter((t: any) => {
+        const desc = (t.description || '').toLowerCase();
+        const dd = (t.drilldown || '').toLowerCase();
+        if (dd !== 'rebate' && !desc.startsWith('rebate')) return false;
+        return isWaterOrElecRebate(desc);
       });
 
       let usedLastMonthRates = false;
@@ -2316,6 +2325,41 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
               rebateAmount: rebateTotal > 0 ? rebateTotal : undefined,
             });
           }
+        }
+      }
+
+      if (serviceRebateLines.length > 0) {
+        for (const rebate of serviceRebateLines) {
+          const rebateAmt = parseFloat(rebate.amount ?? rebate.totalAmount ?? 0) || 0;
+          const rebateVat = parseFloat(rebate.vatAmount ?? 0) || 0;
+          const rebateDesc = rebate.description || 'Rebate';
+          const rebateDescLower = rebateDesc.toLowerCase();
+          const tariff = rebate.tariff || '';
+          const rebateKey = `svcrebate-${rebateDescLower}`;
+          if (processedServiceKeys.has(rebateKey)) continue;
+          processedServiceKeys.add(rebateKey);
+          let category = 'Metered Services';
+          let icon = <Minus className="w-3.5 h-3.5 text-green-600" />;
+          if (rebateDescLower.includes('water')) {
+            category = 'Metered Services';
+            icon = <Droplets className="w-3.5 h-3.5 text-green-600" />;
+          } else if (rebateDescLower.includes('elec')) {
+            category = 'Metered Services';
+            icon = <Zap className="w-3.5 h-3.5 text-green-600" />;
+          } else if (rebateDescLower.includes('sewer')) {
+            category = 'Metered Services';
+            icon = <Droplets className="w-3.5 h-3.5 text-green-600" />;
+          }
+          items.push({
+            category,
+            serviceDesc: rebateDesc,
+            icon,
+            amount: rebateAmt,
+            vatAmount: rebateVat,
+            total: rebateAmt + rebateVat,
+            detail: tariff ? `Tariff: ${tariff}` : `Based on ${prevMonthName} billing`,
+            rebateAmount: Math.abs(rebateAmt),
+          });
         }
       }
 
