@@ -1875,14 +1875,14 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
       {allServices.length > 0 && (() => {
         const prepaidMeterNos = new Set(prepaidMeters.map((p: any) => (p.prepaidMeterNo || p.meterNumber || p.physicalMeterNumber || p.meterNo || '').toLowerCase()).filter(Boolean));
         const isServicePrepaid = (s: any) => {
-          const desc = (s.description || s.serviceDescription || s.tariff || s.tariffCode || s.tariffDescription || s.serviceType || '').toLowerCase();
+          const desc = (s.serviceDesc || s.tariffType || s.description || s.serviceDescription || s.tariff || s.tariffCode || s.tariffDescription || s.serviceType || '').toLowerCase();
           if (desc.includes('prepaid') || desc.includes('pre-paid') || desc.includes('pre paid')) return true;
           const meterNo = (s.meterNo || s.meterNumber || '').toLowerCase();
           if (meterNo && prepaidMeterNos.has(meterNo)) return true;
           return false;
         };
         const getServiceIcon = (s: any) => {
-          const desc = (s.serviceType || s.serviceTypeDescription || s.description || '').toLowerCase();
+          const desc = (s.serviceDesc || s.tariffType || s.serviceType || s.serviceTypeDescription || s.description || '').toLowerCase();
           if (desc.includes('water')) return { icon: '💧', color: 'text-blue-600' };
           if (desc.includes('electric') || desc.includes('elec')) return { icon: '⚡', color: 'text-amber-500' };
           if (desc.includes('sewer') || desc.includes('sanit') || desc.includes('efflu')) return { icon: '🔧', color: 'text-purple-600' };
@@ -1925,7 +1925,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                   <span className="text-lg">{svcIcon.icon}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-xs font-bold text-slate-800 truncate">{s.serviceType || s.serviceTypeDescription || s.description || s.serviceDescription || '-'}</span>
+                      <span className="text-xs font-bold text-slate-800 truncate">{s.serviceDesc || s.serviceType || s.tariffType || s.serviceTypeDescription || s.description || '-'}</span>
                       {isPrepaid ? (
                         <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">⚡ Prepaid</span>
                       ) : (s.meterNo || s.meterNumber) ? (
@@ -1946,11 +1946,13 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Service ID</span><span className="font-mono font-semibold text-blue-700">{s.serviceId || s.service_ID || s.serviceID || '-'}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Service ID</span><span className="font-mono font-semibold text-blue-700">{s.services_ID || s.serviceId || s.service_ID || s.serviceID || '-'}</span></div>
                   {(s.meterNo || s.meterNumber) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-semibold text-teal-700">{s.meterNo || s.meterNumber || '-'}</span></div>}
                   {(s.physicalMeterNo || s.physicalMeterNumber) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Physical Meter</span><span className="font-mono text-slate-700">{s.physicalMeterNo || s.physicalMeterNumber || '-'}</span></div>}
                   <div className="col-span-2 flex justify-between text-[11px]"><span className="text-slate-500">Tariff</span><span className="text-slate-700 text-right truncate ml-2 max-w-[70%]">{s.tariff || s.tariffCode || s.tariffDescription || '-'}</span></div>
-                  {(s.installDate || s.dateInstalled) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Install Date</span><span className="text-slate-700">{s.installDate || s.dateInstalled || '-'}</span></div>}
+                  {s.meterConnectionSize && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Connection</span><span className="text-slate-700">{s.meterConnectionSize}</span></div>}
+                  {s.frequency && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Frequency</span><span className="text-slate-700">{s.frequency}</span></div>}
+                  {(s.installDate || s.dateInstalled || s.serviceCommencementDate) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Start Date</span><span className="text-slate-700">{(() => { const d = s.serviceCommencementDate || s.installDate || s.dateInstalled; if (!d) return '-'; if (typeof d === 'string' && d.includes('T')) return new Date(d).toLocaleDateString('en-ZA'); return d; })()}</span></div>}
                   {(s.routeFileName || s.routeFile) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Route</span><span className="text-slate-700 truncate ml-1">{s.routeFileName || s.routeFile || '-'}</span></div>}
                 </div>
                 {hasMeter && (
@@ -1994,9 +1996,9 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                       <div className="flex items-center gap-2">
                         <span className="text-sm">{svcIcon.icon}</span>
                         <div>
-                          <span className="font-medium text-slate-800">{s.serviceType || s.serviceTypeDescription || '-'}</span>
-                          {s.description && s.description !== (s.serviceType || s.serviceTypeDescription) && (
-                            <span className="block text-[10px] text-slate-500">{s.description || s.serviceDescription}</span>
+                          <span className="font-medium text-slate-800">{s.serviceDesc || s.serviceType || s.tariffType || '-'}</span>
+                          {s.tariffType && s.serviceDesc && s.tariffType !== s.serviceDesc && (
+                            <span className="block text-[10px] text-slate-500">{s.tariffType}</span>
                           )}
                         </div>
                       </div>
@@ -2010,7 +2012,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                         <span className="text-[10px] text-slate-400">Metered</span>
                       )}
                     </td>
-                    <td className="py-2 px-3 font-mono text-blue-700">{s.serviceId || s.service_ID || s.serviceID || '-'}</td>
+                    <td className="py-2 px-3 font-mono text-blue-700">{s.services_ID || s.serviceId || s.service_ID || s.serviceID || '-'}</td>
                     <td className="py-2 px-3 font-mono text-teal-700 font-semibold">{s.meterNo || s.meterNumber || '-'}</td>
                     <td className="py-2 px-3 text-slate-500 text-xs max-w-[200px] truncate">{s.tariff || s.tariffCode || s.tariffDescription || '-'}</td>
                     <td className="py-2 px-3">
@@ -2592,7 +2594,19 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                               <div className="flex justify-between text-[11px]"><span className="text-slate-500">Total</span><span className="font-mono font-bold text-slate-800">{(r.total ?? r.totalAmount ?? ((r.amount ?? 0) + (r.vatAmount ?? 0))).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span></div>
                               <div className="flex justify-between text-[11px]"><span className="text-slate-500">Units</span><span className="font-mono">{r.prepaidUnit ?? r.units ?? r.kwhUnits ?? '-'}</span></div>
                             </div>
+                            <div className="flex justify-between text-[11px]"><span className="text-slate-500">Type</span><span className="font-mono">{r.unitType || r.type || '-'}</span></div>
                             <div className="flex justify-between text-[11px]"><span className="text-slate-500">Token</span><span className="font-mono text-xs text-slate-700 truncate ml-2">{r.prepaidTokenNo || r.tokenNumber || r.token || '-'}</span></div>
+                            <div className="flex justify-between text-[11px]">
+                              <span className="text-slate-500">Cancelled</span>
+                              {r.canceledStatus === 'Yes' || r.cancelledStatus === 'Yes' || r.isCancelled ? (
+                                <span className="font-semibold text-red-600">Yes</span>
+                              ) : (
+                                <span className="font-semibold text-emerald-600">No</span>
+                              )}
+                            </div>
+                            {(r.reasonForCancel || r.cancelReason) && (
+                              <div className="flex justify-between text-[11px]"><span className="text-slate-500">Cancel Reason</span><span className="text-red-600">{r.reasonForCancel || r.cancelReason}</span></div>
+                            )}
                           </div>
                         ))}
                       </div>
