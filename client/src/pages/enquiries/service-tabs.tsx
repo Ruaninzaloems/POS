@@ -2063,10 +2063,22 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
           setLoadingRecharge(true);
           setPrepaidRechargeDetails([]);
           try {
-            const meterId = m.meterId || m.meter_id || m.id || m.prepaidMeterId;
+            console.log('[PrepaidHistory] Meter object keys:', Object.keys(m));
+            console.log('[PrepaidHistory] Meter object:', JSON.stringify(m));
+            const meterId = m.meterId || m.meter_id || m.id || m.prepaidMeterId || m.meterID || m.meter_ID || m.serviceId || m.service_ID;
+            console.log('[PrepaidHistory] Resolved meterId:', meterId);
             if (meterId) {
               const details = await getPrepaidRechargeDetailsForMeter(meterId);
+              console.log('[PrepaidHistory] Got details:', details?.length || 0, 'records');
               setPrepaidRechargeDetails(Array.isArray(details) ? details : []);
+            } else {
+              console.warn('[PrepaidHistory] No meterId found on meter object, trying meterNo as fallback');
+              const meterNo = m.prepaidMeterNo || m.meterNumber || m.meterNo;
+              if (meterNo) {
+                const details = await getPrepaidRechargeDetailsForMeter(Number(meterNo));
+                console.log('[PrepaidHistory] Got details via meterNo fallback:', details?.length || 0, 'records');
+                setPrepaidRechargeDetails(Array.isArray(details) ? details : []);
+              }
             }
           } catch (e) {
             console.error('Failed to load recharge details:', e);

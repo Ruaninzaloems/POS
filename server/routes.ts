@@ -2890,6 +2890,21 @@ export async function registerRoutes(
       try {
         const session = requireAuth(req, res); if (!session) return;
         const data = await platinumGet(session, `/api/BillingEnquiry/${platinumPath}`, req.query as Record<string, string>);
+        if (localPath === 'prepaid-meter-services-for-account' && data) {
+          const items = Array.isArray(data) ? data : (data as any)?.value || (data as any)?.data || [];
+          if (items.length > 0) {
+            console.log('[prepaid-meters] First item keys:', Object.keys(items[0]));
+            console.log('[prepaid-meters] First item:', JSON.stringify(items[0]));
+          } else {
+            console.log('[prepaid-meters] Response type:', typeof data, 'isArray:', Array.isArray(data), 'keys:', data && typeof data === 'object' ? Object.keys(data) : 'N/A');
+          }
+        }
+        if (localPath === 'prepaid-recharge-details-for-meter') {
+          console.log('[prepaid-recharge] Query:', req.query, 'Response type:', typeof data, 'isArray:', Array.isArray(data), 'length:', Array.isArray(data) ? data.length : 'N/A');
+          if (data && typeof data === 'object' && !Array.isArray(data)) {
+            console.log('[prepaid-recharge] Response keys:', Object.keys(data));
+          }
+        }
         handlePlatinumResult(res, data);
       } catch (e: any) {
         res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
