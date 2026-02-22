@@ -526,14 +526,13 @@ export function ServiceBalanceChart({ data }: { data: { month: string; amount: n
 export function ConsumptionChart({ readings }: { readings: any[] }) {
   if (!readings.length) return null;
 
+  const monthOrder = ['july','august','september','october','november','december','january','february','march','april','may','june'];
   const sorted = [...readings].sort((a, b) => {
-    const parseDate = (d: string) => {
-      if (!d) return 0;
-      const parts = d.split('/');
-      if (parts.length === 3) return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime();
-      return new Date(d).getTime();
-    };
-    return parseDate(a.reading1Date) - parseDate(b.reading1Date);
+    const bmA = (a.billingmonth || a.billingMonth || '').toLowerCase().trim();
+    const bmB = (b.billingmonth || b.billingMonth || '').toLowerCase().trim();
+    const idxA = monthOrder.indexOf(bmA);
+    const idxB = monthOrder.indexOf(bmB);
+    return (idxA >= 0 ? idxA : 50) - (idxB >= 0 ? idxB : 50);
   });
 
   const recent = sorted.slice(-12);
@@ -549,7 +548,7 @@ export function ConsumptionChart({ readings }: { readings: any[] }) {
     return { bg: 'bg-blue-500', label: 'Actual' };
   };
 
-  const formatMonth = (item: any) => {
+  const formatMonth = (item: any, short?: boolean) => {
     const month = item.billingmonth || item.billingMonth || '';
     const fy = item.financialYear || '';
     if (month && fy) {
@@ -558,10 +557,15 @@ export function ConsumptionChart({ readings }: { readings: any[] }) {
       const monthIdx = monthNames.findIndex(m => m.toLowerCase() === month.toLowerCase());
       if (monthIdx >= 0) {
         const year = monthIdx >= 6 ? years[0] : years[1];
+        if (short) return { mon: month.substring(0, 3), yr: year?.slice(-2) || '' };
         return `${month.substring(0, 3)}-${year}`;
       }
     }
-    if (month === 'Current Open Period') return 'Current';
+    if (month.toLowerCase().includes('open period') || month.toLowerCase().includes('current')) {
+      if (short) return { mon: 'Open', yr: '' };
+      return 'Current';
+    }
+    if (short) return { mon: month.substring(0, 3) || '?', yr: '' };
     return month.substring(0, 3) || '?';
   };
 
@@ -594,11 +598,15 @@ export function ConsumptionChart({ readings }: { readings: any[] }) {
       </div>
       <div className="flex ml-8 mt-1">
         <div className="flex-1 flex justify-around px-1 gap-1">
-          {recent.map((item, i) => (
-            <div key={i} className="flex-1 min-w-0 text-center">
-              <span className="text-[9px] text-slate-500 block leading-tight" style={{ transform: 'rotate(-30deg)', transformOrigin: 'top center', whiteSpace: 'nowrap' }}>{formatMonth(item)}</span>
-            </div>
-          ))}
+          {recent.map((item, i) => {
+            const label = formatMonth(item, true) as { mon: string; yr: string };
+            return (
+              <div key={i} className="flex-1 min-w-0 text-center">
+                <span className="text-[9px] sm:text-[10px] font-medium text-slate-600 block leading-tight">{label.mon}</span>
+                {label.yr && <span className="text-[8px] sm:text-[9px] text-slate-400 block leading-tight">{label.yr}</span>}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
