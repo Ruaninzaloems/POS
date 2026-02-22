@@ -13,11 +13,13 @@ import {
   Layers, Home, Activity, Users, Receipt, CalendarDays, Banknote, Scale,
   Gauge, Filter, AlertCircle, Briefcase, Star, ScanBarcode, CheckCircle2,
   CircleDot, Wallet, Gauge as MeterIcon, CalendarCheck, Building2, Send,
-  BarChart3, ChevronDown, Check
+  BarChart3, ChevronDown, Check, Skull, Gavel, ShieldAlert, GaugeCircle, HandCoins
 } from 'lucide-react';
 import {
   searchAccounts, getAccountBalance, getAutocompleteType,
   autocomplete, autocompleteSearch, prefetchAccountData, clearEnquiryCache,
+  getHandoverInfo, getNameInfo, getMeteredServicesOnAccount,
+  getAttpApplicationHistory, getAccountInfoResult, getBasicAccountDetails,
   type EnquirySearchCriteria, type EnquirySearchResult,
 } from '@/lib/enquiries-service';
 
@@ -28,6 +30,234 @@ import { TransactionSummaryTab, DetailedTransactionListTab, TransactionHistoryTa
 import { IncentivesTab, DepositsTab, PaymentPlansTab, PaymentExtensionHistoryTab, DebitOrdersTab, RatesValuationsTab, BilledVsPaidTab } from './enquiries/financial-tabs';
 import { PropertyDetailsTab, ContactInfoTab, HandoverTab, NotificationsTab, StatementsTab, ClearanceTab, DebtorNotesTab, Section129Tab, OccupiersTab, SendStatementsTab, IndigentHistoryTab } from './enquiries/other-tabs';
 import { SEARCH_FIELDS, detectSearchType, SmartSearchDropdown, ExpandableResultRow } from './enquiries/search-components';
+
+interface RiskFlag {
+  id: string;
+  label: string;
+  detail: string;
+  severity: 'critical' | 'warning' | 'info';
+  icon: React.ReactNode;
+}
+
+function RiskFlagsBanner({ accountId }: { accountId: number }) {
+  const [flags, setFlags] = useState<RiskFlag[]>([]);
+  const [loading, setLoading] = useState(true);
+  const loadedRef = useRef<number | null>(null);
+
+  const parseDateSafe = (d: string): string => {
+    if (!d) return '';
+    const parts = d.split('/');
+    if (parts.length === 3 && parts[0].length <= 2) {
+      const date = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+      return isNaN(date.getTime()) ? d : date.toLocaleDateString('en-ZA');
+    }
+    try { const date = new Date(d); return isNaN(date.getTime()) ? d : date.toLocaleDateString('en-ZA'); } catch { return d; }
+  };
+
+  useEffect(() => {
+    if (loadedRef.current === accountId) return;
+    loadedRef.current = accountId;
+    setLoading(true);
+    setFlags([]);
+
+    const currentId = accountId;
+    const detected: RiskFlag[] = [];
+
+    const checks = [
+      getHandoverInfo(accountId).then((ho: any) => {
+        if (!ho) return;
+        const arr = Array.isArray(ho) ? ho : [ho];
+        const active = arr.find((h: any) => {
+          const st = (h.handoverStatus || h.status || h.handoverStatusDesc || '').toLowerCase();
+          return st.includes('active') || st.includes('handed') || st.includes('legal') || st.includes('pending') || (h.isActive === true);
+        });
+        if (active) {
+          const status = active.handoverStatus || active.status || active.handoverStatusDesc || 'Handed Over';
+          const attorney = active.attorneyName || active.attorney || '';
+          detected.push({
+            id: 'handover',
+            label: 'Handed Over / Legal',
+            detail: `${status}${attorney ? ` — Attorney: ${attorney}` : ''}`,
+            severity: 'critical',
+            icon: <Gavel className="w-4 h-4" />,
+          });
+        }
+      }).catch(() => {}),
+
+      getAccountBalance(accountId).then((bal: any) => {
+        let total = 0;
+        if (Array.isArray(bal)) {
+          total = bal.reduce((s: number, b: any) => s + (b.totalOutStanding || b.totalBalance || 0), 0);
+        } else if (bal) {
+          total = bal.totalBalance ?? bal.totalDue ?? bal.balance ?? bal.outstandingBalance ?? 0;
+        }
+        if (total > 10000) {
+          const formatted = Number(total).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          detected.push({
+            id: 'high-arrears',
+            label: 'High Arrears',
+            detail: `Outstanding balance: R ${formatted}`,
+            severity: total > 50000 ? 'critical' : 'warning',
+            icon: <AlertTriangle className="w-4 h-4" />,
+          });
+        }
+      }).catch(() => {}),
+
+      getAttpApplicationHistory(accountId).then((data: any) => {
+        const records = Array.isArray(data) ? data : data ? [data] : [];
+        const activeIndigent = records.find((r: any) => {
+          const st = (r.attpStatus || r.status || r.attpStatusDesc || '').toLowerCase();
+          return st.includes('active') || st.includes('approved') || st.includes('registered');
+        });
+        if (activeIndigent) {
+          const type = activeIndigent.indigentType || activeIndigent.attpType || activeIndigent.type || 'Active';
+          detected.push({
+            id: 'indigent',
+            label: 'Indigent',
+            detail: `Subsidy active — ${type}`,
+            severity: 'info',
+            icon: <ShieldAlert className="w-4 h-4" />,
+          });
+        }
+      }).catch(() => {}),
+
+      getNameInfo(accountId).then((name: any) => {
+        if (!name) return;
+        const n = Array.isArray(name) ? name[0] : name;
+        const deceasedFlag = n.deceased || n.isDeceased || n.ownerDeceased || n.dateOfDeath || n.deathDate;
+        const deceasedDesc = (n.deceasedDesc || n.deceasedDescription || '').toLowerCase();
+        if (deceasedFlag === true || deceasedFlag === 'Yes' || deceasedFlag === 'Y' || deceasedDesc.includes('deceased') || deceasedDesc.includes('dead') || n.dateOfDeath || n.deathDate) {
+          const deathDate = n.dateOfDeath || n.deathDate || '';
+          const parsedDate = deathDate ? parseDateSafe(deathDate) : '';
+          detected.push({
+            id: 'deceased',
+            label: 'Owner Deceased',
+            detail: parsedDate ? `Date of death: ${parsedDate}` : 'Owner marked as deceased',
+            severity: 'critical',
+            icon: <Skull className="w-4 h-4" />,
+          });
+        }
+      }).catch(() => {}),
+
+      getMeteredServicesOnAccount(accountId).then((meters: any) => {
+        if (!Array.isArray(meters) || !meters.length) return;
+        const inactive = meters.filter((m: any) => {
+          const status = (m.serviceStatus || m.statusDesc || m.status || '').toLowerCase();
+          const meterStatus = (m.meterStatus || '').toLowerCase();
+          return status.includes('inactive') || status.includes('disconnected') || status.includes('removed') ||
+            meterStatus.includes('inactive') || meterStatus.includes('disconnected') || meterStatus.includes('removed') || meterStatus.includes('faulty');
+        });
+        if (inactive.length > 0) {
+          const types = [...new Set(inactive.map((m: any) => m.serviceDesc || m.serviceDescription || m.serviceType || 'Unknown'))];
+          detected.push({
+            id: 'meter-inactive',
+            label: `Meter Inactive (${inactive.length})`,
+            detail: types.join(', '),
+            severity: 'warning',
+            icon: <GaugeCircle className="w-4 h-4" />,
+          });
+        }
+      }).catch(() => {}),
+
+      getAccountInfoResult(accountId).then((info: any) => {
+        if (!info) return;
+        const legalFlag = (info.legalAction || info.legal || info.legalStatus || '').toString().toLowerCase();
+        if (legalFlag === 'true' || legalFlag === 'yes' || legalFlag === 'y' || legalFlag.includes('active')) {
+          if (!detected.some(f => f.id === 'handover')) {
+            detected.push({
+              id: 'legal',
+              label: 'Legal Account',
+              detail: 'Legal action flagged on this account',
+              severity: 'critical',
+              icon: <Gavel className="w-4 h-4" />,
+            });
+          }
+        }
+      }).catch(() => {}),
+    ];
+
+    Promise.allSettled(checks).then(() => {
+      if (loadedRef.current !== currentId) return;
+      detected.sort((a, b) => {
+        const ord = { critical: 0, warning: 1, info: 2 };
+        return ord[a.severity] - ord[b.severity];
+      });
+      setFlags(detected);
+      setLoading(false);
+    });
+  }, [accountId]);
+
+  if (loading) {
+    return (
+      <div className="px-3 sm:px-6 py-1.5">
+        <div className="flex gap-2">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-8 w-32 bg-slate-100 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!flags.length) return null;
+
+  const severityStyles = {
+    critical: {
+      container: 'bg-red-50 border-red-300 ring-1 ring-red-200',
+      icon: 'text-red-600',
+      label: 'text-red-800',
+      detail: 'text-red-600',
+      pulse: 'bg-red-500',
+    },
+    warning: {
+      container: 'bg-amber-50 border-amber-300 ring-1 ring-amber-200',
+      icon: 'text-amber-600',
+      label: 'text-amber-800',
+      detail: 'text-amber-600',
+      pulse: 'bg-amber-500',
+    },
+    info: {
+      container: 'bg-blue-50 border-blue-300 ring-1 ring-blue-200',
+      icon: 'text-blue-600',
+      label: 'text-blue-800',
+      detail: 'text-blue-600',
+      pulse: 'bg-blue-500',
+    },
+  };
+
+  const hasCritical = flags.some(f => f.severity === 'critical');
+
+  return (
+    <div className={`px-3 sm:px-6 py-2 border-b ${hasCritical ? 'bg-red-50/50 border-red-200' : 'bg-amber-50/30 border-amber-100'}`} data-testid="risk-flags-banner">
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <AlertTriangle className={`w-3.5 h-3.5 ${hasCritical ? 'text-red-500' : 'text-amber-500'}`} />
+        <span className={`text-[10px] uppercase tracking-widest font-bold ${hasCritical ? 'text-red-600' : 'text-amber-600'}`}>
+          Account Alerts ({flags.length})
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {flags.map(flag => {
+          const s = severityStyles[flag.severity];
+          return (
+            <HelpTip key={flag.id} text={flag.detail} side="bottom">
+              <div className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border cursor-help transition-all hover:shadow-sm ${s.container}`} data-testid={`risk-flag-${flag.id}`}>
+                {flag.severity === 'critical' && (
+                  <span className="relative flex h-2 w-2 shrink-0">
+                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${s.pulse}`} />
+                    <span className={`relative inline-flex rounded-full h-2 w-2 ${s.pulse}`} />
+                  </span>
+                )}
+                <span className={s.icon}>{flag.icon}</span>
+                <span className={`text-[11px] font-bold ${s.label}`}>{flag.label}</span>
+                <span className={`text-[10px] hidden sm:inline ${s.detail}`}>— {flag.detail}</span>
+              </div>
+            </HelpTip>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function FieldAutocompleteInput({ fieldKey, placeholder, value, onChange, onSelectAllLinked, onSelectByFieldValue, onEnter, onAutoResults }: {
   fieldKey: string; placeholder: string; value: string;
@@ -672,6 +902,8 @@ function GeneralEnquiriesContent() {
             )}
           </div>
         </div>
+
+        <RiskFlagsBanner accountId={accountId} />
 
         <div className="flex-1 overflow-auto">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
