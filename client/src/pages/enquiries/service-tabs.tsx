@@ -2050,11 +2050,15 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
           const mNo = (m.meterNo || m.meterNumber || m.physicalMeterNumber || '').toLowerCase();
           return mNo ? prepaidMeterNosSet.has(mNo) : false;
         };
-        const isMeteredService = (m: any) => {
-          const desc = (m.serviceType || m.serviceTypeDescription || m.serviceDesc || m.serviceDescription || m.tariffCode || m.tariff || '').toLowerCase();
-          return desc.includes('water') || desc.includes('elec') || desc.includes('sewer') || desc.includes('sanit') || desc.includes('efflu') || desc.includes('metered');
+        const hasPhysicalMeter = (m: any) => {
+          const phys = (m.physicalMeterNo || m.physicalMeterNumber || '').toLowerCase().trim();
+          const meterNo = (m.meterNo || m.meterNumber || '').trim();
+          if (!phys && !meterNo) return false;
+          if (phys === 'no meter' || phys === 'none' || phys === '-' || phys === '') return false;
+          if (meterNo === '0' || meterNo === '' || meterNo === '-') return false;
+          return true;
         };
-        const meteredOnly = meters.filter((m: any) => isMeteredService(m) && !isMeterPrepaid(m));
+        const meteredOnly = meters.filter((m: any) => hasPhysicalMeter(m) && !isMeterPrepaid(m));
         const convMeters = meteredOnly;
 
         const loadPrepaidHistory = async (m: any) => {
@@ -2569,8 +2573,8 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                         ) : prepaidRechargeDetails.map((r: any, i: number) => (
                           <div key={i} className="bg-white border border-slate-200 rounded-lg p-3 space-y-2" data-testid={`recharge-detail-row-${i}`}>
                             <div className="flex items-center justify-between">
-                              <span className="text-xs text-slate-600">{r.receiptDate ? new Date(r.receiptDate).toLocaleDateString('en-ZA') : r.rechargeDate ? new Date(r.rechargeDate).toLocaleDateString('en-ZA') : '-'}</span>
-                              {r.isCancelled || r.cancelledStatus === 'Yes' ? (
+                              <span className="text-xs text-slate-600">{(() => { const d = r.dateCaptured || r.receiptDate || r.rechargeDate; if (!d) return '-'; if (typeof d === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(d)) { const [dd,mm,yy] = d.split('/'); return `${dd}/${mm}/${yy}`; } return new Date(d).toLocaleDateString('en-ZA'); })()}</span>
+                              {r.isCancelled || r.canceledStatus === 'Yes' || r.cancelledStatus === 'Yes' ? (
                                 <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 border border-red-200">Cancelled</span>
                               ) : (
                                 <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">Active</span>
@@ -2591,7 +2595,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                         <table className="w-full text-sm" data-testid="table-prepaid-recharge-details">
                           <thead>
                             <tr className="bg-slate-50 border-b border-slate-200">
-                              <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Receipt Date</th>
+                              <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Purchase Date</th>
                               <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Receipt No</th>
                               <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
                               <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Vat Amount</th>
@@ -2608,16 +2612,16 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                               <tr><td colSpan={10} className="text-center text-slate-400 py-6">No recharge details found for this meter</td></tr>
                             ) : prepaidRechargeDetails.map((r: any, i: number) => (
                               <tr key={i} className="border-b border-slate-100 hover:bg-emerald-50/30 transition-colors" data-testid={`recharge-detail-row-${i}`}>
-                                <td className="py-2.5 px-3 text-slate-600">{r.receiptDate ? new Date(r.receiptDate).toLocaleDateString('en-ZA') : r.rechargeDate ? new Date(r.rechargeDate).toLocaleDateString('en-ZA') : '-'}</td>
+                                <td className="py-2.5 px-3 text-slate-600">{(() => { const d = r.dateCaptured || r.receiptDate || r.rechargeDate; if (!d) return '-'; if (typeof d === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(d)) { const [dd,mm,yy] = d.split('/'); return `${dd}/${mm}/${yy}`; } return new Date(d).toLocaleDateString('en-ZA'); })()}</td>
                                 <td className="py-2.5 px-3 font-mono text-blue-700 font-semibold text-xs">{r.receiptNo || r.receiptNumber || '-'}</td>
                                 <td className="py-2.5 px-3 text-right font-mono">{(r.amount ?? r.rechargeAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
                                 <td className="py-2.5 px-3 text-right font-mono">{(r.vatAmount ?? r.vat ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
                                 <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">{(r.total ?? r.totalAmount ?? ((r.amount ?? 0) + (r.vatAmount ?? 0))).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
                                 <td className="py-2.5 px-3 text-right font-mono">{r.prepaidUnit ?? r.units ?? r.kwhUnits ?? '-'}</td>
-                                <td className="py-2.5 px-3">{r.type || r.rechargeType || r.transactionType || '-'}</td>
+                                <td className="py-2.5 px-3">{r.unitType || r.type || r.rechargeType || r.transactionType || '-'}</td>
                                 <td className="py-2.5 px-3 font-mono text-xs">{r.prepaidTokenNo || r.tokenNumber || r.token || '-'}</td>
                                 <td className="py-2.5 px-3">
-                                  {r.isCancelled || r.cancelledStatus === 'Yes' ? (
+                                  {r.isCancelled || r.canceledStatus === 'Yes' || r.cancelledStatus === 'Yes' ? (
                                     <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 border border-red-200">Yes</span>
                                   ) : (
                                     <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">No</span>
