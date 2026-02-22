@@ -1885,32 +1885,36 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
           const desc = (s.serviceType || s.serviceTypeDescription || s.description || '').toLowerCase();
           if (desc.includes('water')) return { icon: '💧', color: 'text-blue-600' };
           if (desc.includes('electric') || desc.includes('elec')) return { icon: '⚡', color: 'text-amber-500' };
-          if (desc.includes('sewer') || desc.includes('sanit')) return { icon: '🔧', color: 'text-purple-600' };
+          if (desc.includes('sewer') || desc.includes('sanit') || desc.includes('efflu')) return { icon: '🔧', color: 'text-purple-600' };
           if (desc.includes('refuse') || desc.includes('waste') || desc.includes('solid')) return { icon: '🗑️', color: 'text-green-600' };
           if (desc.includes('rate') || desc.includes('property') || desc.includes('valuation')) return { icon: '🏠', color: 'text-indigo-600' };
           return { icon: '⚙️', color: 'text-slate-500' };
         };
-        const hasMeterData = (s: any) => {
-          const meterNo = s.meterNo || s.meterNumber || s.physicalMeterNo || s.physicalMeterNumber || '';
-          return !!meterNo;
+        const isBasicOrFixedCharge = (s: any) => {
+          const tariff = (s.tariff || s.tariffCode || s.tariffDescription || s.description || '').toLowerCase();
+          return tariff.includes('basic') || tariff.includes('fixed') || tariff.includes('availability') || tariff.includes('service charge');
         };
+        const meteredServices = allServices.filter((s: any) => !isBasicOrFixedCharge(s));
+        if (meteredServices.length === 0) return null;
         return (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
             <Zap className="w-4 h-4 text-white" />
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">All Services</h3>
-            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{allServices.length}</Badge>
+            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{meteredServices.length}</Badge>
           </div>
           <div className="sm:hidden p-2 space-y-2" data-testid="table-all-services-mobile">
-            {allServices.map((s: any, i: number) => {
+            {meteredServices.map((s: any, i: number) => {
               const isPrepaid = isServicePrepaid(s);
               const svcIcon = getServiceIcon(s);
-              const statusVal = (s.status || s.serviceStatus || '').toLowerCase();
-              const isActive = statusVal === 'active';
-              const canViewConsumption = hasMeterData(s);
+              const meterStatusVal = (s.meterStatus || s.statusDesc || '').toLowerCase();
+              const svcStatusVal = (s.status || s.serviceStatus || '').toLowerCase();
+              const isMeterActive = meterStatusVal === 'active';
+              const isSvcActive = svcStatusVal === 'active';
+              const hasMeter = !!(s.meterNo || s.meterNumber || s.physicalMeterNo || s.physicalMeterNumber);
               return (
-              <div key={i} className={`bg-white border rounded-xl p-3 space-y-2 ${canViewConsumption ? 'cursor-pointer active:scale-[0.99] transition-all' : ''} ${canViewConsumption && consumptionMeter === s ? 'border-cyan-400 bg-cyan-50 shadow-sm' : 'border-slate-200'}`}
-                onClick={canViewConsumption ? () => viewConsumption(s) : undefined}
+              <div key={i} className={`bg-white border rounded-xl p-3 space-y-2 ${hasMeter ? 'cursor-pointer active:scale-[0.99] transition-all' : ''} ${hasMeter && consumptionMeter === s ? 'border-cyan-400 bg-cyan-50 shadow-sm' : 'border-slate-200'}`}
+                onClick={hasMeter ? () => viewConsumption(s) : undefined}
               >
                 <div className="flex items-center gap-2">
                   <span className="text-lg">{svcIcon.icon}</span>
@@ -1923,21 +1927,28 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                         <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-800 border border-blue-200">📊 Conventional</span>
                       ) : null}
                     </div>
-                    <span className="text-[10px] text-slate-500">{s.description || s.serviceDescription || ''}{s.description && s.serviceType ? '' : ''}</span>
+                    <span className="text-[10px] text-slate-500">{s.classification || s.meterClassification || ''}</span>
                   </div>
-                  <span className={`shrink-0 inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>{s.status || s.serviceStatus || '-'}</span>
+                  <div className="flex flex-col items-end gap-0.5 shrink-0">
+                    {(s.meterStatus || s.statusDesc) && (
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-semibold border ${isMeterActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-red-100 text-red-600 border-red-200'}`}>
+                        Mtr: {s.meterStatus || s.statusDesc}
+                      </span>
+                    )}
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-semibold border ${isSvcActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                      Svc: {s.status || s.serviceStatus || '-'}
+                    </span>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">Service ID</span><span className="font-mono font-semibold text-blue-700">{s.serviceId || s.service_ID || s.serviceID || '-'}</span></div>
                   {(s.meterNo || s.meterNumber) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-semibold text-teal-700">{s.meterNo || s.meterNumber || '-'}</span></div>}
                   {(s.physicalMeterNo || s.physicalMeterNumber) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Physical Meter</span><span className="font-mono text-slate-700">{s.physicalMeterNo || s.physicalMeterNumber || '-'}</span></div>}
                   <div className="col-span-2 flex justify-between text-[11px]"><span className="text-slate-500">Tariff</span><span className="text-slate-700 text-right truncate ml-2 max-w-[70%]">{s.tariff || s.tariffCode || s.tariffDescription || '-'}</span></div>
-                  {(s.classification || s.meterClassification || s.meterClassificationDesc) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Classification</span><span className="text-slate-700">{s.classification || s.meterClassification || s.meterClassificationDesc || '-'}</span></div>}
                   {(s.installDate || s.dateInstalled) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Install Date</span><span className="text-slate-700">{s.installDate || s.dateInstalled || '-'}</span></div>}
-                  {s.factor !== undefined && s.factor !== null && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Factor</span><span className="font-mono text-slate-700">{s.factor ?? s.tarifffactor ?? '-'}</span></div>}
                   {(s.routeFileName || s.routeFile) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Route</span><span className="text-slate-700 truncate ml-1">{s.routeFileName || s.routeFile || '-'}</span></div>}
                 </div>
-                {canViewConsumption && (
+                {hasMeter && (
                   <div className="text-center text-[10px] text-cyan-600 font-semibold pt-1 border-t border-slate-100">
                     <Activity className="w-3 h-3 inline mr-1" />
                     Tap to view consumption history
@@ -1956,20 +1967,23 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service ID</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter No</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Tariff</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
-                  <th className="text-center py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Consumption</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Status</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service Status</th>
+                  <th className="text-center py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Action</th>
                 </tr>
               </thead>
               <tbody>
-                {allServices.map((s: any, i: number) => {
+                {meteredServices.map((s: any, i: number) => {
                   const isPrepaid = isServicePrepaid(s);
                   const svcIcon = getServiceIcon(s);
-                  const statusVal = (s.status || s.serviceStatus || '').toLowerCase();
-                  const isActive = statusVal === 'active';
-                  const canViewConsumption = hasMeterData(s);
+                  const meterStatusVal = (s.meterStatus || s.statusDesc || '').toLowerCase();
+                  const svcStatusVal = (s.status || s.serviceStatus || '').toLowerCase();
+                  const isMeterActive = meterStatusVal === 'active';
+                  const isSvcActive = svcStatusVal === 'active';
+                  const hasMeter = !!(s.meterNo || s.meterNumber || s.physicalMeterNo || s.physicalMeterNumber);
                   return (
-                  <tr key={i} className={`border-b border-slate-100 transition-colors ${canViewConsumption ? 'cursor-pointer hover:bg-cyan-50/40' : 'hover:bg-blue-50/30'} ${consumptionMeter === s ? 'bg-cyan-50 ring-1 ring-cyan-300' : ''}`}
-                    onClick={canViewConsumption ? () => viewConsumption(s) : undefined}
+                  <tr key={i} className={`border-b border-slate-100 transition-colors ${hasMeter ? 'cursor-pointer hover:bg-cyan-50/40' : 'hover:bg-blue-50/30'} ${consumptionMeter === s ? 'bg-cyan-50 ring-1 ring-cyan-300' : ''}`}
+                    onClick={hasMeter ? () => viewConsumption(s) : undefined}
                   >
                     <td className="py-2 px-3">
                       <div className="flex items-center gap-2">
@@ -1988,19 +2002,24 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                       ) : (s.meterNo || s.meterNumber) ? (
                         <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">📊 Conventional</span>
                       ) : (
-                        <span className="text-[10px] text-slate-400">Fixed</span>
+                        <span className="text-[10px] text-slate-400">Metered</span>
                       )}
                     </td>
                     <td className="py-2 px-3 font-mono text-blue-700">{s.serviceId || s.service_ID || s.serviceID || '-'}</td>
                     <td className="py-2 px-3 font-mono text-teal-700 font-semibold">{s.meterNo || s.meterNumber || '-'}</td>
                     <td className="py-2 px-3 text-slate-500 text-xs max-w-[200px] truncate">{s.tariff || s.tariffCode || s.tariffDescription || '-'}</td>
                     <td className="py-2 px-3">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${isMeterActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : (s.meterStatus || s.statusDesc) ? 'bg-red-100 text-red-600 border-red-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                        {s.meterStatus || s.statusDesc || '-'}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3">
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${isSvcActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
                         {s.status || s.serviceStatus || '-'}
                       </span>
                     </td>
                     <td className="py-2 px-3 text-center">
-                      {canViewConsumption ? (
+                      {hasMeter ? (
                         <button
                           onClick={(e) => { e.stopPropagation(); viewConsumption(s); }}
                           className="inline-flex items-center gap-1 px-2.5 py-1 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 text-[11px] font-semibold rounded-md border border-cyan-200 transition-all"
