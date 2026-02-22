@@ -940,7 +940,15 @@ function MeterIntelligence({ allReadings }: { allReadings: any[] }) {
                 </div>
                 <div className="flex items-end gap-[2px] sm:gap-1" style={{ height: 120 }}>
                   {(() => {
-                    const display = [...(analysis.allWithSpikes)].filter(r => r.consumption > 0).reverse().slice(-Math.min(selectedMonths + 4, 30));
+                    const monthNames = ['july','august','september','october','november','december','january','february','march','april','may','june'];
+                    const display = [...(analysis.allWithSpikes)].filter(r => r.consumption > 0).sort((a, b) => {
+                      const fyA = parseInt((a.financialYear || '').split('/')[0]) || 0;
+                      const fyB = parseInt((b.financialYear || '').split('/')[0]) || 0;
+                      if (fyA !== fyB) return fyA - fyB;
+                      const idxA = monthNames.indexOf((a.billingMonth || '').toLowerCase().trim());
+                      const idxB = monthNames.indexOf((b.billingMonth || '').toLowerCase().trim());
+                      return (idxA >= 0 ? idxA : 50) - (idxB >= 0 ? idxB : 50);
+                    }).slice(-Math.min(selectedMonths + 4, 30));
                     const maxD = Math.max(...display.map(r => r.dailyConsumption), analysis.avgDailyConsumption * 1.5);
                     return display.map((r, i) => {
                       const pct = maxD > 0 ? (r.dailyConsumption / maxD) * 100 : 0;
