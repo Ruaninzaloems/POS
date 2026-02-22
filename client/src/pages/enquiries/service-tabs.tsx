@@ -1397,11 +1397,22 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
     return `${startYear}/${startYear + 1}`;
   }, [parseDate]);
 
-  const filteredHistory = useMemo(() => {
-    const sorted = [...readingHistory].sort((a, b) => parseDate(b.reading1Date) - parseDate(a.reading1Date));
+  const billingMonthOrder = useCallback((bm: string): number => {
+    const monthNames = ['july','august','september','october','november','december','january','february','march','april','may','june'];
+    const idx = monthNames.indexOf(bm.toLowerCase().trim());
+    return idx >= 0 ? idx : 50;
+  }, []);
 
+  const isAwaitingBilling = useCallback((item: any): boolean => {
+    const bm = (item.billingmonth || item.billingMonth || '').toLowerCase().trim();
+    const rs = (item.readingStatus || '').toLowerCase();
+    const flag = (item.flag || '').toLowerCase();
+    return bm.includes('open period') || rs.includes('awaiting') || rs.includes('unbilled') || rs.includes('pending') || flag.includes('awaiting') || flag.includes('unbilled');
+  }, []);
+
+  const filteredHistory = useMemo(() => {
     const seenKeys = new Set<string>();
-    const deduped = sorted.filter(item => {
+    const deduped = [...readingHistory].filter(item => {
       const bm = (item.billingmonth || item.billingMonth || '').trim();
       const fy = getRecordFinYear(item);
       const key = `${fy}__${bm.toLowerCase()}`;
@@ -1410,11 +1421,26 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
       return true;
     });
 
-    return deduped.filter(item => {
+    const yearFiltered = deduped.filter(item => {
       const fy = getRecordFinYear(item);
       return fy === selectedFinYear;
     });
-  }, [readingHistory, selectedFinYear, parseDate, getRecordFinYear]);
+
+    yearFiltered.sort((a, b) => {
+      const aAwaiting = isAwaitingBilling(a);
+      const bAwaiting = isAwaitingBilling(b);
+      if (aAwaiting && !bAwaiting) return -1;
+      if (!aAwaiting && bAwaiting) return 1;
+
+      const bmA = (a.billingmonth || a.billingMonth || '').trim();
+      const bmB = (b.billingmonth || b.billingMonth || '').trim();
+      const orderA = billingMonthOrder(bmA);
+      const orderB = billingMonthOrder(bmB);
+      return orderB - orderA;
+    });
+
+    return yearFiltered;
+  }, [readingHistory, selectedFinYear, getRecordFinYear, billingMonthOrder, isAwaitingBilling]);
 
   const availableFinYears = useMemo(() => {
     const years = new Set<string>();
