@@ -4,7 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import {
   Droplets, Zap, ChevronDown, ChevronUp, RefreshCw,
   Activity, Gauge, Eye, Layers, Hash,
-  ChevronLeft, Building2, Scale, Home, FileText, Download, FileSpreadsheet, Loader2, Link2
+  ChevronLeft, Building2, Scale, Home, FileText, Download, FileSpreadsheet, Loader2, Link2,
+  Brain, TrendingUp, TrendingDown, AlertTriangle, BarChart3, Info
 } from 'lucide-react';
 import {
   getServiceTypeBalance, getMeteredServicesOnAccount, getAccountServiceMeterPerProperty,
@@ -696,6 +697,321 @@ export function calculateTieredBilling(
   return { tierBreakdown: breakdown, subtotal, isProRated };
 }
 
+const MONTH_OPTIONS = [3, 6, 9, 12, 15, 18, 21, 24] as const;
+const SPIKE_THRESHOLD = 1.5;
+const SPIKE_LOW_THRESHOLD = 0.4;
+
+interface MeterReading {
+  consumption: number;
+  readingDays: number;
+  dailyConsumption: number;
+  billingMonth: string;
+  financialYear: string;
+  flag: string;
+  readingStatus: string;
+  reading1Date: string;
+  reading2Date: string;
+  reading1: string;
+  reading2: string;
+  isSpike: boolean;
+  spikeType: 'high' | 'low' | 'none';
+  spikePercent: number;
+}
+
+function MeterIntelligence({ allReadings }: { allReadings: any[] }) {
+  const [selectedMonths, setSelectedMonths] = useState<number>(6);
+  const [showDetails, setShowDetails] = useState(true);
+
+  const parseDate = useCallback((d: string) => {
+    if (!d) return 0;
+    const parts = d.split('/');
+    if (parts.length === 3) return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0])).getTime();
+    return new Date(d).getTime();
+  }, []);
+
+  const finYearMonthOrder = useCallback((bm: string, fy: string): number => {
+    const monthNames = ['july','august','september','october','november','december','january','february','march','april','may','june'];
+    const mIdx = monthNames.indexOf(bm.toLowerCase().trim());
+    const yearStart = parseInt((fy || '').split('/')[0]) || 2020;
+    return yearStart * 100 + (mIdx >= 0 ? mIdx : 50);
+  }, []);
+
+  const processedReadings = useMemo(() => {
+    const processed: MeterReading[] = [];
+    for (const r of allReadings) {
+      const cons = parseFloat(r.consumption ?? r.consumptionValue ?? r.units ?? 0) || 0;
+      const rdRaw = r.readingdays;
+      const rdNum = typeof rdRaw === 'number' ? rdRaw : (rdRaw ? parseInt(rdRaw) : NaN);
+      const hasValidDays = !isNaN(rdNum) && rdNum > 0;
+      const readingDays = hasValidDays ? rdNum : 0;
+      const dailyConsumption = hasValidDays && rdNum > 0 ? cons / rdNum : 0;
+
+      processed.push({
+        consumption: cons,
+        readingDays,
+        dailyConsumption,
+        billingMonth: r.billingmonth || r.billingMonth || '',
+        financialYear: r.financialYear || r.finYear || '',
+        flag: r.flag || '',
+        readingStatus: r.readingStatus || '',
+        reading1Date: r.reading1Date || '',
+        reading2Date: r.reading2Date || '',
+        reading1: r.reading1 ?? '',
+        reading2: r.reading2 ?? '',
+        isSpike: false,
+        spikeType: 'none',
+        spikePercent: 0,
+      });
+    }
+
+    processed.sort((a, b) => {
+      const oa = finYearMonthOrder(a.billingMonth, a.financialYear);
+      const ob = finYearMonthOrder(b.billingMonth, b.financialYear);
+      if (ob !== oa) return ob - oa;
+      return parseDate(b.reading1Date || b.reading2Date) - parseDate(a.reading1Date || a.reading2Date);
+    });
+
+    return processed;
+  }, [allReadings, parseDate, finYearMonthOrder]);
+
+  const billedReadings = useMemo(() => {
+    return processedReadings.filter(r => {
+      const bm = r.billingMonth.toLowerCase().trim();
+      const rs = r.readingStatus.toLowerCase();
+      const flag = r.flag.toLowerCase();
+      if (flag.includes('reversed') || flag.includes('cancel')) return false;
+      if (bm === 'current open period' || bm.includes('open period')) return false;
+      if (rs.includes('awaiting') || rs.includes('unbilled') || rs.includes('pending')) return false;
+      if (flag.includes('awaiting') || flag.includes('unbilled')) return false;
+      if (flag.includes('estimate') || flag.includes('levy')) return false;
+      if (r.readingDays <= 0) return false;
+      return r.consumption > 0;
+    });
+  }, [processedReadings]);
+
+  const analysis = useMemo(() => {
+    const selectedBilled = billedReadings.slice(0, selectedMonths);
+    if (selectedBilled.length < 2) return null;
+
+    const totalDailyConsumption = selectedBilled.reduce((s, r) => s + r.dailyConsumption, 0);
+    const avgDailyConsumption = totalDailyConsumption / selectedBilled.length;
+
+    const totalConsumption = selectedBilled.reduce((s, r) => s + r.consumption, 0);
+    const totalDays = selectedBilled.reduce((s, r) => s + r.readingDays, 0);
+    const weightedAvgDaily = totalDays > 0 ? totalConsumption / totalDays : 0;
+
+    const avgMonthlyConsumption = weightedAvgDaily * STANDARD_MONTH_DAYS;
+
+    const dailyValues = selectedBilled.map(r => r.dailyConsumption);
+    const minDaily = Math.min(...dailyValues);
+    const maxDaily = Math.max(...dailyValues);
+    const variance = dailyValues.reduce((s, v) => s + Math.pow(v - weightedAvgDaily, 2), 0) / dailyValues.length;
+    const stdDev = Math.sqrt(variance);
+
+    const allWithSpikes: MeterReading[] = processedReadings.map(r => {
+      if (r.consumption <= 0 || weightedAvgDaily <= 0 || r.readingDays <= 0) return { ...r, isSpike: false, spikeType: 'none' as const, spikePercent: 0 };
+      const ratio = r.dailyConsumption / weightedAvgDaily;
+      const isHigh = ratio >= SPIKE_THRESHOLD;
+      const isLow = ratio <= SPIKE_LOW_THRESHOLD && r.dailyConsumption > 0;
+      const pctDeviation = ((r.dailyConsumption - weightedAvgDaily) / weightedAvgDaily) * 100;
+      return {
+        ...r,
+        isSpike: isHigh || isLow,
+        spikeType: isHigh ? 'high' as const : isLow ? 'low' as const : 'none' as const,
+        spikePercent: pctDeviation,
+      };
+    });
+
+    const spikeCount = allWithSpikes.filter(r => r.isSpike).length;
+
+    return {
+      avgDailyConsumption: weightedAvgDaily,
+      avgMonthlyConsumption,
+      minDaily,
+      maxDaily,
+      stdDev,
+      periodMonths: selectedBilled.length,
+      totalConsumption,
+      totalDays,
+      allWithSpikes,
+      spikeCount,
+    };
+  }, [billedReadings, selectedMonths, processedReadings]);
+
+  if (processedReadings.length < 3) return null;
+
+  const fmt = (v: number) => v.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmt1 = (v: number) => v.toLocaleString('en-ZA', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+  return (
+    <div className="bg-white rounded-xl border border-amber-200 shadow-sm overflow-hidden" data-testid="meter-intelligence">
+      <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-amber-500 to-orange-500 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Brain className="w-4 h-4 text-white" />
+          <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Meter Intelligence</h3>
+          {analysis && analysis.spikeCount > 0 && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold rounded-full border border-red-200">
+              <AlertTriangle className="w-3 h-3" />
+              {analysis.spikeCount} spike{analysis.spikeCount !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={() => setShowDetails(!showDetails)}
+          className="inline-flex items-center gap-1 px-2 py-1 bg-white/20 hover:bg-white/30 text-white text-[10px] font-medium rounded-md transition-colors border border-white/20"
+          data-testid="btn-toggle-intelligence"
+        >
+          {showDetails ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          {showDetails ? 'Hide' : 'Show'}
+        </button>
+      </div>
+
+      {showDetails && (
+        <div className="p-3 sm:p-4 space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Averaging Period:</label>
+            <div className="flex flex-wrap gap-1">
+              {MONTH_OPTIONS.map(m => (
+                <button
+                  key={m}
+                  onClick={() => setSelectedMonths(m)}
+                  className={`px-2 py-1 text-[11px] font-medium rounded-md border transition-all ${
+                    selectedMonths === m
+                      ? 'bg-amber-500 text-white border-amber-600 shadow-sm'
+                      : 'bg-white text-slate-600 border-slate-200 hover:bg-amber-50 hover:border-amber-300'
+                  }`}
+                  data-testid={`btn-months-${m}`}
+                >
+                  {m}m
+                </button>
+              ))}
+            </div>
+            <span className="text-[10px] text-slate-400 ml-auto">From last billed period</span>
+          </div>
+
+          {!analysis && (
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs text-slate-500 text-center">
+              Not enough billed readings to calculate averages (minimum 2 required)
+            </div>
+          )}
+
+          {analysis && (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg px-3 py-2.5 border border-amber-200">
+                  <div className="text-[9px] text-amber-600 uppercase tracking-wider font-bold">Avg Daily</div>
+                  <div className="text-sm sm:text-base font-mono font-black text-amber-800 mt-0.5">{fmt(analysis.avgDailyConsumption)}</div>
+                  <div className="text-[9px] text-amber-500">units/day</div>
+                </div>
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg px-3 py-2.5 border border-blue-200">
+                  <div className="text-[9px] text-blue-600 uppercase tracking-wider font-bold">Avg Monthly</div>
+                  <div className="text-sm sm:text-base font-mono font-black text-blue-800 mt-0.5">{fmt(analysis.avgMonthlyConsumption)}</div>
+                  <div className="text-[9px] text-blue-500">units/{STANDARD_MONTH_DAYS}d</div>
+                </div>
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg px-3 py-2.5 border border-green-200">
+                  <div className="text-[9px] text-green-600 uppercase tracking-wider font-bold">Range (Daily)</div>
+                  <div className="text-xs font-mono font-bold text-green-800 mt-0.5">{fmt(analysis.minDaily)} – {fmt(analysis.maxDaily)}</div>
+                  <div className="text-[9px] text-green-500">min – max</div>
+                </div>
+                <div className="bg-gradient-to-br from-purple-50 to-fuchsia-50 rounded-lg px-3 py-2.5 border border-purple-200">
+                  <div className="text-[9px] text-purple-600 uppercase tracking-wider font-bold">Period Data</div>
+                  <div className="text-xs font-mono font-bold text-purple-800 mt-0.5">{analysis.periodMonths} months</div>
+                  <div className="text-[9px] text-purple-500">{fmt(analysis.totalConsumption)} total units</div>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <BarChart3 className="w-3.5 h-3.5 text-slate-500" />
+                  <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Daily Consumption Trend</span>
+                  <div className="ml-auto flex items-center gap-3 text-[9px]">
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-blue-500 inline-block" /> Normal</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-500 inline-block" /> High Spike</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-500 inline-block" /> Low Spike</span>
+                  </div>
+                </div>
+                <div className="flex items-end gap-[2px] sm:gap-1" style={{ height: 120 }}>
+                  {(() => {
+                    const display = [...(analysis.allWithSpikes)].filter(r => r.consumption > 0).reverse().slice(-Math.min(selectedMonths + 4, 30));
+                    const maxD = Math.max(...display.map(r => r.dailyConsumption), analysis.avgDailyConsumption * 1.5);
+                    return display.map((r, i) => {
+                      const pct = maxD > 0 ? (r.dailyConsumption / maxD) * 100 : 0;
+                      const barColor = r.spikeType === 'high' ? 'bg-red-500' : r.spikeType === 'low' ? 'bg-amber-500' : 'bg-blue-500';
+                      const bm = r.billingMonth || '';
+                      const label = bm === 'Current Open Period' ? 'CUR' : bm.substring(0, 3);
+                      const isOpen = bm.toLowerCase().includes('open period') || r.readingStatus.toLowerCase().includes('awaiting');
+                      return (
+                        <div key={i} className="flex-1 min-w-0 flex flex-col items-center justify-end h-full group relative">
+                          <div className={`w-full max-w-[28px] ${barColor} ${isOpen ? 'opacity-60 border-2 border-dashed border-white' : ''} rounded-t-sm transition-all cursor-pointer`}
+                            style={{ height: `${Math.max(pct, 2)}%` }}
+                            title={`${bm} ${r.financialYear}: ${fmt(r.dailyConsumption)} units/day (${r.consumption} units / ${r.readingDays} days)${r.isSpike ? ` — ${r.spikeType.toUpperCase()} SPIKE (${r.spikePercent > 0 ? '+' : ''}${fmt1(r.spikePercent)}%)` : ''}`}
+                          />
+                          {r.isSpike && (
+                            <AlertTriangle className={`w-3 h-3 absolute -top-4 ${r.spikeType === 'high' ? 'text-red-500' : 'text-amber-500'}`} />
+                          )}
+                          <span className="text-[7px] sm:text-[8px] text-slate-400 mt-0.5 truncate w-full text-center">{label}</span>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+                <div className="relative mt-1">
+                  <div className="border-t border-dashed border-amber-400" style={{ position: 'relative' }}>
+                    <span className="absolute right-0 -top-3 text-[8px] text-amber-600 font-mono bg-white px-1">avg: {fmt(analysis.avgDailyConsumption)}/day</span>
+                  </div>
+                </div>
+              </div>
+
+              {analysis.spikeCount > 0 && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
+                    <span className="text-[10px] uppercase tracking-wider text-red-600 font-bold">Spike Detection</span>
+                    <span className="text-[10px] text-slate-400 ml-1">(≥{SPIKE_THRESHOLD * 100}% above or ≤{SPIKE_LOW_THRESHOLD * 100}% of avg daily)</span>
+                  </div>
+                  <div className="space-y-1 max-h-[200px] overflow-y-auto">
+                    {analysis.allWithSpikes.filter(r => r.isSpike).map((r, i) => (
+                      <div key={i} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[11px] ${
+                        r.spikeType === 'high'
+                          ? 'bg-red-50 border-red-200'
+                          : 'bg-amber-50 border-amber-200'
+                      }`}>
+                        {r.spikeType === 'high' ? (
+                          <TrendingUp className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                        ) : (
+                          <TrendingDown className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                        )}
+                        <span className="font-semibold text-slate-800">{r.billingMonth} {r.financialYear}</span>
+                        <span className="font-mono text-slate-600">{fmt(r.dailyConsumption)} /day</span>
+                        <span className="font-mono text-slate-500">({r.consumption} units / {r.readingDays} days)</span>
+                        <span className={`ml-auto font-mono font-bold ${r.spikeType === 'high' ? 'text-red-600' : 'text-amber-600'}`}>
+                          {r.spikePercent > 0 ? '+' : ''}{fmt1(r.spikePercent)}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {analysis.spikeCount === 0 && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-[11px] text-green-700">
+                  <Info className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                  <span>No consumption spikes detected. All readings are within normal range based on {analysis.periodMonths}-month history.</span>
+                </div>
+              )}
+
+              <div className="text-[9px] text-slate-400 flex items-center gap-1">
+                <Info className="w-3 h-3" />
+                Daily consumption = total units ÷ reading days. Weighted average calculated across {analysis.totalDays} total reading days. Spike thresholds: high ≥{SPIKE_THRESHOLD * 100}% of avg, low ≤{SPIKE_LOW_THRESHOLD * 100}% of avg.
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BillingEstimator({ readingHistory, selectedMeter, allReadings }: { readingHistory: any[]; selectedMeter: any; allReadings: any[] }) {
   const [vatRate, setVatRate] = useState(15);
   const [showDetails, setShowDetails] = useState(true);
@@ -1303,6 +1619,10 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
           selectedMeter={matchedServiceForMeter}
           allReadings={readingHistory}
         />
+      )}
+
+      {selectedMeter && !historyLoading && readingHistory.length > 0 && (
+        <MeterIntelligence allReadings={readingHistory} />
       )}
 
       {selectedMeter && !historyLoading && readingHistory.length > 0 && (
