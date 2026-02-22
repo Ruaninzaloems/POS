@@ -1894,7 +1894,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
           const tariff = (s.tariff || s.tariffCode || s.tariffDescription || s.description || '').toLowerCase();
           return tariff.includes('basic') || tariff.includes('fixed') || tariff.includes('availability') || tariff.includes('service charge');
         };
-        const meteredServices = allServices.filter((s: any) => !isBasicOrFixedCharge(s));
+        const meteredServices = allServices.filter((s: any) => !isBasicOrFixedCharge(s) && !isServicePrepaid(s));
         if (meteredServices.length === 0) return null;
         return (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -2052,34 +2052,40 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
         };
         const isMeteredService = (m: any) => {
           const desc = (m.serviceType || m.serviceTypeDescription || m.serviceDesc || m.serviceDescription || m.tariffCode || m.tariff || '').toLowerCase();
-          return desc.includes('water') || desc.includes('elec') || desc.includes('sewer') || desc.includes('sanit') || desc.includes('efflu') || desc.includes('prepaid') || desc.includes('pre-paid') || desc.includes('metered');
+          return desc.includes('water') || desc.includes('elec') || desc.includes('sewer') || desc.includes('sanit') || desc.includes('efflu') || desc.includes('metered');
         };
-        const meteredOnly = meters.filter(isMeteredService);
-        const prepaidOnly = prepaidMeters.filter((p: any) => {
-          const mNo = (p.prepaidMeterNo || p.meterNumber || p.physicalMeterNumber || p.meterNo || '').toLowerCase();
-          return !meteredOnly.some((m: any) => (m.meterNo || m.meterNumber || m.physicalMeterNumber || '').toLowerCase() === mNo);
-        });
-        const allMetered = [
-          ...meteredOnly.map((m: any) => ({ ...m, _source: 'meter' as const, _isPrepaid: isMeterPrepaid(m) })),
-          ...prepaidOnly.map((p: any) => ({ ...p, _source: 'prepaid' as const, _isPrepaid: true,
-            meterNo: p.prepaidMeterNo || p.meterNumber || p.meterNo,
-            serviceType: p.prepaidServiceDesc || p.serviceType || p.serviceDescription || p.serviceDesc,
-          })),
-        ];
+        const meteredOnly = meters.filter((m: any) => isMeteredService(m) && !isMeterPrepaid(m));
+        const convMeters = meteredOnly;
 
-        if (allMetered.length === 0) return null;
+        const loadPrepaidHistory = async (m: any) => {
+          setShowPrepaidSales(true);
+          setSelectedPrepaidMeter(m);
+          setLoadingRecharge(true);
+          setPrepaidRechargeDetails([]);
+          try {
+            const meterId = m.meterId || m.meter_id || m.id || m.prepaidMeterId;
+            if (meterId) {
+              const details = await getPrepaidRechargeDetailsForMeter(meterId);
+              setPrepaidRechargeDetails(Array.isArray(details) ? details : []);
+            }
+          } catch (e) {
+            console.error('Failed to load recharge details:', e);
+          } finally {
+            setLoadingRecharge(false);
+          }
+        };
 
         return (
         <>
+        {convMeters.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-teal-600 to-teal-700 flex items-center gap-2">
             <Gauge className="w-4 h-4 text-white" />
-            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Meters</h3>
-            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{allMetered.length}</Badge>
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Conventional Meters</h3>
+            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{convMeters.length}</Badge>
           </div>
-          <div className="sm:hidden p-2 space-y-2" data-testid="table-meters-mobile">
-            {allMetered.map((m: any, i: number) => {
-              const isPrepaid = m._isPrepaid;
+          <div className="sm:hidden p-2 space-y-2" data-testid="table-conv-meters-mobile">
+            {convMeters.map((m: any, i: number) => {
               const meterStatus = (m.status || m.statusDesc || m.meterStatus || '').toLowerCase();
               const svcStatus = (m.serviceStatus || m.serviceStatusDesc || '').toLowerCase();
               const isActive = meterStatus === 'active';
@@ -2087,80 +2093,63 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
               const isSelected = consumptionMeter && (consumptionMeter.meterNo || consumptionMeter.meterNumber) === (m.meterNo || m.meterNumber);
               return (
               <div key={i} className={`bg-white border rounded-xl p-3 space-y-2 cursor-pointer active:scale-[0.99] transition-all ${isSelected ? 'border-teal-400 bg-teal-50 shadow-sm' : 'border-slate-200'}`}
-                onClick={() => isPrepaid ? (() => { setShowPrepaidSales(true); setSelectedPrepaidMeter(m); setPrepaidRechargeDetails([]); })() : viewConsumption(m)}
+                onClick={() => viewConsumption(m)}
               >
                 <div className="flex items-center gap-2">
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${isPrepaid ? 'bg-amber-100 border border-amber-200' : 'bg-blue-100 border border-blue-200'}`}>
-                    {isPrepaid ? <Zap className="w-4 h-4 text-amber-600" /> : <Gauge className="w-4 h-4 text-blue-600" />}
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-blue-100 border border-blue-200">
+                    <Gauge className="w-4 h-4 text-blue-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-xs font-bold text-slate-800 truncate">{m.serviceType || m.serviceTypeDescription || m.serviceDesc || m.serviceDescription || m.prepaidServiceDesc || '-'}</span>
-                      <span className={`inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${isPrepaid ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-blue-100 text-blue-800 border-blue-200'}`}>
-                        {isPrepaid ? '⚡ Prepaid' : '📊 Conventional'}
-                      </span>
-                    </div>
+                    <span className="text-xs font-bold text-slate-800 truncate block">{m.serviceType || m.serviceTypeDescription || m.serviceDesc || m.serviceDescription || '-'}</span>
                     <span className="text-[10px] text-slate-500">{m.classification || m.meterClassification || m.meterType || ''}</span>
                   </div>
                   <div className="flex flex-col items-end gap-0.5 shrink-0">
                     <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-semibold border ${isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-red-100 text-red-600 border-red-200'}`}>
-                      {m.status || m.statusDesc || m.meterStatus || '-'}
+                      Mtr: {m.status || m.statusDesc || m.meterStatus || '-'}
                     </span>
-                    {svcStatus && svcStatus !== meterStatus && (
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-semibold border ${isSvcActive ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-red-50 text-red-500 border-red-100'}`}>
-                        Svc: {m.serviceStatus || m.serviceStatusDesc}
-                      </span>
-                    )}
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-semibold border ${isSvcActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                      Svc: {m.serviceStatus || m.serviceStatusDesc || '-'}
+                    </span>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-bold text-blue-700">{m.meterNo || m.meterNumber || m.prepaidMeterNo || '-'}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-bold text-blue-700">{m.meterNo || m.meterNumber || '-'}</span></div>
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">Physical</span><span className="font-mono text-slate-700">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</span></div>
                   <div className="col-span-2 flex justify-between text-[11px]"><span className="text-slate-500">Tariff</span><span className="text-slate-700 text-right truncate ml-2 max-w-[70%]">{m.tariffCode || m.tariff || m.tariffDescription || '-'}</span></div>
                   {(m.installDate || m.dateInstalled) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Installed</span><span className="text-slate-700">{m.installDate || m.dateInstalled || '-'}</span></div>}
-                  {(m.mainMeter !== undefined || m.isMainMeter !== undefined) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Main Meter</span><span className="text-slate-700">{String(m.mainMeter ?? m.isMainMeter ?? '-')}</span></div>}
-                  {(m.billable !== undefined || m.isBillable !== undefined) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Billable</span><span className="text-slate-700">{String(m.billable ?? m.isBillable ?? '-')}</span></div>}
-                  {m.accountNumber && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Account</span><span className="font-mono text-slate-700">{m.accountNumber || m.accountNo || '-'}</span></div>}
                   {(m.replace !== undefined || m.isReplaced !== undefined) && (m.replace || m.isReplaced) && <div className="col-span-2 flex justify-between text-[11px]"><span className="text-slate-500">Replaced</span><span className="text-red-600 font-semibold">Yes{m.reason || m.replaceReason ? ` — ${m.reason || m.replaceReason}` : ''}</span></div>}
                 </div>
-                <div className={`flex items-center justify-center gap-1 text-[10px] font-semibold pt-1.5 border-t border-slate-100 ${isPrepaid ? 'text-amber-600' : 'text-cyan-600'}`}>
-                  {isPrepaid ? <><Eye className="w-3 h-3" /> Tap to view purchase history</> : <><Activity className="w-3 h-3" /> Tap to view consumption history</>}
+                <div className="flex items-center justify-center gap-1 text-[10px] text-cyan-600 font-semibold pt-1.5 border-t border-slate-100">
+                  <Activity className="w-3 h-3" /> Tap to view consumption history
                 </div>
               </div>
               );
             })}
           </div>
           <div className="hidden sm:block overflow-x-auto">
-            <table className="w-full text-sm" data-testid="table-meters">
+            <table className="w-full text-sm" data-testid="table-conv-meters">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Type</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Classification</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter No</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Physical No</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Tariff</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Status</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Svc Status</th>
-                  <th className="text-center py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Action</th>
+                  <th className="text-center py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Consumption</th>
                 </tr>
               </thead>
               <tbody>
-                {allMetered.map((m: any, i: number) => {
-                  const isPrepaid = m._isPrepaid;
+                {convMeters.map((m: any, i: number) => {
                   const isSelected = consumptionMeter && (consumptionMeter.meterNo || consumptionMeter.meterNumber) === (m.meterNo || m.meterNumber);
                   return (
                   <tr key={i} className={`border-b border-slate-100 cursor-pointer transition-colors ${isSelected ? 'bg-teal-50 ring-1 ring-teal-300' : 'hover:bg-teal-50/30'}`}
-                    onClick={() => isPrepaid ? (() => { setShowPrepaidSales(true); setSelectedPrepaidMeter(m); setPrepaidRechargeDetails([]); })() : viewConsumption(m)}
+                    onClick={() => viewConsumption(m)}
                   >
-                    <td className="py-2 px-3">
-                      <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${isPrepaid ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-blue-100 text-blue-800 border-blue-200'}`}>
-                        {isPrepaid ? '⚡ Prepaid' : '📊 Conv.'}
-                      </span>
-                    </td>
-                    <td className="py-2 px-3 font-medium">{m.serviceType || m.serviceTypeDescription || m.serviceDesc || m.serviceDescription || m.prepaidServiceDesc || '-'}</td>
+                    <td className="py-2 px-3 font-medium">{m.serviceType || m.serviceTypeDescription || m.serviceDesc || m.serviceDescription || '-'}</td>
                     <td className="py-2 px-3 text-xs">{m.classification || m.meterClassification || m.meterType || '-'}</td>
-                    <td className="py-2 px-3 font-mono font-semibold text-blue-700">{m.meterNo || m.meterNumber || m.prepaidMeterNo || '-'}</td>
+                    <td className="py-2 px-3 font-mono font-semibold text-blue-700">{m.meterNo || m.meterNumber || '-'}</td>
                     <td className="py-2 px-3 font-mono text-sm">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</td>
                     <td className="py-2 px-3 text-xs max-w-[150px] truncate">{m.tariffCode || m.tariff || m.tariffDescription || '-'}</td>
                     <td className="py-2 px-3">
@@ -2175,11 +2164,11 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                     </td>
                     <td className="py-2 px-3 text-center">
                       <button
-                        onClick={(e) => { e.stopPropagation(); isPrepaid ? (() => { setShowPrepaidSales(true); setSelectedPrepaidMeter(m); setPrepaidRechargeDetails([]); })() : viewConsumption(m); }}
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-md border transition-all ${isPrepaid ? 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200' : 'bg-cyan-50 hover:bg-cyan-100 text-cyan-700 border-cyan-200'}`}
-                        data-testid={`button-view-meter-${i}`}
+                        onClick={(e) => { e.stopPropagation(); viewConsumption(m); }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 text-[11px] font-semibold rounded-md border border-cyan-200 transition-all"
+                        data-testid={`button-view-consumption-${i}`}
                       >
-                        {isPrepaid ? <><Eye className="w-3 h-3" /> Purchases</> : <><Activity className="w-3 h-3" /> Consumption</>}
+                        <Activity className="w-3 h-3" /> View
                       </button>
                     </td>
                   </tr>
@@ -2189,6 +2178,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
             </table>
           </div>
         </div>
+        )}
 
         {consumptionMeter && (
         <div className="bg-white rounded-xl border border-cyan-200 shadow-sm overflow-hidden" data-testid="consumption-detail-panel">
@@ -2310,6 +2300,92 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
           </div>
         </div>
         )}
+
+        {prepaidMeters.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
+            <Zap className="w-4 h-4 text-white" />
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Prepaid Meters</h3>
+            <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{prepaidMeters.length}</Badge>
+          </div>
+          <div className="sm:hidden p-2 space-y-2" data-testid="table-prepaid-meters-mobile">
+            {prepaidMeters.map((m: any, i: number) => {
+              const mStatus = (m.status || m.meterStatus || m.statusDesc || '').toLowerCase();
+              const isActive = mStatus === 'active';
+              return (
+              <div key={i} className={`bg-white border rounded-xl p-3 space-y-2 cursor-pointer active:scale-[0.99] transition-all border-slate-200`}
+                onClick={() => loadPrepaidHistory(m)}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-amber-100 border border-amber-200">
+                    <Zap className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs font-bold text-slate-800 truncate block">{m.prepaidServiceDesc || m.serviceType || m.serviceDescription || m.serviceDesc || 'Prepaid'}</span>
+                    <span className="text-[10px] text-slate-500">{m.meterPhase || m.phase || ''}</span>
+                  </div>
+                  <span className={`shrink-0 inline-flex px-2 py-0.5 rounded-full text-[9px] font-semibold border ${isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-red-100 text-red-600 border-red-200'}`}>
+                    {m.status || m.meterStatus || m.statusDesc || '-'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-bold text-blue-700">{m.prepaidMeterNo || m.meterNumber || m.meterNo || '-'}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Physical</span><span className="font-mono text-slate-700">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</span></div>
+                  {(m.tariff || m.tariffDescription) && <div className="col-span-2 flex justify-between text-[11px]"><span className="text-slate-500">Tariff</span><span className="text-slate-700 text-right truncate ml-2 max-w-[70%]">{m.tariff || m.tariffDescription || '-'}</span></div>}
+                  {m.lastRechargeDate && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Last Recharge</span><span className="font-mono text-slate-700">{new Date(m.lastRechargeDate).toLocaleDateString('en-ZA')}</span></div>}
+                  {m.lastRechargeAmount !== undefined && m.lastRechargeAmount !== null && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Last Amount</span><span className="font-mono text-emerald-700 font-semibold">R {Number(m.lastRechargeAmount).toFixed(2)}</span></div>}
+                </div>
+                <div className="flex items-center justify-center gap-1 text-[10px] text-amber-600 font-semibold pt-1.5 border-t border-slate-100">
+                  <Eye className="w-3 h-3" /> Tap to view purchase history
+                </div>
+              </div>
+              );
+            })}
+          </div>
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-prepaid-meters">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter No</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Physical No</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Tariff</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
+                  <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Last Recharge</th>
+                  <th className="text-center py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">History</th>
+                </tr>
+              </thead>
+              <tbody>
+                {prepaidMeters.map((m: any, i: number) => (
+                  <tr key={i} className="border-b border-slate-100 cursor-pointer hover:bg-amber-50/30 transition-colors"
+                    onClick={() => loadPrepaidHistory(m)}
+                  >
+                    <td className="py-2 px-3 font-medium">{m.prepaidServiceDesc || m.serviceType || m.serviceDescription || m.serviceDesc || 'Prepaid'}</td>
+                    <td className="py-2 px-3 font-mono font-semibold text-blue-700">{m.prepaidMeterNo || m.meterNumber || m.meterNo || '-'}</td>
+                    <td className="py-2 px-3 font-mono text-sm">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</td>
+                    <td className="py-2 px-3 text-xs max-w-[150px] truncate">{m.tariff || m.tariffDescription || '-'}</td>
+                    <td className="py-2 px-3">
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.meterStatus || m.statusDesc || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                        {m.status || m.meterStatus || m.statusDesc || '-'}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 text-right font-mono text-xs">{m.lastRechargeDate ? new Date(m.lastRechargeDate).toLocaleDateString('en-ZA') : '-'}</td>
+                    <td className="py-2 px-3 text-center">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); loadPrepaidHistory(m); }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 text-[11px] font-semibold rounded-md border border-amber-200 transition-all"
+                        data-testid={`button-view-prepaid-${i}`}
+                      >
+                        <Eye className="w-3 h-3" /> Purchases
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        )}
         </>
         );
       })()}
@@ -2322,6 +2398,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                 <Zap className="w-5 h-5 text-white" />
                 <h4 className="text-sm sm:text-base font-bold text-white">Prepaid Sales</h4>
               </div>
+              <div className="flex items-center gap-2">
               {selectedPrepaidMeter && (
                 <button
                   onClick={() => { setSelectedPrepaidMeter(null); setPrepaidRechargeDetails([]); }}
@@ -2332,6 +2409,14 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                   Back
                 </button>
               )}
+              <button
+                onClick={() => setShowPrepaidSales(false)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold rounded-lg transition-all border border-white/30"
+                data-testid="button-close-prepaid-modal"
+              >
+                Close
+              </button>
+              </div>
             </div>
             <div className="p-3 sm:p-6">
               {!selectedPrepaidMeter ? (
