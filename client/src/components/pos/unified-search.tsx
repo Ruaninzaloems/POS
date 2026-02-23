@@ -4,7 +4,7 @@ import { ConsumerSearchForm } from './consumer-search-form';
 import { UnifiedSearch as SearchComponent, SearchResult, parseMobileFromContactDetails } from './search-component';
 import { Filter, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Account, fetchAccounts, fetchBillingStagePrepaidRecharge, fetchBillingStagePrepaidRecovery, searchInstitutions, fetchAccountsByGroup, platinumGetAccountsForClearance, platinumGetClearanceData, enrichAccountData } from '@/lib/external-api';
+import { Account, fetchAccounts, fetchBillingStagePrepaidRecharge, fetchBillingStagePrepaidRecovery, searchInstitutions, fetchAccountsByGroup, platinumGetAccountsForClearance, platinumGetClearanceData, enrichAccountData, platinumGetConsAccountDetails } from '@/lib/external-api';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export function UnifiedSearch({ onSearchActiveChange }: { onSearchActiveChange?: (active: boolean) => void } = {}) {
-  const { addItem, clearTransaction, referenceData, platinumUser } = usePos();
+  const { addItem, clearTransaction, referenceData, platinumUser, updateItemAmount, updateItemDetails } = usePos();
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [advancedResults, setAdvancedResults] = useState<any[]>([]);
@@ -120,34 +120,80 @@ export function UnifiedSearch({ onSearchActiveChange }: { onSearchActiveChange?:
         const group = result.data as any;
         
         if (group.members && Array.isArray(group.members) && group.members.length > 0) {
-            group.members.forEach((member: any) => {
-                const memberItem: TransactionItem = {
-                    id: crypto.randomUUID(),
-                    type: 'CONSUMER_SERVICES',
-                    description: `${group.institutionDesc} - Acc ${member.accountNumber || member.accountID}`,
-                    reference: member.accountNumber || `${member.accountID}`,
-                    amountDue: member.outStandingAmt || 0,
-                    amountToPay: member.outStandingAmt || 0,
-                    originalData: { ...member, institutionDesc: group.institutionDesc }
-                };
-                addItem(memberItem);
-            });
+            const memberItems: TransactionItem[] = group.members.map((member: any) => ({
+                id: crypto.randomUUID(),
+                type: 'CONSUMER_SERVICES' as const,
+                description: `${group.institutionDesc} - ${member.name || [member.initials, member.lastName].filter(Boolean).join(' ') || 'Acc'} (${member.accountNumber || member.accountID})`,
+                reference: member.accountNumber || `${member.accountID}`,
+                amountDue: member.outStandingAmt || 0,
+                amountToPay: member.outStandingAmt || 0,
+                originalData: { ...member, institutionDesc: group.institutionDesc }
+            }));
+            memberItems.forEach(item => addItem(item));
+
+            const needsEnrichment = memberItems.filter(item => !item.amountDue || item.amountDue === 0);
+            if (needsEnrichment.length > 0) {
+                Promise.allSettled(
+                    needsEnrichment.map(async (item) => {
+                        const accId = item.originalData?.accountID || item.originalData?.accountId || item.originalData?.account_ID;
+                        if (!accId) return;
+                        try {
+                            const details = await platinumGetConsAccountDetails(Number(accId));
+                            if (details && !details._error) {
+                                const outstanding = details.outStandingAmt ?? details.outstandingAmount ?? details.outStandingAmount ?? 0;
+                                if (outstanding > 0) {
+                                    updateItemDetails(item.id, {
+                                        amountDue: outstanding,
+                                        amountToPay: outstanding,
+                                        originalData: { ...item.originalData, outStandingAmt: outstanding, outstandingAmount: outstanding }
+                                    });
+                                }
+                            }
+                        } catch (e) {
+                            console.warn(`[Group Enrich] Failed for account ${accId}:`, e);
+                        }
+                    })
+                );
+            }
         } else if (group.isLocal && group.institutionID) {
             try {
                 const accounts = await fetchAccountsByGroup(group.institutionID);
                 if (accounts.length > 0) {
-                    accounts.forEach((acc: any) => {
-                        const memberItem: TransactionItem = {
-                            id: crypto.randomUUID(),
-                            type: 'CONSUMER_SERVICES',
-                            description: `${group.institutionDesc || 'Group'} - ${acc.name || 'Unknown'} (${acc.accountNumber || acc.accountID})`,
-                            reference: acc.accountNumber || acc.oldAccountCode || `${acc.accountID}`,
-                            amountDue: acc.outStandingAmount || 0,
-                            amountToPay: acc.outStandingAmount || 0,
-                            originalData: { ...acc, institutionDesc: group.institutionDesc, accountID: acc.accountID }
-                        };
-                        addItem(memberItem);
-                    });
+                    const memberItems: TransactionItem[] = accounts.map((acc: any) => ({
+                        id: crypto.randomUUID(),
+                        type: 'CONSUMER_SERVICES' as const,
+                        description: `${group.institutionDesc || 'Group'} - ${acc.name || 'Unknown'} (${acc.accountNumber || acc.accountID})`,
+                        reference: acc.accountNumber || acc.oldAccountCode || `${acc.accountID}`,
+                        amountDue: acc.outStandingAmount || acc.outStandingAmt || 0,
+                        amountToPay: acc.outStandingAmount || acc.outStandingAmt || 0,
+                        originalData: { ...acc, institutionDesc: group.institutionDesc, accountID: acc.accountID }
+                    }));
+                    memberItems.forEach(item => addItem(item));
+
+                    const needsEnrichment = memberItems.filter(item => !item.amountDue || item.amountDue === 0);
+                    if (needsEnrichment.length > 0) {
+                        Promise.allSettled(
+                            needsEnrichment.map(async (item) => {
+                                const accId = item.originalData?.accountID || item.originalData?.accountId || item.originalData?.account_ID;
+                                if (!accId) return;
+                                try {
+                                    const details = await platinumGetConsAccountDetails(Number(accId));
+                                    if (details && !details._error) {
+                                        const outstanding = details.outStandingAmt ?? details.outstandingAmount ?? details.outStandingAmount ?? 0;
+                                        if (outstanding > 0) {
+                                            updateItemDetails(item.id, {
+                                                amountDue: outstanding,
+                                                amountToPay: outstanding,
+                                                originalData: { ...item.originalData, outStandingAmt: outstanding, outstandingAmount: outstanding }
+                                            });
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.warn(`[Group Enrich] Failed for account ${accId}:`, e);
+                                }
+                            })
+                        );
+                    }
                 } else {
                     alert(`No linked accounts found for group "${group.institutionDesc}".`);
                     return;
