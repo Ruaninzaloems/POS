@@ -2217,41 +2217,58 @@ export async function registerRoutes(
       const receipts = Array.isArray(receiptData) ? receiptData : (receiptData?.data || []);
       if (!receipts.length) return res.json({});
 
-      if (receipts.length > 0) {
-        console.log(`[Bank Notes] Raw receipt fields for account ${accountId}:`, JSON.stringify(Object.keys(receipts[0])));
-        console.log(`[Bank Notes] First receipt sample:`, JSON.stringify(receipts[0]));
-      }
+      const eftReceipts = receipts.filter((r: any) => {
+        const pt = (r.paymentType || '').toLowerCase();
+        return pt.includes('eft') || pt.includes('electronic') || pt.includes('transfer') || pt.includes('direct');
+      });
 
-      const receiptIdsWithBills: { receiptNo: string; billId: number }[] = [];
-      for (const r of receipts) {
-        const billId = r.billId || r.billID || r.bill_ID || r.posItemId || r.posItem_ID || r.posItemID;
-        if (billId) {
-          receiptIdsWithBills.push({ receiptNo: r.receiptNo, billId: Number(billId) });
-        }
-      }
-      console.log(`[Bank Notes] Found ${receiptIdsWithBills.length} receipts with billIds out of ${receipts.length} total`);
+      if (!eftReceipts.length) return res.json({});
+      console.log(`[Bank Notes] Found ${eftReceipts.length} EFT receipts out of ${receipts.length} total for account ${accountId}`);
 
       const results: Record<string, string> = {};
+      const now = new Date();
+      const finYear = now.getMonth() >= 6
+        ? `${now.getFullYear()}/${now.getFullYear() + 1}`
+        : `${now.getFullYear() - 1}/${now.getFullYear()}`;
 
-      if (receiptIdsWithBills.length > 0) {
-        const batchSize = 5;
-        for (let i = 0; i < Math.min(receiptIdsWithBills.length, 50); i += batchSize) {
-          const batch = receiptIdsWithBills.slice(i, i + batchSize);
-          const promises = batch.map(async ({ receiptNo, billId }) => {
-            try {
-              const data = await platinumGet(session, "/api/billing-direct-deposit-allocation/get-pos-item-details", { posItemId: String(billId) });
-              if (data && !data.error) {
-                const item = Array.isArray(data) ? data[0] : data;
-                if (item?.note) {
-                  results[receiptNo] = item.note;
+      const batchSize = 3;
+      const limited = eftReceipts.slice(0, 20);
+      for (let i = 0; i < limited.length; i += batchSize) {
+        const batch = limited.slice(i, i + batchSize);
+        const promises = batch.map(async (r: any) => {
+          const receiptNo = r.receiptNo;
+          if (!receiptNo) return;
+          const receiptDate = r.receiptDate ? new Date(r.receiptDate) : now;
+          const month = receiptDate.getMonth() + 1;
+          try {
+            const traceData = await platinumGet(session, "/api/billing/cashbook-transaction-trace/search", {
+              searchText: receiptNo,
+              finYear,
+              month: String(month),
+            });
+            console.log(`[Bank Notes] Trace raw for ${receiptNo} (month=${month}):`, JSON.stringify(traceData).substring(0, 300));
+            if (traceData && !traceData._error) {
+              const items = Array.isArray(traceData) ? traceData : (traceData?.items || traceData?.data || []);
+              if (items.length > 0 && !results[receiptNo]) {
+                console.log(`[Bank Notes] Trace response for ${receiptNo}: fields=${JSON.stringify(Object.keys(items[0]))}`);
+                console.log(`[Bank Notes] Trace sample for ${receiptNo}:`, JSON.stringify(items[0]).substring(0, 500));
+              } else {
+                console.log(`[Bank Notes] Trace returned ${items.length} items for ${receiptNo}`);
+              }
+              for (const item of items) {
+                const note = item.note || item.NOTE || item.bankStatementNote || item.bankStatementDescription || item.statementDescription || item.eftDescription || item.ledgerNote || '';
+                if (note && note !== receiptNo) {
+                  results[receiptNo] = note;
+                  break;
                 }
               }
-            } catch {}
-          });
-          await Promise.all(promises);
-        }
+            }
+          } catch {}
+        });
+        await Promise.all(promises);
       }
 
+      console.log(`[Bank Notes] Resolved ${Object.keys(results).length} bank statement notes for ${limited.length} EFT receipts`);
       res.json(results);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
