@@ -110,6 +110,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
     if (scope === 'ALL' || scope === 'GROUP') {
         const instResults = institutions.filter((inst: any) =>
           inst.Description && inst.Description.toLowerCase().includes(q) && inst.IsEnabled
+          && !/^\d+$/.test(inst.Description.trim())
         ).slice(0, 5).map((inst: any) => ({
             type: 'GROUP' as const,
             data: { institutionID: inst.Id, institutionDesc: inst.Description, isLocal: true },
@@ -263,8 +264,10 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
           const groupedInstitutions = new Map<number, { desc: string; members: InstitutionSearchResult[] }>();
           for (const inst of (institutionResults || [])) {
               if (inst.institutionID != null) {
+                  const desc = inst.institutionDesc || 'Unknown Group';
+                  if (/^\d+$/.test(desc.trim())) continue;
                   if (!groupedInstitutions.has(inst.institutionID)) {
-                      groupedInstitutions.set(inst.institutionID, { desc: inst.institutionDesc || 'Unknown Group', members: [] });
+                      groupedInstitutions.set(inst.institutionID, { desc, members: [] });
                   }
                   groupedInstitutions.get(inst.institutionID)!.members.push(inst);
               }
