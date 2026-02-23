@@ -1782,30 +1782,31 @@ export async function registerRoutes(
     try {
       const session = requireAuth(req, res); if (!session) return;
       const queryParams = req.query as Record<string, string>;
-      console.log(`[dayend-reconcile-list] Query:`, queryParams);
+      const userId = queryParams.userId || (session.userData?.user_ID ? String(session.userData.user_ID) : '');
+      console.log(`[dayend-reconcile-list] Query:`, queryParams, `resolved userId: ${userId}`);
 
-      // Try with 'id' param first
-      let data = await platinumGet(session, "/api/billing-payment-day-end-reconcile/get-cashier-receipt-reconcile-list", queryParams);
-      console.log(`[dayend-reconcile-list] Strategy 1 (id=${queryParams.id}):`, JSON.stringify(data).substring(0, 500));
+      let data: any = null;
 
-      // If failed with 500, try with cashierId param name
-      if (data && typeof data === 'object' && data._error && queryParams.id) {
-        console.log(`[dayend-reconcile-list] Strategy 1 failed, trying cashierId param`);
-        data = await platinumGet(session, "/api/billing-payment-day-end-reconcile/get-cashier-receipt-reconcile-list", { cashierId: queryParams.id });
-        console.log(`[dayend-reconcile-list] Strategy 2 (cashierId):`, JSON.stringify(data).substring(0, 500));
+      if (userId) {
+        data = await platinumGet(session, "/api/billing-payment-day-end-reconcile/get-cashier-receipt-reconcile-list", { id: userId });
+        console.log(`[dayend-reconcile-list] userId=${userId}:`, JSON.stringify(data).substring(0, 500));
       }
 
-      // Try with userId from session
-      if (data && typeof data === 'object' && data._error) {
-        const userId = session.userData?.user_ID ? String(session.userData.user_ID) : '';
-        if (userId) {
-          console.log(`[dayend-reconcile-list] Strategy 2 failed, trying userId=${userId}`);
-          data = await platinumGet(session, "/api/billing-payment-day-end-reconcile/get-cashier-receipt-reconcile-list", { id: userId });
-          console.log(`[dayend-reconcile-list] Strategy 3 (id=userId):`, JSON.stringify(data).substring(0, 500));
+      if (!data || (data && typeof data === 'object' && data._error)) {
+        if (queryParams.id) {
+          data = await platinumGet(session, "/api/billing-payment-day-end-reconcile/get-cashier-receipt-reconcile-list", { id: queryParams.id });
+          console.log(`[dayend-reconcile-list] id=${queryParams.id}:`, JSON.stringify(data).substring(0, 500));
         }
       }
 
-      handlePlatinumResult(res, data);
+      if (!data || (data && typeof data === 'object' && data._error)) {
+        if (queryParams.id) {
+          data = await platinumGet(session, "/api/billing-payment-day-end-reconcile/get-cashier-receipt-reconcile-list", { cashierId: queryParams.id });
+          console.log(`[dayend-reconcile-list] cashierId=${queryParams.id}:`, JSON.stringify(data).substring(0, 500));
+        }
+      }
+
+      handlePlatinumResult(res, data || []);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }

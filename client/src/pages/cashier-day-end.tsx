@@ -148,7 +148,7 @@ export default function CashierDayEnd() {
                 platinumGetDayEndChequeList(id).catch(() => []),
                 platinumGetDayEndCardList(id).catch(() => []),
                 platinumGetDayEndDropBoxList(id).catch(() => []),
-                platinumGetDayEndReconcileList({ id: cashierId }).catch(() => []),
+                platinumGetDayEndReconcileList({ userId: String(currentUser?.id || 213), id: cashierId }).catch(() => []),
             ]);
 
             const chequeItems = extractItems(cheques);
@@ -172,7 +172,7 @@ export default function CashierDayEnd() {
         } finally {
             setIsLoadingReceipts(false);
         }
-    }, []);
+    }, [currentUser]);
 
     useEffect(() => {
         if (selectedCashierId) {
@@ -724,14 +724,19 @@ export default function CashierDayEnd() {
                                                             </TableRow>
                                                         </TableHeader>
                                                         <TableBody>
-                                                            {reconcileList.map((item, idx) => (
-                                                                <TableRow key={idx}>
+                                                            {reconcileList.map((item, idx) => {
+                                                                const payTypeLabel = item.paymentTypeId === 1 ? 'Cash' : item.paymentTypeId === 3 ? 'Credit Card' : item.paymentTypeId === 4 ? 'Postal Order' : (item.paymentType || item.payMode || '-');
+                                                                const amt = Number(item.paidAmount || item.amount || 0);
+                                                                const dateVal = item.dateCaptured || item.receiptDate || item.date || '-';
+                                                                const dateStr = dateVal !== '-' ? new Date(dateVal).toLocaleString('en-ZA', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+                                                                return (
+                                                                <TableRow key={idx} className={item.isCancelled ? 'bg-red-50/50 opacity-70' : ''}>
                                                                     <TableCell className="text-xs">{idx + 1}</TableCell>
                                                                     <TableCell className="text-xs font-mono">{item.receiptNo || item.receipt_no || '-'}</TableCell>
                                                                     <TableCell className="text-xs font-mono">{item.accountNumber || item.accountId || '-'}</TableCell>
-                                                                    <TableCell className="text-xs">{item.paymentType || item.payMode || '-'}</TableCell>
-                                                                    <TableCell className="text-xs">{item.receiptDate || item.date || '-'}</TableCell>
-                                                                    <TableCell className="text-xs text-right font-mono font-medium">R {Number(item.amount || 0).toFixed(2)}</TableCell>
+                                                                    <TableCell className="text-xs">{payTypeLabel}</TableCell>
+                                                                    <TableCell className="text-xs">{dateStr}</TableCell>
+                                                                    <TableCell className="text-xs text-right font-mono font-medium">R {amt.toFixed(2)}</TableCell>
                                                                     <TableCell className="text-xs">
                                                                         {item.isCancelled === 1 || item.isCancelled === true ? (
                                                                             <Badge variant="destructive" className="text-[9px]">Cancelled</Badge>
@@ -740,13 +745,19 @@ export default function CashierDayEnd() {
                                                                         )}
                                                                     </TableCell>
                                                                 </TableRow>
-                                                            ))}
+                                                                );
+                                                            })}
                                                         </TableBody>
                                                     </Table>
                                                 </div>
                                                 <div className="sm:hidden space-y-2">
-                                                    {reconcileList.map((item, idx) => (
-                                                        <div key={idx} className="bg-white border rounded-lg p-3 space-y-1.5" data-testid={`mobile-reconcile-card-${idx}`}>
+                                                    {reconcileList.map((item, idx) => {
+                                                        const payTypeLabel = item.paymentTypeId === 1 ? 'Cash' : item.paymentTypeId === 3 ? 'Credit Card' : item.paymentTypeId === 4 ? 'Postal Order' : (item.paymentType || item.payMode || '-');
+                                                        const amt = Number(item.paidAmount || item.amount || 0);
+                                                        const dateVal = item.dateCaptured || item.receiptDate || item.date || '-';
+                                                        const dateStr = dateVal !== '-' ? new Date(dateVal).toLocaleString('en-ZA', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+                                                        return (
+                                                        <div key={idx} className={`bg-white border rounded-lg p-3 space-y-1.5 ${item.isCancelled ? 'opacity-70 border-red-200 bg-red-50' : ''}`} data-testid={`mobile-reconcile-card-${idx}`}>
                                                             <div className="flex justify-between items-center">
                                                                 <span className="text-xs text-slate-500">Receipt No</span>
                                                                 <span className="text-xs font-mono font-medium" data-testid={`text-reconcile-receipt-${idx}`}>{item.receiptNo || item.receipt_no || '-'}</span>
@@ -757,7 +768,11 @@ export default function CashierDayEnd() {
                                                             </div>
                                                             <div className="flex justify-between items-center">
                                                                 <span className="text-xs text-slate-500">Payment Type</span>
-                                                                <span className="text-xs" data-testid={`text-reconcile-paytype-${idx}`}>{item.paymentType || item.payMode || '-'}</span>
+                                                                <span className="text-xs" data-testid={`text-reconcile-paytype-${idx}`}>{payTypeLabel}</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="text-xs text-slate-500">Date</span>
+                                                                <span className="text-xs" data-testid={`text-reconcile-date-${idx}`}>{dateStr}</span>
                                                             </div>
                                                             <div className="flex justify-between items-center">
                                                                 <span className="text-xs text-slate-500">Status</span>
@@ -769,10 +784,11 @@ export default function CashierDayEnd() {
                                                             </div>
                                                             <div className="flex justify-between items-center border-t pt-1.5">
                                                                 <span className="text-xs font-semibold text-slate-700">Amount</span>
-                                                                <span className="text-sm font-mono font-bold" data-testid={`text-reconcile-amount-${idx}`}>R {Number(item.amount || 0).toFixed(2)}</span>
+                                                                <span className="text-sm font-mono font-bold" data-testid={`text-reconcile-amount-${idx}`}>R {amt.toFixed(2)}</span>
                                                             </div>
                                                         </div>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </div>
                                                 </>
                                             )}

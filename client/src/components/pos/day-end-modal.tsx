@@ -4,8 +4,9 @@ import { Dialog, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertTriangle, CheckCircle2, Loader2, Banknote, Coins, CreditCard, FileText, ChevronDown, ChevronUp, Mail, User, Building2, Calendar, Clock, ArrowRight } from 'lucide-react';
-import { platinumSaveDayEndReconcileData } from '@/lib/external-api';
+import { Badge } from '@/components/ui/badge';
+import { AlertTriangle, CheckCircle2, Loader2, Banknote, Coins, CreditCard, FileText, ChevronDown, ChevronUp, Mail, User, Building2, Calendar, Clock, ArrowRight, Receipt, XCircle } from 'lucide-react';
+import { platinumSaveDayEndReconcileData, platinumGetDayEndReconcileList } from '@/lib/external-api';
 import { useToast } from '@/hooks/use-toast';
 
 interface DayEndModalProps {
@@ -59,8 +60,13 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
   const [showDenominations, setShowDenominations] = useState(true);
   const [showCheque, setShowCheque] = useState(false);
   const [showPostalOrder, setShowPostalOrder] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [receiptHistory, setReceiptHistory] = useState<any[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   const hasPostalOrder = allowedPaymentTypes.some(t => t.posPaymentType_ID === 4 && t.enabled);
+
+  const resolvedUserId = platinumUser?.user_ID || Number(currentUser?.id) || 0;
 
   useEffect(() => {
     if (isOpen) {
@@ -74,8 +80,30 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
       setShowDenominations(true);
       setShowCheque(false);
       setShowPostalOrder(false);
+      setShowHistory(false);
+      setReceiptHistory([]);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen && resolvedUserId > 0) {
+      loadTransactionHistory(resolvedUserId);
+    }
+  }, [isOpen, resolvedUserId]);
+
+  const loadTransactionHistory = async (userId: number) => {
+    setIsLoadingHistory(true);
+    try {
+      const data = await platinumGetDayEndReconcileList({ userId: String(userId) });
+      const items = Array.isArray(data) ? data : (data as any)?.items || (data as any)?.value || [];
+      console.log('[DayEndModal] Receipt history loaded:', items.length, 'items');
+      setReceiptHistory(items);
+    } catch (e) {
+      console.error('[DayEndModal] Failed to load receipt history:', e);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
 
   const updateDenomination = (key: keyof DenominationState, value: string) => {
     const num = parseInt(value) || 0;
@@ -89,6 +117,30 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
   const chequeAmt = parseFloat(totalChequeAmt) || 0;
   const postalOrderAmt = parseFloat(totalPostalOrderAmt) || 0;
   const grandTotal = totalCashAmt + creditAmt + chequeAmt + postalOrderAmt;
+
+  const getPaymentTypeLabel = (typeId: number) => {
+    switch (typeId) {
+      case 1: return 'Cash';
+      case 3: return 'Credit Card';
+      case 4: return 'Postal Order';
+      default: return `Type ${typeId}`;
+    }
+  };
+
+  const getBillTypeLabel = (billTypeId: number, isMisc: number | boolean) => {
+    if (isMisc) return 'Direct Income';
+    switch (billTypeId) {
+      case 1: return 'Consumer Services';
+      case 3: return 'Account Grouping';
+      case 4: return 'Direct Income';
+      case 6: return 'Clearance';
+      default: return `Bill Type ${billTypeId}`;
+    }
+  };
+
+  const systemCashTotal = receiptHistory.filter(r => !r.isCancelled && r.paymentTypeId === 1).reduce((s, r) => s + (Number(r.paidAmount) || 0), 0);
+  const systemCardTotal = receiptHistory.filter(r => !r.isCancelled && r.paymentTypeId === 3).reduce((s, r) => s + (Number(r.paidAmount) || 0), 0);
+  const systemTotal = receiptHistory.filter(r => !r.isCancelled).reduce((s, r) => s + (Number(r.paidAmount) || 0), 0);
 
   const cashierName = platinumUser?.userName || platinumUser?.firstName ? `${platinumUser?.firstName || ''} ${platinumUser?.lastName || ''}`.trim() : currentUser?.name || 'Cashier';
   const officeName = sessionDetails?.officeDesc || 'Cash Office';
@@ -382,6 +434,99 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                       data-testid="input-cheque-total"
                     />
                   </div>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-indigo-200 overflow-hidden">
+              <button
+                type="button"
+                className="w-full flex items-center justify-between px-5 py-3 hover:bg-indigo-50/50 transition-colors"
+                onClick={() => setShowHistory(!showHistory)}
+                data-testid="button-toggle-history"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-sm">
+                    <Receipt className="w-5 h-5" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-sm font-bold text-indigo-900">Transaction History</div>
+                    <div className="text-[11px] text-indigo-500">
+                      {isLoadingHistory ? 'Loading...' : `${receiptHistory.length} receipt${receiptHistory.length !== 1 ? 's' : ''} this session`}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {receiptHistory.length > 0 && !isLoadingHistory && (
+                    <span className="text-sm font-mono font-bold text-indigo-700">
+                      R {systemTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                    </span>
+                  )}
+                  {showHistory ? <ChevronUp className="w-4 h-4 text-indigo-400" /> : <ChevronDown className="w-4 h-4 text-indigo-400" />}
+                </div>
+              </button>
+
+              {showHistory && (
+                <div className="border-t border-indigo-200 bg-indigo-50/30">
+                  {isLoadingHistory ? (
+                    <div className="flex items-center justify-center py-6 gap-2 text-sm text-indigo-500">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Loading receipts...
+                    </div>
+                  ) : receiptHistory.length === 0 ? (
+                    <div className="text-center py-6 text-sm text-slate-500">No receipts found for this session</div>
+                  ) : (
+                    <div className="max-h-[280px] overflow-y-auto">
+                      <div className="divide-y divide-indigo-100">
+                        {receiptHistory.map((item, idx) => (
+                          <div key={idx} className={`px-5 py-2.5 flex items-center gap-3 ${item.isCancelled ? 'opacity-50 bg-red-50/50' : 'hover:bg-indigo-50'}`} data-testid={`receipt-row-${idx}`}>
+                            <div className="w-6 text-center text-[10px] font-bold text-indigo-400">{idx + 1}</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-mono font-bold text-slate-800 truncate" data-testid={`text-receipt-no-${idx}`}>
+                                  {item.receiptNo || '-'}
+                                </span>
+                                {item.isCancelled && (
+                                  <Badge variant="destructive" className="text-[9px] px-1.5 py-0 h-4 flex items-center gap-0.5">
+                                    <XCircle className="w-2.5 h-2.5" /> Cancelled
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-[10px] text-slate-500 font-mono">{item.accountNumber || '-'}</span>
+                                <span className="text-[10px] text-slate-400">|</span>
+                                <span className="text-[10px] text-slate-500">{getBillTypeLabel(item.billTypeID, item.isMiscPayment)}</span>
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <div className={`text-sm font-mono font-bold ${item.isCancelled ? 'text-red-500 line-through' : 'text-slate-800'}`} data-testid={`text-receipt-amount-${idx}`}>
+                                R {Number(item.paidAmount || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                              </div>
+                              <div className="text-[10px] text-slate-400">
+                                {getPaymentTypeLabel(item.paymentTypeId)}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="border-t border-indigo-200 bg-indigo-100/60 px-5 py-2.5">
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          <div>
+                            <div className="text-[9px] uppercase text-indigo-500 font-bold">System Cash</div>
+                            <div className="text-xs font-mono font-bold text-indigo-800">R {systemCashTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
+                          </div>
+                          <div>
+                            <div className="text-[9px] uppercase text-indigo-500 font-bold">System Card</div>
+                            <div className="text-xs font-mono font-bold text-indigo-800">R {systemCardTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
+                          </div>
+                          <div>
+                            <div className="text-[9px] uppercase text-indigo-500 font-bold">System Total</div>
+                            <div className="text-xs font-mono font-bold text-indigo-900">R {systemTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
