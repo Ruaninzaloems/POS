@@ -24,6 +24,12 @@ Key capabilities include:
 
 Preferred communication style: Simple, everyday language.
 
+### Test Cashier
+- **Cashier Name**: Francois Naude
+- **User ID**: 213
+- **Cashier ID**: 31922 (POS cashier record)
+- **Cash Office**: George - York Street (ID: 1)
+
 ## System Architecture
 
 ### Frontend (React + TypeScript)
