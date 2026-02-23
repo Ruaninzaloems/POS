@@ -137,14 +137,6 @@ const FRIENDLY_LABELS: Record<string, string> = {
     directDepositsAllocation: 'Direct Deposits Allocation',
     thirdPartyPaymentPending: 'Third Party Payment Pending',
     postDatedChequeSearch: 'Post-Dated Cheque Search',
-    propertyRegistrationAlert: 'Property Registration Alert',
-    propertiesWithoutPartitions: 'Properties Without Partitions',
-    noBillingCycleUnitData: 'No Billing Cycle Unit Data',
-    consolidationPropertyDetails: 'Consolidation Property Details',
-    consolidatedPropertyDetailItems: 'Consolidated Property Detail Items',
-    valuationExpired: 'Valuation Expired',
-    meterChangesPendingList: 'Meter Changes Pending',
-    consumerBillingRunApprovalPending: 'Consumer Billing Run Approval Pending',
 };
 
 const SUB_ITEM_ENDPOINT_MAP: Record<string, string> = {
@@ -462,12 +454,12 @@ function DetailTable({ endpoint, label }: { endpoint: string; label?: string }) 
                     </Button>
                 </div>
             </div>
-            <div className="overflow-x-auto overflow-y-auto max-h-[350px] scrollbar-thin">
-                <Table className="min-w-max">
-                    <TableHeader className="sticky top-0 z-10">
-                        <TableRow className="bg-slate-50/80">
+            <div className="overflow-x-auto overflow-y-auto max-h-[400px]">
+                <Table className="w-full table-auto">
+                    <TableHeader className="sticky top-0 z-10 bg-white">
+                        <TableRow className="bg-slate-50">
                             {columns.map(col => (
-                                <TableHead key={col} className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 whitespace-nowrap py-2 px-3">
+                                <TableHead key={col} className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 whitespace-nowrap py-2 px-2.5">
                                     {friendlyLabel(col)}
                                 </TableHead>
                             ))}
@@ -480,12 +472,11 @@ function DetailTable({ endpoint, label }: { endpoint: string; label?: string }) 
                                     const val = row[col];
                                     const isAmount = typeof val === 'number' && /amount|balance|total|value/i.test(col);
                                     return (
-                                        <TableCell key={col} className="text-xs py-2 px-3 whitespace-nowrap">
+                                        <TableCell key={col} className="text-xs py-1.5 px-2.5 whitespace-nowrap max-w-[220px] truncate">
                                             {val === null || val === undefined ? <span className="text-slate-300">—</span>
                                                 : isAmount ? <span className="font-mono">R {val.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
                                                 : typeof val === 'boolean' ? (val ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <XCircle className="w-3.5 h-3.5 text-red-400" />)
                                                 : typeof val === 'number' ? val.toLocaleString()
-                                                : String(val).length > 80 ? String(val).slice(0, 77) + '...'
                                                 : String(val)}
                                         </TableCell>
                                     );
@@ -566,18 +557,18 @@ function GraphsPanel() {
                     </Button>
                 </div>
                 <div className="border rounded-lg overflow-hidden bg-white">
-                    <div className="overflow-x-auto overflow-y-auto max-h-[250px] scrollbar-thin">
-                        <Table className="min-w-max">
-                            <TableHeader className="sticky top-0 z-10">
+                    <div className="overflow-x-auto overflow-y-auto max-h-[250px]">
+                        <Table className="w-full table-auto">
+                            <TableHeader className="sticky top-0 z-10 bg-white">
                                 <TableRow className="bg-slate-50">
-                                    {cols.map(c => <TableHead key={c} className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 whitespace-nowrap px-3">{friendlyLabel(c)}</TableHead>)}
+                                    {cols.map(c => <TableHead key={c} className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 whitespace-nowrap px-2.5">{friendlyLabel(c)}</TableHead>)}
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {items.map((row: any, i: number) => (
                                     <TableRow key={i} className="hover:bg-purple-50/30">
                                         {cols.map(c => (
-                                            <TableCell key={c} className="text-xs py-2 px-3 whitespace-nowrap">
+                                            <TableCell key={c} className="text-xs py-1.5 px-2.5 whitespace-nowrap max-w-[220px] truncate">
                                                 {typeof row[c] === 'number' ? row[c].toLocaleString('en-ZA', row[c] % 1 !== 0 ? { minimumFractionDigits: 2 } : {}) : String(row[c] ?? '')}
                                             </TableCell>
                                         ))}
