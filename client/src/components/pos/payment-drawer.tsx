@@ -348,6 +348,38 @@ export function PaymentDrawer() {
   );
 }
 
+function getItemSummaryLine(item: TransactionItem, od: any): { label: string; value: string; highlight?: string }[] {
+  const info: { label: string; value: string; highlight?: string }[] = [];
+  
+  if (item.type === 'CONSUMER_SERVICES' || item.type === 'ACCOUNT_GROUP') {
+    const accNo = od.accountNumber || od.accountNo || od.accountID;
+    if (accNo) info.push({ label: 'Acc', value: String(accNo), highlight: 'text-blue-600 font-mono' });
+    if (od.name) info.push({ label: 'Owner', value: od.name.length > 25 ? od.name.substring(0, 25) + '...' : od.name });
+    const outstanding = od.outStandingAmount ?? od.outstandingAmt ?? od.outStandingAmt;
+    if (outstanding != null && Number(outstanding) > 0) {
+      info.push({ label: 'Owing', value: `R ${Number(outstanding).toFixed(2)}`, highlight: 'text-red-600 font-mono' });
+    }
+    if (od.address) info.push({ label: 'Addr', value: od.address.length > 30 ? od.address.substring(0, 30) + '...' : od.address });
+  } else if (item.type === 'PREPAID') {
+    const isWater = od.prepaidType === 'Water';
+    if (od.prepaidMeterNo) info.push({ label: 'Meter', value: od.prepaidMeterNo, highlight: isWater ? 'text-blue-600 font-mono' : 'text-amber-600 font-mono' });
+    info.push({ label: 'Type', value: isWater ? 'Water' : 'Electricity', highlight: isWater ? 'text-blue-600' : 'text-amber-600' });
+    if (od.name) info.push({ label: 'Owner', value: od.name.length > 20 ? od.name.substring(0, 20) + '...' : od.name });
+    if (od.accountNo || od.accountNumber) info.push({ label: 'Acc', value: od.accountNo || od.accountNumber });
+  } else if (item.type === 'CLEARANCE') {
+    if (od.scheduleNo) info.push({ label: 'Schedule', value: od.scheduleNo, highlight: 'text-amber-700 font-mono' });
+    if (od.ownerName) info.push({ label: 'Owner', value: od.ownerName.length > 20 ? od.ownerName.substring(0, 20) + '...' : od.ownerName });
+    if (od.sgNumber) info.push({ label: 'SG', value: od.sgNumber });
+    if (od.propertyAddress) info.push({ label: 'Property', value: od.propertyAddress.length > 25 ? od.propertyAddress.substring(0, 25) + '...' : od.propertyAddress });
+  } else if (item.type === 'DIRECT_INCOME') {
+    if (od.groupName) info.push({ label: 'Category', value: od.groupName, highlight: 'text-green-700' });
+    if (od.scoaItem) info.push({ label: 'SCOA', value: od.scoaItem.length > 25 ? od.scoaItem.substring(0, 25) + '...' : od.scoaItem });
+    if (item.paidBy) info.push({ label: 'Paid By', value: item.paidBy });
+  }
+  
+  return info;
+}
+
 function getTypeBadge(type: string, originalData?: any) {
   switch (type) {
     case 'CONSUMER_SERVICES':
@@ -389,6 +421,8 @@ function MobileItemCard({ item, removeItem, updateItemAmount, updateItemDetails 
     categoryIcon = <CatIcon className="w-5 h-5" style={{ color: ci.color }} />;
   }
 
+  const summaryLine = getItemSummaryLine(item, od);
+
   return (
     <div className={`bg-white rounded-xl border shadow-sm overflow-hidden transition-all ${missingRequired ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-200'}`} data-testid={`item-${item.id}`}>
       <div className="p-3">
@@ -418,6 +452,17 @@ function MobileItemCard({ item, removeItem, updateItemAmount, updateItemDetails 
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
+
+        {summaryLine.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-slate-500">
+            {summaryLine.map((info, i) => (
+              <span key={i} className="flex items-center gap-1">
+                <span className="text-slate-400">{info.label}:</span>
+                <span className={`font-medium ${info.highlight ? info.highlight : 'text-slate-600'}`}>{info.value}</span>
+              </span>
+            ))}
+          </div>
+        )}
 
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
           <div className="flex items-center gap-3">
@@ -985,6 +1030,8 @@ function DesktopItemCard({ item, removeItem, updateItemAmount, updateItemDetails
     categoryIcon = <CatIcon className="w-5 h-5" style={{ color: ci.color }} />;
   }
 
+  const summaryLine = getItemSummaryLine(item, od);
+
   return (
     <div className={`bg-white rounded-xl border shadow-sm overflow-hidden transition-all group ${hasRequiredFieldsMissing ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-200/80 hover:border-blue-200/50 hover:shadow-md'}`}>
       <div className="p-3.5 flex items-start gap-3">
@@ -1000,6 +1047,16 @@ function DesktopItemCard({ item, removeItem, updateItemAmount, updateItemDetails
           </div>
           <div className="font-semibold text-sm leading-tight text-slate-800 truncate">{item.description}</div>
           <div className="text-[10px] text-slate-400 font-mono mt-0.5">{item.reference}</div>
+          {summaryLine.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-slate-500">
+              {summaryLine.map((info, i) => (
+                <span key={i} className="flex items-center gap-1">
+                  <span className="text-slate-400">{info.label}:</span>
+                  <span className={`font-medium ${info.highlight ? info.highlight : 'text-slate-600'}`}>{info.value}</span>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <div className="text-right shrink-0">
           <div className="font-mono font-bold text-base text-slate-800">R {item.amountToPay.toFixed(2)}</div>
