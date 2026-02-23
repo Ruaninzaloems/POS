@@ -9,10 +9,12 @@ import {
     RefreshCw, Loader2, Users, AlertTriangle, Bell, ChevronDown, ChevronRight,
     Receipt, Droplets, BookOpen, Landmark, Building2, Home, BarChart3,
     Wallet, Package, ShieldCheck, ChevronsLeft, ChevronsRight, ChevronLeft,
-    TrendingUp, Gauge, Activity, AlertCircle, Clock, XCircle, CheckCircle2
+    TrendingUp, Gauge, Activity, AlertCircle, Clock, XCircle, CheckCircle2,
+    Download, FileSpreadsheet
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { usePos } from '@/lib/pos-state';
+import * as XLSX from 'xlsx';
 import {
     platinumGetAlertCounts, platinumGetNotificationCounts,
     platinumGetNotificationAccountItemCounts, platinumGetNotificationConsumptionItemCounts,
@@ -259,13 +261,42 @@ const SEVERITY_STYLES = {
     neutral: { dot: 'bg-slate-300', text: 'text-slate-400', badge: 'bg-slate-50 text-slate-400 border-slate-100' },
 };
 
-function DetailTable({ endpoint }: { endpoint: string }) {
+function exportToExcel(rows: any[], sheetName: string, fileName: string) {
+    if (!rows.length) return;
+    const columns = Object.keys(rows[0]).filter(k => !k.startsWith('_'));
+    const headerRow = columns.map(c => friendlyLabel(c));
+    const dataRows = rows.map(row =>
+        columns.map(col => {
+            const val = row[col];
+            if (val === null || val === undefined) return '';
+            if (typeof val === 'boolean') return val ? 'Yes' : 'No';
+            return val;
+        })
+    );
+    const ws = XLSX.utils.aoa_to_sheet([headerRow, ...dataRows]);
+
+    const colWidths = columns.map((col, i) => {
+        const headerLen = headerRow[i].length;
+        const maxDataLen = dataRows.reduce((max, row) => Math.max(max, String(row[i] ?? '').length), 0);
+        return { wch: Math.min(Math.max(headerLen, maxDataLen) + 2, 50) };
+    });
+    ws['!cols'] = colWidths;
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, sheetName.slice(0, 31));
+    XLSX.writeFile(wb, `${fileName}.xlsx`);
+}
+
+function DetailTable({ endpoint, label }: { endpoint: string; label?: string }) {
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [page, setPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
+    const [exporting, setExporting] = useState(false);
     const pageSize = 10;
+    const exportPageSize = 500;
+    const safeName = (label || 'Dashboard Export').replace(/[^a-zA-Z0-9 _-]/g, '').slice(0, 40);
 
     const load = useCallback(async (p: number) => {
         setLoading(true);
@@ -288,6 +319,33 @@ function DetailTable({ endpoint }: { endpoint: string }) {
     }, [endpoint]);
 
     useEffect(() => { load(page); }, [page, load]);
+
+    const handleExportAll = useCallback(async () => {
+        setExporting(true);
+        try {
+            const allRows: any[] = [];
+            const totalPages = Math.ceil(totalCount / exportPageSize);
+            for (let p = 1; p <= totalPages; p++) {
+                const data = await platinumDashboardGenericTable(endpoint, { page: p, pageSize: exportPageSize, orderby: null, shortDirection: null });
+                const rows = extractTableRows(data);
+                allRows.push(...rows);
+                if (rows.length < exportPageSize) break;
+            }
+            if (allRows.length > 0) {
+                exportToExcel(allRows, safeName, `${safeName} - ${new Date().toLocaleDateString('en-ZA')}`);
+            }
+        } catch {
+            exportToExcel(items, safeName, `${safeName} - Page ${page}`);
+        } finally {
+            setExporting(false);
+        }
+    }, [endpoint, totalCount, items, page, safeName]);
+
+    const handleExportPage = useCallback(() => {
+        if (items.length > 0) {
+            exportToExcel(items, safeName, `${safeName} - Page ${page}`);
+        }
+    }, [items, page, safeName]);
 
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
@@ -317,6 +375,36 @@ function DetailTable({ endpoint }: { endpoint: string }) {
 
     return (
         <div className="border rounded-lg overflow-hidden bg-white shadow-sm">
+            <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-emerald-50 to-teal-50 border-b">
+                <span className="text-xs font-medium text-slate-600">
+                    {totalCount.toLocaleString()} record{totalCount !== 1 ? 's' : ''} found
+                </span>
+                <div className="flex items-center gap-1">
+                    {totalPages > 1 && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleExportPage}
+                            className="h-7 gap-1.5 text-xs text-slate-600 hover:text-emerald-700 hover:bg-emerald-100"
+                            data-testid="btn-export-page"
+                        >
+                            <Download className="w-3.5 h-3.5" />
+                            Page
+                        </Button>
+                    )}
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleExportAll}
+                        disabled={exporting}
+                        className="h-7 gap-1.5 text-xs text-emerald-700 hover:bg-emerald-100 font-medium"
+                        data-testid="btn-export-excel"
+                    >
+                        {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileSpreadsheet className="w-3.5 h-3.5" />}
+                        {exporting ? 'Exporting...' : totalPages > 1 ? 'Export All' : 'Export Excel'}
+                    </Button>
+                </div>
+            </div>
             <div className="overflow-x-auto max-h-[350px]">
                 <Table>
                     <TableHeader>
@@ -350,11 +438,11 @@ function DetailTable({ endpoint }: { endpoint: string }) {
                     </TableBody>
                 </Table>
             </div>
-            {totalPages > 1 && (
-                <div className="flex items-center justify-between px-3 py-2 border-t bg-slate-50/50">
-                    <span className="text-xs text-muted-foreground" data-testid="text-table-range">
-                        {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, totalCount)} of {totalCount.toLocaleString()}
-                    </span>
+            <div className="flex items-center justify-between px-3 py-2 border-t bg-slate-50/50">
+                <span className="text-xs text-muted-foreground" data-testid="text-table-range">
+                    {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, totalCount)} of {totalCount.toLocaleString()}
+                </span>
+                {totalPages > 1 && (
                     <div className="flex items-center gap-0.5">
                         <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page <= 1} onClick={() => setPage(1)} data-testid="btn-page-first"><ChevronsLeft className="w-3.5 h-3.5" /></Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page <= 1} onClick={() => setPage(p => p - 1)} data-testid="btn-page-prev"><ChevronLeft className="w-3.5 h-3.5" /></Button>
@@ -362,8 +450,8 @@ function DetailTable({ endpoint }: { endpoint: string }) {
                         <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} data-testid="btn-page-next"><ChevronRight className="w-3.5 h-3.5" /></Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page >= totalPages} onClick={() => setPage(totalPages)} data-testid="btn-page-last"><ChevronsRight className="w-3.5 h-3.5" /></Button>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 }
@@ -404,9 +492,21 @@ function GraphsPanel() {
         const cols = Object.keys(items[0]).filter(k => !k.startsWith('_'));
         return (
             <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                    <div className={`w-7 h-7 rounded-lg ${color} text-white flex items-center justify-center`}>{icon}</div>
-                    <h4 className="font-semibold text-sm text-slate-700">{title}</h4>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <div className={`w-7 h-7 rounded-lg ${color} text-white flex items-center justify-center`}>{icon}</div>
+                        <h4 className="font-semibold text-sm text-slate-700">{title}</h4>
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => exportToExcel(items, title, `${title} - ${new Date().toLocaleDateString('en-ZA')}`)}
+                        className="h-7 gap-1.5 text-xs text-emerald-700 hover:bg-emerald-100 font-medium"
+                        data-testid={`btn-export-${title.toLowerCase().replace(/\s+/g, '-')}`}
+                    >
+                        <FileSpreadsheet className="w-3.5 h-3.5" />
+                        Export Excel
+                    </Button>
                 </div>
                 <div className="border rounded-lg overflow-hidden bg-white">
                     <div className="overflow-x-auto max-h-[250px]">
@@ -452,6 +552,12 @@ function GraphsPanel() {
 function CategoryPanel({ category, subItems, isLoading }: { category: CategoryConfig; subItems: SubItem[]; isLoading: boolean }) {
     const [expandedItem, setExpandedItem] = useState<string | null>(null);
 
+    const handleExportSummary = useCallback(() => {
+        if (!subItems.length) return;
+        const rows = subItems.map(s => ({ Item: s.label, Count: s.count, Severity: s.severity }));
+        exportToExcel(rows, `${category.label} Summary`, `${category.label} Summary - ${new Date().toLocaleDateString('en-ZA')}`);
+    }, [subItems, category.label]);
+
     if (category.key === 'graphs') return <GraphsPanel />;
 
     if (isLoading) {
@@ -492,6 +598,20 @@ function CategoryPanel({ category, subItems, isLoading }: { category: CategoryCo
 
     return (
         <div className="space-y-1">
+            {withCounts.length > 0 && (
+                <div className="flex justify-end mb-2">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleExportSummary}
+                        className="h-7 gap-1.5 text-xs text-emerald-700 hover:bg-emerald-100 font-medium"
+                        data-testid="btn-export-summary"
+                    >
+                        <FileSpreadsheet className="w-3.5 h-3.5" />
+                        Export Summary
+                    </Button>
+                </div>
+            )}
             {withCounts.map(item => {
                 const isExpanded = expandedItem === item.key;
                 const styles = SEVERITY_STYLES[item.severity];
@@ -517,7 +637,7 @@ function CategoryPanel({ category, subItems, isLoading }: { category: CategoryCo
                         </button>
                         {isExpanded && item.endpoint && (
                             <div className="ml-5 mt-1.5 mb-2 pl-3 border-l-2 border-blue-200">
-                                <DetailTable endpoint={item.endpoint} />
+                                <DetailTable endpoint={item.endpoint} label={item.label} />
                             </div>
                         )}
                     </div>
