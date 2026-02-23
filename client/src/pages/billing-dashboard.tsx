@@ -12,6 +12,7 @@ import {
     TrendingUp, Gauge, Activity, AlertCircle, Clock, XCircle, CheckCircle2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { usePos } from '@/lib/pos-state';
 import {
     platinumGetAlertCounts, platinumGetNotificationCounts,
     platinumGetNotificationAccountItemCounts, platinumGetNotificationConsumptionItemCounts,
@@ -544,12 +545,14 @@ function CategoryPanel({ category, subItems, isLoading }: { category: CategoryCo
 
 export default function BillingDashboard() {
     const { toast } = useToast();
+    const { platinumUser, sessionLoading } = usePos();
     const [loading, setLoading] = useState(true);
     const [counts, setCounts] = useState<Record<string, number>>({});
     const [alertData, setAlertData] = useState<{ workflow: number; config: number; items: any[] }>({ workflow: 0, config: 0, items: [] });
     const [activeCategory, setActiveCategory] = useState('account');
     const [subItems, setSubItems] = useState<Record<string, SubItem[]>>({});
     const [subItemsLoading, setSubItemsLoading] = useState<Record<string, boolean>>({});
+    const hasLoadedRef = useRef(false);
 
     const loadDashboard = useCallback(async () => {
         setLoading(true);
@@ -559,11 +562,14 @@ export default function BillingDashboard() {
                 platinumGetNotificationCounts(),
             ]);
 
+            let gotData = false;
+
             if (alertResult.status === 'fulfilled') {
                 const alerts = Array.isArray(alertResult.value) ? alertResult.value : [];
                 const wf = alerts.find((a: any) => a.key === 'workflow-alert');
                 const cf = alerts.find((a: any) => a.key === 'configuration-alert');
                 setAlertData({ workflow: Number(wf?.value) || 0, config: Number(cf?.value) || 0, items: alerts });
+                gotData = true;
             }
 
             if (countResult.status === 'fulfilled') {
@@ -583,7 +589,10 @@ export default function BillingDashboard() {
                     });
                 }
                 setCounts(newCounts);
+                gotData = true;
             }
+
+            if (gotData) hasLoadedRef.current = true;
         } catch (e: any) {
             toast({ title: 'Error loading dashboard', description: e.message, variant: 'destructive' });
         } finally {
@@ -598,7 +607,11 @@ export default function BillingDashboard() {
         await loadDashboard();
     }, [loadDashboard]);
 
-    useEffect(() => { loadDashboard(); }, [loadDashboard]);
+    useEffect(() => {
+        if (platinumUser && !sessionLoading) {
+            loadDashboard();
+        }
+    }, [platinumUser, sessionLoading, loadDashboard]);
 
     const loadSubItems = useCallback(async (categoryKey: string) => {
         const cat = CATEGORIES.find(c => c.key === categoryKey);
@@ -635,7 +648,7 @@ export default function BillingDashboard() {
                                 <HelpTip text="Central overview of all billing notifications, alerts, and system status across all municipal services." />
                             </h1>
                             <p className="text-sm text-muted-foreground mt-0.5">
-                                {loading ? 'Loading...' : `${totalNotifications.toLocaleString()} total notifications across ${Object.keys(counts).length} categories`}
+                                {!platinumUser ? 'Waiting for authentication...' : loading ? 'Loading notification data...' : `${totalNotifications.toLocaleString()} total notifications across ${Object.keys(counts).length} categories`}
                             </p>
                         </div>
                         <Button variant="outline" size="sm" onClick={refreshAll} disabled={loading} className="gap-2 self-start sm:self-auto" data-testid="btn-refresh-dashboard">
@@ -716,7 +729,7 @@ export default function BillingDashboard() {
                                                 isActive ? 'bg-white/25 text-white'
                                                     : hasData ? `${cat.badgeColor} text-white` : 'bg-slate-100 text-slate-400'
                                             }`}>
-                                                {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <AnimatedCounter value={count} />}
+                                                {(loading || !platinumUser) ? <Loader2 className="w-3 h-3 animate-spin" /> : <AnimatedCounter value={count} />}
                                             </span>
                                         )}
                                     </button>
