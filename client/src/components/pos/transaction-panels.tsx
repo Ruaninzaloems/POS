@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Account, ClearanceCostSchedule, DirectIncomeItem, fetchEnquiryResults } from '@/lib/external-api';
-import { User, MapPin, Phone, Mail, FileCheck, Zap, Trash2, Droplets, Upload, Search, Info, Download, FileText, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { User, MapPin, Phone, Mail, FileCheck, Zap, Trash2, Droplets, Upload, Search, Info, Download, FileText, ChevronDown, ChevronUp, Loader2, AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowDown, Sparkles, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { AccountEnquiryView } from '@/components/pos/account-enquiry-view';
@@ -280,11 +280,81 @@ function ClearanceBasketExpander({ item, updateItemDetails, updateItemAmount }: 
     );
 }
 
+const BASKET_PAGE_SIZE = 15;
+
 export function TransactionPanels({ isSearchActive = false }: { isSearchActive?: boolean }) {
   const { activeTransactionType, transactionItems, removeItem, updateItemAmount, updateItemDetails, addItem, viewingItemId, setViewingItem } = usePos();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [basketPage, setBasketPage] = useState(1);
+  const [showOnlyMissing, setShowOnlyMissing] = useState(false);
+  const basketItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const sortedItems = React.useMemo(() =>
+    [...transactionItems].sort((a, b) => {
+      const getPriority = (type: string) => {
+        switch (type) {
+          case 'CONSUMER_SERVICES': return 1;
+          case 'CLEARANCE': return 2;
+          case 'DIRECT_INCOME': return 3;
+          case 'ACCOUNT_GROUP': return 4;
+          case 'PREPAID': return 10;
+          default: return 5;
+        }
+      };
+      return getPriority(a.type) - getPriority(b.type);
+    }),
+    [transactionItems]
+  );
+
+  const itemsWithAmount = sortedItems.filter(i => i.amountToPay > 0);
+  const itemsMissing = sortedItems.filter(i => i.amountToPay <= 0);
+  const displayItems = showOnlyMissing ? itemsMissing : sortedItems;
+  const totalPages = Math.max(1, Math.ceil(displayItems.length / BASKET_PAGE_SIZE));
+  const safePage = Math.min(basketPage, totalPages);
+  const pagedItems = displayItems.slice((safePage - 1) * BASKET_PAGE_SIZE, safePage * BASKET_PAGE_SIZE);
+
+  React.useEffect(() => {
+    if (basketPage > totalPages) setBasketPage(totalPages);
+  }, [totalPages, basketPage]);
+
+  const scrollToNextMissing = () => {
+    const missingOnPage = pagedItems.filter(i => i.amountToPay <= 0);
+    if (missingOnPage.length > 0) {
+      const el = basketItemRefs.current[missingOnPage[0].id];
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-2', 'ring-amber-400', 'ring-offset-2');
+        setTimeout(() => el.classList.remove('ring-2', 'ring-amber-400', 'ring-offset-2'), 2000);
+      }
+    } else if (itemsMissing.length > 0) {
+      const firstMissing = itemsMissing[0];
+      const idx = displayItems.findIndex(i => i.id === firstMissing.id);
+      if (idx >= 0) {
+        const targetPage = Math.floor(idx / BASKET_PAGE_SIZE) + 1;
+        setBasketPage(targetPage);
+        setTimeout(() => {
+          const el = basketItemRefs.current[firstMissing.id];
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.classList.add('ring-2', 'ring-amber-400', 'ring-offset-2');
+            setTimeout(() => el.classList.remove('ring-2', 'ring-amber-400', 'ring-offset-2'), 2000);
+          }
+        }, 100);
+      }
+    }
+  };
+
+  const [showFillConfirm, setShowFillConfirm] = useState(false);
+  const fillAllDueAmounts = () => {
+    const fillable = transactionItems.filter(i => i.amountToPay <= 0 && i.amountDue > 0);
+    fillable.forEach(item => {
+      updateItemAmount(item.id, item.amountDue);
+    });
+    setShowFillConfirm(false);
+    toast({ title: 'Amounts populated', description: `Set ${fillable.length} items to their outstanding due amounts.` });
+  };
 
   const handleDownloadTemplate = () => {
       const csvContent = "Receipt Date,Account Number,Amount\n2023-10-25,000000000030,150.00\n2023-10-25,ACC-1002,200.50";
@@ -565,6 +635,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
 
   // Multi-Account / Basket View
   if (activeTransactionType === 'MULTI_ACCOUNT') {
+      const allReady = transactionItems.length > 0 && itemsMissing.length === 0;
       return (
           <div className="flex-1 p-3 sm:p-6 overflow-y-auto bg-muted/10">
               <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6">
@@ -634,6 +705,89 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                     </div>
                   </div>
 
+                  {transactionItems.length > 0 && (
+                    <div className={`rounded-xl border shadow-sm p-3 sm:p-4 ${allReady ? 'bg-emerald-50/80 border-emerald-200' : 'bg-white border-slate-200'}`}>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${allReady ? 'bg-emerald-500 text-white' : 'bg-blue-500 text-white'}`}>
+                            <Package className="w-5 h-5" />
+                          </div>
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                            <span className="font-semibold text-slate-700">
+                              {transactionItems.length} {transactionItems.length === 1 ? 'Item' : 'Items'}
+                            </span>
+                            <span className="flex items-center gap-1.5 text-emerald-700">
+                              <CheckCircle2 className="w-4 h-4" />
+                              <span className="font-medium">{itemsWithAmount.length}</span>
+                              <span className="text-emerald-600/80 text-xs">ready</span>
+                            </span>
+                            {itemsMissing.length > 0 && (
+                              <button
+                                onClick={scrollToNextMissing}
+                                className="flex items-center gap-1.5 text-amber-700 hover:text-amber-900 transition-colors cursor-pointer group"
+                                data-testid="btn-jump-missing"
+                              >
+                                <AlertCircle className="w-4 h-4 group-hover:animate-pulse" />
+                                <span className="font-medium">{itemsMissing.length}</span>
+                                <span className="text-amber-600/80 text-xs underline underline-offset-2 decoration-amber-300 group-hover:decoration-amber-500">need amounts</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {itemsMissing.length > 0 && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className={`text-xs gap-1.5 ${showOnlyMissing ? 'bg-amber-50 border-amber-300 text-amber-800' : 'text-slate-600'}`}
+                                onClick={() => { setShowOnlyMissing(!showOnlyMissing); setBasketPage(1); }}
+                                data-testid="btn-filter-missing"
+                              >
+                                <AlertCircle className="w-3.5 h-3.5" />
+                                {showOnlyMissing ? 'Show All' : 'Show Missing'}
+                              </Button>
+                              <Dialog open={showFillConfirm} onOpenChange={setShowFillConfirm}>
+                                <DialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-xs gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                                    data-testid="btn-fill-all-due"
+                                  >
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                    Pay All Due
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-sm">
+                                  <DialogHeader>
+                                    <DialogTitle>Set All to Due Amounts?</DialogTitle>
+                                    <DialogDescription>
+                                      This will set the pay amount on {itemsMissing.filter(i => i.amountDue > 0).length} item(s) to their full outstanding balance. You can still adjust individual amounts afterwards.
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  <DialogFooter className="gap-2">
+                                    <Button variant="ghost" size="sm" onClick={() => setShowFillConfirm(false)}>Cancel</Button>
+                                    <Button size="sm" className="gap-1.5 bg-gradient-to-r from-emerald-600 to-green-600" onClick={fillAllDueAmounts}>
+                                      <Sparkles className="w-3.5 h-3.5" />
+                                      Yes, Fill All
+                                    </Button>
+                                  </DialogFooter>
+                                </DialogContent>
+                              </Dialog>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      {allReady && (
+                        <div className="mt-2 text-xs text-emerald-600 font-medium flex items-center gap-1.5 pl-[52px]">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          All items have payment amounts — ready to process
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <Card>
                       <CardHeader className="py-3 sm:py-4 border-b bg-muted/20">
                           <div className="hidden sm:grid grid-cols-[1fr_2fr_1fr_1fr_auto] gap-4 font-medium text-sm text-muted-foreground uppercase tracking-wider px-2">
@@ -644,26 +798,12 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                               <div className="w-8"></div>
                           </div>
                           <div className="sm:hidden font-medium text-sm text-muted-foreground uppercase tracking-wider px-2">
-                              Items in Basket
+                              Items in Basket {showOnlyMissing && <span className="text-amber-600">(Missing Only)</span>}
                           </div>
                       </CardHeader>
                       <CardContent className="p-2 sm:p-0">
-                          {transactionItems
-                            .sort((a, b) => {
-                                const getPriority = (type: string) => {
-                                    switch (type) {
-                                        case 'CONSUMER_SERVICES': return 1;
-                                        case 'CLEARANCE': return 2;
-                                        case 'DIRECT_INCOME': return 3;
-                                        case 'ACCOUNT_GROUP': return 4;
-                                        case 'PREPAID': return 10;
-                                        default: return 5;
-                                    }
-                                };
-                                return getPriority(a.type) - getPriority(b.type);
-                            })
-                            .map((item, idx, arr) => (
-                              <div key={item.id} className={`rounded-xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all ${idx < arr.length - 1 ? 'mb-2' : ''}`}>
+                          {pagedItems.map((item, idx, arr) => (
+                              <div key={item.id} ref={el => { basketItemRefs.current[item.id] = el; }} className={`rounded-xl border transition-all ${item.amountToPay <= 0 ? 'border-amber-200/80 bg-amber-50/30' : 'border-slate-200/80'} shadow-sm hover:shadow-md ${idx < arr.length - 1 ? 'mb-2' : ''}`}>
                                   <div className="sm:grid sm:grid-cols-[1fr_2fr_1fr_1fr_auto] sm:gap-4 sm:items-center p-3 sm:p-4">
                                       <div className="flex items-center justify-between sm:justify-start gap-2 mb-2 sm:mb-0">
                                           <div className="flex items-center gap-2">
@@ -764,6 +904,32 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                               </div>
                           ))}
                       </CardContent>
+
+                      {totalPages > 1 && (
+                        <div className="border-t bg-muted/10 px-3 sm:px-4 py-2.5 flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">
+                            Showing {(safePage - 1) * BASKET_PAGE_SIZE + 1}–{Math.min(safePage * BASKET_PAGE_SIZE, displayItems.length)} of {displayItems.length}
+                            {showOnlyMissing && ` (filtered)`}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" disabled={safePage <= 1} onClick={() => setBasketPage(1)} data-testid="btn-page-first">
+                              <ChevronsLeft className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" disabled={safePage <= 1} onClick={() => setBasketPage(p => Math.max(1, p - 1))} data-testid="btn-page-prev">
+                              <ChevronLeft className="w-4 h-4" />
+                            </Button>
+                            <span className="text-xs font-medium text-slate-600 px-2 min-w-[60px] text-center">
+                              {safePage} / {totalPages}
+                            </span>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" disabled={safePage >= totalPages} onClick={() => setBasketPage(p => Math.min(totalPages, p + 1))} data-testid="btn-page-next">
+                              <ChevronRight className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" disabled={safePage >= totalPages} onClick={() => setBasketPage(totalPages)} data-testid="btn-page-last">
+                              <ChevronsRight className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                   </Card>
               </div>
           </div>
