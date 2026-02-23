@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { Search, Printer, Loader2, X, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, FileText, CheckCircle2, AlertCircle, BookOpen } from 'lucide-react';
+import { Search, Printer, Loader2, X, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, FileText, CheckCircle2, AlertCircle, BookOpen, Banknote, CreditCard, Building2 } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { cn } from '@/lib/utils';
 import { HelpTip } from '@/components/ui/help-tip';
@@ -19,7 +19,10 @@ import {
     searchSebataReceipts,
     searchCashbookTransactionTrace,
     fetchActiveFinYear,
+    searchByBankStatementNote,
+    getEftBankStatementNotes,
     CashbookTransactionTraceResult,
+    BankStatementNoteResult,
     ViewReceiptCashier,
     ViewReceiptItem,
     ReceiptSearchQuery,
@@ -132,6 +135,14 @@ export default function ViewReceipts() {
     const [showSuggestions, setShowSuggestions] = useState(false);
     const suggestionsRef = React.useRef<HTMLDivElement>(null);
     const suggestionsTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const [bankNoteSearchText, setBankNoteSearchText] = useState('');
+    const [bankNoteSearching, setBankNoteSearching] = useState(false);
+    const [bankNoteResults, setBankNoteResults] = useState<BankStatementNoteResult[] | null>(null);
+
+    const [eftAccountSearch, setEftAccountSearch] = useState('');
+    const [eftSearching, setEftSearching] = useState(false);
+    const [eftResults, setEftResults] = useState<any[] | null>(null);
 
     useEffect(() => {
         const loadCashiers = async () => {
@@ -393,6 +404,104 @@ export default function ViewReceipts() {
         setTimeout(() => handleSearch(1), 100);
     };
 
+    const handleBankNoteSearch = async () => {
+        if (!bankNoteSearchText || bankNoteSearchText.length < 3) {
+            toast({ title: "Search Too Short", description: "Please enter at least 3 characters for the bank statement note search.", variant: "destructive" });
+            return;
+        }
+        setBankNoteSearching(true);
+        setBankNoteResults([]);
+        setReceipts([]);
+        setTotalCount(0);
+        setDataSource('none');
+        try {
+            const results = await searchByBankStatementNote(bankNoteSearchText);
+            setBankNoteResults(results);
+            if (results.length === 0) {
+                toast({ title: "No Results", description: `No bank statement notes found matching "${bankNoteSearchText}".` });
+            } else {
+                toast({ title: "Results Found", description: `Found ${results.length} bank statement result${results.length !== 1 ? 's' : ''}.` });
+            }
+        } catch (e: any) {
+            toast({ title: "Search Failed", description: e.message || "Bank statement note search failed.", variant: "destructive" });
+        } finally {
+            setBankNoteSearching(false);
+        }
+    };
+
+    const handleLoadReceiptFromBankNote = (item: BankStatementNoteResult) => {
+        const receiptNo = item?.receiptNo;
+        const accountId = item?.accountId;
+        const accountNumber = item?.accountNumber;
+
+        if (receiptNo) {
+            setReceiptFilter(String(receiptNo));
+            setAccountFilter('');
+            setCashierFilter('0');
+        } else if (accountNumber) {
+            setAccountFilter(String(accountNumber));
+            setReceiptFilter('');
+            setCashierFilter('0');
+        } else if (accountId) {
+            setAccountFilter(String(accountId));
+            setReceiptFilter('');
+            setCashierFilter('0');
+        } else {
+            toast({ title: "No Reference", description: "This entry has no receipt or account number to look up.", variant: "destructive" });
+            return;
+        }
+        setTimeout(() => handleSearch(1), 100);
+    };
+
+    const handleEftSearch = async () => {
+        if (!eftAccountSearch || eftAccountSearch.length < 1) {
+            toast({ title: "Account Required", description: "Please enter an account ID for the EFT search.", variant: "destructive" });
+            return;
+        }
+        setEftSearching(true);
+        setEftResults([]);
+        setReceipts([]);
+        setTotalCount(0);
+        setDataSource('none');
+        try {
+            const results = await getEftBankStatementNotes(eftAccountSearch);
+            setEftResults(results);
+            if (results.length === 0) {
+                toast({ title: "No Results", description: `No EFT bank statement notes found for account "${eftAccountSearch}".` });
+            } else {
+                toast({ title: "Results Found", description: `Found ${results.length} EFT result${results.length !== 1 ? 's' : ''}.` });
+            }
+        } catch (e: any) {
+            toast({ title: "Search Failed", description: e.message || "EFT bank statement notes search failed.", variant: "destructive" });
+        } finally {
+            setEftSearching(false);
+        }
+    };
+
+    const handleLoadReceiptFromEft = (item: any) => {
+        const receiptNo = item?.receiptNo || item?.receipt_No || item?.receiptNumber;
+        const accountId = item?.accountId || item?.accountID;
+        const accountNumber = item?.accountNumber || item?.accountNo;
+
+        if (receiptNo) {
+            setReceiptFilter(String(receiptNo));
+            setAccountFilter('');
+            setCashierFilter('0');
+        } else if (accountNumber) {
+            setAccountFilter(String(accountNumber));
+            setReceiptFilter('');
+            setCashierFilter('0');
+        } else if (accountId) {
+            setAccountFilter(String(accountId));
+            setReceiptFilter('');
+            setCashierFilter('0');
+        } else {
+            toast({ title: "No Reference", description: "This EFT entry has no receipt or account number to look up.", variant: "destructive" });
+            return;
+        }
+        setTimeout(() => handleSearch(1), 100);
+    };
+
     const handleClear = () => {
         setCashierFilter("0");
         const now = new Date();
@@ -403,6 +512,10 @@ export default function ViewReceipts() {
         setCashbookSearchText('');
         setCashbookResults(null);
         setCashbookSearchStatus('');
+        setBankNoteSearchText('');
+        setBankNoteResults(null);
+        setEftAccountSearch('');
+        setEftResults(null);
         setReceipts([]);
         setTotalCount(0);
         setCurrentPage(1);
@@ -933,6 +1046,62 @@ export default function ViewReceipts() {
                                 <p className="text-[10px] text-slate-400 md:ml-[136px]">Search cashbook transactions by bank reference/description to find billing receipts</p>
                             </div>
 
+                            <div className="border-t border-dashed border-slate-200 pt-4 mt-4">
+                                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-end">
+                                    <label className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5 shrink-0 sm:w-[130px]">
+                                        <Banknote className="w-3.5 h-3.5 text-emerald-600" />
+                                        Bank Statement Search
+                                    </label>
+                                    <Input
+                                        placeholder="Search bank statement notes (min 3 chars)..."
+                                        value={bankNoteSearchText}
+                                        onChange={(e) => setBankNoteSearchText(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleBankNoteSearch()}
+                                        className="h-10 sm:h-9 text-xs flex-1"
+                                        data-testid="input-bank-note-search"
+                                    />
+                                    <Button
+                                        size="sm"
+                                        className="h-10 sm:h-8 w-full sm:w-auto bg-emerald-700 hover:bg-emerald-800 text-xs gap-1.5 whitespace-nowrap"
+                                        onClick={handleBankNoteSearch}
+                                        disabled={bankNoteSearching || bankNoteSearchText.length < 3}
+                                        data-testid="button-bank-note-search"
+                                    >
+                                        {bankNoteSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                                        Search
+                                    </Button>
+                                </div>
+                                <p className="text-[10px] text-slate-400 md:ml-[136px]">Search receipts by bank statement note/description text</p>
+                            </div>
+
+                            <div className="border-t border-dashed border-slate-200 pt-4 mt-4">
+                                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-end">
+                                    <label className="text-xs font-semibold text-teal-700 flex items-center gap-1.5 shrink-0 sm:w-[130px]">
+                                        <CreditCard className="w-3.5 h-3.5 text-teal-600" />
+                                        EFT by Account
+                                    </label>
+                                    <Input
+                                        placeholder="Enter account ID..."
+                                        value={eftAccountSearch}
+                                        onChange={(e) => setEftAccountSearch(e.target.value.replace(/[^0-9]/g, ''))}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleEftSearch()}
+                                        className="h-10 sm:h-9 text-xs flex-1"
+                                        data-testid="input-eft-account-search"
+                                    />
+                                    <Button
+                                        size="sm"
+                                        className="h-10 sm:h-8 w-full sm:w-auto bg-teal-700 hover:bg-teal-800 text-xs gap-1.5 whitespace-nowrap"
+                                        onClick={handleEftSearch}
+                                        disabled={eftSearching || !eftAccountSearch}
+                                        data-testid="button-eft-search"
+                                    >
+                                        {eftSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                                        Search
+                                    </Button>
+                                </div>
+                                <p className="text-[10px] text-slate-400 md:ml-[136px]">Find EFT receipts and bank statement descriptions for an account</p>
+                            </div>
+
                             <div className="flex flex-col sm:flex-row justify-center gap-3 mt-6 sm:mt-8">
                                 <Button className="h-11 sm:h-10 bg-slate-800 hover:bg-slate-900 w-full sm:w-32 text-sm active:scale-[0.99]" onClick={() => handleSearch(1)} disabled={isLoading} data-testid="button-load">
                                     {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />} Load
@@ -1080,6 +1249,282 @@ export default function ViewReceipts() {
                                                                     className="h-6 text-[10px] px-2 gap-1 text-indigo-700 border-indigo-300 hover:bg-indigo-50"
                                                                     onClick={() => handleLoadReceiptsFromCashbook(item)}
                                                                     data-testid={`button-load-receipt-${idx}`}
+                                                                >
+                                                                    <FileText className="w-3 h-3" />
+                                                                    View Receipt
+                                                                </Button>
+                                                            ) : (
+                                                                <span className="text-[10px] text-slate-400">-</span>
+                                                            )}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                )}
+
+                {(bankNoteResults !== null || bankNoteSearching) && (
+                    <div className="p-3 sm:p-6 border-b border-slate-200">
+                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider border-l-2 border-emerald-500 pl-2 mb-3 flex items-center gap-2">
+                            <Banknote className="w-3.5 h-3.5 text-emerald-600" />
+                            Bank Statement Search Results
+                            {bankNoteSearching && <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />}
+                            {!bankNoteSearching && bankNoteResults && <span className="text-emerald-600 font-normal normal-case">({bankNoteResults.length} result{bankNoteResults.length !== 1 ? 's' : ''})</span>}
+                        </div>
+                        {bankNoteSearching && (
+                            <div className="mb-4">
+                                <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                                    <div className="bg-emerald-600 h-1.5 rounded-full animate-pulse" style={{ width: '100%', animation: 'indeterminate 1.5s ease-in-out infinite' }} />
+                                </div>
+                                <p className="text-xs text-emerald-600 mt-2 flex items-center gap-2">
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    Searching bank statement notes...
+                                </p>
+                            </div>
+                        )}
+                        {!bankNoteSearching && bankNoteResults && bankNoteResults.length === 0 ? (
+                            <div className="text-center py-6 text-slate-400 text-sm">
+                                <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                                No bank statement notes matching this search were found.
+                            </div>
+                        ) : !bankNoteSearching && bankNoteResults && bankNoteResults.length > 0 && (
+                            <>
+                                <div className="sm:hidden space-y-2">
+                                    {bankNoteResults.map((item, idx) => {
+                                        const receiptNo = item?.receiptNo ?? '';
+                                        const accountNo = item?.accountNumber ?? item?.accountId ?? '';
+                                        const amount = Number(item?.amount) || 0;
+                                        const receiptDate = item?.receiptDate ?? '';
+                                        const paymentType = item?.paymentType ?? '';
+                                        const cashier = item?.cashierName ?? '';
+                                        const bankNote = item?.bankStatementNote ?? (item as any)?.bankStatementDescription ?? '';
+                                        const cashOffice = item?.cashOfficeName ?? '';
+                                        return (
+                                            <div key={idx} className="bg-white border rounded-xl p-3 space-y-1.5" data-testid={`mobile-banknote-card-${idx}`}>
+                                                <p className="font-mono text-xs text-slate-800 truncate" title={bankNote}>{bankNote || '(no description)'}</p>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="font-mono text-sm font-bold text-emerald-700" data-testid={`mobile-banknote-receipt-no-${idx}`}>
+                                                        {receiptNo ? `Receipt: ${receiptNo}` : '-'}
+                                                    </span>
+                                                    <span className="font-mono text-sm font-bold text-right text-emerald-700" data-testid={`mobile-banknote-amount-${idx}`}>
+                                                        {amount > 0 ? `R ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs text-slate-600" data-testid={`mobile-banknote-account-${idx}`}>
+                                                    Account: {accountNo || <span className="text-orange-500 italic">N/A</span>}
+                                                </div>
+                                                <div className="flex flex-wrap gap-x-3 text-xs text-slate-500">
+                                                    {receiptDate && <span>Date: {new Date(receiptDate).toLocaleDateString('en-ZA')}</span>}
+                                                    {paymentType && <span>Type: {paymentType}</span>}
+                                                    {cashier && <span>Cashier: {cashier}</span>}
+                                                    {cashOffice && <span>Office: {cashOffice}</span>}
+                                                </div>
+                                                {(receiptNo || accountNo) && (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="w-full h-10 text-xs gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50 active:scale-[0.99]"
+                                                        onClick={() => handleLoadReceiptFromBankNote(item)}
+                                                        data-testid={`mobile-banknote-view-${idx}`}
+                                                    >
+                                                        <FileText className="w-3.5 h-3.5" />
+                                                        View Receipt
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <div className="hidden sm:block overflow-x-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow className="bg-emerald-50/50">
+                                                <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Bank Statement Note</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Receipt No</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Account</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-emerald-700 py-2 text-right">Amount</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Date</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Payment Type</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Cashier</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Cash Office</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-emerald-700 py-2 text-center">Action</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {bankNoteResults.map((item, idx) => {
+                                                const receiptNo = item?.receiptNo ?? '';
+                                                const accountNo = item?.accountNumber ?? item?.accountId ?? '';
+                                                const amount = Number(item?.amount) || 0;
+                                                const receiptDate = item?.receiptDate ?? '';
+                                                const paymentType = item?.paymentType ?? '';
+                                                const cashier = item?.cashierName ?? '';
+                                                const bankNote = item?.bankStatementNote ?? (item as any)?.bankStatementDescription ?? '';
+                                                const cashOffice = item?.cashOfficeName ?? '';
+                                                return (
+                                                    <TableRow key={idx} className="hover:bg-emerald-50/30" data-testid={`banknote-result-${idx}`}>
+                                                        <TableCell className="text-[11px] font-mono max-w-[250px] truncate" title={bankNote}>{bankNote || '-'}</TableCell>
+                                                        <TableCell className="text-[11px] font-mono font-semibold text-emerald-700">{receiptNo || <span className="text-orange-500 text-[10px] italic font-normal">N/A</span>}</TableCell>
+                                                        <TableCell className="text-[11px] font-mono">{accountNo || <span className="text-orange-500 text-[10px] italic">N/A</span>}</TableCell>
+                                                        <TableCell className="text-[11px] font-mono font-bold text-right text-emerald-700">
+                                                            {amount > 0 ? `R ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
+                                                        </TableCell>
+                                                        <TableCell className="text-[10px] text-slate-600">
+                                                            {receiptDate ? new Date(receiptDate).toLocaleDateString('en-ZA') : '-'}
+                                                        </TableCell>
+                                                        <TableCell className="text-[11px] text-slate-600">{paymentType || '-'}</TableCell>
+                                                        <TableCell className="text-[11px] text-slate-600">{cashier || '-'}</TableCell>
+                                                        <TableCell className="text-[11px] text-slate-600">{cashOffice || '-'}</TableCell>
+                                                        <TableCell className="text-center">
+                                                            {(receiptNo || accountNo) ? (
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="h-6 text-[10px] px-2 gap-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                                                                    onClick={() => handleLoadReceiptFromBankNote(item)}
+                                                                    data-testid={`button-banknote-view-${idx}`}
+                                                                >
+                                                                    <FileText className="w-3 h-3" />
+                                                                    View Receipt
+                                                                </Button>
+                                                            ) : (
+                                                                <span className="text-[10px] text-slate-400">-</span>
+                                                            )}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                )}
+
+                {(eftResults !== null || eftSearching) && (
+                    <div className="p-3 sm:p-6 border-b border-slate-200">
+                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider border-l-2 border-teal-500 pl-2 mb-3 flex items-center gap-2">
+                            <CreditCard className="w-3.5 h-3.5 text-teal-600" />
+                            EFT Receipts by Account Results
+                            {eftSearching && <Loader2 className="w-3.5 h-3.5 animate-spin text-teal-600" />}
+                            {!eftSearching && eftResults && <span className="text-teal-600 font-normal normal-case">({eftResults.length} result{eftResults.length !== 1 ? 's' : ''})</span>}
+                        </div>
+                        {eftSearching && (
+                            <div className="mb-4">
+                                <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                                    <div className="bg-teal-600 h-1.5 rounded-full animate-pulse" style={{ width: '100%', animation: 'indeterminate 1.5s ease-in-out infinite' }} />
+                                </div>
+                                <p className="text-xs text-teal-600 mt-2 flex items-center gap-2">
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    Searching EFT bank statement notes...
+                                </p>
+                            </div>
+                        )}
+                        {!eftSearching && eftResults && eftResults.length === 0 ? (
+                            <div className="text-center py-6 text-slate-400 text-sm">
+                                <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                                No EFT bank statement notes found for this account.
+                            </div>
+                        ) : !eftSearching && eftResults && eftResults.length > 0 && (
+                            <>
+                                <div className="sm:hidden space-y-2">
+                                    {eftResults.map((item, idx) => {
+                                        const receiptNo = item?.receiptNo ?? item?.receipt_No ?? item?.receiptNumber ?? '';
+                                        const accountNo = item?.accountNumber ?? item?.accountNo ?? item?.accountId ?? item?.accountID ?? '';
+                                        const amount = Number(item?.amount ?? item?.receiptAmount) || 0;
+                                        const receiptDate = item?.receiptDate ?? item?.receipt_Date ?? '';
+                                        const bankDesc = item?.bankStatementNote ?? item?.bankStatementDescription ?? item?.description ?? '';
+                                        const paymentType = item?.paymentType ?? item?.payMode ?? '';
+                                        const cashier = item?.cashierName ?? item?.cashier ?? '';
+                                        const cashOffice = item?.cashOfficeName ?? item?.cashOffice ?? '';
+                                        return (
+                                            <div key={idx} className="bg-white border rounded-xl p-3 space-y-1.5" data-testid={`mobile-eft-card-${idx}`}>
+                                                <p className="font-mono text-xs text-slate-800 truncate" title={bankDesc}>{bankDesc || '(no description)'}</p>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="font-mono text-sm font-bold text-teal-700" data-testid={`mobile-eft-receipt-no-${idx}`}>
+                                                        {receiptNo ? `Receipt: ${receiptNo}` : '-'}
+                                                    </span>
+                                                    <span className="font-mono text-sm font-bold text-right text-teal-700" data-testid={`mobile-eft-amount-${idx}`}>
+                                                        {amount > 0 ? `R ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs text-slate-600" data-testid={`mobile-eft-account-${idx}`}>
+                                                    Account: {accountNo || <span className="text-orange-500 italic">N/A</span>}
+                                                </div>
+                                                <div className="flex flex-wrap gap-x-3 text-xs text-slate-500">
+                                                    {receiptDate && <span>Date: {new Date(receiptDate).toLocaleDateString('en-ZA')}</span>}
+                                                    {paymentType && <span>Type: {paymentType}</span>}
+                                                    {cashier && <span>Cashier: {cashier}</span>}
+                                                    {cashOffice && <span>Office: {cashOffice}</span>}
+                                                </div>
+                                                {(receiptNo || accountNo) && (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="w-full h-10 text-xs gap-1.5 text-teal-700 border-teal-300 hover:bg-teal-50 active:scale-[0.99]"
+                                                        onClick={() => handleLoadReceiptFromEft(item)}
+                                                        data-testid={`mobile-eft-view-${idx}`}
+                                                    >
+                                                        <FileText className="w-3.5 h-3.5" />
+                                                        View Receipt
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <div className="hidden sm:block overflow-x-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow className="bg-teal-50/50">
+                                                <TableHead className="text-[10px] font-bold text-teal-700 py-2">Bank Statement Description</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-teal-700 py-2">Receipt No</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-teal-700 py-2">Account</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-teal-700 py-2 text-right">Amount</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-teal-700 py-2">Date</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-teal-700 py-2">Payment Type</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-teal-700 py-2">Cashier</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-teal-700 py-2">Cash Office</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-teal-700 py-2 text-center">Action</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {eftResults.map((item, idx) => {
+                                                const receiptNo = item?.receiptNo ?? item?.receipt_No ?? item?.receiptNumber ?? '';
+                                                const accountNo = item?.accountNumber ?? item?.accountNo ?? item?.accountId ?? item?.accountID ?? '';
+                                                const amount = Number(item?.amount ?? item?.receiptAmount) || 0;
+                                                const receiptDate = item?.receiptDate ?? item?.receipt_Date ?? '';
+                                                const bankDesc = item?.bankStatementNote ?? item?.bankStatementDescription ?? item?.description ?? '';
+                                                const paymentType = item?.paymentType ?? item?.payMode ?? '';
+                                                const cashier = item?.cashierName ?? item?.cashier ?? '';
+                                                const cashOffice = item?.cashOfficeName ?? item?.cashOffice ?? '';
+                                                return (
+                                                    <TableRow key={idx} className="hover:bg-teal-50/30" data-testid={`eft-result-${idx}`}>
+                                                        <TableCell className="text-[11px] font-mono max-w-[250px] truncate" title={bankDesc}>{bankDesc || '-'}</TableCell>
+                                                        <TableCell className="text-[11px] font-mono font-semibold text-teal-700">{receiptNo || <span className="text-orange-500 text-[10px] italic font-normal">N/A</span>}</TableCell>
+                                                        <TableCell className="text-[11px] font-mono">{accountNo || <span className="text-orange-500 text-[10px] italic">N/A</span>}</TableCell>
+                                                        <TableCell className="text-[11px] font-mono font-bold text-right text-teal-700">
+                                                            {amount > 0 ? `R ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
+                                                        </TableCell>
+                                                        <TableCell className="text-[10px] text-slate-600">
+                                                            {receiptDate ? new Date(receiptDate).toLocaleDateString('en-ZA') : '-'}
+                                                        </TableCell>
+                                                        <TableCell className="text-[11px] text-slate-600">{paymentType || '-'}</TableCell>
+                                                        <TableCell className="text-[11px] text-slate-600">{cashier || '-'}</TableCell>
+                                                        <TableCell className="text-[11px] text-slate-600">{cashOffice || '-'}</TableCell>
+                                                        <TableCell className="text-center">
+                                                            {(receiptNo || accountNo) ? (
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="h-6 text-[10px] px-2 gap-1 text-teal-700 border-teal-300 hover:bg-teal-50"
+                                                                    onClick={() => handleLoadReceiptFromEft(item)}
+                                                                    data-testid={`button-eft-view-${idx}`}
                                                                 >
                                                                     <FileText className="w-3 h-3" />
                                                                     View Receipt

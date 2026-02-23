@@ -822,6 +822,20 @@ export async function getBankStatementNotesByAccount(accountId: number): Promise
   return {};
 }
 
+export async function getEftBankStatementNotesForAccount(accountId: number): Promise<any[]> {
+  const cacheKey = `eft-bank-notes-acct-${accountId}`;
+  const cached = getCached(cacheKey, SHORT_CACHE_TTL);
+  if (cached) return cached;
+  try {
+    const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/get-eft-bank-statement-notes?accountId=${accountId}`);
+    const result = normalizeArray(data);
+    if (result.length > 0) setCache(cacheKey, result);
+    return result;
+  } catch {
+    return [];
+  }
+}
+
 // === PAYMENTS ===
 export async function getPaymentAmountByAccountIds(accountId: number): Promise<any[]> {
   const cacheKey = `payment-amount-${accountId}`;

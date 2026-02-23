@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import {
   getTransactionHistory, getDetailedTransactionResults, getBillingPeriodTransactions,
-  getAllBillingPeriodTransactions, getBankStatementNotesByAccount,
+  getAllBillingPeriodTransactions, getBankStatementNotesByAccount, getEftBankStatementNotesForAccount,
   getReceiptTransactionDetail, getLevyTransactionDetail,
   getOpenBalanceDetail, getCloseBalanceDetail, getJournalTransactionDetails,
   getRebateTransactionDetail, getInterestConsPaymentDetail,
@@ -1154,6 +1154,8 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
   const [billingPeriodTxns, setBillingPeriodTxns] = useState<any[]>([]);
   const [detailedTxns, setDetailedTxns] = useState<any[]>([]);
   const [bankNotes, setBankNotes] = useState<Record<string, string>>({});
+  const [eftBankNotes, setEftBankNotes] = useState<any[]>([]);
+  const [eftNotesLoading, setEftNotesLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeSubTab, setActiveSubTab] = useState('receipts');
@@ -1176,6 +1178,11 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
       getBankStatementNotesByAccount(accountId).then(notes => {
         if (Object.keys(notes).length > 0) setBankNotes(notes);
       }).catch(() => {});
+
+      setEftNotesLoading(true);
+      getEftBankStatementNotesForAccount(accountId).then(notes => {
+        setEftBankNotes(notes);
+      }).catch(() => {}).finally(() => setEftNotesLoading(false));
     } catch (e: any) {
       setError(e.message || 'Failed to load transaction history');
     } finally {
@@ -1384,6 +1391,123 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
       )}
 
       
+
+      {(eftBankNotes.length > 0 || eftNotesLoading) && (
+        <div className="bg-white rounded-xl border border-teal-200 shadow-sm overflow-hidden mb-4">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-teal-600 to-teal-700">
+            <div className="flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-white" />
+              <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">EFT Bank Statement Notes</h3>
+              {eftNotesLoading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-white/70" />
+              ) : (
+                <Badge className="bg-white/20 text-white border-white/30 text-[9px] sm:text-[10px]">{eftBankNotes.length}</Badge>
+              )}
+            </div>
+          </div>
+          {eftNotesLoading ? (
+            <div className="p-6 flex items-center justify-center gap-2 text-sm text-teal-600">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading EFT bank statement notes...
+            </div>
+          ) : eftBankNotes.length === 0 ? (
+            <div className="p-4 text-center text-sm text-slate-400">No EFT bank statement notes found for this account</div>
+          ) : (
+            <>
+              <div className="sm:hidden space-y-2 p-3" data-testid="eft-notes-mobile">
+                {eftBankNotes.map((note, idx) => {
+                  const receiptNo = note.receiptNo ?? note.receipt_No ?? note.receiptNumber ?? '';
+                  const bankNote = note.bankStatementNote ?? note.note ?? note.description ?? note.statementDescription ?? note.bankStatementDescription ?? '';
+                  const amount = note.amount ?? note.totalAmount ?? 0;
+                  const receiptDate = note.receiptDate ?? note.receipt_Date ?? '';
+                  const payType = note.paymentType ?? note.payment_Type ?? '';
+                  const cashier = note.cashierName ?? note.cashier ?? '';
+                  return (
+                    <div key={idx} className="border border-teal-100 rounded-lg p-3 bg-teal-50/30 space-y-1.5" data-testid={`eft-note-mobile-${idx}`}>
+                      {bankNote && (
+                        <div className="text-xs font-medium text-teal-800 bg-teal-100 px-2 py-1 rounded">
+                          {bankNote}
+                        </div>
+                      )}
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-[10px] text-slate-500">Receipt</span>
+                        <span className="text-xs font-mono font-semibold text-blue-700">{receiptNo || '-'}</span>
+                      </div>
+                      {amount > 0 && (
+                        <div className="flex justify-between items-baseline">
+                          <span className="text-[10px] text-slate-500">Amount</span>
+                          <span className="text-xs font-mono font-bold text-slate-800">R {Number(amount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                      )}
+                      {receiptDate && (
+                        <div className="flex justify-between items-baseline">
+                          <span className="text-[10px] text-slate-500">Date</span>
+                          <span className="text-[11px] text-slate-600">{new Date(receiptDate).toLocaleDateString('en-ZA')}</span>
+                        </div>
+                      )}
+                      {payType && (
+                        <div className="flex justify-between items-baseline">
+                          <span className="text-[10px] text-slate-500">Payment Type</span>
+                          <span className="text-[11px] text-slate-600">{payType}</span>
+                        </div>
+                      )}
+                      {cashier && (
+                        <div className="flex justify-between items-baseline">
+                          <span className="text-[10px] text-slate-500">Cashier</span>
+                          <span className="text-[11px] text-slate-600">{cashier}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="hidden sm:block overflow-x-auto" data-testid="eft-notes-table">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-teal-50 border-b border-teal-200">
+                      <th className="text-left px-3 py-2 font-semibold text-teal-700">Bank Statement Note</th>
+                      <th className="text-left px-3 py-2 font-semibold text-teal-700">Receipt No</th>
+                      <th className="text-right px-3 py-2 font-semibold text-teal-700">Amount</th>
+                      <th className="text-left px-3 py-2 font-semibold text-teal-700">Date</th>
+                      <th className="text-left px-3 py-2 font-semibold text-teal-700">Payment Type</th>
+                      <th className="text-left px-3 py-2 font-semibold text-teal-700">Cashier</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {eftBankNotes.map((note, idx) => {
+                      const receiptNo = note.receiptNo ?? note.receipt_No ?? note.receiptNumber ?? '';
+                      const bankNote = note.bankStatementNote ?? note.note ?? note.description ?? note.statementDescription ?? note.bankStatementDescription ?? '';
+                      const amount = note.amount ?? note.totalAmount ?? 0;
+                      const receiptDate = note.receiptDate ?? note.receipt_Date ?? '';
+                      const payType = note.paymentType ?? note.payment_Type ?? '';
+                      const cashier = note.cashierName ?? note.cashier ?? '';
+                      return (
+                        <tr key={idx} className="border-b border-slate-100 hover:bg-teal-50/30" data-testid={`eft-note-row-${idx}`}>
+                          <td className="px-3 py-2 max-w-[280px]">
+                            {bankNote ? (
+                              <span className="text-teal-800 font-medium bg-teal-50 px-1.5 py-0.5 rounded text-[11px]" title={bankNote}>{bankNote}</span>
+                            ) : (
+                              <span className="text-slate-400 italic text-[10px]">No note</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 font-mono font-semibold text-blue-700">{receiptNo || '-'}</td>
+                          <td className="px-3 py-2 text-right font-mono font-bold text-slate-800">
+                            {amount > 0 ? `R ${Number(amount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
+                          </td>
+                          <td className="px-3 py-2 text-slate-600">
+                            {receiptDate ? new Date(receiptDate).toLocaleDateString('en-ZA') : '-'}
+                          </td>
+                          <td className="px-3 py-2 text-slate-600">{payType || '-'}</td>
+                          <td className="px-3 py-2 text-slate-600">{cashier || '-'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {data.length === 0 ? <EmptyState message="No receipt history found" /> : (
           <div className="space-y-4">
