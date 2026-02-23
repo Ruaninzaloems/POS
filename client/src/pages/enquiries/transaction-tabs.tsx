@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import {
   getTransactionHistory, getDetailedTransactionResults, getBillingPeriodTransactions,
-  getAllBillingPeriodTransactions,
+  getAllBillingPeriodTransactions, getBankStatementNotesByAccount,
   getReceiptTransactionDetail, getLevyTransactionDetail,
   getOpenBalanceDetail, getCloseBalanceDetail, getJournalTransactionDetails,
   getRebateTransactionDetail, getInterestConsPaymentDetail,
@@ -1153,6 +1153,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
   const [data, setData] = useState<any[]>([]);
   const [billingPeriodTxns, setBillingPeriodTxns] = useState<any[]>([]);
   const [detailedTxns, setDetailedTxns] = useState<any[]>([]);
+  const [bankNotes, setBankNotes] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeSubTab, setActiveSubTab] = useState('receipts');
@@ -1171,6 +1172,10 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
       setBillingPeriodTxns(billingResult);
       setDetailedTxns(detailedResult);
       loaded.current = true;
+
+      getBankStatementNotesByAccount(accountId).then(notes => {
+        if (Object.keys(notes).length > 0) setBankNotes(notes);
+      }).catch(() => {});
     } catch (e: any) {
       setError(e.message || 'Failed to load transaction history');
     } finally {
@@ -1595,6 +1600,9 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                                   {item.cardChequeDetail && (
                                     <span><span className="font-semibold text-slate-600">Detail:</span> {item.cardChequeDetail}</span>
                                   )}
+                                  {(bankNotes[item.receiptNo] || item.bankStatementNote) && (
+                                    <span><span className="font-semibold text-blue-600">Statement:</span> <span className="text-blue-700 font-medium">{bankNotes[item.receiptNo] || item.bankStatementNote}</span></span>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -1632,6 +1640,9 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                             'bg-slate-50 text-slate-600'
                           }`}>{item.paymentType || '-'}</span>
                           {item.cashierName && <span>• {item.cashierName}</span>}
+                          {(bankNotes[item.receiptNo] || item.bankStatementNote) && (
+                            <span className="text-blue-700 font-medium">• {bankNotes[item.receiptNo] || item.bankStatementNote}</span>
+                          )}
                         </div>
                         <button
                           onClick={() => handlePrintReceipt(item)}
@@ -1658,6 +1669,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                         <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Card/Cheque Detail</th>
                         <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Cashier</th>
                         <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Cash Book</th>
+                        <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Statement Desc.</th>
                         <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
                         <th className="text-center py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Print</th>
                       </tr>
@@ -1683,6 +1695,13 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                           <td className="py-2.5 px-3 text-slate-500 text-xs">{item.cardChequeDetail || '-'}</td>
                           <td className="py-2.5 px-3 text-slate-600 text-xs font-medium">{item.cashierName || '-'}</td>
                           <td className="py-2.5 px-3 text-slate-500 text-xs">{item.cashBook || '-'}</td>
+                          <td className="py-2.5 px-3 text-xs">
+                            {(bankNotes[item.receiptNo] || item.bankStatementNote) ? (
+                              <span className="text-blue-700 font-medium">{bankNotes[item.receiptNo] || item.bankStatementNote}</span>
+                            ) : (
+                              <span className="text-slate-400">-</span>
+                            )}
+                          </td>
                           <td className="py-2.5 px-3">
                             {item.isCancelled ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 border border-red-200">

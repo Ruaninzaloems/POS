@@ -2176,6 +2176,88 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/platinum/bank-statement-notes", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const { posItemIds } = req.body;
+      if (!Array.isArray(posItemIds) || posItemIds.length === 0) {
+        return res.json({});
+      }
+      const limitedIds = posItemIds.slice(0, 50);
+      const results: Record<string, string> = {};
+      const batchSize = 5;
+      for (let i = 0; i < limitedIds.length; i += batchSize) {
+        const batch = limitedIds.slice(i, i + batchSize);
+        const promises = batch.map(async (id: number) => {
+          try {
+            const data = await platinumGet(session, "/api/billing-direct-deposit-allocation/get-pos-item-details", { posItemId: String(id) });
+            if (data && !data.error) {
+              const item = Array.isArray(data) ? data[0] : data;
+              if (item?.note) {
+                results[String(id)] = item.note;
+              }
+            }
+          } catch {}
+        });
+        await Promise.all(promises);
+      }
+      res.json(results);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/bank-statement-notes-by-account", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const accountId = req.query.accountId as string;
+      if (!accountId) return res.status(400).json({ message: "accountId required" });
+
+      const receiptData = await platinumGet(session, "/api/BillingEnquiry/PaymentAmountByAccountIds", { accountId });
+      const receipts = Array.isArray(receiptData) ? receiptData : (receiptData?.data || []);
+      if (!receipts.length) return res.json({});
+
+      if (receipts.length > 0) {
+        console.log(`[Bank Notes] Raw receipt fields for account ${accountId}:`, JSON.stringify(Object.keys(receipts[0])));
+        console.log(`[Bank Notes] First receipt sample:`, JSON.stringify(receipts[0]));
+      }
+
+      const receiptIdsWithBills: { receiptNo: string; billId: number }[] = [];
+      for (const r of receipts) {
+        const billId = r.billId || r.billID || r.bill_ID || r.posItemId || r.posItem_ID || r.posItemID;
+        if (billId) {
+          receiptIdsWithBills.push({ receiptNo: r.receiptNo, billId: Number(billId) });
+        }
+      }
+      console.log(`[Bank Notes] Found ${receiptIdsWithBills.length} receipts with billIds out of ${receipts.length} total`);
+
+      const results: Record<string, string> = {};
+
+      if (receiptIdsWithBills.length > 0) {
+        const batchSize = 5;
+        for (let i = 0; i < Math.min(receiptIdsWithBills.length, 50); i += batchSize) {
+          const batch = receiptIdsWithBills.slice(i, i + batchSize);
+          const promises = batch.map(async ({ receiptNo, billId }) => {
+            try {
+              const data = await platinumGet(session, "/api/billing-direct-deposit-allocation/get-pos-item-details", { posItemId: String(billId) });
+              if (data && !data.error) {
+                const item = Array.isArray(data) ? data[0] : data;
+                if (item?.note) {
+                  results[receiptNo] = item.note;
+                }
+              }
+            } catch {}
+          });
+          await Promise.all(promises);
+        }
+      }
+
+      res.json(results);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.get("/api/platinum/direct-deposit-allocation/get-account-autocomplete", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;

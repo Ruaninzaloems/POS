@@ -752,6 +752,9 @@ export async function getTransactionHistory(accountNumber: string, accountId?: n
           cardChequeDetail: r.cardChequeDetail || '',
           isCancelled: !!(r.cancelReson || r.isCancelled),
           cancelReason: r.cancelReson || r.cancelReason || '',
+          billId: r.billId || r.billID || r.bill_ID || null,
+          posItemId: r.posItemId || r.posItem_ID || r.posItemID || null,
+          bankStatementNote: r.note || r.bankStatementNote || '',
         }));
         setCache(cacheKey, result);
         return result;
@@ -784,6 +787,39 @@ export async function getTransactionHistory(accountNumber: string, accountId?: n
   } catch {}
 
   return [];
+}
+
+export async function getBankStatementNotes(posItemIds: number[]): Promise<Record<string, string>> {
+  if (!posItemIds.length) return {};
+  const cacheKey = `bank-notes-${posItemIds.sort().join(',')}`;
+  const cached = getCached(cacheKey, SHORT_CACHE_TTL);
+  if (cached) return cached;
+  try {
+    const data = await fetchWithTimeout('/api/platinum/bank-statement-notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ posItemIds }),
+    });
+    if (data && typeof data === 'object') {
+      setCache(cacheKey, data);
+      return data;
+    }
+  } catch {}
+  return {};
+}
+
+export async function getBankStatementNotesByAccount(accountId: number): Promise<Record<string, string>> {
+  const cacheKey = `bank-notes-acct-${accountId}`;
+  const cached = getCached(cacheKey, SHORT_CACHE_TTL);
+  if (cached) return cached;
+  try {
+    const data = await fetchWithTimeout(`/api/platinum/bank-statement-notes-by-account?accountId=${accountId}`);
+    if (data && typeof data === 'object' && !data.message) {
+      setCache(cacheKey, data);
+      return data;
+    }
+  } catch {}
+  return {};
 }
 
 // === PAYMENTS ===
