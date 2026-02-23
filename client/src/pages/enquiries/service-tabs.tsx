@@ -1385,7 +1385,32 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
     try {
       const meterNo = (meter.meterNo || meter.meterNumber || meter.physicalMeterNo || meter.physicalMeterNumber || '').replace(/^0+/, '');
       const history = await getMeterReadingHistory(accountId, meterNo);
-      setReadingHistory(history);
+      const arr = Array.isArray(history) ? history : [];
+      const fixed = arr.map((item: any) => {
+        const bm = (item.billingmonth || item.billingMonth || '').toLowerCase().trim();
+        if (bm.includes('open period') || bm.includes('current')) {
+          const rs = (item.readingStatus || '').toLowerCase();
+          if (rs === 'billed' || rs === 'imported' || rs === 'import') {
+            const rd = item.reading2Date || item.reading1Date || '';
+            let correctMonth = '';
+            if (rd) {
+              const parts = rd.split('/');
+              if (parts.length === 3) {
+                const mi = parseInt(parts[1]) - 1;
+                const mn = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+                if (mi >= 0 && mi < 12) correctMonth = mn[mi];
+              }
+            }
+            if (correctMonth) {
+              return { ...item, billingmonth: correctMonth, billingMonth: correctMonth };
+            }
+            return item;
+          }
+          return { ...item, readingStatus: item.readingStatus || 'Awaiting Billing' };
+        }
+        return item;
+      });
+      setReadingHistory(fixed);
     } catch {
       setReadingHistory([]);
     } finally {
@@ -1858,7 +1883,44 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
       const meterNo = (meter.meterNo || meter.meterNumber || meter.physicalMeterNo || meter.physicalMeterNumber || '').replace(/^0+/, '');
       if (meterNo) {
         const history = await getMeterReadingHistory(accountId, meterNo);
-        setConsumptionHistory(Array.isArray(history) ? history : []);
+        const arr = Array.isArray(history) ? history : [];
+        const fixed = arr.map((item: any) => {
+          const bm = (item.billingmonth || item.billingMonth || '').toLowerCase().trim();
+          if (bm.includes('open period') || bm.includes('current')) {
+            const rs = (item.readingStatus || '').toLowerCase();
+            if (rs === 'billed' || rs === 'imported' || rs === 'import') {
+              return { ...item, billingmonth: item.billingmonth, _openPeriodCorrected: true };
+            }
+            return { ...item, readingStatus: item.readingStatus || 'Awaiting Billing' };
+          }
+          return item;
+        });
+        const openBilled = fixed.filter((item: any) => {
+          const bm = (item.billingmonth || item.billingMonth || '').toLowerCase().trim();
+          return (bm.includes('open period') || bm.includes('current')) && item._openPeriodCorrected;
+        });
+        openBilled.forEach((item: any) => {
+          const existingMonths = fixed
+            .filter((r: any) => !(r.billingmonth || r.billingMonth || '').toLowerCase().includes('open period'))
+            .map((r: any) => `${(r.billingmonth || r.billingMonth || '').toLowerCase()}_${r.financialYear || ''}`);
+          const rd = item.reading2Date || item.reading1Date || '';
+          if (rd) {
+            const parts = rd.split('/');
+            if (parts.length === 3) {
+              const monthIdx = parseInt(parts[1]) - 1;
+              const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+              if (monthIdx >= 0 && monthIdx < 12) {
+                const correctMonth = monthNames[monthIdx];
+                const key = `${correctMonth.toLowerCase()}_${item.financialYear || ''}`;
+                if (!existingMonths.includes(key)) {
+                  item.billingmonth = correctMonth;
+                  item.billingMonth = correctMonth;
+                }
+              }
+            }
+          }
+        });
+        setConsumptionHistory(fixed);
       }
     } catch {
       setConsumptionHistory([]);
