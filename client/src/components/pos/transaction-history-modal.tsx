@@ -183,10 +183,10 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Receipt className="w-5 h-5" />
-            Transaction History
+            Receipt Cancellation Request
           </DialogTitle>
           <DialogDescription>
-            View and manage recent receipts. Cancellations are only allowed for open shifts that have not been reconciled.
+            Search for a receipt to request cancellation. Only receipts from open shifts that have not been reconciled can be cancelled.
           </DialogDescription>
         </DialogHeader>
 
