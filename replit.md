@@ -63,7 +63,7 @@ Preferred communication style: Simple, everyday language.
 - **Payment Validation**: Cashier payment options/types are validated against Platinum API endpoints (`/api/billing-payment/payment-options`, `/api/billing-payment/payment-types`).
 - **Receipt Range Validation**: Verified via `/api/platinum/receipt-prepaid/validate-receipt-range` before payment processing.
 - **Session Detection**: Uses `/api/ReceiptPrepaid/validate-cashier` as the single source of truth for cashier session status (`isActive` field). Auto-resume and session enforcement are based on this.
-- **Payment Submission**: Uses `submit-consumer-payment/{userId}` API per account. For split payments (cash + card), two separate rounds of per-account calls are made (paymentType 1 for cash, 3 for card) creating separate DB entries, each with its own `print-receipt` call.
+- **Payment Submission**: For single account, uses `submit-consumer-payment/{userId}`. For multiple accounts (2+), uses `submit-multiple-payment/{userId}` with `{ accounts: [...], requestModel: {...} }` in a single API call. For split payments (cash + card), two separate rounds are made (paymentType 1 for cash, 3 for card), each using the appropriate single/multiple endpoint based on account count. Each round creates separate DB entries with its own `print-receipt` call.
 - **Pre-Payment Session Check**: Before ANY payment processing, validate-cashier is called to verify the session is still active. Payment is BLOCKED if session is inactive or API fails.
 
 ## External Dependencies

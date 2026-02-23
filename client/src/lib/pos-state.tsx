@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect, useRef,
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, CashOffice } from './external-api';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange, fetchActiveCashierByUserId, fetchPosMultiReceiptPrintByCashier, platinumValidateCashier, fetchActiveFinYear, platinumAuthDayEndCancelReceipt, platinumRequestCancelReceipt, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumGetPendingCancelRequests, platinumGetDayEndReconcileList, platinumReceiptDiscovery } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange, fetchActiveCashierByUserId, fetchPosMultiReceiptPrintByCashier, platinumValidateCashier, fetchActiveFinYear, platinumAuthDayEndCancelReceipt, platinumRequestCancelReceipt, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumGetPendingCancelRequests, platinumGetDayEndReconcileList, platinumReceiptDiscovery } from './external-api';
 import { getAccountBalance as enquiryGetAccountBalance } from './enquiries-service';
 
 if (import.meta.hot) {
@@ -1484,52 +1484,105 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     }
                 }
 
-                for (let i = 0; i < perAccountPayments.length; i++) {
-                    const { acct, itemPayment, acctOutstanding } = perAccountPayments[i];
+                const isCardPayment = paymentTypeId === 3;
+                const isMultiAccount = perAccountPayments.length > 1;
+                const totalPaymentAmount = perAccountPayments.reduce((s, p) => s + p.itemPayment, 0);
 
-                    const isCardPayment = paymentTypeId === 3;
+                if (isMultiAccount) {
+                    const submitAccounts = perAccountPayments.map(({ acct, itemPayment }) => {
+                        const { _userAmountToPay: _, ...submitAccount } = acct;
+                        submitAccount.outStandingAmt = itemPayment;
+                        return submitAccount;
+                    });
+
                     const requestModel = {
                         finYear,
                         receiptDate: formattedReceiptDate,
-                        totalAmount: itemPayment,
-                        tenderAmount: i === 0 ? tenderAmt : itemPayment,
-                        changeAmount: i === 0 ? changeAmt : 0,
+                        totalAmount: totalPaymentAmount,
+                        tenderAmount: tenderAmt,
+                        changeAmount: changeAmt,
                         paymentType: paymentTypeId,
                         paymentOption: paymentOptionId,
-                        outStandingAmount: itemPayment,
+                        outStandingAmount: totalPaymentAmount,
                         cardNumber: isCardPayment ? (record.payment.cardReference || '') : '',
                         expiryDate: '',
                         chequeNumber: '',
                         chequeDate: null,
                         processingMonth: null,
-                        accountHolderName: acct.name || '',
+                        accountHolderName: submitAccounts[0]?.name || '',
                         bankName: '',
                         bankBranchCode: '',
-                        cutOffID: acct.cutOffID ?? 0,
-                        debtArrangementId: acct.debtArrangementId ?? 0,
-                        cutOffAmount: acct.cutOffAmount ?? 0,
-                        debtAmount: acct.debtAmount ?? 0,
-                        sundryDebtorsId: acct.sundryDebtorsId ?? null,
+                        cutOffID: 0,
+                        debtArrangementId: 0,
+                        cutOffAmount: 0,
+                        debtAmount: 0,
+                        sundryDebtorsId: null,
                         apiTransactionID: 0,
                         isReconciled: 0,
                         isCancelled: 0,
                     };
 
-                    console.log(`[Priority 1 ${label}] Submitting consumer payment for account ${acct.account_ID} (${acct.name}), PAYMENT amount: R${itemPayment}, full outstanding: R${acctOutstanding}, requestModel.totalAmount: R${requestModel.totalAmount}, requestModel.outStandingAmount: R${requestModel.outStandingAmount}, paymentType: ${paymentTypeId}, cardNumber: "${requestModel.cardNumber}"`);
+                    console.log(`[Priority 1 ${label}] Submitting MULTIPLE payment for ${submitAccounts.length} accounts, total: R${totalPaymentAmount}, tender: R${tenderAmt}, change: R${changeAmt}, paymentType: ${paymentTypeId}`);
+                    for (const sa of submitAccounts) {
+                        console.log(`[Priority 1 ${label}]   → account ${sa.account_ID} (${sa.name}): R${sa.outStandingAmt}`);
+                    }
 
-                    const { _userAmountToPay: _, ...submitAccount } = acct;
-                    submitAccount.outStandingAmt = itemPayment;
-                    console.log(`[Priority 1 ${label}] submitAccount.outStandingAmt set to payment amount: R${submitAccount.outStandingAmt} (matches staged amount, requestModel.totalAmount: R${itemPayment})`);
-                    const result = await submitConsumerPayment(sessionUserId, {
-                        account: submitAccount,
+                    const result = await submitMultiplePayment(sessionUserId, {
+                        accounts: submitAccounts,
                         requestModel,
                     });
-                    console.log(`[Priority 1 ${label}] submit-consumer-payment response for account ${acct.account_ID}:`, result);
+                    console.log(`[Priority 1 ${label}] submit-multiple-payment response:`, JSON.stringify(result).substring(0, 2000));
                     if (result && result.isSuccess === false) {
-                        throw new Error(result.message || `Payment failed for account ${acct.account_ID}`);
+                        throw new Error(result.message || `Multiple payment submission failed`);
                     }
                     const ids = extractReceiptIds(result);
                     allReceiptIds.push(...ids);
+                } else {
+                    for (let i = 0; i < perAccountPayments.length; i++) {
+                        const { acct, itemPayment, acctOutstanding } = perAccountPayments[i];
+
+                        const requestModel = {
+                            finYear,
+                            receiptDate: formattedReceiptDate,
+                            totalAmount: itemPayment,
+                            tenderAmount: tenderAmt,
+                            changeAmount: changeAmt,
+                            paymentType: paymentTypeId,
+                            paymentOption: paymentOptionId,
+                            outStandingAmount: itemPayment,
+                            cardNumber: isCardPayment ? (record.payment.cardReference || '') : '',
+                            expiryDate: '',
+                            chequeNumber: '',
+                            chequeDate: null,
+                            processingMonth: null,
+                            accountHolderName: acct.name || '',
+                            bankName: '',
+                            bankBranchCode: '',
+                            cutOffID: acct.cutOffID ?? 0,
+                            debtArrangementId: acct.debtArrangementId ?? 0,
+                            cutOffAmount: acct.cutOffAmount ?? 0,
+                            debtAmount: acct.debtAmount ?? 0,
+                            sundryDebtorsId: acct.sundryDebtorsId ?? null,
+                            apiTransactionID: 0,
+                            isReconciled: 0,
+                            isCancelled: 0,
+                        };
+
+                        console.log(`[Priority 1 ${label}] Submitting SINGLE consumer payment for account ${acct.account_ID} (${acct.name}), PAYMENT amount: R${itemPayment}, full outstanding: R${acctOutstanding}, paymentType: ${paymentTypeId}`);
+
+                        const { _userAmountToPay: _, ...submitAccount } = acct;
+                        submitAccount.outStandingAmt = itemPayment;
+                        const result = await submitConsumerPayment(sessionUserId, {
+                            account: submitAccount,
+                            requestModel,
+                        });
+                        console.log(`[Priority 1 ${label}] submit-consumer-payment response for account ${acct.account_ID}:`, result);
+                        if (result && result.isSuccess === false) {
+                            throw new Error(result.message || `Payment failed for account ${acct.account_ID}`);
+                        }
+                        const ids = extractReceiptIds(result);
+                        allReceiptIds.push(...ids);
+                    }
                 }
 
                 if (allReceiptIds.length > 0) {

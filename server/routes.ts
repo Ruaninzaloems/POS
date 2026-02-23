@@ -725,8 +725,25 @@ export async function registerRoutes(
     try {
       const session = requireAuth(req, res); if (!session) return;
       const userId = req.params.userId;
-      console.log(`[submit-multiple-payment] userId=${userId}, payload:`, JSON.stringify(req.body, null, 2).substring(0, 2000));
-      const data = await platinumPost(session, `/api/billing-payment/submit-multiple-payment/${userId}`, req.body);
+      const body = req.body;
+      const accounts = Array.isArray(body?.accounts) ? body.accounts : [];
+      const rm = body?.requestModel || {};
+
+      if (rm.apiTransactionID === undefined) rm.apiTransactionID = 0;
+      if (rm.isReconciled === undefined || rm.isReconciled === null) rm.isReconciled = 0;
+      if (rm.isCancelled === undefined || rm.isCancelled === null) rm.isCancelled = 0;
+
+      for (const acct of accounts) {
+        if (acct.billId === 0) acct.billId = null;
+      }
+
+      console.log(`[submit-multiple-payment] userId=${userId}, ${accounts.length} account(s)`);
+      for (const acct of accounts) {
+        console.log(`[submit-multiple-payment] account: account_ID=${acct.account_ID}, accountNumber=${acct.accountNumber}, name=${acct.name}, outStandingAmt=${acct.outStandingAmt}, billId=${acct.billId}`);
+      }
+      console.log(`[submit-multiple-payment] requestModel: finYear=${rm.finYear}, receiptDate=${rm.receiptDate}, totalAmount=${rm.totalAmount}, tenderAmount=${rm.tenderAmount}, changeAmount=${rm.changeAmount}, paymentType=${rm.paymentType}, paymentOption=${rm.paymentOption}, outStandingAmount=${rm.outStandingAmount}, cardNumber=${rm.cardNumber ? '***' : '(empty)'}`);
+      console.log(`[submit-multiple-payment] full payload:`, JSON.stringify(body, null, 2).substring(0, 3000));
+      const data = await platinumPost(session, `/api/billing-payment/submit-multiple-payment/${userId}`, body);
       console.log(`[submit-multiple-payment] response:`, JSON.stringify(data).substring(0, 2000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
