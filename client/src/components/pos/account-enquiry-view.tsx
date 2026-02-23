@@ -77,7 +77,19 @@ function PaymentInput({ id, value, onChange }: { id: string; value: number; onCh
 }
 
 export function AccountEnquiryView({ item }: { item: TransactionItem }) {
-  const baseAccount = item.originalData as Account;
+  const rawData = item.originalData || {};
+  const baseAccount: Account = {
+    ...rawData,
+    apiId: rawData.apiId || rawData.accountID || rawData.account_ID || rawData.accountId,
+    accountNo: rawData.accountNo || rawData.accountNumber || rawData.reference || '',
+    name: rawData.name || rawData.companyName || item.description || '',
+    outstandingAmount: rawData.outstandingAmount ?? rawData.outStandingAmount ?? rawData.outStandingAmt ?? 0,
+    address: rawData.address || rawData.deliveryAddress || rawData.locationAddress || '',
+    idNo: rawData.idNo || rawData.idRegistrationNumber || '',
+    sgNo: rawData.sgNo || rawData.sgNumber || '',
+    email: rawData.email || '',
+    mobile: rawData.mobile || '',
+  };
   const { updateItemAmount, updateItemDetails, removeItem, addItem, viewingItemId, setViewingItem, receiptDate, setReceiptDate } = usePos();
   const [isOpen, setIsOpen] = useState(false);
   const [account, setAccount] = useState<Account>(baseAccount);
