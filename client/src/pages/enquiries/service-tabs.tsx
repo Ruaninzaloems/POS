@@ -1402,15 +1402,16 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
               }
             }
             if (correctMonth) {
-              return { ...item, billingmonth: correctMonth, billingMonth: correctMonth };
+              return { ...item, billingmonth: correctMonth, billingMonth: correctMonth, _openPeriodCorrected: true };
             }
             return item;
           }
-          return { ...item, readingStatus: item.readingStatus || 'Awaiting Billing' };
+          return { ...item, _isUnreadOpenPeriod: true, readingStatus: item.readingStatus || 'Awaiting Billing' };
         }
         return item;
       });
-      setReadingHistory(fixed);
+      const filtered = fixed.filter((item: any) => !item._isUnreadOpenPeriod);
+      setReadingHistory(filtered);
     } catch {
       setReadingHistory([]);
     } finally {
@@ -1891,16 +1892,17 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
             if (rs === 'billed' || rs === 'imported' || rs === 'import') {
               return { ...item, billingmonth: item.billingmonth, _openPeriodCorrected: true };
             }
-            return { ...item, readingStatus: item.readingStatus || 'Awaiting Billing' };
+            return { ...item, _isUnreadOpenPeriod: true, readingStatus: item.readingStatus || 'Awaiting Billing' };
           }
           return item;
         });
-        const openBilled = fixed.filter((item: any) => {
+        const filtered = fixed.filter((item: any) => !item._isUnreadOpenPeriod);
+        const openBilled = filtered.filter((item: any) => {
           const bm = (item.billingmonth || item.billingMonth || '').toLowerCase().trim();
           return (bm.includes('open period') || bm.includes('current')) && item._openPeriodCorrected;
         });
         openBilled.forEach((item: any) => {
-          const existingMonths = fixed
+          const existingMonths = filtered
             .filter((r: any) => !(r.billingmonth || r.billingMonth || '').toLowerCase().includes('open period'))
             .map((r: any) => `${(r.billingmonth || r.billingMonth || '').toLowerCase()}_${r.financialYear || ''}`);
           const rd = item.reading2Date || item.reading1Date || '';
@@ -1920,7 +1922,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
             }
           }
         });
-        setConsumptionHistory(fixed);
+        setConsumptionHistory(filtered);
       }
     } catch {
       setConsumptionHistory([]);
