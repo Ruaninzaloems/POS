@@ -67,7 +67,7 @@ export function UnifiedSearch({ onSearchActiveChange }: { onSearchActiveChange?:
         description: `${acc.name} (${acc.accountNo})`,
         reference: acc.accountNo,
         amountDue: acc.outstandingAmount,
-        amountToPay: acc.outstandingAmount > 0 ? acc.outstandingAmount : 0,
+        amountToPay: 0,
         originalData: acc
       };
 
@@ -126,7 +126,7 @@ export function UnifiedSearch({ onSearchActiveChange }: { onSearchActiveChange?:
                 description: `${group.institutionDesc} - ${member.name || [member.initials, member.lastName].filter(Boolean).join(' ') || 'Acc'} (${member.accountNumber || member.accountID})`,
                 reference: member.accountNumber || `${member.accountID}`,
                 amountDue: member.outStandingAmt || 0,
-                amountToPay: member.outStandingAmt || 0,
+                amountToPay: 0,
                 originalData: { ...member, institutionDesc: group.institutionDesc }
             }));
             memberItems.forEach(item => addItem(item));
@@ -144,7 +144,7 @@ export function UnifiedSearch({ onSearchActiveChange }: { onSearchActiveChange?:
                                 if (outstanding > 0) {
                                     updateItemDetails(item.id, {
                                         amountDue: outstanding,
-                                        amountToPay: outstanding,
+                                        amountToPay: 0,
                                         originalData: { ...item.originalData, outStandingAmt: outstanding, outstandingAmount: outstanding }
                                     });
                                 }
@@ -165,7 +165,7 @@ export function UnifiedSearch({ onSearchActiveChange }: { onSearchActiveChange?:
                         description: `${group.institutionDesc || 'Group'} - ${acc.name || 'Unknown'} (${acc.accountNumber || acc.accountID})`,
                         reference: acc.accountNumber || acc.oldAccountCode || `${acc.accountID}`,
                         amountDue: acc.outStandingAmount || acc.outStandingAmt || 0,
-                        amountToPay: acc.outStandingAmount || acc.outStandingAmt || 0,
+                        amountToPay: 0,
                         originalData: { ...acc, institutionDesc: group.institutionDesc, accountID: acc.accountID }
                     }));
                     memberItems.forEach(item => addItem(item));
@@ -183,7 +183,7 @@ export function UnifiedSearch({ onSearchActiveChange }: { onSearchActiveChange?:
                                         if (outstanding > 0) {
                                             updateItemDetails(item.id, {
                                                 amountDue: outstanding,
-                                                amountToPay: outstanding,
+                                                amountToPay: 0,
                                                 originalData: { ...item.originalData, outStandingAmt: outstanding, outstandingAmount: outstanding }
                                             });
                                         }
