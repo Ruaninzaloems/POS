@@ -1051,7 +1051,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
     try {
       const [balResult, txnResult, capResult, plansResult, ratesResult] = await Promise.allSettled([
         getAccountBalance(accountId),
-        getTransactionHistory(String(accountId).padStart(12, '0')),
+        getTransactionHistory(accountNumber || String(accountId).padStart(12, '0'), accountId),
         getPaymentPlanRemainingCapital(accountId),
         getPaymentPlansByAccountId(accountId),
         getAccountRatesDetails(accountId, '2025/2026'),
