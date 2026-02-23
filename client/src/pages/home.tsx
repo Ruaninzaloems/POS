@@ -3,6 +3,7 @@ import { Link, useLocation } from 'wouter';
 import { usePos } from '@/lib/pos-state';
 import {
   Layers,
+  BarChart3,
   Banknote,
   RefreshCw,
   Users,
@@ -22,6 +23,7 @@ import { HelpTip } from '@/components/ui/help-tip';
 
 const menuItems = [
   { label: 'POS', href: '/pos', icon: Layers, description: 'Point of sale receipting and payments', helpTip: 'Process payments for consumer accounts, prepaid, clearance, and direct income' },
+  { label: 'Billing Dashboard', href: '/billing-dashboard', icon: BarChart3, description: 'Billing statistics and notifications', helpTip: 'View billing notifications, alerts, and system status across all municipal services' },
   { label: 'Direct Deposits Manual', href: '/direct-deposits/manual', icon: Banknote, description: 'Manual allocation of direct deposits', helpTip: 'Allocate EFT and direct deposit payments to consumer accounts' },
   { label: 'Direct Deposits Auto', href: '/direct-deposits/auto', icon: RefreshCw, description: 'Automatic processing of direct deposits', helpTip: 'Allocate EFT and direct deposit payments to consumer accounts automatically' },
   { label: 'Third Party Payment Processing', href: '/third-party/processing', icon: Users, description: 'Process third party payments', helpTip: 'Import and process bulk payment files from external sources' },
