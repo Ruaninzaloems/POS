@@ -1819,6 +1819,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
   const [consumptionMeter, setConsumptionMeter] = useState<any>(null);
   const [consumptionHistory, setConsumptionHistory] = useState<any[]>([]);
   const [consumptionLoading, setConsumptionLoading] = useState(false);
+  const [selectedFinYears, setSelectedFinYears] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1851,6 +1852,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
     setConsumptionMeter(meter);
     setConsumptionLoading(true);
     setConsumptionHistory([]);
+    setSelectedFinYears([]);
     try {
       const meterNo = (meter.meterNo || meter.meterNumber || meter.physicalMeterNo || meter.physicalMeterNumber || '').replace(/^0+/, '');
       if (meterNo) {
@@ -1863,6 +1865,38 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
       setConsumptionLoading(false);
     }
   }, [accountId]);
+
+  const finYearMonthOrder: Record<string, number> = { 'July': 0, 'August': 1, 'September': 2, 'October': 3, 'November': 4, 'December': 5, 'January': 6, 'February': 7, 'March': 8, 'April': 9, 'May': 10, 'June': 11 };
+
+  const availableFinYears = useMemo(() => {
+    const years = new Set<string>();
+    consumptionHistory.forEach((h: any) => {
+      const fy = h.financialYear || h.finYear || '';
+      if (fy) years.add(fy);
+    });
+    return Array.from(years).sort((a, b) => b.localeCompare(a));
+  }, [consumptionHistory]);
+
+  const sortedFilteredConsumption = useMemo(() => {
+    let filtered = consumptionHistory;
+    if (selectedFinYears.length > 0) {
+      filtered = consumptionHistory.filter((h: any) => {
+        const fy = h.financialYear || h.finYear || '';
+        return selectedFinYears.includes(fy);
+      });
+    }
+    return [...filtered].sort((a, b) => {
+      const fyA = a.financialYear || a.finYear || '';
+      const fyB = b.financialYear || b.finYear || '';
+      const fyCompare = fyB.localeCompare(fyA);
+      if (fyCompare !== 0) return fyCompare;
+      const monthA = a.billingmonth || a.billingMonth || '';
+      const monthB = b.billingmonth || b.billingMonth || '';
+      const orderA = finYearMonthOrder[monthA] ?? 99;
+      const orderB = finYearMonthOrder[monthB] ?? 99;
+      return orderB - orderA;
+    });
+  }, [consumptionHistory, selectedFinYears]);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
@@ -2225,7 +2259,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 text-sm">
                 <div>
                   <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Service Type</span>
-                  <p className="font-medium text-slate-800 mt-0.5">{consumptionMeter.serviceType || consumptionMeter.serviceTypeDescription || '-'}</p>
+                  <p className="font-medium text-slate-800 mt-0.5">{consumptionMeter.serviceDesc || consumptionMeter.tariffType || consumptionMeter.serviceType || consumptionMeter.serviceTypeDescription || consumptionMeter.description || '-'}</p>
                 </div>
                 <div>
                   <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Meter No</span>
@@ -2242,6 +2276,36 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
               </div>
             </div>
 
+            {!consumptionLoading && consumptionHistory.length > 0 && availableFinYears.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 mb-4" data-testid="fin-year-filter">
+                <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mr-1">Financial Year:</span>
+                <button
+                  onClick={() => setSelectedFinYears([])}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all ${selectedFinYears.length === 0 ? 'bg-cyan-600 text-white border-cyan-600 shadow-sm' : 'bg-white text-slate-600 border-slate-300 hover:border-cyan-400 hover:text-cyan-700'}`}
+                  data-testid="fin-year-all"
+                >
+                  All
+                </button>
+                {availableFinYears.map(fy => {
+                  const isActive = selectedFinYears.includes(fy);
+                  return (
+                    <button
+                      key={fy}
+                      onClick={() => {
+                        setSelectedFinYears(prev =>
+                          prev.includes(fy) ? prev.filter(y => y !== fy) : [...prev, fy]
+                        );
+                      }}
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all ${isActive ? 'bg-cyan-600 text-white border-cyan-600 shadow-sm' : 'bg-white text-slate-600 border-slate-300 hover:border-cyan-400 hover:text-cyan-700'}`}
+                      data-testid={`fin-year-${fy}`}
+                    >
+                      {fy}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {consumptionLoading ? (
               <div className="flex items-center justify-center py-8 gap-2 text-slate-500">
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -2252,7 +2316,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
             ) : (
               <>
                 <div className="sm:hidden space-y-2" data-testid="table-meter-consumption-mobile">
-                  {consumptionHistory.map((h: any, i: number) => {
+                  {sortedFilteredConsumption.map((h: any, i: number) => {
                     const flagVal = (h.flag || '').toLowerCase();
                     const flagColor = flagVal.includes('reversed') || flagVal.includes('cancel') ? 'bg-red-100 text-red-700 border-red-200' : flagVal.includes('estimate') || flagVal.includes('levy') ? 'bg-amber-100 text-amber-700 border-amber-200' : flagVal.includes('import') ? 'bg-green-100 text-green-700 border-green-200' : '';
                     return (
@@ -2296,7 +2360,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                       </tr>
                     </thead>
                     <tbody>
-                      {consumptionHistory.map((h: any, i: number) => {
+                      {sortedFilteredConsumption.map((h: any, i: number) => {
                         const flagVal = (h.flag || '').toLowerCase();
                         const flagColor = flagVal.includes('reversed') || flagVal.includes('cancel') ? 'text-red-600' : flagVal.includes('estimate') || flagVal.includes('levy') ? 'text-amber-600' : 'text-green-700';
                         return (
