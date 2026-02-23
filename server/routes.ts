@@ -940,8 +940,14 @@ export async function registerRoutes(
       params.PageSize = String(body.pageSize ?? body.PageSize ?? 50);
       if (body.orderby || body.Orderby) params.Orderby = body.orderby || body.Orderby;
       if (body.shortDirection || body.ShortDirection) params.ShortDirection = body.shortDirection || body.ShortDirection;
-      if (body.cashierId !== undefined && body.cashierId !== null && body.cashierId !== '') params.CashierId = String(body.cashierId);
-      else if (body.CashierId !== undefined && body.CashierId !== null && body.CashierId !== '') params.CashierId = String(body.CashierId);
+      const cashierVal = body.cashierId ?? body.CashierId ?? '';
+      if (cashierVal !== '' && cashierVal !== undefined && cashierVal !== null) {
+        params.Cashier = String(cashierVal);
+        params.CashierId = String(cashierVal);
+      }
+      if (body.userId || body.UserId) {
+        params.UserId = String(body.userId || body.UserId);
+      }
       if (body.accountNumber || body.AccountNumber) params.AccountNumber = body.accountNumber || body.AccountNumber;
       if (body.receiptNo || body.ReceiptNo) params.ReceiptNo = body.receiptNo || body.ReceiptNo;
 
