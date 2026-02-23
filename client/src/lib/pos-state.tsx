@@ -1335,12 +1335,17 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
 
         const receiptDataResults = await Promise.all(
-            receiptIds.map(rid =>
-                fetchPosMultiReceiptPrint(String(rid)).catch(e => {
+            receiptIds.map(async (rid) => {
+                try {
+                    const data = await fetchPosMultiReceiptPrint(String(rid), 3);
+                    if (data.length > 0) return data;
+                    console.warn(`[Priority 1 ${paymentLabel}] Receipt data empty for ${rid} after retries — will use fallback data`);
+                    return [] as any[];
+                } catch (e) {
                     console.warn(`[Priority 1 ${paymentLabel}] Could not fetch multi-receipt-print for ${rid}`, e);
                     return [] as any[];
-                })
-            )
+                }
+            })
         );
 
         const uniqueAccountIds = new Set<string>();
@@ -1396,6 +1401,40 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     lineItems,
                 };
                 console.log(`[Priority 1 ${paymentLabel}] Receipt ${receiptNo} for account ${acctId} (${acctName}), ${lineItems.length} line items`);
+            } else {
+                const matchedAcct = perAccountAmounts?.[rIdx];
+                const paymentTypeLabel = paymentType === 'cash' ? 'Cash' : 'Credit Card';
+                const fallbackAccountId = matchedAcct?.accountId || accountItems[rIdx]?.originalData?.account_ID || accountItems[rIdx]?.reference || '';
+                const fallbackAccountName = matchedAcct?.accountName || accountItems[rIdx]?.originalData?.name || accountItems[rIdx]?.description || '';
+                const fallbackAmount = matchedAcct?.amount ?? paymentAmount;
+
+                acctId = String(fallbackAccountId);
+                acctName = fallbackAccountName;
+
+                receiptDetail = {
+                    receiptNo: `REC-${rid}`,
+                    cashierName: currentUser.name || '',
+                    cashOffice: sessionDetails?.officeDesc || currentUser.cashOffice || '',
+                    tenderAmount: paymentType === 'cash' ? record.payment.cash : record.payment.card,
+                    changeAmount: paymentType === 'cash' ? totalChange : 0,
+                    outstandingAmount: null,
+                    paymentType: paymentTypeLabel,
+                    paymentOption: record.items[0]?.type?.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) || 'Consumer Services',
+                    accountId: acctId,
+                    oldAccountCode: accountItems[rIdx]?.originalData?.oldAccountCode || '',
+                    sgNumber: null,
+                    accAddress: accountItems[rIdx]?.originalData?.address || '',
+                    accName: acctName,
+                    receiptDate: formattedReceiptDate,
+                    paymentDate: formattedReceiptDate,
+                    isCancelled: false,
+                    lineItems: [{
+                        description: 'Payment',
+                        amount: fallbackAmount,
+                        vatAmount: 0,
+                    }],
+                };
+                console.log(`[Priority 1 ${paymentLabel}] Receipt REC-${rid} — using FALLBACK data for account ${acctId} (${acctName}), amount: R${fallbackAmount}`);
             }
 
             if (!finalReceiptNumber) {
@@ -1424,8 +1463,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
             record.splitReceipts!.push(splitEntry);
 
-            if (receiptDetail && !record.receiptDetail) {
-                record.receiptDetail = receiptDetail;
+            if (receiptDetail) {
+                if (!record.receiptDetail) {
+                    record.receiptDetail = receiptDetail;
+                }
             }
 
             console.log(`[Priority 1 ${paymentLabel}] Receipt ${receiptNo} added to split receipts (account: ${resolvedAcctId})`);
@@ -1666,11 +1707,19 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }
 
                 if (allReceiptIds.length > 0) {
-                    try {
-                        await platinumPrintReceipt(allReceiptIds);
-                        console.log(`[Priority 1 ${label}] print-receipt called for IDs: ${allReceiptIds.join(', ')}`);
-                    } catch (e) {
-                        console.warn(`[Priority 1 ${label}] print-receipt failed (non-critical)`, e);
+                    for (let printAttempt = 1; printAttempt <= 2; printAttempt++) {
+                        try {
+                            await platinumPrintReceipt(allReceiptIds);
+                            console.log(`[Priority 1 ${label}] print-receipt called for IDs: ${allReceiptIds.join(', ')}`);
+                            break;
+                        } catch (e) {
+                            if (printAttempt === 2) {
+                                console.warn(`[Priority 1 ${label}] print-receipt failed after 2 attempts (non-critical)`, e);
+                            } else {
+                                console.warn(`[Priority 1 ${label}] print-receipt attempt ${printAttempt} failed, retrying in 1s...`);
+                                await new Promise(r => setTimeout(r, 1000));
+                            }
+                        }
                     }
                 }
 
@@ -1893,13 +1942,51 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 const clrReceiptIds = extractReceiptIds(clrResult);
                 if (clrReceiptIds.length > 0) {
                     let receiptNo = `REC-${clrReceiptIds[0]}`;
+                    let clrReceiptDetail: any = null;
                     try {
-                        const receiptData = await fetchPosMultiReceiptPrint(String(clrReceiptIds[0]));
-                        if (receiptData && receiptData.length > 0 && receiptData[0].receiptNo) {
-                            receiptNo = receiptData[0].receiptNo;
+                        const receiptData = await fetchPosMultiReceiptPrint(String(clrReceiptIds[0]), 3);
+                        if (receiptData && receiptData.length > 0) {
+                            if (receiptData[0].receiptNo) receiptNo = receiptData[0].receiptNo;
+                            const rd = receiptData[0];
+                            clrReceiptDetail = {
+                                receiptNo: rd.receiptNo || receiptNo,
+                                cashierName: rd.cashierName || currentUser.name,
+                                cashOffice: rd.cashOfficeName || sessionDetails?.officeDesc || '',
+                                tenderAmount: rd.tenderAmount ?? tender,
+                                changeAmount: rd.changeAmount ?? change,
+                                outstandingAmount: rd.outstandingAmount,
+                                paymentType: splitType === 'cash' ? 'Cash' : 'Credit Card',
+                                paymentOption: 'Clearance',
+                                accountId: rd.accountId || item.reference || '',
+                                accName: rd.accName || accountHolderName,
+                                receiptDate: rd.receiptDate || formattedReceiptDate,
+                                lineItems: receiptData.map((row: any) => ({
+                                    description: row.billType || 'Clearance',
+                                    amount: row.tenderAmount ?? row.amount ?? 0,
+                                    vatAmount: row.vatAmount ?? 0,
+                                })),
+                            };
                         }
                     } catch (e) {
                         console.warn(`[Priority 1B ${label}] Could not fetch receipt number`, e);
+                    }
+
+                    if (!clrReceiptDetail) {
+                        clrReceiptDetail = {
+                            receiptNo,
+                            cashierName: currentUser.name || '',
+                            cashOffice: sessionDetails?.officeDesc || '',
+                            tenderAmount: tender,
+                            changeAmount: change,
+                            outstandingAmount: null,
+                            paymentType: splitType === 'cash' ? 'Cash' : 'Credit Card',
+                            paymentOption: 'Clearance',
+                            accountId: item.reference || '',
+                            accName: accountHolderName,
+                            receiptDate: formattedReceiptDate,
+                            lineItems: [{ description: 'Clearance Payment', amount, vatAmount: 0 }],
+                        };
+                        console.log(`[Priority 1B ${label}] Using fallback receipt data for clearance ${clearanceStagingId}`);
                     }
 
                     if (!finalReceiptNumber) {
@@ -1907,12 +1994,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         updateRecordReceiptNumber(record, finalReceiptNumber);
                     }
 
-                    const splitEntry: SplitReceipt = { receiptNumber: receiptNo, receiptId: clrReceiptIds[0], paymentType: splitType, amount };
+                    const splitEntry: SplitReceipt = { receiptNumber: receiptNo, receiptId: clrReceiptIds[0], paymentType: splitType, amount, receiptDetail: clrReceiptDetail };
 
-                    try {
-                        await platinumPrintReceipt(clrReceiptIds);
-                    } catch (e) {
-                        console.warn(`[Priority 1B ${label}] Failed to print clearance receipt`, e);
+                    for (let printAttempt = 1; printAttempt <= 2; printAttempt++) {
+                        try {
+                            await platinumPrintReceipt(clrReceiptIds);
+                            break;
+                        } catch (e) {
+                            if (printAttempt === 2) console.warn(`[Priority 1B ${label}] Failed to print clearance receipt after 2 attempts`, e);
+                            else await new Promise(r => setTimeout(r, 1000));
+                        }
                     }
 
                     try {
@@ -2014,13 +2105,51 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
                 if (miscReceiptId) {
                     let receiptNo = `REC-${miscReceiptId}`;
+                    let miscReceiptDetail: any = null;
                     try {
-                        const miscReceiptData = await fetchPosMultiReceiptPrint(String(miscReceiptId));
-                        if (miscReceiptData && miscReceiptData.length > 0 && miscReceiptData[0].receiptNo) {
-                            receiptNo = miscReceiptData[0].receiptNo;
+                        const miscReceiptData = await fetchPosMultiReceiptPrint(String(miscReceiptId), 3);
+                        if (miscReceiptData && miscReceiptData.length > 0) {
+                            if (miscReceiptData[0].receiptNo) receiptNo = miscReceiptData[0].receiptNo;
+                            const rd = miscReceiptData[0];
+                            miscReceiptDetail = {
+                                receiptNo: rd.receiptNo || receiptNo,
+                                cashierName: rd.cashierName || currentUser.name,
+                                cashOffice: rd.cashOfficeName || sessionDetails?.officeDesc || '',
+                                tenderAmount: rd.tenderAmount ?? tender,
+                                changeAmount: rd.changeAmount ?? change,
+                                outstandingAmount: rd.outstandingAmount,
+                                paymentType: splitType === 'cash' ? 'Cash' : 'Credit Card',
+                                paymentOption: 'Miscellaneous Payment',
+                                accountId: rd.accountId || '',
+                                accName: rd.accName || paidByName,
+                                receiptDate: rd.receiptDate || formattedReceiptDate,
+                                lineItems: miscReceiptData.map((row: any) => ({
+                                    description: row.billType || item.description || 'Direct Income',
+                                    amount: row.tenderAmount ?? row.amount ?? 0,
+                                    vatAmount: row.vatAmount ?? 0,
+                                })),
+                            };
                         }
                     } catch (e) {
                         console.warn(`[Priority 2 ${label}] Could not fetch receipt number`, e);
+                    }
+
+                    if (!miscReceiptDetail) {
+                        miscReceiptDetail = {
+                            receiptNo,
+                            cashierName: currentUser.name || '',
+                            cashOffice: sessionDetails?.officeDesc || '',
+                            tenderAmount: tender,
+                            changeAmount: change,
+                            outstandingAmount: null,
+                            paymentType: splitType === 'cash' ? 'Cash' : 'Credit Card',
+                            paymentOption: 'Miscellaneous Payment',
+                            accountId: '',
+                            accName: paidByName,
+                            receiptDate: formattedReceiptDate,
+                            lineItems: [{ description: item.description || 'Direct Income', amount, vatAmount: Math.round((isVatable ? amount - amount / (1 + vatRate / 100) : 0) * 100) / 100 }],
+                        };
+                        console.log(`[Priority 2 ${label}] Using fallback receipt data for misc item ${scoaItemId}`);
                     }
 
                     if (!finalReceiptNumber) {
@@ -2028,12 +2157,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         updateRecordReceiptNumber(record, finalReceiptNumber);
                     }
 
-                    const splitEntry: SplitReceipt = { receiptNumber: receiptNo, receiptId: miscReceiptId, paymentType: splitType, amount };
+                    const splitEntry: SplitReceipt = { receiptNumber: receiptNo, receiptId: miscReceiptId, paymentType: splitType, amount, receiptDetail: miscReceiptDetail };
 
-                    try {
-                        await platinumPrintMiscellaneousReceipt({}, { id: String(miscReceiptId) });
-                    } catch (e) {
-                        console.warn(`[Priority 2 ${label}] Failed to print misc receipt`, e);
+                    for (let printAttempt = 1; printAttempt <= 2; printAttempt++) {
+                        try {
+                            await platinumPrintMiscellaneousReceipt({}, { id: String(miscReceiptId) });
+                            break;
+                        } catch (e) {
+                            if (printAttempt === 2) console.warn(`[Priority 2 ${label}] Failed to print misc receipt after 2 attempts`, e);
+                            else await new Promise(r => setTimeout(r, 1000));
+                        }
                     }
 
                     try {
@@ -2089,6 +2222,14 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (waterPrepaidItems.length > 0) {
         for (const item of waterPrepaidItems) {
             console.log(`[Priority 4] Water prepaid recharge for ${item.reference}, amount: R${item.amountToPay}`);
+        }
+    }
+
+    if (!record.receiptDetail && record.splitReceipts && record.splitReceipts.length > 0) {
+        const firstWithDetail = record.splitReceipts.find(sr => sr.receiptDetail);
+        if (firstWithDetail?.receiptDetail) {
+            record.receiptDetail = firstWithDetail.receiptDetail;
+            console.log(`[Payment] Promoted receipt detail from split receipt ${firstWithDetail.receiptNumber} to main record`);
         }
     }
 

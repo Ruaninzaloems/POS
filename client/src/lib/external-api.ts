@@ -525,17 +525,37 @@ export interface PosMultiReceiptPrintItem {
     outstandingAmount: number | null;
 }
 
-export async function fetchPosMultiReceiptPrint(receiptId: string): Promise<PosMultiReceiptPrintItem[]> {
-    try {
-        const params = new URLSearchParams();
-        params.append('receiptId', receiptId);
-        const res = await apiFetch(`/api/proxy/pos-multi-receipt-print?${params.toString()}`);
-        if (res.ok) {
-            const data = await res.json();
-            return Array.isArray(data) ? data : (data.value || []);
+export async function fetchPosMultiReceiptPrint(receiptId: string, maxRetries: number = 3): Promise<PosMultiReceiptPrintItem[]> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            const params = new URLSearchParams();
+            params.append('receiptId', receiptId);
+            const res = await apiFetch(`/api/proxy/pos-multi-receipt-print?${params.toString()}`);
+            if (res.ok) {
+                const data = await res.json();
+                const items = Array.isArray(data) ? data : (data.value || []);
+                if (items.length > 0) return items;
+                if (attempt < maxRetries) {
+                    const delay = 800 * Math.pow(2, attempt - 1);
+                    console.log(`[ReceiptFetch] receiptId ${receiptId} returned empty on attempt ${attempt}/${maxRetries}, retrying in ${delay}ms...`);
+                    await new Promise(r => setTimeout(r, delay));
+                    continue;
+                }
+            } else if (attempt < maxRetries) {
+                const delay = 800 * Math.pow(2, attempt - 1);
+                console.log(`[ReceiptFetch] receiptId ${receiptId} returned ${res.status} on attempt ${attempt}/${maxRetries}, retrying in ${delay}ms...`);
+                await new Promise(r => setTimeout(r, delay));
+                continue;
+            }
+        } catch (e) {
+            if (attempt < maxRetries) {
+                const delay = 800 * Math.pow(2, attempt - 1);
+                console.warn(`[ReceiptFetch] receiptId ${receiptId} failed on attempt ${attempt}/${maxRetries}, retrying in ${delay}ms...`, e);
+                await new Promise(r => setTimeout(r, delay));
+                continue;
+            }
+            console.warn(`[ReceiptFetch] receiptId ${receiptId} failed after ${maxRetries} attempts`, e);
         }
-    } catch (e) {
-        console.warn(`Failed to fetch pos multi receipt print for receiptId ${receiptId}`, e);
     }
     return [];
 }

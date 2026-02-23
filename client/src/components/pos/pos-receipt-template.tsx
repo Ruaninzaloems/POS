@@ -68,17 +68,97 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
   }
 
   if (!hasApiData) {
+    const firstItem = transaction.items[0];
+    const hasBasicData = transaction.receiptNumber || transaction.totalAmount > 0;
+    const paymentMethod = transaction.payment.card > 0 && transaction.payment.cash > 0
+      ? 'Split (Cash + Card)'
+      : transaction.payment.card > 0 ? 'Credit Card' : 'Cash';
+    const txDate = new Date(transaction.timestamp);
+    const dateStr = txDate.toLocaleString('en-ZA', {
+      timeZone: 'Africa/Johannesburg',
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false
+    }).replace(',', '');
+
     return (
       <div ref={ref} className="bg-white p-4 mx-auto text-[11px] font-mono leading-relaxed receipt-print w-[340px]">
-        <div className="text-center mb-4">
+        <div className="text-center mb-3">
           <h1 className="font-bold text-sm mb-0.5">{muniInfo?.name || 'George UAT Municipality'}</h1>
+          {muniInfo?.address1 && <p className="text-[9px] text-gray-500">{muniInfo.address1}</p>}
         </div>
-        <div className="border-t border-gray-300 pt-4 text-center">
-          <div className="text-red-600 font-bold text-xs mb-2">RECEIPT DATA NOT AVAILABLE</div>
-          <p className="text-[10px] text-gray-600">Receipt data could not be retrieved from the billing system.</p>
-          <p className="text-[10px] text-gray-600 mt-1">Receipt Number: {transaction.receiptNumber || 'Unknown'}</p>
-          <p className="text-[10px] text-gray-600 mt-1">Please contact support or reprint from the View Receipts screen.</p>
+        <div className="border-t border-dashed border-gray-400 pt-2 mb-2">
+          <div className="flex justify-between mb-0.5">
+            <span className="text-gray-500">Receipt No:</span>
+            <span className="font-bold">{transaction.receiptNumber || 'Pending'}</span>
+          </div>
+          <div className="flex justify-between mb-0.5">
+            <span className="text-gray-500">Date:</span>
+            <span>{dateStr}</span>
+          </div>
+          {firstItem?.reference && (
+            <div className="flex justify-between mb-0.5">
+              <span className="text-gray-500">Account:</span>
+              <span>{firstItem.reference}</span>
+            </div>
+          )}
+          {firstItem?.description && (
+            <div className="flex justify-between mb-0.5">
+              <span className="text-gray-500">Description:</span>
+              <span className="text-right max-w-[180px] truncate">{firstItem.description}</span>
+            </div>
+          )}
+          <div className="flex justify-between mb-0.5">
+            <span className="text-gray-500">Payment:</span>
+            <span>{paymentMethod}</span>
+          </div>
         </div>
+        <div className="border-t border-dashed border-gray-400 pt-2 mb-2">
+          {transaction.items.map((item, idx) => (
+            <div key={idx} className="flex justify-between mb-0.5">
+              <span className="flex-1 truncate mr-2">{item.description || 'Payment'}</span>
+              <span className="font-bold">R {item.amountToPay.toFixed(2)}</span>
+            </div>
+          ))}
+        </div>
+        <div className="border-t border-dashed border-gray-400 pt-2">
+          <div className="flex justify-between font-bold text-xs">
+            <span>TOTAL</span>
+            <span>R {transaction.totalAmount.toFixed(2)}</span>
+          </div>
+          {transaction.payment.cash > 0 && (
+            <div className="flex justify-between mt-1">
+              <span className="text-gray-500">Cash Tendered:</span>
+              <span>R {transaction.payment.cash.toFixed(2)}</span>
+            </div>
+          )}
+          {transaction.payment.card > 0 && (
+            <div className="flex justify-between mt-0.5">
+              <span className="text-gray-500">Card:</span>
+              <span>R {transaction.payment.card.toFixed(2)}</span>
+            </div>
+          )}
+          {(transaction.payment.cash > transaction.totalAmount - transaction.payment.card) && (
+            <div className="flex justify-between mt-0.5">
+              <span className="text-gray-500">Change:</span>
+              <span>R {Math.max(0, transaction.payment.cash - (transaction.totalAmount - transaction.payment.card)).toFixed(2)}</span>
+            </div>
+          )}
+        </div>
+        {!hasBasicData && (
+          <div className="border-t border-gray-300 pt-3 mt-3 text-center">
+            <p className="text-[9px] text-gray-500">Detailed receipt data could not be retrieved.</p>
+            <p className="text-[9px] text-gray-500">Please reprint from the View Receipts screen.</p>
+          </div>
+        )}
+        {isReprint && (
+          <div className="text-center mt-3 text-[9px] text-gray-500 italic">*** REPRINT ***</div>
+        )}
+        {isCancelled && (
+          <div className="text-center mt-2">
+            <span className="text-red-600 font-bold text-xs">*** CANCELLED ***</span>
+          </div>
+        )}
       </div>
     );
   }
