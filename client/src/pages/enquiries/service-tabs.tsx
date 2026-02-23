@@ -13,6 +13,7 @@ import {
   getPrepaidRechargeDetailsForMeter, getAllServices, getConsumptionUnits,
   getServicesSearchResults,
 } from '@/lib/enquiries-service';
+import { getServiceTypeDesc, getMeterClassificationDesc, isServicePrepaidByType } from '@/lib/service-lookups';
 import { LoadingSkeleton, EmptyState, ErrorState, InfoField, SectionHeader, PaginatedTable, TabCard, getFinYearOptions, MONTHS } from './shared';
 import { downloadExcel } from '@/lib/excel-export';
 
@@ -340,7 +341,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
             const commencementDate = svc.serviceCommencementDate || svc.commencementDate
               ? new Date(svc.serviceCommencementDate || svc.commencementDate).toLocaleDateString('en-ZA')
               : svc.startDate || '-';
-            const svcName = svc.tariffType || svc.serviceDesc || svc.serviceDescription || svc.serviceType || 'Service';
+            const svcName = getServiceTypeDesc(svc) || 'Service';
             const serviceMode = svc.serviceModeDesc || svc.serviceMode || '';
             const colors = getSvcColor(svcName);
 
@@ -397,7 +398,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
                     </div>
                     <div>
                       <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Tariff Type</div>
-                      <div className="text-[12px] text-slate-700 mt-0.5">{svc.tariffType || svc.serviceDesc || svc.serviceDescription || '-'}</div>
+                      <div className="text-[12px] text-slate-700 mt-0.5">{getServiceTypeDesc(svc) || '-'}</div>
                     </div>
                     {serviceMode && (
                       <div>
@@ -1490,7 +1491,7 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
     const meterSvcDesc = (selectedMeter.serviceDesc || selectedMeter.serviceDescription || '').toLowerCase();
     const meterTariff = (selectedMeter.tariff || '').toLowerCase();
     const matched = services.find((svc: any) => {
-      const svcType = (svc.tariffType || svc.serviceDesc || svc.serviceDescription || '').toLowerCase();
+      const svcType = getServiceTypeDesc(svc).toLowerCase();
       const svcTariff = (svc.tariff || '').toLowerCase();
       if (meterSvcDesc && svcType && meterSvcDesc.includes(svcType.split(' ')[0])) return true;
       if (meterTariff && svcTariff && meterTariff === svcTariff) return true;
@@ -1636,8 +1637,8 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
           </div>
           <div className="p-3 sm:p-4">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-4 gap-y-2 mb-4 border border-slate-200 rounded-xl p-2.5 sm:p-3 bg-slate-50">
-              <div><span className="text-[10px] text-slate-400 block">Service Type</span><span className="text-xs font-medium text-slate-700">{selectedMeter.serviceDesc || '-'}</span></div>
-              <div><span className="text-[10px] text-slate-400 block">Meter Classification</span><span className="text-xs font-medium text-slate-700">{selectedMeter.meterClassificationDesc || '-'}</span></div>
+              <div><span className="text-[10px] text-slate-400 block">Service Type</span><span className="text-xs font-medium text-slate-700">{getServiceTypeDesc(selectedMeter) || '-'}</span></div>
+              <div><span className="text-[10px] text-slate-400 block">Meter Classification</span><span className="text-xs font-medium text-slate-700">{getMeterClassificationDesc(selectedMeter) || '-'}</span></div>
               <div><span className="text-[10px] text-slate-400 block">Tariff</span><span className="text-xs font-medium text-slate-700 break-words">{selectedMeter.tariff || '-'}</span></div>
               <div><span className="text-[10px] text-slate-400 block">Factor</span><span className="text-xs font-medium text-slate-700">{selectedMeter.tarifffactor ?? '-'}</span></div>
               <div><span className="text-[10px] text-slate-400 block">Physical Meter No</span><span className="text-xs font-medium text-slate-700">{selectedMeter.physicalMeterNo || '-'}</span></div>
@@ -1909,14 +1910,15 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
       {allServices.length > 0 && (() => {
         const prepaidMeterNos = new Set(prepaidMeters.map((p: any) => (p.prepaidMeterNo || p.meterNumber || p.physicalMeterNumber || p.meterNo || '').toLowerCase()).filter(Boolean));
         const isServicePrepaid = (s: any) => {
-          const desc = (s.serviceDesc || s.tariffType || s.description || s.serviceDescription || s.tariff || s.tariffCode || s.tariffDescription || s.serviceType || '').toLowerCase();
+          if (isServicePrepaidByType(s)) return true;
+          const desc = getServiceTypeDesc(s).toLowerCase();
           if (desc.includes('prepaid') || desc.includes('pre-paid') || desc.includes('pre paid')) return true;
           const meterNo = (s.meterNo || s.meterNumber || '').toLowerCase();
           if (meterNo && prepaidMeterNos.has(meterNo)) return true;
           return false;
         };
         const getServiceIcon = (s: any) => {
-          const desc = (s.serviceDesc || s.tariffType || s.serviceType || s.serviceTypeDescription || s.description || '').toLowerCase();
+          const desc = getServiceTypeDesc(s).toLowerCase();
           if (desc.includes('water')) return { icon: '💧', color: 'text-blue-600' };
           if (desc.includes('electric') || desc.includes('elec')) return { icon: '⚡', color: 'text-amber-500' };
           if (desc.includes('sewer') || desc.includes('sanit') || desc.includes('efflu')) return { icon: '🔧', color: 'text-purple-600' };
@@ -1959,14 +1961,14 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                   <span className="text-lg">{svcIcon.icon}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-xs font-bold text-slate-800 truncate">{s.serviceDesc || s.serviceType || s.tariffType || s.serviceTypeDescription || s.description || '-'}</span>
+                      <span className="text-xs font-bold text-slate-800 truncate">{getServiceTypeDesc(s) || '-'}</span>
                       {isPrepaid ? (
                         <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">⚡ Prepaid</span>
                       ) : (s.meterNo || s.meterNumber) ? (
                         <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-800 border border-blue-200">📊 Conventional</span>
                       ) : null}
                     </div>
-                    <span className="text-[10px] text-slate-500">{s.classification || s.meterClassification || ''}</span>
+                    <span className="text-[10px] text-slate-500">{getMeterClassificationDesc(s)}</span>
                   </div>
                   <div className="flex flex-col items-end gap-0.5 shrink-0">
                     {(s.meterStatus || s.statusDesc) && (
@@ -2030,9 +2032,9 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                       <div className="flex items-center gap-2">
                         <span className="text-sm">{svcIcon.icon}</span>
                         <div>
-                          <span className="font-medium text-slate-800">{s.serviceDesc || s.serviceType || s.tariffType || '-'}</span>
-                          {s.tariffType && s.serviceDesc && s.tariffType !== s.serviceDesc && (
-                            <span className="block text-[10px] text-slate-500">{s.tariffType}</span>
+                          <span className="font-medium text-slate-800">{getServiceTypeDesc(s) || '-'}</span>
+                          {getMeterClassificationDesc(s) && (
+                            <span className="block text-[10px] text-slate-500">{getMeterClassificationDesc(s)}</span>
                           )}
                         </div>
                       </div>
@@ -2086,6 +2088,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
       {(() => {
         const prepaidMeterNosSet = new Set(prepaidMeters.map((p: any) => (p.prepaidMeterNo || p.meterNumber || p.physicalMeterNumber || p.meterNo || '').toLowerCase()).filter(Boolean));
         const isMeterPrepaid = (m: any) => {
+          if (isServicePrepaidByType(m)) return true;
           const desc = (m.serviceType || m.serviceTypeDescription || m.serviceDesc || m.tariffCode || m.tariff || m.classification || '').toLowerCase();
           if (desc.includes('prepaid') || desc.includes('pre-paid')) return true;
           const mNo = (m.meterNo || m.meterNumber || m.physicalMeterNumber || '').toLowerCase();
@@ -2157,8 +2160,8 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                     <Gauge className="w-4 h-4 text-blue-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <span className="text-xs font-bold text-slate-800 truncate block">{m.serviceType || m.serviceTypeDescription || m.serviceDesc || m.serviceDescription || '-'}</span>
-                    <span className="text-[10px] text-slate-500">{m.classification || m.meterClassification || m.meterType || ''}</span>
+                    <span className="text-xs font-bold text-slate-800 truncate block">{getServiceTypeDesc(m) || '-'}</span>
+                    <span className="text-[10px] text-slate-500">{getMeterClassificationDesc(m)}</span>
                   </div>
                   <div className="flex flex-col items-end gap-0.5 shrink-0">
                     <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-semibold border ${isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-red-100 text-red-600 border-red-200'}`}>
@@ -2204,8 +2207,8 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                   <tr key={i} className={`border-b border-slate-100 cursor-pointer transition-colors ${isSelected ? 'bg-teal-50 ring-1 ring-teal-300' : 'hover:bg-teal-50/30'}`}
                     onClick={() => viewConsumption(m)}
                   >
-                    <td className="py-2 px-3 font-medium">{m.serviceType || m.serviceTypeDescription || m.serviceDesc || m.serviceDescription || '-'}</td>
-                    <td className="py-2 px-3 text-xs">{m.classification || m.meterClassification || m.meterType || '-'}</td>
+                    <td className="py-2 px-3 font-medium">{getServiceTypeDesc(m) || '-'}</td>
+                    <td className="py-2 px-3 text-xs">{getMeterClassificationDesc(m) || '-'}</td>
                     <td className="py-2 px-3 font-mono font-semibold text-blue-700">{m.meterNo || m.meterNumber || '-'}</td>
                     <td className="py-2 px-3 font-mono text-sm">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</td>
                     <td className="py-2 px-3 text-xs max-w-[150px] truncate">{m.tariffCode || m.tariff || m.tariffDescription || '-'}</td>
@@ -2259,7 +2262,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 text-sm">
                 <div>
                   <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Service Type</span>
-                  <p className="font-medium text-slate-800 mt-0.5">{consumptionMeter.serviceDesc || consumptionMeter.tariffType || consumptionMeter.serviceType || consumptionMeter.serviceTypeDescription || consumptionMeter.description || '-'}</p>
+                  <p className="font-medium text-slate-800 mt-0.5">{getServiceTypeDesc(consumptionMeter) || '-'}</p>
                 </div>
                 <div>
                   <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Meter No</span>
