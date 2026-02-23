@@ -3601,6 +3601,7 @@ export async function registerRoutes(
         '/api/BillingDashboard/get-final-services-with-no-meter-reading',
         '/api/BillingDashboard/get-journals-pending-review',
         '/api/BillingDashboard/get-meter-pending-status',
+        '/api/BillingDashboard/get-meter-changes-pending-list',
         '/api/BillingDashboard/get-meter-removal-declined-alerts',
         '/api/BillingDashboard/get-meter-removal-readings-required',
         '/api/BillingDashboard/get-meterbook-with-no-route-file',

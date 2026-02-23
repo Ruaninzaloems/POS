@@ -125,18 +125,48 @@ const FRIENDLY_LABELS: Record<string, string> = {
     terminationAuthorisation: 'Termination Authorisation',
     disqualificationAuthorisation: 'Disqualification Authorisation',
     applicationDeclined: 'Application Declined',
+    finalReadingApprovalPendingMeterChange: 'Final Reading Approval Pending (Meter Change)',
+    firstAndFinalReadingsRequired: 'First & Final Readings Required',
+    repaymentPlansAwaitingAuthorisation: 'Repayment Plans Awaiting Authorisation',
+    repaymentPlansAwaitingTerminationAuthorisation: 'Repayment Plans Awaiting Termination Authorisation',
+    cutoffHistory: 'Cut-Off History',
+    declinedJournals: 'Declined Journals',
+    journalsPendingReview: 'Journals Pending Review',
+    notLinkedService: 'Not Linked Service',
+    unpaidTransactions: 'Unpaid Transactions',
+    directDepositsAllocation: 'Direct Deposits Allocation',
+    thirdPartyPaymentPending: 'Third Party Payment Pending',
+    postDatedChequeSearch: 'Post-Dated Cheque Search',
+    propertyRegistrationAlert: 'Property Registration Alert',
+    propertiesWithoutPartitions: 'Properties Without Partitions',
+    noBillingCycleUnitData: 'No Billing Cycle Unit Data',
+    consolidationPropertyDetails: 'Consolidation Property Details',
+    consolidatedPropertyDetailItems: 'Consolidated Property Detail Items',
+    valuationExpired: 'Valuation Expired',
+    meterChangesPendingList: 'Meter Changes Pending',
+    consumerBillingRunApprovalPending: 'Consumer Billing Run Approval Pending',
 };
 
 const SUB_ITEM_ENDPOINT_MAP: Record<string, string> = {
+    // Account sub-items
     deposit: '/api/BillingDashboard/get-deposit-table-data',
-    propertyRatesAccountException: '/api/BillingDashboard/get-property-registration-alert-table-data',
+    propertyRatesAccountException: '/api/BillingDashboard/get-property-rates-account-exception-table-data',
     propServiceDeclinedRequest: '/api/BillingDashboard/get-status-change-declined-table-data',
     propDeclinedRequest: '/api/BillingDashboard/get-status-change-declined-table-data',
-    tariffChangeAwaitingAuthorisation: '/api/BillingDashboard/get-tariff-change-request-declined-table-data',
-    generalValuationServiceNotification: '/api/BillingDashboard/get-property-registration-alert-table-data',
+    tariffChangeAwaitingAuthorisation: '/api/BillingDashboard/get-tariff-change-request-table-data',
+    generalValuationServiceNotification: '/api/BillingDashboard/get-general-valuation-service-notification-table-data',
+    unit: '/api/BillingDashboard/get-unit-table-data',
+    account: '/api/BillingDashboard/get-account-table-data',
+    propOwner: '/api/BillingDashboard/get-property-owner-table-data',
+    activeInactivePartition: '/api/BillingDashboard/get-active-inactive-partition-table-data',
+    interestWaiverHistory: '/api/BillingDashboard/get-interest-waiver-history-table-data',
+    interestWaiverCancel: '/api/BillingDashboard/get-interest-waiver-cancel-table-data',
+    paymentExtension: '/api/BillingDashboard/get-payment-extension-table-data',
+    addBillingStartDateIssue: '/api/BillingDashboard/get-billing-start-date-issue-table-data',
     noTariifsInMOC: '/api/BillingDashboard/get-not-included-moc-table-data',
     interestWaiverDeclined: '/api/BillingDashboard/get-interest-waiver-declined-table-data',
     interestwaiverTerminationDecline: '/api/BillingDashboard/get-interest-waiver-termination-application-declined-table-data',
+    // Consumption sub-items
     firstAndFinalAwaitingApproval: '/api/BillingDashboard/get-first-and-final-outstanding',
     meterRemovalAwaitingApproval: '/api/BillingDashboard/get-meter-removal-readings-required',
     billingCycleDueAlerts: '/api/BillingDashboard/get-billing-cycle-due-alerts',
@@ -147,39 +177,66 @@ const SUB_ITEM_ENDPOINT_MAP: Record<string, string> = {
     notSequencedMeters: '/api/BillingDashboard/get-not-sequenced-meters',
     outstandingMeterbooks: '/api/BillingDashboard/get-report-meters',
     meterPendingStatus: '/api/BillingDashboard/get-meter-pending-status',
+    meterChangesPendingList: '/api/BillingDashboard/get-meter-changes-pending-list',
     finalServicesWithNoMeterReading: '/api/BillingDashboard/get-final-services-with-no-meter-reading',
     firstAndFinalApproved: '/api/BillingDashboard/get-first-and-final-outstanding',
     meterRemovalReadingsRequired: '/api/BillingDashboard/get-meter-removal-readings-required',
     firstAndFinalOutstanding: '/api/BillingDashboard/get-first-and-final-outstanding',
     firstAndFinalDeclinedAlerts: '/api/BillingDashboard/get-first-and-final-declined-alerts',
     meterRemovalDeclinedAlerts: '/api/BillingDashboard/get-meter-removal-declined-alerts',
+    finalReadingApprovalPendingMeterChange: '/api/BillingDashboard/get-final-reading-approval-pending-meter-change',
+    firstAndFinalReadingsRequired: '/api/BillingDashboard/get-first-and-final-readings-required',
+    // Debt sub-items
     accountsForReconnectionCount: '/api/BillingDashboard/get-bad-debt-reconciliation',
     debtWriteOffAuthorisationCount: '/api/BillingDashboard/get-bad-debt-reconciliation',
     employeeDeductionSetupCount: '/api/BillingDashboard/get-employee-deduction-alerts',
     repaymentPlansDeclinedCount: '/api/BillingDashboard/get-repayment-plan-declined',
     repaymentPlansApprovedButNotActivatedCount: '/api/BillingDashboard/get-repayment-plan-approved-not-activated',
+    repaymentPlansAwaitingAuthorisation: '/api/BillingDashboard/get-repayment-plan-awaiting-authorisation',
+    repaymentPlansAwaitingTerminationAuthorisation: '/api/BillingDashboard/get-repayment-plans-awaiting-termination-authorisation',
+    cutoffHistory: '/api/BillingDashboard/get-cutoff-history',
+    // Billing sub-items
     billingCyclePreparation: '/api/BillingDashboard/get-billing-cycle-preparation-alerts-table-data',
+    consumerBillingRunApprovalPending: '/api/BillingDashboard/get-billing-run-progress-table-data',
     billingRunProgress: '/api/BillingDashboard/get-billing-run-progress-table-data',
     reviewRatesRun: '/api/BillingDashboard/get-billing-run-progress-table-data',
     ratesAutorunSupplementaryRollsNotProcessed: '/api/BillingDashboard/get-billing-run-progress-table-data',
     ratesAutorunGeneralSupplementaryValuationsReachedTheirExpiryDate: '/api/BillingDashboard/get-billing-run-progress-table-data',
+    // Property sub-items
     approveGeneralValuationRoll: '/api/BillingDashboard/get-declined-valuations-table-data',
     approveSupplementaryValuationRoll: '/api/BillingDashboard/get-declined-valuations-table-data',
     unitIncompleteWorkflowCapture: '/api/BillingDashboard/get-unit-incomplete-workflow-capture-table-data',
+    propertyRegistrationAlert: '/api/BillingDashboard/get-property-registration-alert-table-data',
+    propertiesWithoutPartitions: '/api/BillingDashboard/get-properties-without-partitions-table-data',
+    noBillingCycleUnitData: '/api/BillingDashboard/get-no-billing-cycle-unit-table-data',
     outstandingValuations: '/api/BillingDashboard/get-declined-valuations-table-data',
+    valuationExpired: '/api/BillingDashboard/get-valuation-expired',
     declinedValuations: '/api/BillingDashboard/get-declined-valuations-table-data',
+    consolidationPropertyDetails: '/api/BillingDashboard/get-consolidation-property-details-table-data',
+    consolidatedPropertyDetailItems: '/api/BillingDashboard/get-consolidated-property-detail-items-table-data',
+    transferOwnershipDeclined: '/api/BillingDashboard/get-transfer-ownership-declined-table-data',
+    subdivisionDeclined: '/api/BillingDashboard/get-subdivision-declined-table-data',
+    // POS sub-items
     clearedClearanceList: '/api/BillingDashboard/get-cleared-clearance-list-table-data',
     clearanceStagingSection118_1Waiting: '/api/BillingDashboard/get-clearance-staging-section-118-1-waiting-table-data',
     clearanceStagingSection118_4Waiting: '/api/BillingDashboard/get-clearance-staging-section-118-4-waiting-table-data',
     clearanceStagingSection118_1Declined: '/api/BillingDashboard/get-clearance-staging-section-118-1-declined-table-data',
     clearanceStagingSection118_4Declined: '/api/BillingDashboard/get-clearance-staging-section-118-4-declined-table-data',
-    transferOwnershipDeclined: '/api/BillingDashboard/get-transfer-ownership-declined-table-data',
-    subdivisionDeclined: '/api/BillingDashboard/get-subdivision-declined-table-data',
+    unpaidTransactions: '/api/BillingDashboard/get-unpaid-transactions',
+    directDepositsAllocation: '/api/BillingDashboard/get-direct-deposits-allocation-table-data',
+    thirdPartyPaymentPending: '/api/BillingDashboard/get-third-party-payment-pending-table-data',
+    postDatedChequeSearch: '/api/BillingDashboard/get-post-dated-cheque-search-table-data',
+    // Indigent Subsidy sub-items
     awaitingVerification: '/api/BillingDashboard/get-awating-verification',
     applicationAuthorisation: '/api/BillingDashboard/get-attp-applicatoin-authorization-details',
     terminationAuthorisation: '/api/BillingDashboard/get-attp-applicatoin-termination-details',
     applicationDeclined: '/api/BillingDashboard/get-awaiting-application-declined-details',
     disqualificationAuthorisation: '/api/BillingDashboard/get-automatic-disqualification',
+    // Journal sub-items
+    declinedJournals: '/api/BillingDashboard/get-declined-journals',
+    journalsPendingReview: '/api/BillingDashboard/get-journals-pending-review',
+    // Rebate sub-items
+    notLinkedService: '/api/BillingDashboard/get-not-linked-service-table-data',
 };
 
 const SKIP_KEYS = new Set(['totalCount', 'total', 'totalRecords']);
@@ -405,12 +462,12 @@ function DetailTable({ endpoint, label }: { endpoint: string; label?: string }) 
                     </Button>
                 </div>
             </div>
-            <div className="overflow-x-auto max-h-[350px]">
-                <Table>
-                    <TableHeader>
+            <div className="overflow-x-auto overflow-y-auto max-h-[350px] scrollbar-thin">
+                <Table className="min-w-max">
+                    <TableHeader className="sticky top-0 z-10">
                         <TableRow className="bg-slate-50/80">
                             {columns.map(col => (
-                                <TableHead key={col} className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 whitespace-nowrap py-2">
+                                <TableHead key={col} className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 whitespace-nowrap py-2 px-3">
                                     {friendlyLabel(col)}
                                 </TableHead>
                             ))}
@@ -423,12 +480,12 @@ function DetailTable({ endpoint, label }: { endpoint: string; label?: string }) 
                                     const val = row[col];
                                     const isAmount = typeof val === 'number' && /amount|balance|total|value/i.test(col);
                                     return (
-                                        <TableCell key={col} className="text-xs py-2">
+                                        <TableCell key={col} className="text-xs py-2 px-3 whitespace-nowrap">
                                             {val === null || val === undefined ? <span className="text-slate-300">—</span>
                                                 : isAmount ? <span className="font-mono">R {val.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
                                                 : typeof val === 'boolean' ? (val ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <XCircle className="w-3.5 h-3.5 text-red-400" />)
                                                 : typeof val === 'number' ? val.toLocaleString()
-                                                : String(val).length > 60 ? String(val).slice(0, 57) + '...'
+                                                : String(val).length > 80 ? String(val).slice(0, 77) + '...'
                                                 : String(val)}
                                         </TableCell>
                                     );
@@ -509,18 +566,18 @@ function GraphsPanel() {
                     </Button>
                 </div>
                 <div className="border rounded-lg overflow-hidden bg-white">
-                    <div className="overflow-x-auto max-h-[250px]">
-                        <Table>
-                            <TableHeader>
+                    <div className="overflow-x-auto overflow-y-auto max-h-[250px] scrollbar-thin">
+                        <Table className="min-w-max">
+                            <TableHeader className="sticky top-0 z-10">
                                 <TableRow className="bg-slate-50">
-                                    {cols.map(c => <TableHead key={c} className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 whitespace-nowrap">{friendlyLabel(c)}</TableHead>)}
+                                    {cols.map(c => <TableHead key={c} className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 whitespace-nowrap px-3">{friendlyLabel(c)}</TableHead>)}
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {items.map((row: any, i: number) => (
                                     <TableRow key={i} className="hover:bg-purple-50/30">
                                         {cols.map(c => (
-                                            <TableCell key={c} className="text-xs py-2">
+                                            <TableCell key={c} className="text-xs py-2 px-3 whitespace-nowrap">
                                                 {typeof row[c] === 'number' ? row[c].toLocaleString('en-ZA', row[c] % 1 !== 0 ? { minimumFractionDigits: 2 } : {}) : String(row[c] ?? '')}
                                             </TableCell>
                                         ))}
