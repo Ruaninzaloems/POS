@@ -1130,6 +1130,10 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
     const isReversal = type.includes('reversal') || type.includes('reversed');
     if (isCancelled || isRefund || isReversal) return false;
     return true;
+  }).sort((a: any, b: any) => {
+    const da = new Date(a.receiptDate || a.transactionDate || 0).getTime();
+    const db = new Date(b.receiptDate || b.transactionDate || 0).getTime();
+    return da - db;
   });
   const refunds = txnHistory.filter((t: any) => {
     const type = (t.transactionType || t.receiptType || t.type || t.paymentType || '').toLowerCase();
@@ -1139,6 +1143,10 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
     const type = (t.transactionType || t.receiptType || t.type || t.paymentType || '').toLowerCase();
     const isCancelled = !!(t.isCancelled || t.cancelReason || t.cancelReson);
     return type.includes('reversal') || type.includes('reversed') || type.includes('cancel') || isCancelled;
+  }).sort((a: any, b: any) => {
+    const da = new Date(a.receiptDate || a.transactionDate || 0).getTime();
+    const db = new Date(b.receiptDate || b.transactionDate || 0).getTime();
+    return da - db;
   });
 
   const handlePrintReceipt = async (p: any) => {
