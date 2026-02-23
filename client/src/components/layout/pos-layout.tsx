@@ -46,10 +46,18 @@ interface PosLayoutProps {
 
 export function PosLayout({ children }: PosLayoutProps) {
   const [location, setLocation] = useLocation();
-  const { currentUser, activeSession, sessionLoading, endSession, viewMode, toggleViewMode, sessionDetails, dayEndStatus, platinumUser, cashierRegistered, apiSessionActive } = usePos();
+  const { currentUser, activeSession, sessionLoading, endSession, viewMode, toggleViewMode, sessionDetails, dayEndStatus, platinumUser, cashierRegistered, apiSessionActive, clearTransaction } = usePos();
 
   const isPosPage = location === '/pos';
   const isReceiptingPage = isPosPage || location.startsWith('/view-receipts');
+
+  const prevLocationRef = React.useRef(location);
+  useEffect(() => {
+      if (prevLocationRef.current === '/pos' && location !== '/pos') {
+          clearTransaction();
+      }
+      prevLocationRef.current = location;
+  }, [location, clearTransaction]);
 
   useEffect(() => {
       if (!activeSession && !sessionLoading && location === '/pos') {
