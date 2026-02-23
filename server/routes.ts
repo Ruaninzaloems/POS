@@ -1094,7 +1094,53 @@ export async function registerRoutes(
         }
       } catch (e: any) { console.warn(`[receipt-discovery] cheque-list failed:`, e.message); }
 
-      // Strategy 5: Try all above with userId instead if cashierId gave no results
+      // Strategy 5: system-vs-cashier-data-list — shows all system-recorded transactions
+      try {
+        console.log(`[receipt-discovery] Trying system-vs-cashier-data-list with id=${cashierId}`);
+        const sysData = await platinumPost(session, "/api/billing/auth-day-end-reconcile/system-vs-cashier-data-list", pagerBody, { id: cashierId });
+        const sysItems = Array.isArray(sysData) ? sysData :
+          (sysData && typeof sysData === 'object' && !sysData._error ? sysData.items || sysData.value || sysData.data || [] : []);
+        if (Array.isArray(sysItems) && sysItems.length > 0) {
+          console.log(`[receipt-discovery] system-vs-cashier-data-list returned ${sysItems.length} items`);
+          sysItems.forEach((item: any) => { item._source = 'system-vs-cashier'; });
+          allReceipts.push(...sysItems);
+        } else {
+          console.log(`[receipt-discovery] system-vs-cashier-data-list: empty or error`, JSON.stringify(sysData).substring(0, 300));
+        }
+      } catch (e: any) { console.warn(`[receipt-discovery] system-vs-cashier-data-list failed:`, e.message); }
+
+      // Strategy 6: billing-payment-day-end-reconcile versions (different controller)
+      if (allReceipts.length === 0) {
+        try {
+          console.log(`[receipt-discovery] Trying billing-payment cash list with id=${cashierId}`);
+          const bpCashData = await platinumPost(session, "/api/billing-payment-day-end-reconcile/get-cashier-receipt-cash-list", pagerBody, { id: cashierId });
+          const bpCashItems = Array.isArray(bpCashData) ? bpCashData :
+            (bpCashData && typeof bpCashData === 'object' && !bpCashData._error ? bpCashData.items || bpCashData.value || bpCashData.data || [] : []);
+          if (Array.isArray(bpCashItems) && bpCashItems.length > 0) {
+            console.log(`[receipt-discovery] billing-payment cash list returned ${bpCashItems.length} items`);
+            bpCashItems.forEach((item: any) => { item._source = 'bp-cash'; item._paymentType = 'Cash'; });
+            allReceipts.push(...bpCashItems);
+          } else {
+            console.log(`[receipt-discovery] billing-payment cash list: empty or error`, JSON.stringify(bpCashData).substring(0, 300));
+          }
+        } catch (e: any) { console.warn(`[receipt-discovery] billing-payment cash list failed:`, e.message); }
+
+        try {
+          console.log(`[receipt-discovery] Trying billing-payment card list with id=${cashierId}`);
+          const bpCardData = await platinumPost(session, "/api/billing-payment-day-end-reconcile/get-cashier-receipt-card-list", pagerBody, { id: cashierId });
+          const bpCardItems = Array.isArray(bpCardData) ? bpCardData :
+            (bpCardData && typeof bpCardData === 'object' && !bpCardData._error ? bpCardData.items || bpCardData.value || bpCardData.data || [] : []);
+          if (Array.isArray(bpCardItems) && bpCardItems.length > 0) {
+            console.log(`[receipt-discovery] billing-payment card list returned ${bpCardItems.length} items`);
+            bpCardItems.forEach((item: any) => { item._source = 'bp-card'; item._paymentType = 'Credit Card'; });
+            allReceipts.push(...bpCardItems);
+          } else {
+            console.log(`[receipt-discovery] billing-payment card list: empty or error`, JSON.stringify(bpCardData).substring(0, 300));
+          }
+        } catch (e: any) { console.warn(`[receipt-discovery] billing-payment card list failed:`, e.message); }
+      }
+
+      // Strategy 7: Try with userId if cashierId gave no results
       if (allReceipts.length === 0 && userId && userId !== cashierId) {
         console.log(`[receipt-discovery] No results with cashierId=${cashierId}, trying with userId=${userId}`);
         try {
@@ -1118,6 +1164,36 @@ export async function registerRoutes(
             allReceipts.push(...cardItems2);
           }
         } catch (e: any) { console.warn(`[receipt-discovery] cashier-receipt-card-list(userId) failed:`, e.message); }
+      }
+
+      // Strategy 8: Direct receipt number search (look up known receipt numbers from the range)
+      if (allReceipts.length === 0) {
+        try {
+          const validateData = await platinumGet(session, "/api/ReceiptPrepaid/validate-cashier", { userId: userId, finYear: session.userData?.finYear || '2025/2026' });
+          const currentRange = validateData?.receiptRange?.currentRange || validateData?.receiptRangeAvailable?.currentRange;
+          const startRange = validateData?.receiptRange?.startRange || validateData?.receiptRangeAvailable?.startRange;
+          if (currentRange && startRange && currentRange > startRange) {
+            const receiptNumbers = [];
+            for (let i = startRange; i < currentRange; i++) {
+              receiptNumbers.push(String(i));
+            }
+            console.log(`[receipt-discovery] Searching ${receiptNumbers.length} receipt numbers: ${receiptNumbers.join(',')}`);
+            try {
+              const searchResult = await platinumGet(session, "/api/ViewReceipt/search-recept-numbers", {
+                receiptNumbers: receiptNumbers.join(','),
+                CashierId: cashierId
+              });
+              console.log(`[receipt-discovery] search-recept-numbers result:`, JSON.stringify(searchResult).substring(0, 500));
+              const searchItems = Array.isArray(searchResult) ? searchResult :
+                (searchResult && typeof searchResult === 'object' && !searchResult._error ? searchResult.items || searchResult.value || searchResult.data || [] : []);
+              if (Array.isArray(searchItems) && searchItems.length > 0) {
+                console.log(`[receipt-discovery] search-recept-numbers returned ${searchItems.length} items`);
+                searchItems.forEach((item: any) => { item._source = 'receipt-search'; });
+                allReceipts.push(...searchItems);
+              }
+            } catch (e: any) { console.warn(`[receipt-discovery] search-recept-numbers failed:`, e.message); }
+          }
+        } catch (e: any) { console.warn(`[receipt-discovery] receipt range lookup failed:`, e.message); }
       }
 
       console.log(`[receipt-discovery] Total receipts found: ${allReceipts.length}`);
