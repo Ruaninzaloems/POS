@@ -1047,172 +1047,124 @@ export async function registerRoutes(
       const session = requireAuth(req, res); if (!session) return;
       const cashierId = req.query.cashierId as string;
       const userId = session.userData?.user_ID ? String(session.userData.user_ID) : '';
+      const finYear = session.userData?.finYear || '2025/2026';
       console.log(`[receipt-discovery] Starting — cashierId=${cashierId}, userId=${userId}`);
 
-      const pagerBody = { page: 1, pageSize: 500, orderby: null, shortDirection: null };
       const allReceipts: any[] = [];
 
-      // Strategy 1: auth-day-end-reconcile/cashier-receipt-cash-list (POST with id=cashierId)
-      try {
-        console.log(`[receipt-discovery] Trying cashier-receipt-cash-list with id=${cashierId}`);
-        const cashData = await platinumPost(session, "/api/billing/auth-day-end-reconcile/cashier-receipt-cash-list", pagerBody, { id: cashierId });
-        const cashItems = Array.isArray(cashData) ? cashData :
-          (cashData && typeof cashData === 'object' ? cashData.items || cashData.value || cashData.data || [] : []);
-        if (Array.isArray(cashItems) && cashItems.length > 0) {
-          console.log(`[receipt-discovery] cashier-receipt-cash-list returned ${cashItems.length} items`);
-          cashItems.forEach((item: any) => { item._source = 'cash'; item._paymentType = 'Cash'; });
-          allReceipts.push(...cashItems);
-        } else {
-          console.log(`[receipt-discovery] cashier-receipt-cash-list: empty or error`, JSON.stringify(cashData).substring(0, 300));
-        }
-      } catch (e: any) { console.warn(`[receipt-discovery] cashier-receipt-cash-list failed:`, e.message); }
+      // Helper to extract items from various response shapes
+      const extractItems = (data: any): any[] => {
+        if (!data || (data && typeof data === 'object' && data._error)) return [];
+        if (Array.isArray(data)) return data;
+        if (data && typeof data === 'object') return data.items || data.value || data.data || data.results || [];
+        return [];
+      };
 
-      // Strategy 2: auth-day-end-reconcile/cashier-receipt-card-list (POST with id=cashierId)
+      // Step 1: Get receipt range from validate-cashier to know which receipt numbers exist
+      let receiptStart = 0, receiptCurrent = 0;
       try {
-        console.log(`[receipt-discovery] Trying cashier-receipt-card-list with id=${cashierId}`);
-        const cardData = await platinumPost(session, "/api/billing/auth-day-end-reconcile/cashier-receipt-card-list", pagerBody, { id: cashierId });
-        const cardItems = Array.isArray(cardData) ? cardData :
-          (cardData && typeof cardData === 'object' ? cardData.items || cardData.value || cardData.data || [] : []);
-        if (Array.isArray(cardItems) && cardItems.length > 0) {
-          console.log(`[receipt-discovery] cashier-receipt-card-list returned ${cardItems.length} items`);
-          cardItems.forEach((item: any) => { item._source = 'card'; item._paymentType = 'Credit Card'; });
-          allReceipts.push(...cardItems);
-        } else {
-          console.log(`[receipt-discovery] cashier-receipt-card-list: empty or error`, JSON.stringify(cardData).substring(0, 300));
-        }
-      } catch (e: any) { console.warn(`[receipt-discovery] cashier-receipt-card-list failed:`, e.message); }
+        const validateData = await platinumGet(session, "/api/ReceiptPrepaid/validate-cashier", { userId, finYear });
+        receiptStart = validateData?.receiptRange?.startRange || validateData?.receiptRangeAvailable?.startRange || 0;
+        receiptCurrent = validateData?.receiptRange?.currentRange || validateData?.receiptRangeAvailable?.currentRange || 0;
+        console.log(`[receipt-discovery] Receipt range: ${receiptStart} to ${receiptCurrent} (${receiptCurrent - receiptStart} used)`);
+      } catch (e: any) { console.warn(`[receipt-discovery] validate-cashier failed:`, e.message); }
 
-      // Strategy 3: billing-payment-day-end-reconcile/get-cashier-receipt-reconcile-list (GET with id)
-      try {
-        console.log(`[receipt-discovery] Trying reconcile-list with id=${cashierId}`);
-        const reconData = await platinumGet(session, "/api/billing-payment-day-end-reconcile/get-cashier-receipt-reconcile-list", { id: cashierId });
-        const reconItems = Array.isArray(reconData) ? reconData :
-          (reconData && typeof reconData === 'object' && !reconData._error ? reconData.items || reconData.value || reconData.data || [] : []);
-        if (Array.isArray(reconItems) && reconItems.length > 0) {
-          console.log(`[receipt-discovery] reconcile-list returned ${reconItems.length} items`);
-          reconItems.forEach((item: any) => { item._source = 'reconcile'; });
-          allReceipts.push(...reconItems);
-        } else {
-          console.log(`[receipt-discovery] reconcile-list: empty or error`, JSON.stringify(reconData).substring(0, 300));
-        }
-      } catch (e: any) { console.warn(`[receipt-discovery] reconcile-list failed:`, e.message); }
+      // Step 2: Try many different Platinum API endpoints to find receipt data
+      const probeResults: { endpoint: string; status: string; count: number; sample: string }[] = [];
 
-      // Strategy 4: billing-payment-day-end-reconcile/get-cashier-receipt-cheque-list (POST with id)
-      try {
-        const chequeData = await platinumPost(session, "/api/billing-payment-day-end-reconcile/get-cashier-receipt-cheque-list", pagerBody, { id: cashierId });
-        const chequeItems = Array.isArray(chequeData) ? chequeData :
-          (chequeData && typeof chequeData === 'object' && !chequeData._error ? chequeData.items || chequeData.value || chequeData.data || [] : []);
-        if (Array.isArray(chequeItems) && chequeItems.length > 0) {
-          console.log(`[receipt-discovery] cheque-list returned ${chequeItems.length} items`);
-          chequeItems.forEach((item: any) => { item._source = 'cheque'; item._paymentType = 'Cheque'; });
-          allReceipts.push(...chequeItems);
-        }
-      } catch (e: any) { console.warn(`[receipt-discovery] cheque-list failed:`, e.message); }
-
-      // Strategy 5: system-vs-cashier-data-list — shows all system-recorded transactions
-      try {
-        console.log(`[receipt-discovery] Trying system-vs-cashier-data-list with id=${cashierId}`);
-        const sysData = await platinumPost(session, "/api/billing/auth-day-end-reconcile/system-vs-cashier-data-list", pagerBody, { id: cashierId });
-        const sysItems = Array.isArray(sysData) ? sysData :
-          (sysData && typeof sysData === 'object' && !sysData._error ? sysData.items || sysData.value || sysData.data || [] : []);
-        if (Array.isArray(sysItems) && sysItems.length > 0) {
-          console.log(`[receipt-discovery] system-vs-cashier-data-list returned ${sysItems.length} items`);
-          sysItems.forEach((item: any) => { item._source = 'system-vs-cashier'; });
-          allReceipts.push(...sysItems);
-        } else {
-          console.log(`[receipt-discovery] system-vs-cashier-data-list: empty or error`, JSON.stringify(sysData).substring(0, 300));
-        }
-      } catch (e: any) { console.warn(`[receipt-discovery] system-vs-cashier-data-list failed:`, e.message); }
-
-      // Strategy 6: billing-payment-day-end-reconcile versions (different controller)
-      if (allReceipts.length === 0) {
+      const tryEndpoint = async (label: string, method: 'GET' | 'POST', path: string, queryOrBody: any, queryParams?: Record<string, string>) => {
         try {
-          console.log(`[receipt-discovery] Trying billing-payment cash list with id=${cashierId}`);
-          const bpCashData = await platinumPost(session, "/api/billing-payment-day-end-reconcile/get-cashier-receipt-cash-list", pagerBody, { id: cashierId });
-          const bpCashItems = Array.isArray(bpCashData) ? bpCashData :
-            (bpCashData && typeof bpCashData === 'object' && !bpCashData._error ? bpCashData.items || bpCashData.value || bpCashData.data || [] : []);
-          if (Array.isArray(bpCashItems) && bpCashItems.length > 0) {
-            console.log(`[receipt-discovery] billing-payment cash list returned ${bpCashItems.length} items`);
-            bpCashItems.forEach((item: any) => { item._source = 'bp-cash'; item._paymentType = 'Cash'; });
-            allReceipts.push(...bpCashItems);
+          let data: any;
+          if (method === 'GET') {
+            data = await platinumGet(session, path, queryOrBody as Record<string, string>);
           } else {
-            console.log(`[receipt-discovery] billing-payment cash list: empty or error`, JSON.stringify(bpCashData).substring(0, 300));
+            data = await platinumPost(session, path, queryOrBody, queryParams);
           }
-        } catch (e: any) { console.warn(`[receipt-discovery] billing-payment cash list failed:`, e.message); }
+          const items = extractItems(data);
+          const raw = JSON.stringify(data).substring(0, 400);
+          probeResults.push({ endpoint: `${method} ${path}`, status: items.length > 0 ? 'DATA' : (data?._error ? `ERROR ${data.status}` : 'EMPTY'), count: items.length, sample: raw });
+          console.log(`[receipt-discovery] ${label}: ${items.length > 0 ? items.length + ' items' : (data?._error ? 'ERROR ' + data.status : 'empty')} — ${raw.substring(0, 200)}`);
+          return items;
+        } catch (e: any) {
+          probeResults.push({ endpoint: `${method} ${path}`, status: `EXCEPTION: ${e.message}`, count: 0, sample: '' });
+          console.warn(`[receipt-discovery] ${label} failed:`, e.message);
+          return [];
+        }
+      };
 
-        try {
-          console.log(`[receipt-discovery] Trying billing-payment card list with id=${cashierId}`);
-          const bpCardData = await platinumPost(session, "/api/billing-payment-day-end-reconcile/get-cashier-receipt-card-list", pagerBody, { id: cashierId });
-          const bpCardItems = Array.isArray(bpCardData) ? bpCardData :
-            (bpCardData && typeof bpCardData === 'object' && !bpCardData._error ? bpCardData.items || bpCardData.value || bpCardData.data || [] : []);
-          if (Array.isArray(bpCardItems) && bpCardItems.length > 0) {
-            console.log(`[receipt-discovery] billing-payment card list returned ${bpCardItems.length} items`);
-            bpCardItems.forEach((item: any) => { item._source = 'bp-card'; item._paymentType = 'Credit Card'; });
-            allReceipts.push(...bpCardItems);
-          } else {
-            console.log(`[receipt-discovery] billing-payment card list: empty or error`, JSON.stringify(bpCardData).substring(0, 300));
-          }
-        } catch (e: any) { console.warn(`[receipt-discovery] billing-payment card list failed:`, e.message); }
+      const pager = { page: 1, pageSize: 500, orderby: "dateCaptured", shortDirection: "desc" };
+      const pagerNull = { page: 1, pageSize: 500, orderby: null, shortDirection: null };
+
+      // Probe 1: cashier-receipt-cash-list with cashierId (auth version)
+      let items = await tryEndpoint('auth/cash-list(cashierId)', 'POST', '/api/billing/auth-day-end-reconcile/cashier-receipt-cash-list', pager, { id: cashierId });
+      if (items.length > 0) { items.forEach((i: any) => { i._source = 'cash'; i._paymentType = 'Cash'; }); allReceipts.push(...items); }
+
+      // Probe 2: cashier-receipt-card-list with cashierId (auth version)
+      items = await tryEndpoint('auth/card-list(cashierId)', 'POST', '/api/billing/auth-day-end-reconcile/cashier-receipt-card-list', pager, { id: cashierId });
+      if (items.length > 0) { items.forEach((i: any) => { i._source = 'card'; i._paymentType = 'Credit Card'; }); allReceipts.push(...items); }
+
+      // Probe 3: system-vs-cashier-data-list
+      items = await tryEndpoint('auth/system-vs-cashier(cashierId)', 'POST', '/api/billing/auth-day-end-reconcile/system-vs-cashier-data-list', pager, { id: cashierId });
+      if (items.length > 0) { items.forEach((i: any) => { i._source = 'system'; }); allReceipts.push(...items); }
+
+      // Probe 4: cashier-reconcile-by-cashierid — might list receipts from the reconcile record
+      items = await tryEndpoint('auth/reconcile-by-cashierid', 'GET', '/api/billing/auth-day-end-reconcile/cashier-reconcile-by-cashierid', { cashierId });
+      if (items.length > 0) { items.forEach((i: any) => { i._source = 'reconcile-detail'; }); allReceipts.push(...items); }
+
+      // Probe 5: cashier-details — might include receipt list
+      items = await tryEndpoint('auth/cashier-details', 'GET', '/api/billing/auth-day-end-reconcile/cashier-details', { id: cashierId });
+      if (items.length > 0) { items.forEach((i: any) => { i._source = 'cashier-details'; }); allReceipts.push(...items); }
+
+      // Probe 6: ReceiptPrepaid endpoints — the controller that handles POS cashier setup
+      items = await tryEndpoint('ReceiptPrepaid/get-cashier-receipts', 'GET', '/api/ReceiptPrepaid/get-cashier-receipts', { cashierId, userId });
+      if (items.length > 0) { items.forEach((i: any) => { i._source = 'prepaid-receipts'; }); allReceipts.push(...items); }
+
+      items = await tryEndpoint('ReceiptPrepaid/cashier-receipt-list', 'GET', '/api/ReceiptPrepaid/cashier-receipt-list', { cashierId, userId });
+      if (items.length > 0) { items.forEach((i: any) => { i._source = 'prepaid-list'; }); allReceipts.push(...items); }
+
+      // Probe 7: billing-payment endpoints for receipt lookup
+      items = await tryEndpoint('billing-payment/get-cashier-receipts', 'GET', '/api/billing-payment/get-cashier-receipts', { cashierId, userId });
+      if (items.length > 0) { items.forEach((i: any) => { i._source = 'bp-receipts'; }); allReceipts.push(...items); }
+
+      items = await tryEndpoint('billing-payment/pos-cashier-receipt', 'GET', '/api/billing-payment/pos-cashier-receipt', { cashierId, userId });
+      if (items.length > 0) { items.forEach((i: any) => { i._source = 'bp-pos-receipt'; }); allReceipts.push(...items); }
+
+      // Probe 8: Try pos-multi-receipt-print with known receipt IDs from Platinum (not Sebata)
+      if (allReceipts.length === 0 && receiptCurrent > receiptStart) {
+        for (let receiptNum = receiptStart; receiptNum < receiptCurrent; receiptNum++) {
+          const receiptItems = await tryEndpoint(`platinum/pos-multi-receipt(${receiptNum})`, 'GET', '/api/billing-payment/pos-multi-receipt-print', { id: String(receiptNum) });
+          if (receiptItems.length > 0) { receiptItems.forEach((i: any) => { i._source = 'platinum-receipt'; }); allReceipts.push(...receiptItems); }
+        }
       }
 
-      // Strategy 7: Try with userId if cashierId gave no results
-      if (allReceipts.length === 0 && userId && userId !== cashierId) {
-        console.log(`[receipt-discovery] No results with cashierId=${cashierId}, trying with userId=${userId}`);
-        try {
-          const cashData2 = await platinumPost(session, "/api/billing/auth-day-end-reconcile/cashier-receipt-cash-list", pagerBody, { id: userId });
-          const cashItems2 = Array.isArray(cashData2) ? cashData2 :
-            (cashData2 && typeof cashData2 === 'object' && !cashData2._error ? cashData2.items || cashData2.value || cashData2.data || [] : []);
-          if (Array.isArray(cashItems2) && cashItems2.length > 0) {
-            console.log(`[receipt-discovery] cashier-receipt-cash-list(userId) returned ${cashItems2.length} items`);
-            cashItems2.forEach((item: any) => { item._source = 'cash'; item._paymentType = 'Cash'; });
-            allReceipts.push(...cashItems2);
-          }
-        } catch (e: any) { console.warn(`[receipt-discovery] cashier-receipt-cash-list(userId) failed:`, e.message); }
+      // Probe 9: search-recept-numbers with full formatted receipt numbers
+      if (allReceipts.length === 0 && receiptCurrent > receiptStart) {
+        const today = new Date();
+        const datePrefix = `${String(today.getDate()).padStart(2,'0')}${String(today.getMonth()+1).padStart(2,'0')}${today.getFullYear()}`;
+        const fullReceiptNos: string[] = [];
+        for (let i = receiptStart; i < receiptCurrent; i++) {
+          fullReceiptNos.push(`${datePrefix}/${i}`);
+        }
+        console.log(`[receipt-discovery] Trying search-recept-numbers with formatted: ${fullReceiptNos.join(', ')}`);
+        items = await tryEndpoint('ViewReceipt/search-formatted', 'GET', '/api/ViewReceipt/search-recept-numbers', { receiptNumbers: fullReceiptNos.join(',') });
+        if (items.length > 0) { items.forEach((i: any) => { i._source = 'search-formatted'; }); allReceipts.push(...items); }
 
-        try {
-          const cardData2 = await platinumPost(session, "/api/billing/auth-day-end-reconcile/cashier-receipt-card-list", pagerBody, { id: userId });
-          const cardItems2 = Array.isArray(cardData2) ? cardData2 :
-            (cardData2 && typeof cardData2 === 'object' && !cardData2._error ? cardData2.items || cardData2.value || cardData2.data || [] : []);
-          if (Array.isArray(cardItems2) && cardItems2.length > 0) {
-            console.log(`[receipt-discovery] cashier-receipt-card-list(userId) returned ${cardItems2.length} items`);
-            cardItems2.forEach((item: any) => { item._source = 'card'; item._paymentType = 'Credit Card'; });
-            allReceipts.push(...cardItems2);
-          }
-        } catch (e: any) { console.warn(`[receipt-discovery] cashier-receipt-card-list(userId) failed:`, e.message); }
+        items = await tryEndpoint('ViewReceipt/search-plain', 'GET', '/api/ViewReceipt/search-recept-numbers', { receiptNumbers: Array.from({length: receiptCurrent - receiptStart}, (_, i) => String(receiptStart + i)).join(',') });
+        if (items.length > 0) { items.forEach((i: any) => { i._source = 'search-plain'; }); allReceipts.push(...items); }
       }
 
-      // Strategy 8: Direct receipt number search (look up known receipt numbers from the range)
+      // Probe 10: billing-payment-day-end-reconcile versions with GET instead of POST
       if (allReceipts.length === 0) {
-        try {
-          const validateData = await platinumGet(session, "/api/ReceiptPrepaid/validate-cashier", { userId: userId, finYear: session.userData?.finYear || '2025/2026' });
-          const currentRange = validateData?.receiptRange?.currentRange || validateData?.receiptRangeAvailable?.currentRange;
-          const startRange = validateData?.receiptRange?.startRange || validateData?.receiptRangeAvailable?.startRange;
-          if (currentRange && startRange && currentRange > startRange) {
-            const receiptNumbers = [];
-            for (let i = startRange; i < currentRange; i++) {
-              receiptNumbers.push(String(i));
-            }
-            console.log(`[receipt-discovery] Searching ${receiptNumbers.length} receipt numbers: ${receiptNumbers.join(',')}`);
-            try {
-              const searchResult = await platinumGet(session, "/api/ViewReceipt/search-recept-numbers", {
-                receiptNumbers: receiptNumbers.join(','),
-                CashierId: cashierId
-              });
-              console.log(`[receipt-discovery] search-recept-numbers result:`, JSON.stringify(searchResult).substring(0, 500));
-              const searchItems = Array.isArray(searchResult) ? searchResult :
-                (searchResult && typeof searchResult === 'object' && !searchResult._error ? searchResult.items || searchResult.value || searchResult.data || [] : []);
-              if (Array.isArray(searchItems) && searchItems.length > 0) {
-                console.log(`[receipt-discovery] search-recept-numbers returned ${searchItems.length} items`);
-                searchItems.forEach((item: any) => { item._source = 'receipt-search'; });
-                allReceipts.push(...searchItems);
-              }
-            } catch (e: any) { console.warn(`[receipt-discovery] search-recept-numbers failed:`, e.message); }
-          }
-        } catch (e: any) { console.warn(`[receipt-discovery] receipt range lookup failed:`, e.message); }
+        items = await tryEndpoint('bp-day-end/reconcile-list(GET)', 'GET', '/api/billing-payment-day-end-reconcile/get-cashier-receipt-reconcile-list', { id: cashierId });
+        if (items.length > 0) { items.forEach((i: any) => { i._source = 'bp-reconcile'; }); allReceipts.push(...items); }
+
+        items = await tryEndpoint('bp-day-end/cash-list(POST)', 'POST', '/api/billing-payment-day-end-reconcile/get-cashier-receipt-cash-list', pagerNull, { id: cashierId });
+        if (items.length > 0) { items.forEach((i: any) => { i._source = 'bp-cash'; i._paymentType = 'Cash'; }); allReceipts.push(...items); }
       }
 
       console.log(`[receipt-discovery] Total receipts found: ${allReceipts.length}`);
-      res.json({ items: allReceipts, totalCount: allReceipts.length });
+      console.log(`[receipt-discovery] Probe results:\n${probeResults.map(p => `  ${p.endpoint} → ${p.status} (${p.count}) ${p.sample.substring(0, 100)}`).join('\n')}`);
+      res.json({ items: allReceipts, totalCount: allReceipts.length, probeResults });
     } catch (e: any) {
       console.error(`[receipt-discovery] Error:`, e.message);
       res.status(502).json({ message: "Receipt discovery failed", detail: e.message });
