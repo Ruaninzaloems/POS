@@ -20,7 +20,7 @@ export type TransactionType =
   | 'CLEARANCE'
   | 'NONE';
 
-export type TransactionStatus = 'COMPLETED' | 'CANCELLED' | 'RECONCILED' | 'PENDING_CANCELLATION';
+export type TransactionStatus = 'COMPLETED' | 'CANCELLED' | 'RECONCILED' | 'PENDING_CANCELLATION' | 'DECLINED';
 export type DayEndStatus = 'OPEN' | 'PENDING_APPROVAL' | 'RETURNED' | 'RECONCILED' | 'NOT_SUBMITTED';
 
 export interface CashierProfile {
@@ -79,6 +79,7 @@ export interface TransactionRecord {
   isReconciled: number;
   cancellationReason?: string;
   cancellationRequestTime?: number;
+  declineReason?: string;
   allocations?: ReceiptAllocation[];
   splitReceipts?: SplitReceipt[];
   receiptDetail?: any;
@@ -457,14 +458,21 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 card: isCard ? paymentAmount : 0,
                 cardReference: r.cardNumber || '',
               },
-              status: (r.isCancelled === 1 || r.isCanceled === 1) ? 'CANCELLED' as TransactionStatus : 'COMPLETED' as TransactionStatus,
+              status: ((): TransactionStatus => {
+                if (r.isCancelled === 1 || r.isCanceled === 1) return 'CANCELLED';
+                if (r.cancelRequestDeclined === 1 || r.isDeclined === 1) return 'DECLINED';
+                if (r.cancelRequested === 1 || r.isPendingCancel === 1) return 'PENDING_CANCELLATION';
+                if (r.isReconciled === 1) return 'RECONCILED';
+                return 'COMPLETED';
+              })(),
               cashierId: currentUser.id,
               cashierName: r.cashierName || currentUser.name || '',
               cashOfficeName: r.cashOffice || r.cashOfficeName || '',
               paymentTypeName: paymentTypeStr || (isCash ? 'Cash' : isCard ? 'Credit Card' : ''),
               paymentOptionName: r.paymentOption || r.paymentOptionName || '',
               isReconciled: r.isReconciled ?? 0,
-              cancellationReason: r.cancellationReason || undefined,
+              cancellationReason: r.cancellationReason || r.reasonForCancel || undefined,
+              declineReason: r.declineReason || r.cancelDeclineReason || r.supervisorDeclineReason || undefined,
             };
           });
 
@@ -2126,7 +2134,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!tx) return;
       if (tx.isReconciled === 1) return;
 
-      const receiptId = id.startsWith('plt-') ? id.replace('plt-', '') : null;
+      let receiptId: string | null = null;
+      if (id.startsWith('plt-')) receiptId = id.replace('plt-', '');
+      else if (id.startsWith('unrec-')) receiptId = id.replace('unrec-', '');
+      else if (id.startsWith('disc-')) receiptId = id.replace(/^disc-(\d+).*/, '$1');
       const isSupervisor = currentUser.role === 'SUPERVISOR';
 
       if (receiptId) {
@@ -2165,7 +2176,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
   
   const approveCancellation = async (id: string, approved: boolean) => {
-      const receiptId = id.startsWith('plt-') ? id.replace('plt-', '') : null;
+      let receiptId: string | null = null;
+      if (id.startsWith('plt-')) receiptId = id.replace('plt-', '');
+      else if (id.startsWith('unrec-')) receiptId = id.replace('unrec-', '');
+      else if (id.startsWith('disc-')) receiptId = id.replace(/^disc-(\d+).*/, '$1');
 
       if (receiptId) {
           try {
@@ -2194,7 +2208,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       setRecentTransactions(prev => prev.map(t =>
-          t.id === id ? { ...t, status: approved ? 'CANCELLED' as TransactionStatus : 'COMPLETED' as TransactionStatus } : t
+          t.id === id ? { 
+            ...t, 
+            status: approved ? 'CANCELLED' as TransactionStatus : 'DECLINED' as TransactionStatus,
+          } : t
       ));
 
       setTimeout(() => {
