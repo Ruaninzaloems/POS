@@ -2255,13 +2255,21 @@ export async function searchCashbookTransactionTrace(searchText: string, finYear
 export interface BankStatementNoteResult {
     receiptNo?: string | number;
     accountId?: number;
-    accountNumber?: string;
-    amount?: number;
-    receiptDate?: string;
+    paidAmount?: number;
+    paymentTypeId?: number;
+    dateCaptured?: string;
+    billingAllocationDate?: string;
+    allocationStatus?: string;
+    miscPaymentGroupDescription?: string;
     bankStatementNote?: string;
-    paymentType?: string;
-    cashierName?: string;
-    cashOfficeName?: string;
+    bankAmount?: number;
+    bankStatementDate?: string;
+    bankReconID?: number;
+    billingAllocated?: boolean | number;
+    cashbookTransactionID?: number;
+    cashbookDocumentNumber?: string;
+    cashbookID?: number;
+    cashbookDescription?: string;
     [key: string]: any;
 }
 
@@ -2272,12 +2280,17 @@ export async function searchByBankStatementNote(searchText: string): Promise<Ban
         throw new Error(err.message || 'Bank statement note search failed');
     }
     const data = await res.json();
-    if (Array.isArray(data)) return data;
-    if (data && Array.isArray(data.items)) return data.items;
-    if (data && Array.isArray(data.value)) return data.value;
-    if (data && Array.isArray(data.results)) return data.results;
-    if (data && typeof data === 'object' && !data.message) return [data];
-    return [];
+    let results: any[] = [];
+    if (Array.isArray(data)) results = data;
+    else if (data && Array.isArray(data.items)) results = data.items;
+    else if (data && Array.isArray(data.value)) results = data.value;
+    else if (data && Array.isArray(data.results)) results = data.results;
+    else if (data && typeof data === 'object' && !data.message) results = [data];
+    if (results.length > 0) {
+        console.log('[BankStatementNote] First result keys:', Object.keys(results[0]));
+        console.log('[BankStatementNote] First result:', JSON.stringify(results[0]));
+    }
+    return results;
 }
 
 export async function getEftBankStatementNotes(accountId: number | string): Promise<any[]> {

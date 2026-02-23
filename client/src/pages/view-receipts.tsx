@@ -430,19 +430,15 @@ export default function ViewReceipts() {
     };
 
     const handleLoadReceiptFromBankNote = (item: BankStatementNoteResult) => {
-        const receiptNo = item?.receiptNo;
-        const accountId = item?.accountId;
-        const accountNumber = item?.accountNumber;
+        const r = item as any;
+        const receiptNo = r.receiptNo ?? r.ReceiptNo ?? '';
+        const accountId = Number(r.accountId ?? r.AccountId ?? 0);
 
         if (receiptNo) {
             setReceiptFilter(String(receiptNo));
             setAccountFilter('');
             setCashierFilter('0');
-        } else if (accountNumber) {
-            setAccountFilter(String(accountNumber));
-            setReceiptFilter('');
-            setCashierFilter('0');
-        } else if (accountId) {
+        } else if (accountId > 0) {
             setAccountFilter(String(accountId));
             setReceiptFilter('');
             setCashierFilter('0');
@@ -1011,35 +1007,45 @@ export default function ViewReceipts() {
                             <>
                                 <div className="sm:hidden space-y-2">
                                     {bankNoteResults.map((item, idx) => {
-                                        const receiptNo = item?.receiptNo ?? '';
-                                        const accountNo = item?.accountNumber ?? item?.accountId ?? '';
-                                        const amount = Number(item?.amount) || 0;
-                                        const receiptDate = item?.receiptDate ?? '';
-                                        const paymentType = item?.paymentType ?? '';
-                                        const cashier = item?.cashierName ?? '';
-                                        const bankNote = item?.bankStatementNote ?? (item as any)?.bankStatementDescription ?? '';
-                                        const cashOffice = item?.cashOfficeName ?? '';
+                                        const r = item as any;
+                                        const receiptNo = r.receiptNo ?? r.ReceiptNo ?? '';
+                                        const accountId = Number(r.accountId ?? r.AccountId ?? 0);
+                                        const paidAmount = Number(r.paidAmount ?? r.PaidAmount ?? 0);
+                                        const bankAmount = Number(r.bankAmount ?? r.BankAmount ?? 0);
+                                        const payTypeId = Number(r.paymentTypeId ?? r.PaymentTypeId ?? 0);
+                                        const payTypeLabel = payTypeId === 1 ? 'Cash' : payTypeId === 3 ? 'Credit Card' : payTypeId === 2 ? 'EFT' : payTypeId > 0 ? `Type ${payTypeId}` : '';
+                                        const dateCaptured = r.dateCaptured ?? r.DateCaptured ?? '';
+                                        const bankDate = r.bankStatementDate ?? r.BankStatementDate ?? '';
+                                        const bankNote = r.bankStatementNote ?? r.BankStatementNote ?? '';
+                                        const status = r.allocationStatus ?? r.AllocationStatus ?? '';
+                                        const cashbookDoc = r.cashbookDocumentNumber ?? r.CashbookDocumentNumber ?? '';
+                                        const cashbookDesc = r.cashbookDescription ?? r.CashbookDescription ?? '';
+                                        const miscDesc = r.miscPaymentGroupDescription ?? r.MiscPaymentGroupDescription ?? '';
                                         return (
                                             <div key={idx} className="bg-white border rounded-xl p-3 space-y-1.5" data-testid={`mobile-banknote-card-${idx}`}>
-                                                <p className="font-mono text-xs text-slate-800 truncate" title={bankNote}>{bankNote || '(no description)'}</p>
+                                                {bankNote && <div className="font-mono text-xs text-emerald-800 bg-emerald-50 px-2 py-1 rounded truncate" title={bankNote}>{bankNote}</div>}
                                                 <div className="flex justify-between items-center">
                                                     <span className="font-mono text-sm font-bold text-emerald-700" data-testid={`mobile-banknote-receipt-no-${idx}`}>
                                                         {receiptNo ? `Receipt: ${receiptNo}` : '-'}
                                                     </span>
-                                                    <span className="font-mono text-sm font-bold text-right text-emerald-700" data-testid={`mobile-banknote-amount-${idx}`}>
-                                                        {amount > 0 ? `R ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
+                                                    <span className="font-mono text-sm font-bold text-right" data-testid={`mobile-banknote-amount-${idx}`}>
+                                                        {paidAmount > 0 ? <span className="text-emerald-700">R {paidAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span> : bankAmount > 0 ? <span className="text-blue-700">R {bankAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span> : '-'}
                                                     </span>
                                                 </div>
-                                                <div className="text-xs text-slate-600" data-testid={`mobile-banknote-account-${idx}`}>
-                                                    Account: {accountNo || <span className="text-orange-500 italic">N/A</span>}
-                                                </div>
+                                                {accountId > 0 && <div className="text-xs text-slate-600">Account: {accountId}</div>}
                                                 <div className="flex flex-wrap gap-x-3 text-xs text-slate-500">
-                                                    {receiptDate && <span>Date: {new Date(receiptDate).toLocaleDateString('en-ZA')}</span>}
-                                                    {paymentType && <span>Type: {paymentType}</span>}
-                                                    {cashier && <span>Cashier: {cashier}</span>}
-                                                    {cashOffice && <span>Office: {cashOffice}</span>}
+                                                    {dateCaptured && <span>Captured: {new Date(dateCaptured).toLocaleDateString('en-ZA')}</span>}
+                                                    {bankDate && <span>Bank Date: {new Date(bankDate).toLocaleDateString('en-ZA')}</span>}
+                                                    {payTypeLabel && <span>Type: {payTypeLabel}</span>}
                                                 </div>
-                                                {(receiptNo || accountNo) && (
+                                                {status && (
+                                                    <div className={`text-[10px] font-semibold px-2 py-0.5 rounded-full inline-block ${status.includes('Not Allocated') ? 'bg-orange-100 text-orange-700' : status.includes('Account') ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                        {status}
+                                                    </div>
+                                                )}
+                                                {miscDesc && <div className="text-[10px] text-slate-500">Misc: {miscDesc}</div>}
+                                                {cashbookDoc && <div className="text-[10px] text-slate-400">Cashbook: {cashbookDoc}{cashbookDesc ? ` (${cashbookDesc})` : ''}</div>}
+                                                {(receiptNo || accountId > 0) && (
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
@@ -1062,40 +1068,61 @@ export default function ViewReceipts() {
                                                 <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Bank Statement Note</TableHead>
                                                 <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Receipt No</TableHead>
                                                 <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Account</TableHead>
-                                                <TableHead className="text-[10px] font-bold text-emerald-700 py-2 text-right">Amount</TableHead>
-                                                <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Date</TableHead>
-                                                <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Payment Type</TableHead>
-                                                <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Cashier</TableHead>
-                                                <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Cash Office</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-emerald-700 py-2 text-right">Paid Amount</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-emerald-700 py-2 text-right">Bank Amount</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Date Captured</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Bank Date</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Payment</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Status</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Cashbook</TableHead>
                                                 <TableHead className="text-[10px] font-bold text-emerald-700 py-2 text-center">Action</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {bankNoteResults.map((item, idx) => {
-                                                const receiptNo = item?.receiptNo ?? '';
-                                                const accountNo = item?.accountNumber ?? item?.accountId ?? '';
-                                                const amount = Number(item?.amount) || 0;
-                                                const receiptDate = item?.receiptDate ?? '';
-                                                const paymentType = item?.paymentType ?? '';
-                                                const cashier = item?.cashierName ?? '';
-                                                const bankNote = item?.bankStatementNote ?? (item as any)?.bankStatementDescription ?? '';
-                                                const cashOffice = item?.cashOfficeName ?? '';
+                                                const r = item as any;
+                                                const receiptNo = r.receiptNo ?? r.ReceiptNo ?? '';
+                                                const accountId = Number(r.accountId ?? r.AccountId ?? 0);
+                                                const paidAmount = Number(r.paidAmount ?? r.PaidAmount ?? 0);
+                                                const bankAmount = Number(r.bankAmount ?? r.BankAmount ?? 0);
+                                                const payTypeId = Number(r.paymentTypeId ?? r.PaymentTypeId ?? 0);
+                                                const payTypeLabel = payTypeId === 1 ? 'Cash' : payTypeId === 3 ? 'Credit Card' : payTypeId === 2 ? 'EFT' : payTypeId > 0 ? `Type ${payTypeId}` : '';
+                                                const dateCaptured = r.dateCaptured ?? r.DateCaptured ?? '';
+                                                const bankDate = r.bankStatementDate ?? r.BankStatementDate ?? '';
+                                                const bankNote = r.bankStatementNote ?? r.BankStatementNote ?? '';
+                                                const status = r.allocationStatus ?? r.AllocationStatus ?? '';
+                                                const cashbookDoc = r.cashbookDocumentNumber ?? r.CashbookDocumentNumber ?? '';
+                                                const cashbookDesc = r.cashbookDescription ?? r.CashbookDescription ?? '';
                                                 return (
                                                     <TableRow key={idx} className="hover:bg-emerald-50/30" data-testid={`banknote-result-${idx}`}>
                                                         <TableCell className="text-[11px] font-mono max-w-[250px] truncate" title={bankNote}>{bankNote || '-'}</TableCell>
                                                         <TableCell className="text-[11px] font-mono font-semibold text-emerald-700">{receiptNo || <span className="text-orange-500 text-[10px] italic font-normal">N/A</span>}</TableCell>
-                                                        <TableCell className="text-[11px] font-mono">{accountNo || <span className="text-orange-500 text-[10px] italic">N/A</span>}</TableCell>
+                                                        <TableCell className="text-[11px] font-mono">{accountId > 0 ? accountId : <span className="text-orange-500 text-[10px] italic">N/A</span>}</TableCell>
                                                         <TableCell className="text-[11px] font-mono font-bold text-right text-emerald-700">
-                                                            {amount > 0 ? `R ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
+                                                            {paidAmount > 0 ? `R ${paidAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
+                                                        </TableCell>
+                                                        <TableCell className="text-[11px] font-mono font-bold text-right text-blue-700">
+                                                            {bankAmount > 0 ? `R ${bankAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
                                                         </TableCell>
                                                         <TableCell className="text-[10px] text-slate-600">
-                                                            {receiptDate ? new Date(receiptDate).toLocaleDateString('en-ZA') : '-'}
+                                                            {dateCaptured ? new Date(dateCaptured).toLocaleDateString('en-ZA') : '-'}
                                                         </TableCell>
-                                                        <TableCell className="text-[11px] text-slate-600">{paymentType || '-'}</TableCell>
-                                                        <TableCell className="text-[11px] text-slate-600">{cashier || '-'}</TableCell>
-                                                        <TableCell className="text-[11px] text-slate-600">{cashOffice || '-'}</TableCell>
+                                                        <TableCell className="text-[10px] text-slate-600">
+                                                            {bankDate ? new Date(bankDate).toLocaleDateString('en-ZA') : '-'}
+                                                        </TableCell>
+                                                        <TableCell className="text-[11px] text-slate-600">{payTypeLabel || '-'}</TableCell>
+                                                        <TableCell className="text-[10px]">
+                                                            {status ? (
+                                                                <span className={`px-1.5 py-0.5 rounded-full font-semibold ${status.includes('Not Allocated') ? 'bg-orange-100 text-orange-700' : status.includes('Account') ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                                    {status}
+                                                                </span>
+                                                            ) : '-'}
+                                                        </TableCell>
+                                                        <TableCell className="text-[10px] text-slate-600 max-w-[120px] truncate" title={`${cashbookDoc}${cashbookDesc ? ` (${cashbookDesc})` : ''}`}>
+                                                            {cashbookDoc || '-'}
+                                                        </TableCell>
                                                         <TableCell className="text-center">
-                                                            {(receiptNo || accountNo) ? (
+                                                            {(receiptNo || accountId > 0) ? (
                                                                 <Button
                                                                     variant="outline"
                                                                     size="sm"
