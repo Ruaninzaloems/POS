@@ -1136,11 +1136,6 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
     return type.includes('reversal') || type.includes('reversed') || type.includes('cancel');
   });
 
-  const propertyRatesItems = balanceData.filter((it: any) =>
-    (it.serviceDescription || '').toLowerCase().includes('property') ||
-    (it.serviceDescription || '').toLowerCase().includes('rate')
-  );
-
   const handlePrintReceipt = async (p: any) => {
     const receiptId = p.receiptId || p.receipt_ID || p.id;
     if (!receiptId) return;
@@ -1504,78 +1499,6 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
         </div>
       </div>
 
-      {(propertyRatesItems.length > 0 || ratesData) && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-5 py-2.5 sm:py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
-            <Home className="w-4 h-4 text-white shrink-0" />
-            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Property Rates Section</h3>
-          </div>
-          <div className="p-2.5 sm:p-5 space-y-3 sm:space-y-5">
-            {ratesData && (
-              <div className="rounded-lg sm:rounded-xl border border-slate-200 overflow-hidden">
-                <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-50 border-b border-slate-200">
-                  <h4 className="text-[10px] sm:text-[11px] font-bold text-slate-600 uppercase tracking-wider">Property Rates</h4>
-                </div>
-                <div className="divide-y divide-slate-100">
-                  {[
-                    { label: 'Annual Property Rates Amount', value: `R ${fmt(ratesData.annualPropertyRates ?? 0)}` },
-                    { label: 'Frequency', value: ratesData.frequency ?? '-' },
-                    { label: 'Instalment', value: `R ${fmt(ratesData.installment ?? 0)}` },
-                    { label: 'Remaining Instalments', value: ratesData.remainingInstallments ?? '-' },
-                  ].map((row, idx) => (
-                    <div key={idx} className="flex justify-between items-center px-3 sm:px-4 py-2 sm:py-3 hover:bg-slate-50/50 transition-colors">
-                      <span className="text-[11px] sm:text-[13px] text-slate-600">{row.label}</span>
-                      <span className="text-[11px] sm:text-[13px] font-mono font-semibold text-slate-900">{row.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {propertyRatesItems.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
-                {propertyRatesItems.map((item: any, i: number) => (
-                  <div key={i} className="rounded-lg sm:rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                    <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
-                      <div className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider">{item.serviceDescription}</div>
-                      <div className="text-lg sm:text-xl font-bold text-red-600 font-mono mt-0.5 sm:mt-1">{fmt(item.totalOutStanding ?? 0)}</div>
-                    </div>
-                    <div className="p-3 sm:p-4 space-y-0 divide-y divide-slate-100">
-                      {[
-                        { label: 'Current', value: fmtDash(getVal(item, ['current', 'currentAccount'])) },
-                        { label: '30 Days', value: fmtDash(getVal(item, ['days30'])) },
-                        { label: '60 Days', value: fmtDash(getVal(item, ['days60'])) },
-                        { label: '90 Days', value: fmtDash(getVal(item, ['days90'])) },
-                        { label: '120 Days', value: fmtDash(getVal(item, ['days120'])) },
-                        { label: '150 Days', value: fmtDash(getVal(item, ['days150'])) },
-                        { label: '180+ Days', value: fmtDash(getVal(item, ['untill360', 'days180Plus', 'days360Plus'])) },
-                        ...(showExtended && hasGranularAging ? [
-                          { label: '180 Days', value: fmtDash(getVal(item, ['days180'])) },
-                          { label: '210 Days', value: fmtDash(getVal(item, ['days210'])) },
-                          { label: '240 Days', value: fmtDash(getVal(item, ['days240'])) },
-                          { label: '270 Days', value: fmtDash(getVal(item, ['days270'])) },
-                          { label: '300 Days', value: fmtDash(getVal(item, ['days300'])) },
-                          { label: '330 Days', value: fmtDash(getVal(item, ['days330'])) },
-                          { label: '360 Days', value: fmtDash(getVal(item, ['days360'])) },
-                          { label: '360+ Days', value: fmtDash(getVal(item, ['untill360', 'days180Plus', 'days360Plus'])) },
-                        ] : []),
-                      ].map((row, idx) => (
-                        <div key={idx} className="flex justify-between items-center py-1.5 sm:py-2">
-                          <span className="text-[11px] sm:text-xs text-slate-500">{row.label}</span>
-                          <span className="text-[11px] sm:text-xs font-mono font-medium text-slate-700">{row.value}</span>
-                        </div>
-                      ))}
-                      <div className="flex justify-between items-center py-2 sm:py-2.5 !border-t-2 !border-slate-200">
-                        <span className="text-[11px] sm:text-xs font-medium text-slate-600">Deposit</span>
-                        <span className="text-[11px] sm:text-xs font-mono font-semibold text-slate-800">{fmtDash(item.deposit)}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-green-600 to-green-700 flex items-center gap-2">
