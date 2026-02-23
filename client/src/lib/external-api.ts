@@ -1856,6 +1856,73 @@ export async function platinumGetPostDatedChequeTableData(pager: any): Promise<a
     return res.json();
 }
 
+export async function platinumGetConsumptionCount(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/consumption-count`);
+}
+export async function platinumGetDebtCount(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/debt-count`);
+}
+export async function platinumGetBillingCount(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/billing-count`);
+}
+export async function platinumGetPropertyCount(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/property-count`);
+}
+export async function platinumGetIndigentSubsidyCount(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/indigentsubsidy-count`);
+}
+export async function platinumGetJournalCount(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/journal-count`);
+}
+export async function platinumGetRebateCount(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/rebate-count`);
+}
+export async function platinumGetAssetsCount(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/assets-count`);
+}
+export async function platinumGetNotificationAccountItemCounts(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/get-notification-account-item-counts`);
+}
+export async function platinumGetNotificationConsumptionItemCounts(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/get-notification-consumption-item-counts`);
+}
+export async function platinumGetNotificationDebtItemCounts(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/get-notification-debt-item-counts`);
+}
+export async function platinumGetSubsidyItemCounts(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/get-subsidy-item-counts`);
+}
+export async function platinumGetPropertyTabItemDetailsCount(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/get-property-tab-item-details-count`);
+}
+export async function platinumGetRebateTabItemDetailsCount(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/get-rebate-tab-item-details-count`);
+}
+export async function platinumGetBillingTabItemDetailsCount(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/get-billing-tab-item-details-count`);
+}
+export async function platinumGetBillingTabItemAssetCount(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/get-billing-tab-item-asset-count`);
+}
+export async function platinumGetDebtArrangementSummaryChart(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/get-debt-arrangement-summary-chart`);
+}
+export async function platinumGetMeterReadingProgressChart(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/get-meterreading-progress-chart`);
+}
+export async function platinumGetBillingDashboardCycles(): Promise<any> {
+    return platinumFetch(`/api/platinum/billing-dashboard/get-billing-dashboard-billing-cycles`);
+}
+export async function platinumDashboardGenericTable(endpoint: string, pager: any): Promise<any> {
+    const res = await apiFetch('/api/platinum/billing-dashboard/generic-table', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint, pager }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
 // --- View Receipt ---
 
 export interface ViewReceiptCashier {

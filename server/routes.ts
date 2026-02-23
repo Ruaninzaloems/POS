@@ -3501,6 +3501,113 @@ export async function registerRoutes(
     }
   });
 
+  // --- Billing Dashboard: dynamic GET/POST proxy for any BillingDashboard endpoint ---
+  app.get("/api/platinum/billing-dashboard/consumption-count", async (req, res) => {
+    try { const session = requireAuth(req, res); if (!session) return; handlePlatinumResult(res, await platinumGet(session, "/api/BillingDashboard/consumption-count")); } catch (e: any) { res.status(502).json({ message: "Platinum API unreachable", detail: e.message }); }
+  });
+  app.get("/api/platinum/billing-dashboard/debt-count", async (req, res) => {
+    try { const session = requireAuth(req, res); if (!session) return; handlePlatinumResult(res, await platinumGet(session, "/api/BillingDashboard/debt-count")); } catch (e: any) { res.status(502).json({ message: "Platinum API unreachable", detail: e.message }); }
+  });
+  app.get("/api/platinum/billing-dashboard/billing-count", async (req, res) => {
+    try { const session = requireAuth(req, res); if (!session) return; handlePlatinumResult(res, await platinumGet(session, "/api/BillingDashboard/billing-count")); } catch (e: any) { res.status(502).json({ message: "Platinum API unreachable", detail: e.message }); }
+  });
+  app.get("/api/platinum/billing-dashboard/property-count", async (req, res) => {
+    try { const session = requireAuth(req, res); if (!session) return; handlePlatinumResult(res, await platinumGet(session, "/api/BillingDashboard/property-count")); } catch (e: any) { res.status(502).json({ message: "Platinum API unreachable", detail: e.message }); }
+  });
+  app.get("/api/platinum/billing-dashboard/indigentsubsidy-count", async (req, res) => {
+    try { const session = requireAuth(req, res); if (!session) return; handlePlatinumResult(res, await platinumGet(session, "/api/BillingDashboard/indigentsubsidy-count")); } catch (e: any) { res.status(502).json({ message: "Platinum API unreachable", detail: e.message }); }
+  });
+  app.get("/api/platinum/billing-dashboard/journal-count", async (req, res) => {
+    try { const session = requireAuth(req, res); if (!session) return; handlePlatinumResult(res, await platinumGet(session, "/api/BillingDashboard/journal-count")); } catch (e: any) { res.status(502).json({ message: "Platinum API unreachable", detail: e.message }); }
+  });
+  app.get("/api/platinum/billing-dashboard/rebate-count", async (req, res) => {
+    try { const session = requireAuth(req, res); if (!session) return; handlePlatinumResult(res, await platinumGet(session, "/api/BillingDashboard/rebate-count")); } catch (e: any) { res.status(502).json({ message: "Platinum API unreachable", detail: e.message }); }
+  });
+  app.get("/api/platinum/billing-dashboard/assets-count", async (req, res) => {
+    try { const session = requireAuth(req, res); if (!session) return; handlePlatinumResult(res, await platinumGet(session, "/api/BillingDashboard/assets-count")); } catch (e: any) { res.status(502).json({ message: "Platinum API unreachable", detail: e.message }); }
+  });
+  app.get("/api/platinum/billing-dashboard/get-notification-account-item-counts", async (req, res) => {
+    try { const session = requireAuth(req, res); if (!session) return; handlePlatinumResult(res, await platinumGet(session, "/api/BillingDashboard/get-notification-account-item-counts")); } catch (e: any) { res.status(502).json({ message: "Platinum API unreachable", detail: e.message }); }
+  });
+  app.get("/api/platinum/billing-dashboard/get-notification-consumption-item-counts", async (req, res) => {
+    try { const session = requireAuth(req, res); if (!session) return; handlePlatinumResult(res, await platinumGet(session, "/api/BillingDashboard/get-notification-consumption-item-counts")); } catch (e: any) { res.status(502).json({ message: "Platinum API unreachable", detail: e.message }); }
+  });
+  app.get("/api/platinum/billing-dashboard/get-notification-debt-item-counts", async (req, res) => {
+    try { const session = requireAuth(req, res); if (!session) return; handlePlatinumResult(res, await platinumGet(session, "/api/BillingDashboard/get-notification-debt-item-counts")); } catch (e: any) { res.status(502).json({ message: "Platinum API unreachable", detail: e.message }); }
+  });
+  app.get("/api/platinum/billing-dashboard/get-subsidy-item-counts", async (req, res) => {
+    try { const session = requireAuth(req, res); if (!session) return; handlePlatinumResult(res, await platinumGet(session, "/api/BillingDashboard/get-subsidy-item-counts")); } catch (e: any) { res.status(502).json({ message: "Platinum API unreachable", detail: e.message }); }
+  });
+  app.get("/api/platinum/billing-dashboard/get-property-tab-item-details-count", async (req, res) => {
+    try { const session = requireAuth(req, res); if (!session) return; handlePlatinumResult(res, await platinumGet(session, "/api/BillingDashboard/get-property-tab-item-details-count")); } catch (e: any) { res.status(502).json({ message: "Platinum API unreachable", detail: e.message }); }
+  });
+  app.get("/api/platinum/billing-dashboard/get-rebate-tab-item-details-count", async (req, res) => {
+    try { const session = requireAuth(req, res); if (!session) return; handlePlatinumResult(res, await platinumGet(session, "/api/BillingDashboard/get-rebate-tab-item-details-count")); } catch (e: any) { res.status(502).json({ message: "Platinum API unreachable", detail: e.message }); }
+  });
+  app.get("/api/platinum/billing-dashboard/get-billing-tab-item-details-count", async (req, res) => {
+    try { const session = requireAuth(req, res); if (!session) return; handlePlatinumResult(res, await platinumGet(session, "/api/BillingDashboard/get-billing-tab-item-details-count")); } catch (e: any) { res.status(502).json({ message: "Platinum API unreachable", detail: e.message }); }
+  });
+  app.get("/api/platinum/billing-dashboard/get-billing-tab-item-asset-count", async (req, res) => {
+    try { const session = requireAuth(req, res); if (!session) return; handlePlatinumResult(res, await platinumGet(session, "/api/BillingDashboard/get-billing-tab-item-asset-count")); } catch (e: any) { res.status(502).json({ message: "Platinum API unreachable", detail: e.message }); }
+  });
+  app.get("/api/platinum/billing-dashboard/get-debt-arrangement-summary-chart", async (req, res) => {
+    try { const session = requireAuth(req, res); if (!session) return; handlePlatinumResult(res, await platinumGet(session, "/api/BillingDashboard/get-debt-arrangement-summary-chart")); } catch (e: any) { res.status(502).json({ message: "Platinum API unreachable", detail: e.message }); }
+  });
+  app.get("/api/platinum/billing-dashboard/get-meterreading-progress-chart", async (req, res) => {
+    try { const session = requireAuth(req, res); if (!session) return; handlePlatinumResult(res, await platinumGet(session, "/api/BillingDashboard/get-meterreading-progress-chart")); } catch (e: any) { res.status(502).json({ message: "Platinum API unreachable", detail: e.message }); }
+  });
+  app.get("/api/platinum/billing-dashboard/get-billing-dashboard-billing-cycles", async (req, res) => {
+    try { const session = requireAuth(req, res); if (!session) return; handlePlatinumResult(res, await platinumGet(session, "/api/BillingDashboard/get-billing-dashboard-billing-cycles")); } catch (e: any) { res.status(502).json({ message: "Platinum API unreachable", detail: e.message }); }
+  });
+
+  app.post("/api/platinum/billing-dashboard/generic-table", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const { endpoint, pager } = req.body;
+      if (!endpoint || typeof endpoint !== 'string') { res.status(400).json({ message: "Missing endpoint" }); return; }
+      const allowed = endpoint.startsWith('/api/BillingDashboard/get-') && endpoint.includes('table-data');
+      const allowedOther = [
+        '/api/BillingDashboard/get-awating-verification',
+        '/api/BillingDashboard/get-automatic-disqualification',
+        '/api/BillingDashboard/get-attp-applicatoin-authorization-details',
+        '/api/BillingDashboard/get-attp-applicatoin-termination-details',
+        '/api/BillingDashboard/get-awaiting-application-declined-details',
+        '/api/BillingDashboard/get-bad-debt-reconciliation',
+        '/api/BillingDashboard/get-billing-cycle-due-alerts',
+        '/api/BillingDashboard/get-cutoff-history',
+        '/api/BillingDashboard/get-declined-journals',
+        '/api/BillingDashboard/get-employee-deduction-alerts',
+        '/api/BillingDashboard/get-first-and-final-outstanding',
+        '/api/BillingDashboard/get-first-and-final-readings-required',
+        '/api/BillingDashboard/get-first-and-final-declined-alerts',
+        '/api/BillingDashboard/get-final-reading-approval-pending-meter-change',
+        '/api/BillingDashboard/get-final-services-with-no-meter-reading',
+        '/api/BillingDashboard/get-journals-pending-review',
+        '/api/BillingDashboard/get-meter-pending-status',
+        '/api/BillingDashboard/get-meter-removal-declined-alerts',
+        '/api/BillingDashboard/get-meter-removal-readings-required',
+        '/api/BillingDashboard/get-meterbook-with-no-route-file',
+        '/api/BillingDashboard/get-meterbooks-not-linked-to-cycle',
+        '/api/BillingDashboard/get-meters-not-linked-to-route-file',
+        '/api/BillingDashboard/get-not-sequenced-meters',
+        '/api/BillingDashboard/get-not-included-moc-table-data',
+        '/api/BillingDashboard/get-not-linked-service-table-data',
+        '/api/BillingDashboard/get-report-meters',
+        '/api/BillingDashboard/get-repayment-plan-approved-not-activated',
+        '/api/BillingDashboard/get-repayment-plan-awaiting-authorisation',
+        '/api/BillingDashboard/get-repayment-plan-declined',
+        '/api/BillingDashboard/get-repayment-plans-awaiting-termination-authorisation',
+        '/api/BillingDashboard/get-unpaid-transactions',
+        '/api/BillingDashboard/get-valuation-expired',
+      ].includes(endpoint);
+      if (!allowed && !allowedOther) { res.status(403).json({ message: "Endpoint not allowed" }); return; }
+      const data = await platinumPost(session, endpoint, pager || {});
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   // --- Billing Account Management (selected endpoints) ---
 
   app.post("/api/platinum/billing-account-management/search-accounts", async (req, res) => {
