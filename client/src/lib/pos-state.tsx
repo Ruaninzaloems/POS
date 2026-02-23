@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect, useRef,
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, CashOffice } from './external-api';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange, fetchActiveCashierByUserId, fetchPosMultiReceiptPrintByCashier, platinumValidateCashier, fetchActiveFinYear, platinumAuthDayEndCancelReceipt, platinumRequestCancelReceipt, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumGetPendingCancelRequests } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange, fetchActiveCashierByUserId, fetchPosMultiReceiptPrintByCashier, platinumValidateCashier, fetchActiveFinYear, platinumAuthDayEndCancelReceipt, platinumRequestCancelReceipt, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumGetPendingCancelRequests, platinumGetDayEndReconcileList } from './external-api';
 import { getAccountBalance as enquiryGetAccountBalance } from './enquiries-service';
 
 if (import.meta.hot) {
@@ -493,7 +493,80 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return;
       }
 
-      console.log(`[Transactions] ViewReceipt returned empty, trying API discovery scan`);
+      console.log(`[Transactions] ViewReceipt returned empty, trying day-end reconcile list`);
+
+      try {
+        const reconcileData = await platinumGetDayEndReconcileList({ id: String(pCashierId) });
+        const reconcileItems = Array.isArray(reconcileData) ? reconcileData :
+          (reconcileData && typeof reconcileData === 'object' ? (reconcileData as any).items || (reconcileData as any).value || [] : []);
+
+        if (reconcileItems.length > 0) {
+          console.log(`[Transactions] Day-end reconcile list returned ${reconcileItems.length} items`);
+          const mapped: TransactionRecord[] = reconcileItems.map((r: any, idx: number) => {
+            const isCash = r.paymentTypeId === 1 || (r.paymentType || '').toLowerCase().includes('cash');
+            const isCard = r.paymentTypeId === 3 || (r.paymentType || '').toLowerCase().includes('card');
+            const paymentAmount = r.paidAmount || r.amount || r.tenderAmount || 0;
+            const receiptNo = r.receiptNo || r.receiptNumber || '';
+            const rid = r.receiptId || r.id || r.receipt_ID || idx;
+
+            let txType: TransactionType = 'CONSUMER_SERVICES';
+            const billType = String(r.billType || r.paymentOption || '').toLowerCase();
+            if (billType.includes('misc') || billType.includes('direct') || billType.includes('4')) {
+              txType = 'DIRECT_INCOME';
+            } else if (billType.includes('clearance') || billType.includes('6')) {
+              txType = 'CLEARANCE';
+            } else if (billType.includes('prepaid') || billType.includes('5')) {
+              txType = 'PREPAID';
+            }
+
+            return {
+              id: `plt-${rid}`,
+              receiptNumber: receiptNo || `REC-${rid}`,
+              timestamp: r.dateCaptured ? new Date(r.dateCaptured).getTime() : Date.now(),
+              items: [{
+                id: `item-${rid}`,
+                type: txType,
+                description: r.accName || r.accountName || r.description || 'Payment',
+                reference: r.accountNumber || r.accountNo || String(r.accountId || ''),
+                amountDue: r.outstandingAmount || paymentAmount,
+                amountToPay: paymentAmount,
+                originalData: r,
+              }],
+              totalAmount: paymentAmount,
+              payment: {
+                cash: isCash ? paymentAmount : 0,
+                card: isCard ? paymentAmount : 0,
+                cardReference: '',
+              },
+              status: (r.isCancelled === 1 || r.isCanceled === 1) ? 'CANCELLED' as TransactionStatus : 'COMPLETED' as TransactionStatus,
+              cashierId: currentUser.id,
+              cashierName: r.cashierName || currentUser.name || '',
+              cashOfficeName: r.cashOfficeName || '',
+              paymentTypeName: isCash ? 'Cash' : isCard ? 'Credit Card' : (r.paymentType || ''),
+              paymentOptionName: r.paymentOption || '',
+              isReconciled: r.isReconciled ?? 0,
+              cancellationReason: r.cancellationReason || r.reasonForCancel || undefined,
+            };
+          });
+
+          mapped.sort((a, b) => b.timestamp - a.timestamp);
+          setRecentTransactions(prev => {
+            const activeId = currentTransactionIdRef.current;
+            const activeTx = activeId ? prev.find(t => t.id === activeId) : null;
+            if (activeTx) {
+              const filtered = mapped.filter(t => t.id !== activeTx.id);
+              return [activeTx, ...filtered];
+            }
+            return mapped;
+          });
+          console.log(`[Transactions] Loaded ${mapped.length} transactions from day-end reconcile list`);
+          return;
+        }
+      } catch (e) {
+        console.warn(`[Transactions] Day-end reconcile list failed:`, e);
+      }
+
+      console.log(`[Transactions] Day-end reconcile list empty, trying API discovery scan`);
       let results: { receiptId: number; data: any }[] = [];
 
       if (platinumUser) {
