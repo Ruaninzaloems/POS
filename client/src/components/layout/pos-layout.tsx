@@ -209,7 +209,7 @@ export function PosLayout({ children }: PosLayoutProps) {
                 <ChevronDown className="w-3 h-3 text-white/40" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-72">
+            <DropdownMenuContent align="start" className="w-72 max-h-[calc(100vh-60px)] overflow-y-auto">
               <DropdownMenuLabel>Navigation</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {navItems.map((item, idx) => (
