@@ -1180,12 +1180,12 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-white rounded-lg p-2 border border-emerald-100">
-                    <div className="text-[10px] text-emerald-500 font-semibold uppercase">VAT ({((incomeItem.vatRate || 0) * 100).toFixed(0)}%)</div>
-                    <div className="text-sm font-mono font-bold text-emerald-800">R {((item.amountToPay || 0) * (incomeItem.vatRate || 0)).toFixed(2)}</div>
+                    <div className="text-[10px] text-emerald-500 font-semibold uppercase">VAT ({(incomeItem.vatRate || 0).toFixed(0)}%)</div>
+                    <div className="text-sm font-mono font-bold text-emerald-800">R {((item.amountToPay || 0) * (incomeItem.vatRate || 0) / 100).toFixed(2)}</div>
                   </div>
                   <div className="bg-emerald-100 rounded-lg p-2 border border-emerald-200">
                     <div className="text-[10px] text-emerald-600 font-semibold uppercase">Total (incl VAT)</div>
-                    <div className="text-sm font-mono font-bold text-emerald-900">R {((item.amountToPay || 0) * (1 + (incomeItem.vatRate || 0))).toFixed(2)}</div>
+                    <div className="text-sm font-mono font-bold text-emerald-900">R {((item.amountToPay || 0) * (1 + (incomeItem.vatRate || 0) / 100)).toFixed(2)}</div>
                   </div>
                 </div>
                 <div className="flex gap-1.5">
