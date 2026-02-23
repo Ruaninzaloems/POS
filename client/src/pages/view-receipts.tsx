@@ -433,20 +433,32 @@ export default function ViewReceipts() {
         const r = item as any;
         const receiptNo = r.receiptNo ?? r.ReceiptNo ?? '';
         const accountId = Number(r.accountId ?? r.AccountId ?? 0);
+        const dateCaptured = r.dateCaptured ?? r.DateCaptured ?? '';
+
+        if (!receiptNo && accountId <= 0) {
+            toast({ title: "No Reference", description: "This entry has no receipt or account number to look up.", variant: "destructive" });
+            return;
+        }
 
         if (receiptNo) {
             setReceiptFilter(String(receiptNo));
             setAccountFilter('');
-            setCashierFilter('0');
-        } else if (accountId > 0) {
+        } else {
             setAccountFilter(String(accountId));
             setReceiptFilter('');
-            setCashierFilter('0');
-        } else {
-            toast({ title: "No Reference", description: "This entry has no receipt or account number to look up.", variant: "destructive" });
-            return;
         }
-        setTimeout(() => handleSearch(1), 100);
+        setCashierFilter('0');
+
+        if (dateCaptured) {
+            const d = new Date(dateCaptured);
+            setFromDate(new Date(d.getFullYear(), d.getMonth(), d.getDate() - 7));
+            setToDate(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7));
+        } else {
+            setFromDate(new Date(2024, 0, 1));
+            setToDate(new Date());
+        }
+
+        setTimeout(() => handleSearch(1), 150);
     };
 
     const handleEftSearch = async () => {
