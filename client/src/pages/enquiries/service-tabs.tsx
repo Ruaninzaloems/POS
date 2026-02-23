@@ -87,6 +87,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
   const [error, setError] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState<any | null>(null);
   const [expandedRates, setExpandedRates] = useState<Set<number>>(new Set());
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [finYear, setFinYear] = useState(() => {
     const now = new Date();
     const y = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
@@ -311,14 +312,107 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
     return { bg: 'from-blue-500 to-blue-600', light: 'bg-blue-50 text-blue-700 ring-blue-200', iconBg: 'bg-blue-100 text-blue-600' };
   };
 
+  const serviceGroups = useMemo(() => {
+    const groupMap = new Map<string, { name: string; services: any[]; activeCount: number; totalCount: number }>();
+    displayData.forEach((svc: any) => {
+      const name = getServiceTypeDesc(svc) || 'Other';
+      const key = name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      if (!groupMap.has(key)) {
+        groupMap.set(key, { name, services: [], activeCount: 0, totalCount: 0 });
+      }
+      const group = groupMap.get(key)!;
+      group.services.push(svc);
+      group.totalCount++;
+      const status = (svc.serviceStatus || svc.statusDesc || svc.status || '').toLowerCase();
+      if (status === 'active') group.activeCount++;
+    });
+    return Array.from(groupMap.values()).sort((a, b) => b.totalCount - a.totalCount);
+  }, [displayData]);
+
+  const toggleGroup = (groupName: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(groupName)) next.delete(groupName); else next.add(groupName);
+      return next;
+    });
+  };
+
+  const renderServiceDetail = (svc: any, globalIdx: number) => {
+    const tariffInfo = parseTariffRateData(svc);
+    const isExpanded = expandedRates.has(globalIdx);
+    const hasCostData = !!svc.costInterVal || (svc.endDate && typeof svc.endDate === 'string' && svc.endDate.includes('<'));
+    const meterDisplay = hasCostData
+      ? (svc.meterNo || svc.meterNumber || 'No Meter')
+      : `${svc.physicalMeterNo || svc.physicalMeterNumber || 'No Meter'}${svc.meterNo || svc.meterNumber ? ` - ${svc.meterNo || svc.meterNumber}` : ''}`;
+    const status = svc.serviceStatus || svc.statusDesc || svc.status || '-';
+    const isActiveStatus = status.toLowerCase() === 'active';
+    const serviceMode = svc.serviceModeDesc || svc.serviceMode || '';
+    const requestDate = svc.serviceRequestedDate ? new Date(svc.serviceRequestedDate).toLocaleDateString('en-ZA') : '-';
+    const commencementDate = svc.serviceCommencementDate || svc.commencementDate
+      ? new Date(svc.serviceCommencementDate || svc.commencementDate).toLocaleDateString('en-ZA')
+      : svc.startDate || '-';
+    return (
+      <div key={globalIdx} className="bg-slate-50 rounded-lg border border-slate-200 p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <button onClick={() => setSelectedService(svc)} className="text-[12px] font-semibold text-blue-700 hover:text-blue-900 truncate text-left" data-testid={`btn-service-detail-${globalIdx}`}>
+              {svc.tariff || svc.tariffDesc || svc.tariffDescription || getServiceTypeDesc(svc) || 'Service Entry'}
+            </button>
+          </div>
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${isActiveStatus ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-red-100 text-red-600 border border-red-200'}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${isActiveStatus ? 'bg-emerald-500' : 'bg-red-400'}`} />
+            {status}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-1.5">
+          <div><div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Meter</div><div className="text-[11px] text-slate-700 font-mono mt-0.5">{meterDisplay}</div></div>
+          <div><div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Frequency</div><div className="text-[11px] text-slate-700 mt-0.5">{svc.frequency || 'Monthly'}</div></div>
+          {svc.meterConnectionSize && <div><div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Connection</div><div className="text-[11px] text-slate-700 mt-0.5">{svc.meterConnectionSize}</div></div>}
+          <div><div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Factor / Qty</div><div className="text-[11px] text-slate-700 font-mono mt-0.5">{svc.factorQuantity ?? svc.tarifffactor ?? '-'}</div></div>
+          <div><div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Commencement</div><div className="text-[11px] text-slate-700 mt-0.5">{commencementDate}</div></div>
+          {serviceMode && <div><div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Mode</div><div className="text-[11px] text-slate-700 mt-0.5">{serviceMode}</div></div>}
+        </div>
+        {tariffInfo.blocks.length > 0 && (
+          <div className="pt-2 border-t border-slate-200">
+            <button onClick={(e) => { e.stopPropagation(); toggleRate(globalIdx); }} className="flex items-center gap-1 text-[10px] font-semibold text-blue-600 hover:text-blue-800" data-testid={`btn-tariff-rate-${globalIdx}`}>
+              {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              Tariff Rates ({tariffInfo.blocks.reduce((sum, b) => sum + b.intervals.length, 0)} entries)
+            </button>
+            {isExpanded && (
+              <div className="mt-1.5 space-y-1.5">
+                {tariffInfo.blocks.map((block, bi) => (
+                  <div key={bi} className="rounded border border-slate-200 overflow-hidden">
+                    {(block.startDate || block.endDate) && <div className="px-2.5 py-1 bg-white border-b border-slate-100 text-[10px] text-slate-500">Period: {block.startDate || '—'} to {block.endDate || '—'}</div>}
+                    <table className="w-full text-[11px]">
+                      <tbody>
+                        {block.intervals.map((iv, idx) => (
+                          <tr key={idx} className="border-t border-slate-100 first:border-t-0">
+                            <td className="py-1 px-2.5 text-slate-600">{iv.interval}</td>
+                            <td className="py-1 px-2.5 text-right font-mono font-semibold text-blue-700">R {iv.cost}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  let globalSvcIdx = 0;
+
   return (
     <div className="p-3 sm:p-4 space-y-4" data-testid="service-balance-tab">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-slate-800">Services</h3>
-          <p className="text-[11px] text-slate-400 mt-0.5">{displayData.length} service{displayData.length !== 1 ? 's' : ''} registered</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">{serviceGroups.length} service type{serviceGroups.length !== 1 ? 's' : ''} · {displayData.length} total entries</p>
         </div>
-        <Badge variant="outline" className="text-xs font-mono">{displayData.length} items</Badge>
+        <Badge variant="outline" className="text-xs font-mono">{serviceGroups.length} types</Badge>
       </div>
 
       {displayData.length === 0 ? (
@@ -328,144 +422,108 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
         </div>
       ) : (
         <div className="grid gap-3" data-testid="table-service-list">
-          {displayData.map((svc: any, i: number) => {
-            const tariffInfo = parseTariffRateData(svc);
-            const isExpanded = expandedRates.has(i);
-            const hasCostData = !!svc.costInterVal || (svc.endDate && typeof svc.endDate === 'string' && svc.endDate.includes('<'));
-            const meterDisplay = hasCostData
-              ? (svc.meterNo || svc.meterNumber || 'No Meter')
-              : `${svc.physicalMeterNo || svc.physicalMeterNumber || 'No Meter'}${svc.meterNo || svc.meterNumber ? ` - ${svc.meterNo || svc.meterNumber}` : ''}`;
-            const status = svc.serviceStatus || svc.statusDesc || svc.status || '-';
-            const isActiveStatus = status.toLowerCase() === 'active';
-            const requestDate = svc.serviceRequestedDate ? new Date(svc.serviceRequestedDate).toLocaleDateString('en-ZA') : '-';
-            const commencementDate = svc.serviceCommencementDate || svc.commencementDate
-              ? new Date(svc.serviceCommencementDate || svc.commencementDate).toLocaleDateString('en-ZA')
-              : svc.startDate || '-';
-            const svcName = getServiceTypeDesc(svc) || 'Service';
-            const serviceMode = svc.serviceModeDesc || svc.serviceMode || '';
-            const colors = getSvcColor(svcName);
+          {serviceGroups.map((group) => {
+            const startIdx = globalSvcIdx;
+            globalSvcIdx += group.services.length;
+            const colors = getSvcColor(group.name);
+            const isGroupExpanded = expandedGroups.has(group.name);
+            const allActive = group.activeCount === group.totalCount;
+            const noneActive = group.activeCount === 0;
+            const uniqueTariffs = [...new Set(group.services.map((s: any) => s.tariff || s.tariffDesc || s.tariffDescription || '').filter(Boolean))];
+            const uniqueMeters = group.services.filter((s: any) => {
+              const m = s.physicalMeterNo || s.physicalMeterNumber || s.meterNo || s.meterNumber || '';
+              return m && m !== 'No Meter' && m !== '0' && m !== '-';
+            }).length;
 
             return (
-              <div key={i} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow" data-testid={`row-service-${i}`}>
-                <div className={`px-4 py-2.5 bg-gradient-to-r ${colors.bg} flex items-center gap-3`}>
-                  <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center text-white">
-                    {getSvcIcon(svcName)}
+              <div key={group.name} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow" data-testid={`row-service-group-${group.name.toLowerCase().replace(/\s+/g, '-')}`}>
+                <div
+                  className={`px-4 py-3 bg-gradient-to-r ${colors.bg} flex items-center gap-3 cursor-pointer active:opacity-90 transition-opacity`}
+                  onClick={() => group.totalCount > 1 ? toggleGroup(group.name) : setSelectedService(group.services[0])}
+                >
+                  <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white">
+                    {getSvcIcon(group.name)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <button
-                      onClick={() => setSelectedService(svc)}
-                      className="text-sm font-semibold text-white hover:text-white/80 transition-colors truncate block text-left"
-                      data-testid={`btn-service-detail-${i}`}
-                    >
-                      {svcName}
-                    </button>
+                    <div className="text-sm font-bold text-white truncate">{group.name}</div>
+                    <div className="text-[10px] text-white/70 mt-0.5">
+                      {group.totalCount} {group.totalCount === 1 ? 'entry' : 'entries'}
+                      {uniqueMeters > 0 && ` · ${uniqueMeters} metered`}
+                    </div>
                   </div>
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${isActiveStatus ? 'bg-white/25 text-white' : 'bg-red-100 text-red-700'}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${isActiveStatus ? 'bg-white' : 'bg-red-400'}`} />
-                    {status}
-                  </span>
-                </div>
-
-                <div className="px-3 sm:px-4 py-2.5 sm:py-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-2.5">
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Tariff</div>
-                      <div className="text-[12px] text-slate-700 mt-0.5 leading-snug">{svc.tariff || '-'}</div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Meter</div>
-                      <div className="text-[12px] text-slate-700 font-mono mt-0.5">{meterDisplay}</div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Frequency</div>
-                      <div className="text-[12px] text-slate-700 mt-0.5">{svc.frequency || 'Monthly'}</div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Connection Size</div>
-                      <div className="text-[12px] text-slate-700 mt-0.5">{svc.meterConnectionSize || '-'}</div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Factor / Qty</div>
-                      <div className="text-[12px] text-slate-700 font-mono mt-0.5">{svc.factorQuantity ?? svc.tarifffactor ?? '-'}</div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Request Date</div>
-                      <div className="text-[12px] text-slate-700 mt-0.5">{requestDate}</div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Commencement</div>
-                      <div className="text-[12px] text-slate-700 mt-0.5">{commencementDate}</div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Tariff Type</div>
-                      <div className="text-[12px] text-slate-700 mt-0.5">{getServiceTypeDesc(svc) || '-'}</div>
-                    </div>
-                    {serviceMode && (
-                      <div>
-                        <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Service Mode</div>
-                        <div className="text-[12px] text-slate-700 mt-0.5">{serviceMode}</div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${allActive ? 'bg-white/25 text-white' : noneActive ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-800'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${allActive ? 'bg-white' : noneActive ? 'bg-red-400' : 'bg-yellow-400'}`} />
+                      {allActive ? 'Active' : noneActive ? 'Inactive' : `${group.activeCount}/${group.totalCount} Active`}
+                    </span>
+                    {group.totalCount > 1 && (
+                      <div className="w-6 h-6 rounded-full bg-white/15 flex items-center justify-center text-white">
+                        {isGroupExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                       </div>
                     )}
                   </div>
-
-                  {tariffInfo.blocks.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-slate-100">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); toggleRate(i); }}
-                        className="flex items-center gap-1.5 text-[11px] font-semibold text-blue-600 hover:text-blue-800 transition-colors mb-2"
-                        data-testid={`btn-tariff-rate-${i}`}
-                      >
-                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                        Tariff Rates & Intervals ({tariffInfo.blocks.reduce((sum, b) => sum + b.intervals.length, 0)} entries)
-                      </button>
-                      {isExpanded && (
-                        <div className="space-y-2">
-                          {tariffInfo.blocks.map((block, bi) => (
-                            <div key={bi} className="rounded-lg border border-slate-200 overflow-hidden">
-                              {(block.startDate || block.endDate) && (
-                                <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200 text-[11px] text-slate-500 font-medium">
-                                  Period: {block.startDate || '—'} to {block.endDate || '—'}
-                                </div>
-                              )}
-                              <div className="overflow-x-auto">
-                                <table className="w-full text-[12px]">
-                                  <thead>
-                                    <tr className="bg-slate-50/50">
-                                      <th className="text-left py-1.5 px-3 text-[10px] uppercase tracking-wider text-slate-500 font-bold">Interval</th>
-                                      <th className="text-right py-1.5 px-3 text-[10px] uppercase tracking-wider text-slate-500 font-bold">Cost (R)</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {block.intervals.map((iv, idx) => (
-                                      <tr key={idx} className="border-t border-slate-100 hover:bg-blue-50/30">
-                                        <td className="py-1.5 px-3 text-slate-700">{iv.interval}</td>
-                                        <td className="py-1.5 px-3 text-right font-mono font-semibold text-blue-700">{iv.cost}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {!isExpanded && tariffInfo.blocks.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {tariffInfo.blocks.slice(0, 1).flatMap(b => b.intervals.slice(0, 4)).map((iv, idx) => (
-                            <div key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 border border-blue-100 text-[11px]">
-                              <span className="text-slate-600">{iv.interval}:</span>
-                              <span className="font-mono font-semibold text-blue-700">R {iv.cost}</span>
-                            </div>
-                          ))}
-                          {tariffInfo.blocks.reduce((sum, b) => sum + b.intervals.length, 0) > 4 && (
-                            <span className="text-[11px] text-slate-400 self-center">+{tariffInfo.blocks.reduce((sum, b) => sum + b.intervals.length, 0) - 4} more...</span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
+
+                {group.totalCount === 1 ? (
+                  <div className="px-3 sm:px-4 py-2.5 sm:py-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-2">
+                      <div><div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Tariff</div><div className="text-[12px] text-slate-700 mt-0.5 leading-snug">{group.services[0].tariff || group.services[0].tariffDesc || '-'}</div></div>
+                      <div><div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Meter</div><div className="text-[12px] text-slate-700 font-mono mt-0.5">{group.services[0].physicalMeterNo || group.services[0].physicalMeterNumber || group.services[0].meterNo || group.services[0].meterNumber || 'No Meter'}</div></div>
+                      <div><div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Frequency</div><div className="text-[12px] text-slate-700 mt-0.5">{group.services[0].frequency || 'Monthly'}</div></div>
+                      <div><div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Factor / Qty</div><div className="text-[12px] text-slate-700 font-mono mt-0.5">{group.services[0].factorQuantity ?? group.services[0].tarifffactor ?? '-'}</div></div>
+                    </div>
+                    {(() => { const ti = parseTariffRateData(group.services[0]); return ti.blocks.length > 0 ? (
+                      <div className="mt-3 pt-3 border-t border-slate-100">
+                        <button onClick={(e) => { e.stopPropagation(); toggleRate(startIdx); }} className="flex items-center gap-1.5 text-[11px] font-semibold text-blue-600 hover:text-blue-800 mb-2" data-testid={`btn-tariff-rate-${startIdx}`}>
+                          {expandedRates.has(startIdx) ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                          Tariff Rates ({ti.blocks.reduce((sum, b) => sum + b.intervals.length, 0)} entries)
+                        </button>
+                        {expandedRates.has(startIdx) && ti.blocks.map((block, bi) => (
+                          <div key={bi} className="rounded-lg border border-slate-200 overflow-hidden mb-1.5">
+                            {(block.startDate || block.endDate) && <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200 text-[11px] text-slate-500 font-medium">Period: {block.startDate || '—'} to {block.endDate || '—'}</div>}
+                            <table className="w-full text-[12px]"><tbody>
+                              {block.intervals.map((iv, idx) => (
+                                <tr key={idx} className="border-t border-slate-100 first:border-t-0 hover:bg-blue-50/30"><td className="py-1.5 px-3 text-slate-700">{iv.interval}</td><td className="py-1.5 px-3 text-right font-mono font-semibold text-blue-700">{iv.cost}</td></tr>
+                              ))}
+                            </tbody></table>
+                          </div>
+                        ))}
+                        {!expandedRates.has(startIdx) && (
+                          <div className="flex flex-wrap gap-2">
+                            {ti.blocks.slice(0, 1).flatMap(b => b.intervals.slice(0, 4)).map((iv, idx) => (
+                              <div key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 border border-blue-100 text-[11px]">
+                                <span className="text-slate-600">{iv.interval}:</span>
+                                <span className="font-mono font-semibold text-blue-700">R {iv.cost}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : null; })()}
+                  </div>
+                ) : (
+                  <>
+                    <div className="px-3 sm:px-4 py-2 border-b border-slate-100 bg-slate-50/50">
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                        {uniqueTariffs.length > 0 && <span className="truncate max-w-[300px]">Tariffs: {uniqueTariffs.join(', ')}</span>}
+                        {uniqueMeters > 0 && <span className="font-mono">· {uniqueMeters} meter{uniqueMeters > 1 ? 's' : ''}</span>}
+                      </div>
+                    </div>
+                    {isGroupExpanded && (
+                      <div className="px-3 sm:px-4 py-3 space-y-2">
+                        {group.services.map((svc: any, subIdx: number) => renderServiceDetail(svc, startIdx + subIdx))}
+                      </div>
+                    )}
+                    {!isGroupExpanded && (
+                      <div className="px-3 sm:px-4 py-2 text-center">
+                        <button onClick={() => toggleGroup(group.name)} className="text-[11px] text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-1" data-testid={`btn-expand-group-${group.name.toLowerCase().replace(/\s+/g, '-')}`}>
+                          <ChevronDown className="w-3.5 h-3.5" />
+                          Show {group.totalCount} {group.name} entries
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             );
           })}
@@ -473,8 +531,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
       )}
 
       <div className="flex items-center justify-end text-[11px] text-slate-400">
-        <span>Items per page: 50</span>
-        <span className="ml-4 font-medium">1 - {displayData.length} of {displayData.length}</span>
+        <span>{serviceGroups.length} service types · {displayData.length} total entries</span>
       </div>
     </div>
   );
@@ -1859,7 +1916,27 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
       ]);
       setMeters(mppResult.status === 'fulfilled' ? mppResult.value || [] : []);
       setAllServices(svcResult.status === 'fulfilled' ? svcResult.value || [] : []);
-      setPrepaidMeters(prepaidResult.status === 'fulfilled' ? prepaidResult.value || [] : []);
+      const rawPrepaid = prepaidResult.status === 'fulfilled' ? prepaidResult.value || [] : [];
+      const enrichedPrepaid = await Promise.all(rawPrepaid.map(async (m: any) => {
+        const meterId = m.meterId || m.meter_id || m.id || m.prepaidMeterId || m.meterID || m.meter_ID || m.serviceId || m.service_ID || m.meterNo || m.prepaidMeterNo;
+        if (!meterId) return m;
+        try {
+          const details = await getPrepaidRechargeDetailsForMeter(Number(meterId));
+          const arr = Array.isArray(details) ? details : [];
+          const sales = arr.filter((d: any) => (d.canceledStatus || '').toLowerCase() !== 'yes');
+          if (sales.length > 0) {
+            const latest = sales[0];
+            return {
+              ...m,
+              lastRechargeDate: latest.dateCaptured,
+              lastRechargeAmount: latest.total,
+              lastReceiptNo: latest.receiptNo,
+            };
+          }
+        } catch {}
+        return m;
+      }));
+      setPrepaidMeters(enrichedPrepaid);
     } catch (e: any) {
       setError(e.message || 'Failed to load services & meters');
     } finally {
@@ -1999,7 +2076,17 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
           if (!phys || phys === 'no meter' || phys === 'none' || phys === '-' || phys === '0') return false;
           return true;
         };
-        const meteredServices = allServices.filter((s: any) => !isBasicOrFixedCharge(s) && !isServicePrepaid(s) && hasRealMeter(s));
+        const rawMetered = allServices.filter((s: any) => !isBasicOrFixedCharge(s) && !isServicePrepaid(s) && hasRealMeter(s));
+        const seen = new Set<string>();
+        const meteredServices = rawMetered.filter((s: any) => {
+          const meterNo = (s.meterNo || s.meterNumber || '').toLowerCase().trim();
+          const svcType = (getServiceTypeDesc(s) || '').toLowerCase().trim();
+          const tariff = (s.tariff || s.tariffCode || s.tariffDescription || s.tariffDesc || '').toLowerCase().trim();
+          const key = `${svcType}|${meterNo}|${tariff}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
         if (meteredServices.length === 0) return null;
         return (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -2013,7 +2100,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
               const isPrepaid = isServicePrepaid(s);
               const svcIcon = getServiceIcon(s);
               const meterStatusVal = (s.meterStatus || s.statusDesc || '').toLowerCase();
-              const svcStatusVal = (s.status || s.serviceStatus || '').toLowerCase();
+              const svcStatusVal = (s.status || s.serviceStatus || s.statusDesc || '').toLowerCase();
               const isMeterActive = meterStatusVal === 'active';
               const isSvcActive = svcStatusVal === 'active';
               const hasMeter = !!(s.meterNo || s.meterNumber || s.physicalMeterNo || s.physicalMeterNumber);
@@ -2041,15 +2128,15 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                       </span>
                     )}
                     <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-semibold border ${isSvcActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-                      Svc: {s.status || s.serviceStatus || '-'}
+                      Svc: {s.status || s.serviceStatus || s.statusDesc || '-'}
                     </span>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Service ID</span><span className="font-mono font-semibold text-blue-700">{s.services_ID || s.serviceId || s.service_ID || s.serviceID || '-'}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Service ID</span><span className="font-mono font-semibold text-blue-700">{s.services_ID || s.serviceId || s.service_ID || s.serviceID || s.serviceType_ID || s.tariffTypeID || '-'}</span></div>
                   {(s.meterNo || s.meterNumber) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-semibold text-teal-700">{s.meterNo || s.meterNumber || '-'}</span></div>}
                   {(s.physicalMeterNo || s.physicalMeterNumber) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Physical Meter</span><span className="font-mono text-slate-700">{s.physicalMeterNo || s.physicalMeterNumber || '-'}</span></div>}
-                  <div className="col-span-2 flex justify-between text-[11px]"><span className="text-slate-500">Tariff</span><span className="text-slate-700 text-right truncate ml-2 max-w-[70%]">{s.tariff || s.tariffCode || s.tariffDescription || '-'}</span></div>
+                  <div className="col-span-2 flex justify-between text-[11px]"><span className="text-slate-500">Tariff</span><span className="text-slate-700 text-right truncate ml-2 max-w-[70%]">{s.tariff || s.tariffCode || s.tariffDescription || s.tariffDesc || '-'}</span></div>
                   {s.meterConnectionSize && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Connection</span><span className="text-slate-700">{s.meterConnectionSize}</span></div>}
                   {s.frequency && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Frequency</span><span className="text-slate-700">{s.frequency}</span></div>}
                   {(s.installDate || s.dateInstalled || s.serviceCommencementDate) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Start Date</span><span className="text-slate-700">{(() => { const d = s.serviceCommencementDate || s.installDate || s.dateInstalled; if (!d) return '-'; if (typeof d === 'string' && d.includes('T')) return new Date(d).toLocaleDateString('en-ZA'); return d; })()}</span></div>}
@@ -2084,7 +2171,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                   const isPrepaid = isServicePrepaid(s);
                   const svcIcon = getServiceIcon(s);
                   const meterStatusVal = (s.meterStatus || s.statusDesc || '').toLowerCase();
-                  const svcStatusVal = (s.status || s.serviceStatus || '').toLowerCase();
+                  const svcStatusVal = (s.status || s.serviceStatus || s.statusDesc || '').toLowerCase();
                   const isMeterActive = meterStatusVal === 'active';
                   const isSvcActive = svcStatusVal === 'active';
                   const hasMeter = !!(s.meterNo || s.meterNumber || s.physicalMeterNo || s.physicalMeterNumber);
@@ -2112,9 +2199,9 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                         <span className="text-[10px] text-slate-400">Metered</span>
                       )}
                     </td>
-                    <td className="py-2 px-3 font-mono text-blue-700">{s.services_ID || s.serviceId || s.service_ID || s.serviceID || '-'}</td>
+                    <td className="py-2 px-3 font-mono text-blue-700">{s.services_ID || s.serviceId || s.service_ID || s.serviceID || s.serviceType_ID || s.tariffTypeID || '-'}</td>
                     <td className="py-2 px-3 font-mono text-teal-700 font-semibold">{s.meterNo || s.meterNumber || '-'}</td>
-                    <td className="py-2 px-3 text-slate-500 text-xs max-w-[200px] truncate">{s.tariff || s.tariffCode || s.tariffDescription || '-'}</td>
+                    <td className="py-2 px-3 text-slate-500 text-xs max-w-[200px] truncate">{s.tariff || s.tariffCode || s.tariffDescription || s.tariffDesc || '-'}</td>
                     <td className="py-2 px-3">
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${isMeterActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : (s.meterStatus || s.statusDesc) ? 'bg-red-100 text-red-600 border-red-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
                         {s.meterStatus || s.statusDesc || '-'}
@@ -2122,7 +2209,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                     </td>
                     <td className="py-2 px-3">
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${isSvcActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-                        {s.status || s.serviceStatus || '-'}
+                        {s.status || s.serviceStatus || s.statusDesc || '-'}
                       </span>
                     </td>
                     <td className="py-2 px-3 text-center">
@@ -2485,9 +2572,10 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-bold text-blue-700">{m.prepaidMeterNo || m.meterNumber || m.meterNo || '-'}</span></div>
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">Physical</span><span className="font-mono text-slate-700">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</span></div>
-                  {(m.tariff || m.tariffDescription) && <div className="col-span-2 flex justify-between text-[11px]"><span className="text-slate-500">Tariff</span><span className="text-slate-700 text-right truncate ml-2 max-w-[70%]">{m.tariff || m.tariffDescription || '-'}</span></div>}
-                  {m.lastRechargeDate && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Last Recharge</span><span className="font-mono text-slate-700">{new Date(m.lastRechargeDate).toLocaleDateString('en-ZA')}</span></div>}
+                  <div className="col-span-2 flex justify-between text-[11px]"><span className="text-slate-500">Tariff</span><span className="text-slate-700 text-right truncate ml-2 max-w-[70%]">{m.tariff || m.tariffDescription || m.tariffDesc || '-'}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Last Recharge</span><span className="font-mono text-slate-700">{m.lastRechargeDate ? (() => { const d = m.lastRechargeDate; if (d.includes('/')) { const p = d.split('/'); return `${p[0]}/${p[1]}/${p[2]}`; } return new Date(d).toLocaleDateString('en-ZA'); })() : '-'}</span></div>
                   {m.lastRechargeAmount !== undefined && m.lastRechargeAmount !== null && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Last Amount</span><span className="font-mono text-emerald-700 font-semibold">R {Number(m.lastRechargeAmount).toFixed(2)}</span></div>}
+                  {m.lastReceiptNo && <div className="col-span-2 flex justify-between text-[11px]"><span className="text-slate-500">Receipt</span><span className="font-mono text-slate-700 text-right truncate ml-2 max-w-[65%]">{m.lastReceiptNo}</span></div>}
                 </div>
                 <div className="flex items-center justify-center gap-1 text-[10px] text-amber-600 font-semibold pt-1.5 border-t border-slate-100">
                   <Eye className="w-3 h-3" /> Tap to view purchase history
@@ -2517,13 +2605,16 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                     <td className="py-2 px-3 font-medium">{m.prepaidServiceDesc || m.serviceType || m.serviceDescription || m.serviceDesc || 'Prepaid'}</td>
                     <td className="py-2 px-3 font-mono font-semibold text-blue-700">{m.prepaidMeterNo || m.meterNumber || m.meterNo || '-'}</td>
                     <td className="py-2 px-3 font-mono text-sm">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</td>
-                    <td className="py-2 px-3 text-xs max-w-[150px] truncate">{m.tariff || m.tariffDescription || '-'}</td>
+                    <td className="py-2 px-3 text-xs max-w-[150px] truncate">{m.tariff || m.tariffDescription || m.tariffDesc || '-'}</td>
                     <td className="py-2 px-3">
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.meterStatus || m.statusDesc || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
                         {m.status || m.meterStatus || m.statusDesc || '-'}
                       </span>
                     </td>
-                    <td className="py-2 px-3 text-right font-mono text-xs">{m.lastRechargeDate ? new Date(m.lastRechargeDate).toLocaleDateString('en-ZA') : '-'}</td>
+                    <td className="py-2 px-3 text-right font-mono text-xs">
+                      {m.lastRechargeDate ? (() => { const d = m.lastRechargeDate; if (d.includes('/')) return d; return new Date(d).toLocaleDateString('en-ZA'); })() : '-'}
+                      {m.lastReceiptNo && <div className="text-[9px] text-slate-400 truncate max-w-[140px]">{m.lastReceiptNo}</div>}
+                    </td>
                     <td className="py-2 px-3 text-center">
                       <button
                         onClick={(e) => { e.stopPropagation(); loadPrepaidHistory(m); }}
@@ -2584,7 +2675,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                         setLoadingRecharge(true);
                         setPrepaidRechargeDetails([]);
                         try {
-                          const meterId = m.meterId || m.meter_id || m.id;
+                          const meterId = m.meterId || m.meter_id || m.id || m.prepaidMeterId || m.meterID || m.meter_ID || m.serviceId || m.service_ID || m.meterNo || m.prepaidMeterNo;
                           if (meterId) {
                             const details = await getPrepaidRechargeDetailsForMeter(meterId);
                             setPrepaidRechargeDetails(Array.isArray(details) ? details : []);
@@ -2599,14 +2690,14 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                         <div key={i} onClick={handleClick} className="bg-white border border-slate-200 rounded-lg p-3 space-y-2 cursor-pointer active:bg-emerald-50" data-testid={`prepaid-sales-row-${i}`}>
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-semibold text-slate-800">{m.serviceType || m.serviceDescription || 'Electricity Pre-Paid'}</span>
-                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.meterStatus || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
-                              {m.status || m.meterStatus || '-'}
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.meterStatus || m.statusDesc || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                              {m.status || m.meterStatus || m.statusDesc || '-'}
                             </span>
                           </div>
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                             <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-semibold text-blue-700">{m.meterNumber || m.meterNo || '-'}</span></div>
                             <div className="flex justify-between text-[11px]"><span className="text-slate-500">Physical</span><span className="font-mono text-slate-700">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</span></div>
-                            <div className="flex justify-between text-[11px]"><span className="text-slate-500">Tariff</span><span className="text-slate-700 truncate ml-1">{m.tariff || m.tariffDescription || '-'}</span></div>
+                            <div className="flex justify-between text-[11px]"><span className="text-slate-500">Tariff</span><span className="text-slate-700 truncate ml-1">{m.tariff || m.tariffDescription || m.tariffDesc || '-'}</span></div>
                             <div className="flex justify-between text-[11px]"><span className="text-slate-500">Phase</span><span className="text-slate-700">{m.meterPhase || m.phase || '-'}</span></div>
                             <div className="flex justify-between text-[11px]"><span className="text-slate-500">Classification</span><span className="text-slate-700">{m.meterClassification || m.classification || '-'}</span></div>
                             <div className="flex justify-between text-[11px]"><span className="text-slate-500">Factor</span><span className="font-mono text-slate-700">{m.factor ?? '-'}</span></div>
@@ -2645,7 +2736,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                               setLoadingRecharge(true);
                               setPrepaidRechargeDetails([]);
                               try {
-                                const meterId = m.meterId || m.meter_id || m.id;
+                                const meterId = m.meterId || m.meter_id || m.id || m.prepaidMeterId || m.meterID || m.meter_ID || m.serviceId || m.service_ID || m.meterNo || m.prepaidMeterNo;
                                 if (meterId) {
                                   const details = await getPrepaidRechargeDetailsForMeter(meterId);
                                   setPrepaidRechargeDetails(Array.isArray(details) ? details : []);
@@ -2658,15 +2749,15 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                             }}
                             data-testid={`prepaid-sales-row-${i}`}
                           >
-                            <td className="py-2.5 px-3 font-medium">{m.serviceType || m.serviceDescription || 'Electricity Pre-Paid'}</td>
-                            <td className="py-2.5 px-3 font-mono text-blue-700 font-semibold">{m.meterNumber || m.meterNo || '-'}</td>
+                            <td className="py-2.5 px-3 font-medium">{m.serviceType || m.serviceDescription || m.prepaidServiceDesc || 'Electricity Pre-Paid'}</td>
+                            <td className="py-2.5 px-3 font-mono text-blue-700 font-semibold">{m.meterNumber || m.meterNo || m.prepaidMeterNo || '-'}</td>
                             <td className="py-2.5 px-3">{m.meterPhase || m.phase || '-'}</td>
-                            <td className="py-2.5 px-3 text-xs">{m.tariff || m.tariffDescription || '-'}</td>
+                            <td className="py-2.5 px-3 text-xs">{m.tariff || m.tariffDescription || m.tariffDesc || '-'}</td>
                             <td className="py-2.5 px-3 font-mono text-xs">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</td>
                             <td className="py-2.5 px-3">{m.meterConnectionSize || m.connectionSize || '-'}</td>
                             <td className="py-2.5 px-3">
-                              <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.meterStatus || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
-                                {m.status || m.meterStatus || '-'}
+                              <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.meterStatus || m.statusDesc || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                                {m.status || m.meterStatus || m.statusDesc || '-'}
                               </span>
                             </td>
                             <td className="py-2.5 px-3 text-right font-mono">{m.factor ?? '-'}</td>
