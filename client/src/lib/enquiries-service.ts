@@ -1016,17 +1016,10 @@ export async function getBilledVsPaidAmounts(accountId: number, financialYear?: 
   const cacheKey = `billed-vs-paid-${accountId}-${yr}`;
   const cached = getCached(cacheKey);
   if (cached) return cached;
-  try {
-    const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/billed-vs-paid-amounts?accountId=${accountId}&financialYear=${encodeURIComponent(yr)}`);
-    const result = normalizeArray(data);
-    setCache(cacheKey, result);
-    return result;
-  } catch (e: any) {
-    if (e.message?.includes('500')) {
-      throw new Error('The Billed vs Paid endpoint is currently unavailable on the Platinum API. This may be a temporary server issue — please try again later or contact your system administrator.');
-    }
-    throw e;
-  }
+  const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/billed-vs-paid-amounts?accountId=${accountId}&financialYear=${encodeURIComponent(yr)}`);
+  const result = normalizeArray(data);
+  setCache(cacheKey, result);
+  return result;
 }
 
 // === CLEARANCE ===

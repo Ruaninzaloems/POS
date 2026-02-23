@@ -2885,7 +2885,53 @@ export async function registerRoutes(
     ["check-file-exists", "CheckFileExists"],
   ];
 
+  app.get(`/api/platinum/billing-enquiry/billed-vs-paid-amounts`, async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const { accountId, financialYear } = req.query as Record<string, string>;
+      try {
+        const data = await platinumGet(session, `/api/BillingEnquiry/BilledVsPaidAmounts`, req.query as Record<string, string>);
+        if (data && (Array.isArray(data) ? data.length > 0 : true)) {
+          handlePlatinumResult(res, data);
+          return;
+        }
+      } catch (primaryErr: any) {
+        console.log(`[billed-vs-paid] Primary endpoint failed (${primaryErr.message}), falling back to DetailedTransactionResults`);
+      }
+      const finYear = financialYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
+      const txnData = await platinumGet(session, `/api/BillingEnquiry/DetailedTransactionResults`, {
+        accountId: accountId,
+        finYear: finYear,
+      });
+      if (!txnData || !Array.isArray(txnData)) {
+        res.json([]);
+        return;
+      }
+      const months = ['july','august','september','october','november','december','january','february','march','april','may','june'];
+      const monthLabels = ['July','August','September','October','November','December','January','February','March','April','May','June'];
+      const totalRow = txnData.find((d: any) => d.transGroup === 900 || (d.serviceDesc || '').toLowerCase() === 'total');
+      const receiptsRow = txnData.find((d: any) => d.transGroup === 915 || (d.serviceDesc || '').toLowerCase() === 'receipts');
+      const result: any[] = [];
+      for (let i = 0; i < months.length; i++) {
+        const billing = totalRow ? Number(totalRow[months[i]]) || 0 : 0;
+        const paid = receiptsRow ? Number(receiptsRow[months[i]]) || 0 : 0;
+        if (billing !== 0 || paid !== 0) {
+          result.push({
+            financialYear: finYear,
+            month: monthLabels[i],
+            billingAmount: billing,
+            paidAmount: paid,
+          });
+        }
+      }
+      res.json(result);
+    } catch (e: any) {
+      res.status(502).json({ message: "Failed to load billed vs paid data", detail: e.message });
+    }
+  });
+
   for (const [localPath, platinumPath] of billingEnquiryGetEndpoints) {
+    if (localPath === 'billed-vs-paid-amounts') continue;
     app.get(`/api/platinum/billing-enquiry/${localPath}`, async (req, res) => {
       try {
         const session = requireAuth(req, res); if (!session) return;
