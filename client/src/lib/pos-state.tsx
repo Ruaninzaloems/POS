@@ -591,7 +591,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (optionsResult.data?.length > 0) {
             setAllowedPaymentOptions(optionsResult.data);
             setPaymentOptionsSource(optionsResult.source);
-            console.log(`[PaymentConfig] Loaded ${optionsResult.data.length} payment options (source: ${optionsResult.source})`);
+            console.log(`[PaymentConfig] Loaded ${optionsResult.data.length} payment options (source: ${optionsResult.source}):`, optionsResult.data.map((o: any) => `${o.posPaymentOption_ID}="${o.posPaymentOptionDesc}" ticked=${o.isTicked} enabled=${o.enabled}`).join(' | '));
           }
           if (typesResult.data?.length > 0) {
             setAllowedPaymentTypes(typesResult.data);
@@ -631,10 +631,29 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (allowedPaymentOptions.length === 0) return true;
       const optionId = mapTransactionTypeToPaymentOptionId(transactionType);
       if (optionId === null) return true;
-      const option = allowedPaymentOptions.find(o => o.posPaymentOption_ID === optionId);
+      let option = allowedPaymentOptions.find(o => o.posPaymentOption_ID === optionId);
+      if (!option) {
+        const descMap: Record<number, string[]> = {
+          1: ['consumer', 'services'],
+          2: ['misc', 'miscellaneous'],
+          3: ['group', 'account group'],
+          4: ['clearance'],
+          5: ['prepaid'],
+          6: ['direct deposit', 'allocation'],
+        };
+        const keywords = descMap[optionId] || [];
+        if (keywords.length > 0) {
+          option = allowedPaymentOptions.find(o =>
+            o.posPaymentOptionDesc && keywords.some(kw => o.posPaymentOptionDesc.toLowerCase().includes(kw)) && o.isTicked
+          );
+        }
+        if (option) {
+          console.log(`[PaymentOptions] Option ${optionId} (${transactionType}) not found by ID, but matched by description: "${option.posPaymentOptionDesc}" (ID ${option.posPaymentOption_ID}) — ALLOWED`);
+        }
+      }
       if (!option) {
         if (paymentOptionsSource === 'platinum') {
-          console.warn(`[PaymentOptions] Option ${optionId} (${transactionType}) not found in Platinum options — BLOCKED`);
+          console.warn(`[PaymentOptions] Option ${optionId} (${transactionType}) not found in Platinum options (${allowedPaymentOptions.map(o => `${o.posPaymentOption_ID}:${o.posPaymentOptionDesc}`).join(', ')}) — BLOCKED`);
           return false;
         }
         return true;
@@ -787,8 +806,15 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addItem = (item: TransactionItem, allowDuplicates: boolean = false) => {
      if (!isPaymentOptionAllowed(item.type)) {
-        const optionId = mapTransactionTypeToPaymentOptionId(item.type);
-        const optionName = allowedPaymentOptions.find(o => o.posPaymentOption_ID === optionId)?.posPaymentOptionDesc || item.type;
+        const friendlyNames: Record<string, string> = {
+          'CONSUMER_SERVICES': 'Consumer Services',
+          'MULTI_ACCOUNT': 'Consumer Services',
+          'ACCOUNT_GROUP': 'Account Group',
+          'DIRECT_INCOME': 'Miscellaneous / Direct Income',
+          'CLEARANCE': 'Clearance',
+          'PREPAID': 'Prepaid',
+        };
+        const optionName = friendlyNames[item.type] || item.type;
         toast({
             title: "Function Not Allowed",
             description: `${optionName} is not enabled for your cashier profile. Contact your supervisor to update your payment options.`,
