@@ -150,7 +150,7 @@ const FRIENDLY_LABELS: Record<string, string> = {
 const SUB_ITEM_ENDPOINT_MAP: Record<string, string> = {
     // Account sub-items
     deposit: '/api/BillingDashboard/get-deposit-table-data',
-    propertyRatesAccountException: '/api/BillingDashboard/get-property-rates-account-exception-table-data',
+    propertyRatesAccountException: '/api/BillingDashboard/get-property-rates-exception-table-data',
     propServiceDeclinedRequest: '/api/BillingDashboard/get-status-change-declined-table-data',
     propDeclinedRequest: '/api/BillingDashboard/get-status-change-declined-table-data',
     tariffChangeAwaitingAuthorisation: '/api/BillingDashboard/get-tariff-change-request-table-data',
