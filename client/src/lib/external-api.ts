@@ -1127,6 +1127,10 @@ export async function platinumGetDayEndReconcileList(params: Record<string, stri
     return platinumFetch(`/api/platinum/billing-payment-day-end/get-cashier-receipt-reconcile-list?${qs}`);
 }
 
+export async function platinumGetDayEndUnreconciledList(id: string | number): Promise<any[]> {
+    return platinumFetch(`/api/platinum/billing-payment-day-end/cashier-receipt-unreconciled-list?id=${id}`);
+}
+
 export async function platinumReceiptDiscovery(cashierId: string): Promise<{ items: any[]; totalCount: number }> {
     return platinumFetch(`/api/platinum/receipt-discovery?cashierId=${cashierId}`);
 }

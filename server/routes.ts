@@ -1829,6 +1829,21 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/platinum/billing-payment-day-end/cashier-receipt-unreconciled-list", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const queryParams = req.query as Record<string, string>;
+      const id = queryParams.id || queryParams.cashierId || (session.userData?.user_ID ? String(session.userData.user_ID) : '');
+      if (!id) { res.status(400).json({ message: "Missing id parameter" }); return; }
+      console.log(`[dayend-unreconciled-list] id=${id}`);
+      const data = await platinumGet(session, "/api/billing-payment-day-end-reconcile/cashier-receipt-unreconciled-list", { id });
+      console.log(`[dayend-unreconciled-list] Response:`, JSON.stringify(data).substring(0, 500));
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.post("/api/platinum/billing-payment-day-end/save-reconcile-data", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
