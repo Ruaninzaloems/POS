@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect, useRef,
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, CashOffice } from './external-api';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange, fetchActiveCashierByUserId, fetchPosMultiReceiptPrintByCashier, platinumValidateCashier, fetchActiveFinYear, platinumAuthDayEndCancelReceipt, platinumRequestCancelReceipt, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumGetPendingCancelRequests, platinumGetDayEndReconcileList } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange, fetchActiveCashierByUserId, fetchPosMultiReceiptPrintByCashier, platinumValidateCashier, fetchActiveFinYear, platinumAuthDayEndCancelReceipt, platinumRequestCancelReceipt, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumGetPendingCancelRequests, platinumGetDayEndReconcileList, platinumReceiptDiscovery } from './external-api';
 import { getAccountBalance as enquiryGetAccountBalance } from './enquiries-service';
 
 if (import.meta.hot) {
@@ -493,24 +493,23 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return;
       }
 
-      console.log(`[Transactions] ViewReceipt returned empty, trying day-end reconcile list`);
+      console.log(`[Transactions] ViewReceipt returned empty, trying comprehensive receipt discovery`);
 
       try {
-        const reconcileData = await platinumGetDayEndReconcileList({ id: String(pCashierId) });
-        const reconcileItems = Array.isArray(reconcileData) ? reconcileData :
-          (reconcileData && typeof reconcileData === 'object' ? (reconcileData as any).items || (reconcileData as any).value || [] : []);
+        const discoveryResult = await platinumReceiptDiscovery(String(pCashierId));
+        const discoveryItems = discoveryResult?.items || [];
 
-        if (reconcileItems.length > 0) {
-          console.log(`[Transactions] Day-end reconcile list returned ${reconcileItems.length} items`);
-          const mapped: TransactionRecord[] = reconcileItems.map((r: any, idx: number) => {
-            const isCash = r.paymentTypeId === 1 || (r.paymentType || '').toLowerCase().includes('cash');
-            const isCard = r.paymentTypeId === 3 || (r.paymentType || '').toLowerCase().includes('card');
-            const paymentAmount = r.paidAmount || r.amount || r.tenderAmount || 0;
-            const receiptNo = r.receiptNo || r.receiptNumber || '';
+        if (discoveryItems.length > 0) {
+          console.log(`[Transactions] Receipt discovery returned ${discoveryItems.length} items`);
+          const mapped: TransactionRecord[] = discoveryItems.map((r: any, idx: number) => {
+            const isCash = r._paymentType === 'Cash' || r.paymentTypeId === 1 || (r.paymentType || '').toLowerCase().includes('cash');
+            const isCard = r._paymentType === 'Credit Card' || r.paymentTypeId === 3 || (r.paymentType || '').toLowerCase().includes('card');
+            const paymentAmount = r.paidAmount || r.amount || r.tenderAmount || r.receiptAmount || 0;
+            const receiptNo = r.receiptNo || r.receiptNumber || r.receipt_No || '';
             const rid = r.receiptId || r.id || r.receipt_ID || idx;
 
             let txType: TransactionType = 'CONSUMER_SERVICES';
-            const billType = String(r.billType || r.paymentOption || '').toLowerCase();
+            const billType = String(r.billType || r.paymentOption || r.paymentOptionDesc || '').toLowerCase();
             if (billType.includes('misc') || billType.includes('direct') || billType.includes('4')) {
               txType = 'DIRECT_INCOME';
             } else if (billType.includes('clearance') || billType.includes('6')) {
@@ -520,14 +519,14 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
 
             return {
-              id: `plt-${rid}`,
+              id: `disc-${rid}-${r._source || 'unknown'}`,
               receiptNumber: receiptNo || `REC-${rid}`,
-              timestamp: r.dateCaptured ? new Date(r.dateCaptured).getTime() : Date.now(),
+              timestamp: r.dateCaptured ? new Date(r.dateCaptured).getTime() : (r.receiptDate ? new Date(r.receiptDate).getTime() : Date.now()),
               items: [{
                 id: `item-${rid}`,
                 type: txType,
-                description: r.accName || r.accountName || r.description || 'Payment',
-                reference: r.accountNumber || r.accountNo || String(r.accountId || ''),
+                description: r.accName || r.accountName || r.description || r.accountDesc || 'Payment',
+                reference: r.accountNumber || r.accountNo || String(r.accountId || r.account_ID || ''),
                 amountDue: r.outstandingAmount || paymentAmount,
                 amountToPay: paymentAmount,
                 originalData: r,
@@ -538,12 +537,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 card: isCard ? paymentAmount : 0,
                 cardReference: '',
               },
-              status: (r.isCancelled === 1 || r.isCanceled === 1) ? 'CANCELLED' as TransactionStatus : 'COMPLETED' as TransactionStatus,
+              status: (r.isCancelled === 1 || r.isCanceled === 1 || r.canceledStatus === 1) ? 'CANCELLED' as TransactionStatus : 'COMPLETED' as TransactionStatus,
               cashierId: currentUser.id,
               cashierName: r.cashierName || currentUser.name || '',
-              cashOfficeName: r.cashOfficeName || '',
-              paymentTypeName: isCash ? 'Cash' : isCard ? 'Credit Card' : (r.paymentType || ''),
-              paymentOptionName: r.paymentOption || '',
+              cashOfficeName: r.cashOfficeName || r.cashOfficeDesc || '',
+              paymentTypeName: r._paymentType || (isCash ? 'Cash' : isCard ? 'Credit Card' : (r.paymentType || '')),
+              paymentOptionName: r.paymentOption || r.paymentOptionDesc || '',
               isReconciled: r.isReconciled ?? 0,
               cancellationReason: r.cancellationReason || r.reasonForCancel || undefined,
             };
@@ -559,14 +558,14 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
             return mapped;
           });
-          console.log(`[Transactions] Loaded ${mapped.length} transactions from day-end reconcile list`);
+          console.log(`[Transactions] Loaded ${mapped.length} transactions from receipt discovery`);
           return;
         }
       } catch (e) {
-        console.warn(`[Transactions] Day-end reconcile list failed:`, e);
+        console.warn(`[Transactions] Receipt discovery failed:`, e);
       }
 
-      console.log(`[Transactions] Day-end reconcile list empty, trying API discovery scan`);
+      console.log(`[Transactions] Receipt discovery empty, trying Sebata API scan`);
       let results: { receiptId: number; data: any }[] = [];
 
       if (platinumUser) {

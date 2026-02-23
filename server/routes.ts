@@ -951,13 +951,57 @@ export async function registerRoutes(
       if (body.accountNumber || body.AccountNumber) params.AccountNumber = body.accountNumber || body.AccountNumber;
       if (body.receiptNo || body.ReceiptNo) params.ReceiptNo = body.receiptNo || body.ReceiptNo;
 
-      console.log(`[get-receipt-list] Request params (GET):`, JSON.stringify(params));
+      const userId = session.userData?.user_ID ? String(session.userData.user_ID) : '';
+      console.log(`[get-receipt-list] Request params (GET):`, JSON.stringify(params), `userId=${userId}`);
 
-      const data = await platinumGet(session, "/api/ViewReceipt/get-receipt-list", params, { timeoutMs: 90000 });
+      // Strategy 1: GET with Cashier=cashierId
+      let data = await platinumGet(session, "/api/ViewReceipt/get-receipt-list", params, { timeoutMs: 90000 });
+      console.log(`[get-receipt-list] Strategy 1 (GET Cashier=${params.Cashier}): type=${typeof data}, isArray=${Array.isArray(data)}, keys=${data && typeof data === 'object' ? Object.keys(data).join(',') : 'N/A'}`);
 
-      console.log(`[get-receipt-list] Response type: ${typeof data}, isArray: ${Array.isArray(data)}, keys: ${data && typeof data === 'object' ? Object.keys(data).join(',') : 'N/A'}`);
+      // Strategy 2: If failed, try POST with JSON body
+      if (data && typeof data === 'object' && data._error && data.status === 400) {
+        console.log(`[get-receipt-list] Strategy 1 failed (400), trying POST with JSON body`);
+        const postBody = {
+          Cashier: params.Cashier,
+          CashierId: params.CashierId,
+          FromDate: params.FromDate,
+          ToDate: params.ToDate,
+          Page: Number(params.Page),
+          PageSize: Number(params.PageSize),
+          Orderby: params.Orderby,
+          ShortDirection: params.ShortDirection,
+        };
+        data = await platinumPost(session, "/api/ViewReceipt/get-receipt-list", postBody);
+        console.log(`[get-receipt-list] Strategy 2 (POST body): type=${typeof data}, isArray=${Array.isArray(data)}, keys=${data && typeof data === 'object' ? Object.keys(data).join(',') : 'N/A'}, first500=${JSON.stringify(data).substring(0, 500)}`);
+      }
+
+      // Strategy 3: If still failed, try GET with userId as Cashier
+      if (data && typeof data === 'object' && data._error && userId) {
+        console.log(`[get-receipt-list] Strategy 2 failed, trying GET with Cashier=userId(${userId})`);
+        const userParams = { ...params, Cashier: userId, CashierId: userId };
+        data = await platinumGet(session, "/api/ViewReceipt/get-receipt-list", userParams, { timeoutMs: 90000 });
+        console.log(`[get-receipt-list] Strategy 3 (GET Cashier=userId): type=${typeof data}, isArray=${Array.isArray(data)}, keys=${data && typeof data === 'object' ? Object.keys(data).join(',') : 'N/A'}, first500=${JSON.stringify(data).substring(0, 500)}`);
+      }
+
+      // Strategy 4: If still failed, try POST with userId as Cashier 
+      if (data && typeof data === 'object' && data._error && userId) {
+        console.log(`[get-receipt-list] Strategy 3 failed, trying POST with Cashier=userId(${userId})`);
+        const postBody2 = {
+          Cashier: userId,
+          CashierId: Number(userId),
+          FromDate: params.FromDate,
+          ToDate: params.ToDate,
+          Page: Number(params.Page),
+          PageSize: Number(params.PageSize),
+          Orderby: params.Orderby,
+          ShortDirection: params.ShortDirection,
+        };
+        data = await platinumPost(session, "/api/ViewReceipt/get-receipt-list", postBody2);
+        console.log(`[get-receipt-list] Strategy 4 (POST Cashier=userId): type=${typeof data}, isArray=${Array.isArray(data)}, keys=${data && typeof data === 'object' ? Object.keys(data).join(',') : 'N/A'}, first500=${JSON.stringify(data).substring(0, 500)}`);
+      }
+
       if (data && typeof data === 'object' && '_error' in data) {
-        console.log(`[get-receipt-list] Response (first 500):`, JSON.stringify(data).substring(0, 500));
+        console.log(`[get-receipt-list] All strategies exhausted. Final response:`, JSON.stringify(data).substring(0, 500));
       }
 
       if (data && typeof data === 'object' && data._error) {
@@ -980,6 +1024,107 @@ export async function registerRoutes(
     } catch (e: any) {
       console.error(`[get-receipt-list] Error:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/receipt-discovery", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const cashierId = req.query.cashierId as string;
+      const userId = session.userData?.user_ID ? String(session.userData.user_ID) : '';
+      console.log(`[receipt-discovery] Starting — cashierId=${cashierId}, userId=${userId}`);
+
+      const pagerBody = { page: 1, pageSize: 500, orderby: null, shortDirection: null };
+      const allReceipts: any[] = [];
+
+      // Strategy 1: auth-day-end-reconcile/cashier-receipt-cash-list (POST with id=cashierId)
+      try {
+        console.log(`[receipt-discovery] Trying cashier-receipt-cash-list with id=${cashierId}`);
+        const cashData = await platinumPost(session, "/api/billing/auth-day-end-reconcile/cashier-receipt-cash-list", pagerBody, { id: cashierId });
+        const cashItems = Array.isArray(cashData) ? cashData :
+          (cashData && typeof cashData === 'object' ? cashData.items || cashData.value || cashData.data || [] : []);
+        if (Array.isArray(cashItems) && cashItems.length > 0) {
+          console.log(`[receipt-discovery] cashier-receipt-cash-list returned ${cashItems.length} items`);
+          cashItems.forEach((item: any) => { item._source = 'cash'; item._paymentType = 'Cash'; });
+          allReceipts.push(...cashItems);
+        } else {
+          console.log(`[receipt-discovery] cashier-receipt-cash-list: empty or error`, JSON.stringify(cashData).substring(0, 300));
+        }
+      } catch (e: any) { console.warn(`[receipt-discovery] cashier-receipt-cash-list failed:`, e.message); }
+
+      // Strategy 2: auth-day-end-reconcile/cashier-receipt-card-list (POST with id=cashierId)
+      try {
+        console.log(`[receipt-discovery] Trying cashier-receipt-card-list with id=${cashierId}`);
+        const cardData = await platinumPost(session, "/api/billing/auth-day-end-reconcile/cashier-receipt-card-list", pagerBody, { id: cashierId });
+        const cardItems = Array.isArray(cardData) ? cardData :
+          (cardData && typeof cardData === 'object' ? cardData.items || cardData.value || cardData.data || [] : []);
+        if (Array.isArray(cardItems) && cardItems.length > 0) {
+          console.log(`[receipt-discovery] cashier-receipt-card-list returned ${cardItems.length} items`);
+          cardItems.forEach((item: any) => { item._source = 'card'; item._paymentType = 'Credit Card'; });
+          allReceipts.push(...cardItems);
+        } else {
+          console.log(`[receipt-discovery] cashier-receipt-card-list: empty or error`, JSON.stringify(cardData).substring(0, 300));
+        }
+      } catch (e: any) { console.warn(`[receipt-discovery] cashier-receipt-card-list failed:`, e.message); }
+
+      // Strategy 3: billing-payment-day-end-reconcile/get-cashier-receipt-reconcile-list (GET with id)
+      try {
+        console.log(`[receipt-discovery] Trying reconcile-list with id=${cashierId}`);
+        const reconData = await platinumGet(session, "/api/billing-payment-day-end-reconcile/get-cashier-receipt-reconcile-list", { id: cashierId });
+        const reconItems = Array.isArray(reconData) ? reconData :
+          (reconData && typeof reconData === 'object' && !reconData._error ? reconData.items || reconData.value || reconData.data || [] : []);
+        if (Array.isArray(reconItems) && reconItems.length > 0) {
+          console.log(`[receipt-discovery] reconcile-list returned ${reconItems.length} items`);
+          reconItems.forEach((item: any) => { item._source = 'reconcile'; });
+          allReceipts.push(...reconItems);
+        } else {
+          console.log(`[receipt-discovery] reconcile-list: empty or error`, JSON.stringify(reconData).substring(0, 300));
+        }
+      } catch (e: any) { console.warn(`[receipt-discovery] reconcile-list failed:`, e.message); }
+
+      // Strategy 4: billing-payment-day-end-reconcile/get-cashier-receipt-cheque-list (POST with id)
+      try {
+        const chequeData = await platinumPost(session, "/api/billing-payment-day-end-reconcile/get-cashier-receipt-cheque-list", pagerBody, { id: cashierId });
+        const chequeItems = Array.isArray(chequeData) ? chequeData :
+          (chequeData && typeof chequeData === 'object' && !chequeData._error ? chequeData.items || chequeData.value || chequeData.data || [] : []);
+        if (Array.isArray(chequeItems) && chequeItems.length > 0) {
+          console.log(`[receipt-discovery] cheque-list returned ${chequeItems.length} items`);
+          chequeItems.forEach((item: any) => { item._source = 'cheque'; item._paymentType = 'Cheque'; });
+          allReceipts.push(...chequeItems);
+        }
+      } catch (e: any) { console.warn(`[receipt-discovery] cheque-list failed:`, e.message); }
+
+      // Strategy 5: Try all above with userId instead if cashierId gave no results
+      if (allReceipts.length === 0 && userId && userId !== cashierId) {
+        console.log(`[receipt-discovery] No results with cashierId=${cashierId}, trying with userId=${userId}`);
+        try {
+          const cashData2 = await platinumPost(session, "/api/billing/auth-day-end-reconcile/cashier-receipt-cash-list", pagerBody, { id: userId });
+          const cashItems2 = Array.isArray(cashData2) ? cashData2 :
+            (cashData2 && typeof cashData2 === 'object' && !cashData2._error ? cashData2.items || cashData2.value || cashData2.data || [] : []);
+          if (Array.isArray(cashItems2) && cashItems2.length > 0) {
+            console.log(`[receipt-discovery] cashier-receipt-cash-list(userId) returned ${cashItems2.length} items`);
+            cashItems2.forEach((item: any) => { item._source = 'cash'; item._paymentType = 'Cash'; });
+            allReceipts.push(...cashItems2);
+          }
+        } catch (e: any) { console.warn(`[receipt-discovery] cashier-receipt-cash-list(userId) failed:`, e.message); }
+
+        try {
+          const cardData2 = await platinumPost(session, "/api/billing/auth-day-end-reconcile/cashier-receipt-card-list", pagerBody, { id: userId });
+          const cardItems2 = Array.isArray(cardData2) ? cardData2 :
+            (cardData2 && typeof cardData2 === 'object' && !cardData2._error ? cardData2.items || cardData2.value || cardData2.data || [] : []);
+          if (Array.isArray(cardItems2) && cardItems2.length > 0) {
+            console.log(`[receipt-discovery] cashier-receipt-card-list(userId) returned ${cardItems2.length} items`);
+            cardItems2.forEach((item: any) => { item._source = 'card'; item._paymentType = 'Credit Card'; });
+            allReceipts.push(...cardItems2);
+          }
+        } catch (e: any) { console.warn(`[receipt-discovery] cashier-receipt-card-list(userId) failed:`, e.message); }
+      }
+
+      console.log(`[receipt-discovery] Total receipts found: ${allReceipts.length}`);
+      res.json({ items: allReceipts, totalCount: allReceipts.length });
+    } catch (e: any) {
+      console.error(`[receipt-discovery] Error:`, e.message);
+      res.status(502).json({ message: "Receipt discovery failed", detail: e.message });
     }
   });
 
@@ -1593,9 +1738,30 @@ export async function registerRoutes(
   app.get("/api/platinum/billing-payment-day-end/get-cashier-receipt-reconcile-list", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      console.log(`[dayend-reconcile-list] Query:`, req.query);
-      const data = await platinumGet(session, "/api/billing-payment-day-end-reconcile/get-cashier-receipt-reconcile-list", req.query as Record<string, string>);
-      console.log(`[dayend-reconcile-list] Response:`, JSON.stringify(data).substring(0, 1000));
+      const queryParams = req.query as Record<string, string>;
+      console.log(`[dayend-reconcile-list] Query:`, queryParams);
+
+      // Try with 'id' param first
+      let data = await platinumGet(session, "/api/billing-payment-day-end-reconcile/get-cashier-receipt-reconcile-list", queryParams);
+      console.log(`[dayend-reconcile-list] Strategy 1 (id=${queryParams.id}):`, JSON.stringify(data).substring(0, 500));
+
+      // If failed with 500, try with cashierId param name
+      if (data && typeof data === 'object' && data._error && queryParams.id) {
+        console.log(`[dayend-reconcile-list] Strategy 1 failed, trying cashierId param`);
+        data = await platinumGet(session, "/api/billing-payment-day-end-reconcile/get-cashier-receipt-reconcile-list", { cashierId: queryParams.id });
+        console.log(`[dayend-reconcile-list] Strategy 2 (cashierId):`, JSON.stringify(data).substring(0, 500));
+      }
+
+      // Try with userId from session
+      if (data && typeof data === 'object' && data._error) {
+        const userId = session.userData?.user_ID ? String(session.userData.user_ID) : '';
+        if (userId) {
+          console.log(`[dayend-reconcile-list] Strategy 2 failed, trying userId=${userId}`);
+          data = await platinumGet(session, "/api/billing-payment-day-end-reconcile/get-cashier-receipt-reconcile-list", { id: userId });
+          console.log(`[dayend-reconcile-list] Strategy 3 (id=userId):`, JSON.stringify(data).substring(0, 500));
+        }
+      }
+
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
