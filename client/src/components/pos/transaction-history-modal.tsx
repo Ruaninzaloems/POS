@@ -22,13 +22,12 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
+  const [hasSearched, setHasSearched] = useState(false);
+
   useEffect(() => {
-    if (isOpen && refreshTransactions) {
-      setIsRefreshing(true);
-      refreshTransactions().finally(() => setIsRefreshing(false));
-    }
     if (!isOpen) {
       setSearchQuery('');
+      setHasSearched(false);
     }
   }, [isOpen]);
 
@@ -40,12 +39,31 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
   const [showPreview, setShowPreview] = useState(false);
   const reprintRef = useRef<HTMLDivElement>(null);
 
-  const filteredTransactions = searchQuery.trim()
+  const handleSearch = useCallback(() => {
+    if (!searchQuery.trim()) return;
+    if (recentTransactions.length === 0 && refreshTransactions) {
+      setIsRefreshing(true);
+      refreshTransactions().finally(() => {
+        setIsRefreshing(false);
+        setHasSearched(true);
+      });
+    } else {
+      setHasSearched(true);
+    }
+  }, [searchQuery, recentTransactions.length, refreshTransactions]);
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  const filteredTransactions = hasSearched && searchQuery.trim()
     ? recentTransactions.filter(tx => {
         const q = searchQuery.trim().toLowerCase();
         return (tx.receiptNumber || '').toLowerCase().includes(q);
       })
-    : recentTransactions;
+    : [];
 
   const triggerReprint = (tx: TransactionRecord) => {
     setReprintTx(tx);
@@ -176,42 +194,58 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input 
-              placeholder="Search by receipt number..."
+              placeholder="Enter receipt number and press Enter..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-9"
+              onChange={(e) => { setSearchQuery(e.target.value); setHasSearched(false); }}
+              onKeyDown={handleSearchKeyDown}
+              className="pl-9 pr-9 h-9"
               data-testid="input-receipt-search"
+              autoFocus
             />
             {searchQuery && (
               <button 
-                onClick={() => setSearchQuery('')}
+                onClick={() => { setSearchQuery(''); setHasSearched(false); }}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 <X className="w-4 h-4" />
               </button>
             )}
           </div>
-          {searchQuery && (
+          <Button 
+            variant="default" 
+            size="sm" 
+            className="h-9 gap-1.5"
+            onClick={handleSearch}
+            disabled={!searchQuery.trim() || isRefreshing}
+            data-testid="button-search-receipt"
+          >
+            <Search className="w-3.5 h-3.5" />
+            Search
+          </Button>
+          {hasSearched && (
             <span className="text-xs text-muted-foreground whitespace-nowrap">
-              {filteredTransactions.length} of {recentTransactions.length} receipts
+              {filteredTransactions.length} result{filteredTransactions.length !== 1 ? 's' : ''} found
             </span>
           )}
         </div>
 
         <div className="flex-1 overflow-y-auto py-2">
-             {isRefreshing && recentTransactions.length === 0 ? (
+             {isRefreshing ? (
                  <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-lg border-2 border-dashed">
-                     <p>Loading transactions from the billing system...</p>
+                     <Search className="w-8 h-8 mx-auto mb-2 opacity-40 animate-pulse" />
+                     <p>Searching for receipt...</p>
                  </div>
-             ) : recentTransactions.length === 0 ? (
-                 <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-lg border-2 border-dashed">
-                     <p>No transactions recorded for this session.</p>
+             ) : !hasSearched ? (
+                 <div className="text-center py-16 text-muted-foreground bg-muted/10 rounded-lg border-2 border-dashed">
+                     <Receipt className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                     <p className="font-medium text-sm">Search for a Receipt</p>
+                     <p className="text-xs mt-1 max-w-xs mx-auto">Enter a receipt number above and press Enter or click Search to find a specific transaction.</p>
                  </div>
-             ) : filteredTransactions.length === 0 && searchQuery ? (
+             ) : filteredTransactions.length === 0 ? (
                  <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-lg border-2 border-dashed">
                      <Search className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                     <p>No receipts found matching "{searchQuery}"</p>
-                     <p className="text-xs mt-1">Try searching with a different receipt number</p>
+                     <p>No receipts found matching "<span className="font-mono font-medium">{searchQuery}</span>"</p>
+                     <p className="text-xs mt-1">Check the receipt number and try again. Only receipts from the current shift are available.</p>
                  </div>
              ) : (
                  <Table>
