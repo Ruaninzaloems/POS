@@ -418,7 +418,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       try {
         const unreconciledData = await platinumGetDayEndUnreconciledList(pCashierId);
-        const unreconciledItems = Array.isArray(unreconciledData) ? unreconciledData : (unreconciledData as any)?.items || (unreconciledData as any)?.value || [];
+        const unreconciledItems = Array.isArray(unreconciledData) ? unreconciledData : (unreconciledData as any)?.data || (unreconciledData as any)?.items || (unreconciledData as any)?.value || [];
 
         if (unreconciledItems.length > 0) {
           const mapped: TransactionRecord[] = unreconciledItems.map((r: any, idx: number) => {
@@ -481,9 +481,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           console.log(`[Transactions] Loaded ${mapped.length} transactions from unreconciled-list API`);
           return;
         }
-        console.log(`[Transactions] Unreconciled-list returned empty, falling back to ViewReceipt API`);
-      } catch (e) {
-        console.warn(`[Transactions] Unreconciled-list API failed, falling back:`, e);
+        console.log(`[Transactions] Unreconciled-list returned empty (no unreconciled transactions), falling back to ViewReceipt API`);
+      } catch (e: any) {
+        console.warn(`[Transactions] Unreconciled-list API failed:`, e?.message || e);
       }
 
       const today = new Date();

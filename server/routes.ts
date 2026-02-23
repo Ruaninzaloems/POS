@@ -1833,12 +1833,43 @@ export async function registerRoutes(
     try {
       const session = requireAuth(req, res); if (!session) return;
       const queryParams = req.query as Record<string, string>;
-      const id = queryParams.id || queryParams.cashierId || (session.userData?.user_ID ? String(session.userData.user_ID) : '');
-      if (!id) { res.status(400).json({ message: "Missing id parameter" }); return; }
-      console.log(`[dayend-unreconciled-list] id=${id}`);
-      const data = await platinumGet(session, "/api/billing-payment-day-end-reconcile/cashier-receipt-unreconciled-list", { id });
-      console.log(`[dayend-unreconciled-list] Response:`, JSON.stringify(data).substring(0, 500));
-      handlePlatinumResult(res, data);
+      const cashierId = queryParams.id || queryParams.cashierId || '';
+      const userId = session.userData?.user_ID ? String(session.userData.user_ID) : '';
+      if (!cashierId && !userId) { res.status(400).json({ message: "Missing id parameter" }); return; }
+
+      const strategies = [
+        { label: 'GET cashierId', method: 'GET' as const, path: '/api/billing-payment-day-end-reconcile/cashier-receipt-unreconciled-list', params: { id: cashierId || userId } },
+        { label: 'POST cashierId', method: 'POST' as const, path: '/api/billing-payment-day-end-reconcile/cashier-receipt-unreconciled-list', params: { id: cashierId || userId }, body: { page: 1, pageSize: 500, orderby: 'dateCaptured', shortDirection: 'desc' } },
+        { label: 'GET get-prefix', method: 'GET' as const, path: '/api/billing-payment-day-end-reconcile/get-cashier-receipt-unreconciled-list', params: { id: cashierId || userId } },
+        { label: 'POST get-prefix', method: 'POST' as const, path: '/api/billing-payment-day-end-reconcile/get-cashier-receipt-unreconciled-list', params: { id: cashierId || userId }, body: { page: 1, pageSize: 500, orderby: 'dateCaptured', shortDirection: 'desc' } },
+        ...(userId && userId !== cashierId ? [
+          { label: 'GET userId', method: 'GET' as const, path: '/api/billing-payment-day-end-reconcile/cashier-receipt-unreconciled-list', params: { id: userId } },
+          { label: 'POST userId', method: 'POST' as const, path: '/api/billing-payment-day-end-reconcile/cashier-receipt-unreconciled-list', params: { id: userId }, body: { page: 1, pageSize: 500, orderby: 'dateCaptured', shortDirection: 'desc' } },
+        ] : []),
+      ];
+
+      for (const s of strategies) {
+        try {
+          console.log(`[dayend-unreconciled-list] Trying ${s.label}: ${s.method} ${s.path}?id=${s.params.id}`);
+          const data = s.method === 'POST'
+            ? await platinumPost(session, s.path, s.body || {}, s.params)
+            : await platinumGet(session, s.path, s.params);
+          const str = JSON.stringify(data).substring(0, 500);
+          console.log(`[dayend-unreconciled-list] ${s.label} response:`, str);
+          if (data && !(data as any)._error) {
+            const items = Array.isArray(data) ? data : (data as any)?.data || (data as any)?.items || (data as any)?.value;
+            if (items && (Array.isArray(items) ? items.length > 0 : true)) {
+              console.log(`[dayend-unreconciled-list] SUCCESS with ${s.label}`);
+              handlePlatinumResult(res, data);
+              return;
+            }
+          }
+        } catch (e: any) {
+          console.log(`[dayend-unreconciled-list] ${s.label} failed: ${e.message}`);
+        }
+      }
+      console.log(`[dayend-unreconciled-list] All strategies exhausted, returning empty`);
+      res.json({ data: [], totalRecords: 0 });
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
