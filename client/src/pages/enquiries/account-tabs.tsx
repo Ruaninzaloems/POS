@@ -1124,16 +1124,21 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
   const getVal = (item: any, keys: string[]) => { for (const k of keys) { if (item[k] !== undefined && item[k] !== null) return item[k]; } return 0; };
 
   const payments = txnHistory.filter((t: any) => {
-    const type = (t.transactionType || t.receiptType || t.type || '').toLowerCase();
-    return type.includes('payment') || type.includes('receipt') || type.includes('pay');
+    const type = (t.transactionType || t.receiptType || t.type || t.paymentType || t.paymentOption || '').toLowerCase();
+    const isCancelled = !!(t.isCancelled || t.cancelReason || t.cancelReson);
+    const isRefund = type.includes('refund');
+    const isReversal = type.includes('reversal') || type.includes('reversed');
+    if (isCancelled || isRefund || isReversal) return false;
+    return true;
   });
   const refunds = txnHistory.filter((t: any) => {
-    const type = (t.transactionType || t.receiptType || t.type || '').toLowerCase();
+    const type = (t.transactionType || t.receiptType || t.type || t.paymentType || '').toLowerCase();
     return type.includes('refund');
   });
   const reversals = txnHistory.filter((t: any) => {
-    const type = (t.transactionType || t.receiptType || t.type || '').toLowerCase();
-    return type.includes('reversal') || type.includes('reversed') || type.includes('cancel');
+    const type = (t.transactionType || t.receiptType || t.type || t.paymentType || '').toLowerCase();
+    const isCancelled = !!(t.isCancelled || t.cancelReason || t.cancelReson);
+    return type.includes('reversal') || type.includes('reversed') || type.includes('cancel') || isCancelled;
   });
 
   const handlePrintReceipt = async (p: any) => {
