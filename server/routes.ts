@@ -3261,6 +3261,8 @@ export async function registerRoutes(
     ["lookups", "lookups"],
     ["billing-calculation-popup-data", "getBillingalculationPopupDataDetails"],
     ["check-file-exists", "CheckFileExists"],
+    ["search-by-bank-statement-note", "SearchByBankStatementNote"],
+    ["get-eft-bank-statement-notes", "GetEftBankStatementNotes"],
   ];
 
   app.get(`/api/platinum/billing-enquiry/billed-vs-paid-amounts`, async (req, res) => {

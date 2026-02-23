@@ -2252,6 +2252,49 @@ export async function searchCashbookTransactionTrace(searchText: string, finYear
     return data ? [data] : [];
 }
 
+export interface BankStatementNoteResult {
+    receiptNo?: string | number;
+    accountId?: number;
+    accountNumber?: string;
+    amount?: number;
+    receiptDate?: string;
+    bankStatementNote?: string;
+    paymentType?: string;
+    cashierName?: string;
+    cashOfficeName?: string;
+    [key: string]: any;
+}
+
+export async function searchByBankStatementNote(searchText: string): Promise<BankStatementNoteResult[]> {
+    const res = await apiFetch(`/api/platinum/billing-enquiry/search-by-bank-statement-note?searchText=${encodeURIComponent(searchText)}`);
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: 'Search failed' }));
+        throw new Error(err.message || 'Bank statement note search failed');
+    }
+    const data = await res.json();
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.items)) return data.items;
+    if (data && Array.isArray(data.value)) return data.value;
+    if (data && Array.isArray(data.results)) return data.results;
+    if (data && typeof data === 'object' && !data.message) return [data];
+    return [];
+}
+
+export async function getEftBankStatementNotes(accountId: number | string): Promise<any[]> {
+    const res = await apiFetch(`/api/platinum/billing-enquiry/get-eft-bank-statement-notes?accountId=${accountId}`);
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: 'Fetch failed' }));
+        throw new Error(err.message || 'EFT bank statement notes fetch failed');
+    }
+    const data = await res.json();
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.items)) return data.items;
+    if (data && Array.isArray(data.value)) return data.value;
+    if (data && Array.isArray(data.results)) return data.results;
+    if (data && typeof data === 'object' && !data.message) return [data];
+    return [];
+}
+
 export async function fetchActiveFinYear(): Promise<string> {
     try {
         const res = await apiFetch('/api/platinum/active-fin-year');
