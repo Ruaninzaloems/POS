@@ -448,20 +448,20 @@ export default function ViewReceipts() {
         const payTypeId = Number(r.paymentTypeId ?? r.PaymentTypeId ?? 0);
         const payTypeLabel = payTypeId === 1 ? 'Cash' : payTypeId === 3 ? 'Credit Card' : payTypeId === 2 ? 'EFT' : payTypeId === 5 ? 'EFT' : `Type ${payTypeId}`;
 
+        const amount = paidAmount > 0 ? paidAmount : bankAmount;
         const printData: ReceiptPrintData = {
             receiptNo: receiptNo || 'N/A',
             receiptDate: dateCaptured ? new Date(dateCaptured).toISOString() : new Date().toISOString(),
             accountNumber: accountId > 0 ? String(accountId) : '',
+            consumerName: bankNote || '',
             municipalityName: 'George Municipality',
-            totalAmount: paidAmount > 0 ? paidAmount : bankAmount,
+            totalAmount: amount,
             paymentType: payTypeLabel,
             paymentOption: 'EFT / Bank Statement',
             cashierName: 'System (EFT Allocation)',
-            cashOffice: cashbookDesc || cashbookDoc || '',
+            cashOffice: (cashbookDesc || '').trim() || cashbookDoc || '',
             services: [
-                { serviceDescription: `Bank Statement: ${bankNote}`, amount: bankAmount },
-                ...(status ? [{ serviceDescription: `Status: ${status}`, amount: 0 }] : []),
-                ...(cashbookDoc ? [{ serviceDescription: `Cashbook Ref: ${cashbookDoc}`, amount: 0 }] : []),
+                { serviceDescription: 'EFT Payment', amount },
             ],
         };
         const win = openSlipPrintWindow(printData, true);
