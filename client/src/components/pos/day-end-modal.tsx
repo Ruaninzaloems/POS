@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { usePos } from '@/lib/pos-state';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertTriangle, CheckCircle2, Loader2, Banknote, Coins, CreditCard, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Loader2, Banknote, Coins, CreditCard, FileText, ChevronDown, ChevronUp, Mail, User, Building2, Calendar, Clock, ArrowRight } from 'lucide-react';
 import { platinumSaveDayEndReconcileData } from '@/lib/external-api';
 import { useToast } from '@/hooks/use-toast';
 
@@ -26,11 +26,11 @@ const INITIAL_DENOMINATIONS: DenominationState = {
 };
 
 const NOTE_DENOMINATIONS = [
-  { key: 'n200' as const, label: 'R200', value: 200 },
-  { key: 'n100' as const, label: 'R100', value: 100 },
-  { key: 'n50' as const, label: 'R50', value: 50 },
-  { key: 'n20' as const, label: 'R20', value: 20 },
-  { key: 'n10' as const, label: 'R10', value: 10 },
+  { key: 'n200' as const, label: 'R200', value: 200, color: 'bg-amber-50 border-amber-200' },
+  { key: 'n100' as const, label: 'R100', value: 100, color: 'bg-pink-50 border-pink-200' },
+  { key: 'n50' as const, label: 'R50', value: 50, color: 'bg-red-50 border-red-200' },
+  { key: 'n20' as const, label: 'R20', value: 20, color: 'bg-orange-50 border-orange-200' },
+  { key: 'n10' as const, label: 'R10', value: 10, color: 'bg-green-50 border-green-200' },
 ];
 
 const COIN_DENOMINATIONS = [
@@ -45,7 +45,7 @@ const COIN_DENOMINATIONS = [
 ];
 
 export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
-  const { platinumCashierId, platinumUser, currentUser } = usePos();
+  const { platinumCashierId, platinumUser, currentUser, sessionDetails, allowedPaymentTypes } = usePos();
   const { toast } = useToast();
 
   const [step, setStep] = useState<'capture' | 'confirm' | 'submitting' | 'success' | 'error'>('capture');
@@ -54,8 +54,13 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
   const [denominations, setDenominations] = useState<DenominationState>(INITIAL_DENOMINATIONS);
   const [totalCreditAmt, setTotalCreditAmt] = useState('');
   const [totalChequeAmt, setTotalChequeAmt] = useState('');
+  const [totalPostalOrderAmt, setTotalPostalOrderAmt] = useState('');
   const [reason, setReason] = useState('');
-  const [showDenominations, setShowDenominations] = useState(false);
+  const [showDenominations, setShowDenominations] = useState(true);
+  const [showCheque, setShowCheque] = useState(false);
+  const [showPostalOrder, setShowPostalOrder] = useState(false);
+
+  const hasPostalOrder = allowedPaymentTypes.some(t => t.posPaymentType_ID === 4 && t.enabled);
 
   useEffect(() => {
     if (isOpen) {
@@ -63,9 +68,12 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
       setDenominations(INITIAL_DENOMINATIONS);
       setTotalCreditAmt('');
       setTotalChequeAmt('');
+      setTotalPostalOrderAmt('');
       setReason('');
       setErrorMessage('');
-      setShowDenominations(false);
+      setShowDenominations(true);
+      setShowCheque(false);
+      setShowPostalOrder(false);
     }
   }, [isOpen]);
 
@@ -79,7 +87,14 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
   const totalCashAmt = totalNotes + totalCoins;
   const creditAmt = parseFloat(totalCreditAmt) || 0;
   const chequeAmt = parseFloat(totalChequeAmt) || 0;
-  const grandTotal = totalCashAmt + creditAmt + chequeAmt;
+  const postalOrderAmt = parseFloat(totalPostalOrderAmt) || 0;
+  const grandTotal = totalCashAmt + creditAmt + chequeAmt + postalOrderAmt;
+
+  const cashierName = platinumUser?.userName || platinumUser?.firstName ? `${platinumUser?.firstName || ''} ${platinumUser?.lastName || ''}`.trim() : currentUser?.name || 'Cashier';
+  const officeName = sessionDetails?.officeDesc || 'Cash Office';
+  const today = new Date();
+  const dateStr = today.toLocaleDateString('en-ZA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const timeStr = today.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
 
   const handleNext = () => {
     setStep('confirm');
@@ -95,9 +110,9 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
       const payload = {
         cashierId: Number(cashierId),
         reason: reason || null,
-        totalCashAmt: totalCashAmt,
-        totalChequeAmt: chequeAmt,
-        totalCoins: totalCoins,
+        totalCashAmt,
+        totalChequeAmt: chequeAmt + postalOrderAmt,
+        totalCoins,
         totalCreditAmt: creditAmt,
         totalAmt: grandTotal,
         n10: denominations.n10,
@@ -127,257 +142,402 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
     }
   };
 
-  const handleClose = () => {
-    onClose();
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Day End Reconciliation</DialogTitle>
-          <DialogDescription>
-            Capture your physical cash, card and cheque totals to close your shift.
-            <br />
-            <span className="font-semibold text-yellow-600 flex items-center gap-1 mt-1 text-xs uppercase tracking-wide">
-              <AlertTriangle className="w-3 h-3" />
-              Blind Balancing - System totals hidden
+      <DialogContent className="sm:max-w-2xl max-h-[92vh] overflow-y-auto p-0 gap-0 rounded-xl border-0 shadow-2xl">
+        <div className="bg-gradient-to-br from-indigo-600 via-blue-600 to-indigo-700 text-white px-6 py-5 rounded-t-xl">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-xl font-bold tracking-tight">Day End Reconciliation</h2>
+              <p className="text-blue-100 text-sm mt-1">Close your shift and submit figures for approval</p>
+            </div>
+            <div className="bg-white/15 backdrop-blur-sm rounded-lg px-3 py-1.5 text-right">
+              <div className="text-[10px] uppercase tracking-wider text-blue-200 font-medium">Cashier ID</div>
+              <div className="text-sm font-bold font-mono">{platinumCashierId || '-'}</div>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1.5 text-sm">
+            <span className="flex items-center gap-1.5 text-blue-100">
+              <User className="w-3.5 h-3.5" />
+              <span className="font-semibold text-white">{cashierName}</span>
             </span>
-          </DialogDescription>
-        </DialogHeader>
+            <span className="flex items-center gap-1.5 text-blue-100">
+              <Building2 className="w-3.5 h-3.5" />
+              {officeName}
+            </span>
+            <span className="flex items-center gap-1.5 text-blue-100">
+              <Calendar className="w-3.5 h-3.5" />
+              {dateStr}
+            </span>
+            <span className="flex items-center gap-1.5 text-blue-100">
+              <Clock className="w-3.5 h-3.5" />
+              {timeStr}
+            </span>
+          </div>
+        </div>
 
         {step === 'capture' && (
-          <div className="space-y-5 py-2">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-base font-semibold flex items-center gap-2">
-                  <Banknote className="w-4 h-4 text-green-600" />
-                  Cash On Hand Total
-                </Label>
-                <div className="text-lg font-mono font-bold text-primary bg-primary/10 px-3 py-1 rounded" data-testid="text-cash-total">
-                  R {totalCashAmt.toFixed(2)}
-                </div>
-              </div>
+          <div className="px-6 py-5 space-y-5">
 
-              <Button
+            <div className="rounded-xl border border-green-200 bg-gradient-to-br from-green-50/80 to-emerald-50/40 overflow-hidden">
+              <button
                 type="button"
-                variant="outline"
-                size="sm"
-                className="w-full text-xs"
+                className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-green-100/50 transition-colors"
                 onClick={() => setShowDenominations(!showDenominations)}
                 data-testid="button-toggle-denominations"
               >
-                {showDenominations ? <ChevronUp className="w-3 h-3 mr-1" /> : <ChevronDown className="w-3 h-3 mr-1" />}
-                {showDenominations ? 'Hide' : 'Show'} Denomination Breakdown
-              </Button>
-
-              {showDenominations && (
-                <div className="grid grid-cols-2 gap-3 bg-slate-50 border rounded-lg p-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Notes</Label>
-                    {NOTE_DENOMINATIONS.map(d => (
-                      <div key={d.key} className="flex items-center gap-1.5">
-                        <div className="w-11 text-xs font-medium text-right shrink-0">{d.label}</div>
-                        <Input
-                          type="number"
-                          inputMode="numeric"
-                          min="0"
-                          placeholder="0"
-                          className="h-8 font-mono text-right text-sm"
-                          value={denominations[d.key] || ''}
-                          onChange={(e) => updateDenomination(d.key, e.target.value)}
-                          data-testid={`input-denom-${d.key}`}
-                        />
-                        <div className="w-16 text-[10px] text-muted-foreground text-right font-mono">
-                          R {(denominations[d.key] * d.value).toFixed(2)}
-                        </div>
-                      </div>
-                    ))}
-                    <div className="text-xs font-bold text-right pt-1 border-t">
-                      Notes: R {totalNotes.toFixed(2)}
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-green-600 text-white flex items-center justify-center shadow-sm">
+                    <Banknote className="w-5 h-5" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-sm font-bold text-green-900">Cash On Hand</div>
+                    <div className="text-[11px] text-green-600">Count notes and coins in your drawer</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <div className="text-xl font-mono font-black text-green-800" data-testid="text-cash-total">
+                      R {totalCashAmt.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </div>
+                  {showDenominations ? <ChevronUp className="w-4 h-4 text-green-500" /> : <ChevronDown className="w-4 h-4 text-green-500" />}
+                </div>
+              </button>
 
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Coins</Label>
-                    {COIN_DENOMINATIONS.map(d => (
-                      <div key={d.key} className="flex items-center gap-1.5">
-                        <div className="w-11 text-xs font-medium text-right shrink-0">{d.label}</div>
-                        <Input
-                          type="number"
-                          inputMode="numeric"
-                          min="0"
-                          placeholder="0"
-                          className="h-8 font-mono text-right text-sm"
-                          value={denominations[d.key] || ''}
-                          onChange={(e) => updateDenomination(d.key, e.target.value)}
-                          data-testid={`input-denom-${d.key}`}
-                        />
-                        <div className="w-16 text-[10px] text-muted-foreground text-right font-mono">
-                          R {(denominations[d.key] * d.value).toFixed(2)}
-                        </div>
+              {showDenominations && (
+                <div className="px-5 pb-4 pt-1 border-t border-green-200">
+                  <div className="grid grid-cols-2 gap-5">
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-2.5">
+                        <Banknote className="w-3.5 h-3.5 text-green-700" />
+                        <span className="text-[10px] uppercase tracking-widest font-bold text-green-700">Notes</span>
                       </div>
-                    ))}
-                    <div className="text-xs font-bold text-right pt-1 border-t">
-                      Coins: R {totalCoins.toFixed(2)}
+                      <div className="space-y-1.5">
+                        {NOTE_DENOMINATIONS.map(d => {
+                          const subtotal = denominations[d.key] * d.value;
+                          return (
+                            <div key={d.key} className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 ${d.color} transition-all`}>
+                              <div className="w-10 text-xs font-bold text-slate-700 shrink-0">{d.label}</div>
+                              <div className="text-slate-400 text-xs shrink-0">x</div>
+                              <Input
+                                type="number"
+                                inputMode="numeric"
+                                min="0"
+                                placeholder="0"
+                                className="h-8 font-mono text-center text-sm bg-white/80 border-0 shadow-sm focus-visible:ring-green-400 w-16"
+                                value={denominations[d.key] || ''}
+                                onChange={(e) => updateDenomination(d.key, e.target.value)}
+                                data-testid={`input-denom-${d.key}`}
+                              />
+                              <div className="text-xs font-mono text-slate-500 text-right flex-1">
+                                = R {subtotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-2 text-right text-xs font-bold text-green-800 border-t border-green-200 pt-1.5">
+                        R {totalNotes.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-2.5">
+                        <Coins className="w-3.5 h-3.5 text-green-700" />
+                        <span className="text-[10px] uppercase tracking-widest font-bold text-green-700">Coins</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {COIN_DENOMINATIONS.map(d => {
+                          const subtotal = denominations[d.key] * d.value;
+                          return (
+                            <div key={d.key} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 transition-all">
+                              <div className="w-10 text-xs font-bold text-slate-700 shrink-0">{d.label}</div>
+                              <div className="text-slate-400 text-xs shrink-0">x</div>
+                              <Input
+                                type="number"
+                                inputMode="numeric"
+                                min="0"
+                                placeholder="0"
+                                className="h-8 font-mono text-center text-sm bg-white/80 border-0 shadow-sm focus-visible:ring-green-400 w-16"
+                                value={denominations[d.key] || ''}
+                                onChange={(e) => updateDenomination(d.key, e.target.value)}
+                                data-testid={`input-denom-${d.key}`}
+                              />
+                              <div className="text-xs font-mono text-slate-500 text-right flex-1">
+                                = R {subtotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-2 text-right text-xs font-bold text-green-800 border-t border-green-200 pt-1.5">
+                        R {totalCoins.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="credit-total" className="text-base font-semibold flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-blue-600" />
-                Credit Card Total
-              </Label>
+            <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50/80 to-sky-50/40 p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-sm">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-blue-900">Credit Card Total</div>
+                  <div className="text-[11px] text-blue-600">Sum of all merchant slips for this shift</div>
+                </div>
+              </div>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono">R</span>
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-400 font-mono font-bold text-lg">R</span>
                 <Input
-                  id="credit-total"
                   type="number"
-                  className="pl-8 text-xl font-mono font-bold h-12"
+                  step="0.01"
+                  className="pl-9 text-xl font-mono font-bold h-12 bg-white border-blue-200 focus-visible:ring-blue-400"
                   placeholder="0.00"
                   value={totalCreditAmt}
                   onChange={(e) => setTotalCreditAmt(e.target.value)}
                   data-testid="input-credit-total"
                 />
               </div>
-              <p className="text-xs text-muted-foreground">Sum of all merchant slips for this shift.</p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="cheque-total" className="text-base font-semibold flex items-center gap-2">
-                <FileText className="w-4 h-4 text-purple-600" />
-                Cheque Total
-              </Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono">R</span>
-                <Input
-                  id="cheque-total"
-                  type="number"
-                  className="pl-8 text-xl font-mono font-bold h-12"
-                  placeholder="0.00"
-                  value={totalChequeAmt}
-                  onChange={(e) => setTotalChequeAmt(e.target.value)}
-                  data-testid="input-cheque-total"
-                />
+            {hasPostalOrder && (
+              <div className="rounded-xl border border-slate-200 overflow-hidden">
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors"
+                  onClick={() => setShowPostalOrder(!showPostalOrder)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-teal-600 text-white flex items-center justify-center shadow-sm">
+                      <Mail className="w-5 h-5" />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-sm font-bold text-slate-800">Postal Order</div>
+                      <div className="text-[11px] text-slate-500">Total of postal orders received</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {postalOrderAmt > 0 && (
+                      <span className="text-sm font-mono font-bold text-teal-700">R {postalOrderAmt.toFixed(2)}</span>
+                    )}
+                    {showPostalOrder ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                  </div>
+                </button>
+                {showPostalOrder && (
+                  <div className="px-5 pb-4 pt-1 border-t">
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-teal-400 font-mono font-bold text-lg">R</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        className="pl-9 text-xl font-mono font-bold h-12 bg-white border-teal-200 focus-visible:ring-teal-400"
+                        placeholder="0.00"
+                        value={totalPostalOrderAmt}
+                        onChange={(e) => setTotalPostalOrderAmt(e.target.value)}
+                        data-testid="input-postal-order-total"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
-              <p className="text-xs text-muted-foreground">Total of all cheques received during this shift.</p>
+            )}
+
+            <div className="rounded-xl border border-slate-200 overflow-hidden">
+              <button
+                type="button"
+                className="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors"
+                onClick={() => setShowCheque(!showCheque)}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-purple-600 text-white flex items-center justify-center shadow-sm">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-sm font-bold text-slate-800">Cheque</div>
+                    <div className="text-[11px] text-slate-500">Total of cheques received during this shift</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {chequeAmt > 0 && (
+                    <span className="text-sm font-mono font-bold text-purple-700">R {chequeAmt.toFixed(2)}</span>
+                  )}
+                  {showCheque ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                </div>
+              </button>
+              {showCheque && (
+                <div className="px-5 pb-4 pt-1 border-t">
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400 font-mono font-bold text-lg">R</span>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      className="pl-9 text-xl font-mono font-bold h-12 bg-white border-purple-200 focus-visible:ring-purple-400"
+                      placeholder="0.00"
+                      value={totalChequeAmt}
+                      onChange={(e) => setTotalChequeAmt(e.target.value)}
+                      data-testid="input-cheque-total"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="reason" className="text-sm font-semibold">Reason (optional)</Label>
+            <div>
+              <Label htmlFor="reason" className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Reason (optional)</Label>
               <Input
                 id="reason"
                 type="text"
-                className="h-10"
-                placeholder="Enter reason if there is a variance..."
+                className="mt-1.5 h-10 bg-slate-50"
+                placeholder="Enter reason if there is a cash variance..."
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 data-testid="input-reason"
               />
             </div>
 
-            <div className="bg-slate-100 border rounded-lg p-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-semibold text-slate-600">Grand Total</span>
-                <span className="text-xl font-mono font-bold text-primary" data-testid="text-grand-total">
-                  R {grandTotal.toFixed(2)}
-                </span>
+            <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-xl p-4 flex items-center justify-between shadow-lg">
+              <div>
+                <div className="text-[10px] uppercase tracking-widest font-medium text-blue-200">Grand Total</div>
+                <div className="text-xs text-blue-200 mt-0.5">Cash + Card + Cheque + Postal</div>
+              </div>
+              <div className="text-2xl sm:text-3xl font-mono font-black text-white" data-testid="text-grand-total">
+                R {grandTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             </div>
           </div>
         )}
 
         {step === 'confirm' && (
-          <div className="py-4 space-y-4">
-            <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-yellow-800">
-                <p className="font-bold mb-1">Confirm Submission?</p>
-                <p>Once submitted, you cannot modify these figures. Variances will be logged for supervisor review.</p>
+          <div className="px-6 py-6 space-y-5">
+            <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-amber-900">
+                <p className="font-bold mb-1">Please confirm your submission</p>
+                <p className="text-amber-700">Once submitted, these figures cannot be modified. Your supervisor will review any variances.</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 text-center">
-              <div className="p-3 bg-muted rounded-lg">
-                <div className="text-[10px] text-muted-foreground uppercase font-bold">Cash</div>
-                <div className="text-lg font-mono font-bold" data-testid="text-confirm-cash">R {totalCashAmt.toFixed(2)}</div>
+            <div className="bg-slate-50 rounded-xl border p-5 space-y-3">
+              <div className="flex items-center gap-2 mb-1">
+                <User className="w-4 h-4 text-slate-400" />
+                <span className="text-sm font-semibold text-slate-700">{cashierName}</span>
+                <span className="text-xs text-slate-400">|</span>
+                <span className="text-xs text-slate-500">{officeName}</span>
               </div>
-              <div className="p-3 bg-muted rounded-lg">
-                <div className="text-[10px] text-muted-foreground uppercase font-bold">Card</div>
-                <div className="text-lg font-mono font-bold" data-testid="text-confirm-card">R {creditAmt.toFixed(2)}</div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-white rounded-lg border p-3 text-center">
+                  <Banknote className="w-4 h-4 text-green-500 mx-auto mb-1" />
+                  <div className="text-[10px] text-slate-500 uppercase font-bold">Cash</div>
+                  <div className="text-base font-mono font-bold text-green-700" data-testid="text-confirm-cash">
+                    R {totalCashAmt.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+                <div className="bg-white rounded-lg border p-3 text-center">
+                  <CreditCard className="w-4 h-4 text-blue-500 mx-auto mb-1" />
+                  <div className="text-[10px] text-slate-500 uppercase font-bold">Card</div>
+                  <div className="text-base font-mono font-bold text-blue-700" data-testid="text-confirm-card">
+                    R {creditAmt.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+                {chequeAmt > 0 && (
+                  <div className="bg-white rounded-lg border p-3 text-center">
+                    <FileText className="w-4 h-4 text-purple-500 mx-auto mb-1" />
+                    <div className="text-[10px] text-slate-500 uppercase font-bold">Cheque</div>
+                    <div className="text-base font-mono font-bold text-purple-700" data-testid="text-confirm-cheque">
+                      R {chequeAmt.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                )}
+                {postalOrderAmt > 0 && (
+                  <div className="bg-white rounded-lg border p-3 text-center">
+                    <Mail className="w-4 h-4 text-teal-500 mx-auto mb-1" />
+                    <div className="text-[10px] text-slate-500 uppercase font-bold">Postal</div>
+                    <div className="text-base font-mono font-bold text-teal-700" data-testid="text-confirm-postal">
+                      R {postalOrderAmt.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="p-3 bg-muted rounded-lg">
-                <div className="text-[10px] text-muted-foreground uppercase font-bold">Cheque</div>
-                <div className="text-lg font-mono font-bold" data-testid="text-confirm-cheque">R {chequeAmt.toFixed(2)}</div>
-              </div>
+
+              {reason && (
+                <div className="text-xs text-slate-500 bg-white rounded-lg border p-2.5">
+                  <span className="font-semibold text-slate-600">Reason:</span> {reason}
+                </div>
+              )}
             </div>
 
-            <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-center">
-              <div className="text-xs text-muted-foreground uppercase font-bold">Grand Total</div>
-              <div className="text-2xl font-mono font-bold text-primary" data-testid="text-confirm-total">R {grandTotal.toFixed(2)}</div>
-            </div>
-
-            {reason && (
-              <div className="text-sm text-muted-foreground">
-                <span className="font-semibold">Reason:</span> {reason}
+            <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-xl p-4 text-center shadow-lg">
+              <div className="text-[10px] uppercase tracking-widest font-medium text-blue-200">Grand Total</div>
+              <div className="text-3xl font-mono font-black text-white mt-1" data-testid="text-confirm-total">
+                R {grandTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
-            )}
+            </div>
           </div>
         )}
 
         {step === 'submitting' && (
-          <div className="py-12 flex flex-col items-center text-center space-y-4">
-            <Loader2 className="w-10 h-10 animate-spin text-primary" />
-            <p className="text-muted-foreground">Submitting reconciliation to Platinum API...</p>
+          <div className="px-6 py-16 flex flex-col items-center text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center">
+              <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+            </div>
+            <div>
+              <p className="font-semibold text-slate-800">Submitting Reconciliation</p>
+              <p className="text-sm text-slate-500 mt-1">Please wait while we process your figures...</p>
+            </div>
           </div>
         )}
 
         {step === 'success' && (
-          <div className="py-8 flex flex-col items-center text-center space-y-4">
-            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-2">
-              <CheckCircle2 className="w-8 h-8" />
+          <div className="px-6 py-12 flex flex-col items-center text-center space-y-4">
+            <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center shadow-inner">
+              <CheckCircle2 className="w-10 h-10" />
             </div>
-            <h3 className="text-xl font-bold text-green-800">Reconciliation Submitted</h3>
-            <p className="text-muted-foreground max-w-xs">
-              Your day end figures have been submitted to the Platinum API and sent for supervisor approval.
-            </p>
+            <div>
+              <h3 className="text-xl font-bold text-green-800">Reconciliation Submitted</h3>
+              <p className="text-slate-500 mt-2 max-w-sm">
+                Thank you, <span className="font-semibold text-slate-700">{cashierName}</span>. Your day-end figures have been submitted for supervisor approval.
+              </p>
+            </div>
           </div>
         )}
 
         {step === 'error' && (
-          <div className="py-6 space-y-4">
-            <div className="bg-red-50 border border-red-200 p-4 rounded-lg flex items-start gap-3">
+          <div className="px-6 py-8 space-y-4">
+            <div className="bg-red-50 border border-red-200 p-5 rounded-xl flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
               <div className="text-sm text-red-800">
                 <p className="font-bold mb-1">Submission Failed</p>
-                <p>{errorMessage}</p>
+                <p className="text-red-600">{errorMessage}</p>
               </div>
             </div>
           </div>
         )}
 
-        <DialogFooter className="sm:justify-between">
+        <DialogFooter className="px-6 py-4 border-t bg-slate-50 rounded-b-xl sm:justify-between">
           {step === 'capture' && (
             <>
-              <Button variant="ghost" onClick={handleClose} data-testid="button-cancel">Cancel</Button>
+              <Button variant="ghost" onClick={onClose} className="text-slate-500" data-testid="button-cancel">Cancel</Button>
               <Button
                 onClick={handleNext}
-                className="w-full sm:w-auto font-bold"
+                className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold px-6 shadow-md"
                 data-testid="button-next"
               >
-                Next: Confirm
+                Review & Confirm
+                <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
             </>
           )}
           {step === 'confirm' && (
             <>
-              <Button variant="ghost" onClick={() => setStep('capture')} data-testid="button-back">Back</Button>
+              <Button variant="ghost" onClick={() => setStep('capture')} className="text-slate-500" data-testid="button-back">Back to Edit</Button>
               <Button
                 onClick={handleSubmit}
-                className="w-full sm:w-auto font-bold bg-yellow-600 hover:bg-yellow-700 text-white"
+                className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold px-6 shadow-md"
                 data-testid="button-submit"
               >
                 Submit & Close Shift
@@ -385,19 +545,19 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
             </>
           )}
           {step === 'submitting' && (
-            <Button disabled className="w-full">
+            <Button disabled className="w-full bg-slate-200 text-slate-500">
               <Loader2 className="w-4 h-4 animate-spin mr-2" /> Submitting...
             </Button>
           )}
           {step === 'success' && (
-            <Button onClick={handleClose} className="w-full font-bold" data-testid="button-done">
+            <Button onClick={onClose} className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold shadow-md" data-testid="button-done">
               Return to Dashboard
             </Button>
           )}
           {step === 'error' && (
             <>
-              <Button variant="ghost" onClick={() => setStep('capture')} data-testid="button-retry-back">Back to Edit</Button>
-              <Button onClick={handleSubmit} className="font-bold" data-testid="button-retry">Retry</Button>
+              <Button variant="ghost" onClick={() => setStep('capture')} className="text-slate-500" data-testid="button-retry-back">Back to Edit</Button>
+              <Button onClick={handleSubmit} className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-bold px-6" data-testid="button-retry">Retry Submission</Button>
             </>
           )}
         </DialogFooter>
