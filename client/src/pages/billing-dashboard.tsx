@@ -491,49 +491,59 @@ export default function BillingDashboard() {
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
     const [counts, setCounts] = useState<Record<string, number>>({});
+    const [countsLoading, setCountsLoading] = useState<Record<string, boolean>>({});
     const [alertCounts, setAlertCounts] = useState<any[]>([]);
     const [notificationCounts, setNotificationCounts] = useState<any[]>([]);
     const [activeCategory, setActiveCategory] = useState('account');
     const [subItems, setSubItems] = useState<Record<string, SubItem[]>>({});
     const [subItemsLoading, setSubItemsLoading] = useState<Record<string, boolean>>({});
 
-    const loadCounts = useCallback(async () => {
+    const loadSingleCount = useCallback(async (cat: CategoryConfig) => {
+        setCountsLoading(prev => ({ ...prev, [cat.key]: true }));
+        try {
+            const data = await cat.countFn();
+            setCounts(prev => ({ ...prev, [cat.key]: safeNum(data) }));
+        } catch {
+            setCounts(prev => ({ ...prev, [cat.key]: 0 }));
+        } finally {
+            setCountsLoading(prev => ({ ...prev, [cat.key]: false }));
+        }
+    }, []);
+
+    const loadDashboard = useCallback(async () => {
         setLoading(true);
         try {
-            const results = await Promise.allSettled(
-                CATEGORIES.filter(c => c.key !== 'graphs').map(async (cat) => {
-                    const data = await cat.countFn();
-                    return { key: cat.key, value: safeNum(data) };
-                })
-            );
-            const newCounts: Record<string, number> = {};
-            results.forEach((r) => {
-                if (r.status === 'fulfilled' && r.value) {
-                    newCounts[r.value.key] = r.value.value;
-                }
-            });
-            setCounts(newCounts);
-
             const [ac, nc] = await Promise.allSettled([
                 platinumGetAlertCounts(),
                 platinumGetNotificationCounts(),
             ]);
             if (ac.status === 'fulfilled') {
-                const alerts = ac.value;
-                setAlertCounts(Array.isArray(alerts) ? alerts : extractItems(alerts));
+                setAlertCounts(Array.isArray(ac.value) ? ac.value : extractItems(ac.value));
             }
             if (nc.status === 'fulfilled') {
-                const notifs = nc.value;
-                setNotificationCounts(Array.isArray(notifs) ? notifs : extractItems(notifs));
+                setNotificationCounts(Array.isArray(nc.value) ? nc.value : extractItems(nc.value));
             }
         } catch (e: any) {
-            toast({ title: 'Error loading dashboard', description: e.message, variant: 'destructive' });
+            toast({ title: 'Error loading alerts', description: e.message, variant: 'destructive' });
         } finally {
             setLoading(false);
         }
-    }, [toast]);
 
-    useEffect(() => { loadCounts(); }, [loadCounts]);
+        const countable = CATEGORIES.filter(c => c.key !== 'graphs');
+        const batchSize = 3;
+        for (let i = 0; i < countable.length; i += batchSize) {
+            const batch = countable.slice(i, i + batchSize);
+            await Promise.allSettled(batch.map(cat => loadSingleCount(cat)));
+        }
+    }, [toast, loadSingleCount]);
+
+    const refreshAll = useCallback(async () => {
+        setCounts({});
+        setSubItems({});
+        await loadDashboard();
+    }, [loadDashboard]);
+
+    useEffect(() => { loadDashboard(); }, [loadDashboard]);
 
     const loadSubItems = useCallback(async (categoryKey: string) => {
         const cat = CATEGORIES.find(c => c.key === categoryKey);
@@ -581,7 +591,7 @@ export default function BillingDashboard() {
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={loadCounts}
+                            onClick={refreshAll}
                             disabled={loading}
                             className="gap-2 self-start sm:self-auto"
                             data-testid="btn-refresh-dashboard"
@@ -664,7 +674,7 @@ export default function BillingDashboard() {
                                             <span className={`inline-flex items-center justify-center min-w-[24px] h-5 px-1.5 rounded-full text-[10px] font-bold ${
                                                 isActive ? 'bg-white/25 text-white' : `${cat.badgeBg} text-white`
                                             }`}>
-                                                {loading ? '·' : <AnimatedCounter value={count} />}
+                                                {countsLoading[cat.key] ? <Loader2 className="w-3 h-3 animate-spin" /> : counts[cat.key] !== undefined ? <AnimatedCounter value={count} /> : '·'}
                                             </span>
                                         )}
                                     </button>

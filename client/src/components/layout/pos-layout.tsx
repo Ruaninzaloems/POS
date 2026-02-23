@@ -161,6 +161,7 @@ export function PosLayout({ children }: PosLayoutProps) {
   const navItems = [
     { label: 'Home', href: '/', icon: Home },
     { label: 'POS', href: '/pos', icon: Layers },
+    { label: 'Billing Dashboard', href: '/billing-dashboard', icon: BarChart3 },
     { label: 'Direct Deposits Manual', href: '/direct-deposits/manual', icon: Banknote },
     { label: 'Direct Deposits Auto', href: '/direct-deposits/auto', icon: RefreshCw },
     { 
@@ -174,7 +175,6 @@ export function PosLayout({ children }: PosLayoutProps) {
     { label: 'Bulk Allocation Progress', href: '/bulk-allocation', icon: FileBarChart },
     { label: 'View Receipts', href: '/view-receipts', icon: FileSearch },
     { label: 'Day-End Reconciliation', href: '/cashier-day-end', icon: Calculator },
-    { label: 'Billing Dashboard', href: '/billing-dashboard', icon: BarChart3 },
     {
         label: 'Enquiries',
         icon: Search,
