@@ -139,6 +139,7 @@ export default function ViewReceipts() {
     const [bankNoteSearchText, setBankNoteSearchText] = useState('');
     const [bankNoteSearching, setBankNoteSearching] = useState(false);
     const [bankNoteResults, setBankNoteResults] = useState<BankStatementNoteResult[] | null>(null);
+    const [selectedBankNoteItem, setSelectedBankNoteItem] = useState<BankStatementNoteResult | null>(null);
 
     const [eftAccountSearch, setEftAccountSearch] = useState('');
     const [eftSearching, setEftSearching] = useState(false);
@@ -430,35 +431,45 @@ export default function ViewReceipts() {
     };
 
     const handleLoadReceiptFromBankNote = (item: BankStatementNoteResult) => {
+        setSelectedBankNoteItem(item);
+    };
+
+    const handlePrintBankNoteReceipt = (item: BankStatementNoteResult) => {
         const r = item as any;
         const receiptNo = r.receiptNo ?? r.ReceiptNo ?? '';
         const accountId = Number(r.accountId ?? r.AccountId ?? 0);
+        const paidAmount = Number(r.paidAmount ?? r.PaidAmount ?? 0);
+        const bankAmount = Number(r.bankAmount ?? r.BankAmount ?? 0);
         const dateCaptured = r.dateCaptured ?? r.DateCaptured ?? '';
+        const bankNote = r.bankStatementNote ?? r.BankStatementNote ?? '';
+        const status = r.allocationStatus ?? r.AllocationStatus ?? '';
+        const cashbookDoc = r.cashbookDocumentNumber ?? r.CashbookDocumentNumber ?? '';
+        const cashbookDesc = r.cashbookDescription ?? r.CashbookDescription ?? '';
+        const payTypeId = Number(r.paymentTypeId ?? r.PaymentTypeId ?? 0);
+        const payTypeLabel = payTypeId === 1 ? 'Cash' : payTypeId === 3 ? 'Credit Card' : payTypeId === 2 ? 'EFT' : payTypeId === 5 ? 'EFT' : `Type ${payTypeId}`;
 
-        if (!receiptNo && accountId <= 0) {
-            toast({ title: "No Reference", description: "This entry has no receipt or account number to look up.", variant: "destructive" });
-            return;
-        }
-
-        if (receiptNo) {
-            setReceiptFilter(String(receiptNo));
-            setAccountFilter('');
+        const printData: ReceiptPrintData = {
+            receiptNo: receiptNo || 'N/A',
+            receiptDate: dateCaptured ? new Date(dateCaptured).toISOString() : new Date().toISOString(),
+            accountNumber: accountId > 0 ? String(accountId) : '',
+            municipalityName: 'George Municipality',
+            totalAmount: paidAmount > 0 ? paidAmount : bankAmount,
+            paymentType: payTypeLabel,
+            paymentOption: 'EFT / Bank Statement',
+            cashierName: 'System (EFT Allocation)',
+            cashOffice: cashbookDesc || cashbookDoc || '',
+            services: [
+                { serviceDescription: `Bank Statement: ${bankNote}`, amount: bankAmount },
+                ...(status ? [{ serviceDescription: `Status: ${status}`, amount: 0 }] : []),
+                ...(cashbookDoc ? [{ serviceDescription: `Cashbook Ref: ${cashbookDoc}`, amount: 0 }] : []),
+            ],
+        };
+        const win = openSlipPrintWindow(printData, true);
+        if (!win) {
+            toast({ title: "Popup Blocked", description: "Please allow popups for this site to print receipts.", variant: "destructive" });
         } else {
-            setAccountFilter(String(accountId));
-            setReceiptFilter('');
+            toast({ title: "Receipt Ready", description: `EFT receipt ${receiptNo} opened for printing.` });
         }
-        setCashierFilter('0');
-
-        if (dateCaptured) {
-            const d = new Date(dateCaptured);
-            setFromDate(new Date(d.getFullYear(), d.getMonth(), d.getDate() - 7));
-            setToDate(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7));
-        } else {
-            setFromDate(new Date(2024, 0, 1));
-            setToDate(new Date());
-        }
-
-        setTimeout(() => handleSearch(1), 150);
     };
 
     const handleEftSearch = async () => {
@@ -1157,6 +1168,138 @@ export default function ViewReceipts() {
                                 </div>
                             </>
                         )}
+                    </div>
+                )}
+
+                {selectedBankNoteItem && (
+                    <div className="p-3 sm:p-6 border-b border-slate-200" data-testid="bank-note-receipt-detail">
+                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider border-l-2 border-emerald-500 pl-2 mb-3 flex items-center gap-2">
+                            <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                            EFT Receipt Detail
+                            <Button variant="ghost" size="sm" className="h-5 w-5 p-0 ml-auto" onClick={() => setSelectedBankNoteItem(null)}>
+                                <X className="w-3.5 h-3.5" />
+                            </Button>
+                        </div>
+                        {(() => {
+                            const r = selectedBankNoteItem as any;
+                            const receiptNo = r.receiptNo ?? r.ReceiptNo ?? '';
+                            const accountId = Number(r.accountId ?? r.AccountId ?? 0);
+                            const paidAmount = Number(r.paidAmount ?? r.PaidAmount ?? 0);
+                            const bankAmount = Number(r.bankAmount ?? r.BankAmount ?? 0);
+                            const dateCaptured = r.dateCaptured ?? r.DateCaptured ?? '';
+                            const bankDate = r.bankStatementDate ?? r.BankStatementDate ?? '';
+                            const billingDate = r.billingAllocationDate ?? r.BillingAllocationDate ?? '';
+                            const bankNote = r.bankStatementNote ?? r.BankStatementNote ?? '';
+                            const status = r.allocationStatus ?? r.AllocationStatus ?? '';
+                            const cashbookDoc = r.cashbookDocumentNumber ?? r.CashbookDocumentNumber ?? '';
+                            const cashbookDesc = r.cashbookDescription ?? r.CashbookDescription ?? '';
+                            const miscDesc = r.miscPaymentGroupDescription ?? r.MiscPaymentGroupDescription ?? '';
+                            const payTypeId = Number(r.paymentTypeId ?? r.PaymentTypeId ?? 0);
+                            const payTypeLabel = payTypeId === 1 ? 'Cash' : payTypeId === 3 ? 'Credit Card' : payTypeId === 2 ? 'EFT' : payTypeId === 5 ? 'EFT' : payTypeId > 0 ? `Type ${payTypeId}` : 'Unknown';
+                            const bankReconID = r.bankReconID ?? r.BankReconID ?? '';
+                            const billingAllocated = r.billingAllocated ?? r.BillingAllocated ?? false;
+                            return (
+                                <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-4 sm:p-6 max-w-2xl">
+                                    <div className="flex items-center justify-between mb-4 pb-3 border-b border-emerald-200">
+                                        <div>
+                                            <h3 className="text-lg font-bold text-emerald-800">George Municipality</h3>
+                                            <p className="text-xs text-emerald-600">EFT / Bank Statement Receipt</p>
+                                        </div>
+                                        <div className={`px-3 py-1 rounded-full text-xs font-semibold ${status.includes('Not Allocated') ? 'bg-orange-100 text-orange-700 border border-orange-300' : status.includes('Account') ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-blue-100 text-blue-700 border border-blue-300'}`}>
+                                            {billingAllocated ? 'Allocated' : 'Not Allocated'} - {status || 'Unknown'}
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3 text-sm">
+                                        <div>
+                                            <span className="text-[10px] uppercase text-slate-500 font-semibold">Receipt Number</span>
+                                            <p className="font-mono font-bold text-emerald-800 text-base">{receiptNo || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <span className="text-[10px] uppercase text-slate-500 font-semibold">Account ID</span>
+                                            <p className="font-mono font-bold text-slate-800 text-base">{accountId > 0 ? accountId : 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <span className="text-[10px] uppercase text-slate-500 font-semibold">Paid Amount</span>
+                                            <p className="font-mono font-bold text-emerald-700 text-lg">R {paidAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</p>
+                                        </div>
+                                        <div>
+                                            <span className="text-[10px] uppercase text-slate-500 font-semibold">Bank Amount</span>
+                                            <p className="font-mono font-bold text-blue-700 text-lg">R {bankAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</p>
+                                        </div>
+                                        <div>
+                                            <span className="text-[10px] uppercase text-slate-500 font-semibold">Date Captured</span>
+                                            <p className="font-mono text-slate-700">{dateCaptured ? new Date(dateCaptured).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</p>
+                                        </div>
+                                        <div>
+                                            <span className="text-[10px] uppercase text-slate-500 font-semibold">Bank Statement Date</span>
+                                            <p className="font-mono text-slate-700">{bankDate ? new Date(bankDate).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</p>
+                                        </div>
+                                        {billingDate && (
+                                            <div>
+                                                <span className="text-[10px] uppercase text-slate-500 font-semibold">Allocation Date</span>
+                                                <p className="font-mono text-slate-700">{new Date(billingDate).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                                            </div>
+                                        )}
+                                        <div>
+                                            <span className="text-[10px] uppercase text-slate-500 font-semibold">Payment Method</span>
+                                            <p className="font-mono text-slate-700">{payTypeLabel}</p>
+                                        </div>
+                                    </div>
+                                    <div className="mt-3 pt-3 border-t border-emerald-200 space-y-2">
+                                        <div>
+                                            <span className="text-[10px] uppercase text-slate-500 font-semibold">Bank Statement Note</span>
+                                            <p className="font-mono text-xs bg-white/60 rounded px-2 py-1.5 text-emerald-800 border border-emerald-100">{bankNote || '-'}</p>
+                                        </div>
+                                        {cashbookDoc && (
+                                            <div className="flex gap-4">
+                                                <div>
+                                                    <span className="text-[10px] uppercase text-slate-500 font-semibold">Cashbook Ref</span>
+                                                    <p className="font-mono text-xs text-slate-700">{cashbookDoc}</p>
+                                                </div>
+                                                {cashbookDesc && (
+                                                    <div>
+                                                        <span className="text-[10px] uppercase text-slate-500 font-semibold">Cashbook</span>
+                                                        <p className="font-mono text-xs text-slate-700">{cashbookDesc.trim()}</p>
+                                                    </div>
+                                                )}
+                                                {bankReconID && (
+                                                    <div>
+                                                        <span className="text-[10px] uppercase text-slate-500 font-semibold">Recon ID</span>
+                                                        <p className="font-mono text-xs text-slate-700">{bankReconID}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                        {miscDesc && (
+                                            <div>
+                                                <span className="text-[10px] uppercase text-slate-500 font-semibold">Miscellaneous Group</span>
+                                                <p className="font-mono text-xs text-slate-700">{miscDesc}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="mt-4 pt-3 border-t border-emerald-200 flex gap-2">
+                                        <Button
+                                            size="sm"
+                                            className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                                            onClick={() => handlePrintBankNoteReceipt(selectedBankNoteItem)}
+                                            data-testid="button-print-banknote-receipt"
+                                        >
+                                            <Printer className="w-3.5 h-3.5" />
+                                            Print Receipt
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="gap-1.5 text-slate-600"
+                                            onClick={() => setSelectedBankNoteItem(null)}
+                                        >
+                                            <X className="w-3.5 h-3.5" />
+                                            Close
+                                        </Button>
+                                    </div>
+                                </div>
+                            );
+                        })()}
                     </div>
                 )}
 
