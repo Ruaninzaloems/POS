@@ -373,6 +373,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const officeId = String(data.officeId);
             const cashFloat = data.cashFloat ?? data.details?.cashFloat ?? 0;
             console.log(`[Session] validate-cashier API confirms session is active (POS_Cashier.IsActive=1) — auto-resuming. Office: ${officeName} (ID: ${officeId}), Float: ${cashFloat}`);
+            try {
+              const vcResult = await platinumValidateCashier(platinumUser.user_ID, platinumUser.finYear || '2025/2026');
+              const vcCashierId = vcResult?.cashier?.id;
+              if (vcCashierId) {
+                console.log(`[Session] validate-cashier returned active cashier ID: ${vcCashierId} (overriding ${receiptCashierId})`);
+                setPlatinumCashierId(vcCashierId);
+              }
+            } catch (e) {
+              console.warn(`[Session] validate-cashier call failed, using fallback cashier ID: ${receiptCashierId}`);
+            }
             setActiveSession(true);
             setApiSessionActive(true);
             setSessionDetails({
@@ -408,12 +418,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const fromDate = today.getFullYear() + '-' +
           String(today.getMonth() + 1).padStart(2, '0') + '-' +
           String(today.getDate()).padStart(2, '0') + 'T00:00:00';
+      const toDate = today.getFullYear() + '-' +
+          String(today.getMonth() + 1).padStart(2, '0') + '-' +
+          String(today.getDate()).padStart(2, '0') + 'T23:59:59';
 
-      console.log(`[Transactions] Fetching receipts for platinumCashierId: ${pCashierId}, fromDate: ${fromDate}`);
+      console.log(`[Transactions] Fetching receipts for platinumCashierId: ${pCashierId}, fromDate: ${fromDate}, toDate: ${toDate}`);
 
       const result = await fetchReceiptList({
         cashierId: String(pCashierId),
         fromDate,
+        toDate,
         page: 1,
         pageSize: 200,
         orderby: 'receiptDate',
@@ -767,6 +781,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
       } else {
         console.log(`[SessionEnforcement] validate-cashier confirmed isActive=true (POS_Cashier.IsActive=1)`);
+        const activeCashierId = result?.cashier?.id;
+        if (activeCashierId && activeCashierId !== platinumCashierId) {
+          console.log(`[SessionEnforcement] Updating platinumCashierId: ${platinumCashierId} → ${activeCashierId}`);
+          setPlatinumCashierId(activeCashierId);
+        }
       }
     } catch (e) {
       console.error(`[SessionEnforcement] Failed to check validate-cashier:`, e);
