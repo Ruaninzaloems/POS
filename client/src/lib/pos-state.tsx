@@ -1430,6 +1430,19 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 splitEntry.receiptDetail = receiptDetail;
             }
 
+            if (receiptData && receiptData.length > 0) {
+                const svcAllocs = receiptData[0]._serviceAllocations;
+                if (Array.isArray(svcAllocs) && svcAllocs.length > 0) {
+                    splitEntry.allocations = svcAllocs.map((a: any) => ({
+                        service: a.service || a.description || '',
+                        amount: a.amount ?? 0,
+                        vat: a.vat ?? 0,
+                        total: a.total ?? a.amount ?? 0,
+                    }));
+                    console.log(`[Priority 1 ${paymentLabel}] Receipt ${receiptNo} service allocations:`, splitEntry.allocations.map(a => `${a.service}: ${a.amount}`).join(', '));
+                }
+            }
+
             const resolvedAcctId = acctId || matchedPerAcct?.accountId || '';
 
             record.splitReceipts!.push(splitEntry);
@@ -1438,6 +1451,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 if (!record.receiptDetail) {
                     record.receiptDetail = receiptDetail;
                 }
+            }
+
+            if (splitEntry.allocations && splitEntry.allocations.length > 0 && (!record.allocations || record.allocations.length === 0)) {
+                record.allocations = splitEntry.allocations;
             }
 
             console.log(`[Priority 1 ${paymentLabel}] Receipt ${receiptNo} added to split receipts (account: ${resolvedAcctId})`);
@@ -1914,6 +1931,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 if (clrReceiptIds.length > 0) {
                     let receiptNo = `REC-${clrReceiptIds[0]}`;
                     let clrReceiptDetail: any = null;
+                    let clrServiceAllocations: ReceiptAllocation[] = [];
                     try {
                         const receiptData = await fetchPosMultiReceiptPrint(String(clrReceiptIds[0]), 3);
                         if (receiptData && receiptData.length > 0) {
@@ -1937,6 +1955,15 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                                     vatAmount: row.vatAmount ?? 0,
                                 })),
                             };
+                            const svcAllocs = rd._serviceAllocations;
+                            if (Array.isArray(svcAllocs) && svcAllocs.length > 0) {
+                                clrServiceAllocations = svcAllocs.map((a: any) => ({
+                                    service: a.service || a.description || '',
+                                    amount: a.amount ?? 0,
+                                    vat: a.vat ?? 0,
+                                    total: a.total ?? a.amount ?? 0,
+                                }));
+                            }
                         }
                     } catch (e) {
                         console.warn(`[Priority 1B ${label}] Could not fetch receipt number`, e);
@@ -1952,6 +1979,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     }
 
                     const splitEntry: SplitReceipt = { receiptNumber: receiptNo, receiptId: clrReceiptIds[0], paymentType: splitType, amount, receiptDetail: clrReceiptDetail };
+                    if (clrServiceAllocations.length > 0) splitEntry.allocations = clrServiceAllocations;
 
                     for (let printAttempt = 1; printAttempt <= 2; printAttempt++) {
                         try {

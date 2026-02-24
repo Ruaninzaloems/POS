@@ -523,6 +523,8 @@ export interface PosMultiReceiptPrintItem {
     paymentTypeId: number | null;
     cashierName: string | null;
     outstandingAmount: number | null;
+    _serviceAllocations?: { service: string; amount: number; vat: number; total: number }[];
+    _viewPaymentOption?: string;
 }
 
 export async function fetchPosMultiReceiptPrint(receiptId: string, maxRetries: number = 3, receiptNo?: string): Promise<PosMultiReceiptPrintItem[]> {

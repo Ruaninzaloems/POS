@@ -281,19 +281,24 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
 
       {hasPaymentAllocations && (
           <div className="border-t border-gray-300 pt-2 mb-2">
-              <div className="font-bold text-[10px] mb-1">Payment Allocation:</div>
               {paymentAllocations.map((alloc: any, idx: number) => (
                   <div key={idx} className="flex justify-between mb-0.5">
                       <span className="break-words w-[65%]">{alloc.service}</span>
                       <span className="text-right">{Number(alloc.amount).toFixed(2)}</span>
                   </div>
               ))}
-              {hasLineItems && apiLineItems.some(li => (Number(li.vatAmount) || 0) > 0) && (
-                  <div className="flex justify-between mt-1 border-t border-dashed border-gray-300 pt-1 mb-1">
-                      <span>Vat Amount</span>
-                      <span className="text-right">{apiLineItems.reduce((sum, li) => sum + (Number(li.vatAmount) || 0), 0).toFixed(2)}</span>
-                  </div>
-              )}
+              {(() => {
+                  const lineItemVat = hasLineItems ? apiLineItems.reduce((sum, li) => sum + (Number(li.vatAmount) || 0), 0) : 0;
+                  const allocVat = paymentAllocations.reduce((sum: number, a: any) => sum + (Number(a.vat) || 0), 0);
+                  const vatTotal = lineItemVat > 0 ? lineItemVat : allocVat;
+                  if (vatTotal > 0) return (
+                      <div className="flex justify-between mt-1 border-t border-dashed border-gray-300 pt-1 mb-1">
+                          <span>Vat Amount</span>
+                          <span className="text-right">{vatTotal.toFixed(2)}</span>
+                      </div>
+                  );
+                  return null;
+              })()}
           </div>
       )}
 
