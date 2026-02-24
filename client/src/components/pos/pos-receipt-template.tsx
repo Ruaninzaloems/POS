@@ -434,7 +434,11 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
           <div className="border-t border-gray-300 pt-2 mb-2">
               <div className="flex justify-between">
                   <span>Outstanding<br/>Balance</span>
-                  <span className="text-right">{Number(effectiveRd.outstandingAmount).toFixed(2)}</span>
+                  <span className="text-right">{
+                    effectiveRd._balanceIsPostPayment
+                      ? Number(effectiveRd.outstandingAmount).toFixed(2)
+                      : (Number(effectiveRd.outstandingAmount) - totalAmount).toFixed(2)
+                  }</span>
               </div>
           </div>
       )}
@@ -442,13 +446,21 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
       {isSplitPayment && uniqueAccounts.size > 0 && (
           <div className="border-t border-gray-300 pt-2 mb-2">
               {Array.from(uniqueAccounts.entries()).map(([key, acct]) => {
-                  const lastReceipt = acct.cardReceipt || acct.cashReceipt;
+                  const cashAmt = acct.cashReceipt?.amount ?? 0;
+                  const cardAmt = acct.cardReceipt?.amount ?? 0;
+                  const acctTotalPaid = cashAmt + cardAmt;
+                  const lastReceipt = acct.cashReceipt || acct.cardReceipt;
                   const outstanding = lastReceipt?.receiptDetail?.outstandingAmount;
+                  const isPostPayment = lastReceipt?.receiptDetail?._balanceIsPostPayment;
                   if (outstanding == null) return null;
                   return (
                       <div key={key} className="flex justify-between text-[10px]">
                           <span>{acct.accountName || acct.accountId} Balance</span>
-                          <span className="text-right">{Number(outstanding).toFixed(2)}</span>
+                          <span className="text-right">{
+                            isPostPayment
+                              ? Number(outstanding).toFixed(2)
+                              : (Number(outstanding) - acctTotalPaid).toFixed(2)
+                          }</span>
                       </div>
                   );
               })}

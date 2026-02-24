@@ -1941,15 +1941,17 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     const consDetails = await platinumGetConsAccountDetails(Number(accountId));
                     if (consDetails && consDetails.outStandingAmt !== undefined) {
                         const updatedOutstanding = consDetails.outStandingAmt;
-                        console.log(`[Priority 1] Updated outstanding balance for account ${accountId}: R${updatedOutstanding} (from API)`);
+                        console.log(`[Priority 1] Updated outstanding balance for account ${accountId}: R${updatedOutstanding} (from API post-payment)`);
 
                         if (record.receiptDetail && (String(record.receiptDetail.accountId) === String(accountId))) {
                             record.receiptDetail.outstandingAmount = updatedOutstanding;
+                            record.receiptDetail._balanceIsPostPayment = true;
                         }
 
                         for (const sr of (record.splitReceipts || [])) {
                             if (sr.receiptDetail && (String(sr.accountId) === String(accountId) || String(sr.receiptDetail.accountId) === String(accountId))) {
                                 sr.receiptDetail.outstandingAmount = updatedOutstanding;
+                                sr.receiptDetail._balanceIsPostPayment = true;
                             }
                         }
                     }
@@ -2014,6 +2016,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     }
                 }
             }
+
+            setRecentTransactions(prev => prev.map(t => t.id === record.id ? { ...record } : t));
         }
     }
 
