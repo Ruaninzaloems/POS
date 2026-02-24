@@ -2091,6 +2091,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 if (miscReceiptId) {
                     let receiptNo = `REC-${miscReceiptId}`;
                     let miscReceiptDetail: any = null;
+                    const miscItemDesc = item.description || origData?.description || 'Direct Income';
+                    const miscReference = item.notes || item.reference || origData?.reference || '';
+                    const miscVatAmt = Math.round((isVatable ? amount - amount / (1 + vatRate / 100) : 0) * 100) / 100;
+                    const miscAmtExVat = Math.round((amount - miscVatAmt) * 100) / 100;
+
                     try {
                         const miscReceiptData = await fetchPosMultiReceiptPrint(String(miscReceiptId), 3);
                         if (miscReceiptData && miscReceiptData.length > 0) {
@@ -2106,13 +2111,17 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                                 paymentType: splitType === 'cash' ? 'Cash' : 'Credit Card',
                                 paymentOption: 'Miscellaneous Payment',
                                 accountId: rd.accountId || '',
-                                accName: rd.accName || paidByName,
+                                accName: (rd.accName && rd.accName.trim()) ? rd.accName : paidByName,
                                 receiptDate: rd.receiptDate || formattedReceiptDate,
-                                lineItems: miscReceiptData.map((row: any) => ({
-                                    description: row.billType || item.description || 'Direct Income',
-                                    amount: row.tenderAmount ?? row.amount ?? 0,
-                                    vatAmount: row.vatAmount ?? 0,
-                                })),
+                                miscDescription: miscItemDesc,
+                                miscReference: miscReference,
+                                miscInitials: initials,
+                                miscSurname: lastName,
+                                lineItems: [{
+                                    description: miscItemDesc,
+                                    amount: miscAmtExVat,
+                                    vatAmount: miscVatAmt,
+                                }],
                             };
                         }
                     } catch (e) {
@@ -2132,7 +2141,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             accountId: '',
                             accName: paidByName,
                             receiptDate: formattedReceiptDate,
-                            lineItems: [{ description: item.description || 'Direct Income', amount, vatAmount: Math.round((isVatable ? amount - amount / (1 + vatRate / 100) : 0) * 100) / 100 }],
+                            miscDescription: miscItemDesc,
+                            miscReference: miscReference,
+                            miscInitials: initials,
+                            miscSurname: lastName,
+                            lineItems: [{ description: miscItemDesc, amount: miscAmtExVat, vatAmount: miscVatAmt }],
                         };
                         console.log(`[Priority 2 ${label}] Using fallback receipt data for misc item ${scoaItemId}`);
                     }

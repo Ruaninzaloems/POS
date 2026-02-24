@@ -277,6 +277,33 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
                 )}
             </>
         )}
+
+        {!effectiveRd.accountId && effectiveRd.miscDescription && (
+            <>
+                {(effectiveRd.miscInitials || effectiveRd.miscSurname) && (
+                    <div className="flex justify-between mb-0.5">
+                        <span>Paid By</span>
+                        <span className="text-right">{[effectiveRd.miscInitials, effectiveRd.miscSurname].filter(Boolean).join(' ')}</span>
+                    </div>
+                )}
+                {effectiveRd.accName && effectiveRd.accName !== 'Walk-in' && !effectiveRd.miscSurname && (
+                    <div className="flex justify-between mb-0.5">
+                        <span>Paid By</span>
+                        <span className="text-right">{effectiveRd.accName}</span>
+                    </div>
+                )}
+                <div className="flex justify-between mb-0.5">
+                    <span>Description</span>
+                    <span className="text-right max-w-[55%] break-words">{effectiveRd.miscDescription}</span>
+                </div>
+                {effectiveRd.miscReference && (
+                    <div className="flex justify-between mb-0.5">
+                        <span>Reference</span>
+                        <span className="text-right max-w-[55%] break-words">{effectiveRd.miscReference}</span>
+                    </div>
+                )}
+            </>
+        )}
       </div>
 
       {hasPaymentAllocations && (
