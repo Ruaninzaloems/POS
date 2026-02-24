@@ -57,9 +57,22 @@ export function PaymentDrawer() {
 
   const totalDue = useMemo(() => transactionItems.reduce((acc, i) => acc + i.amountToPay, 0), [transactionItems]);
 
+  const cardExpiryValid = (() => {
+    if (!payment.cardExpiry) return false;
+    const match = payment.cardExpiry.trim().match(/^(\d{2})\/(\d{2})$/);
+    if (!match) return false;
+    const month = parseInt(match[1], 10);
+    if (month < 1 || month > 12) return false;
+    const year = parseInt(match[2], 10) + 2000;
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    if (year < currentYear || (year === currentYear && month < currentMonth)) return false;
+    return true;
+  })();
+
   const cardFieldsValid = payment.cardAmount > 0
-    ? (!!payment.cardReference && payment.cardReference.trim().length >= 4) &&
-      (!!payment.cardExpiry && /^\d{2}\/\d{2}$/.test(payment.cardExpiry.trim()))
+    ? (!!payment.cardReference && payment.cardReference.trim().length >= 4) && cardExpiryValid
     : true;
 
   const isCompleteEnabled = 
@@ -251,6 +264,7 @@ export function PaymentDrawer() {
             handleBackspace={handleBackspace}
             handlePayExact={handlePayExact}
             handleClearAmount={handleClearAmount}
+            cardExpiryValid={cardExpiryValid}
             handleDesktopInput={handleDesktopInput}
           />
         </div>
@@ -277,6 +291,7 @@ export function PaymentDrawer() {
               handlePayExact={handlePayExact}
               handleClearAmount={handleClearAmount}
               numKeys={numKeys}
+              cardExpiryValid={cardExpiryValid}
             />
           )}
         </div>
@@ -327,15 +342,17 @@ export function PaymentDrawer() {
         <Button 
           className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25 h-12 lg:h-14 text-base lg:text-lg font-bold rounded-xl disabled:from-slate-300 disabled:to-slate-400 disabled:shadow-none active:scale-[0.98] transition-all touch-manipulation" 
           size="lg"
-          tabIndex={7}
+          tabIndex={9}
           disabled={!isCompleteEnabled}
           onClick={completeTransaction}
           data-testid="button-complete-transaction"
         >
           {shortfall > 0 ? (
             <>R {shortfall.toFixed(2)} still needed</>
-          ) : !cardFieldsValid ? (
-            <>Card number & expiry required</>
+          ) : payment.cardAmount > 0 && (!payment.cardReference || payment.cardReference.trim().length < 4) ? (
+            <>Enter card number</>
+          ) : payment.cardAmount > 0 && !cardExpiryValid ? (
+            <>{!payment.cardExpiry ? 'Enter card expiry' : 'Invalid expiry (MM/YY)'}</>
           ) : (
             <>
               COMPLETE (R {payment.tenderTotal.toFixed(2)})
@@ -824,7 +841,7 @@ function MobileItemsList({ items, removeItem, updateItemAmount, updateItemDetail
   );
 }
 
-function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, activeInput, setActiveInput, inputBuffer, payment, setPaymentAmount, setCardReference, setCardExpiry, handleNumpadInput, handleBackspace, handlePayExact, handleClearAmount, numKeys }: any) {
+function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, activeInput, setActiveInput, inputBuffer, payment, setPaymentAmount, setCardReference, setCardExpiry, handleNumpadInput, handleBackspace, handlePayExact, handleClearAmount, numKeys, cardExpiryValid }: any) {
   if (dayEndStatus === 'RECONCILED') {
     return (
       <div className="p-4">
@@ -987,6 +1004,7 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
               className={`h-9 font-mono text-sm ${payment.cardReference && payment.cardReference.trim().length < 4 ? 'border-red-400 ring-1 ring-red-200' : ''}`}
               data-testid="input-card-reference"
               inputMode="numeric"
+              tabIndex={7}
             />
           </div>
           <div>
@@ -1001,10 +1019,11 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
                 if (val.length > 5) val = val.slice(0, 5);
                 setCardExpiry(val);
               }}
-              className={`h-9 font-mono text-sm ${payment.cardExpiry && !/^\d{2}\/\d{2}$/.test(payment.cardExpiry) ? 'border-red-400 ring-1 ring-red-200' : ''}`}
+              className={`h-9 font-mono text-sm ${payment.cardExpiry && !cardExpiryValid ? 'border-red-400 ring-1 ring-red-200' : ''}`}
               data-testid="input-card-expiry"
               maxLength={5}
               inputMode="numeric"
+              tabIndex={8}
             />
           </div>
         </div>
@@ -1132,7 +1151,7 @@ function DesktopItemCard({ item, removeItem, updateItemAmount, updateItemDetails
   );
 }
 
-function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount, updateItemDetails, totalDue, dayEndStatus, cashAllowed, cardAllowed, activeInput, setActiveInput, inputBuffer, payment, setPaymentAmount, setCardReference, setCardExpiry, handleNumpadInput, handleBackspace, handlePayExact, handleClearAmount, handleDesktopInput }: any) {
+function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount, updateItemDetails, totalDue, dayEndStatus, cashAllowed, cardAllowed, activeInput, setActiveInput, inputBuffer, payment, setPaymentAmount, setCardReference, setCardExpiry, handleNumpadInput, handleBackspace, handlePayExact, handleClearAmount, handleDesktopInput, cardExpiryValid }: any) {
   const [desktopTab, setDesktopTab] = useState<'payment' | 'items'>('payment');
 
   const hasDirectIncomeIssues = transactionItems.some((i: TransactionItem) => i.type === 'DIRECT_INCOME' && (!i.paidBy?.trim() || !i.notes?.trim()));
@@ -1293,6 +1312,7 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                         className={`h-10 font-mono text-sm ${payment.cardReference && payment.cardReference.trim().length < 4 ? 'border-red-400 ring-1 ring-red-200' : ''}`}
                         data-testid="input-card-reference"
                         inputMode="numeric"
+                        tabIndex={7}
                       />
                     </div>
                     <div>
@@ -1307,10 +1327,11 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                           if (val.length > 5) val = val.slice(0, 5);
                           setCardExpiry(val);
                         }}
-                        className={`h-10 font-mono text-sm ${payment.cardExpiry && !/^\d{2}\/\d{2}$/.test(payment.cardExpiry) ? 'border-red-400 ring-1 ring-red-200' : ''}`}
+                        className={`h-10 font-mono text-sm ${payment.cardExpiry && !cardExpiryValid ? 'border-red-400 ring-1 ring-red-200' : ''}`}
                         data-testid="input-card-expiry-desktop"
                         maxLength={5}
                         inputMode="numeric"
+                        tabIndex={8}
                       />
                     </div>
                   </div>
