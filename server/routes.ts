@@ -764,8 +764,9 @@ export async function registerRoutes(
       if (rm.isReconciled === undefined || rm.isReconciled === null) rm.isReconciled = 0;
       if (rm.isCancelled === undefined || rm.isCancelled === null) rm.isCancelled = 0;
 
+      const isCard = rm.paymentType === 'CreditCard' || rm.paymentType === 3;
       for (const acct of accounts) {
-        if (acct.billId === 0) acct.billId = null;
+        if (!isCard && acct.billId === 0) acct.billId = null;
       }
 
       console.log(`[submit-multiple-payment] userId=${userId}, ${accounts.length} account(s), paymentType=${rm.paymentType}`);
@@ -787,10 +788,12 @@ export async function registerRoutes(
     try {
       const session = requireAuth(req, res); if (!session) return;
       const accounts = Array.isArray(req.body) ? req.body : [];
+      console.log(`[save-multiple-account-payment] Saving ${accounts.length} account(s), query params:`, req.query);
       for (const acct of accounts) {
-        console.log(`[save-multiple-account-payment] account_ID=${acct.account_ID}, outStandingAmt=${acct.outStandingAmt}, name=${acct.name}`);
+        console.log(`[save-multiple-account-payment] account_ID=${acct.account_ID}, outStandingAmt=${acct.outStandingAmt}, paymentAmount=${acct.paymentAmount}, name=${acct.name}`);
       }
       const data = await platinumPost(session, "/api/billing-payment/save-multiple-account-payment", req.body, req.query as Record<string, string>);
+      console.log(`[save-multiple-account-payment] response:`, JSON.stringify(data));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });

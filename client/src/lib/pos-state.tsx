@@ -1577,7 +1577,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         const stagingPayload = saveAccounts.map(acct => {
             const { _userAmountToPay, ...rest } = acct;
-            return { ...rest, outStandingAmt: _userAmountToPay };
+            return { ...rest, paymentAmount: _userAmountToPay };
         });
 
         console.log(`[Priority 1] Staging payload outStandingAmt (user amount): R${stagingPayload[0]?.outStandingAmt}, full outstanding: R${saveAccounts[0]?.outStandingAmt}, user amountToPay: R${saveAccounts[0]?._userAmountToPay}`);
@@ -1655,9 +1655,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 const effectiveReceiptDate = receiptDateOverride || formattedReceiptDate;
 
                 if (isMultiAccount) {
-                    const submitAccounts = perAccountPayments.map(({ acct, itemPayment }) => {
+                    const submitAccounts = perAccountPayments.map(({ acct, itemPayment, acctOutstanding }) => {
                         const { _userAmountToPay: _, sundryDebtorsId: _sd, ...base } = acct;
-                        base.outStandingAmt = itemPayment;
+                        base.outStandingAmt = acctOutstanding || base.outStandingAmt || itemPayment;
                         base.paymentAmount = itemPayment;
                         base.billId = base.billId ?? 0;
                         return isCardPayment
