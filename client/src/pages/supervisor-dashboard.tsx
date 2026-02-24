@@ -381,7 +381,7 @@ export default function SupervisorDashboard() {
     setReviewTab('cash');
     try {
       const [detailsRes, reconcileRes, cashRes, cardRes, chequeRes, postalRes, dropboxRes, sysVsCashierRes] = await Promise.all([
-        platinumGetAuthDayEndCashierDetails({ cashierId }).catch(() => null),
+        platinumGetAuthDayEndCashierDetails({ id: cashierId }).catch(() => null),
         platinumGetAuthDayEndCashierReconcile({ cashierId }).catch(() => null),
         apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-cash-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch(() => []),
         apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-card-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch(() => []),

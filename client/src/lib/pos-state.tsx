@@ -984,8 +984,22 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [activeSession, platinumUser?.user_ID, checkSessionViaApi]);
 
+  useEffect(() => {
+    (window as any).__posEndSessionAfterDayEnd = () => {
+      console.log('[Session] Day-end submitted — ending active session immediately');
+      setActiveSession(false);
+      setApiSessionActive(false);
+      setDayEndStatus('PENDING_APPROVAL');
+      setSessionDetails(undefined);
+      if (sessionPollRef.current) clearInterval(sessionPollRef.current);
+    };
+    return () => {
+      delete (window as any).__posEndSessionAfterDayEnd;
+    };
+  }, []);
+
   const endSession = async () => {
-      if (dayEndStatus !== 'RECONCILED') {
+      if (dayEndStatus !== 'RECONCILED' && dayEndStatus !== 'PENDING_APPROVAL') {
           toast({
               title: "Cannot End Session",
               description: "Your session cannot be ended until day-end reconciliation has been completed and approved. Please complete the day-end process first.",

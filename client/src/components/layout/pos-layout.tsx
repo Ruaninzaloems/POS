@@ -50,6 +50,8 @@ export function PosLayout({ children }: PosLayoutProps) {
 
   const isPosPage = location === '/pos';
   const isReceiptingPage = isPosPage;
+  const sessionRequiredPaths = ['/pos', '/direct-deposits', '/third-party', '/bulk-allocation', '/view-receipts'];
+  const requiresActiveSession = sessionRequiredPaths.some(p => location === p || location.startsWith(p + '/'));
 
   const prevLocationRef = React.useRef(location);
   useEffect(() => {
@@ -60,7 +62,7 @@ export function PosLayout({ children }: PosLayoutProps) {
   }, [location, clearTransaction]);
 
   useEffect(() => {
-      if (!activeSession && !sessionLoading && location === '/pos') {
+      if (!activeSession && !sessionLoading && requiresActiveSession) {
           setLocation('/cashier-setup');
       }
   }, [activeSession, sessionLoading, location, setLocation]);
@@ -120,7 +122,7 @@ export function PosLayout({ children }: PosLayoutProps) {
       );
   }
 
-  if (!activeSession && location === '/pos') {
+  if (!activeSession && requiresActiveSession) {
       return null;
   }
 

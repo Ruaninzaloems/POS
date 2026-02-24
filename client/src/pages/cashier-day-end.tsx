@@ -234,6 +234,9 @@ export default function CashierDayEnd() {
             console.log('[DayEnd] Submitting reconcile payload:', JSON.stringify(payload));
             await platinumSaveDayEndReconcileData(userId, payload);
             toast({ title: 'Success', description: 'Day-end reconciliation submitted successfully. Your supervisor will review it.' });
+            if (typeof (window as any).__posEndSessionAfterDayEnd === 'function') {
+                (window as any).__posEndSessionAfterDayEnd();
+            }
         } catch (e: any) {
             console.error('Failed to save reconcile data', e);
             toast({ title: 'Error', description: e?.message || 'Failed to save reconciliation data.', variant: 'destructive' });
@@ -274,7 +277,7 @@ export default function CashierDayEnd() {
                                 <div>
                                     <Label className="text-xs text-slate-500 font-semibold">Cashier Office *</Label>
                                     <div className="mt-1 text-sm font-medium bg-slate-50 border rounded px-3 py-2">
-                                        {cashierDetails?.cashOfficeName || cashierDetails?.cash_office || cashierDetails?.cashOffice || cashierDetails?.officeName || '-'}
+                                        {cashierDetails?.cashOfficeName || cashierDetails?.cash_office || cashierDetails?.cashOffice || cashierDetails?.officeName || cashierDetails?.const_CashOffice?.cashOfficeDesc || '-'}
                                     </div>
                                 </div>
                                 <div>

@@ -187,6 +187,9 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
       await platinumSaveDayEndReconcileData(userId, payload);
       setStep('success');
       toast({ title: 'Success', description: 'Day-end reconciliation submitted for supervisor approval.' });
+      if (typeof (window as any).__posEndSessionAfterDayEnd === 'function') {
+        (window as any).__posEndSessionAfterDayEnd();
+      }
     } catch (e: any) {
       console.error('[DayEndModal] API error:', e);
       setErrorMessage(e?.message || 'Failed to save reconciliation data.');
@@ -259,7 +262,7 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
 
               {showDenominations && (
                 <div className="px-5 pb-4 pt-1 border-t border-green-200">
-                  <div className="grid grid-cols-2 gap-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
                       <div className="flex items-center gap-1.5 mb-2.5">
                         <Banknote className="w-3.5 h-3.5 text-green-700" />
