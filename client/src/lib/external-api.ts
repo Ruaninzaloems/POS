@@ -738,10 +738,11 @@ export async function enrichAccountData(account: any): Promise<any> {
     const enriched = { ...account };
 
     try {
-        const [consDetails, nameData, contactDetails] = await Promise.all([
+        const [consDetails, nameData, contactDetails, balanceDebt] = await Promise.all([
             platinumGetConsAccountDetails(Number(accountId), true).catch(() => null),
             platinumFetch(`/api/platinum/billing-enquiry/name-info-by-account?accountId=${accountId}`).catch(() => null),
             platinumFetch(`/api/platinum/billing-account-management/get-contact-details?accountId=${accountId}`).catch(() => null),
+            fetchTotalBalanceDebt(Number(accountId)).catch(() => null),
         ]);
 
         if (consDetails && !consDetails._error) {
@@ -766,6 +767,23 @@ export async function enrichAccountData(account: any): Promise<any> {
             enriched.accountHolder = consDetails.name || enriched.name;
             enriched.streetName = consDetails.streetName || '';
             enriched.town = consDetails.town || '';
+        }
+
+        if (balanceDebt) {
+            let rows: any[] = [];
+            if (Array.isArray(balanceDebt)) rows = balanceDebt;
+            else if (balanceDebt?.results && Array.isArray(balanceDebt.results)) rows = balanceDebt.results;
+            else if (balanceDebt && typeof balanceDebt === 'object' && !balanceDebt._error) rows = [balanceDebt];
+
+            if (rows.length > 0) {
+                const totalFromDebt = rows.reduce((sum: number, row: any) => {
+                    return sum + (row.totalOutStanding || row.totalOutstanding || 0);
+                }, 0);
+                const rounded = Math.round(totalFromDebt * 100) / 100;
+                enriched.outstandingAmount = rounded;
+                enriched.outStandingAmt = rounded;
+                apiLog('Enrich', `Account ${accountId} balance from TotalBalanceDebt: R${rounded} (overrides cons-account-details)`);
+            }
         }
 
         if (nameData && typeof nameData === 'object' && nameData.surname_Company) {

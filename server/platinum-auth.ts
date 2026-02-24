@@ -53,6 +53,7 @@ const SHORT_RESPONSE_CACHE_TTL = 5 * 1000;
 
 const NEVER_CACHE_PATHS = [
   '/api/BillingEnquiry/rebuild-full-account',
+  '/api/BillingEnquiry/TotalBalanceDebtInquiry',
   '/api/billing-payment/submit-consumer-payment',
   '/api/billing-payment/submit-multiple-payment',
   '/api/billing-payment/save-multiple-account-payment',

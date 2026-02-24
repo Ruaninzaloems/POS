@@ -4,7 +4,7 @@ import { ConsumerSearchForm } from './consumer-search-form';
 import { UnifiedSearch as SearchComponent, SearchResult, parseMobileFromContactDetails } from './search-component';
 import { Filter, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Account, fetchAccounts, fetchBillingStagePrepaidRecharge, fetchBillingStagePrepaidRecovery, searchInstitutions, fetchAccountsByGroup, platinumGetAccountsForClearance, platinumGetClearanceData, enrichAccountData, platinumGetConsAccountDetails } from '@/lib/external-api';
+import { Account, fetchAccounts, fetchBillingStagePrepaidRecharge, fetchBillingStagePrepaidRecovery, searchInstitutions, fetchAccountsByGroup, platinumGetAccountsForClearance, platinumGetClearanceData, enrichAccountData, platinumGetConsAccountDetails, fetchTotalBalanceDebt } from '@/lib/external-api';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -136,15 +136,25 @@ export function UnifiedSearch({ onSearchActiveChange }: { onSearchActiveChange?:
                     const accId = item.originalData?.accountID || item.originalData?.accountId || item.originalData?.account_ID;
                     if (!accId) return;
                     try {
-                        const details = await platinumGetConsAccountDetails(Number(accId), true);
-                        if (details && !details._error) {
-                            const outstanding = details.outStandingAmt ?? details.outstandingAmount ?? details.outStandingAmount ?? 0;
-                            updateItemDetails(item.id, {
-                                amountDue: outstanding,
-                                amountToPay: 0,
-                                originalData: { ...item.originalData, ...details, outStandingAmt: outstanding, outstandingAmount: outstanding }
-                            });
+                        const [details, balanceDebt] = await Promise.all([
+                            platinumGetConsAccountDetails(Number(accId), true).catch(() => null),
+                            fetchTotalBalanceDebt(Number(accId)).catch(() => null),
+                        ]);
+                        let outstanding = 0;
+                        if (balanceDebt) {
+                            let rows: any[] = Array.isArray(balanceDebt) ? balanceDebt : (balanceDebt?.results && Array.isArray(balanceDebt.results) ? balanceDebt.results : []);
+                            if (rows.length > 0) {
+                                outstanding = Math.round(rows.reduce((s: number, r: any) => s + (r.totalOutStanding || r.totalOutstanding || 0), 0) * 100) / 100;
+                            }
                         }
+                        if (outstanding === 0 && details && !details._error) {
+                            outstanding = details.outStandingAmt ?? details.outstandingAmount ?? details.outStandingAmount ?? 0;
+                        }
+                        updateItemDetails(item.id, {
+                            amountDue: outstanding,
+                            amountToPay: 0,
+                            originalData: { ...item.originalData, ...(details && !details._error ? details : {}), outStandingAmt: outstanding, outstandingAmount: outstanding }
+                        });
                     } catch (e) {
                         console.warn(`[Group Enrich] Failed for account ${accId}:`, e);
                     }
@@ -170,15 +180,25 @@ export function UnifiedSearch({ onSearchActiveChange }: { onSearchActiveChange?:
                             const accId = item.originalData?.accountID || item.originalData?.accountId || item.originalData?.account_ID;
                             if (!accId) return;
                             try {
-                                const details = await platinumGetConsAccountDetails(Number(accId), true);
-                                if (details && !details._error) {
-                                    const outstanding = details.outStandingAmt ?? details.outstandingAmount ?? details.outStandingAmount ?? 0;
-                                    updateItemDetails(item.id, {
-                                        amountDue: outstanding,
-                                        amountToPay: 0,
-                                        originalData: { ...item.originalData, ...details, outStandingAmt: outstanding, outstandingAmount: outstanding }
-                                    });
+                                const [details, balanceDebt] = await Promise.all([
+                                    platinumGetConsAccountDetails(Number(accId), true).catch(() => null),
+                                    fetchTotalBalanceDebt(Number(accId)).catch(() => null),
+                                ]);
+                                let outstanding = 0;
+                                if (balanceDebt) {
+                                    let rows: any[] = Array.isArray(balanceDebt) ? balanceDebt : (balanceDebt?.results && Array.isArray(balanceDebt.results) ? balanceDebt.results : []);
+                                    if (rows.length > 0) {
+                                        outstanding = Math.round(rows.reduce((s: number, r: any) => s + (r.totalOutStanding || r.totalOutstanding || 0), 0) * 100) / 100;
+                                    }
                                 }
+                                if (outstanding === 0 && details && !details._error) {
+                                    outstanding = details.outStandingAmt ?? details.outstandingAmount ?? details.outStandingAmount ?? 0;
+                                }
+                                updateItemDetails(item.id, {
+                                    amountDue: outstanding,
+                                    amountToPay: 0,
+                                    originalData: { ...item.originalData, ...(details && !details._error ? details : {}), outStandingAmt: outstanding, outstandingAmount: outstanding }
+                                });
                             } catch (e) {
                                 console.warn(`[Group Enrich] Failed for account ${accId}:`, e);
                             }
