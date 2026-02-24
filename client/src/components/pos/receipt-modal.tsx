@@ -9,7 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { platinumPrintReceiptRaw } from '@/lib/external-api';
 
 export function ReceiptModal() {
-  const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions, transactionProcessing, currentTransactionId } = usePos();
+  const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions, transactionProcessing, processingStep, currentTransactionId } = usePos();
   
   const currentTransaction = currentTransactionId 
     ? recentTransactions.find(t => t.id === currentTransactionId) || recentTransactions[0]
@@ -122,6 +122,12 @@ export function ReceiptModal() {
   const paymentFailed = !transactionProcessing && !currentTransaction.receiptNumber;
   const paymentSucceeded = !transactionProcessing && !paymentFailed;
 
+  const isSplitPayment = payment.cashAmount > 0 && payment.cardAmount > 0;
+  const splitReceipts = currentTransaction?.splitReceipts || [];
+  const cashReceipts = splitReceipts.filter(sr => sr.paymentType === 'cash');
+  const cardReceipts = splitReceipts.filter(sr => sr.paymentType === 'card');
+  const isPartialSuccess = paymentSucceeded && isSplitPayment && cashReceipts.length > 0 && cardReceipts.length === 0;
+
   return (
     <Dialog open={isReceiptModalOpen} onOpenChange={(open) => !open && closeReceiptModal()}>
       <DialogContent className="sm:max-w-md">
@@ -133,7 +139,7 @@ export function ReceiptModal() {
               </div>
               <DialogTitle className="text-2xl">Posting to Billing System...</DialogTitle>
               <DialogDescription className="text-lg text-muted-foreground font-medium">
-                 Please wait while the payment is being processed
+                 {processingStep || 'Please wait while the payment is being processed'}
               </DialogDescription>
             </>
           ) : paymentFailed ? (
@@ -144,6 +150,16 @@ export function ReceiptModal() {
               <DialogTitle className="text-2xl text-red-600" data-testid="text-payment-failed">Payment Failed</DialogTitle>
               <DialogDescription className="text-lg text-red-500 font-medium" data-testid="text-receipt-number">
                  No receipt number was returned from the billing system. The payment was not processed successfully.
+              </DialogDescription>
+            </>
+          ) : isPartialSuccess ? (
+            <>
+              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 mb-2">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              <DialogTitle className="text-2xl text-amber-700" data-testid="text-payment-partial">Partial Payment Posted</DialogTitle>
+              <DialogDescription className="text-sm text-amber-600 font-medium" data-testid="text-receipt-number">
+                Cash receipt created ({currentTransaction.receiptNumber}). Card portion (R {payment.cardAmount.toFixed(2)}) was not accepted by the billing system.
               </DialogDescription>
             </>
           ) : (
@@ -182,24 +198,29 @@ export function ReceiptModal() {
                     <span className="font-bold font-mono">R {payment.changeDue.toFixed(2)}</span>
                 </div>
             )}
-            {currentTransaction?.splitReceipts && currentTransaction.splitReceipts.length > 1 && !transactionProcessing && (() => {
-                const cashReceipts = currentTransaction.splitReceipts!.filter(sr => sr.paymentType === 'cash');
-                const cardReceipts = currentTransaction.splitReceipts!.filter(sr => sr.paymentType === 'card');
-                const isSplitPayment = cashReceipts.length > 0 && cardReceipts.length > 0;
+            {splitReceipts.length > 0 && !transactionProcessing && (() => {
+                const hasBothTypes = cashReceipts.length > 0 && cardReceipts.length > 0;
                 const cashTotal = cashReceipts.reduce((s, sr) => s + sr.amount, 0);
                 const cardTotal = cardReceipts.reduce((s, sr) => s + sr.amount, 0);
                 return (
                     <div className="border-t pt-3 mt-2 space-y-2">
-                        {isSplitPayment && (
-                            <p className="text-xs font-semibold text-blue-700 bg-blue-50 rounded-md px-2 py-1 text-center">
-                                Split Payment — {currentTransaction.splitReceipts!.length} receipts (consolidated print)
+                        {hasBothTypes && (
+                            <p className="text-xs font-semibold text-green-700 bg-green-50 rounded-md px-2 py-1 text-center">
+                                Split Payment — {splitReceipts.length} receipts (consolidated print)
+                            </p>
+                        )}
+                        {isPartialSuccess && (
+                            <p className="text-xs font-semibold text-amber-700 bg-amber-50 rounded-md px-2 py-1 text-center">
+                                Only cash receipt created — card portion not processed
                             </p>
                         )}
                         {cashReceipts.length > 0 && (
                             <div className="text-xs space-y-0.5">
-                                <p className="font-medium text-muted-foreground">Cash {isSplitPayment ? `(R ${cashTotal.toFixed(2)})` : ''}</p>
+                                <p className="font-medium text-muted-foreground flex items-center gap-1">
+                                    <CheckCircle2 className="w-3 h-3 text-green-500" /> Cash {hasBothTypes ? `(R ${cashTotal.toFixed(2)})` : ''}
+                                </p>
                                 {cashReceipts.map((sr, i) => (
-                                    <div key={`cash-${i}`} className="flex justify-between pl-2">
+                                    <div key={`cash-${i}`} className="flex justify-between pl-4">
                                         <span className="font-mono text-muted-foreground">{sr.receiptNumber}</span>
                                         <span className="font-mono">R {sr.amount.toFixed(2)}</span>
                                     </div>
@@ -208,13 +229,22 @@ export function ReceiptModal() {
                         )}
                         {cardReceipts.length > 0 && (
                             <div className="text-xs space-y-0.5">
-                                <p className="font-medium text-muted-foreground">Card {isSplitPayment ? `(R ${cardTotal.toFixed(2)})` : ''}</p>
+                                <p className="font-medium text-muted-foreground flex items-center gap-1">
+                                    <CheckCircle2 className="w-3 h-3 text-green-500" /> Card {hasBothTypes ? `(R ${cardTotal.toFixed(2)})` : ''}
+                                </p>
                                 {cardReceipts.map((sr, i) => (
-                                    <div key={`card-${i}`} className="flex justify-between pl-2">
+                                    <div key={`card-${i}`} className="flex justify-between pl-4">
                                         <span className="font-mono text-muted-foreground">{sr.receiptNumber}</span>
                                         <span className="font-mono">R {sr.amount.toFixed(2)}</span>
                                     </div>
                                 ))}
+                            </div>
+                        )}
+                        {isSplitPayment && cardReceipts.length === 0 && (
+                            <div className="text-xs space-y-0.5">
+                                <p className="font-medium text-red-500 flex items-center gap-1">
+                                    <XCircle className="w-3 h-3" /> Card (R {payment.cardAmount.toFixed(2)}) — failed
+                                </p>
                             </div>
                         )}
                     </div>
