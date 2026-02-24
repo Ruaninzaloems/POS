@@ -1712,6 +1712,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     const ids = extractReceiptIds(result);
                     allReceiptIds.push(...ids);
                 } else {
+                    let failedAtIndex = -1;
+                    let failReason = '';
                     for (let i = 0; i < perAccountPayments.length; i++) {
                         const { acct, itemPayment, acctOutstanding } = perAccountPayments[i];
                         const acctLabel = acct.name || acct.accountNumber || acct.account_ID;
@@ -1757,12 +1759,25 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         if (result && result.isSuccess === false) {
                             const apiDetail = result.message || result.detail || result.error || result.statusText || '';
                             const fullResponse = JSON.stringify(result).substring(0, 500);
-                            const reason = apiDetail || `API rejected payment — no error message. Account=${acct.accountNumber || acct.account_ID}, PaymentType=${paymentTypeId}${paymentTypeId === 3 ? ' (Card)' : ' (Cash)'}, Amount=R${itemPayment}. Response: ${fullResponse}`;
+                            failReason = apiDetail || `API rejected payment for ${acctLabel}. Response: ${fullResponse}`;
+                            failedAtIndex = i;
                             console.error(`[Priority 1 ${label}] SUBMIT FAILED for account ${acct.account_ID}:`, fullResponse);
-                            throw new Error(reason);
+                            break;
                         }
                         const ids = extractReceiptIds(result);
                         allReceiptIds.push(...ids);
+                    }
+                    if (failedAtIndex >= 0) {
+                        if (allReceiptIds.length > 0) {
+                            console.error(`[Priority 1 ${label}] PARTIAL FAILURE: ${allReceiptIds.length} receipt(s) created before failure at account ${failedAtIndex + 1}/${perAccountPayments.length}`);
+                            toast({
+                                title: 'Partial Payment — Receipts Already Created',
+                                description: `${allReceiptIds.length} of ${perAccountPayments.length} accounts were paid before failure. Receipt IDs: ${allReceiptIds.join(', ')}. Failed account: ${perAccountPayments[failedAtIndex].acct.name || perAccountPayments[failedAtIndex].acct.accountNumber}. ${failReason}`,
+                                variant: 'destructive',
+                                duration: 30000,
+                            });
+                        }
+                        throw new Error(failReason);
                     }
                 }
 
@@ -1903,7 +1918,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 ? String(record.splitReceipts[record.splitReceipts.length - 1].receiptId)
                 : record.receiptNumber.replace(/\D/g, '') || '0';
 
-            const BATCH_SIZE = 4;
+            const BATCH_SIZE = 6;
             let completedCount = 0;
             const totalToProcess = accountItems.filter(item => {
                 const aid = item.originalData?.account_ID || item.originalData?.apiId || item.originalData?.accountID || item.originalData?.accountId;
@@ -1913,83 +1928,76 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const finalizeOneAccount = async (item: typeof accountItems[0], accIdx: number) => {
                 const accountId = item.originalData?.account_ID || item.originalData?.apiId || item.originalData?.accountID || item.originalData?.accountId;
                 if (!accountId) return;
-                const acctName = item.originalData?.name || item.reference || item.originalData?.accountNumber || accountId;
 
-                try {
-                    await Promise.all([
-                        postMultipleAccountPaymentReceipt(String(sessionUserId), accountId, latestReceiptId)
-                            .then(() => console.log(`[Priority 1] Legacy receipt posted for account ${accountId}`))
-                            .catch(e => console.warn(`[Priority 1] Failed to post legacy receipt for account ${accountId}`, e)),
-                        rebuildFullAccount(Number(accountId))
-                            .then(() => console.log(`[Priority 1] Rebuild completed for account ${accountId}`))
-                            .catch(e => console.warn(`[Priority 1] Failed to rebuild account ${accountId}`, e)),
-                    ]);
-                } catch (_) {}
+                const legacyAndRebuild = Promise.all([
+                    postMultipleAccountPaymentReceipt(String(sessionUserId), accountId, latestReceiptId)
+                        .then(() => console.log(`[Priority 1] Legacy receipt posted for account ${accountId}`))
+                        .catch(e => console.warn(`[Priority 1] Failed to post legacy receipt for account ${accountId}`, e)),
+                    rebuildFullAccount(Number(accountId))
+                        .then(() => console.log(`[Priority 1] Rebuild completed for account ${accountId}`))
+                        .catch(e => console.warn(`[Priority 1] Failed to rebuild account ${accountId}`, e)),
+                ]).catch(() => {});
 
-                try {
-                    const consDetails = await platinumGetConsAccountDetails(Number(accountId));
-                    if (consDetails && consDetails.outStandingAmt !== undefined) {
-                        const updatedOutstanding = consDetails.outStandingAmt;
-                        console.log(`[Priority 1] Updated outstanding balance for account ${accountId}: R${updatedOutstanding}`);
-
-                        if (record.receiptDetail && (String(record.receiptDetail.accountId) === String(accountId))) {
-                            record.receiptDetail.outstandingAmount = updatedOutstanding;
-                            record.receiptDetail._balanceIsPostPayment = true;
-                        }
-
-                        for (const sr of (record.splitReceipts || [])) {
-                            if (sr.receiptDetail && (String(sr.accountId) === String(accountId) || String(sr.receiptDetail.accountId) === String(accountId))) {
-                                sr.receiptDetail.outstandingAmount = updatedOutstanding;
-                                sr.receiptDetail._balanceIsPostPayment = true;
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.warn(`[Priority 1] Failed to fetch updated outstanding for account ${accountId}`, e);
-                }
-
-                let allocations: ReceiptAllocation[] = [];
-                const prePaymentBalances = serviceBalanceMap.get(String(accountId));
-                if (prePaymentBalances && prePaymentBalances.length > 0) {
+                const balanceAndAllocations = (async () => {
                     try {
-                        const balanceData = await enquiryGetAccountBalance(accountId);
-                        let rows: any[] = [];
-                        if (Array.isArray(balanceData)) rows = balanceData;
-                        else if (balanceData?.results && Array.isArray(balanceData.results)) rows = balanceData.results;
-                        else if (balanceData && typeof balanceData === 'object') rows = [balanceData];
-
-                        if (rows.length > 0) {
-                            const postPaymentMap = new Map<string, number>();
-                            for (const row of rows) {
-                                const desc = row.serviceDescription || row.description || 'Unknown';
-                                postPaymentMap.set(desc, row.totalOutStanding || row.totalOutstanding || 0);
+                        const consDetails = await platinumGetConsAccountDetails(Number(accountId));
+                        if (consDetails && consDetails.outStandingAmt !== undefined) {
+                            const updatedOutstanding = consDetails.outStandingAmt;
+                            if (record.receiptDetail && (String(record.receiptDetail.accountId) === String(accountId))) {
+                                record.receiptDetail.outstandingAmount = updatedOutstanding;
+                                record.receiptDetail._balanceIsPostPayment = true;
                             }
-                            for (const pre of prePaymentBalances) {
-                                const postAmount = postPaymentMap.get(pre.serviceDescription) ?? pre.totalAmount;
-                                const allocated = Math.round((pre.totalAmount - postAmount) * 100) / 100;
-                                if (Math.abs(allocated) >= 0.01) {
-                                    allocations.push({ service: pre.serviceDescription, amount: allocated, vat: 0, total: allocated });
+                            for (const sr of (record.splitReceipts || [])) {
+                                if (sr.receiptDetail && (String(sr.accountId) === String(accountId) || String(sr.receiptDetail.accountId) === String(accountId))) {
+                                    sr.receiptDetail.outstandingAmount = updatedOutstanding;
+                                    sr.receiptDetail._balanceIsPostPayment = true;
                                 }
-                            }
-                            if (allocations.length > 0) {
-                                console.log(`[Priority 1] Payment allocations for account ${accountId}:`, allocations.map(a => `${a.service}: R${a.amount}`));
                             }
                         }
                     } catch (e) {
-                        console.warn(`[Priority 1] Failed to compute allocations for account ${accountId}`, e);
+                        console.warn(`[Priority 1] Failed to fetch updated outstanding for account ${accountId}`, e);
                     }
-                }
 
-                if (allocations.length > 0) {
-                    if (!record.allocations) record.allocations = [];
-                    record.allocations.push(...allocations);
-                    for (const sr of (record.splitReceipts || [])) {
-                        if (String(sr.accountId) === String(accountId) || String(sr.receiptDetail?.accountId) === String(accountId)) {
-                            sr.allocations = allocations;
+                    const prePaymentBalances = serviceBalanceMap.get(String(accountId));
+                    if (prePaymentBalances && prePaymentBalances.length > 0) {
+                        try {
+                            const balanceData = await enquiryGetAccountBalance(accountId);
+                            let rows: any[] = [];
+                            if (Array.isArray(balanceData)) rows = balanceData;
+                            else if (balanceData?.results && Array.isArray(balanceData.results)) rows = balanceData.results;
+                            else if (balanceData && typeof balanceData === 'object') rows = [balanceData];
+
+                            if (rows.length > 0) {
+                                const allocations: ReceiptAllocation[] = [];
+                                const postPaymentMap = new Map<string, number>();
+                                for (const row of rows) {
+                                    const desc = row.serviceDescription || row.description || 'Unknown';
+                                    postPaymentMap.set(desc, row.totalOutStanding || row.totalOutstanding || 0);
+                                }
+                                for (const pre of prePaymentBalances) {
+                                    const postAmount = postPaymentMap.get(pre.serviceDescription) ?? pre.totalAmount;
+                                    const allocated = Math.round((pre.totalAmount - postAmount) * 100) / 100;
+                                    if (Math.abs(allocated) >= 0.01) {
+                                        allocations.push({ service: pre.serviceDescription, amount: allocated, vat: 0, total: allocated });
+                                    }
+                                }
+                                if (allocations.length > 0) {
+                                    if (!record.allocations) record.allocations = [];
+                                    record.allocations.push(...allocations);
+                                    for (const sr of (record.splitReceipts || [])) {
+                                        if (String(sr.accountId) === String(accountId) || String(sr.receiptDetail?.accountId) === String(accountId)) {
+                                            sr.allocations = allocations;
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            console.warn(`[Priority 1] Failed to compute allocations for account ${accountId}`, e);
                         }
                     }
-                }
+                })();
 
+                await Promise.all([legacyAndRebuild, balanceAndAllocations]);
                 completedCount++;
             };
 
