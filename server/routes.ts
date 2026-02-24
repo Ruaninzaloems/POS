@@ -578,21 +578,38 @@ export async function registerRoutes(
       }
 
       console.log(`[cash-offices] Calling Platinum cash-offices with params:`, JSON.stringify(query));
-      const primaryData = await platinumGet(session, "/api/ReceiptPrepaid/cash-offices", query);
-      console.log(`[cash-offices] RAW primary response type=${typeof primaryData}, isArray=${Array.isArray(primaryData)}, keys:`, Array.isArray(primaryData) && primaryData.length > 0 ? Object.keys(primaryData[0]) : 'empty', `length: ${Array.isArray(primaryData) ? primaryData.length : 'N/A'}`, `sample:`, JSON.stringify(primaryData).substring(0, 500));
+      const [primaryData, dayEndOfficeList] = await Promise.all([
+        platinumGet(session, "/api/ReceiptPrepaid/cash-offices", query),
+        platinumGet(session, "/api/billing/auth-day-end-reconcile/cash-office-list").catch(() => null),
+      ]);
+
+      const voteMap = new Map<number, { voteID: number; vote: string; vote1: string }>();
+      if (dayEndOfficeList && !dayEndOfficeList._error && Array.isArray(dayEndOfficeList)) {
+        for (const o of dayEndOfficeList) {
+          if (o.cashOffice_ID && (o.voteID || o.vote_Id)) {
+            voteMap.set(o.cashOffice_ID, {
+              voteID: o.voteID || o.vote_Id,
+              vote: o.vote || '',
+              vote1: o.vote1 || '',
+            });
+          }
+        }
+        console.log(`[cash-offices] Loaded vote data for ${voteMap.size} offices from day-end cash-office-list`);
+      }
 
       const officeMap = new Map<number, any>();
       const addOffice = (office: any) => {
         if (office && office.cashOffice_ID && !officeMap.has(office.cashOffice_ID)) {
+          const voteData = voteMap.get(office.cashOffice_ID);
           officeMap.set(office.cashOffice_ID, {
             cashOffice_ID: office.cashOffice_ID,
             cashOfficeDesc: office.cashOfficeDesc || '',
             cashOnHandLimit: office.cashOnHandLimit || null,
             scoaConfigurationID: office.scoaConfigurationID || null,
-            vote1: office.vote1 || null,
-            vote: office.vote || null,
-            vote_ID: office.vote_ID || null,
-            voteDesc: office.voteDesc || null,
+            vote1: office.vote1 || voteData?.vote1 || null,
+            vote: office.vote || voteData?.vote || null,
+            vote_ID: office.vote_ID || voteData?.voteID || null,
+            voteDesc: office.voteDesc || voteData?.vote || null,
           });
         }
       };
@@ -600,6 +617,19 @@ export async function registerRoutes(
       if (primaryData && !primaryData._error && Array.isArray(primaryData)) {
         primaryData.forEach(addOffice);
         console.log(`[cash-offices] Primary endpoint returned ${primaryData.length} offices`);
+      }
+
+      if (dayEndOfficeList && !dayEndOfficeList._error && Array.isArray(dayEndOfficeList)) {
+        dayEndOfficeList.forEach((o: any) => {
+          if (o.cashOffice_ID && !officeMap.has(o.cashOffice_ID) && o.enabled !== false) {
+            addOffice({
+              cashOffice_ID: o.cashOffice_ID,
+              cashOfficeDesc: o.cashOfficeDesc || '',
+              cashOnHandLimit: null,
+              scoaConfigurationID: o.scoaConfigurationID || null,
+            });
+          }
+        });
       }
 
       if (officeMap.size < 5) {
@@ -619,7 +649,7 @@ export async function registerRoutes(
       }
 
       const offices = Array.from(officeMap.values()).sort((a: any, b: any) => a.cashOffice_ID - b.cashOffice_ID);
-      console.log(`[cash-offices] Returning ${offices.length} offices`);
+      console.log(`[cash-offices] Returning ${offices.length} offices, vote sample:`, offices.length > 0 ? `vote_ID=${offices[0].vote_ID}, vote=${offices[0].vote}` : 'none');
       res.json(offices);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
