@@ -794,15 +794,9 @@ export async function registerRoutes(
       const accounts = Array.isArray(body?.accounts) ? body.accounts : [];
       const rm = body?.requestModel || {};
 
-      if (rm.apiTransactionID === undefined) rm.apiTransactionID = 0;
-      if (rm.isReconciled === undefined || rm.isReconciled === null) rm.isReconciled = 0;
-      if (rm.isCancelled === undefined || rm.isCancelled === null) rm.isCancelled = 0;
-
-      const isCard = rm.paymentType === 'CreditCard' || rm.paymentType === 3;
-
       console.log(`[submit-multiple-payment] userId=${userId}, ${accounts.length} account(s), paymentType=${rm.paymentType}`);
       for (const acct of accounts) {
-        console.log(`[submit-multiple-payment] account: account_ID=${acct.account_ID}, accountNumber=${acct.accountNumber}, name=${acct.name}, outStandingAmt=${acct.outStandingAmt}, billId=${acct.billId}`);
+        console.log(`[submit-multiple-payment] account: accountID=${acct.accountID}, accountNumber=${acct.accountNumber}, name=${acct.name}, outstandingAmount=${acct.outstandingAmount}, paymentAmount=${acct.paymentAmount}, billId=${acct.billId}`);
       }
       console.log(`[submit-multiple-payment] requestModel: finYear=${rm.finYear}, receiptDate=${rm.receiptDate}, totalAmount=${rm.totalAmount}, tenderAmount=${rm.tenderAmount}, changeAmount=${rm.changeAmount}, paymentType=${rm.paymentType}, paymentOption=${rm.paymentOption}, outStandingAmount=${rm.outStandingAmount}, cardNumber=${rm.cardNumber ? '***' + rm.cardNumber.slice(-4) : '(empty)'}`);
       const invalidAccounts = accounts.filter((a: any) => !a.accountID || a.accountID === 0);

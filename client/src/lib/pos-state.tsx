@@ -1637,9 +1637,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             billId: acct.billId ?? 0,
                             clearanceId: acct.clearance_ID ?? 0,
                         };
-                        if (!isCardPayment) {
-                            mapped.sundryDebtorsId = String(acct.sundryDebtorsId ?? '');
-                        }
                         return mapped;
                     });
 
@@ -1650,32 +1647,19 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     }
 
                     const totalFullOutstanding = perAccountPayments.reduce((s, p) => s + p.acctOutstanding, 0);
-                    const requestModel: any = isCardPayment ? {
+                    const baseRequestModel = {
                         finYear,
                         receiptDate: effectiveReceiptDate,
                         totalAmount: totalPaymentAmount,
-                        tenderAmount: 0,
-                        changeAmount: 0,
-                        paymentType: 3,
-                        cardNumber: record.payment.cardReference || '',
-                        expiryDate: formatCardExpiry(record.payment.cardExpiry),
-                        processingMonth: null,
-                        outStandingAmount: totalFullOutstanding,
-                        paymentOption: paymentOptionId,
-                    } : {
-                        finYear,
-                        receiptDate: effectiveReceiptDate,
-                        totalAmount: totalPaymentAmount,
-                        tenderAmount: tenderAmt,
-                        changeAmount: changeAmt,
+                        tenderAmount: isCardPayment ? 0 : tenderAmt,
+                        changeAmount: isCardPayment ? 0 : changeAmt,
                         paymentType: paymentTypeId,
-                        paymentOption: paymentOptionId,
+                        cardNumber: isCardPayment ? (record.payment.cardReference || '') : '',
+                        expiryDate: isCardPayment ? formatCardExpiry(record.payment.cardExpiry) : '',
+                        processingMonth: 0,
                         outStandingAmount: totalFullOutstanding,
-                        cardNumber: '',
-                        expiryDate: '',
                         chequeNumber: '',
-                        chequeDate: null,
-                        processingMonth: null,
+                        chequeDate: effectiveReceiptDate,
                         accountHolderName: submitAccounts[0]?.name || '',
                         bankName: '',
                         bankBranchCode: '',
@@ -1684,10 +1668,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         cutOffAmount: 0,
                         debtAmount: 0,
                         sundryDebtorsId: '',
-                        apiTransactionID: 0,
-                        isReconciled: 0,
-                        isCancelled: 0,
+                        paymentOption: paymentOptionId,
                     };
+                    const requestModel: any = baseRequestModel;
 
                     console.log(`[Priority 1 ${label}] Submitting MULTIPLE payment for ${submitAccounts.length} accounts, total: R${totalPaymentAmount}, tender: R${tenderAmt}, change: R${changeAmt}, paymentType: ${paymentTypeId}, outStandingAmount(fullBalance): R${totalFullOutstanding}`);
                     for (const sa of submitAccounts) {
