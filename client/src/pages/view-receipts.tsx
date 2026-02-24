@@ -451,11 +451,15 @@ export default function ViewReceipts() {
         setDataSource('none');
         try {
             const results = await getEftBankStatementNotes(eftAccountSearch);
-            setEftResults(results);
-            if (results.length === 0) {
+            const enriched = results.map((r: any) => ({
+                ...r,
+                _searchAccountId: eftAccountSearch,
+            }));
+            setEftResults(enriched);
+            if (enriched.length === 0) {
                 toast({ title: "No Results", description: `No EFT bank statement notes found for account "${eftAccountSearch}".` });
             } else {
-                toast({ title: "Results Found", description: `Found ${results.length} EFT result${results.length !== 1 ? 's' : ''}.` });
+                toast({ title: "Results Found", description: `Found ${enriched.length} EFT result${enriched.length !== 1 ? 's' : ''}.` });
             }
         } catch (e: any) {
             toast({ title: "Search Failed", description: e.message || "EFT bank statement notes search failed.", variant: "destructive" });
@@ -466,19 +470,14 @@ export default function ViewReceipts() {
 
     const handleLoadReceiptFromEft = (item: any) => {
         const receiptNo = item?.receiptNo || item?.receipt_No || item?.receiptNumber;
-        const accountId = item?.accountId || item?.accountID;
-        const accountNumber = item?.accountNumber || item?.accountNo;
+        const accountNo = item?._searchAccountId || item?.accountNumber || item?.accountNo || item?.accountId || item?.accountID;
 
         if (receiptNo) {
             setReceiptFilter(String(receiptNo));
-            setAccountFilter('');
+            setAccountFilter(accountNo ? String(accountNo) : '');
             setCashierFilter('0');
-        } else if (accountNumber) {
-            setAccountFilter(String(accountNumber));
-            setReceiptFilter('');
-            setCashierFilter('0');
-        } else if (accountId) {
-            setAccountFilter(String(accountId));
+        } else if (accountNo) {
+            setAccountFilter(String(accountNo));
             setReceiptFilter('');
             setCashierFilter('0');
         } else {
@@ -1165,13 +1164,10 @@ export default function ViewReceipts() {
                                                 <div className="sm:hidden space-y-2">
                                                     {eftResults.map((item, idx) => {
                                                         const receiptNo = item?.receiptNo ?? item?.receipt_No ?? item?.receiptNumber ?? '';
-                                                        const accountNo = item?.accountNumber ?? item?.accountNo ?? item?.accountId ?? item?.accountID ?? '';
+                                                        const accountNo = item?._searchAccountId ?? item?.accountNumber ?? item?.accountNo ?? item?.accountId ?? item?.accountID ?? '';
                                                         const amount = Number(item?.amount ?? item?.receiptAmount) || 0;
-                                                        const receiptDate = item?.receiptDate ?? item?.receipt_Date ?? '';
+                                                        const stmtDate = item?.bankStatementDate ?? item?.billingAllocationDate ?? item?.receiptDate ?? item?.receipt_Date ?? '';
                                                         const bankDesc = item?.bankStatementNote ?? item?.bankStatementDescription ?? item?.description ?? '';
-                                                        const paymentType = item?.paymentType ?? item?.payMode ?? '';
-                                                        const cashier = item?.cashierName ?? item?.cashier ?? '';
-                                                        const cashOffice = item?.cashOfficeName ?? item?.cashOffice ?? '';
                                                         return (
                                                             <div key={idx} className="bg-white border rounded-xl p-3 space-y-1.5" data-testid={`mobile-eft-card-${idx}`}>
                                                                 <p className="font-mono text-xs text-slate-800 truncate" title={bankDesc}>{bankDesc || '(no description)'}</p>
@@ -1184,13 +1180,10 @@ export default function ViewReceipts() {
                                                                     </span>
                                                                 </div>
                                                                 <div className="text-xs text-slate-600" data-testid={`mobile-eft-account-${idx}`}>
-                                                                    Account: {accountNo || <span className="text-orange-500 italic">N/A</span>}
+                                                                    Account: {accountNo || '-'}
                                                                 </div>
                                                                 <div className="flex flex-wrap gap-x-3 text-xs text-slate-500">
-                                                                    {receiptDate && <span>Date: {new Date(receiptDate).toLocaleDateString('en-ZA')}</span>}
-                                                                    {paymentType && <span>Type: {paymentType}</span>}
-                                                                    {cashier && <span>Cashier: {cashier}</span>}
-                                                                    {cashOffice && <span>Office: {cashOffice}</span>}
+                                                                    {stmtDate && <span>Date: {new Date(stmtDate).toLocaleDateString('en-ZA')}</span>}
                                                                 </div>
                                                                 {(receiptNo || accountNo) && (
                                                                     <Button variant="outline" size="sm" className="w-full h-10 text-xs gap-1.5 text-teal-700 border-teal-300 hover:bg-teal-50 active:scale-[0.99]" onClick={() => handleLoadReceiptFromEft(item)} data-testid={`mobile-eft-view-${idx}`}>
@@ -1220,23 +1213,23 @@ export default function ViewReceipts() {
                                                         <TableBody>
                                                             {eftResults.map((item, idx) => {
                                                                 const receiptNo = item?.receiptNo ?? item?.receipt_No ?? item?.receiptNumber ?? '';
-                                                                const accountNo = item?.accountNumber ?? item?.accountNo ?? item?.accountId ?? item?.accountID ?? '';
+                                                                const accountNo = item?._searchAccountId ?? item?.accountNumber ?? item?.accountNo ?? item?.accountId ?? item?.accountID ?? '';
                                                                 const amount = Number(item?.amount ?? item?.receiptAmount) || 0;
-                                                                const receiptDate = item?.receiptDate ?? item?.receipt_Date ?? '';
+                                                                const stmtDate = item?.bankStatementDate ?? item?.billingAllocationDate ?? item?.receiptDate ?? item?.receipt_Date ?? '';
                                                                 const bankDesc = item?.bankStatementNote ?? item?.bankStatementDescription ?? item?.description ?? '';
-                                                                const paymentType = item?.paymentType ?? item?.payMode ?? '';
+                                                                const paymentType = item?.paymentType ?? item?.payMode ?? 'EFT';
                                                                 const cashier = item?.cashierName ?? item?.cashier ?? '';
                                                                 const cashOffice = item?.cashOfficeName ?? item?.cashOffice ?? '';
                                                                 return (
                                                                     <TableRow key={idx} className="hover:bg-teal-50/30" data-testid={`eft-result-${idx}`}>
                                                                         <TableCell className="text-[11px] font-mono max-w-[250px] truncate" title={bankDesc}>{bankDesc || '-'}</TableCell>
-                                                                        <TableCell className="text-[11px] font-mono font-semibold text-teal-700">{receiptNo || <span className="text-orange-500 text-[10px] italic font-normal">N/A</span>}</TableCell>
-                                                                        <TableCell className="text-[11px] font-mono">{accountNo || <span className="text-orange-500 text-[10px] italic">N/A</span>}</TableCell>
+                                                                        <TableCell className="text-[11px] font-mono font-semibold text-teal-700">{receiptNo || '-'}</TableCell>
+                                                                        <TableCell className="text-[11px] font-mono font-medium">{accountNo || '-'}</TableCell>
                                                                         <TableCell className="text-[11px] font-mono font-bold text-right text-teal-700">
                                                                             {amount > 0 ? `R ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
                                                                         </TableCell>
                                                                         <TableCell className="text-[10px] text-slate-600">
-                                                                            {receiptDate ? new Date(receiptDate).toLocaleDateString('en-ZA') : '-'}
+                                                                            {stmtDate ? new Date(stmtDate).toLocaleDateString('en-ZA') : '-'}
                                                                         </TableCell>
                                                                         <TableCell className="text-[11px] text-slate-600">{paymentType || '-'}</TableCell>
                                                                         <TableCell className="text-[11px] text-slate-600">{cashier || '-'}</TableCell>
