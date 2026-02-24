@@ -396,26 +396,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (data.isActive === true && data.officeId) {
             const officeId = String(data.officeId);
             const cashFloat = data.cashFloat ?? data.details?.cashFloat ?? 0;
-            console.log(`[Session] validate-cashier API confirms session is active (POS_Cashier.IsActive=1). Checking day-end recon status...`);
-
-            let dayEndDone = false;
-            try {
-              const dayEndResult = await platinumValidateCashierDayEndRecon({
-                userId: String(platinumUser.user_ID),
-                finYear: platinumUser.finYear || '2025/2026',
-              });
-              dayEndDone = dayEndResult === true || dayEndResult === 'true';
-              console.log(`[Session] ValidateCashierDayEndRecon result: ${dayEndResult} — dayEndDone=${dayEndDone}`);
-            } catch (e) {
-              console.warn(`[Session] Failed to check day-end recon status, assuming not done`, e);
-            }
-
-            if (dayEndDone) {
-              console.log(`[Session] Day-end reconciliation completed but Platinum session still active (isActive=true). Auto-resuming session — cashier can continue working.`);
-              setDayEndStatus('RECONCILED');
-            }
+            console.log(`[Session] validate-cashier API confirms session is active (POS_Cashier.IsActive=1). isActive is the single source of truth — auto-resuming.`);
             {
-              console.log(`[Session] Auto-resuming active session. Office: ${officeName} (ID: ${officeId}), Float: ${cashFloat}, dayEndDone: ${dayEndDone}`);
+              console.log(`[Session] Auto-resuming active session. Office: ${officeName} (ID: ${officeId}), Float: ${cashFloat}`);
               try {
                 const vcResult = await platinumValidateCashier(platinumUser.user_ID, platinumUser.finYear || '2025/2026');
                 const vcCashierId = vcResult?.cashier?.id;
@@ -979,21 +962,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           variant: "destructive"
         });
       } else {
-        let dayEndDone = false;
-        try {
-          const dayEndResult = await platinumValidateCashierDayEndRecon({
-            userId: String(platinumUser.user_ID),
-            finYear,
-          });
-          dayEndDone = dayEndResult === true || dayEndResult === 'true';
-        } catch (e) {}
-
-        if (dayEndDone) {
-          console.log(`[SessionEnforcement] Day-end reconciliation completed but session still active on Platinum (isActive=true). Allowing cashier to continue working.`);
-          setDayEndStatus('RECONCILED');
-        }
-
-        console.log(`[SessionEnforcement] validate-cashier confirmed isActive=true (POS_Cashier.IsActive=1)`);
+        console.log(`[SessionEnforcement] validate-cashier confirmed isActive=true (POS_Cashier.IsActive=1). Session is active — isActive is the single source of truth.`);
         const activeCashierId = result?.cashier?.id;
         if (activeCashierId && activeCashierId !== platinumCashierId) {
           console.log(`[SessionEnforcement] Updating platinumCashierId: ${platinumCashierId} → ${activeCashierId}`);

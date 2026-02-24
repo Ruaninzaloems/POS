@@ -90,24 +90,7 @@ export default function CashierSetup() {
                     setStep1Status('success');
 
                     if (data.isActive === true && data.officeId) {
-                        console.log(`[CashierSetup] validate-cashier API confirms session is active (POS_Cashier.IsActive=1) at office ${data.officeName} (ID: ${data.officeId})`);
-
-                        let isDayEndDone = false;
-                        try {
-                            const dayEndResult = await platinumValidateCashierDayEndRecon({
-                                userId: String(userId),
-                                finYear: finYear || '2025/2026',
-                            });
-                            isDayEndDone = dayEndResult === true || dayEndResult === 'true';
-                            console.log(`[CashierSetup] ValidateCashierDayEndRecon result: ${dayEndResult} — isDayEndDone=${isDayEndDone}`);
-                        } catch (e) {
-                            console.warn(`[CashierSetup] Failed to check day-end recon status`, e);
-                        }
-
-                        if (isDayEndDone) {
-                            console.log(`[CashierSetup] Day-end completed but session still active on Platinum (isActive=true). Offering resume.`);
-                            setDayEndCompleted(true);
-                        }
+                        console.log(`[CashierSetup] validate-cashier API confirms session is active (POS_Cashier.IsActive=1) at office ${data.officeName} (ID: ${data.officeId}). isActive is the single source of truth — offering resume.`);
                         setResumingSession(true);
                         setStep2Status('success');
                         setStep3Status('pending');
