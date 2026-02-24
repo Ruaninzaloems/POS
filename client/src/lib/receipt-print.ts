@@ -37,13 +37,13 @@ function fmtDate(dateStr: string | undefined | null): string {
     if (dateStr.includes('/') && dateStr.length <= 20) return dateStr;
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr;
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
     const hh = String(d.getHours()).padStart(2, '0');
     const mi = String(d.getMinutes()).padStart(2, '0');
     const ss = String(d.getSeconds()).padStart(2, '0');
-    return `${yyyy}/${mm}/${dd} ${hh}:${mi}:${ss}`;
+    return `${dd}/${mm}/${yyyy} ${hh}:${mi}:${ss}`;
   } catch {
     return dateStr;
   }
@@ -132,12 +132,17 @@ export function generateReceiptHtml(data: ReceiptPrintData, isReprint: boolean =
 
   const addressLines = munAddress.split('\n').map(l => `<div>${l}</div>`).join('');
 
+  const hasVatInServices = services.some(s => {
+    const desc = (s.description || s.serviceDescription || '').toLowerCase();
+    return desc.includes('vat');
+  });
+
   const svcRows = services
     .filter(s => (s.description || s.serviceDescription || '').trim())
     .map(s => {
       const desc = s.description || s.serviceDescription || '';
       const amt = s.amount ?? 0;
-      return `<tr><td class="label">${desc}</td><td class="value">${fmtR(amt)}</td></tr>`;
+      return `<tr><td class="svc-label">${desc}</td><td class="value">${fmtR(amt)}</td></tr>`;
     }).join('');
 
   const reprintLabel = isReprint ? `<tr><td colspan="2" class="center bold reprint-label">Reprint</td></tr><tr><td colspan="2">&nbsp;</td></tr>` : '';
@@ -176,6 +181,11 @@ export function generateReceiptHtml(data: ReceiptPrintData, isReprint: boolean =
   table.receipt td.label {
     text-align: left;
     font-weight: bold;
+    width: 45%;
+    white-space: nowrap;
+  }
+  table.receipt td.svc-label {
+    text-align: left;
     width: 45%;
     white-space: nowrap;
   }
@@ -261,7 +271,7 @@ export function generateReceiptHtml(data: ReceiptPrintData, isReprint: boolean =
     <tr class="spacer"><td colspan="2"></td></tr>
 
     ${svcRows}
-    ${vatAmount !== 0 ? `<tr><td class="label">Vat Amount</td><td class="value">${fmtR(vatAmount)}</td></tr>` : `<tr><td class="label">Vat Amount</td><td class="value">${fmtR(0)}</td></tr>`}
+    ${!hasVatInServices ? `<tr><td class="label">Vat Amount</td><td class="value">${fmtR(vatAmount)}</td></tr>` : ''}
 
     <tr class="spacer"><td colspan="2"></td></tr>
     <tr><td colspan="2"><hr class="separator-thick" /></td></tr>

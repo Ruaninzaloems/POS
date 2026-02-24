@@ -4011,50 +4011,92 @@ export async function registerRoutes(
         return [];
       };
 
-      let items: any[] = [];
+      const lookupViewReceipt = async (): Promise<{ serialNo: string | null; viewMatch: any | null }> => {
+        try {
+          const session = (req as any).session?.platinumAuth;
+          if (!session?.token) return { serialNo: null, viewMatch: null };
+          const lookupNo = receiptNo || '';
+          if (!lookupNo) return { serialNo: null, viewMatch: null };
+          const lookupParams: Record<string, string> = {
+            ReceiptNo: lookupNo,
+            Cashier: '0',
+            FromDate: new Date(new Date().getFullYear() - 2, 0, 1).toISOString().split('T')[0] + 'T00:00:00',
+            ToDate: new Date().toISOString().split('T')[0] + 'T23:59:59',
+            Page: '1',
+            PageSize: '10',
+          };
+          const viewData = await platinumGet(session, "/api/ViewReceipt/get-receipt-list", lookupParams, { timeoutMs: 30000 });
+          let viewItems: any[] = [];
+          if (Array.isArray(viewData)) {
+            viewItems = viewData;
+          } else if (viewData && typeof viewData === 'object' && !viewData._error) {
+            viewItems = viewData.items || viewData.value || viewData.results || viewData.data || [];
+          }
+          const match = viewItems.find((v: any) => {
+            const vNo = v.receiptNo || v.receipt_No || '';
+            return vNo === lookupNo || vNo.includes(lookupNo) || lookupNo.includes(vNo);
+          });
+          if (match) {
+            const sn = match.serialNo || match.receiptId || match.receipt_ID || match.id;
+            return { serialNo: sn ? String(sn) : null, viewMatch: match };
+          }
+          return { serialNo: null, viewMatch: null };
+        } catch (e) {
+          console.warn('[pos-multi-receipt-print] ViewReceipt lookup failed:', e);
+          return { serialNo: null, viewMatch: null };
+        }
+      };
 
-      if (receiptId) {
+      let items: any[] = [];
+      let viewMatch: any = null;
+
+      if (receiptNo) {
+        console.log(`[pos-multi-receipt-print] receiptNo="${receiptNo}" provided, doing ViewReceipt lookup first for serialNo`);
+        const lookup = await lookupViewReceipt();
+        viewMatch = lookup.viewMatch;
+        if (lookup.serialNo) {
+          console.log(`[pos-multi-receipt-print] ViewReceipt resolved serialNo=${lookup.serialNo}, using for multi-print`);
+          items = await tryMultiPrint(lookup.serialNo);
+        }
+      }
+
+      if (items.length === 0 && receiptId) {
+        console.log(`[pos-multi-receipt-print] Trying with raw receiptId=${receiptId}`);
         items = await tryMultiPrint(receiptId);
       }
 
-      if (items.length === 0 && receiptNo) {
-        console.log(`[pos-multi-receipt-print] receiptId=${receiptId} returned empty, looking up by receiptNo="${receiptNo}" via ViewReceipt`);
-        try {
-          const session = (req as any).session?.platinumAuth;
-          if (session?.token) {
-            const lookupParams: Record<string, string> = {
-              ReceiptNo: receiptNo,
-              Cashier: '0',
-              FromDate: new Date(new Date().getFullYear() - 2, 0, 1).toISOString().split('T')[0] + 'T00:00:00',
-              ToDate: new Date().toISOString().split('T')[0] + 'T23:59:59',
-              Page: '1',
-              PageSize: '10',
-            };
-            const viewData = await platinumGet(session, "/api/ViewReceipt/get-receipt-list", lookupParams, { timeoutMs: 30000 });
-            let viewItems: any[] = [];
-            if (Array.isArray(viewData)) {
-              viewItems = viewData;
-            } else if (viewData && typeof viewData === 'object' && !viewData._error) {
-              viewItems = viewData.items || viewData.value || viewData.results || viewData.data || [];
-            }
-            const match = viewItems.find((v: any) => {
-              const vNo = v.receiptNo || v.receipt_No || '';
-              return vNo === receiptNo || vNo.includes(receiptNo) || receiptNo.includes(vNo);
-            });
-            if (match) {
-              const serialNo = match.serialNo || match.receiptId || match.receipt_ID || match.id;
-              if (serialNo) {
-                console.log(`[pos-multi-receipt-print] Found ViewReceipt match, serialNo=${serialNo}, trying multi-print`);
-                items = await tryMultiPrint(String(serialNo));
-              }
-              if (items.length === 0) {
-                console.log(`[pos-multi-receipt-print] multi-print still empty after ViewReceipt lookup, returning empty`);
-              }
-            }
+      if (items.length > 0 && viewMatch) {
+        const first = items[0];
+        const needsEnrichment = !first.accountId && !first.accName && !first.oldAccountCode;
+        if (needsEnrichment) {
+          console.log(`[pos-multi-receipt-print] Enriching multi-print data with ViewReceipt fields`);
+          const vm = viewMatch;
+          const accountId = vm.accountNumber || vm.accountNo || vm.accountID || vm.account_number || '';
+          const accName = vm.accName || vm.consumerName || vm.accountName || vm.account_name || '';
+          const accAddress = vm.accAddress || vm.address || vm.consumerAddress || '';
+          const oldAccountCode = vm.oldAccountCode || vm.oldAccountNo || vm.old_account_code || '';
+          const sgNumber = vm.sgNumber || vm.sg_number || vm.sgNo || '';
+          const cashierName = vm.cashierName || vm.cashier_name || vm.cashier || '';
+          const cashOfficeName = vm.cashOfficeName || vm.cashOffice || vm.cash_office || vm.cashBook || '';
+          const outstandingAmount = vm.outstandingAmount ?? vm.outstanding_amount ?? vm.balanceAmount ?? null;
+          const payMode = vm.paymentType || vm.payment_type || vm.payMode || '';
+          const billType = vm.paymentOption || vm.payment_option || vm.billType || '';
+          for (const item of items) {
+            if (!item.accountId && accountId) item.accountId = accountId;
+            if (!item.accName && accName) item.accName = accName;
+            if (!item.accAddress && accAddress) item.accAddress = accAddress;
+            if (!item.oldAccountCode && oldAccountCode) item.oldAccountCode = oldAccountCode;
+            if (!item.sgNumber && sgNumber) item.sgNumber = sgNumber;
+            if (!item.cashierName && cashierName) item.cashierName = cashierName;
+            if (!item.cashOfficeName && cashOfficeName) item.cashOfficeName = cashOfficeName;
+            if (item.outstandingAmount == null && outstandingAmount != null) item.outstandingAmount = outstandingAmount;
+            if (!item.payMode && payMode) item.payMode = payMode;
           }
-        } catch (e) {
-          console.warn('[pos-multi-receipt-print] ViewReceipt lookup failed:', e);
         }
+      }
+
+      if (items.length === 0) {
+        console.log(`[pos-multi-receipt-print] No data found for receiptId=${receiptId}, receiptNo=${receiptNo}`);
       }
 
       res.json(items);
