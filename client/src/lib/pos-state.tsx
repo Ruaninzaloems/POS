@@ -201,13 +201,7 @@ export const usePos = () => {
 
 function formatCardExpiry(exp: string): string {
   if (!exp) return '';
-  const parts = exp.replace(/[^0-9/]/g, '').split('/');
-  if (parts.length === 2) {
-    const [mm, yyyy] = parts;
-    return `01/${mm.padStart(2, '0')}/${yyyy}`;
-  }
-  if (exp.includes('/')) return exp;
-  return exp;
+  return exp.replace(/[^0-9/]/g, '');
 }
 
 export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
