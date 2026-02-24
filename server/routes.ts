@@ -34,58 +34,76 @@ function parseReceiptAllocations(pdfText: string): ReceiptAllocation[] {
   const allocations: ReceiptAllocation[] = [];
   const lines = pdfText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
-  let receiptNo = '';
-  let totalAmount = 0;
-  let vatAmount = 0;
-  let tenderAmount = 0;
+  const skipLabels = new Set([
+    'total', 'tender amount', 'change', 'outstanding balance', 'outstanding',
+    'vat amount', 'vat', 'receipt no', 'receipt date', 'account no', 'old account no',
+    'account name', 'sg number', 'address', 'payment type', 'payment option',
+    'cashier', 'cash office', 'reprint', 'thank you', 'vat registration number',
+    'balance', 'amount', 'date', 'outstanding balance', 'outstanding',
+  ]);
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+  const serviceAllocRegex = /^(.+?)\s{2,}(-?[\d, ]+\.\d{2})\s*$/;
 
-    if (line.startsWith('Receipt No') && i + 1 < lines.length) {
-      receiptNo = lines[i + 1];
-    }
+  for (let li = 0; li < lines.length; li++) {
+    const line = lines[li];
+    const match = line.match(serviceAllocRegex);
+    if (match) {
+      let label = match[1].trim();
+      const amtStr = match[2].replace(/[\s,]/g, '');
+      const amount = parseFloat(amtStr);
+      if (!label || isNaN(amount)) continue;
+      const labelLower = label.toLowerCase();
+      if (skipLabels.has(labelLower)) continue;
+      if (/^\d/.test(label)) continue;
+      if (labelLower.includes('municipality') || labelLower.includes('registration')) continue;
 
-    const amountMatch = line.match(/^([\d,]+\.\d{2})$/);
-    if (amountMatch && i > 0) {
-      const prevLine = lines[i - 1];
-      const val = parseFloat(amountMatch[1].replace(/,/g, ''));
-      if (prevLine === 'VAT Amount') vatAmount = val;
-      else if (prevLine === 'Total') totalAmount = val;
-      else if (prevLine === 'Tender Amount') tenderAmount = val;
+      if (li + 1 < lines.length) {
+        const nextLine = lines[li + 1].trim();
+        const knownSuffixes = ['basic', 'metered', 'charge', 'disposal', 'rates', 'levy', 'fixed', 'standing', 'contribution', 'payment', 'advance', 'arrear'];
+        if (nextLine && !nextLine.match(/\d/) && !skipLabels.has(nextLine.toLowerCase()) && nextLine.length < 30) {
+          const nextLineIsService = nextLine.match(serviceAllocRegex);
+          const isKnownSuffix = knownSuffixes.some(s => nextLine.toLowerCase() === s || nextLine.toLowerCase().startsWith(s));
+          if (!nextLineIsService && isKnownSuffix) {
+            label = label + ' ' + nextLine;
+            li++;
+          }
+        }
+      }
+
+      allocations.push({
+        service: label,
+        amount: amount,
+        vat: 0,
+        total: amount,
+      });
     }
   }
 
-  const serviceKeywords = [
-    'Water', 'Electricity', 'Property Rates', 'Rates', 'Sanitation', 'Sewerage',
-    'Waste', 'Refuse', 'Housing', 'Sundry', 'Advance Payment', 'Interest',
-    'Electricity Basic', 'Electricity Metered', 'Sanitation Basic', 'Waste Disposal',
-    'Water Basic', 'Water Metered', 'Assessment Rates',
-    'Advance', 'Arrear', 'Levy', 'Fire', 'Rent', 'Deposit', 'Rebate',
-    'Parks', 'Roads', 'Storm', 'Building', 'Community', 'Environmental',
-    'Valuation', 'Clearance', 'Metered', 'Basic Charge', 'Basic',
-    'Service Charge', 'Availability', 'Fixed Charge', 'Standing Charge',
-    'Capital Contribution', 'Infrastructure', 'Kerbside', 'Kerb',
-  ];
+  if (allocations.length > 0) {
+    return allocations;
+  }
+
+  let vatAmount = 0;
+  let tenderAmount = 0;
+  const usedIndices = new Set<number>();
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const matched = serviceKeywords.find(kw => line.toLowerCase().includes(kw.toLowerCase()));
-    if (matched) {
-      for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
-        const valMatch = lines[j].match(/^-?([\d,]+\.\d{2})$/);
-        if (valMatch) {
-          const amount = parseFloat(valMatch[0].replace(/,/g, ''));
-          if (amount !== 0) {
-            allocations.push({
-              service: line,
-              amount: amount,
-              vat: 0,
-              total: amount,
-            });
-          }
-          break;
-        }
+    const amountMatch = lines[i].match(/^-?([\d,]+\.\d{2})$/);
+    if (amountMatch && i > 0) {
+      const val = parseFloat(amountMatch[1].replace(/,/g, ''));
+      const prevLine = lines[i - 1].toLowerCase();
+      if (prevLine === 'vat amount' || prevLine === 'vat') vatAmount = val;
+      else if (prevLine === 'total') { /* skip */ }
+      else if (prevLine === 'tender amount') tenderAmount = val;
+      else if (prevLine === 'change' || prevLine === 'outstanding balance' || prevLine === 'outstanding') { /* skip */ }
+      else if (!skipLabels.has(prevLine) && !/^\d/.test(lines[i - 1]) && !usedIndices.has(i)) {
+        allocations.push({
+          service: lines[i - 1],
+          amount: val,
+          vat: 0,
+          total: val,
+        });
+        usedIndices.add(i);
       }
     }
   }
@@ -4171,8 +4189,8 @@ export async function registerRoutes(
                   const tmpPath = `/tmp/receipt_svc_${serialNo}_${Date.now()}.pdf`;
                   try {
                     writeFileSync(tmpPath, pdfBuffer);
-                    const text = execSync(`pdftotext ${tmpPath} -`, { timeout: 10000 }).toString();
-                    console.log(`[pos-multi-receipt-print] PDF text preview (first 2000 chars):`, text.substring(0, 2000).replace(/\n/g, ' | '));
+                    const text = execSync(`pdftotext -layout ${tmpPath} -`, { timeout: 10000 }).toString();
+                    console.log(`[pos-multi-receipt-print] PDF text (layout mode, first 3000 chars):`, text.substring(0, 3000).replace(/\n/g, ' | '));
                     const allocations = parseReceiptAllocations(text);
                     if (allocations.length > 0) {
                       console.log(`[pos-multi-receipt-print] Extracted ${allocations.length} service allocations from PDF:`, allocations.map(a => `${a.service}: ${a.amount}`).join(', '));
