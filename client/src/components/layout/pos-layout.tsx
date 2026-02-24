@@ -49,7 +49,7 @@ export function PosLayout({ children }: PosLayoutProps) {
   const { currentUser, activeSession, sessionLoading, endSession, viewMode, toggleViewMode, sessionDetails, dayEndStatus, platinumUser, cashierRegistered, apiSessionActive, clearTransaction } = usePos();
 
   const isPosPage = location === '/pos';
-  const isReceiptingPage = isPosPage || location.startsWith('/view-receipts');
+  const isReceiptingPage = isPosPage;
 
   const prevLocationRef = React.useRef(location);
   useEffect(() => {
