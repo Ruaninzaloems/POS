@@ -1795,16 +1795,29 @@ export async function submitConsumerPayment(userId: number, data: any): Promise<
 }
 
 export async function submitMultiplePayment(userId: number, data: { accounts: any[]; requestModel: any }): Promise<any> {
-    const res = await apiFetch(`/api/platinum/billing-payment/submit-multiple-payment/${userId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Failed to submit multiple payment: ${text}`);
+    const timeoutMs = Math.max(60000, data.accounts.length * 8000);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const res = await apiFetch(`/api/platinum/billing-payment/submit-multiple-payment/${userId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+            signal: controller.signal,
+        });
+        clearTimeout(timer);
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Failed to submit multiple payment: ${text}`);
+        }
+        return await res.json();
+    } catch (err: any) {
+        clearTimeout(timer);
+        if (err.name === 'AbortError') {
+            throw new Error(`Payment submission timed out after ${Math.round(timeoutMs / 1000)}s for ${data.accounts.length} accounts. The billing server did not respond in time. Please check the account balances before retrying.`);
+        }
+        throw err;
     }
-    return await res.json();
 }
 
 

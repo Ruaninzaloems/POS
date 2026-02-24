@@ -17,6 +17,26 @@ export function ReceiptModal() {
     : recentTransactions[0];
 
   const [printSelected, setPrintSelected] = useState(true);
+  const [elapsed, setElapsed] = useState(0);
+  const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const prevStepRef = useRef<string>('');
+
+  useEffect(() => {
+    if (transactionProcessing) {
+      if (processingStep !== prevStepRef.current) {
+        prevStepRef.current = processingStep || '';
+        setElapsed(0);
+      }
+      if (!elapsedRef.current) {
+        elapsedRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
+      }
+    } else {
+      if (elapsedRef.current) { clearInterval(elapsedRef.current); elapsedRef.current = null; }
+      setElapsed(0);
+      prevStepRef.current = '';
+    }
+    return () => { if (elapsedRef.current) { clearInterval(elapsedRef.current); elapsedRef.current = null; } };
+  }, [transactionProcessing, processingStep]);
   const [emailSelected, setEmailSelected] = useState(false);
   const [smsSelected, setSmsSelected] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
@@ -160,11 +180,13 @@ export function ReceiptModal() {
                     {acctDetail && (
                       <p className="text-xs font-semibold text-blue-700 text-center truncate max-w-[280px] mx-auto">{acctDetail}</p>
                     )}
-                    {pct >= 0 && (
+                    {pct >= 0 ? (
                       <div className="px-2">
                         <Progress value={pct} className="h-2" />
                         <p className="text-[10px] text-muted-foreground text-center mt-1">{current} of {total} completed</p>
                       </div>
+                    ) : elapsed > 0 && (
+                      <p className="text-xs text-muted-foreground text-center animate-pulse">{elapsed}s elapsed — waiting for billing server...</p>
                     )}
                   </div>
                 </>
