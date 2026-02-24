@@ -1567,8 +1567,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 label: string,
                 paymentAmountOverride?: number,
                 receiptDateOverride?: string,
+                accountsOverride?: typeof saveAccounts,
             ) => {
-                const accountsToSubmit = saveAccounts;
+                const accountsToSubmit = accountsOverride || saveAccounts;
                 const allReceiptIds: number[] = [];
 
                 const perAccountPayments: { acct: any; localItem: any; itemPayment: number; acctOutstanding: number }[] = [];
@@ -1821,7 +1822,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             const cardStagingPayload = buildCardStagingPayload(accCardActual);
                             console.log(`[Priority 1 SPLIT CARD] Attempt ${attempt}: Staging ${cardStagingPayload.length} accounts with card portions`, cardStagingPayload.map(a => `${a.account_ID}: R${a.outStandingAmt}`));
                             await platinumSaveMultipleAccountPayment(cardStagingPayload, { userId: String(sessionUserId) });
-                            const cardResult = await submitConsumerPayments(accCardActual, accCardActual, 0, 3, 1, 'CARD', accCardActual, cardReceiptDate);
+                            const cardResult = await submitConsumerPayments(accCardActual, accCardActual, 0, 3, 1, 'CARD', accCardActual, cardReceiptDate, refreshedAccounts);
                             console.log(`[Priority 1 SPLIT CARD] Submitted card payment`, cardResult);
                             const cardReceiptIds = extractReceiptIds(cardResult);
                             await processAccReceiptResult(cardReceiptIds, 'CARD', 'card', accCardActual, cardResult.perAccountAmounts);
