@@ -65,6 +65,7 @@ function BasketPayAmountInput({ value, onChange, className = '' }: { value: numb
         <Input
             type="text"
             inputMode="decimal"
+            tabIndex={1}
             className={`h-9 pl-6 text-right font-mono rounded-lg focus:ring-2 focus:ring-blue-200 ${className}`}
             value={text}
             onChange={handleChange}
