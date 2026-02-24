@@ -411,11 +411,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
 
             if (dayEndDone) {
-              console.log(`[Session] Day-end reconciliation has been completed. Cashier must start a new session via setup page.`);
-              setApiSessionActive(false);
-              setActiveSession(false);
-            } else {
-              console.log(`[Session] No day-end done — auto-resuming. Office: ${officeName} (ID: ${officeId}), Float: ${cashFloat}`);
+              console.log(`[Session] Day-end reconciliation completed but Platinum session still active (isActive=true). Auto-resuming session — cashier can continue working.`);
+              setDayEndStatus('RECONCILED');
+            }
+            {
+              console.log(`[Session] Auto-resuming active session. Office: ${officeName} (ID: ${officeId}), Float: ${cashFloat}, dayEndDone: ${dayEndDone}`);
               try {
                 const vcResult = await platinumValidateCashier(platinumUser.user_ID, platinumUser.finYear || '2025/2026');
                 const vcCashierId = vcResult?.cashier?.id;
@@ -989,15 +989,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch (e) {}
 
         if (dayEndDone) {
-          console.warn(`[SessionEnforcement] Day-end reconciliation completed — ending session. Cashier must start a new session.`);
-          setActiveSession(false);
-          setSessionDetails(undefined);
-          toast({
-            title: "Day-End Completed",
-            description: "A day-end reconciliation has been completed. Please start a new cashier session.",
-            variant: "destructive"
-          });
-          return;
+          console.log(`[SessionEnforcement] Day-end reconciliation completed but session still active on Platinum (isActive=true). Allowing cashier to continue working.`);
+          setDayEndStatus('RECONCILED');
         }
 
         console.log(`[SessionEnforcement] validate-cashier confirmed isActive=true (POS_Cashier.IsActive=1)`);

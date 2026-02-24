@@ -105,14 +105,12 @@ export default function CashierSetup() {
                         }
 
                         if (isDayEndDone) {
-                            console.log(`[CashierSetup] Day-end completed — NOT offering resume. Cashier must start a new session.`);
+                            console.log(`[CashierSetup] Day-end completed but session still active on Platinum (isActive=true). Offering resume.`);
                             setDayEndCompleted(true);
-                            setResumingSession(false);
-                        } else {
-                            setResumingSession(true);
-                            setStep2Status('success');
-                            setStep3Status('pending');
                         }
+                        setResumingSession(true);
+                        setStep2Status('success');
+                        setStep3Status('pending');
                     }
 
                     const currentOfficeId = data.officeId || data.details?.officeId;
