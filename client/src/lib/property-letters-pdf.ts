@@ -1,16 +1,35 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getPropertyDetails, getConsumptionUnits, getSupplementaryValuations } from './enquiries-service';
+import { fetchMunicipalityInfo, MunicipalityInfo } from './external-api';
 
-const MUNICIPALITY = 'George UAT Municipality';
-const ADDR_LINE1 = '71 York Street';
-const ADDR_LINE2 = 'George';
-const ADDR_LINE3 = 'George - 6530';
-const TEL = '044 8019111';
-const FAX = '086 5896402';
-const EMAIL = 'accounts@george.gov.za';
-const WEBSITE = 'https://www.george.gov.za/';
-const VAT_NO = '4630193864';
+let MUNICIPALITY = '';
+let ADDR_LINE1 = '';
+let ADDR_LINE2 = '';
+let ADDR_LINE3 = '';
+let TEL = '';
+let FAX = '';
+let EMAIL = '';
+let WEBSITE = '';
+let VAT_NO = '';
+
+async function loadMuniConstants(): Promise<void> {
+  if (MUNICIPALITY) return;
+  try {
+    const mi = await fetchMunicipalityInfo();
+    MUNICIPALITY = mi.name || '';
+    ADDR_LINE1 = mi.address1 || '';
+    ADDR_LINE2 = mi.address2 || '';
+    ADDR_LINE3 = mi.address3 || (mi.postalCode ? `${mi.address2 || ''} - ${mi.postalCode}` : '');
+    TEL = mi.tel || '';
+    FAX = mi.fax || '';
+    EMAIL = mi.email || '';
+    WEBSITE = mi.website || '';
+    VAT_NO = mi.vatNo || '';
+  } catch (e) {
+    console.warn('Failed to load municipality info for property letters:', e);
+  }
+}
 
 function fmt(v: any): string {
   if (v === null || v === undefined || v === '') return '';
@@ -217,6 +236,7 @@ function addWrappedText(doc: jsPDF, text: string, x: number, y: number, maxWidth
 }
 
 export async function generateSection49Letter(accountId: number): Promise<void> {
+  await loadMuniConstants();
   const { prop, cu, valuations } = await loadPropertyData(accountId);
   const { startDate, endDate, rollYear } = getRollPeriod(prop, valuations);
 
@@ -293,6 +313,7 @@ export async function generateSection49Letter(accountId: number): Promise<void> 
 }
 
 export async function generateSection78Letter(accountId: number): Promise<void> {
+  await loadMuniConstants();
   const { prop, cu, valuations } = await loadPropertyData(accountId);
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -395,6 +416,7 @@ export async function generateSection78Letter(accountId: number): Promise<void> 
 }
 
 export async function generateValuationCertificate(accountId: number): Promise<void> {
+  await loadMuniConstants();
   const { prop, cu, valuations } = await loadPropertyData(accountId);
 
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });

@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getAccountBalance, getServiceTypeBalance, getBillingPeriodTransactions, getPropertyDetails, getConsumptionUnits } from './enquiries-service';
+import { fetchMunicipalityInfo } from './external-api';
 
 const MONTHS = ['July','August','September','October','November','December','January','February','March','April','May','June'];
 
@@ -21,8 +22,13 @@ export async function generateStatementPdf(
   accountNumber: string,
   financialYear: string,
   month: string,
-  statementType: 'account' | 'detailed'
+  statementType: 'account' | 'detailed',
+  municipalityName?: string,
 ): Promise<void> {
+  if (!municipalityName) {
+    try { const mi = await fetchMunicipalityInfo(); municipalityName = mi.name; } catch {}
+  }
+
   const [balanceData, serviceData, propResult, consResult] = await Promise.allSettled([
     getAccountBalance(accountId),
     getServiceTypeBalance(accountId, financialYear),
@@ -61,7 +67,7 @@ export async function generateStatementPdf(
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text('George Municipality', margin, 12);
+  doc.text(municipalityName || 'Municipality', margin, 12);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.text(statementType === 'detailed' ? 'Detailed Account Statement' : 'Account Statement', margin, 19);
@@ -226,7 +232,7 @@ export async function generateStatementPdf(
     doc.setFontSize(7);
     doc.setTextColor(148, 163, 184);
     doc.text(
-      `Page ${i} of ${pageCount} — George Municipality Account Statement — ${accountNumber}`,
+      `Page ${i} of ${pageCount} — ${municipalityName || 'Municipality'} Account Statement — ${accountNumber}`,
       pageW / 2,
       doc.internal.pageSize.getHeight() - 8,
       { align: 'center' }

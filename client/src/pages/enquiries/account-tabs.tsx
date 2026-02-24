@@ -28,6 +28,7 @@ import {
   type EnquirySearchResult,
   type EnquirySearchCriteria,
 } from '@/lib/enquiries-service';
+import { fetchMunicipalityInfo } from '@/lib/external-api';
 import { platinumPrintReceiptRaw, fetchPosMultiReceiptPrint } from '@/lib/external-api';
 import { openReceiptFromMultiPrint } from '@/lib/receipt-print';
 import { LoadingSkeleton, EmptyState, ErrorState, InfoField, SectionHeader, PaginatedTable, FieldRow, TabCard, getFinYearOptions } from './shared';
@@ -851,7 +852,7 @@ function SectionDownloadBtn({ onClick, label = 'Excel' }: { onClick: () => void;
   );
 }
 
-function generateBalanceDebtPdf(
+async function generateBalanceDebtPdf(
   accountId: number,
   balanceData: any[],
   capitalPlans: any[],
@@ -864,6 +865,7 @@ function generateBalanceDebtPdf(
   getVal: (item: any, keys: string[]) => any,
   sumField: (arr: any[], ...keys: string[]) => number,
 ) {
+  const muniInfo = await fetchMunicipalityInfo().catch(() => null);
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
   const margin = 12;
@@ -1025,7 +1027,7 @@ function generateBalanceDebtPdf(
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(150);
     doc.text(`Page ${i} of ${totalPages}`, pageW - margin, doc.internal.pageSize.getHeight() - 5, { align: 'right' });
-    doc.text('George Municipality - Balance / Debt Report', margin, doc.internal.pageSize.getHeight() - 5);
+    doc.text(`${muniInfo?.name || 'Municipality'} - Balance / Debt Report`, margin, doc.internal.pageSize.getHeight() - 5);
     doc.setTextColor(0);
   }
 
@@ -1158,7 +1160,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
       const multiData = await fetchPosMultiReceiptPrint(String(receiptId), 3, receiptNoStr || undefined);
       const items = Array.isArray(multiData) ? multiData : [];
       if (items.length > 0) {
-        openReceiptFromMultiPrint(items, true);
+        await openReceiptFromMultiPrint(items, true);
         setPrintingId(null);
         return;
       }
@@ -1183,7 +1185,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
       const multiData = await fetchPosMultiReceiptPrint(String(rid), 3, rno || undefined);
       const items = Array.isArray(multiData) ? multiData : [];
       if (items.length > 0) {
-        openReceiptFromMultiPrint(items, true);
+        await openReceiptFromMultiPrint(items, true);
         return;
       }
       toast({ title: "Print Failed", description: "The API returned no receipt data. Please try again or contact support.", variant: "destructive" });
@@ -1207,7 +1209,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
             </div>
             <div className="p-5 space-y-3 font-mono text-sm">
               <div className="text-center">
-                <h3 className="font-bold text-slate-800">{receiptPreview.municipalityName || 'George Municipality'}</h3>
+                <h3 className="font-bold text-slate-800">{receiptPreview.municipalityName || ''}</h3>
                 <p className="text-xs text-slate-500">{receiptPreview.address || ''}</p>
               </div>
               <div className="border-t border-dashed border-slate-300 my-2" />

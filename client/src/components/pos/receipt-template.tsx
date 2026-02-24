@@ -72,10 +72,10 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptTemplateP
 
       {/* Header */}
       <div className="text-center mb-4 relative z-10">
-        <h1 className="font-bold text-sm mb-0.5">{muniInfo?.name || 'George UAT Municipality'}</h1>
-        <p className="mb-0.5">{muniInfo?.address1 || 'York Street 1 George 6530'}</p>
-        <p className="mb-0.5">{muniInfo?.address2 || 'George'}</p>
-        <p>VAT Registration Number: {muniInfo?.vatNo || '4630193664'}</p>
+        <h1 className="font-bold text-sm mb-0.5">{muniInfo?.name || ''}</h1>
+        <p className="mb-0.5">{muniInfo?.address1 || ''}</p>
+        <p className="mb-0.5">{muniInfo?.address2 || ''}</p>
+        <p>VAT Registration Number: {muniInfo?.vatNo || ''}</p>
         {isReprint && !isCancelled && <h2 className="font-bold mt-2 text-xs uppercase tracking-widest border-b border-black pb-0.5 inline-block">** REPRINT **</h2>}
         {isCancelled && <h2 className="font-bold mt-2 text-xs uppercase tracking-widest border-b border-red-600 pb-0.5 inline-block text-red-600">** CANCELLED **</h2>}
       </div>

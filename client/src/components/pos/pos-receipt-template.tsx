@@ -84,7 +84,7 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
     return (
       <div ref={ref} className="bg-white p-4 mx-auto text-[11px] font-mono leading-relaxed receipt-print w-[340px]">
         <div className="text-center mb-3">
-          <h1 className="font-bold text-sm mb-0.5">{muniInfo?.name || 'George UAT Municipality'}</h1>
+          <h1 className="font-bold text-sm mb-0.5">{muniInfo?.name || ''}</h1>
           {muniInfo?.address1 && <p className="text-[9px] text-gray-500">{muniInfo.address1}</p>}
         </div>
         <div className="border-t border-dashed border-gray-400 pt-2 mb-2">
@@ -204,10 +204,10 @@ export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTem
       )}
 
       <div className="text-center mb-4 relative z-10">
-        <h1 className="font-bold text-sm mb-0.5">{muniInfo?.name || 'George UAT Municipality'}</h1>
-        <p className="mb-0.5">{muniInfo?.address1 || 'York Street 1 George 6530'}</p>
-        <p className="mb-0.5">{muniInfo?.address2 || 'George'}</p>
-        <p>VAT Registration Number: {muniInfo?.vatNo || '4630193664'}</p>
+        <h1 className="font-bold text-sm mb-0.5">{muniInfo?.name || ''}</h1>
+        <p className="mb-0.5">{muniInfo?.address1 || ''}</p>
+        {muniInfo?.address2 && <p className="mb-0.5">{muniInfo.address2}</p>}
+        {muniInfo?.vatNo && <p>VAT Registration Number: {muniInfo.vatNo}</p>}
         {isReprint && !isCancelled && <h2 className="font-bold mt-2 text-xs uppercase tracking-widest border-b border-black pb-0.5 inline-block">** REPRINT **</h2>}
         {isCancelled && <h2 className="font-bold mt-2 text-xs uppercase tracking-widest border-b border-red-600 pb-0.5 inline-block text-red-600">** CANCELLED **</h2>}
       </div>

@@ -1262,7 +1262,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
       const multiData = await fetchPosMultiReceiptPrint(String(receiptId), 3, receiptNoStr || undefined);
       const items = Array.isArray(multiData) ? multiData : [];
       if (items.length > 0) {
-        openReceiptFromMultiPrint(items, true);
+        await openReceiptFromMultiPrint(items, true);
         setPrintingId(null);
         return;
       }
@@ -1287,7 +1287,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
       const multiData = await fetchPosMultiReceiptPrint(String(rid), 3, rno || undefined);
       const items = Array.isArray(multiData) ? multiData : [];
       if (items.length > 0) {
-        openReceiptFromMultiPrint(items, true);
+        await openReceiptFromMultiPrint(items, true);
         return;
       }
       toast({ title: "Print Failed", description: "The API returned no receipt data. Please try again or contact support.", variant: "destructive" });
@@ -1311,7 +1311,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
             </div>
             <div className="p-3 sm:p-5 space-y-3 font-mono text-xs sm:text-sm">
               <div className="text-center">
-                <h3 className="font-bold text-slate-800">{receiptPreview.municipalityName || 'George Municipality'}</h3>
+                <h3 className="font-bold text-slate-800">{receiptPreview.municipalityName || ''}</h3>
                 <p className="text-xs text-slate-500">{receiptPreview.address || ''}</p>
               </div>
               <div className="border-t border-dashed border-slate-300 my-2" />

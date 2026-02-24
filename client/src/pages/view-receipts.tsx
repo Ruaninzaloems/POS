@@ -11,6 +11,7 @@ import { Search, Printer, Loader2, X, ChevronLeft, ChevronRight, Filter, ArrowUp
 import { DatePicker } from '@/components/ui/date-picker';
 import { cn } from '@/lib/utils';
 import { HelpTip } from '@/components/ui/help-tip';
+import { fetchMunicipalityInfo, type MunicipalityInfo } from '@/lib/external-api';
 import {
     fetchViewReceiptCashiers,
     searchAccountNumbers,
@@ -87,6 +88,8 @@ export default function ViewReceipts() {
 
     const [cashiers, setCashiers] = useState<ViewReceiptCashier[]>([]);
     const { platinumCashierId } = usePos();
+    const [muniInfo, setMuniInfo] = useState<MunicipalityInfo | null>(null);
+    useEffect(() => { fetchMunicipalityInfo().then(setMuniInfo).catch(() => {}); }, []);
     const [cashierFilter, setCashierFilter] = useState("");
     const [fromDate, setFromDate] = useState<Date | undefined>(() => {
         const now = new Date();
@@ -420,7 +423,7 @@ export default function ViewReceipts() {
             const multiData = await fetchPosMultiReceiptPrint(String(receiptNo), 3, receiptNo);
             const items = Array.isArray(multiData) ? multiData : [];
             if (items.length > 0) {
-                const win = openReceiptFromMultiPrint(items, true);
+                const win = await openReceiptFromMultiPrint(items, true);
                 if (!win) {
                     toast({ title: "Popup Blocked", description: "Please allow popups for this site to print receipts.", variant: "destructive" });
                 } else {
@@ -523,7 +526,7 @@ export default function ViewReceipts() {
             const items = Array.isArray(multiData) ? multiData : [];
 
             if (items.length > 0) {
-                const win = openReceiptFromMultiPrint(items, true);
+                const win = await openReceiptFromMultiPrint(items, true);
                 if (!win) {
                     toast({ title: "Popup Blocked", description: "Please allow popups for this site to print receipts.", variant: "destructive" });
                     return;
@@ -1096,7 +1099,7 @@ export default function ViewReceipts() {
                                 <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-4 sm:p-6 max-w-2xl">
                                     <div className="flex items-center justify-between mb-4 pb-3 border-b border-emerald-200">
                                         <div>
-                                            <h3 className="text-lg font-bold text-emerald-800">George Municipality</h3>
+                                            <h3 className="text-lg font-bold text-emerald-800">{muniInfo?.name || ''}</h3>
                                             <p className="text-xs text-emerald-600">EFT / Bank Statement Receipt</p>
                                         </div>
                                         <div className={`px-3 py-1 rounded-full text-xs font-semibold ${status.includes('Not Allocated') ? 'bg-orange-100 text-orange-700 border border-orange-300' : status.includes('Account') ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-blue-100 text-blue-700 border border-blue-300'}`}>

@@ -86,7 +86,7 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
       const multiData = await fetchPosMultiReceiptPrint(numericId, 3, tx.receiptNumber || undefined);
       const items = Array.isArray(multiData) ? multiData : [];
       if (items.length > 0) {
-        const win = openReceiptFromMultiPrint(items, true);
+        const win = await openReceiptFromMultiPrint(items, true);
         if (!win) {
           toast({ title: "Popup Blocked", description: "Please allow popups for this site to print receipts.", variant: "destructive" });
         } else {

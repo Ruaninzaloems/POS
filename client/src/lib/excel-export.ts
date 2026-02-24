@@ -1,3 +1,5 @@
+import { fetchMunicipalityInfo } from './external-api';
+
 export interface ExcelExportOptions {
   filename: string;
   sheetName?: string;
@@ -8,6 +10,7 @@ export interface ExcelExportOptions {
   columnWidths?: number[];
   currencyColumns?: number[];
   headerColor?: string;
+  municipalityName?: string;
 }
 
 const COLORS = {
@@ -114,6 +117,7 @@ export async function downloadExcel(options: ExcelExportOptions): Promise<void> 
     columnWidths,
     currencyColumns = [],
     headerColor = COLORS.headerBg,
+    municipalityName,
   } = options;
 
   const colCount = headers.length;
@@ -125,7 +129,11 @@ export async function downloadExcel(options: ExcelExportOptions): Promise<void> 
   }
   wsData.push(titleRow);
 
-  const muniRow: any[] = [{ v: 'George Municipality - Official Report', t: 's', s: STYLES.municipalityBar }];
+  let resolvedMuniName = municipalityName;
+  if (!resolvedMuniName) {
+    try { const mi = await fetchMunicipalityInfo(); resolvedMuniName = mi.name; } catch {}
+  }
+  const muniRow: any[] = [{ v: `${resolvedMuniName || 'Municipality'} - Official Report`, t: 's', s: STYLES.municipalityBar }];
   for (let c = 1; c < colCount; c++) {
     muniRow.push({ v: '', t: 's', s: STYLES.municipalityBar });
   }
@@ -223,6 +231,7 @@ export async function downloadTransactionExcel(options: {
   headers: string[];
   monthGroups: { month: string; rows: (string | number)[][] }[];
   currencyColumns?: number[];
+  municipalityName?: string;
 }): Promise<void> {
   const {
     filename,
@@ -243,7 +252,11 @@ export async function downloadTransactionExcel(options: {
   for (let c = 1; c < colCount; c++) titleRow.push({ v: '', t: 's', s: STYLES.title });
   wsData.push(titleRow);
 
-  const muniRow: any[] = [{ v: 'George Municipality - Official Report', t: 's', s: STYLES.municipalityBar }];
+  let resolvedMuniName2 = options.municipalityName;
+  if (!resolvedMuniName2) {
+    try { const mi = await fetchMunicipalityInfo(); resolvedMuniName2 = mi.name; } catch {}
+  }
+  const muniRow: any[] = [{ v: `${resolvedMuniName2 || 'Municipality'} - Official Report`, t: 's', s: STYLES.municipalityBar }];
   for (let c = 1; c < colCount; c++) muniRow.push({ v: '', t: 's', s: STYLES.municipalityBar });
   wsData.push(muniRow);
 
@@ -337,6 +350,7 @@ export async function downloadSummaryExcel(options: {
   headers: string[];
   yearGroups: { year: string; rows: (string | number)[][] }[];
   currencyColumns?: number[];
+  municipalityName?: string;
 }): Promise<void> {
   const {
     filename,
@@ -355,7 +369,11 @@ export async function downloadSummaryExcel(options: {
   for (let c = 1; c < colCount; c++) titleRow.push({ v: '', t: 's', s: STYLES.title });
   wsData.push(titleRow);
 
-  const muniRow: any[] = [{ v: 'George Municipality - Official Report', t: 's', s: STYLES.municipalityBar }];
+  let resolvedMuniName3 = options.municipalityName;
+  if (!resolvedMuniName3) {
+    try { const mi = await fetchMunicipalityInfo(); resolvedMuniName3 = mi.name; } catch {}
+  }
+  const muniRow: any[] = [{ v: `${resolvedMuniName3 || 'Municipality'} - Official Report`, t: 's', s: STYLES.municipalityBar }];
   for (let c = 1; c < colCount; c++) muniRow.push({ v: '', t: 's', s: STYLES.municipalityBar });
   wsData.push(muniRow);
 

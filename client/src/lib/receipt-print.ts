@@ -1,4 +1,5 @@
-import type { PosMultiReceiptPrintItem } from './external-api';
+import { fetchMunicipalityInfo } from './external-api';
+import type { PosMultiReceiptPrintItem, MunicipalityInfo } from './external-api';
 
 export interface ReceiptPrintData {
   receiptNo?: string;
@@ -80,7 +81,7 @@ function getPaymentOptionName(billTypeId: number | null | undefined, billType: s
   }
 }
 
-export function buildReceiptDataFromMultiPrint(items: PosMultiReceiptPrintItem[]): ReceiptPrintData {
+export function buildReceiptDataFromMultiPrint(items: PosMultiReceiptPrintItem[], muniInfo?: MunicipalityInfo): ReceiptPrintData {
   if (!items || items.length === 0) return {};
   const first = items[0];
 
@@ -102,9 +103,9 @@ export function buildReceiptDataFromMultiPrint(items: PosMultiReceiptPrintItem[]
     accountName: first.accName || '',
     sgNumber: first.sgNumber || '',
     address: first.accAddress || '',
-    municipalityName: 'George UAT Municipality',
-    municipalityAddress: 'York Street 1 George 6530\nGeorge',
-    vatRegNumber: '4630193664',
+    municipalityName: muniInfo?.name || '',
+    municipalityAddress: muniInfo ? [muniInfo.address1, muniInfo.address2, muniInfo.address3].filter(Boolean).join('\n') : '',
+    vatRegNumber: muniInfo?.vatNo || '',
     totalAmount: totalFromServices > 0 ? totalFromServices : (first.tenderAmount ?? 0),
     tenderAmount: first.tenderAmount ?? 0,
     changeAmount: first.changeAmount ?? 0,
@@ -122,9 +123,9 @@ export function generateReceiptHtml(data: ReceiptPrintData, isReprint: boolean =
   const services = Array.isArray(data.services) ? data.services : [];
   const total = data.totalAmount ?? data.amount ?? 0;
   const receiptNo = data.receiptNo || data.receiptNumber || '';
-  const municipality = data.municipalityName || 'George UAT Municipality';
-  const munAddress = data.municipalityAddress || 'York Street 1 George 6530\nGeorge';
-  const vatReg = data.vatRegNumber || '4630193664';
+  const municipality = data.municipalityName || '';
+  const munAddress = data.municipalityAddress || '';
+  const vatReg = data.vatRegNumber || '';
   const tenderAmount = data.tenderAmount ?? total;
   const changeAmount = data.changeAmount ?? 0;
   const outstandingBalance = data.outstandingBalance ?? 0;
@@ -312,8 +313,11 @@ export function openReceiptPrintWindow(data: ReceiptPrintData, isReprint: boolea
   return printWindow;
 }
 
-export function openReceiptFromMultiPrint(items: PosMultiReceiptPrintItem[], isReprint: boolean = true): Window | null {
-  const data = buildReceiptDataFromMultiPrint(items);
+export async function openReceiptFromMultiPrint(items: PosMultiReceiptPrintItem[], isReprint: boolean = true, muniInfo?: MunicipalityInfo): Promise<Window | null> {
+  if (!muniInfo) {
+    try { muniInfo = await fetchMunicipalityInfo(); } catch {}
+  }
+  const data = buildReceiptDataFromMultiPrint(items, muniInfo);
   return openReceiptPrintWindow(data, isReprint);
 }
 

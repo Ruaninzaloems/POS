@@ -42,7 +42,7 @@ export class PermitTemplate extends React.Component<PermitTemplateProps, PermitT
                 <span className="text-2xl font-bold">M</span>
              </div>
              <div>
-                 <h1 className="text-3xl font-bold tracking-widest uppercase">{muniInfo?.name || 'George UAT Municipality'}</h1>
+                 <h1 className="text-3xl font-bold tracking-widest uppercase">{muniInfo?.name || ''}</h1>
                  <p className="text-sm uppercase tracking-wider">{muniInfo?.address1 || ''}</p>
              </div>
           </div>

@@ -25,6 +25,7 @@ import {
 } from '@/lib/enquiries-service';
 import { LoadingSkeleton, EmptyState, ErrorState, PaginatedTable, FieldRow, getFinYearOptions } from './shared';
 import { generateStatementPdf } from '@/lib/statement-pdf';
+import { fetchMunicipalityInfo, type MunicipalityInfo } from '@/lib/external-api';
 import { generateSection49Letter, generateSection78Letter, generateValuationCertificate } from '@/lib/property-letters-pdf';
 
 function TransferOfOwnershipSection({ transfers, fmt, fmtDate }: { transfers: any[]; fmt: (v: any) => string; fmtDate: (v: any) => string }) {
@@ -1977,8 +1978,11 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
   const [selectedOccupierIdx, setSelectedOccupierIdx] = useState<number | null>(null);
   const [proofData, setProofData] = useState<{ property: any; nameInfo: any } | null>(null);
   const [proofLoading, setProofLoading] = useState(false);
+  const [muniInfo, setMuniInfo] = useState<MunicipalityInfo | null>(null);
   const loaded = useRef(false);
   const printRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { fetchMunicipalityInfo().then(setMuniInfo).catch(() => {}); }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -2165,17 +2169,17 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
                 <div className="proof-container border border-slate-300 p-8 max-w-[700px] mx-auto bg-white" style={{ fontFamily: 'Arial, sans-serif' }}>
                   <div className="flex items-start justify-between border-b-2 border-slate-800 pb-4 mb-5">
                     <div className="text-xs leading-relaxed">
-                      <div>71  York Street</div>
-                      <div>George</div>
-                      <div>George - 6530</div>
+                      {muniInfo?.address1 && <div>{muniInfo.address1}</div>}
+                      {muniInfo?.address2 && <div>{muniInfo.address2}</div>}
+                      {muniInfo?.address3 && <div>{muniInfo.address3}{muniInfo?.postalCode ? ` - ${muniInfo.postalCode}` : ''}</div>}
                     </div>
-                    <div className="text-center font-bold text-base">George UAT Municipality</div>
+                    <div className="text-center font-bold text-base">{muniInfo?.name || ''}</div>
                     <div className="text-xs leading-relaxed text-right">
-                      <div>Tel: 044 8019111</div>
-                      <div>Fax: 086 5896402</div>
-                      <div>Email: accounts@george.gov.za</div>
-                      <div>Website: https://www.george.gov.za/</div>
-                      <div>Municipality VAT No:- 4630193664</div>
+                      {muniInfo?.tel && <div>Tel: {muniInfo.tel}</div>}
+                      {muniInfo?.fax && <div>Fax: {muniInfo.fax}</div>}
+                      {muniInfo?.email && <div>Email: {muniInfo.email}</div>}
+                      {muniInfo?.website && <div>Website: {muniInfo.website}</div>}
+                      {muniInfo?.vatNo && <div>Municipality VAT No:- {muniInfo.vatNo}</div>}
                     </div>
                   </div>
 
@@ -2198,7 +2202,7 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
                     <p>{proofData.property?.streetName} {proofData.property?.streetNumber}</p>
                     <p>{proofData.property?.suburb || proofData.property?.town}</p>
                     <p>{proofData.property?.town}</p>
-                    <p>6530</p>
+                    {muniInfo?.postalCode && <p>{muniInfo.postalCode}</p>}
                   </div>
 
                   <div className="mt-24 font-bold text-sm">Municipal Manager</div>
@@ -2251,8 +2255,11 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
   const [showPreview, setShowPreview] = useState(false);
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [muniInfo, setMuniInfo] = useState<MunicipalityInfo | null>(null);
 
   const loadedRef = useRef(false);
+
+  useEffect(() => { fetchMunicipalityInfo().then(setMuniInfo).catch(() => {}); }, []);
 
   const loadContactInfo = useCallback(async () => {
     setContactLoading(true);
@@ -2821,7 +2828,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                   )}
                   <br />
                   <p>Kind regards,</p>
-                  <p className="font-medium">George Municipality</p>
+                  <p className="font-medium">{muniInfo?.name || ''}</p>
                   <p className="text-xs text-slate-500">This is an automated statement from the Municipal Billing System.</p>
                 </div>
               </div>
@@ -2832,10 +2839,10 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                   <span className="font-mono font-bold text-slate-800">{mobile || '(no number)'}</span>
                 </div>
                 <div className="bg-green-50 rounded-lg p-4 border border-green-200 text-sm text-slate-700">
-                  <p>George Municipality: Your {statementType === 'detailed' ? 'detailed ' : ''}account statement ({fromMonth} - {toMonth} {toYear}) is ready.</p>
+                  <p>{muniInfo?.name || 'Municipality'}: Your {statementType === 'detailed' ? 'detailed ' : ''}account statement ({fromMonth} - {toMonth} {toYear}) is ready.</p>
                   {customMessage && <p className="mt-1">{customMessage}</p>}
                   {includeTemplateLink && (
-                    <p className="mt-1 text-blue-600 underline">[https://statements.george.gov.za/view/...]</p>
+                    <p className="mt-1 text-blue-600 underline">[{muniInfo?.website || 'View statement online'}]</p>
                   )}
                 </div>
                 <p className="text-[10px] text-slate-400">SMS will be delivered via SMS Gateway service (not yet connected)</p>
