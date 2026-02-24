@@ -442,7 +442,21 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0">
-                <DetailItem label="SG Number" value={sgNumber} icon={<FileText className="w-4 h-4" />} mono />
+                {(() => {
+                  const sgRaw = String(sgNumber === '-' ? '' : sgNumber);
+                  const sgParts = sgRaw.split('/');
+                  const erfFromSg = sgParts.length >= 3 ? sgParts[2] : '';
+                  const portionFromSg = sgParts.length >= 4 ? sgParts[3] : '';
+                  const allotmentCode = sgParts.length >= 2 ? `${sgParts[0]}/${sgParts[1]}` : '';
+                  return (
+                    <>
+                      <DetailItem label="Erf Number" value={erfFromSg || f(p.erfNumber || b.erfNumber)} icon={<FileText className="w-4 h-4" />} mono />
+                      <DetailItem label="Portion" value={portionFromSg} icon={<FileText className="w-4 h-4" />} mono />
+                      <DetailItem label="Allotment / Region Code" value={allotmentCode} icon={<MapPin className="w-4 h-4" />} mono />
+                      <DetailItem label="SG Number" value={sgNumber} icon={<FileText className="w-4 h-4" />} mono />
+                    </>
+                  );
+                })()}
                 <DetailItem label="Property ID" value={propertyId} icon={<Home className="w-4 h-4" />} mono />
                 <DetailItem label="Property Status" value={propertyStatus} icon={<Shield className="w-4 h-4" />} />
                 <DetailItem label="Location Address" value={locationAddress} icon={<MapPin className="w-4 h-4" />} />
