@@ -573,8 +573,13 @@ export async function registerRoutes(
         }
       }
 
-      console.log(`[cash-offices] Calling Platinum cash-offices with finYear=${query.finYear}`);
+      if (!query.userId && session.userData?.user_ID) {
+        query = { ...query, userId: String(session.userData.user_ID) };
+      }
+
+      console.log(`[cash-offices] Calling Platinum cash-offices with params:`, JSON.stringify(query));
       const primaryData = await platinumGet(session, "/api/ReceiptPrepaid/cash-offices", query);
+      console.log(`[cash-offices] RAW primary response type=${typeof primaryData}, isArray=${Array.isArray(primaryData)}, keys:`, Array.isArray(primaryData) && primaryData.length > 0 ? Object.keys(primaryData[0]) : 'empty', `length: ${Array.isArray(primaryData) ? primaryData.length : 'N/A'}`, `sample:`, JSON.stringify(primaryData).substring(0, 500));
 
       const officeMap = new Map<number, any>();
       const addOffice = (office: any) => {
@@ -1316,11 +1321,21 @@ export async function registerRoutes(
         return res.json({ source: officeOnly === 'true' ? "office" : "platinum", data: normalized });
       }
 
-      console.error(`[cashier-payment-types] Platinum billing-payment/payment-types returned error. Response:`, JSON.stringify(data).substring(0, 500));
-      res.status(502).json({ message: "Platinum API returned no payment types data", detail: JSON.stringify(data).substring(0, 200) });
+      console.warn(`[cashier-payment-types] Platinum billing-payment/payment-types returned error. Response:`, JSON.stringify(data).substring(0, 500));
+      console.log(`[cashier-payment-types] Returning default payment types as fallback`);
+      const defaultTypes = [
+        { posPaymentType_ID: 1, posPaymentTypeDesc: "Cash", isTicked: true, enabled: true },
+        { posPaymentType_ID: 3, posPaymentTypeDesc: "Credit Card", isTicked: true, enabled: true },
+      ];
+      return res.json({ source: "default-fallback", data: defaultTypes });
     } catch (e: any) {
       console.error(`[cashier-payment-types] Error:`, e.message);
-      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+      console.log(`[cashier-payment-types] Returning default payment types as fallback`);
+      const defaultTypes = [
+        { posPaymentType_ID: 1, posPaymentTypeDesc: "Cash", isTicked: true, enabled: true },
+        { posPaymentType_ID: 3, posPaymentTypeDesc: "Credit Card", isTicked: true, enabled: true },
+      ];
+      return res.json({ source: "default-fallback", data: defaultTypes });
     }
   });
 
