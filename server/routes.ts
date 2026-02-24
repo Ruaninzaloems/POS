@@ -4001,13 +4001,45 @@ export async function registerRoutes(
       const tryMultiPrint = async (id: string): Promise<any[]> => {
         try {
           const url = `${EXTERNAL_API_BASE}/api/pos-multi-receipt-print?receiptId=${encodeURIComponent(id)}`;
+          console.log(`[pos-multi-receipt-print] Calling API: pos-multi-receipt-print?receiptId=${id}`);
           const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
           if (response.ok) {
             const data = await response.json();
             const items = Array.isArray(data) ? data : [];
+            console.log(`[pos-multi-receipt-print] API returned ${items.length} items for receiptId=${id}`);
+            if (items.length > 0) {
+              const first = items[0];
+              console.log(`[pos-multi-receipt-print] ITEM FIELDS for receiptId=${id}:`, JSON.stringify({
+                receiptNo: first.receiptNo,
+                accountId: first.accountId,
+                oldAccountCode: first.oldAccountCode,
+                accName: first.accName,
+                sgNumber: first.sgNumber,
+                accAddress: first.accAddress,
+                cashierName: first.cashierName,
+                cashOfficeName: first.cashOfficeName,
+                billType: first.billType,
+                amount: first.amount,
+                vatAmount: first.vatAmount,
+                tenderAmount: first.tenderAmount,
+                changeAmount: first.changeAmount,
+                outstandingAmount: first.outstandingAmount,
+                payMode: first.payMode,
+                paymentTypeId: first.paymentTypeId,
+                billTypeId: first.billTypeId,
+              }));
+              if (items.length > 1) {
+                console.log(`[pos-multi-receipt-print] ALL ${items.length} line items:`, items.map((it: any, idx: number) => `  [${idx}] billType="${it.billType}" amount=${it.amount} vatAmount=${it.vatAmount}`).join('\n'));
+              }
+              console.log(`[pos-multi-receipt-print] FULL RAW first item keys:`, Object.keys(first).join(', '));
+            }
             if (items.length > 0) return items;
+          } else {
+            console.log(`[pos-multi-receipt-print] API returned HTTP ${response.status} for receiptId=${id}`);
           }
-        } catch {}
+        } catch (e: any) {
+          console.warn(`[pos-multi-receipt-print] API call failed for receiptId=${id}:`, e.message);
+        }
         return [];
       };
 
@@ -4032,14 +4064,21 @@ export async function registerRoutes(
           } else if (viewData && typeof viewData === 'object' && !viewData._error) {
             viewItems = viewData.items || viewData.value || viewData.results || viewData.data || [];
           }
+          console.log(`[pos-multi-receipt-print] ViewReceipt returned ${viewItems.length} items for ReceiptNo="${lookupNo}"`);
+          if (viewItems.length > 0) {
+            console.log(`[pos-multi-receipt-print] ViewReceipt FIRST ITEM ALL KEYS:`, Object.keys(viewItems[0]).join(', '));
+            console.log(`[pos-multi-receipt-print] ViewReceipt FIRST ITEM DATA:`, JSON.stringify(viewItems[0]).substring(0, 2000));
+          }
           const match = viewItems.find((v: any) => {
             const vNo = v.receiptNo || v.receipt_No || '';
             return vNo === lookupNo || vNo.includes(lookupNo) || lookupNo.includes(vNo);
           });
           if (match) {
             const sn = match.serialNo || match.receiptId || match.receipt_ID || match.id;
+            console.log(`[pos-multi-receipt-print] ViewReceipt MATCH found: serialNo=${sn}, accountNumber=${match.accountNumber || match.accountNo || 'N/A'}, accName=${match.accName || match.consumerName || 'N/A'}`);
             return { serialNo: sn ? String(sn) : null, viewMatch: match };
           }
+          console.log(`[pos-multi-receipt-print] ViewReceipt NO MATCH found for receiptNo="${lookupNo}"`);
           return { serialNo: null, viewMatch: null };
         } catch (e) {
           console.warn('[pos-multi-receipt-print] ViewReceipt lookup failed:', e);
