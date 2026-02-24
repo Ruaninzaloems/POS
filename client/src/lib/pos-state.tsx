@@ -1658,6 +1658,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     const submitAccounts = perAccountPayments.map(({ acct, itemPayment }) => {
                         const { _userAmountToPay: _, sundryDebtorsId: _sd, ...base } = acct;
                         base.outStandingAmt = itemPayment;
+                        base.paymentAmount = itemPayment;
                         base.billId = base.billId ?? 0;
                         return isCardPayment
                             ? base
