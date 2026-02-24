@@ -2338,8 +2338,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     await submitOneMisc(miscPaymentTypeId, item.amountToPay, item.amountToPay, 0, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash');
                 }
             } catch (e: any) {
-                console.warn(`[Priority 2] Failed to submit misc payment for ${item.description}`, e);
-                toast({ title: "Direct Income Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
+                const errMsg = e?.message || (typeof e === 'string' ? e : JSON.stringify(e)) || 'Unknown error';
+                console.warn(`[Priority 2] Failed to submit misc payment for ${item.description}: ${errMsg}`, e);
+                toast({ title: "Direct Income Posting Failed", description: errMsg, variant: "destructive" });
             }
         }
     }

@@ -1504,7 +1504,9 @@ export async function registerRoutes(
   app.post("/api/platinum/billing-payment-miscellaneous/submit", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
+      console.log(`[misc-submit] Payload:`, JSON.stringify(req.body));
       const data = await platinumPost(session, "/api/billing-payment-miscellaneous/submit", req.body);
+      console.log(`[misc-submit] Response:`, JSON.stringify(data).substring(0, 1000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
