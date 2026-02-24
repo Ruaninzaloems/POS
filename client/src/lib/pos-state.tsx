@@ -1209,11 +1209,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let finalReceiptNumber = '';
     record.splitReceipts = [];
 
-    const accountTotal = accountItems.reduce((sum, i) => sum + i.amountToPay, 0);
-    const clearanceTotal = clearanceItems.reduce((sum, i) => sum + i.amountToPay, 0);
-    const directIncomeTotal = directIncomeItems.reduce((sum, i) => sum + i.amountToPay, 0);
-    const prepaidTotal = electricityPrepaidItems.reduce((sum, i) => sum + i.amountToPay, 0)
-        + waterPrepaidItems.reduce((sum, i) => sum + i.amountToPay, 0);
+    const r2 = (v: number) => Math.round(v * 100) / 100;
+    const accountTotal = r2(accountItems.reduce((sum, i) => sum + i.amountToPay, 0));
+    const clearanceTotal = r2(clearanceItems.reduce((sum, i) => sum + i.amountToPay, 0));
+    const directIncomeTotal = r2(directIncomeItems.reduce((sum, i) => sum + i.amountToPay, 0));
+    const prepaidTotal = r2(electricityPrepaidItems.reduce((sum, i) => sum + i.amountToPay, 0)
+        + waterPrepaidItems.reduce((sum, i) => sum + i.amountToPay, 0));
     const grandTotal = record.totalAmount;
 
     for (const item of accountItems) {

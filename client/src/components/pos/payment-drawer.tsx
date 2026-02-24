@@ -55,7 +55,7 @@ export function PaymentDrawer() {
       }
   }, [activeInput, payment.cashAmount, payment.cardAmount]);
 
-  const totalDue = useMemo(() => transactionItems.reduce((acc, i) => acc + i.amountToPay, 0), [transactionItems]);
+  const totalDue = useMemo(() => Math.round(transactionItems.reduce((acc, i) => acc + i.amountToPay, 0) * 100) / 100, [transactionItems]);
 
   const cardExpiryValid = (() => {
     if (!payment.cardExpiry) return false;
@@ -116,13 +116,13 @@ export function PaymentDrawer() {
 
   const handlePayExact = () => {
       if (activeInput === 'cash') {
-          const remaining = Math.max(0, totalDue - payment.cardAmount);
+          const remaining = Math.round(Math.max(0, totalDue - payment.cardAmount) * 100) / 100;
           setPaymentAmount('cash', remaining);
-          setInputBuffer(remaining > 0 ? remaining.toString() : "");
+          setInputBuffer(remaining > 0 ? remaining.toFixed(2) : "");
       } else {
-          const remaining = Math.max(0, totalDue - payment.cashAmount);
+          const remaining = Math.round(Math.max(0, totalDue - payment.cashAmount) * 100) / 100;
           setPaymentAmount('card', remaining);
-          setInputBuffer(remaining > 0 ? remaining.toString() : "");
+          setInputBuffer(remaining > 0 ? remaining.toFixed(2) : "");
       }
   };
 

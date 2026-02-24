@@ -20,15 +20,15 @@ export function calculateTransactionTotals(
   items: TransactionItem[],
   payment: PaymentState
 ): TransactionTotals {
-  const rawTotal = items.reduce((sum, item) => sum + item.amountToPay, 0);
+  const rawTotal = Math.round(items.reduce((sum, item) => sum + item.amountToPay, 0) * 100) / 100;
   
   const hasCard = payment.card > 0;
   const totalToPay = hasCard
-    ? Math.round(rawTotal * 100) / 100
+    ? rawTotal
     : Math.ceil(rawTotal * 10) / 10;
   
-  const tenderTotal = payment.cash + payment.card;
-  const changeDue = Math.max(0, payment.cash - (totalToPay - payment.card));
+  const tenderTotal = Math.round((payment.cash + payment.card) * 100) / 100;
+  const changeDue = Math.round(Math.max(0, payment.cash - (totalToPay - payment.card)) * 100) / 100;
   
   return {
     rawTotal,
