@@ -1036,7 +1036,7 @@ export default function ViewReceipts() {
                                         const paidAmount = Number(r.paidAmount ?? r.PaidAmount ?? 0);
                                         const bankAmount = Number(r.bankAmount ?? r.BankAmount ?? 0);
                                         const payTypeId = Number(r.paymentTypeId ?? r.PaymentTypeId ?? 0);
-                                        const payTypeLabel = payTypeId === 1 ? 'Cash' : payTypeId === 3 ? 'Credit Card' : payTypeId === 2 ? 'EFT' : payTypeId > 0 ? `Type ${payTypeId}` : '';
+                                        const payTypeLabel = payTypeId === 1 ? 'Cash' : payTypeId === 2 ? 'EFT' : payTypeId === 3 ? 'Credit Card' : payTypeId === 4 ? 'Postal Order' : payTypeId === 5 ? 'EFT' : payTypeId > 0 ? `Type ${payTypeId}` : '';
                                         const dateAllocated = r.billingAllocationDate ?? r.BillingAllocationDate ?? r.dateCaptured ?? r.DateCaptured ?? '';
                                         const bankDate = r.bankStatementDate ?? r.BankStatementDate ?? '';
                                         const bankNote = r.bankStatementNote ?? r.BankStatementNote ?? '';
@@ -1109,7 +1109,7 @@ export default function ViewReceipts() {
                                                 const paidAmount = Number(r.paidAmount ?? r.PaidAmount ?? 0);
                                                 const bankAmount = Number(r.bankAmount ?? r.BankAmount ?? 0);
                                                 const payTypeId = Number(r.paymentTypeId ?? r.PaymentTypeId ?? 0);
-                                                const payTypeLabel = payTypeId === 1 ? 'Cash' : payTypeId === 3 ? 'Credit Card' : payTypeId === 2 ? 'EFT' : payTypeId > 0 ? `Type ${payTypeId}` : '';
+                                                const payTypeLabel = payTypeId === 1 ? 'Cash' : payTypeId === 2 ? 'EFT' : payTypeId === 3 ? 'Credit Card' : payTypeId === 4 ? 'Postal Order' : payTypeId === 5 ? 'EFT' : payTypeId > 0 ? `Type ${payTypeId}` : '';
                                                 const dateAllocated = r.billingAllocationDate ?? r.BillingAllocationDate ?? '';
                                                 const bankDate = r.bankStatementDate ?? r.BankStatementDate ?? '';
                                                 const bankNote = r.bankStatementNote ?? r.BankStatementNote ?? '';
