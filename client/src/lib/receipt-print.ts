@@ -95,17 +95,27 @@ export function buildReceiptDataFromMultiPrint(items: PosMultiReceiptPrintItem[]
   if (!items || items.length === 0) return {};
   const first = items[0] as any;
 
-  const services = items
-    .filter(i => {
-      const desc = (i.billType || '').trim();
-      if (!desc && (i.amount ?? 0) === 0) return false;
-      if (isPaymentMethodName(desc)) return false;
-      return true;
-    })
-    .map(i => ({
-      description: i.billType || '',
-      amount: i.amount ?? 0,
+  const pdfAllocations = first._serviceAllocations;
+  let services: { description: string; amount: number }[];
+
+  if (Array.isArray(pdfAllocations) && pdfAllocations.length > 0) {
+    services = pdfAllocations.map((a: any) => ({
+      description: a.service || a.description || '',
+      amount: a.amount ?? a.total ?? 0,
     }));
+  } else {
+    services = items
+      .filter(i => {
+        const desc = (i.billType || '').trim();
+        if (!desc && (i.amount ?? 0) === 0) return false;
+        if (isPaymentMethodName(desc)) return false;
+        return true;
+      })
+      .map(i => ({
+        description: i.billType || '',
+        amount: i.amount ?? 0,
+      }));
+  }
 
   const totalFromServices = services.reduce((sum, s) => sum + (s.amount || 0), 0);
   const totalVat = items.reduce((sum, i) => sum + (i.vatAmount ?? 0), 0);

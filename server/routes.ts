@@ -4117,6 +4117,61 @@ export async function registerRoutes(
         }
       }
 
+      if (items.length > 0) {
+        const first = items[0] as any;
+        const serialNo = first.serialNo || (viewMatch && (viewMatch.serialNo || viewMatch.receiptId)) || receiptId;
+        const needsServiceBreakdown = items.length === 1 
+          && (first.billTypeId === 1 || first.billTypeId === 6 || first.billTypeId === 3)
+          && serialNo;
+        
+        if (needsServiceBreakdown) {
+          try {
+            const session = (req as any).session?.platinumAuth;
+            if (session?.token) {
+              const token = await refreshSessionToken(session);
+              const apiUrl = getPlatinumApiUrl();
+              console.log(`[pos-multi-receipt-print] Fetching service breakdown from print-receipt PDF for serialNo=${serialNo}`);
+              const pdfRes = await fetch(`${apiUrl}/api/billing-payment/print-receipt`, {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                  Accept: "application/pdf",
+                },
+                body: JSON.stringify([Number(serialNo)]),
+              });
+              if (pdfRes.ok) {
+                const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+                if (pdfBuffer.length > 100) {
+                  const tmpPath = `/tmp/receipt_svc_${serialNo}_${Date.now()}.pdf`;
+                  try {
+                    writeFileSync(tmpPath, pdfBuffer);
+                    const text = execSync(`pdftotext ${tmpPath} -`, { timeout: 10000 }).toString();
+                    const allocations = parseReceiptAllocations(text);
+                    if (allocations.length > 0) {
+                      console.log(`[pos-multi-receipt-print] Extracted ${allocations.length} service allocations from PDF:`, allocations.map(a => `${a.service}: ${a.amount}`).join(', '));
+                      for (const item of items) {
+                        (item as any)._serviceAllocations = allocations;
+                      }
+                    } else {
+                      console.log(`[pos-multi-receipt-print] No service allocations found in PDF text`);
+                    }
+                  } finally {
+                    if (existsSync(tmpPath)) {
+                      try { unlinkSync(tmpPath); } catch {}
+                    }
+                  }
+                }
+              } else {
+                console.log(`[pos-multi-receipt-print] print-receipt PDF returned HTTP ${pdfRes.status}`);
+              }
+            }
+          } catch (e: any) {
+            console.warn(`[pos-multi-receipt-print] Service breakdown extraction failed:`, e.message);
+          }
+        }
+      }
+
       if (items.length === 0) {
         console.log(`[pos-multi-receipt-print] No data found for receiptId=${receiptId}, receiptNo=${receiptNo}`);
       }
