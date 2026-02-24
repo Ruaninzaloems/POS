@@ -1584,7 +1584,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
 
         console.log(`[Priority 1] Staging payload outStandingAmt (user amount): R${stagingPayload[0]?.outStandingAmt}, full outstanding: R${saveAccounts[0]?.outStandingAmt}, user amountToPay: R${saveAccounts[0]?._userAmountToPay}`);
-        setProcessingStep(`Preparing receipt for ${payCtx.detail || payCtx.label}...`);
+        const accCount = saveAccounts.length;
+        setProcessingStep(accCount > 1
+            ? `Preparing payment for ${accCount} accounts...`
+            : `Preparing receipt for ${payCtx.detail || payCtx.label}...`);
 
         const isSingleAccount = accountItems.length === 1;
 
@@ -1725,6 +1728,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     for (const sa of submitAccounts) {
                         console.log(`[Priority 1 ${label}]   → account ${sa.accountID} (${sa.name}): outstandingAmount=R${sa.outstandingAmount}, paymentAmount=R${sa.paymentAmount}`);
                     }
+                    setProcessingStep(`Submitting payment for ${submitAccounts.length} account${submitAccounts.length > 1 ? 's' : ''}...`);
 
                     const result = await submitMultiplePayment(sessionUserId, {
                         accounts: submitAccounts,
@@ -1742,9 +1746,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 } else {
                     for (let i = 0; i < perAccountPayments.length; i++) {
                         const { acct, itemPayment, acctOutstanding } = perAccountPayments[i];
-                        if (perAccountPayments.length > 1) {
-                            setProcessingStep(`Processing receipt ${i + 1} of ${perAccountPayments.length} — Account ${acct.accountNumber || acct.account_ID}...`);
-                        }
+                        const acctLabel = acct.name || acct.accountNumber || acct.account_ID;
+                        setProcessingStep(`Processing account ${i + 1} of ${perAccountPayments.length} — ${acctLabel} (R ${itemPayment.toFixed(2)})...`);
 
                         const requestModel: any = isCardPayment ? {
                             finYear,
@@ -1862,7 +1865,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 };
 
                 try {
-                    setProcessingStep(`Processing cash receipt for ${payCtx.detail || payCtx.label} — R ${accCashActual.toFixed(2)}...`);
+                    setProcessingStep(`Processing cash payment (1 of 2) for ${accCount} account${accCount > 1 ? 's' : ''} — R ${accCashActual.toFixed(2)}...`);
                     const cashStagingPayload = buildPortionStagingPayload(accCashActual);
                     console.log(`[Priority 1 SPLIT CASH] Staging ${cashStagingPayload.length} accounts with cash portions`, cashStagingPayload.map(a => `${a.account_ID}: R${a.outStandingAmt}`));
                     await platinumSaveMultipleAccountPayment(cashStagingPayload, { userId: String(sessionUserId) });
@@ -1877,7 +1880,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }
 
                 if (accCardActual > 0) {
-                    setProcessingStep(`Processing card receipt for ${payCtx.detail || payCtx.label} — R ${accCardActual.toFixed(2)}...`);
+                    setProcessingStep(`Processing card payment (2 of 2) for ${accCount} account${accCount > 1 ? 's' : ''} — R ${accCardActual.toFixed(2)}...`);
 
                     const generateFreshReceiptDate = () => {
                         const now = new Date();
@@ -1923,7 +1926,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }
             } else {
                 try {
-                    setProcessingStep(`Processing receipt for ${payCtx.detail || payCtx.label}...`);
+                    setProcessingStep(accCount > 1
+                        ? `Processing receipt for ${accCount} accounts...`
+                        : `Processing receipt for ${payCtx.detail || payCtx.label}...`);
                     const singlePaymentTypeId = record.payment.card > 0 && record.payment.cash === 0 ? 3 : 1;
                     const submitResult = await submitConsumerPayments(accountTotal, accTender, accChange, singlePaymentTypeId, 1, 'ACC');
                     console.log(`[Priority 1] Submitted payment (paymentType=${singlePaymentTypeId})`, submitResult);
@@ -1941,10 +1946,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 console.warn(`[Priority 1] Skipping legacy receipt posting and account rebuild — payment was not successful`);
             }
 
-            for (const item of accountItems) {
+            for (let accIdx = 0; accIdx < accountItems.length; accIdx++) {
+                const item = accountItems[accIdx];
                 if (!accPaymentSucceeded) break;
                 const accountId = item.originalData?.account_ID || item.originalData?.apiId || item.originalData?.accountID || item.originalData?.accountId;
                 if (!accountId) continue;
+                const acctName = item.originalData?.name || item.reference || item.originalData?.accountNumber || accountId;
+                setProcessingStep(`Finalizing account ${accIdx + 1} of ${accountItems.length} — ${acctName}...`);
                 const latestReceiptId = record.splitReceipts && record.splitReceipts.length > 0
                     ? String(record.splitReceipts[record.splitReceipts.length - 1].receiptId)
                     : record.receiptNumber.replace(/\D/g, '') || '0';
