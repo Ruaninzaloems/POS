@@ -1826,8 +1826,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
                         console.log(`[Priority 1 SPLIT CARD] Validating cashier session to refresh receipt range...`);
                         try {
+                            const vcUserId = sessionUserId || platinumUser?.user_ID;
                             const vcFinYear = platinumUser?.finYear || '2025/2026';
-                            const vc = await platinumValidateCashier(sessionUserId, vcFinYear);
+                            if (!vcUserId) throw new Error('No userId available for validation');
+                            const vc = await platinumValidateCashier(vcUserId, vcFinYear);
                             console.log(`[Priority 1 SPLIT CARD] Cashier validated — receipt currentRange: ${vc?.receiptRange?.currentRange}`);
                         } catch (e) {
                             console.warn(`[Priority 1 SPLIT CARD] Cashier validation failed (non-fatal)`, e);
