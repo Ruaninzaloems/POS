@@ -68,6 +68,7 @@ function PaymentInput({ id, value, onChange }: { id: string; value: number; onCh
         className="pl-12 w-full sm:w-56 h-14 text-2xl font-mono font-bold border-2 border-blue-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 bg-white rounded-lg"
         value={rawText}
         placeholder="0.00"
+        tabIndex={1}
         onFocus={(e) => e.target.select()}
         onChange={handleChange}
         data-testid="input-payment-allocation"

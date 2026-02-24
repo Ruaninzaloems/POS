@@ -321,6 +321,7 @@ export function PaymentDrawer() {
         <Button 
           className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25 h-12 lg:h-14 text-base lg:text-lg font-bold rounded-xl disabled:from-slate-300 disabled:to-slate-400 disabled:shadow-none active:scale-[0.98] transition-all touch-manipulation" 
           size="lg"
+          tabIndex={4}
           disabled={!isCompleteEnabled}
           onClick={completeTransaction}
           data-testid="button-complete-transaction"
@@ -1203,6 +1204,7 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                       <input
                         type="text"
                         inputMode="decimal"
+                        tabIndex={2}
                         className="w-full bg-transparent text-2xl font-mono font-bold focus:outline-none placeholder:text-slate-300"
                         value={activeInput === 'cash' ? inputBuffer : (payment.cashAmount > 0 ? payment.cashAmount.toFixed(2).replace(/\.00$/, '') : "")}
                         placeholder="0.00"
@@ -1230,6 +1232,7 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                       <input
                         type="text"
                         inputMode="decimal"
+                        tabIndex={3}
                         className="w-full bg-transparent text-2xl font-mono font-bold focus:outline-none placeholder:text-slate-300"
                         value={activeInput === 'card' ? inputBuffer : (payment.cardAmount > 0 ? payment.cardAmount.toFixed(2).replace(/\.00$/, '') : "")}
                         placeholder="0.00"
