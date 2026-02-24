@@ -1037,7 +1037,7 @@ export default function ViewReceipts() {
                                         const bankAmount = Number(r.bankAmount ?? r.BankAmount ?? 0);
                                         const payTypeId = Number(r.paymentTypeId ?? r.PaymentTypeId ?? 0);
                                         const payTypeLabel = payTypeId === 1 ? 'Cash' : payTypeId === 3 ? 'Credit Card' : payTypeId === 2 ? 'EFT' : payTypeId > 0 ? `Type ${payTypeId}` : '';
-                                        const dateCaptured = r.dateCaptured ?? r.DateCaptured ?? '';
+                                        const dateAllocated = r.billingAllocationDate ?? r.BillingAllocationDate ?? r.dateCaptured ?? r.DateCaptured ?? '';
                                         const bankDate = r.bankStatementDate ?? r.BankStatementDate ?? '';
                                         const bankNote = r.bankStatementNote ?? r.BankStatementNote ?? '';
                                         const status = r.allocationStatus ?? r.AllocationStatus ?? '';
@@ -1057,7 +1057,7 @@ export default function ViewReceipts() {
                                                 </div>
                                                 {accountId > 0 && <div className="text-xs text-slate-600">Account: {accountId}</div>}
                                                 <div className="flex flex-wrap gap-x-3 text-xs text-slate-500">
-                                                    {dateCaptured && <span>Captured: {new Date(dateCaptured).toLocaleDateString('en-ZA')}</span>}
+                                                    {dateAllocated && <span>Allocated: {new Date(dateAllocated).toLocaleDateString('en-ZA')}</span>}
                                                     {bankDate && <span>Bank Date: {new Date(bankDate).toLocaleDateString('en-ZA')}</span>}
                                                     {payTypeLabel && <span>Type: {payTypeLabel}</span>}
                                                 </div>
@@ -1093,7 +1093,7 @@ export default function ViewReceipts() {
                                                 <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Account</TableHead>
                                                 <TableHead className="text-[10px] font-bold text-emerald-700 py-2 text-right">Paid Amount</TableHead>
                                                 <TableHead className="text-[10px] font-bold text-emerald-700 py-2 text-right">Bank Amount</TableHead>
-                                                <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Date Captured</TableHead>
+                                                <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Date Allocated</TableHead>
                                                 <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Bank Date</TableHead>
                                                 <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Payment</TableHead>
                                                 <TableHead className="text-[10px] font-bold text-emerald-700 py-2">Status</TableHead>
@@ -1110,7 +1110,7 @@ export default function ViewReceipts() {
                                                 const bankAmount = Number(r.bankAmount ?? r.BankAmount ?? 0);
                                                 const payTypeId = Number(r.paymentTypeId ?? r.PaymentTypeId ?? 0);
                                                 const payTypeLabel = payTypeId === 1 ? 'Cash' : payTypeId === 3 ? 'Credit Card' : payTypeId === 2 ? 'EFT' : payTypeId > 0 ? `Type ${payTypeId}` : '';
-                                                const dateCaptured = r.dateCaptured ?? r.DateCaptured ?? '';
+                                                const dateAllocated = r.billingAllocationDate ?? r.BillingAllocationDate ?? '';
                                                 const bankDate = r.bankStatementDate ?? r.BankStatementDate ?? '';
                                                 const bankNote = r.bankStatementNote ?? r.BankStatementNote ?? '';
                                                 const status = r.allocationStatus ?? r.AllocationStatus ?? '';
@@ -1128,7 +1128,7 @@ export default function ViewReceipts() {
                                                             {bankAmount > 0 ? `R ${bankAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
                                                         </TableCell>
                                                         <TableCell className="text-[10px] text-slate-600">
-                                                            {dateCaptured ? new Date(dateCaptured).toLocaleDateString('en-ZA') : '-'}
+                                                            {dateAllocated ? new Date(dateAllocated).toLocaleDateString('en-ZA') : '-'}
                                                         </TableCell>
                                                         <TableCell className="text-[10px] text-slate-600">
                                                             {bankDate ? new Date(bankDate).toLocaleDateString('en-ZA') : '-'}
@@ -1189,6 +1189,7 @@ export default function ViewReceipts() {
                             const dateCaptured = r.dateCaptured ?? r.DateCaptured ?? '';
                             const bankDate = r.bankStatementDate ?? r.BankStatementDate ?? '';
                             const billingDate = r.billingAllocationDate ?? r.BillingAllocationDate ?? '';
+                            const dateAllocated = billingDate || dateCaptured;
                             const bankNote = r.bankStatementNote ?? r.BankStatementNote ?? '';
                             const status = r.allocationStatus ?? r.AllocationStatus ?? '';
                             const cashbookDoc = r.cashbookDocumentNumber ?? r.CashbookDocumentNumber ?? '';
@@ -1227,19 +1228,13 @@ export default function ViewReceipts() {
                                             <p className="font-mono font-bold text-blue-700 text-lg">R {bankAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</p>
                                         </div>
                                         <div>
-                                            <span className="text-[10px] uppercase text-slate-500 font-semibold">Date Captured</span>
-                                            <p className="font-mono text-slate-700">{dateCaptured ? new Date(dateCaptured).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</p>
+                                            <span className="text-[10px] uppercase text-slate-500 font-semibold">Date Allocated</span>
+                                            <p className="font-mono text-slate-700">{dateAllocated ? new Date(dateAllocated).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</p>
                                         </div>
                                         <div>
                                             <span className="text-[10px] uppercase text-slate-500 font-semibold">Bank Statement Date</span>
                                             <p className="font-mono text-slate-700">{bankDate ? new Date(bankDate).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</p>
                                         </div>
-                                        {billingDate && (
-                                            <div>
-                                                <span className="text-[10px] uppercase text-slate-500 font-semibold">Allocation Date</span>
-                                                <p className="font-mono text-slate-700">{new Date(billingDate).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-                                            </div>
-                                        )}
                                         <div>
                                             <span className="text-[10px] uppercase text-slate-500 font-semibold">Payment Method</span>
                                             <p className="font-mono text-slate-700">{payTypeLabel}</p>
