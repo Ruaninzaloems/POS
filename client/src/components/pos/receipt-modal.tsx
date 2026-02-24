@@ -159,7 +159,7 @@ export function ReceiptModal() {
               </div>
               <DialogTitle className="text-2xl text-amber-700" data-testid="text-payment-partial">Partial Payment Posted</DialogTitle>
               <DialogDescription className="text-sm text-amber-600 font-medium" data-testid="text-receipt-number">
-                Cash receipt created ({currentTransaction.receiptNumber}). Card portion (R {payment.cardAmount.toFixed(2)}) was not accepted by the billing system.
+                Cash receipt created ({currentTransaction.receiptNumber}). Card portion (R {payment.cardAmount.toFixed(2)}) failed: {currentTransaction.splitCardFailReason || 'Not accepted by the billing system.'}
               </DialogDescription>
             </>
           ) : (
@@ -211,7 +211,7 @@ export function ReceiptModal() {
                         )}
                         {isPartialSuccess && (
                             <p className="text-xs font-semibold text-amber-700 bg-amber-50 rounded-md px-2 py-1 text-center">
-                                Only cash receipt created — card portion not processed
+                                Only cash receipt created — card portion failed{currentTransaction.splitCardFailReason ? `: ${currentTransaction.splitCardFailReason}` : ''}
                             </p>
                         )}
                         {cashReceipts.length > 0 && (
@@ -245,6 +245,9 @@ export function ReceiptModal() {
                                 <p className="font-medium text-red-500 flex items-center gap-1">
                                     <XCircle className="w-3 h-3" /> Card (R {payment.cardAmount.toFixed(2)}) — failed
                                 </p>
+                                {currentTransaction.splitCardFailReason && (
+                                    <p className="text-xs text-red-400 pl-4 break-words">{currentTransaction.splitCardFailReason}</p>
+                                )}
                             </div>
                         )}
                     </div>

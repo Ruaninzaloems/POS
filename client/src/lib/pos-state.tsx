@@ -83,6 +83,7 @@ export interface TransactionRecord {
   allocations?: ReceiptAllocation[];
   splitReceipts?: SplitReceipt[];
   receiptDetail?: any;
+  splitCardFailReason?: string;
 }
 
 export interface DayEndReport {
@@ -1671,7 +1672,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     });
                     console.log(`[Priority 1 ${label}] submit-multiple-payment response:`, JSON.stringify(result).substring(0, 2000));
                     if (result && result.isSuccess === false) {
-                        throw new Error(result.message || `Multiple payment submission failed`);
+                        const apiDetail = result.message || result.detail || result.error || result.statusText || '';
+                        const reason = apiDetail || `API returned isSuccess=false (no error message provided). PaymentType=${paymentTypeId}, Amount=R${totalPaymentAmount}`;
+                        console.error(`[Priority 1 ${label}] SUBMIT FAILED:`, JSON.stringify(result));
+                        throw new Error(reason);
                     }
                     const ids = extractReceiptIds(result);
                     allReceiptIds.push(...ids);
@@ -1719,7 +1723,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         });
                         console.log(`[Priority 1 ${label}] submit-consumer-payment response for account ${acct.account_ID}:`, result);
                         if (result && result.isSuccess === false) {
-                            throw new Error(result.message || `Payment failed for account ${acct.account_ID}`);
+                            const apiDetail = result.message || result.detail || result.error || result.statusText || '';
+                            const reason = apiDetail || `API rejected payment — no error message. Account=${acct.accountNumber || acct.account_ID}, PaymentType=${paymentTypeId}${paymentTypeId === 3 ? ' (Card)' : ' (Cash)'}, Amount=R${itemPayment}`;
+                            console.error(`[Priority 1 ${label}] SUBMIT FAILED for account ${acct.account_ID}:`, JSON.stringify(result));
+                            throw new Error(reason);
                         }
                         const ids = extractReceiptIds(result);
                         allReceiptIds.push(...ids);
@@ -1876,7 +1883,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                                 );
                                 await new Promise(r => setTimeout(r, 3000));
                             } else {
-                                toast({ title: "Card Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
+                                const failReason = e?.message || 'Unknown error';
+                                record.splitCardFailReason = failReason;
+                                setRecentTransactions(prev => prev.map(t => t.id === record.id ? { ...t, splitCardFailReason: failReason } : t));
+                                toast({ title: "Card Payment Posting Failed", description: failReason, variant: "destructive" });
                             }
                         }
                     }

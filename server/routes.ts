@@ -153,6 +153,9 @@ function handlePlatinumResult(res: any, data: any) {
   if (data && data._error) {
     return res.status(data.status || 502).json({ message: data.statusText || "Platinum API error", detail: stripHtml(data.detail) || null });
   }
+  if (data && data.isSuccess === false) {
+    console.warn(`[handlePlatinumResult] API returned isSuccess=false:`, JSON.stringify(data).substring(0, 2000));
+  }
   res.json(data);
 }
 
