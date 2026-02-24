@@ -1659,13 +1659,26 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
                 if (isMultiAccount) {
                     const submitAccounts = perAccountPayments.map(({ acct, itemPayment, acctOutstanding }) => {
-                        const { _userAmountToPay: _, sundryDebtorsId: _sd, ...base } = acct;
-                        base.outStandingAmt = acctOutstanding || base.outStandingAmt || itemPayment;
-                        base.paymentAmount = itemPayment;
-                        base.billId = null;
-                        return isCardPayment
-                            ? base
-                            : { ...base, sundryDebtorsId: acct.sundryDebtorsId ?? '' };
+                        const mapped: any = {
+                            capturerID: sessionUserId,
+                            accountID: acct.account_ID || acct.accountID || 0,
+                            oldAccountCode: acct.oldAccountCode || '',
+                            name: acct.name || '',
+                            sgNumber: acct.erfNumber || '',
+                            address: acct.deliveryAddress || '',
+                            outstandingAmount: acctOutstanding || acct.outStandingAmt || itemPayment,
+                            accountStatus: acct.statusDesc || 'Active',
+                            accountType: acct.accountDesc || '',
+                            paymentAmount: itemPayment,
+                            accountNumber: acct.accountNumber || '',
+                            receiptID: 0,
+                            billId: acct.billId ?? 0,
+                            clearanceId: acct.clearance_ID ?? 0,
+                        };
+                        if (!isCardPayment) {
+                            mapped.sundryDebtorsId = String(acct.sundryDebtorsId ?? '');
+                        }
+                        return mapped;
                     });
 
                     const totalFullOutstanding = perAccountPayments.reduce((s, p) => s + p.acctOutstanding, 0);
@@ -1710,7 +1723,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
                     console.log(`[Priority 1 ${label}] Submitting MULTIPLE payment for ${submitAccounts.length} accounts, total: R${totalPaymentAmount}, tender: R${tenderAmt}, change: R${changeAmt}, paymentType: ${paymentTypeId}, outStandingAmount(fullBalance): R${totalFullOutstanding}`);
                     for (const sa of submitAccounts) {
-                        console.log(`[Priority 1 ${label}]   → account ${sa.account_ID} (${sa.name}): R${sa.outStandingAmt}`);
+                        console.log(`[Priority 1 ${label}]   → account ${sa.accountID} (${sa.name}): outstandingAmount=R${sa.outstandingAmount}, paymentAmount=R${sa.paymentAmount}`);
                     }
 
                     const result = await submitMultiplePayment(sessionUserId, {
