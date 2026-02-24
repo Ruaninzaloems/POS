@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { usePos } from '@/lib/pos-state';
+import { usePos, TransactionItem } from '@/lib/pos-state';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, XCircle, Printer, Mail, MessageSquare, Check, Loader2 } from 'lucide-react';
@@ -176,6 +176,89 @@ export function ReceiptModal() {
         </DialogHeader>
         
         <div className="py-6 space-y-4">
+            {paymentSucceeded && (() => {
+              const items = currentTransaction.items || transactionItems;
+              const consumerItems = items.filter((i: TransactionItem) => i.type === 'CONSUMER_SERVICES' || i.type === 'MULTI_ACCOUNT' || i.type === 'ACCOUNT_GROUP');
+              const clearanceItems = items.filter((i: TransactionItem) => i.type === 'CLEARANCE');
+              const directIncomeItems = items.filter((i: TransactionItem) => i.type === 'DIRECT_INCOME');
+              const hasSingleAccount = consumerItems.length === 1 && clearanceItems.length === 0 && directIncomeItems.length === 0;
+              const hasMultipleAccounts = consumerItems.length > 1;
+
+              return (
+                <div className="space-y-3">
+                  {hasSingleAccount && consumerItems[0] && (
+                    <div className="bg-slate-50 rounded-lg p-3 space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Account</span>
+                        <span className="font-mono font-medium">{consumerItems[0].reference}</span>
+                      </div>
+                      {(consumerItems[0].originalData?.accountName || consumerItems[0].originalData?.name || consumerItems[0].description) && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">Name</span>
+                          <span className="font-medium truncate ml-4 text-right">{consumerItems[0].originalData?.accountName || consumerItems[0].originalData?.name || consumerItems[0].description}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {hasMultipleAccounts && (
+                    <div className="bg-slate-50 rounded-lg p-3 space-y-2">
+                      <p className="text-xs font-semibold text-slate-700">{consumerItems.length} accounts processed</p>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {consumerItems.map((item: TransactionItem, idx: number) => (
+                          <div key={idx} className="flex justify-between text-xs">
+                            <span className="font-mono text-muted-foreground">{item.reference}</span>
+                            <span className="font-mono">R {item.amountToPay.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {clearanceItems.length > 0 && (
+                    <div className="bg-blue-50 rounded-lg p-3 space-y-2">
+                      <p className="text-xs font-semibold text-blue-700">Clearance</p>
+                      {clearanceItems.map((item: TransactionItem, idx: number) => (
+                        <div key={idx} className="space-y-1">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">Account</span>
+                            <span className="font-mono font-medium">{item.reference}</span>
+                          </div>
+                          {item.originalData?.costScheduleNo && (
+                            <div className="flex justify-between text-xs">
+                              <span className="text-muted-foreground">Cost Schedule</span>
+                              <span className="font-mono font-medium">{item.originalData.costScheduleNo}</span>
+                            </div>
+                          )}
+                          {item.originalData?.costScheduleDescription && (
+                            <div className="flex justify-between text-xs">
+                              <span className="text-muted-foreground">Description</span>
+                              <span className="font-medium truncate ml-4 text-right">{item.originalData.costScheduleDescription}</span>
+                            </div>
+                          )}
+                          {(item.originalData?.accountName || item.originalData?.name || item.description) && (
+                            <div className="flex justify-between text-xs">
+                              <span className="text-muted-foreground">Name</span>
+                              <span className="font-medium truncate ml-4 text-right">{item.originalData?.accountName || item.originalData?.name || item.description}</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {directIncomeItems.length > 0 && (
+                    <div className="bg-emerald-50 rounded-lg p-3 space-y-2">
+                      <p className="text-xs font-semibold text-emerald-700">{directIncomeItems.length} direct income item{directIncomeItems.length > 1 ? 's' : ''}</p>
+                      {directIncomeItems.map((item: TransactionItem, idx: number) => (
+                        <div key={idx} className="flex justify-between text-xs">
+                          <span className="truncate mr-2 text-muted-foreground">{item.description}</span>
+                          <span className="font-mono shrink-0">R {item.amountToPay.toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Total Paid</span>
                 <span className="font-bold font-mono">R {payment.tenderTotal.toFixed(2)}</span>
