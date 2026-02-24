@@ -4067,28 +4067,7 @@ export async function registerRoutes(
                 items = await tryMultiPrint(String(serialNo));
               }
               if (items.length === 0) {
-                console.log(`[pos-multi-receipt-print] multi-print still empty, building from ViewReceipt data`);
-                items = [{
-                  receiptNo: match.receiptNo || match.receipt_No || receiptNo,
-                  receiptDate: match.receiptDate || match.receipt_Date || '',
-                  accountId: match.accountNumber || match.accountNo || match.account_Number || '',
-                  oldAccountCode: match.oldAccountCode || match.old_Account_Code || match.oldAccountNo || '',
-                  accName: match.accName || match.consumerName || match.consumer_Name || '',
-                  accAddress: match.accAddress || match.address || match.propertyAddress || '',
-                  sgNumber: match.sgNumber || match.sg_Number || '',
-                  amount: match.amount || match.receiptAmount || 0,
-                  vatAmount: match.vatAmount || 0,
-                  tenderAmount: match.tenderAmount || match.tender_Amount || match.amount || 0,
-                  changeAmount: match.changeAmount || match.change_Amount || 0,
-                  outstandingAmount: match.outstandingAmount || match.outstanding_Amount || 0,
-                  payMode: match.paymentType || match.payment_Type || '',
-                  paymentTypeId: match.paymentTypeId || 0,
-                  billType: '',
-                  billTypeId: 1,
-                  cashierName: match.cashierName || match.cashier_Name || '',
-                  cashOfficeName: match.cashOffice || match.cashBook || match.cash_Office || '',
-                  _fromViewReceipt: true,
-                }];
+                console.log(`[pos-multi-receipt-print] multi-print still empty after ViewReceipt lookup, returning empty`);
               }
             }
           }
