@@ -555,7 +555,8 @@ export default function ViewReceipts() {
         }
         setPrintingReceiptId(serialNo);
         try {
-            const multiData = await fetchPosMultiReceiptPrint(String(serialNo));
+            const receiptNoStr = getReceiptField(receipt, 'receiptNo');
+            const multiData = await fetchPosMultiReceiptPrint(String(serialNo), 3, receiptNoStr || undefined);
             const items = Array.isArray(multiData) ? multiData : [];
 
             if (items.length > 0) {

@@ -83,7 +83,7 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
       } else {
         numericId = String(receiptId);
       }
-      const multiData = await fetchPosMultiReceiptPrint(numericId);
+      const multiData = await fetchPosMultiReceiptPrint(numericId, 3, tx.receiptNumber || undefined);
       const items = Array.isArray(multiData) ? multiData : [];
       if (items.length > 0) {
         const win = openReceiptFromMultiPrint(items, true);

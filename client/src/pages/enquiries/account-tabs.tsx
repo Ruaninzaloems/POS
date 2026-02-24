@@ -1154,7 +1154,8 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
     if (!receiptId) return;
     setPrintingId(String(receiptId));
     try {
-      const multiData = await fetchPosMultiReceiptPrint(String(receiptId));
+      const receiptNoStr = p.receiptNumber || p.receiptNo || p.receipt_No || '';
+      const multiData = await fetchPosMultiReceiptPrint(String(receiptId), 3, receiptNoStr || undefined);
       const items = Array.isArray(multiData) ? multiData : [];
       if (items.length > 0) {
         openReceiptFromMultiPrint(items, true);
@@ -1162,7 +1163,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
         return;
       }
       const printData: ReceiptPrintData = {
-        receiptNo: p.receiptNumber || p.receiptNo || '',
+        receiptNo: receiptNoStr,
         receiptDate: p.receiptDate || '',
         accountNumber: accountNumber || '',
         totalAmount: p.amount || p.receiptAmount || 0,

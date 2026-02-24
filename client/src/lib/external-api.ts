@@ -525,11 +525,12 @@ export interface PosMultiReceiptPrintItem {
     outstandingAmount: number | null;
 }
 
-export async function fetchPosMultiReceiptPrint(receiptId: string, maxRetries: number = 3): Promise<PosMultiReceiptPrintItem[]> {
+export async function fetchPosMultiReceiptPrint(receiptId: string, maxRetries: number = 3, receiptNo?: string): Promise<PosMultiReceiptPrintItem[]> {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
             const params = new URLSearchParams();
             params.append('receiptId', receiptId);
+            if (receiptNo) params.append('receiptNo', receiptNo);
             const res = await apiFetch(`/api/proxy/pos-multi-receipt-print?${params.toString()}`);
             if (res.ok) {
                 const data = await res.json();

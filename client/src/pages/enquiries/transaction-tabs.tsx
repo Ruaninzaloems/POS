@@ -1258,7 +1258,8 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
     if (!receiptId) return;
     setPrintingId(String(receiptId));
     try {
-      const multiData = await fetchPosMultiReceiptPrint(String(receiptId));
+      const receiptNoStr = item.receiptNo || item.receiptNumber || item.receipt_No || '';
+      const multiData = await fetchPosMultiReceiptPrint(String(receiptId), 3, receiptNoStr || undefined);
       const items = Array.isArray(multiData) ? multiData : [];
       if (items.length > 0) {
         openReceiptFromMultiPrint(items, true);
@@ -1266,7 +1267,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
         return;
       }
       const printData: ReceiptPrintData = {
-        receiptNo: item.receiptNo || '',
+        receiptNo: receiptNoStr,
         receiptDate: item.receiptDate || '',
         accountNumber: accountNumber || '',
         totalAmount: item.amount ?? 0,

@@ -4014,17 +4014,90 @@ export async function registerRoutes(
 
   app.get("/api/proxy/pos-multi-receipt-print", async (req, res) => {
     try {
-      const params = new URLSearchParams(req.query as Record<string, string>);
-      const url = `${EXTERNAL_API_BASE}/api/pos-multi-receipt-print?${params.toString()}`;
-      const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
-      if (response.ok) {
-        const data = await response.json();
-        res.json(data);
-      } else if (response.status === 400 || response.status === 404) {
-        res.json([]);
-      } else {
-        res.status(response.status).json({ message: response.statusText });
+      const receiptId = req.query.receiptId as string;
+      const receiptNo = req.query.receiptNo as string;
+
+      const tryMultiPrint = async (id: string): Promise<any[]> => {
+        try {
+          const url = `${EXTERNAL_API_BASE}/api/pos-multi-receipt-print?receiptId=${encodeURIComponent(id)}`;
+          const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
+          if (response.ok) {
+            const data = await response.json();
+            const items = Array.isArray(data) ? data : [];
+            if (items.length > 0) return items;
+          }
+        } catch {}
+        return [];
+      };
+
+      let items: any[] = [];
+
+      if (receiptId) {
+        items = await tryMultiPrint(receiptId);
       }
+
+      if (items.length === 0 && receiptNo) {
+        console.log(`[pos-multi-receipt-print] receiptId=${receiptId} returned empty, looking up by receiptNo="${receiptNo}" via ViewReceipt`);
+        try {
+          const session = (req as any).session?.platinumAuth;
+          if (session?.token) {
+            const lookupParams: Record<string, string> = {
+              ReceiptNo: receiptNo,
+              Cashier: '0',
+              FromDate: new Date(new Date().getFullYear() - 2, 0, 1).toISOString().split('T')[0] + 'T00:00:00',
+              ToDate: new Date().toISOString().split('T')[0] + 'T23:59:59',
+              Page: '1',
+              PageSize: '10',
+            };
+            const viewData = await platinumGet(session, "/api/ViewReceipt/get-receipt-list", lookupParams, { timeoutMs: 30000 });
+            let viewItems: any[] = [];
+            if (Array.isArray(viewData)) {
+              viewItems = viewData;
+            } else if (viewData && typeof viewData === 'object' && !viewData._error) {
+              viewItems = viewData.items || viewData.value || viewData.results || viewData.data || [];
+            }
+            const match = viewItems.find((v: any) => {
+              const vNo = v.receiptNo || v.receipt_No || '';
+              return vNo === receiptNo || vNo.includes(receiptNo) || receiptNo.includes(vNo);
+            });
+            if (match) {
+              const serialNo = match.serialNo || match.receiptId || match.receipt_ID || match.id;
+              if (serialNo) {
+                console.log(`[pos-multi-receipt-print] Found ViewReceipt match, serialNo=${serialNo}, trying multi-print`);
+                items = await tryMultiPrint(String(serialNo));
+              }
+              if (items.length === 0) {
+                console.log(`[pos-multi-receipt-print] multi-print still empty, building from ViewReceipt data`);
+                items = [{
+                  receiptNo: match.receiptNo || match.receipt_No || receiptNo,
+                  receiptDate: match.receiptDate || match.receipt_Date || '',
+                  accountId: match.accountNumber || match.accountNo || match.account_Number || '',
+                  oldAccountCode: match.oldAccountCode || match.old_Account_Code || match.oldAccountNo || '',
+                  accName: match.accName || match.consumerName || match.consumer_Name || '',
+                  accAddress: match.accAddress || match.address || match.propertyAddress || '',
+                  sgNumber: match.sgNumber || match.sg_Number || '',
+                  amount: match.amount || match.receiptAmount || 0,
+                  vatAmount: match.vatAmount || 0,
+                  tenderAmount: match.tenderAmount || match.tender_Amount || match.amount || 0,
+                  changeAmount: match.changeAmount || match.change_Amount || 0,
+                  outstandingAmount: match.outstandingAmount || match.outstanding_Amount || 0,
+                  payMode: match.paymentType || match.payment_Type || '',
+                  paymentTypeId: match.paymentTypeId || 0,
+                  billType: '',
+                  billTypeId: 1,
+                  cashierName: match.cashierName || match.cashier_Name || '',
+                  cashOfficeName: match.cashOffice || match.cashBook || match.cash_Office || '',
+                  _fromViewReceipt: true,
+                }];
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[pos-multi-receipt-print] ViewReceipt lookup failed:', e);
+        }
+      }
+
+      res.json(items);
     } catch (e: any) {
       res.status(502).json({ message: "External API unreachable", detail: e.message });
     }
