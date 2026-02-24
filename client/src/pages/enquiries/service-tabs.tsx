@@ -1974,6 +1974,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
           return item;
         });
         const filtered = fixed.filter((item: any) => !item._isUnreadOpenPeriod);
+        const hasRealOpenPeriod = fixed.some((item: any) => item._isUnreadOpenPeriod);
         const openBilled = filtered.filter((item: any) => {
           const bm = (item.billingmonth || item.billingMonth || '').toLowerCase().trim();
           return (bm.includes('open period') || bm.includes('current')) && item._openPeriodCorrected;
@@ -1999,7 +2000,14 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
             }
           }
         });
-        setConsumptionHistory(filtered);
+        const finalFiltered = filtered.filter((item: any) => {
+          const bm = (item.billingmonth || item.billingMonth || '').toLowerCase().trim();
+          if ((bm.includes('open period') || bm.includes('current open')) && item._openPeriodCorrected) {
+            return false;
+          }
+          return true;
+        });
+        setConsumptionHistory(finalFiltered);
       }
     } catch {
       setConsumptionHistory([]);
@@ -2593,6 +2601,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Physical No</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Tariff</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Receipt No</th>
                   <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Last Recharge</th>
                   <th className="text-center py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">History</th>
                 </tr>
@@ -2611,9 +2620,11 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                         {m.status || m.meterStatus || m.statusDesc || '-'}
                       </span>
                     </td>
+                    <td className="py-2 px-3 font-mono text-xs text-slate-600 max-w-[160px] truncate" title={m.lastReceiptNo || ''}>
+                      {m.lastReceiptNo || '-'}
+                    </td>
                     <td className="py-2 px-3 text-right font-mono text-xs">
                       {m.lastRechargeDate ? (() => { const d = m.lastRechargeDate; if (d.includes('/')) return d; return new Date(d).toLocaleDateString('en-ZA'); })() : '-'}
-                      {m.lastReceiptNo && <div className="text-[9px] text-slate-400 truncate max-w-[140px]">{m.lastReceiptNo}</div>}
                     </td>
                     <td className="py-2 px-3 text-center">
                       <button
