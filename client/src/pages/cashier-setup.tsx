@@ -231,8 +231,7 @@ export default function CashierSetup() {
         }
 
         if (!hasValidVote) {
-            setError('This cash office does not have a valid SCOA vote configured. Please contact your administrator to set up the SCOA configuration for this office before proceeding.');
-            return;
+            console.warn(`[CashierSetup] No SCOA vote configured for office ${selectedOffice.cashOffice_ID}. Proceeding without vote — Platinum API will use default SCOA.`);
         }
 
         const float = parseFloat(floatInput);
@@ -561,14 +560,14 @@ export default function CashierSetup() {
                                 <Input
                                     value={ledgerVoteDisplay}
                                     disabled
-                                    className={`bg-slate-50 rounded-xl border border-slate-200 font-mono ${hasValidVote ? 'text-slate-800 font-medium' : selectedOffice ? 'text-red-500 border-red-300' : 'text-slate-400'}`}
+                                    className={`bg-slate-50 rounded-xl border border-slate-200 font-mono ${hasValidVote ? 'text-slate-800 font-medium' : selectedOffice ? 'text-amber-600 border-amber-300' : 'text-slate-400'}`}
                                     placeholder="Select a cash office to view ledger vote"
                                     data-testid="input-ledger-vote"
                                 />
                                 {selectedOffice && !hasValidVote && (
-                                    <p className="text-xs text-red-500 flex items-center gap-1" data-testid="text-vote-error">
+                                    <p className="text-xs text-amber-600 flex items-center gap-1" data-testid="text-vote-warning">
                                         <AlertTriangle className="h-3 w-3" />
-                                        No SCOA vote configured for this cash office. Contact your administrator.
+                                        SCOA vote not configured — default will be used.
                                     </p>
                                 )}
                             </div>
