@@ -1757,17 +1757,63 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }
 
                 if (accCardActual > 0) {
-                    try {
-                        const cardStagingPayload = buildPortionStagingPayload(accCardActual);
-                        console.log(`[Priority 1 SPLIT CARD] Staging ${cardStagingPayload.length} accounts with card portions`, cardStagingPayload.map(a => `${a.account_ID}: R${a.outStandingAmt}`));
-                        await platinumSaveMultipleAccountPayment(cardStagingPayload, { userId: String(sessionUserId) });
-                        const cardResult = await submitConsumerPayments(accCardActual, accCardActual, 0, 3, 1, 'CARD', accCardActual);
-                        console.log(`[Priority 1 SPLIT CARD] Submitted card payment`, cardResult);
-                        const cardReceiptIds = extractReceiptIds(cardResult);
-                        await processAccReceiptResult(cardReceiptIds, 'CARD', 'card', accCardActual, cardResult.perAccountAmounts);
-                    } catch (e: any) {
-                        console.warn(`[Priority 1 SPLIT CARD] Failed to submit card payment`, e);
-                        toast({ title: "Card Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
+                    console.log(`[Priority 1 SPLIT CARD] Waiting 1.5s for cash payment to settle before card submission...`);
+                    await new Promise(r => setTimeout(r, 1500));
+
+                    const refreshResults = await Promise.all(
+                        saveAccounts.map(async (acct) => {
+                            try {
+                                const fresh = await platinumGetConsAccountDetails(Number(acct.account_ID));
+                                if (fresh && !fresh._error) {
+                                    const updatedOutstanding = fresh.outStandingAmt ?? acct.outStandingAmt;
+                                    console.log(`[Priority 1 SPLIT CARD] Refreshed account ${acct.account_ID}: outstanding R${updatedOutstanding} (was R${acct.outStandingAmt})`);
+                                    return { ...acct, outStandingAmt: updatedOutstanding };
+                                }
+                                return acct;
+                            } catch {
+                                return acct;
+                            }
+                        })
+                    );
+                    const refreshedAccounts: typeof saveAccounts = refreshResults;
+
+                    const buildCardStagingPayload = (portionTotal: number) => {
+                        const result = refreshedAccounts.map(acct => {
+                            const { _userAmountToPay, ...rest } = acct;
+                            const userAmt = _userAmountToPay;
+                            const portionAmt = accGroupTotal > 0
+                                ? Math.round((userAmt / accGroupTotal) * portionTotal * 100) / 100
+                                : Math.round(portionTotal / refreshedAccounts.length * 100) / 100;
+                            return { ...rest, outStandingAmt: portionAmt };
+                        });
+                        const summed = result.reduce((s, a) => s + a.outStandingAmt, 0);
+                        const delta = Math.round((portionTotal - summed) * 100) / 100;
+                        if (delta !== 0 && result.length > 0) {
+                            result[result.length - 1].outStandingAmt = Math.round((result[result.length - 1].outStandingAmt + delta) * 100) / 100;
+                        }
+                        return result;
+                    };
+
+                    let cardSubmitted = false;
+                    for (let attempt = 1; attempt <= 2 && !cardSubmitted; attempt++) {
+                        try {
+                            const cardStagingPayload = buildCardStagingPayload(accCardActual);
+                            console.log(`[Priority 1 SPLIT CARD] Attempt ${attempt}: Staging ${cardStagingPayload.length} accounts with card portions`, cardStagingPayload.map(a => `${a.account_ID}: R${a.outStandingAmt}`));
+                            await platinumSaveMultipleAccountPayment(cardStagingPayload, { userId: String(sessionUserId) });
+                            const cardResult = await submitConsumerPayments(accCardActual, accCardActual, 0, 3, 1, 'CARD', accCardActual);
+                            console.log(`[Priority 1 SPLIT CARD] Submitted card payment`, cardResult);
+                            const cardReceiptIds = extractReceiptIds(cardResult);
+                            await processAccReceiptResult(cardReceiptIds, 'CARD', 'card', accCardActual, cardResult.perAccountAmounts);
+                            cardSubmitted = true;
+                        } catch (e: any) {
+                            console.warn(`[Priority 1 SPLIT CARD] Attempt ${attempt} failed:`, e?.message);
+                            if (attempt < 2) {
+                                console.log(`[Priority 1 SPLIT CARD] Retrying in 2s...`);
+                                await new Promise(r => setTimeout(r, 2000));
+                            } else {
+                                toast({ title: "Card Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
+                            }
+                        }
                     }
                 }
             } else {

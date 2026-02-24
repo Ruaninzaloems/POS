@@ -49,6 +49,11 @@ export function ReceiptModal() {
       return;
     }
 
+    const cashIds = currentTransaction.splitReceipts?.filter(sr => sr.paymentType === 'cash').map(sr => sr.receiptId).filter(Boolean) || [];
+    const cardIds = currentTransaction.splitReceipts?.filter(sr => sr.paymentType === 'card').map(sr => sr.receiptId).filter(Boolean) || [];
+    const isSplitPrint = cashIds.length > 0 && cardIds.length > 0;
+    console.log(`[ReceiptModal] Printing ${isSplitPrint ? 'CONSOLIDATED split payment' : 'single'} receipt. IDs: [${receiptIds.join(', ')}]${isSplitPrint ? ` (Cash: [${cashIds.join(', ')}], Card: [${cardIds.join(', ')}])` : ''}`);
+
     setIsPrinting(true);
     try {
       const res = await platinumPrintReceiptRaw(receiptIds);
@@ -177,17 +182,44 @@ export function ReceiptModal() {
                     <span className="font-bold font-mono">R {payment.changeDue.toFixed(2)}</span>
                 </div>
             )}
-            {currentTransaction?.splitReceipts && currentTransaction.splitReceipts.length > 1 && !transactionProcessing && (
-                <div className="text-xs text-muted-foreground border-t pt-2 mt-2">
-                    <p className="font-medium mb-1">{currentTransaction.splitReceipts.length} receipts generated</p>
-                    {currentTransaction.splitReceipts.map((sr, i) => (
-                        <div key={i} className="flex justify-between">
-                            <span>{sr.receiptNumber} ({sr.paymentType})</span>
-                            <span className="font-mono">R {sr.amount.toFixed(2)}</span>
-                        </div>
-                    ))}
-                </div>
-            )}
+            {currentTransaction?.splitReceipts && currentTransaction.splitReceipts.length > 1 && !transactionProcessing && (() => {
+                const cashReceipts = currentTransaction.splitReceipts!.filter(sr => sr.paymentType === 'cash');
+                const cardReceipts = currentTransaction.splitReceipts!.filter(sr => sr.paymentType === 'card');
+                const isSplitPayment = cashReceipts.length > 0 && cardReceipts.length > 0;
+                const cashTotal = cashReceipts.reduce((s, sr) => s + sr.amount, 0);
+                const cardTotal = cardReceipts.reduce((s, sr) => s + sr.amount, 0);
+                return (
+                    <div className="border-t pt-3 mt-2 space-y-2">
+                        {isSplitPayment && (
+                            <p className="text-xs font-semibold text-blue-700 bg-blue-50 rounded-md px-2 py-1 text-center">
+                                Split Payment — {currentTransaction.splitReceipts!.length} receipts (consolidated print)
+                            </p>
+                        )}
+                        {cashReceipts.length > 0 && (
+                            <div className="text-xs space-y-0.5">
+                                <p className="font-medium text-muted-foreground">Cash {isSplitPayment ? `(R ${cashTotal.toFixed(2)})` : ''}</p>
+                                {cashReceipts.map((sr, i) => (
+                                    <div key={`cash-${i}`} className="flex justify-between pl-2">
+                                        <span className="font-mono text-muted-foreground">{sr.receiptNumber}</span>
+                                        <span className="font-mono">R {sr.amount.toFixed(2)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {cardReceipts.length > 0 && (
+                            <div className="text-xs space-y-0.5">
+                                <p className="font-medium text-muted-foreground">Card {isSplitPayment ? `(R ${cardTotal.toFixed(2)})` : ''}</p>
+                                {cardReceipts.map((sr, i) => (
+                                    <div key={`card-${i}`} className="flex justify-between pl-2">
+                                        <span className="font-mono text-muted-foreground">{sr.receiptNumber}</span>
+                                        <span className="font-mono">R {sr.amount.toFixed(2)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                );
+            })()}
             
             {paymentSucceeded && <div className="mt-6 space-y-4">
                 <p className="text-sm font-medium mb-2">Receipt Options</p>
