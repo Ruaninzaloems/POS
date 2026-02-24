@@ -131,30 +131,25 @@ export function UnifiedSearch({ onSearchActiveChange }: { onSearchActiveChange?:
             }));
             memberItems.forEach(item => addItem(item));
 
-            const needsEnrichment = memberItems.filter(item => !item.amountDue || item.amountDue === 0);
-            if (needsEnrichment.length > 0) {
-                Promise.allSettled(
-                    needsEnrichment.map(async (item) => {
-                        const accId = item.originalData?.accountID || item.originalData?.accountId || item.originalData?.account_ID;
-                        if (!accId) return;
-                        try {
-                            const details = await platinumGetConsAccountDetails(Number(accId));
-                            if (details && !details._error) {
-                                const outstanding = details.outStandingAmt ?? details.outstandingAmount ?? details.outStandingAmount ?? 0;
-                                if (outstanding > 0) {
-                                    updateItemDetails(item.id, {
-                                        amountDue: outstanding,
-                                        amountToPay: 0,
-                                        originalData: { ...item.originalData, outStandingAmt: outstanding, outstandingAmount: outstanding }
-                                    });
-                                }
-                            }
-                        } catch (e) {
-                            console.warn(`[Group Enrich] Failed for account ${accId}:`, e);
+            Promise.allSettled(
+                memberItems.map(async (item) => {
+                    const accId = item.originalData?.accountID || item.originalData?.accountId || item.originalData?.account_ID;
+                    if (!accId) return;
+                    try {
+                        const details = await platinumGetConsAccountDetails(Number(accId), true);
+                        if (details && !details._error) {
+                            const outstanding = details.outStandingAmt ?? details.outstandingAmount ?? details.outStandingAmount ?? 0;
+                            updateItemDetails(item.id, {
+                                amountDue: outstanding,
+                                amountToPay: 0,
+                                originalData: { ...item.originalData, ...details, outStandingAmt: outstanding, outstandingAmount: outstanding }
+                            });
                         }
-                    })
-                );
-            }
+                    } catch (e) {
+                        console.warn(`[Group Enrich] Failed for account ${accId}:`, e);
+                    }
+                })
+            );
         } else if (group.isLocal && group.institutionID) {
             try {
                 const accounts = await fetchAccountsByGroup(group.institutionID);
@@ -170,30 +165,25 @@ export function UnifiedSearch({ onSearchActiveChange }: { onSearchActiveChange?:
                     }));
                     memberItems.forEach(item => addItem(item));
 
-                    const needsEnrichment = memberItems.filter(item => !item.amountDue || item.amountDue === 0);
-                    if (needsEnrichment.length > 0) {
-                        Promise.allSettled(
-                            needsEnrichment.map(async (item) => {
-                                const accId = item.originalData?.accountID || item.originalData?.accountId || item.originalData?.account_ID;
-                                if (!accId) return;
-                                try {
-                                    const details = await platinumGetConsAccountDetails(Number(accId));
-                                    if (details && !details._error) {
-                                        const outstanding = details.outStandingAmt ?? details.outstandingAmount ?? details.outStandingAmount ?? 0;
-                                        if (outstanding > 0) {
-                                            updateItemDetails(item.id, {
-                                                amountDue: outstanding,
-                                                amountToPay: 0,
-                                                originalData: { ...item.originalData, outStandingAmt: outstanding, outstandingAmount: outstanding }
-                                            });
-                                        }
-                                    }
-                                } catch (e) {
-                                    console.warn(`[Group Enrich] Failed for account ${accId}:`, e);
+                    Promise.allSettled(
+                        memberItems.map(async (item) => {
+                            const accId = item.originalData?.accountID || item.originalData?.accountId || item.originalData?.account_ID;
+                            if (!accId) return;
+                            try {
+                                const details = await platinumGetConsAccountDetails(Number(accId), true);
+                                if (details && !details._error) {
+                                    const outstanding = details.outStandingAmt ?? details.outstandingAmount ?? details.outStandingAmount ?? 0;
+                                    updateItemDetails(item.id, {
+                                        amountDue: outstanding,
+                                        amountToPay: 0,
+                                        originalData: { ...item.originalData, ...details, outStandingAmt: outstanding, outstandingAmount: outstanding }
+                                    });
                                 }
-                            })
-                        );
-                    }
+                            } catch (e) {
+                                console.warn(`[Group Enrich] Failed for account ${accId}:`, e);
+                            }
+                        })
+                    );
                 } else {
                     alert(`No linked accounts found for group "${group.institutionDesc}".`);
                     return;

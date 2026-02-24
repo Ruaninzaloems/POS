@@ -739,7 +739,7 @@ export async function enrichAccountData(account: any): Promise<any> {
 
     try {
         const [consDetails, nameData, contactDetails] = await Promise.all([
-            platinumGetConsAccountDetails(Number(accountId)).catch(() => null),
+            platinumGetConsAccountDetails(Number(accountId), true).catch(() => null),
             platinumFetch(`/api/platinum/billing-enquiry/name-info-by-account?accountId=${accountId}`).catch(() => null),
             platinumFetch(`/api/platinum/billing-account-management/get-contact-details?accountId=${accountId}`).catch(() => null),
         ]);

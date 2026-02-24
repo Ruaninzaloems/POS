@@ -439,7 +439,10 @@ export async function registerRoutes(
   app.get("/api/platinum/receipt-prepaid/cons-account-details", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const data = await platinumGet(session, "/api/ReceiptPrepaid/cons-account-details", req.query as Record<string, string>);
+      const query = { ...req.query as Record<string, string> };
+      delete query._nocache;
+      const data = await platinumGet(session, "/api/ReceiptPrepaid/cons-account-details", query);
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
