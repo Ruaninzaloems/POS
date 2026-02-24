@@ -4068,32 +4068,52 @@ export async function registerRoutes(
       }
 
       if (items.length > 0 && viewMatch) {
-        const first = items[0];
-        const needsEnrichment = !first.accountId && !first.accName && !first.oldAccountCode;
-        if (needsEnrichment) {
-          console.log(`[pos-multi-receipt-print] Enriching multi-print data with ViewReceipt fields`);
-          const vm = viewMatch;
-          const accountId = vm.accountNumber || vm.accountNo || vm.accountID || vm.account_number || '';
-          const accName = vm.accName || vm.consumerName || vm.accountName || vm.account_name || '';
-          const accAddress = vm.accAddress || vm.address || vm.consumerAddress || '';
-          const oldAccountCode = vm.oldAccountCode || vm.oldAccountNo || vm.old_account_code || '';
-          const sgNumber = vm.sgNumber || vm.sg_number || vm.sgNo || '';
-          const cashierName = vm.cashierName || vm.cashier_name || vm.cashier || '';
-          const cashOfficeName = vm.cashOfficeName || vm.cashOffice || vm.cash_office || vm.cashBook || '';
-          const outstandingAmount = vm.outstandingAmount ?? vm.outstanding_amount ?? vm.balanceAmount ?? null;
-          const payMode = vm.paymentType || vm.payment_type || vm.payMode || '';
-          const billType = vm.paymentOption || vm.payment_option || vm.billType || '';
+        console.log(`[pos-multi-receipt-print] Enriching multi-print data with ViewReceipt fields`);
+        const vm = viewMatch;
+        const accountId = vm.accountNumber || vm.accountNo || vm.accountID || vm.account_number || '';
+        const accName = vm.accName || vm.consumerName || vm.accountName || vm.account_name || '';
+        const accAddress = vm.accAddress || vm.address || vm.consumerAddress || '';
+        const oldAccountCode = vm.oldAccountCode || vm.oldAccountNo || vm.old_account_code || '';
+        const sgNumber = vm.sgNumber || vm.sg_number || vm.sgNo || '';
+        const cashierName = vm.cashierName || vm.cashier_name || vm.cashier || '';
+        const cashOfficeName = vm.cashOfficeName || vm.cashOffice || vm.cash_office || vm.cashBook || '';
+        const outstandingAmount = vm.outstandingAmount ?? vm.outstanding_amount ?? vm.balanceAmount ?? null;
+        const viewPaymentType = vm.paymentType || vm.payment_type || '';
+        const viewPaymentOption = vm.paymentOption || vm.payment_option || '';
+        for (const item of items) {
+          if (!item.accountId && accountId) item.accountId = accountId;
+          if (!item.accName && accName) item.accName = accName;
+          if (!item.accAddress && accAddress) item.accAddress = accAddress;
+          if (!item.oldAccountCode && oldAccountCode) item.oldAccountCode = oldAccountCode;
+          if (!item.sgNumber && sgNumber) item.sgNumber = sgNumber;
+          if (!item.cashierName && cashierName) item.cashierName = cashierName;
+          if (!item.cashOfficeName && cashOfficeName) item.cashOfficeName = cashOfficeName;
+        }
+        if (viewPaymentType) {
           for (const item of items) {
-            if (!item.accountId && accountId) item.accountId = accountId;
-            if (!item.accName && accName) item.accName = accName;
-            if (!item.accAddress && accAddress) item.accAddress = accAddress;
-            if (!item.oldAccountCode && oldAccountCode) item.oldAccountCode = oldAccountCode;
-            if (!item.sgNumber && sgNumber) item.sgNumber = sgNumber;
-            if (!item.cashierName && cashierName) item.cashierName = cashierName;
-            if (!item.cashOfficeName && cashOfficeName) item.cashOfficeName = cashOfficeName;
-            if (item.outstandingAmount == null && outstandingAmount != null) item.outstandingAmount = outstandingAmount;
-            if (!item.payMode && payMode) item.payMode = payMode;
+            item.payMode = viewPaymentType;
           }
+          console.log(`[pos-multi-receipt-print] Set payMode="${viewPaymentType}" from ViewReceipt.paymentType`);
+        }
+        if (viewPaymentOption) {
+          for (const item of items) {
+            if (!item._viewPaymentOption) item._viewPaymentOption = viewPaymentOption;
+          }
+          console.log(`[pos-multi-receipt-print] Set _viewPaymentOption="${viewPaymentOption}" from ViewReceipt`);
+        }
+        if (outstandingAmount != null) {
+          for (const item of items) {
+            item.outstandingAmount = outstandingAmount;
+          }
+          console.log(`[pos-multi-receipt-print] Set outstandingAmount=${outstandingAmount} from ViewReceipt`);
+        }
+        const viewTenderAmount = vm.tenderAmount ?? vm.tender_amount ?? null;
+        const viewChangeAmount = vm.changeAmount ?? vm.change_amount ?? null;
+        if (viewTenderAmount != null) {
+          for (const item of items) item.tenderAmount = viewTenderAmount;
+        }
+        if (viewChangeAmount != null) {
+          for (const item of items) item.changeAmount = viewChangeAmount;
         }
       }
 

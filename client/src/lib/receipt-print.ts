@@ -50,15 +50,25 @@ function fmtDate(dateStr: string | undefined | null): string {
   }
 }
 
+const PAYMENT_METHOD_NAMES = ['cash', 'eft', 'credit card', 'card', 'cheque', 'postal order', 'debit order'];
+
+function isPaymentMethodName(str: string): boolean {
+  if (!str) return false;
+  return PAYMENT_METHOD_NAMES.some(m => str.toLowerCase().trim() === m);
+}
+
 function getPaymentTypeName(payMode: string | null | undefined, paymentTypeId: number | null | undefined): string {
-  if (payMode && payMode.trim()) return payMode;
+  if (payMode && payMode.trim() && isPaymentMethodName(payMode)) return payMode.trim();
   switch (paymentTypeId) {
     case 1: return 'Cash';
     case 2: return 'EFT';
     case 3: return 'Credit Card';
     case 4: return 'Postal Order';
     case 5: return 'EFT';
-    default: return paymentTypeId ? `Type ${paymentTypeId}` : '';
+    default: {
+      if (payMode && payMode.trim()) return payMode.trim();
+      return paymentTypeId ? `Type ${paymentTypeId}` : '';
+    }
   }
 }
 
@@ -83,10 +93,15 @@ function getPaymentOptionName(billTypeId: number | null | undefined, billType: s
 
 export function buildReceiptDataFromMultiPrint(items: PosMultiReceiptPrintItem[], muniInfo?: MunicipalityInfo): ReceiptPrintData {
   if (!items || items.length === 0) return {};
-  const first = items[0];
+  const first = items[0] as any;
 
   const services = items
-    .filter(i => (i.amount ?? 0) !== 0 || (i.billType && i.billType.trim()))
+    .filter(i => {
+      const desc = (i.billType || '').trim();
+      if (!desc && (i.amount ?? 0) === 0) return false;
+      if (isPaymentMethodName(desc)) return false;
+      return true;
+    })
     .map(i => ({
       description: i.billType || '',
       amount: i.amount ?? 0,
@@ -94,6 +109,12 @@ export function buildReceiptDataFromMultiPrint(items: PosMultiReceiptPrintItem[]
 
   const totalFromServices = services.reduce((sum, s) => sum + (s.amount || 0), 0);
   const totalVat = items.reduce((sum, i) => sum + (i.vatAmount ?? 0), 0);
+
+  const viewPaymentOption = first._viewPaymentOption || '';
+
+  const total = (first.tenderAmount && first.tenderAmount > 0)
+    ? first.tenderAmount
+    : (totalFromServices > 0 ? totalFromServices : items.reduce((sum, i) => sum + (i.amount ?? 0), 0));
 
   return {
     receiptNo: first.receiptNo || '',
@@ -106,13 +127,13 @@ export function buildReceiptDataFromMultiPrint(items: PosMultiReceiptPrintItem[]
     municipalityName: muniInfo?.name || '',
     municipalityAddress: muniInfo ? [muniInfo.address1, muniInfo.address2, muniInfo.address3].filter(Boolean).join('\n') : '',
     vatRegNumber: muniInfo?.vatNo || '',
-    totalAmount: totalFromServices > 0 ? totalFromServices : (first.tenderAmount ?? 0),
+    totalAmount: total,
     tenderAmount: first.tenderAmount ?? 0,
     changeAmount: first.changeAmount ?? 0,
     outstandingBalance: first.outstandingAmount ?? 0,
     vatAmount: totalVat,
     paymentType: getPaymentTypeName(first.payMode, first.paymentTypeId),
-    paymentOption: getPaymentOptionName(first.billTypeId, first.billType),
+    paymentOption: viewPaymentOption || getPaymentOptionName(first.billTypeId, first.billType),
     cashierName: first.cashierName || '',
     cashOffice: first.cashOfficeName || '',
     services,
@@ -149,7 +170,7 @@ export function generateReceiptHtml(data: ReceiptPrintData, isReprint: boolean =
   const reprintLabel = isReprint ? `<tr><td colspan="2" class="center bold reprint-label">Reprint</td></tr><tr><td colspan="2">&nbsp;</td></tr>` : '';
 
   const accountAddr = data.address || '';
-  const addressFormatted = accountAddr ? accountAddr.split(/[,\n]/).map(l => l.trim()).filter(Boolean).join('<br/>') : '';
+  const addressFormatted = accountAddr ? accountAddr.split(/[\r\n]+/).map(l => l.trim()).filter(Boolean).join('<br/>') : '';
 
   return `<!DOCTYPE html>
 <html><head><title>Receipt ${receiptNo}</title>
