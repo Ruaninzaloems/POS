@@ -1614,8 +1614,26 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 const isCardPayment = paymentTypeId === 3;
                 const isMultiAccount = perAccountPayments.length > 1;
                 const r2 = (v: number) => Math.round(v * 100) / 100;
-                const totalPaymentAmount = r2(perAccountPayments.reduce((s, p) => s + p.itemPayment, 0));
+                const rawPaymentSum = r2(perAccountPayments.reduce((s, p) => s + p.itemPayment, 0));
                 const effectiveReceiptDate = receiptDateOverride || formattedReceiptDate;
+
+                let roundingAdjustment = 0;
+                let roundingAccountName = '';
+                if (!isCardPayment && isMultiAccount) {
+                    const roundedUp = Math.ceil(rawPaymentSum * 10) / 10;
+                    roundingAdjustment = r2(roundedUp - rawPaymentSum);
+                    if (roundingAdjustment > 0) {
+                        perAccountPayments[0].itemPayment = r2(perAccountPayments[0].itemPayment + roundingAdjustment);
+                        roundingAccountName = perAccountPayments[0].acct.name || perAccountPayments[0].acct.accountNumber || '';
+                        console.log(`[Priority 1] 10c rounding adjustment: +R${roundingAdjustment.toFixed(2)} applied to ${roundingAccountName} (${perAccountPayments[0].acct.account_ID}). Raw sum R${rawPaymentSum} → Rounded R${roundedUp}`);
+                        toast({
+                            title: '10c Rounding Applied',
+                            description: `+R ${roundingAdjustment.toFixed(2)} added to ${roundingAccountName} (total rounded R ${rawPaymentSum.toFixed(2)} → R ${roundedUp.toFixed(2)})`,
+                            duration: 8000,
+                        });
+                    }
+                }
+                const totalPaymentAmount = r2(perAccountPayments.reduce((s, p) => s + p.itemPayment, 0));
 
                 if (isMultiAccount) {
                     const submitAccounts = perAccountPayments.map(({ acct, itemPayment, acctOutstanding }) => {
@@ -1699,32 +1717,19 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         const acctLabel = acct.name || acct.accountNumber || acct.account_ID;
                         setProcessingStep(`Processing account ${i + 1} of ${perAccountPayments.length} — ${acctLabel} (R ${itemPayment.toFixed(2)})...`);
 
-                        const requestModel: any = isCardPayment ? {
+                        const requestModel: any = {
                             finYear,
                             receiptDate: effectiveReceiptDate,
-                            totalAmount: itemPayment,
-                            tenderAmount: 0,
-                            changeAmount: 0,
-                            paymentType: 3,
-                            cardNumber: record.payment.cardReference || '',
-                            expiryDate: formatCardExpiry(record.payment.cardExpiry),
-                            processingMonth: null,
-                            outStandingAmount: acctOutstanding,
-                            paymentOption: paymentOptionId,
-                        } : {
-                            finYear,
-                            receiptDate: effectiveReceiptDate,
-                            totalAmount: itemPayment,
-                            tenderAmount: tenderAmt,
-                            changeAmount: changeAmt,
+                            totalAmount: r2(itemPayment),
+                            tenderAmount: isCardPayment ? 0 : r2(tenderAmt),
+                            changeAmount: isCardPayment ? 0 : r2(changeAmt),
                             paymentType: paymentTypeId,
-                            paymentOption: paymentOptionId,
-                            outStandingAmount: acctOutstanding,
-                            cardNumber: '',
-                            expiryDate: '',
+                            cardNumber: isCardPayment ? (record.payment.cardReference || '') : '',
+                            expiryDate: isCardPayment ? formatCardExpiry(record.payment.cardExpiry) : '',
+                            processingMonth: 0,
+                            outStandingAmount: r2(acctOutstanding),
                             chequeNumber: '',
-                            chequeDate: null,
-                            processingMonth: null,
+                            chequeDate: effectiveReceiptDate,
                             accountHolderName: acct.name || '',
                             bankName: '',
                             bankBranchCode: '',
@@ -1733,9 +1738,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             cutOffAmount: acct.cutOffAmount ?? 0,
                             debtAmount: acct.debtAmount ?? 0,
                             sundryDebtorsId: String(acct.sundryDebtorsId ?? ''),
-                            apiTransactionID: 0,
-                            isReconciled: 0,
-                            isCancelled: 0,
+                            paymentOption: paymentOptionId,
                         };
 
                         console.log(`[Priority 1 ${label}] Submitting SINGLE consumer payment for account ${acct.account_ID} (${acct.name}), PAYMENT amount: R${itemPayment}, outStandingAmount(fullBalance): R${acctOutstanding}, paymentType: ${paymentTypeId}`);
