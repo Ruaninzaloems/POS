@@ -805,8 +805,15 @@ export async function registerRoutes(
         console.log(`[submit-multiple-payment] account: account_ID=${acct.account_ID}, accountNumber=${acct.accountNumber}, name=${acct.name}, outStandingAmt=${acct.outStandingAmt}, billId=${acct.billId}`);
       }
       console.log(`[submit-multiple-payment] requestModel: finYear=${rm.finYear}, receiptDate=${rm.receiptDate}, totalAmount=${rm.totalAmount}, tenderAmount=${rm.tenderAmount}, changeAmount=${rm.changeAmount}, paymentType=${rm.paymentType}, paymentOption=${rm.paymentOption}, outStandingAmount=${rm.outStandingAmount}, cardNumber=${rm.cardNumber ? '***' + rm.cardNumber.slice(-4) : '(empty)'}`);
+      const invalidAccounts = accounts.filter((a: any) => !a.accountID || a.accountID === 0);
+      if (invalidAccounts.length > 0) {
+        console.error(`[submit-multiple-payment] BLOCKED: ${invalidAccounts.length} account(s) have accountID=0 or missing`, invalidAccounts.map((a: any) => a.name || a.accountNumber));
+        res.status(400).json({ isSuccess: false, message: `${invalidAccounts.length} account(s) have invalid Account IDs (0 or missing): ${invalidAccounts.map((a: any) => a.name || a.accountNumber || 'unknown').join(', ')}. Remove them from the cart and retry.` });
+        return;
+      }
       console.log(`[submit-multiple-payment] full payload:`, JSON.stringify(body, null, 2).substring(0, 3000));
-      const data = await platinumPost(session, `/api/billing-payment/submit-multiple-payment/${userId}`, body);
+      const timeoutMs = Math.max(60000, accounts.length * 8000);
+      const data = await platinumPost(session, `/api/billing-payment/submit-multiple-payment/${userId}`, body, undefined, { timeout: timeoutMs });
       console.log(`[submit-multiple-payment] response (full):`, JSON.stringify(data).substring(0, 2000));
       handlePlatinumResult(res, data);
     } catch (e: any) {

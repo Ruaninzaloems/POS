@@ -1617,9 +1617,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
                 if (isMultiAccount) {
                     const submitAccounts = perAccountPayments.map(({ acct, itemPayment, acctOutstanding }) => {
+                        const acctIdVal = Number(acct.account_ID || acct.accountID || 0);
+                        if (!acctIdVal) {
+                            console.error(`[Priority 1] Account has invalid ID (0): name=${acct.name}, accountNumber=${acct.accountNumber}`);
+                        }
                         const mapped: any = {
                             capturerID: sessionUserId,
-                            accountID: acct.account_ID || acct.accountID || 0,
+                            accountID: acctIdVal,
                             oldAccountCode: acct.oldAccountCode || '',
                             name: acct.name || '',
                             sgNumber: acct.erfNumber || '',
@@ -1638,6 +1642,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         }
                         return mapped;
                     });
+
+                    const badAccounts = submitAccounts.filter(a => !a.accountID);
+                    if (badAccounts.length > 0) {
+                        const names = badAccounts.map(a => a.name || a.accountNumber || 'unknown').join(', ');
+                        throw new Error(`${badAccounts.length} account(s) have invalid Account IDs: ${names}. Remove them from the cart and retry.`);
+                    }
 
                     const totalFullOutstanding = perAccountPayments.reduce((s, p) => s + p.acctOutstanding, 0);
                     const requestModel: any = isCardPayment ? {
