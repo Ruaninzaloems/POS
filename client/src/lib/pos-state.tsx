@@ -207,7 +207,7 @@ function formatCardExpiry(exp: string): string {
     const [mm, yyyy] = parts;
     const month = mm.padStart(2, '0');
     if (yyyy.length === 4 && parseInt(month) >= 1 && parseInt(month) <= 12) {
-      return `${yyyy}-${month}-01T00:00:00`;
+      return `${yyyy}-${month}-15`;
     }
   }
   return clean;
@@ -1672,12 +1672,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         outStandingAmount: totalFullOutstanding,
                         cardNumber: isCardPayment ? (record.payment.cardReference || '') : '',
                         expiryDate: isCardPayment ? formatCardExpiry(record.payment.cardExpiry) : '',
-                        chequeNumber: isCardPayment ? null : '',
+                        chequeNumber: '',
                         chequeDate: null,
                         processingMonth: null,
                         accountHolderName: submitAccounts[0]?.name || '',
-                        bankName: isCardPayment ? null : '',
-                        bankBranchCode: isCardPayment ? null : '',
+                        bankName: '',
+                        bankBranchCode: '',
                         cutOffID: 0,
                         debtArrangementId: 0,
                         cutOffAmount: 0,
@@ -1724,12 +1724,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             outStandingAmount: acctOutstanding,
                             cardNumber: isCardPayment ? (record.payment.cardReference || '') : '',
                             expiryDate: isCardPayment ? formatCardExpiry(record.payment.cardExpiry) : '',
-                            chequeNumber: isCardPayment ? null : '',
+                            chequeNumber: '',
                             chequeDate: null,
                             processingMonth: null,
                             accountHolderName: acct.name || '',
-                            bankName: isCardPayment ? null : '',
-                            bankBranchCode: isCardPayment ? null : '',
+                            bankName: '',
+                            bankBranchCode: '',
                             cutOffID: acct.cutOffID ?? 0,
                             debtArrangementId: acct.debtArrangementId ?? 0,
                             cutOffAmount: acct.cutOffAmount ?? 0,
