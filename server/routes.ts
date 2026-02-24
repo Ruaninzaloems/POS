@@ -734,12 +734,23 @@ export async function registerRoutes(
       if (rm.isReconciled === undefined || rm.isReconciled === null) rm.isReconciled = 0;
       if (rm.isCancelled === undefined || rm.isCancelled === null) rm.isCancelled = 0;
 
-      console.log(`[submit-consumer-payment] userId=${userId}`);
+      if (rm.expiryDate === '' || rm.expiryDate === undefined) rm.expiryDate = null;
+      if (rm.chequeNumber === '' || rm.chequeNumber === undefined) rm.chequeNumber = null;
+      if (rm.chequeDate === '' || rm.chequeDate === undefined) rm.chequeDate = null;
+      if (rm.processingMonth === '' || rm.processingMonth === undefined) rm.processingMonth = null;
+      if (rm.bankName === '' || rm.bankName === undefined) rm.bankName = null;
+      if (rm.bankBranchCode === '' || rm.bankBranchCode === undefined) rm.bankBranchCode = null;
+
+      if (rm.paymentType === 3 && !rm.cardNumber) {
+        console.warn(`[submit-consumer-payment] WARNING: Card payment (paymentType=3) but cardNumber is empty!`);
+      }
+
+      console.log(`[submit-consumer-payment] userId=${userId}, paymentType=${rm.paymentType}`);
       console.log(`[submit-consumer-payment] account: account_ID=${acct.account_ID}, accountNumber=${acct.accountNumber}, name=${acct.name}, outStandingAmt=${acct.outStandingAmt}, billId=${acct.billId}, cutOffID=${acct.cutOffID}, cutOffAmount=${acct.cutOffAmount}, debtAmount=${acct.debtAmount}, debtArrangementId=${acct.debtArrangementId}, sundryDebtorsId=${acct.sundryDebtorsId}, billingCycleId=${acct.billingCycleId}`);
-      console.log(`[submit-consumer-payment] requestModel: finYear=${rm.finYear}, receiptDate=${rm.receiptDate}, totalAmount=${rm.totalAmount}, tenderAmount=${rm.tenderAmount}, changeAmount=${rm.changeAmount}, paymentType=${rm.paymentType}, paymentOption=${rm.paymentOption}, outStandingAmount=${rm.outStandingAmount}, cutOffID=${rm.cutOffID}, cutOffAmount=${rm.cutOffAmount}, debtAmount=${rm.debtAmount}, debtArrangementId=${rm.debtArrangementId}, sundryDebtorsId=${rm.sundryDebtorsId}, cardNumber=${rm.cardNumber ? '***' : '(empty)'}, apiTransactionID=${rm.apiTransactionID}, isReconciled=${rm.isReconciled}, isCancelled=${rm.isCancelled}`);
+      console.log(`[submit-consumer-payment] requestModel: finYear=${rm.finYear}, receiptDate=${rm.receiptDate}, totalAmount=${rm.totalAmount}, tenderAmount=${rm.tenderAmount}, changeAmount=${rm.changeAmount}, paymentType=${rm.paymentType}, paymentOption=${rm.paymentOption}, outStandingAmount=${rm.outStandingAmount}, cutOffID=${rm.cutOffID}, cutOffAmount=${rm.cutOffAmount}, debtAmount=${rm.debtAmount}, debtArrangementId=${rm.debtArrangementId}, sundryDebtorsId=${rm.sundryDebtorsId}, cardNumber=${rm.cardNumber ? '***' + rm.cardNumber.slice(-4) : '(empty)'}, apiTransactionID=${rm.apiTransactionID}, isReconciled=${rm.isReconciled}, isCancelled=${rm.isCancelled}`);
       console.log(`[submit-consumer-payment] full payload:`, JSON.stringify(body, null, 2));
       const data = await platinumPost(session, `/api/billing-payment/submit-consumer-payment/${userId}`, body);
-      console.log(`[submit-consumer-payment] response:`, JSON.stringify(data));
+      console.log(`[submit-consumer-payment] response (full):`, JSON.stringify(data));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       console.error(`[submit-consumer-payment] Error:`, e.message);
@@ -759,18 +770,25 @@ export async function registerRoutes(
       if (rm.isReconciled === undefined || rm.isReconciled === null) rm.isReconciled = 0;
       if (rm.isCancelled === undefined || rm.isCancelled === null) rm.isCancelled = 0;
 
+      if (rm.expiryDate === '' || rm.expiryDate === undefined) rm.expiryDate = null;
+      if (rm.chequeNumber === '' || rm.chequeNumber === undefined) rm.chequeNumber = null;
+      if (rm.chequeDate === '' || rm.chequeDate === undefined) rm.chequeDate = null;
+      if (rm.processingMonth === '' || rm.processingMonth === undefined) rm.processingMonth = null;
+      if (rm.bankName === '' || rm.bankName === undefined) rm.bankName = null;
+      if (rm.bankBranchCode === '' || rm.bankBranchCode === undefined) rm.bankBranchCode = null;
+
       for (const acct of accounts) {
         if (acct.billId === 0) acct.billId = null;
       }
 
-      console.log(`[submit-multiple-payment] userId=${userId}, ${accounts.length} account(s)`);
+      console.log(`[submit-multiple-payment] userId=${userId}, ${accounts.length} account(s), paymentType=${rm.paymentType}`);
       for (const acct of accounts) {
         console.log(`[submit-multiple-payment] account: account_ID=${acct.account_ID}, accountNumber=${acct.accountNumber}, name=${acct.name}, outStandingAmt=${acct.outStandingAmt}, billId=${acct.billId}`);
       }
-      console.log(`[submit-multiple-payment] requestModel: finYear=${rm.finYear}, receiptDate=${rm.receiptDate}, totalAmount=${rm.totalAmount}, tenderAmount=${rm.tenderAmount}, changeAmount=${rm.changeAmount}, paymentType=${rm.paymentType}, paymentOption=${rm.paymentOption}, outStandingAmount=${rm.outStandingAmount}, cardNumber=${rm.cardNumber ? '***' : '(empty)'}`);
+      console.log(`[submit-multiple-payment] requestModel: finYear=${rm.finYear}, receiptDate=${rm.receiptDate}, totalAmount=${rm.totalAmount}, tenderAmount=${rm.tenderAmount}, changeAmount=${rm.changeAmount}, paymentType=${rm.paymentType}, paymentOption=${rm.paymentOption}, outStandingAmount=${rm.outStandingAmount}, cardNumber=${rm.cardNumber ? '***' + rm.cardNumber.slice(-4) : '(empty)'}`);
       console.log(`[submit-multiple-payment] full payload:`, JSON.stringify(body, null, 2).substring(0, 3000));
       const data = await platinumPost(session, `/api/billing-payment/submit-multiple-payment/${userId}`, body);
-      console.log(`[submit-multiple-payment] response:`, JSON.stringify(data).substring(0, 2000));
+      console.log(`[submit-multiple-payment] response (full):`, JSON.stringify(data).substring(0, 2000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       console.error(`[submit-multiple-payment] Error:`, e.message);

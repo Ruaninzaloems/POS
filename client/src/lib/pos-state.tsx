@@ -1638,19 +1638,19 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         finYear,
                         receiptDate: effectiveReceiptDate,
                         totalAmount: totalPaymentAmount,
-                        tenderAmount: tenderAmt,
-                        changeAmount: changeAmt,
+                        tenderAmount: isCardPayment ? totalPaymentAmount : tenderAmt,
+                        changeAmount: isCardPayment ? 0 : changeAmt,
                         paymentType: paymentTypeId,
                         paymentOption: paymentOptionId,
                         outStandingAmount: totalFullOutstanding,
-                        cardNumber: isCardPayment ? (record.payment.cardReference || '') : '',
-                        expiryDate: '',
-                        chequeNumber: '',
+                        cardNumber: isCardPayment ? (record.payment.cardReference || '') : null,
+                        expiryDate: null,
+                        chequeNumber: null,
                         chequeDate: null,
                         processingMonth: null,
                         accountHolderName: submitAccounts[0]?.name || '',
-                        bankName: '',
-                        bankBranchCode: '',
+                        bankName: null,
+                        bankBranchCode: null,
                         cutOffID: 0,
                         debtArrangementId: 0,
                         cutOffAmount: 0,
@@ -1690,19 +1690,19 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             finYear,
                             receiptDate: effectiveReceiptDate,
                             totalAmount: itemPayment,
-                            tenderAmount: tenderAmt,
-                            changeAmount: changeAmt,
+                            tenderAmount: isCardPayment ? itemPayment : tenderAmt,
+                            changeAmount: isCardPayment ? 0 : changeAmt,
                             paymentType: paymentTypeId,
                             paymentOption: paymentOptionId,
                             outStandingAmount: acctOutstanding,
-                            cardNumber: isCardPayment ? (record.payment.cardReference || '') : '',
-                            expiryDate: '',
-                            chequeNumber: '',
+                            cardNumber: isCardPayment ? (record.payment.cardReference || '') : null,
+                            expiryDate: null,
+                            chequeNumber: null,
                             chequeDate: null,
                             processingMonth: null,
                             accountHolderName: acct.name || '',
-                            bankName: '',
-                            bankBranchCode: '',
+                            bankName: null,
+                            bankBranchCode: null,
                             cutOffID: acct.cutOffID ?? 0,
                             debtArrangementId: acct.debtArrangementId ?? 0,
                             cutOffAmount: acct.cutOffAmount ?? 0,
@@ -1721,11 +1721,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             account: submitAccount,
                             requestModel,
                         });
-                        console.log(`[Priority 1 ${label}] submit-consumer-payment response for account ${acct.account_ID}:`, result);
+                        console.log(`[Priority 1 ${label}] submit-consumer-payment response for account ${acct.account_ID}:`, JSON.stringify(result));
                         if (result && result.isSuccess === false) {
                             const apiDetail = result.message || result.detail || result.error || result.statusText || '';
-                            const reason = apiDetail || `API rejected payment — no error message. Account=${acct.accountNumber || acct.account_ID}, PaymentType=${paymentTypeId}${paymentTypeId === 3 ? ' (Card)' : ' (Cash)'}, Amount=R${itemPayment}`;
-                            console.error(`[Priority 1 ${label}] SUBMIT FAILED for account ${acct.account_ID}:`, JSON.stringify(result));
+                            const fullResponse = JSON.stringify(result).substring(0, 500);
+                            const reason = apiDetail || `API rejected payment — no error message. Account=${acct.accountNumber || acct.account_ID}, PaymentType=${paymentTypeId}${paymentTypeId === 3 ? ' (Card)' : ' (Cash)'}, Amount=R${itemPayment}. Response: ${fullResponse}`;
+                            console.error(`[Priority 1 ${label}] SUBMIT FAILED for account ${acct.account_ID}:`, fullResponse);
                             throw new Error(reason);
                         }
                         const ids = extractReceiptIds(result);
