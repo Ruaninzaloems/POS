@@ -9,7 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { useLocation } from 'wouter';
 import { Loader2, AlertTriangle, CheckCircle2, Circle, ShieldCheck, CreditCard, Banknote, XCircle, RefreshCw } from 'lucide-react';
-import { platinumGetCashOffices, fetchCashierPaymentOptions, fetchCashierPaymentTypes, validateReceiptRange, CashierPaymentOption, CashierPaymentType, ReceiptRangeValidation, fetchActiveCashierByUserId, fetchPlatinumUserInfo, platinumSubmitCashierSetup } from '@/lib/external-api';
+import { platinumGetCashOffices, fetchCashierPaymentOptions, fetchCashierPaymentTypes, validateReceiptRange, CashierPaymentOption, CashierPaymentType, ReceiptRangeValidation, fetchActiveCashierByUserId, fetchPlatinumUserInfo, platinumSubmitCashierSetup, platinumValidateCashierDayEndRecon } from '@/lib/external-api';
 
 interface CashOfficeViewModel {
     cashOffice_ID: number;
@@ -58,6 +58,7 @@ export default function CashierSetup() {
 
     const [setupComplete, setSetupComplete] = useState(false);
     const [resumingSession, setResumingSession] = useState(false);
+    const [dayEndCompleted, setDayEndCompleted] = useState(false);
     const [defaultOfficeId, setDefaultOfficeId] = useState<string>('');
 
     useEffect(() => {
@@ -90,9 +91,28 @@ export default function CashierSetup() {
 
                     if (data.isActive === true && data.officeId) {
                         console.log(`[CashierSetup] validate-cashier API confirms session is active (POS_Cashier.IsActive=1) at office ${data.officeName} (ID: ${data.officeId})`);
-                        setResumingSession(true);
-                        setStep2Status('success');
-                        setStep3Status('pending');
+
+                        let isDayEndDone = false;
+                        try {
+                            const dayEndResult = await platinumValidateCashierDayEndRecon({
+                                userId: String(userId),
+                                finYear: finYear || '2025/2026',
+                            });
+                            isDayEndDone = dayEndResult === true || dayEndResult === 'true';
+                            console.log(`[CashierSetup] ValidateCashierDayEndRecon result: ${dayEndResult} — isDayEndDone=${isDayEndDone}`);
+                        } catch (e) {
+                            console.warn(`[CashierSetup] Failed to check day-end recon status`, e);
+                        }
+
+                        if (isDayEndDone) {
+                            console.log(`[CashierSetup] Day-end completed — NOT offering resume. Cashier must start a new session.`);
+                            setDayEndCompleted(true);
+                            setResumingSession(false);
+                        } else {
+                            setResumingSession(true);
+                            setStep2Status('success');
+                            setStep3Status('pending');
+                        }
                     }
 
                     const currentOfficeId = data.officeId || data.details?.officeId;
@@ -375,8 +395,8 @@ export default function CashierSetup() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 flex items-center justify-center p-4" data-testid="cashier-setup-page">
-            <Card className="w-full max-w-2xl rounded-2xl shadow-xl shadow-black/5 border-slate-200/80 bg-white overflow-hidden">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 flex items-start sm:items-center justify-center p-4 py-6 overflow-y-auto" data-testid="cashier-setup-page">
+            <Card className="w-full max-w-2xl rounded-2xl shadow-xl shadow-black/5 border-slate-200/80 bg-white overflow-hidden my-auto sm:my-0">
                 <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4">
                     <CardTitle className="text-white text-lg">Cashier Setup</CardTitle>
                 </CardHeader>
@@ -407,7 +427,9 @@ export default function CashierSetup() {
                                 <p className="font-medium text-green-800">Cashier Validated</p>
                                 <p className="text-sm text-green-700 mt-1">
                                     User <strong>{`${firstName} ${lastName}`.trim() || currentUser.name}</strong> (User ID: {userId}) is registered as a cashier.
-                                    {resumingSession
+                                    {dayEndCompleted
+                                        ? ' A day-end reconciliation has been completed. Please start a new session below.'
+                                        : resumingSession
                                         ? ' An active session was found (verified via validate-cashier API — POS_Cashier.IsActive=1). You can resume it or start a new one below.'
                                         : ' Select your cash office and float amount below.'}
                                 </p>
@@ -415,7 +437,23 @@ export default function CashierSetup() {
                         </div>
                     )}
 
-                    {resumingSession && cashierDetails && (
+                    {dayEndCompleted && (
+                        <div className="mb-6 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6" data-testid="day-end-completed-section">
+                            <div className="flex items-start gap-3">
+                                <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+                                    <AlertTriangle className="h-5 w-5 text-amber-600" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="font-medium text-amber-800">Day-End Reconciliation Completed</p>
+                                    <p className="text-sm text-amber-700 mt-1">
+                                        Your previous session has been reconciled. Please start a new session by selecting your cash office and float amount below.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {resumingSession && cashierDetails && !dayEndCompleted && (
                         <div className="mb-6 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6" data-testid="resume-session-section">
                             <div className="flex items-start gap-3">
                                 <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5">

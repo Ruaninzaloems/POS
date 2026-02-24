@@ -507,7 +507,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
       if (item) {
           // Wrap in a container to maintain layout
           return (
-              <div className="flex-1 p-3 sm:p-6 overflow-y-auto bg-gradient-to-br from-slate-50 to-blue-50/30">
+              <div className="flex-1 p-3 sm:p-6 bg-gradient-to-br from-slate-50 to-blue-50/30">
                   <div className="max-w-[1200px] mx-auto space-y-4 sm:space-y-6">
                       <AccountEnquiryView item={item} />
                   </div>
@@ -638,7 +638,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
   if (activeTransactionType === 'MULTI_ACCOUNT') {
       const allReady = transactionItems.length > 0 && itemsMissing.length === 0;
       return (
-          <div className="flex-1 p-3 sm:p-6 overflow-y-auto bg-muted/10">
+          <div className="flex-1 p-3 sm:p-6 bg-muted/10">
               <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                     <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
@@ -940,7 +940,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
 
   // Single Item Views
   return (
-    <div className="flex-1 p-3 sm:p-6 overflow-y-auto bg-gradient-to-br from-slate-50 to-blue-50/30"> 
+    <div className="flex-1 p-3 sm:p-6 bg-gradient-to-br from-slate-50 to-blue-50/30"> 
       <div className="max-w-[1200px] mx-auto space-y-4 sm:space-y-6"> 
         
         {/* Header Badge */}
