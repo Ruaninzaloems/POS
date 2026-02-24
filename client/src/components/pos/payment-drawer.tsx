@@ -57,11 +57,17 @@ export function PaymentDrawer() {
 
   const totalDue = useMemo(() => transactionItems.reduce((acc, i) => acc + i.amountToPay, 0), [transactionItems]);
 
+  const cardFieldsValid = payment.cardAmount > 0
+    ? (!!payment.cardReference && payment.cardReference.trim().length >= 4) &&
+      (!!payment.cardExpiry && /^\d{2}\/\d{2}$/.test(payment.cardExpiry.trim()))
+    : true;
+
   const isCompleteEnabled = 
     transactionItems.length > 0 && 
     payment.tenderTotal >= totalDue &&
     totalDue > 0 &&
     dayEndStatus === 'OPEN' &&
+    cardFieldsValid &&
     transactionItems.every(item => {
         if (item.type === 'DIRECT_INCOME') {
             return (!!item.paidBy && item.paidBy.trim().length > 0) && 
@@ -328,6 +334,8 @@ export function PaymentDrawer() {
         >
           {shortfall > 0 ? (
             <>R {shortfall.toFixed(2)} still needed</>
+          ) : !cardFieldsValid ? (
+            <>Card number & expiry required</>
           ) : (
             <>
               COMPLETE (R {payment.tenderTotal.toFixed(2)})
@@ -967,26 +975,36 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
       {payment.cardAmount > 0 && (
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <Label className="text-[10px] text-slate-400 mb-0.5 flex items-center gap-1">Card Number <HelpTip text="Enter the full card number from the card machine slip." /></Label>
+            <Label className="text-[10px] text-slate-400 mb-0.5 flex items-center gap-1">Card Number <span className="text-red-500">*</span> <HelpTip text="Enter the full card number from the card machine slip." /></Label>
             <Input
               type="text"
               placeholder="Card number"
               value={payment.cardReference}
-              onChange={(e) => setCardReference(e.target.value)}
-              className="h-9 font-mono text-sm"
+              onChange={(e) => {
+                const val = e.target.value.replace(/[^0-9]/g, '');
+                setCardReference(val);
+              }}
+              className={`h-9 font-mono text-sm ${payment.cardReference && payment.cardReference.trim().length < 4 ? 'border-red-400 ring-1 ring-red-200' : ''}`}
               data-testid="input-card-reference"
+              inputMode="numeric"
             />
           </div>
           <div>
-            <Label className="text-[10px] text-slate-400 mb-0.5 flex items-center gap-1">Expiry <HelpTip text="Card expiry date in MM/YY format from the card slip." /></Label>
+            <Label className="text-[10px] text-slate-400 mb-0.5 flex items-center gap-1">Expiry <span className="text-red-500">*</span> <HelpTip text="Card expiry date in MM/YY format from the card slip." /></Label>
             <Input
               type="text"
               placeholder="MM/YY"
               value={payment.cardExpiry}
-              onChange={(e) => setCardExpiry(e.target.value)}
-              className="h-9 font-mono text-sm"
+              onChange={(e) => {
+                let val = e.target.value.replace(/[^0-9/]/g, '');
+                if (val.length === 2 && !val.includes('/') && payment.cardExpiry.length < 3) val += '/';
+                if (val.length > 5) val = val.slice(0, 5);
+                setCardExpiry(val);
+              }}
+              className={`h-9 font-mono text-sm ${payment.cardExpiry && !/^\d{2}\/\d{2}$/.test(payment.cardExpiry) ? 'border-red-400 ring-1 ring-red-200' : ''}`}
               data-testid="input-card-expiry"
-              maxLength={7}
+              maxLength={5}
+              inputMode="numeric"
             />
           </div>
         </div>
@@ -1263,26 +1281,36 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                 {payment.cardAmount > 0 && (
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <Label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">Card Number <HelpTip text="Enter the full card number from the card machine slip." /></Label>
+                      <Label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">Card Number <span className="text-red-500">*</span> <HelpTip text="Enter the full card number from the card machine slip." /></Label>
                       <Input
                         type="text"
                         placeholder="Card number"
                         value={payment.cardReference}
-                        onChange={(e) => setCardReference(e.target.value)}
-                        className="h-10 font-mono text-sm"
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          setCardReference(val);
+                        }}
+                        className={`h-10 font-mono text-sm ${payment.cardReference && payment.cardReference.trim().length < 4 ? 'border-red-400 ring-1 ring-red-200' : ''}`}
                         data-testid="input-card-reference"
+                        inputMode="numeric"
                       />
                     </div>
                     <div>
-                      <Label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">Card Expiry <HelpTip text="Card expiry date in MM/YY format from the card slip." /></Label>
+                      <Label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">Card Expiry <span className="text-red-500">*</span> <HelpTip text="Card expiry date in MM/YY format from the card slip." /></Label>
                       <Input
                         type="text"
                         placeholder="MM/YY"
                         value={payment.cardExpiry}
-                        onChange={(e) => setCardExpiry(e.target.value)}
-                        className="h-10 font-mono text-sm"
+                        onChange={(e) => {
+                          let val = e.target.value.replace(/[^0-9/]/g, '');
+                          if (val.length === 2 && !val.includes('/') && payment.cardExpiry.length < 3) val += '/';
+                          if (val.length > 5) val = val.slice(0, 5);
+                          setCardExpiry(val);
+                        }}
+                        className={`h-10 font-mono text-sm ${payment.cardExpiry && !/^\d{2}\/\d{2}$/.test(payment.cardExpiry) ? 'border-red-400 ring-1 ring-red-200' : ''}`}
                         data-testid="input-card-expiry-desktop"
-                        maxLength={7}
+                        maxLength={5}
+                        inputMode="numeric"
                       />
                     </div>
                   </div>

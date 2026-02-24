@@ -1538,7 +1538,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 typeOfUseDesc: orig.typeOfUseDesc || '',
                 zoneDesc: orig.zoneDesc || '',
                 outStandingAmt: fullOutstanding,
-                billId: orig.billId ?? 0,
+                billId: orig.billId ?? null,
                 certificateNo: orig.certificateNo || '',
                 clearance_ID: orig.clearance_ID ?? null,
                 clearanceAmount: orig.clearanceAmount ?? 0,
@@ -1659,7 +1659,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         const { _userAmountToPay: _, sundryDebtorsId: _sd, ...base } = acct;
                         base.outStandingAmt = acctOutstanding || base.outStandingAmt || itemPayment;
                         base.paymentAmount = itemPayment;
-                        base.billId = base.billId ?? 0;
+                        base.billId = null;
                         return isCardPayment
                             ? base
                             : { ...base, sundryDebtorsId: acct.sundryDebtorsId ?? '' };
@@ -1773,7 +1773,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
                         const { _userAmountToPay: _, sundryDebtorsId: _sd, ...submitAccountBase } = acct;
                         submitAccountBase.outStandingAmt = itemPayment;
-                        submitAccountBase.billId = submitAccountBase.billId ?? 0;
+                        submitAccountBase.billId = null;
                         const submitAccount = isCardPayment
                             ? submitAccountBase
                             : { ...submitAccountBase, sundryDebtorsId: acct.sundryDebtorsId ?? '' };

@@ -730,7 +730,6 @@ export async function registerRoutes(
       const rm = body?.requestModel || {};
 
       const isCard = rm.paymentType === 'CreditCard' || rm.paymentType === 3;
-      if (!isCard && acct.billId === 0) acct.billId = null;
       if (rm.apiTransactionID === undefined) rm.apiTransactionID = 0;
       if (rm.isReconciled === undefined || rm.isReconciled === null) rm.isReconciled = 0;
       if (rm.isCancelled === undefined || rm.isCancelled === null) rm.isCancelled = 0;
@@ -765,9 +764,6 @@ export async function registerRoutes(
       if (rm.isCancelled === undefined || rm.isCancelled === null) rm.isCancelled = 0;
 
       const isCard = rm.paymentType === 'CreditCard' || rm.paymentType === 3;
-      for (const acct of accounts) {
-        if (!isCard && acct.billId === 0) acct.billId = null;
-      }
 
       console.log(`[submit-multiple-payment] userId=${userId}, ${accounts.length} account(s), paymentType=${rm.paymentType}`);
       for (const acct of accounts) {
