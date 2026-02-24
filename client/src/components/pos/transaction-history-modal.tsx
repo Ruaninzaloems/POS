@@ -71,7 +71,19 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
     if (!receiptId) return;
     setPrintingReceiptId(receiptId);
     try {
-      const multiData = await fetchPosMultiReceiptPrint(String(receiptId));
+      let numericId = '';
+      if (tx.splitReceipts && tx.splitReceipts.length > 0 && tx.splitReceipts[0].receiptId) {
+        numericId = String(tx.splitReceipts[0].receiptId);
+      } else if (tx.receiptNumber && tx.receiptNumber.includes('/')) {
+        numericId = tx.receiptNumber.split('/').pop() || '';
+      } else if (tx.id && tx.id.startsWith('plt-')) {
+        numericId = tx.id.replace('plt-', '');
+      } else if (tx.receiptDetail?.receiptId) {
+        numericId = String(tx.receiptDetail.receiptId);
+      } else {
+        numericId = String(receiptId);
+      }
+      const multiData = await fetchPosMultiReceiptPrint(numericId);
       const items = Array.isArray(multiData) ? multiData : [];
       if (items.length > 0) {
         const win = openReceiptFromMultiPrint(items, true);
