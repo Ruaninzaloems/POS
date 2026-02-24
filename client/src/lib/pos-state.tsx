@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect, useRef,
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, CashOffice } from './external-api';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange, fetchActiveCashierByUserId, fetchPosMultiReceiptPrintByCashier, platinumValidateCashier, fetchActiveFinYear, platinumAuthDayEndCancelReceipt, platinumRequestCancelReceipt, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumGetPendingCancelRequests, platinumGetDayEndReconcileList, platinumReceiptDiscovery, platinumGetDayEndUnreconciledList } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange, fetchActiveCashierByUserId, fetchPosMultiReceiptPrintByCashier, platinumValidateCashier, platinumValidateCashierDayEndRecon, fetchActiveFinYear, platinumAuthDayEndCancelReceipt, platinumRequestCancelReceipt, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumGetPendingCancelRequests, platinumGetDayEndReconcileList, platinumReceiptDiscovery, platinumGetDayEndUnreconciledList } from './external-api';
 import { getAccountBalance as enquiryGetAccountBalance } from './enquiries-service';
 
 if (import.meta.hot) {
@@ -396,25 +396,45 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (data.isActive === true && data.officeId) {
             const officeId = String(data.officeId);
             const cashFloat = data.cashFloat ?? data.details?.cashFloat ?? 0;
-            console.log(`[Session] validate-cashier API confirms session is active (POS_Cashier.IsActive=1) — auto-resuming. Office: ${officeName} (ID: ${officeId}), Float: ${cashFloat}`);
+            console.log(`[Session] validate-cashier API confirms session is active (POS_Cashier.IsActive=1). Checking day-end recon status...`);
+
+            let dayEndDone = false;
             try {
-              const vcResult = await platinumValidateCashier(platinumUser.user_ID, platinumUser.finYear || '2025/2026');
-              const vcCashierId = vcResult?.cashier?.id;
-              if (vcCashierId) {
-                console.log(`[Session] validate-cashier returned active cashier ID: ${vcCashierId} (overriding ${receiptCashierId})`);
-                setPlatinumCashierId(vcCashierId);
-              }
+              const dayEndResult = await platinumValidateCashierDayEndRecon({
+                userId: String(platinumUser.user_ID),
+                finYear: platinumUser.finYear || '2025/2026',
+              });
+              dayEndDone = dayEndResult === true || dayEndResult === 'true';
+              console.log(`[Session] ValidateCashierDayEndRecon result: ${dayEndResult} — dayEndDone=${dayEndDone}`);
             } catch (e) {
-              console.warn(`[Session] validate-cashier call failed, using fallback cashier ID: ${receiptCashierId}`);
+              console.warn(`[Session] Failed to check day-end recon status, assuming not done`, e);
             }
-            setActiveSession(true);
-            setApiSessionActive(true);
-            setSessionDetails({
-              startTime: Date.now(),
-              officeId,
-              officeDesc: officeName,
-              floatAmount: cashFloat
-            });
+
+            if (dayEndDone) {
+              console.log(`[Session] Day-end reconciliation has been completed. Cashier must start a new session via setup page.`);
+              setApiSessionActive(false);
+              setActiveSession(false);
+            } else {
+              console.log(`[Session] No day-end done — auto-resuming. Office: ${officeName} (ID: ${officeId}), Float: ${cashFloat}`);
+              try {
+                const vcResult = await platinumValidateCashier(platinumUser.user_ID, platinumUser.finYear || '2025/2026');
+                const vcCashierId = vcResult?.cashier?.id;
+                if (vcCashierId) {
+                  console.log(`[Session] validate-cashier returned active cashier ID: ${vcCashierId} (overriding ${receiptCashierId})`);
+                  setPlatinumCashierId(vcCashierId);
+                }
+              } catch (e) {
+                console.warn(`[Session] validate-cashier call failed, using fallback cashier ID: ${receiptCashierId}`);
+              }
+              setActiveSession(true);
+              setApiSessionActive(true);
+              setSessionDetails({
+                startTime: Date.now(),
+                officeId,
+                officeDesc: officeName,
+                floatAmount: cashFloat
+              });
+            }
           } else {
             console.log(`[Session] Cashier registered but validate-cashier returned isActive=false. Must start session via cashier setup page.`);
             setApiSessionActive(false);
@@ -959,6 +979,27 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           variant: "destructive"
         });
       } else {
+        let dayEndDone = false;
+        try {
+          const dayEndResult = await platinumValidateCashierDayEndRecon({
+            userId: String(platinumUser.user_ID),
+            finYear,
+          });
+          dayEndDone = dayEndResult === true || dayEndResult === 'true';
+        } catch (e) {}
+
+        if (dayEndDone) {
+          console.warn(`[SessionEnforcement] Day-end reconciliation completed — ending session. Cashier must start a new session.`);
+          setActiveSession(false);
+          setSessionDetails(undefined);
+          toast({
+            title: "Day-End Completed",
+            description: "A day-end reconciliation has been completed. Please start a new cashier session.",
+            variant: "destructive"
+          });
+          return;
+        }
+
         console.log(`[SessionEnforcement] validate-cashier confirmed isActive=true (POS_Cashier.IsActive=1)`);
         const activeCashierId = result?.cashier?.id;
         if (activeCashierId && activeCashierId !== platinumCashierId) {
