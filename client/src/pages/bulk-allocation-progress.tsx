@@ -11,7 +11,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { HelpTip } from '@/components/ui/help-tip';
 import {
   Search, Filter, RotateCcw, Eye, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-  Loader2, AlertCircle, CheckCircle2, Clock, XCircle, Activity, FileBarChart, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw
+  Loader2, AlertCircle, CheckCircle2, Clock, XCircle, Activity, FileBarChart, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw,
+  Hash, Layers, Calendar, DollarSign, User, FileText, CreditCard, Package
 } from 'lucide-react';
 import {
   fetchBulkProgressFinancialYears,
@@ -782,105 +783,305 @@ export default function BulkAllocationProgress() {
         </Card>
 
         <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-          <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-job-detail">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Eye className="w-5 h-5 text-blue-500" />
-                Job Details {selectedJob && `— #${selectedJob.jobId ?? selectedJob.id ?? ''}`}
-              </DialogTitle>
-              <DialogDescription>
-                Detailed information for this bulk allocation job
-              </DialogDescription>
-            </DialogHeader>
+          <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0" data-testid="dialog-job-detail">
             {detailLoading ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <Loader2 className="w-6 h-6 animate-spin text-blue-500 mb-2" />
-                <p className="text-sm text-muted-foreground">Loading job details...</p>
+              <div className="flex flex-col items-center justify-center py-16">
+                <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mb-3">
+                  <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                </div>
+                <p className="text-sm font-medium text-slate-600">Loading job details...</p>
+                <p className="text-xs text-slate-400 mt-1">Fetching allocation information</p>
               </div>
             ) : detailData ? (
-              <div className="space-y-1">
-                {renderDetailField('Job ID', detailData.directDepositJob_ID ?? detailData.jobId ?? detailData.id)}
-                {renderDetailField('Process', detailData.process)}
-                {renderDetailField('Payment Reference', detailData.paymentReference)}
-                {renderDetailField('Financial Year', detailData.financialYear)}
-                {renderDetailField('Billing Period ID', detailData.billPeriodId)}
-                <div className="flex justify-between py-2 items-center">
-                  <span className="text-sm text-muted-foreground font-medium">Status</span>
-                  {getStatusBadge(detailData.job_Status ?? detailData.status)}
-                </div>
-                {renderDetailField('File Name', detailData.fileName)}
-                {renderDetailField('File Path', detailData.filePath)}
-                {renderDetailField('File Date', detailData.fileDate)}
-                {renderDetailField('Date Captured', detailData.dateCaptured)}
-                {renderDetailField('Records', detailData.records ?? detailData.totalRecords)}
-                {renderDetailField('Allocated Amount', detailData.allocatedAmount != null
-                  ? `R ${Number(detailData.allocatedAmount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : null)}
-                {renderDetailField('Payment Type', detailData.paymentTypeID != null
-                  ? (detailData.paymentTypeID === 4 ? 'EFT' : `EFT (Type ${detailData.paymentTypeID})`)
-                  : null)}
-                {renderDetailField('Cashier', detailData.cashierID != null
-                  ? (resolveCashierName(detailData.cashierID) || `ID: ${detailData.cashierID}`)
-                  : null)}
-                {renderDetailField('Capturer', detailData.capturerID != null
-                  ? (resolveCashierName(detailData.capturerID) || `ID: ${detailData.capturerID}`)
-                  : null)}
-                {renderDetailField('Group ID', detailData.groupID)}
-                {renderDetailField('POS Item', detailData.posItemID != null
-                  ? (detailData._posItemNote
-                    ? `#${detailData.posItemID} - ${detailData._posItemNote}${detailData._posItemAmount != null ? ` (R ${Number(detailData._posItemAmount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })})` : ''}`
-                    : `#${detailData.posItemID}`)
-                  : null)}
+              <>
+                {(() => {
+                  const jobId = detailData.directDepositJob_ID ?? detailData.jobId ?? detailData.id;
+                  const jobStatus = detailData.job_Status ?? detailData.status ?? '';
+                  const statusLower = (jobStatus || '').toLowerCase();
+                  const isComplete = statusLower.includes('complete') || statusLower === 'success' || statusLower === 'done';
+                  const isError = statusLower.includes('fail') || statusLower.includes('error');
+                  const isInProgress = statusLower.includes('progress') || statusLower.includes('processing') || statusLower.includes('running');
+                  const allocAmount = detailData.allocatedAmount != null ? Number(detailData.allocatedAmount) : null;
+                  const recordCount = detailData.records ?? detailData.totalRecords;
+                  const cashierName = detailData.cashierID != null ? (resolveCashierName(detailData.cashierID) || null) : null;
+                  const capturerName = detailData.capturerID != null ? (resolveCashierName(detailData.capturerID) || null) : null;
+                  const payTypeLabel = detailData.paymentTypeID != null
+                    ? (detailData.paymentTypeID === 4 ? 'EFT' : detailData.paymentTypeID === 1 ? 'Cash' : detailData.paymentTypeID === 3 ? 'Credit Card' : `Type ${detailData.paymentTypeID}`)
+                    : null;
+                  const posItemDisplay = detailData.posItemID != null
+                    ? (detailData._posItemNote
+                      ? `#${detailData.posItemID} — ${detailData._posItemNote}${detailData._posItemAmount != null ? ` (R ${Number(detailData._posItemAmount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })})` : ''}`
+                      : `#${detailData.posItemID}`)
+                    : null;
 
-                {Object.entries(detailData).map(([key, value]) => {
                   const knownKeys = ['directDepositJob_ID', 'jobId', 'id', 'process', 'paymentReference',
                     'financialYear', 'billPeriodId', 'job_Status', 'status', 'fileName', 'filePath',
                     'fileDate', 'dateCaptured', 'records', 'totalRecords', 'allocatedAmount',
                     'paymentTypeID', 'cashierID', 'capturerID', 'groupID', 'posItemID',
-                    '_posItemNote', '_posItemAmount', '_posItemDate'];
-                  if (knownKeys.includes(key)) return null;
-                  if (value == null || value === '' || typeof value === 'object') return null;
-                  const label = key
-                    .replace(/([A-Z])/g, ' $1')
-                    .replace(/^./, str => str.toUpperCase())
-                    .replace(/_/g, ' ')
-                    .trim();
-                  return <React.Fragment key={key}>{renderDetailField(label, value)}</React.Fragment>;
-                })}
+                    '_posItemNote', '_posItemAmount', '_posItemDate', 'errors', 'errorDetails'];
+                  const extraFields = Object.entries(detailData).filter(([key, value]) =>
+                    !knownKeys.includes(key) && value != null && value !== '' && typeof value !== 'object'
+                  );
 
-                {detailData.errors && Array.isArray(detailData.errors) && detailData.errors.length > 0 && (
-                  <div className="mt-4">
-                    <h4 className="text-sm font-semibold text-red-700 mb-2 flex items-center gap-1">
-                      <AlertCircle className="w-4 h-4" /> Errors ({detailData.errors.length})
-                    </h4>
-                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                      {detailData.errors.map((err: any, i: number) => (
-                        <div key={i} className="bg-red-50 border border-red-100 rounded p-2 text-xs">
-                          {typeof err === 'string' ? err : (
-                            <>
-                              {err.accountNo && <span className="font-mono font-bold mr-2">{err.accountNo}</span>}
-                              {err.message || err.error || err.description || JSON.stringify(err)}
-                            </>
-                          )}
+                  return (
+                    <>
+                      <div className={`px-5 sm:px-6 pt-5 sm:pt-6 pb-4 ${isComplete ? 'bg-gradient-to-br from-emerald-50 to-green-50/50' : isError ? 'bg-gradient-to-br from-red-50 to-rose-50/50' : isInProgress ? 'bg-gradient-to-br from-blue-50 to-indigo-50/50' : 'bg-gradient-to-br from-slate-50 to-blue-50/30'}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${isComplete ? 'bg-emerald-100 text-emerald-600' : isError ? 'bg-red-100 text-red-600' : isInProgress ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-600'}`}>
+                              {isComplete ? <CheckCircle2 className="w-5 h-5" /> : isError ? <XCircle className="w-5 h-5" /> : isInProgress ? <Activity className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            </div>
+                            <div className="min-w-0">
+                              <DialogTitle className="text-base sm:text-lg font-bold text-slate-800 leading-tight">
+                                Job #{jobId || '—'}
+                              </DialogTitle>
+                              <DialogDescription className="text-xs text-slate-500 mt-0.5">
+                                {detailData.process || 'Bulk Allocation Job'}
+                              </DialogDescription>
+                            </div>
+                          </div>
+                          <div className="shrink-0 mt-0.5">
+                            {getStatusBadge(jobStatus)}
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
-                {detailData.errorDetails && typeof detailData.errorDetails === 'string' && (
-                  <div className="mt-4">
-                    <h4 className="text-sm font-semibold text-red-700 mb-2 flex items-center gap-1">
-                      <AlertCircle className="w-4 h-4" /> Error Details
-                    </h4>
-                    <div className="bg-red-50 border border-red-100 rounded p-2 text-xs font-mono whitespace-pre-wrap">
-                      {detailData.errorDetails}
-                    </div>
-                  </div>
-                )}
-              </div>
+                        {(allocAmount != null || recordCount != null) && (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
+                            {allocAmount != null && (
+                              <div className="bg-white/80 backdrop-blur-sm rounded-lg border border-white/60 shadow-sm px-3 py-2.5" data-testid="detail-allocated-amount">
+                                <p className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Allocated Amount</p>
+                                <p className="text-lg sm:text-xl font-bold text-emerald-700 font-mono mt-0.5">
+                                  R {allocAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                                </p>
+                              </div>
+                            )}
+                            {recordCount != null && (
+                              <div className="bg-white/80 backdrop-blur-sm rounded-lg border border-white/60 shadow-sm px-3 py-2.5" data-testid="detail-records">
+                                <p className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Records</p>
+                                <p className="text-lg sm:text-xl font-bold text-blue-700 font-mono mt-0.5">
+                                  {formatNumber(recordCount)}
+                                </p>
+                              </div>
+                            )}
+                            {payTypeLabel && (
+                              <div className="bg-white/80 backdrop-blur-sm rounded-lg border border-white/60 shadow-sm px-3 py-2.5" data-testid="detail-payment-type">
+                                <p className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Payment Type</p>
+                                <p className="text-sm font-semibold text-slate-700 mt-1 flex items-center gap-1.5">
+                                  <CreditCard className="w-3.5 h-3.5 text-slate-400" />
+                                  {payTypeLabel}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="px-5 sm:px-6 py-4 space-y-4">
+                        <div className="rounded-lg border border-slate-200 overflow-hidden">
+                          <div className="bg-slate-50 px-3 py-2 border-b border-slate-200">
+                            <h3 className="text-[11px] uppercase tracking-wider font-bold text-slate-500 flex items-center gap-1.5">
+                              <Layers className="w-3.5 h-3.5" /> Job Information
+                            </h3>
+                          </div>
+                          <div className="divide-y divide-slate-100">
+                            {detailData.paymentReference && (
+                              <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-center px-3 py-2.5">
+                                <span className="text-xs font-medium text-slate-500">Payment Reference</span>
+                                <span className="text-sm font-mono font-semibold text-slate-800">{detailData.paymentReference}</span>
+                              </div>
+                            )}
+                            {detailData.financialYear && (
+                              <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-center px-3 py-2.5">
+                                <span className="text-xs font-medium text-slate-500">Financial Year</span>
+                                <span className="text-sm font-semibold text-slate-700">{detailData.financialYear}</span>
+                              </div>
+                            )}
+                            {detailData.billPeriodId != null && (
+                              <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-center px-3 py-2.5">
+                                <span className="text-xs font-medium text-slate-500">Billing Period ID</span>
+                                <span className="text-sm font-mono text-slate-700">{detailData.billPeriodId}</span>
+                              </div>
+                            )}
+                            {detailData.groupID != null && (
+                              <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-center px-3 py-2.5">
+                                <span className="text-xs font-medium text-slate-500">Group ID</span>
+                                <span className="text-sm font-mono text-slate-700">{detailData.groupID}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {(detailData.fileName || detailData.filePath || detailData.fileDate || detailData.dateCaptured) && (
+                          <div className="rounded-lg border border-slate-200 overflow-hidden">
+                            <div className="bg-slate-50 px-3 py-2 border-b border-slate-200">
+                              <h3 className="text-[11px] uppercase tracking-wider font-bold text-slate-500 flex items-center gap-1.5">
+                                <FileText className="w-3.5 h-3.5" /> File & Dates
+                              </h3>
+                            </div>
+                            <div className="divide-y divide-slate-100">
+                              {detailData.fileName && (
+                                <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-center px-3 py-2.5">
+                                  <span className="text-xs font-medium text-slate-500">File Name</span>
+                                  <span className="text-sm font-mono text-slate-700 break-all">{detailData.fileName === 'Not applicable' ? <span className="text-slate-400 italic font-sans">Not applicable</span> : detailData.fileName}</span>
+                                </div>
+                              )}
+                              {detailData.filePath && (
+                                <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-start px-3 py-2.5">
+                                  <span className="text-xs font-medium text-slate-500 pt-0.5">File Path</span>
+                                  <span className="text-xs font-mono text-slate-600 break-all bg-slate-50 rounded px-2 py-1">{detailData.filePath}</span>
+                                </div>
+                              )}
+                              {detailData.fileDate && (
+                                <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-center px-3 py-2.5">
+                                  <span className="text-xs font-medium text-slate-500">File Date</span>
+                                  <span className="text-sm text-slate-700 flex items-center gap-1.5">
+                                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                                    {formatDate(detailData.fileDate)}
+                                  </span>
+                                </div>
+                              )}
+                              {detailData.dateCaptured && (
+                                <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-center px-3 py-2.5">
+                                  <span className="text-xs font-medium text-slate-500">Date Captured</span>
+                                  <span className="text-sm text-slate-700 flex items-center gap-1.5">
+                                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                                    {formatDate(detailData.dateCaptured)}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {(cashierName || detailData.cashierID != null || capturerName || detailData.capturerID != null) && (
+                          <div className="rounded-lg border border-slate-200 overflow-hidden">
+                            <div className="bg-slate-50 px-3 py-2 border-b border-slate-200">
+                              <h3 className="text-[11px] uppercase tracking-wider font-bold text-slate-500 flex items-center gap-1.5">
+                                <User className="w-3.5 h-3.5" /> People
+                              </h3>
+                            </div>
+                            <div className="divide-y divide-slate-100">
+                              {(cashierName || detailData.cashierID != null) && (
+                                <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-center px-3 py-2.5">
+                                  <span className="text-xs font-medium text-slate-500">Cashier</span>
+                                  <span className="text-sm text-slate-700">
+                                    {cashierName ? (
+                                      <span className="font-medium">{cashierName}</span>
+                                    ) : (
+                                      <span className="font-mono text-slate-500">ID: {detailData.cashierID}</span>
+                                    )}
+                                  </span>
+                                </div>
+                              )}
+                              {(capturerName || detailData.capturerID != null) && (
+                                <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-center px-3 py-2.5">
+                                  <span className="text-xs font-medium text-slate-500">Capturer</span>
+                                  <span className="text-sm text-slate-700">
+                                    {capturerName ? (
+                                      <span className="font-medium">{capturerName}</span>
+                                    ) : (
+                                      <span className="font-mono text-slate-500">ID: {detailData.capturerID}</span>
+                                    )}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {posItemDisplay && (
+                          <div className="rounded-lg border border-indigo-200 bg-indigo-50/50 overflow-hidden">
+                            <div className="bg-indigo-50 px-3 py-2 border-b border-indigo-200">
+                              <h3 className="text-[11px] uppercase tracking-wider font-bold text-indigo-600 flex items-center gap-1.5">
+                                <Package className="w-3.5 h-3.5" /> POS Item
+                              </h3>
+                            </div>
+                            <div className="px-3 py-3">
+                              <p className="text-sm font-mono text-indigo-800 break-words" data-testid="detail-pos-item">{posItemDisplay}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {extraFields.length > 0 && (
+                          <div className="rounded-lg border border-slate-200 overflow-hidden">
+                            <div className="bg-slate-50 px-3 py-2 border-b border-slate-200">
+                              <h3 className="text-[11px] uppercase tracking-wider font-bold text-slate-500 flex items-center gap-1.5">
+                                <Hash className="w-3.5 h-3.5" /> Additional Details
+                              </h3>
+                            </div>
+                            <div className="divide-y divide-slate-100">
+                              {extraFields.map(([key, value]) => {
+                                const label = key
+                                  .replace(/([A-Z])/g, ' $1')
+                                  .replace(/^./, str => str.toUpperCase())
+                                  .replace(/_/g, ' ')
+                                  .trim();
+                                const display = typeof value === 'number' ? formatNumber(value as number) :
+                                  (typeof value === 'string' && (value.includes('T') || value.includes('Z')) && !isNaN(Date.parse(value)))
+                                    ? formatDate(value) : String(value);
+                                return (
+                                  <div key={key} className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-center px-3 py-2.5">
+                                    <span className="text-xs font-medium text-slate-500">{label}</span>
+                                    <span className="text-sm font-mono text-slate-700 break-words">{display}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {detailData.errors && Array.isArray(detailData.errors) && detailData.errors.length > 0 && (
+                          <div className="rounded-lg border border-red-200 overflow-hidden">
+                            <div className="bg-red-50 px-3 py-2 border-b border-red-200">
+                              <h3 className="text-[11px] uppercase tracking-wider font-bold text-red-600 flex items-center gap-1.5">
+                                <AlertCircle className="w-3.5 h-3.5" /> Errors
+                                <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 ml-1">{detailData.errors.length}</Badge>
+                              </h3>
+                            </div>
+                            <div className="p-3 space-y-2 max-h-[200px] overflow-y-auto">
+                              {detailData.errors.map((err: any, i: number) => (
+                                <div key={i} className="bg-white border border-red-100 rounded-lg p-2.5 text-xs flex items-start gap-2">
+                                  <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
+                                  <span className="text-red-800">
+                                    {typeof err === 'string' ? err : (
+                                      <>
+                                        {err.accountNo && <span className="font-mono font-bold mr-2 text-red-600">{err.accountNo}</span>}
+                                        {err.message || err.error || err.description || JSON.stringify(err)}
+                                      </>
+                                    )}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {detailData.errorDetails && typeof detailData.errorDetails === 'string' && (
+                          <div className="rounded-lg border border-red-200 overflow-hidden">
+                            <div className="bg-red-50 px-3 py-2 border-b border-red-200">
+                              <h3 className="text-[11px] uppercase tracking-wider font-bold text-red-600 flex items-center gap-1.5">
+                                <AlertCircle className="w-3.5 h-3.5" /> Error Details
+                              </h3>
+                            </div>
+                            <div className="p-3">
+                              <pre className="bg-white border border-red-100 rounded-lg p-3 text-xs font-mono text-red-800 whitespace-pre-wrap overflow-x-auto">
+                                {detailData.errorDetails}
+                              </pre>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
+              </>
             ) : (
-              <div className="py-8 text-center text-sm text-muted-foreground">
-                No detail data available for this job.
+              <div className="py-12 text-center">
+                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                  <Eye className="w-5 h-5 text-slate-400" />
+                </div>
+                <p className="text-sm font-medium text-slate-600">No detail data available</p>
+                <p className="text-xs text-slate-400 mt-1">Could not load information for this job</p>
               </div>
             )}
           </DialogContent>
