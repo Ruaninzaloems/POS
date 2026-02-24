@@ -1232,7 +1232,11 @@ export async function registerRoutes(
 
         const anyEnabled = normalized.some((opt: any) => opt.isTicked);
         if (!anyEnabled && normalized.length > 0) {
-          console.warn(`[cashier-payment-options] All ${normalized.length} payment options returned tickedFlag=False from Platinum API. Returning as-is from API.`);
+          console.warn(`[cashier-payment-options] All ${normalized.length} payment options returned tickedFlag=False from Platinum API. Treating all as enabled since options exist for this cashier.`);
+          normalized.forEach((opt: any) => {
+            opt.isTicked = true;
+            opt.enabled = true;
+          });
         }
 
         console.log(`[cashier-payment-options] Returning ${normalized.length} options from Platinum API (anyEnabled=${anyEnabled}, officeOnly=${officeOnly})`);
@@ -1294,7 +1298,11 @@ export async function registerRoutes(
 
         const anyEnabled = normalized.some((t: any) => t.isTicked);
         if (!anyEnabled && normalized.length > 0) {
-          console.warn(`[cashier-payment-types] All ${normalized.length} payment types returned tickedFlag=False from Platinum API. Returning as-is from API.`);
+          console.warn(`[cashier-payment-types] All ${normalized.length} payment types returned tickedFlag=False from Platinum API. Treating all as enabled since types exist for this cashier.`);
+          normalized.forEach((t: any) => {
+            t.isTicked = true;
+            t.enabled = true;
+          });
         }
 
         console.log(`[cashier-payment-types] Returning ${normalized.length} types from Platinum API (anyEnabled=${anyEnabled}, officeOnly=${officeOnly})`);
