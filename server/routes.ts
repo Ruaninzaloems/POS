@@ -734,13 +734,6 @@ export async function registerRoutes(
       if (rm.isReconciled === undefined || rm.isReconciled === null) rm.isReconciled = 0;
       if (rm.isCancelled === undefined || rm.isCancelled === null) rm.isCancelled = 0;
 
-      if (rm.expiryDate === '' || rm.expiryDate === undefined) rm.expiryDate = null;
-      if (rm.chequeNumber === '' || rm.chequeNumber === undefined) rm.chequeNumber = null;
-      if (rm.chequeDate === '' || rm.chequeDate === undefined) rm.chequeDate = null;
-      if (rm.processingMonth === '' || rm.processingMonth === undefined) rm.processingMonth = null;
-      if (rm.bankName === '' || rm.bankName === undefined) rm.bankName = null;
-      if (rm.bankBranchCode === '' || rm.bankBranchCode === undefined) rm.bankBranchCode = null;
-
       if (rm.paymentType === 3 && !rm.cardNumber) {
         console.warn(`[submit-consumer-payment] WARNING: Card payment (paymentType=3) but cardNumber is empty!`);
       }
@@ -769,13 +762,6 @@ export async function registerRoutes(
       if (rm.apiTransactionID === undefined) rm.apiTransactionID = 0;
       if (rm.isReconciled === undefined || rm.isReconciled === null) rm.isReconciled = 0;
       if (rm.isCancelled === undefined || rm.isCancelled === null) rm.isCancelled = 0;
-
-      if (rm.expiryDate === '' || rm.expiryDate === undefined) rm.expiryDate = null;
-      if (rm.chequeNumber === '' || rm.chequeNumber === undefined) rm.chequeNumber = null;
-      if (rm.chequeDate === '' || rm.chequeDate === undefined) rm.chequeDate = null;
-      if (rm.processingMonth === '' || rm.processingMonth === undefined) rm.processingMonth = null;
-      if (rm.bankName === '' || rm.bankName === undefined) rm.bankName = null;
-      if (rm.bankBranchCode === '' || rm.bankBranchCode === undefined) rm.bankBranchCode = null;
 
       for (const acct of accounts) {
         if (acct.billId === 0) acct.billId = null;
