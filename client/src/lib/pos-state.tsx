@@ -1610,6 +1610,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         return submitAccount;
                     });
 
+                    const totalFullOutstanding = perAccountPayments.reduce((s, p) => s + p.acctOutstanding, 0);
                     const requestModel = {
                         finYear,
                         receiptDate: effectiveReceiptDate,
@@ -1618,7 +1619,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         changeAmount: changeAmt,
                         paymentType: paymentTypeId,
                         paymentOption: paymentOptionId,
-                        outStandingAmount: totalPaymentAmount,
+                        outStandingAmount: totalFullOutstanding,
                         cardNumber: isCardPayment ? (record.payment.cardReference || '') : '',
                         expiryDate: '',
                         chequeNumber: '',
@@ -1637,7 +1638,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         isCancelled: 0,
                     };
 
-                    console.log(`[Priority 1 ${label}] Submitting MULTIPLE payment for ${submitAccounts.length} accounts, total: R${totalPaymentAmount}, tender: R${tenderAmt}, change: R${changeAmt}, paymentType: ${paymentTypeId}`);
+                    console.log(`[Priority 1 ${label}] Submitting MULTIPLE payment for ${submitAccounts.length} accounts, total: R${totalPaymentAmount}, tender: R${tenderAmt}, change: R${changeAmt}, paymentType: ${paymentTypeId}, outStandingAmount(fullBalance): R${totalFullOutstanding}`);
                     for (const sa of submitAccounts) {
                         console.log(`[Priority 1 ${label}]   → account ${sa.account_ID} (${sa.name}): R${sa.outStandingAmt}`);
                     }
@@ -1664,7 +1665,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             changeAmount: changeAmt,
                             paymentType: paymentTypeId,
                             paymentOption: paymentOptionId,
-                            outStandingAmount: itemPayment,
+                            outStandingAmount: acctOutstanding,
                             cardNumber: isCardPayment ? (record.payment.cardReference || '') : '',
                             expiryDate: '',
                             chequeNumber: '',
@@ -1683,7 +1684,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             isCancelled: 0,
                         };
 
-                        console.log(`[Priority 1 ${label}] Submitting SINGLE consumer payment for account ${acct.account_ID} (${acct.name}), PAYMENT amount: R${itemPayment}, full outstanding: R${acctOutstanding}, paymentType: ${paymentTypeId}`);
+                        console.log(`[Priority 1 ${label}] Submitting SINGLE consumer payment for account ${acct.account_ID} (${acct.name}), PAYMENT amount: R${itemPayment}, outStandingAmount(fullBalance): R${acctOutstanding}, paymentType: ${paymentTypeId}`);
 
                         const { _userAmountToPay: _, ...submitAccount } = acct;
                         submitAccount.outStandingAmt = itemPayment;
