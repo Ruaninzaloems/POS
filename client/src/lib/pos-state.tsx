@@ -1817,6 +1817,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 return { isSuccess: true, ids: allReceiptIds, perAccountAmounts: perAccountPayments.map(p => ({ accountId: String(p.acct.account_ID), accountName: p.acct.name || '', amount: p.itemPayment })) };
             };
 
+            let accPaymentSucceeded = false;
+
             if (isSplitPayment) {
                 const cashPaid = Math.max(0, record.payment.cash - totalChange);
                 const cardPaid = record.payment.card;
@@ -1855,6 +1857,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     console.log(`[Priority 1 SPLIT CASH] Submitted cash payment`, cashResult);
                     const cashReceiptIds = extractReceiptIds(cashResult);
                     await processAccReceiptResult(cashReceiptIds, 'CASH', 'cash', accCashActual, cashResult.perAccountAmounts);
+                    accPaymentSucceeded = true;
                 } catch (e: any) {
                     console.warn(`[Priority 1 SPLIT CASH] Failed to submit cash payment`, e);
                     toast({ title: "Cash Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
@@ -1913,13 +1916,20 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     console.log(`[Priority 1] Submitted payment (paymentType=${singlePaymentTypeId})`, submitResult);
                     const receiptIds = extractReceiptIds(submitResult);
                     await processAccReceiptResult(receiptIds, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash', accountTotal);
+                    accPaymentSucceeded = true;
                 } catch (e: any) {
                     console.warn(`[Priority 1] Failed to submit payment`, e);
                     toast({ title: "Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
+                    accPaymentSucceeded = false;
                 }
             }
 
+            if (!accPaymentSucceeded) {
+                console.warn(`[Priority 1] Skipping legacy receipt posting and account rebuild — payment was not successful`);
+            }
+
             for (const item of accountItems) {
+                if (!accPaymentSucceeded) break;
                 const accountId = item.originalData?.account_ID || item.originalData?.apiId || item.originalData?.accountID || item.originalData?.accountId;
                 if (!accountId) continue;
                 const latestReceiptId = record.splitReceipts && record.splitReceipts.length > 0
