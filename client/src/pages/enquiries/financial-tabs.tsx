@@ -1138,9 +1138,9 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
                       const billedH = niceMax > 0 ? (c.billed / niceMax) * chartHeight : 0;
                       const paidH = niceMax > 0 ? (c.paid / niceMax) * chartHeight : 0;
                       return (
-                        <div key={i} className="flex flex-col items-center flex-1 max-w-[80px] group relative" style={{ height: '100%', justifyContent: 'flex-end' }}>
-                          <div className="flex items-end gap-[3px] w-full justify-center">
-                            <div className="relative" style={{ width: '40%' }}>
+                        <div key={i} className="flex flex-col items-center flex-1 max-w-[90px]" style={{ height: '100%', justifyContent: 'flex-end' }}>
+                          <div className="flex items-end gap-[6px] sm:gap-[8px] w-full justify-center">
+                            <div className="group/billed relative" style={{ width: '38%' }}>
                               <div
                                 className="w-full rounded-t-[3px] transition-all duration-500 ease-out cursor-pointer"
                                 style={{
@@ -1148,14 +1148,15 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
                                   background: 'linear-gradient(180deg, #818cf8 0%, #6366f1 100%)',
                                   boxShadow: '0 1px 3px rgba(99, 102, 241, 0.3)',
                                 }}
-                              >
-                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover:block bg-slate-900 text-white text-[10px] rounded-md px-2 py-1 whitespace-nowrap z-20 shadow-lg">
+                              />
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/billed:block z-30 pointer-events-none">
+                                <div className="bg-indigo-700 text-white text-[10px] rounded-md px-2 py-1 whitespace-nowrap shadow-lg">
                                   <div className="font-semibold">R {fmt(c.billed)}</div>
-                                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-2 h-2 bg-slate-900 rotate-45" />
                                 </div>
+                                <div className="w-2 h-2 bg-indigo-700 rotate-45 mx-auto -mt-1" />
                               </div>
                             </div>
-                            <div className="relative" style={{ width: '40%' }}>
+                            <div className="group/paid relative" style={{ width: '38%' }}>
                               <div
                                 className="w-full rounded-t-[3px] transition-all duration-500 ease-out cursor-pointer"
                                 style={{
@@ -1163,11 +1164,12 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
                                   background: 'linear-gradient(180deg, #6ee7b7 0%, #34d399 100%)',
                                   boxShadow: '0 1px 3px rgba(52, 211, 153, 0.3)',
                                 }}
-                              >
-                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover:block bg-slate-900 text-white text-[10px] rounded-md px-2 py-1 whitespace-nowrap z-20 shadow-lg">
+                              />
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/paid:block z-30 pointer-events-none">
+                                <div className="bg-emerald-700 text-white text-[10px] rounded-md px-2 py-1 whitespace-nowrap shadow-lg">
                                   <div className="font-semibold">R {fmt(c.paid)}</div>
-                                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-2 h-2 bg-slate-900 rotate-45" />
                                 </div>
+                                <div className="w-2 h-2 bg-emerald-700 rotate-45 mx-auto -mt-1" />
                               </div>
                             </div>
                           </div>
