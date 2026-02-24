@@ -281,7 +281,18 @@ function ClearanceBasketExpander({ item, updateItemDetails, updateItemAmount }: 
     );
 }
 
-const BASKET_PAGE_SIZE = 15;
+const BASKET_PAGE_SIZE_DESKTOP = 15;
+const BASKET_PAGE_SIZE_MOBILE = 5;
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 640 : false);
+  React.useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return isMobile;
+}
 
 export function TransactionPanels({ isSearchActive = false }: { isSearchActive?: boolean }) {
   const { activeTransactionType, transactionItems, removeItem, updateItemAmount, updateItemDetails, addItem, viewingItemId, setViewingItem } = usePos();
@@ -291,6 +302,9 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
   const [basketPage, setBasketPage] = useState(1);
   const [showOnlyMissing, setShowOnlyMissing] = useState(false);
   const basketItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const basketCardRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
+  const BASKET_PAGE_SIZE = isMobile ? BASKET_PAGE_SIZE_MOBILE : BASKET_PAGE_SIZE_DESKTOP;
 
   const sortedItems = React.useMemo(() =>
     [...transactionItems].sort((a, b) => {
@@ -319,6 +333,15 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
   React.useEffect(() => {
     if (basketPage > totalPages) setBasketPage(totalPages);
   }, [totalPages, basketPage]);
+
+  const handlePageChange = (newPage: number | ((p: number) => number)) => {
+    setBasketPage(newPage);
+    if (isMobile && basketCardRef.current) {
+      setTimeout(() => {
+        basketCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
+    }
+  };
 
   const scrollToNextMissing = () => {
     const missingOnPage = pagedItems.filter(i => i.amountToPay <= 0);
@@ -742,7 +765,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                                 variant="outline"
                                 size="sm"
                                 className={`text-xs gap-1.5 ${showOnlyMissing ? 'bg-amber-50 border-amber-300 text-amber-800' : 'text-slate-600'}`}
-                                onClick={() => { setShowOnlyMissing(!showOnlyMissing); setBasketPage(1); }}
+                                onClick={() => { setShowOnlyMissing(!showOnlyMissing); handlePageChange(1); }}
                                 data-testid="btn-filter-missing"
                               >
                                 <AlertCircle className="w-3.5 h-3.5" />
@@ -789,7 +812,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                     </div>
                   )}
 
-                  <Card>
+                  <Card ref={basketCardRef}>
                       <CardHeader className="py-3 sm:py-4 border-b bg-muted/20">
                           <div className="hidden sm:grid grid-cols-[1fr_2fr_1fr_1fr_auto] gap-4 font-medium text-sm text-muted-foreground uppercase tracking-wider px-2">
                               <div className="flex items-center gap-1">Type <HelpTip text="Transaction category: ACC=Account, ELEC/H2O=Prepaid, CLR=Clearance, INC=Direct Income, GRP=Group" /></div>
@@ -908,25 +931,25 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                       </CardContent>
 
                       {totalPages > 1 && (
-                        <div className="border-t bg-muted/10 px-3 sm:px-4 py-2.5 flex items-center justify-between">
+                        <div className="border-t bg-muted/10 px-3 sm:px-4 py-2.5 flex items-center justify-between sticky bottom-0 z-10">
                           <span className="text-xs text-muted-foreground">
-                            Showing {(safePage - 1) * BASKET_PAGE_SIZE + 1}–{Math.min(safePage * BASKET_PAGE_SIZE, displayItems.length)} of {displayItems.length}
+                            {(safePage - 1) * BASKET_PAGE_SIZE + 1}–{Math.min(safePage * BASKET_PAGE_SIZE, displayItems.length)} of {displayItems.length}
                             {showOnlyMissing && ` (filtered)`}
                           </span>
                           <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" disabled={safePage <= 1} onClick={() => setBasketPage(1)} data-testid="btn-page-first">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-7 sm:w-7" disabled={safePage <= 1} onClick={() => handlePageChange(1)} data-testid="btn-page-first">
                               <ChevronsLeft className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" disabled={safePage <= 1} onClick={() => setBasketPage(p => Math.max(1, p - 1))} data-testid="btn-page-prev">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-7 sm:w-7" disabled={safePage <= 1} onClick={() => handlePageChange(p => Math.max(1, p - 1))} data-testid="btn-page-prev">
                               <ChevronLeft className="w-4 h-4" />
                             </Button>
                             <span className="text-xs font-medium text-slate-600 px-2 min-w-[60px] text-center">
                               {safePage} / {totalPages}
                             </span>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" disabled={safePage >= totalPages} onClick={() => setBasketPage(p => Math.min(totalPages, p + 1))} data-testid="btn-page-next">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-7 sm:w-7" disabled={safePage >= totalPages} onClick={() => handlePageChange(p => Math.min(totalPages, p + 1))} data-testid="btn-page-next">
                               <ChevronRight className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" disabled={safePage >= totalPages} onClick={() => setBasketPage(totalPages)} data-testid="btn-page-last">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-7 sm:w-7" disabled={safePage >= totalPages} onClick={() => handlePageChange(totalPages)} data-testid="btn-page-last">
                               <ChevronsRight className="w-4 h-4" />
                             </Button>
                           </div>

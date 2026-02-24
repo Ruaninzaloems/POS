@@ -190,7 +190,7 @@ export function PosLayout({ children }: PosLayoutProps) {
   const sessionPulse = apiSessionActive === false ? 'animate-pulse' : '';
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50 overflow-hidden">
+    <div className="flex flex-col h-screen bg-slate-50 overflow-x-hidden overflow-y-auto lg:overflow-hidden">
       <header className="h-11 sm:h-12 bg-gradient-to-r from-slate-900 via-[#1e293b] to-slate-900 text-white flex items-center px-2 sm:px-3 justify-between shrink-0 z-20 relative border-b border-white/[0.06]">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-600/[0.08] via-transparent to-indigo-600/[0.08]" />
         
@@ -345,7 +345,7 @@ export function PosLayout({ children }: PosLayoutProps) {
         </div>
       </header>
 
-      <main className="flex-1 flex overflow-hidden">
+      <main className="flex-1 flex overflow-y-auto lg:overflow-hidden">
         {children}
       </main>
     </div>
