@@ -1080,62 +1080,114 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
         </div>
       </div>
 
-      {data.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-white" />
-            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Account History</h3>
-          </div>
-          <div className="p-3 sm:p-5">
-            <div className="flex items-end gap-1 justify-center" style={{ height: '320px' }} data-testid="chart-billed-vs-paid">
-              {data.map((d: any, i: number) => {
-                const billed = Math.abs(getBilled(d));
-                const paid = Math.abs(getPaid(d));
-                const billedPct = maxVal > 0 ? (billed / maxVal) * 100 : 0;
-                const paidPct = maxVal > 0 ? (paid / maxVal) * 100 : 0;
-                const month = getMonth(d);
-                return (
-                  <div key={i} className="flex flex-col items-center flex-1 max-w-[100px] group">
-                    <div className="flex items-end gap-1 w-full justify-center" style={{ height: '260px' }}>
-                      <div className="relative flex flex-col items-center justify-end" style={{ height: '100%', width: '35%' }}>
-                        <div
-                          className="w-full bg-indigo-400 hover:bg-indigo-500 rounded-t-sm transition-all duration-300 relative group/bar"
-                          style={{ height: `${Math.max(billedPct * 0.95, 2)}%`, minHeight: '4px' }}
-                        >
-                          <div className="absolute -top-7 left-1/2 -translate-x-1/2 hidden group-hover/bar:block bg-slate-800 text-white text-[9px] rounded px-1.5 py-0.5 whitespace-nowrap z-10">
-                            R {fmt(billed)}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="relative flex flex-col items-center justify-end" style={{ height: '100%', width: '35%' }}>
-                        <div
-                          className="w-full bg-rose-400 hover:bg-rose-500 rounded-t-sm transition-all duration-300 relative group/bar"
-                          style={{ height: `${Math.max(paidPct * 0.95, 2)}%`, minHeight: '4px' }}
-                        >
-                          <div className="absolute -top-7 left-1/2 -translate-x-1/2 hidden group-hover/bar:block bg-slate-800 text-white text-[9px] rounded px-1.5 py-0.5 whitespace-nowrap z-10">
-                            R {fmt(paid)}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-2 text-[10px] text-slate-500 text-center font-medium truncate w-full">{month}</div>
+      {data.length > 0 && (() => {
+        const chartData = data.map(d => ({
+          month: getMonth(d),
+          billed: Math.abs(getBilled(d)),
+          paid: Math.abs(getPaid(d)),
+        }));
+        const chartMax = Math.max(...chartData.map(c => Math.max(c.billed, c.paid)), 1);
+        const niceMax = (() => {
+          const mag = Math.pow(10, Math.floor(Math.log10(chartMax)));
+          const norm = chartMax / mag;
+          const niceNorm = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
+          return niceNorm * mag;
+        })();
+        const gridLines = [0, 0.25, 0.5, 0.75, 1].map(f => f * niceMax);
+        const chartHeight = 280;
+
+        return (
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-slate-700 to-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-white" />
+                <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Monthly Billing vs Payments</h3>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-sm bg-indigo-400" />
+                  <span className="text-[10px] text-slate-300 font-medium">Billed</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-sm bg-emerald-400" />
+                  <span className="text-[10px] text-slate-300 font-medium">Paid</span>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 sm:p-6">
+              <div className="flex" data-testid="chart-billed-vs-paid">
+                <div className="flex flex-col justify-between pr-2 sm:pr-3 flex-shrink-0" style={{ height: `${chartHeight}px` }}>
+                  {gridLines.slice().reverse().map((val, gi) => (
+                    <span key={gi} className="text-[10px] text-slate-400 font-mono leading-none text-right" style={{ minWidth: '50px' }}>
+                      {val >= 1000 ? `R ${(val / 1000).toFixed(val % 1000 === 0 ? 0 : 1)}k` : `R ${val.toFixed(0)}`}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex-1 relative">
+                  <div className="absolute inset-0">
+                    {gridLines.map((val, gi) => (
+                      <div
+                        key={gi}
+                        className="absolute left-0 right-0 border-t border-slate-100"
+                        style={{ bottom: `${(val / niceMax) * 100}%` }}
+                      />
+                    ))}
                   </div>
-                );
-              })}
-            </div>
-            <div className="flex items-center justify-center gap-6 mt-4 pt-3 border-t border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-sm bg-indigo-400" />
-                <span className="text-xs text-slate-600 font-medium">Billing Amount</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-sm bg-rose-400" />
-                <span className="text-xs text-slate-600 font-medium">Paid Amount</span>
+                  <div className="relative flex items-end justify-around h-full gap-1 sm:gap-2" style={{ height: `${chartHeight}px` }}>
+                    {chartData.map((c, i) => {
+                      const billedH = niceMax > 0 ? (c.billed / niceMax) * chartHeight : 0;
+                      const paidH = niceMax > 0 ? (c.paid / niceMax) * chartHeight : 0;
+                      return (
+                        <div key={i} className="flex flex-col items-center flex-1 max-w-[80px] group relative" style={{ height: '100%', justifyContent: 'flex-end' }}>
+                          <div className="flex items-end gap-[3px] w-full justify-center">
+                            <div className="relative" style={{ width: '40%' }}>
+                              <div
+                                className="w-full rounded-t-[3px] transition-all duration-500 ease-out cursor-pointer"
+                                style={{
+                                  height: `${Math.max(billedH, 3)}px`,
+                                  background: 'linear-gradient(180deg, #818cf8 0%, #6366f1 100%)',
+                                  boxShadow: '0 1px 3px rgba(99, 102, 241, 0.3)',
+                                }}
+                              >
+                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover:block bg-slate-900 text-white text-[10px] rounded-md px-2 py-1 whitespace-nowrap z-20 shadow-lg">
+                                  <div className="font-semibold">R {fmt(c.billed)}</div>
+                                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-2 h-2 bg-slate-900 rotate-45" />
+                                </div>
+                              </div>
+                            </div>
+                            <div className="relative" style={{ width: '40%' }}>
+                              <div
+                                className="w-full rounded-t-[3px] transition-all duration-500 ease-out cursor-pointer"
+                                style={{
+                                  height: `${Math.max(paidH, 3)}px`,
+                                  background: 'linear-gradient(180deg, #6ee7b7 0%, #34d399 100%)',
+                                  boxShadow: '0 1px 3px rgba(52, 211, 153, 0.3)',
+                                }}
+                              >
+                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover:block bg-slate-900 text-white text-[10px] rounded-md px-2 py-1 whitespace-nowrap z-20 shadow-lg">
+                                  <div className="font-semibold">R {fmt(c.paid)}</div>
+                                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-2 h-2 bg-slate-900 rotate-45" />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex justify-around mt-2 border-t border-slate-200 pt-2">
+                    {chartData.map((c, i) => (
+                      <div key={i} className="flex-1 max-w-[80px] text-center">
+                        <div className="text-[11px] font-semibold text-slate-700 truncate">{c.month.substring(0, 3)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
