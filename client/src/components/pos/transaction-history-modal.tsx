@@ -10,7 +10,7 @@ import { AlertCircle, AlertTriangle, Ban, Receipt, CheckCircle2, Clock, Printer,
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { fetchPosMultiReceiptPrint } from '@/lib/external-api';
-import { openReceiptFromMultiPrint, openReceiptPrintWindow, ReceiptPrintData } from '@/lib/receipt-print';
+import { openReceiptFromMultiPrint } from '@/lib/receipt-print';
 
 interface TransactionHistoryModalProps {
   isOpen: boolean;
@@ -94,21 +94,9 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
         }
         return;
       }
-      const printData: ReceiptPrintData = {
-        receiptNo: tx.receiptNumber || '',
-        receiptDate: tx.timestamp ? new Date(tx.timestamp).toISOString() : '',
-        totalAmount: tx.totalAmount || 0,
-        tenderAmount: (tx.payment?.cash || 0) + (tx.payment?.card || 0),
-        changeAmount: 0,
-        paymentType: tx.paymentTypeName || (tx.payment?.card > 0 ? 'Credit Card' : 'Cash'),
-        paymentOption: tx.paymentOptionName || '',
-        cashierName: tx.cashierName || '',
-        cashOffice: tx.cashOfficeName || '',
-        services: tx.items?.map(i => ({ description: i.description || '', amount: i.amountToPay || 0 })) || [],
-      };
-      openReceiptPrintWindow(printData, true);
+      toast({ title: "Print Failed", description: "The API returned no receipt data for this transaction. Please try again or contact support.", variant: "destructive" });
     } catch {
-      toast({ title: "Print Failed", description: "Could not retrieve receipt data.", variant: "destructive" });
+      toast({ title: "Print Failed", description: "Could not retrieve receipt data from the API.", variant: "destructive" });
     } finally {
       setPrintingReceiptId(null);
     }

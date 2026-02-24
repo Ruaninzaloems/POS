@@ -1339,7 +1339,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 try {
                     const data = await fetchPosMultiReceiptPrint(String(rid), 3);
                     if (data.length > 0) return data;
-                    console.warn(`[Priority 1 ${paymentLabel}] Receipt data empty for ${rid} after retries — will use fallback data`);
+                    console.warn(`[Priority 1 ${paymentLabel}] Receipt data empty for ${rid} after retries — receipt detail unavailable`);
                     return [] as any[];
                 } catch (e) {
                     console.warn(`[Priority 1 ${paymentLabel}] Could not fetch multi-receipt-print for ${rid}`, e);
@@ -1403,38 +1403,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 console.log(`[Priority 1 ${paymentLabel}] Receipt ${receiptNo} for account ${acctId} (${acctName}), ${lineItems.length} line items`);
             } else {
                 const matchedAcct = perAccountAmounts?.[rIdx];
-                const paymentTypeLabel = paymentType === 'cash' ? 'Cash' : 'Credit Card';
-                const fallbackAccountId = matchedAcct?.accountId || accountItems[rIdx]?.originalData?.account_ID || accountItems[rIdx]?.reference || '';
-                const fallbackAccountName = matchedAcct?.accountName || accountItems[rIdx]?.originalData?.name || accountItems[rIdx]?.description || '';
-                const fallbackAmount = matchedAcct?.amount ?? paymentAmount;
-
-                acctId = String(fallbackAccountId);
-                acctName = fallbackAccountName;
-
-                receiptDetail = {
-                    receiptNo: `REC-${rid}`,
-                    cashierName: currentUser.name || '',
-                    cashOffice: sessionDetails?.officeDesc || currentUser.cashOffice || '',
-                    tenderAmount: paymentType === 'cash' ? record.payment.cash : record.payment.card,
-                    changeAmount: paymentType === 'cash' ? totalChange : 0,
-                    outstandingAmount: null,
-                    paymentType: paymentTypeLabel,
-                    paymentOption: record.items[0]?.type?.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) || 'Consumer Services',
-                    accountId: acctId,
-                    oldAccountCode: accountItems[rIdx]?.originalData?.oldAccountCode || '',
-                    sgNumber: null,
-                    accAddress: accountItems[rIdx]?.originalData?.address || '',
-                    accName: acctName,
-                    receiptDate: formattedReceiptDate,
-                    paymentDate: formattedReceiptDate,
-                    isCancelled: false,
-                    lineItems: [{
-                        description: 'Payment',
-                        amount: fallbackAmount,
-                        vatAmount: 0,
-                    }],
-                };
-                console.log(`[Priority 1 ${paymentLabel}] Receipt REC-${rid} — using FALLBACK data for account ${acctId} (${acctName}), amount: R${fallbackAmount}`);
+                acctId = String(matchedAcct?.accountId || accountItems[rIdx]?.originalData?.account_ID || accountItems[rIdx]?.reference || '');
+                acctName = matchedAcct?.accountName || accountItems[rIdx]?.originalData?.name || accountItems[rIdx]?.description || '';
+                console.warn(`[Priority 1 ${paymentLabel}] Receipt ${rid} — API returned no receipt data. Receipt detail will be unavailable for reprint.`);
             }
 
             if (!finalReceiptNumber) {
@@ -1560,7 +1531,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         console.log(`[Priority 1] Fetched ${serverAccounts.length} server-enriched account(s)`);
                     }
                 } catch (e) {
-                    console.warn(`[Priority 1] Failed to fetch server accounts, falling back to local data`, e);
+                    console.warn(`[Priority 1] Failed to fetch server accounts`, e);
                 }
             } else {
                 console.log(`[Priority 1] Skipping initial staging for split payment — each portion will stage separately`);
@@ -1972,21 +1943,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     }
 
                     if (!clrReceiptDetail) {
-                        clrReceiptDetail = {
-                            receiptNo,
-                            cashierName: currentUser.name || '',
-                            cashOffice: sessionDetails?.officeDesc || '',
-                            tenderAmount: tender,
-                            changeAmount: change,
-                            outstandingAmount: null,
-                            paymentType: splitType === 'cash' ? 'Cash' : 'Credit Card',
-                            paymentOption: 'Clearance',
-                            accountId: item.reference || '',
-                            accName: accountHolderName,
-                            receiptDate: formattedReceiptDate,
-                            lineItems: [{ description: 'Clearance Payment', amount, vatAmount: 0 }],
-                        };
-                        console.log(`[Priority 1B ${label}] Using fallback receipt data for clearance ${clearanceStagingId}`);
+                        console.warn(`[Priority 1B ${label}] API returned no receipt data for clearance ${clearanceStagingId}. Receipt detail will be unavailable for reprint.`);
                     }
 
                     if (!finalReceiptNumber) {

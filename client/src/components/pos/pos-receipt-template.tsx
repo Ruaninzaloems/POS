@@ -11,7 +11,7 @@ interface PosReceiptTemplateProps {
 export const PosReceiptTemplate = React.forwardRef<HTMLDivElement, PosReceiptTemplateProps>(({ transaction, isReprint, isCancelled }, ref) => {
   const [muniInfo, setMuniInfo] = useState<MunicipalityInfo | null>(null);
   useEffect(() => {
-    fetchMunicipalityInfo().then(setMuniInfo);
+    fetchMunicipalityInfo().then(setMuniInfo).catch(e => console.error('Failed to load municipality info from API:', e));
   }, []);
 
   const rd = transaction.receiptDetail;

@@ -2170,52 +2170,32 @@ export interface MunicipalityInfo {
     receiptHeader: string;
 }
 
-const FALLBACK_MUNICIPALITY: MunicipalityInfo = {
-    name: 'George UAT Municipality',
-    address1: 'York Street 1 George 6530',
-    address2: 'George',
-    address3: '',
-    postalCode: '6530',
-    tel: '044 801 9111',
-    fax: '',
-    vatNo: '4630193664',
-    email: '',
-    website: '',
-    receiptFooter: '',
-    receiptHeader: '',
-};
-
 let cachedMunicipalityInfo: MunicipalityInfo | null = null;
 
 export async function fetchMunicipalityInfo(): Promise<MunicipalityInfo> {
     if (cachedMunicipalityInfo) return cachedMunicipalityInfo;
 
-    try {
-        const res = await apiFetch('/api/platinum/receipt-info');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
+    const res = await apiFetch('/api/platinum/receipt-info');
+    if (!res.ok) throw new Error(`Failed to fetch municipality info: HTTP ${res.status}`);
+    const data = await res.json();
 
-        const info: MunicipalityInfo = {
-            name: data.InstitutionName || data.MunicipalityName || FALLBACK_MUNICIPALITY.name,
-            address1: data.InstitutionAddress1 || data.MunicipalityAddress || FALLBACK_MUNICIPALITY.address1,
-            address2: data.InstitutionAddress2 || FALLBACK_MUNICIPALITY.address2,
-            address3: data.InstitutionAddress3 || FALLBACK_MUNICIPALITY.address3,
-            postalCode: data.InstitutionPostalCode || FALLBACK_MUNICIPALITY.postalCode,
-            tel: data.InstitutionTel || FALLBACK_MUNICIPALITY.tel,
-            fax: data.InstitutionFax || FALLBACK_MUNICIPALITY.fax,
-            vatNo: data.VATRegistrationNo || data.MunicipalityVatNo || FALLBACK_MUNICIPALITY.vatNo,
-            email: data.InstitutionEmail || FALLBACK_MUNICIPALITY.email,
-            website: data.InstitutionWebsite || FALLBACK_MUNICIPALITY.website,
-            receiptFooter: data.ReceiptFooter || FALLBACK_MUNICIPALITY.receiptFooter,
-            receiptHeader: data.ReceiptHeader || FALLBACK_MUNICIPALITY.receiptHeader,
-        };
+    const info: MunicipalityInfo = {
+        name: data.InstitutionName || data.MunicipalityName || '',
+        address1: data.InstitutionAddress1 || data.MunicipalityAddress || '',
+        address2: data.InstitutionAddress2 || '',
+        address3: data.InstitutionAddress3 || '',
+        postalCode: data.InstitutionPostalCode || '',
+        tel: data.InstitutionTel || '',
+        fax: data.InstitutionFax || '',
+        vatNo: data.VATRegistrationNo || data.MunicipalityVatNo || '',
+        email: data.InstitutionEmail || '',
+        website: data.InstitutionWebsite || '',
+        receiptFooter: data.ReceiptFooter || '',
+        receiptHeader: data.ReceiptHeader || '',
+    };
 
-        cachedMunicipalityInfo = info;
-        return info;
-    } catch (e) {
-        console.warn('Failed to fetch municipality info, using fallback:', e);
-        return FALLBACK_MUNICIPALITY;
-    }
+    cachedMunicipalityInfo = info;
+    return info;
 }
 
 // --- Utility / Session Functions ---

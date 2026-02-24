@@ -1245,27 +1245,16 @@ export async function registerRoutes(
         });
 
         const anyEnabled = normalized.some((opt: any) => opt.isTicked);
-        if (!anyEnabled && normalized.length > 0 && officeOnly !== 'true') {
-          console.warn(`[cashier-payment-options] WARNING: ALL ${normalized.length} payment options returned tickedFlag=False from Platinum API. This is likely a configuration issue. Enabling all options as fallback.`);
-          normalized.forEach((opt: any) => { opt.isTicked = true; opt.enabled = true; });
-        } else if (!anyEnabled && normalized.length > 0 && officeOnly === 'true') {
-          console.log(`[cashier-payment-options] Office-level config: all ${normalized.length} options have tickedFlag=False — this is the office's actual configuration, not enabling fallback`);
+        if (!anyEnabled && normalized.length > 0) {
+          console.warn(`[cashier-payment-options] All ${normalized.length} payment options returned tickedFlag=False from Platinum API. Returning as-is from API.`);
         }
 
         console.log(`[cashier-payment-options] Returning ${normalized.length} options from Platinum API (anyEnabled=${anyEnabled}, officeOnly=${officeOnly})`);
         return res.json({ source: officeOnly === 'true' ? "office" : "platinum", data: normalized });
       }
 
-      console.warn(`[cashier-payment-options] Platinum API returned error or empty, using fallback. Response:`, JSON.stringify(data).substring(0, 500));
-      const allOptionsEnabled = [
-        { posPaymentOption_ID: 1, posPaymentOptionDesc: "Consumer Services", isTicked: true, enabled: true },
-        { posPaymentOption_ID: 2, posPaymentOptionDesc: "Miscellaneous", isTicked: true, enabled: true },
-        { posPaymentOption_ID: 3, posPaymentOptionDesc: "Account Group", isTicked: true, enabled: true },
-        { posPaymentOption_ID: 4, posPaymentOptionDesc: "Clearance", isTicked: true, enabled: true },
-        { posPaymentOption_ID: 5, posPaymentOptionDesc: "Prepaid", isTicked: true, enabled: true },
-        { posPaymentOption_ID: 6, posPaymentOptionDesc: "Direct Deposit Allocation", isTicked: true, enabled: true },
-      ];
-      res.json({ source: "fallback", data: allOptionsEnabled });
+      console.error(`[cashier-payment-options] Platinum API returned error or empty. Response:`, JSON.stringify(data).substring(0, 500));
+      res.status(502).json({ message: "Platinum API returned no payment options data", detail: JSON.stringify(data).substring(0, 200) });
     } catch (e: any) {
       console.error(`[cashier-payment-options] Error:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1318,24 +1307,16 @@ export async function registerRoutes(
         });
 
         const anyEnabled = normalized.some((t: any) => t.isTicked);
-        if (!anyEnabled && normalized.length > 0 && officeOnly !== 'true') {
-          console.warn(`[cashier-payment-types] WARNING: ALL ${normalized.length} payment types returned tickedFlag=False. Enabling all as fallback.`);
-          normalized.forEach((t: any) => { t.isTicked = true; t.enabled = true; });
-        } else if (!anyEnabled && normalized.length > 0 && officeOnly === 'true') {
-          console.log(`[cashier-payment-types] Office-level config: all ${normalized.length} types have tickedFlag=False — this is the office's actual configuration`);
+        if (!anyEnabled && normalized.length > 0) {
+          console.warn(`[cashier-payment-types] All ${normalized.length} payment types returned tickedFlag=False from Platinum API. Returning as-is from API.`);
         }
 
         console.log(`[cashier-payment-types] Returning ${normalized.length} types from Platinum API (anyEnabled=${anyEnabled}, officeOnly=${officeOnly})`);
         return res.json({ source: officeOnly === 'true' ? "office" : "platinum", data: normalized });
       }
 
-      console.warn(`[cashier-payment-types] Platinum billing-payment/payment-types returned error. Response:`, JSON.stringify(data).substring(0, 500));
-      const defaultTypes = [
-        { posPaymentType_ID: 1, posPaymentTypeDesc: "Cash", isTicked: true, enabled: true },
-        { posPaymentType_ID: 3, posPaymentTypeDesc: "Credit Card", isTicked: true, enabled: true },
-      ];
-      console.log(`[cashier-payment-types] Using default fallback types: Cash, Credit Card`);
-      res.json({ source: "fallback", data: defaultTypes });
+      console.error(`[cashier-payment-types] Platinum billing-payment/payment-types returned error. Response:`, JSON.stringify(data).substring(0, 500));
+      res.status(502).json({ message: "Platinum API returned no payment types data", detail: JSON.stringify(data).substring(0, 200) });
     } catch (e: any) {
       console.error(`[cashier-payment-types] Error:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });

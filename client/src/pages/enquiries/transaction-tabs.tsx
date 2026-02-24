@@ -19,7 +19,7 @@ import {
   getBillingTemplate, getDetailBillingTemplate, getServicesSearchResults,
 } from '@/lib/enquiries-service';
 import { fetchPosMultiReceiptPrint, platinumPrintReceiptRaw } from '@/lib/external-api';
-import { openReceiptPrintWindow, openReceiptFromMultiPrint, buildReceiptDataFromMultiPrint, ReceiptPrintData } from '@/lib/receipt-print';
+import { openReceiptFromMultiPrint } from '@/lib/receipt-print';
 import { LoadingSkeleton, EmptyState, ErrorState, PaginatedTable, getFinYearOptions, MONTHS } from './shared';
 import { downloadSummaryExcel, downloadTransactionExcel, downloadExcel } from '@/lib/excel-export';
 import { parseTariffRateData, parseTariffTiers, calculateTieredBilling, STANDARD_MONTH_DAYS, type TariffTier } from './service-tabs';
@@ -1266,46 +1266,35 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
         setPrintingId(null);
         return;
       }
-      const printData: ReceiptPrintData = {
-        receiptNo: receiptNoStr,
-        receiptDate: item.receiptDate || '',
-        accountNumber: accountNumber || '',
-        totalAmount: item.amount ?? 0,
-        paymentType: item.paymentType || '',
-        cashierName: item.cashierName || '',
-        services: [],
-      };
-      openReceiptPrintWindow(printData, true);
+      toast({ title: "Print Failed", description: "The API returned no receipt data for this transaction. Please try again or contact support.", variant: "destructive" });
     } catch (e) {
       console.error('Failed to fetch receipt:', e);
-      const printData: ReceiptPrintData = {
-        receiptNo: item.receiptNo || '',
-        receiptDate: item.receiptDate || '',
-        accountNumber: accountNumber || '',
-        totalAmount: item.amount ?? 0,
-        paymentType: item.paymentType || '',
-        cashierName: item.cashierName || '',
-        services: [],
-      };
-      openReceiptPrintWindow(printData, true);
+      toast({ title: "Print Failed", description: "Could not retrieve receipt data from the API.", variant: "destructive" });
     } finally {
       setPrintingId(null);
     }
   };
 
-  const handlePrintWindow = () => {
+  const handlePrintWindow = async () => {
     if (!receiptPreview) return;
-    const printData: ReceiptPrintData = {
-      receiptNo: receiptPreview.receiptNo || receiptPreview.receiptNumber || '',
-      receiptDate: receiptPreview.receiptDate || '',
-      accountNumber: receiptPreview.accountNumber || accountNumber,
-      consumerName: receiptPreview.consumerName || '',
-      totalAmount: receiptPreview.totalAmount ?? receiptPreview.amount ?? 0,
-      paymentType: receiptPreview.paymentType || '',
-      cashierName: receiptPreview.cashierName || '',
-      services: Array.isArray(receiptPreview.services) ? receiptPreview.services : [],
-    };
-    openReceiptPrintWindow(printData, true);
+    const rid = receiptPreview.receiptId || receiptPreview.receipt_ID;
+    const rno = receiptPreview.receiptNo || receiptPreview.receiptNumber || '';
+    if (!rid) {
+      toast({ title: "Print Failed", description: "No receipt identifier available.", variant: "destructive" });
+      return;
+    }
+    try {
+      const multiData = await fetchPosMultiReceiptPrint(String(rid), 3, rno || undefined);
+      const items = Array.isArray(multiData) ? multiData : [];
+      if (items.length > 0) {
+        openReceiptFromMultiPrint(items, true);
+        return;
+      }
+      toast({ title: "Print Failed", description: "The API returned no receipt data. Please try again or contact support.", variant: "destructive" });
+    } catch (e) {
+      console.error('Failed to fetch receipt:', e);
+      toast({ title: "Print Failed", description: "Could not retrieve receipt data from the API.", variant: "destructive" });
+    }
   };
 
   return (

@@ -31,7 +31,7 @@ import {
 } from '@/lib/external-api';
 import { useToast } from '@/hooks/use-toast';
 import { usePos } from '@/lib/pos-state';
-import { openReceiptPrintWindow, openReceiptFromMultiPrint, buildReceiptDataFromMultiPrint, ReceiptPrintData } from '@/lib/receipt-print';
+import { openReceiptFromMultiPrint } from '@/lib/receipt-print';
 
 type SortField = 'receiptNo' | 'accountNumber' | 'amount' | 'receiptDate' | 'cashierName' | 'paymentType' | 'paymentOption';
 type SortDir = 'asc' | 'desc';
@@ -434,41 +434,30 @@ export default function ViewReceipts() {
         setSelectedBankNoteItem(item);
     };
 
-    const handlePrintBankNoteReceipt = (item: BankStatementNoteResult) => {
+    const handlePrintBankNoteReceipt = async (item: BankStatementNoteResult) => {
         const r = item as any;
         const receiptNo = r.receiptNo ?? r.ReceiptNo ?? '';
-        const accountId = Number(r.accountId ?? r.AccountId ?? 0);
-        const paidAmount = Number(r.paidAmount ?? r.PaidAmount ?? 0);
-        const bankAmount = Number(r.bankAmount ?? r.BankAmount ?? 0);
-        const dateCaptured = r.dateCaptured ?? r.DateCaptured ?? '';
-        const bankNote = r.bankStatementNote ?? r.BankStatementNote ?? '';
-        const status = r.allocationStatus ?? r.AllocationStatus ?? '';
-        const cashbookDoc = r.cashbookDocumentNumber ?? r.CashbookDocumentNumber ?? '';
-        const cashbookDesc = r.cashbookDescription ?? r.CashbookDescription ?? '';
-        const payTypeId = Number(r.paymentTypeId ?? r.PaymentTypeId ?? 0);
-        const payTypeLabel = payTypeId === 1 ? 'Cash' : payTypeId === 3 ? 'Credit Card' : payTypeId === 2 ? 'EFT' : payTypeId === 5 ? 'EFT' : `Type ${payTypeId}`;
 
-        const amount = paidAmount > 0 ? paidAmount : bankAmount;
-        const printData: ReceiptPrintData = {
-            receiptNo: receiptNo || 'N/A',
-            receiptDate: dateCaptured ? new Date(dateCaptured).toISOString() : new Date().toISOString(),
-            accountNumber: accountId > 0 ? String(accountId) : '',
-            consumerName: bankNote || '',
-            municipalityName: 'George Municipality',
-            totalAmount: amount,
-            paymentType: payTypeLabel,
-            paymentOption: 'EFT / Bank Statement',
-            cashierName: 'System (EFT Allocation)',
-            cashOffice: (cashbookDesc || '').trim() || cashbookDoc || '',
-            services: [
-                { serviceDescription: 'EFT Payment', amount },
-            ],
-        };
-        const win = openReceiptPrintWindow(printData, true);
-        if (!win) {
-            toast({ title: "Popup Blocked", description: "Please allow popups for this site to print receipts.", variant: "destructive" });
-        } else {
-            toast({ title: "Receipt Ready", description: `EFT receipt ${receiptNo} opened for printing.` });
+        if (!receiptNo) {
+            toast({ title: "Print Failed", description: "No receipt number found for this EFT entry.", variant: "destructive" });
+            return;
+        }
+        try {
+            const multiData = await fetchPosMultiReceiptPrint(String(receiptNo), 3, receiptNo);
+            const items = Array.isArray(multiData) ? multiData : [];
+            if (items.length > 0) {
+                const win = openReceiptFromMultiPrint(items, true);
+                if (!win) {
+                    toast({ title: "Popup Blocked", description: "Please allow popups for this site to print receipts.", variant: "destructive" });
+                } else {
+                    toast({ title: "Receipt Ready", description: `EFT receipt ${receiptNo} opened for printing.` });
+                }
+                return;
+            }
+            toast({ title: "Print Failed", description: "The API returned no receipt data for this EFT entry. Please try again or contact support.", variant: "destructive" });
+        } catch (e: any) {
+            console.error('EFT receipt fetch failed:', e);
+            toast({ title: "Print Failed", description: "Could not retrieve receipt data from the API.", variant: "destructive" });
         }
     };
 
@@ -569,35 +558,10 @@ export default function ViewReceipts() {
                 return;
             }
 
-            const printData: ReceiptPrintData = {
-                receiptNo: getReceiptField(receipt, 'receiptNo'),
-                receiptDate: getReceiptField(receipt, 'receiptDate'),
-                accountNumber: getReceiptField(receipt, 'accountNumber'),
-                totalAmount: getReceiptField(receipt, 'amount') || 0,
-                paymentType: getReceiptField(receipt, 'paymentType'),
-                paymentOption: getReceiptField(receipt, 'paymentOption'),
-                cashierName: getReceiptField(receipt, 'cashierName'),
-                cashOffice: getReceiptField(receipt, 'cashBook'),
-                services: [],
-            };
-            const win = openReceiptPrintWindow(printData, true);
-            if (!win) {
-                toast({ title: "Popup Blocked", description: "Please allow popups for this site to print receipts.", variant: "destructive" });
-            }
+            toast({ title: "Print Failed", description: "The API returned no receipt data for this receipt. Please try again or contact support.", variant: "destructive" });
         } catch (e: any) {
-            console.warn('Multi-receipt fetch failed, falling back to basic print:', e);
-            const printData: ReceiptPrintData = {
-                receiptNo: getReceiptField(receipt, 'receiptNo'),
-                receiptDate: getReceiptField(receipt, 'receiptDate'),
-                accountNumber: getReceiptField(receipt, 'accountNumber'),
-                totalAmount: getReceiptField(receipt, 'amount') || 0,
-                paymentType: getReceiptField(receipt, 'paymentType'),
-                paymentOption: getReceiptField(receipt, 'paymentOption'),
-                cashierName: getReceiptField(receipt, 'cashierName'),
-                cashOffice: getReceiptField(receipt, 'cashBook'),
-                services: [],
-            };
-            openReceiptPrintWindow(printData, true);
+            console.error('Receipt fetch failed:', e);
+            toast({ title: "Print Failed", description: "Could not retrieve receipt data from the API.", variant: "destructive" });
         } finally {
             setPrintingReceiptId(null);
         }

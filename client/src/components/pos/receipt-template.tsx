@@ -13,7 +13,7 @@ interface ReceiptTemplateProps {
 export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptTemplateProps>(({ transaction, allocation, isReprint, isCancelled }, ref) => {
   const [muniInfo, setMuniInfo] = useState<MunicipalityInfo | null>(null);
   useEffect(() => {
-    fetchMunicipalityInfo().then(setMuniInfo);
+    fetchMunicipalityInfo().then(setMuniInfo).catch(e => console.error('Failed to load municipality info from API:', e));
   }, []);
 
   // Find linked account details if available (use the first line's account number as primary for header)

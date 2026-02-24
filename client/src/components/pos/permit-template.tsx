@@ -17,7 +17,7 @@ export class PermitTemplate extends React.Component<PermitTemplateProps, PermitT
   state: PermitTemplateState = { muniInfo: null };
 
   componentDidMount() {
-    fetchMunicipalityInfo().then(muniInfo => this.setState({ muniInfo }));
+    fetchMunicipalityInfo().then(muniInfo => this.setState({ muniInfo })).catch(e => console.error('Failed to load municipality info from API:', e));
   }
 
   render() {
