@@ -829,7 +829,9 @@ export async function getEftBankStatementNotesForAccount(accountId: number): Pro
   try {
     const data = await fetchWithTimeout(`/api/platinum/billing-enquiry/get-eft-bank-statement-notes?accountId=${accountId}`);
     const result = normalizeArray(data);
-    if (result.length > 0) setCache(cacheKey, result);
+    if (result.length > 0) {
+      setCache(cacheKey, result);
+    }
     return result;
   } catch {
     return [];

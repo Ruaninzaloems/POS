@@ -1373,12 +1373,11 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
             <>
               <div className="sm:hidden space-y-2 p-3" data-testid="eft-notes-mobile">
                 {eftBankNotes.map((note, idx) => {
-                  const receiptNo = note.receiptNo ?? note.receipt_No ?? note.receiptNumber ?? '';
-                  const bankNote = note.bankStatementNote ?? note.note ?? note.description ?? note.statementDescription ?? note.bankStatementDescription ?? '';
-                  const amount = note.amount ?? note.totalAmount ?? 0;
-                  const receiptDate = note.receiptDate ?? note.receipt_Date ?? '';
-                  const payType = note.paymentType ?? note.payment_Type ?? '';
-                  const cashier = note.cashierName ?? note.cashier ?? '';
+                  const receiptNo = note.receiptNo ?? '';
+                  const bankNote = note.bankStatementNote ?? '';
+                  const amount = note.amount ?? 0;
+                  const bankDate = note.bankStatementDate ?? '';
+                  const allocDate = note.billingAllocationDate ?? '';
                   return (
                     <div key={idx} className="border border-teal-100 rounded-lg p-3 bg-teal-50/30 space-y-1.5" data-testid={`eft-note-mobile-${idx}`}>
                       {bankNote && (
@@ -1390,30 +1389,18 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                         <span className="text-[10px] text-slate-500">Receipt</span>
                         <span className="text-xs font-mono font-semibold text-blue-700">{receiptNo || '-'}</span>
                       </div>
-                      {amount > 0 && (
-                        <div className="flex justify-between items-baseline">
-                          <span className="text-[10px] text-slate-500">Amount</span>
-                          <span className="text-xs font-mono font-bold text-slate-800">R {Number(amount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
-                        </div>
-                      )}
-                      {receiptDate && (
-                        <div className="flex justify-between items-baseline">
-                          <span className="text-[10px] text-slate-500">Date</span>
-                          <span className="text-[11px] text-slate-600">{new Date(receiptDate).toLocaleDateString('en-ZA')}</span>
-                        </div>
-                      )}
-                      {payType && (
-                        <div className="flex justify-between items-baseline">
-                          <span className="text-[10px] text-slate-500">Payment Type</span>
-                          <span className="text-[11px] text-slate-600">{payType}</span>
-                        </div>
-                      )}
-                      {cashier && (
-                        <div className="flex justify-between items-baseline">
-                          <span className="text-[10px] text-slate-500">Cashier</span>
-                          <span className="text-[11px] text-slate-600">{cashier}</span>
-                        </div>
-                      )}
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-[10px] text-slate-500">Amount</span>
+                        <span className="text-xs font-mono font-bold text-slate-800">R {Number(amount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-[10px] text-slate-500">Statement Date</span>
+                        <span className="text-[11px] text-slate-600">{bankDate ? new Date(bankDate).toLocaleDateString('en-ZA') : '-'}</span>
+                      </div>
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-[10px] text-slate-500">Allocation Date</span>
+                        <span className="text-[11px] text-slate-600">{allocDate ? new Date(allocDate).toLocaleDateString('en-ZA') : '-'}</span>
+                      </div>
                     </div>
                   );
                 })}
@@ -1425,19 +1412,17 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                       <th className="text-left px-3 py-2 font-semibold text-teal-700">Bank Statement Note</th>
                       <th className="text-left px-3 py-2 font-semibold text-teal-700">Receipt No</th>
                       <th className="text-right px-3 py-2 font-semibold text-teal-700">Amount</th>
-                      <th className="text-left px-3 py-2 font-semibold text-teal-700">Date</th>
-                      <th className="text-left px-3 py-2 font-semibold text-teal-700">Payment Type</th>
-                      <th className="text-left px-3 py-2 font-semibold text-teal-700">Cashier</th>
+                      <th className="text-left px-3 py-2 font-semibold text-teal-700">Statement Date</th>
+                      <th className="text-left px-3 py-2 font-semibold text-teal-700">Allocation Date</th>
                     </tr>
                   </thead>
                   <tbody>
                     {eftBankNotes.map((note, idx) => {
-                      const receiptNo = note.receiptNo ?? note.receipt_No ?? note.receiptNumber ?? '';
-                      const bankNote = note.bankStatementNote ?? note.note ?? note.description ?? note.statementDescription ?? note.bankStatementDescription ?? '';
-                      const amount = note.amount ?? note.totalAmount ?? 0;
-                      const receiptDate = note.receiptDate ?? note.receipt_Date ?? '';
-                      const payType = note.paymentType ?? note.payment_Type ?? '';
-                      const cashier = note.cashierName ?? note.cashier ?? '';
+                      const receiptNo = note.receiptNo ?? '';
+                      const bankNote = note.bankStatementNote ?? '';
+                      const amount = note.amount ?? 0;
+                      const bankDate = note.bankStatementDate ?? '';
+                      const allocDate = note.billingAllocationDate ?? '';
                       return (
                         <tr key={idx} className="border-b border-slate-100 hover:bg-teal-50/30" data-testid={`eft-note-row-${idx}`}>
                           <td className="px-3 py-2 max-w-[280px]">
@@ -1449,13 +1434,14 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                           </td>
                           <td className="px-3 py-2 font-mono font-semibold text-blue-700">{receiptNo || '-'}</td>
                           <td className="px-3 py-2 text-right font-mono font-bold text-slate-800">
-                            {amount > 0 ? `R ${Number(amount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
+                            R {Number(amount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
                           </td>
                           <td className="px-3 py-2 text-slate-600">
-                            {receiptDate ? new Date(receiptDate).toLocaleDateString('en-ZA') : '-'}
+                            {bankDate ? new Date(bankDate).toLocaleDateString('en-ZA') : '-'}
                           </td>
-                          <td className="px-3 py-2 text-slate-600">{payType || '-'}</td>
-                          <td className="px-3 py-2 text-slate-600">{cashier || '-'}</td>
+                          <td className="px-3 py-2 text-slate-600">
+                            {allocDate ? new Date(allocDate).toLocaleDateString('en-ZA') : '-'}
+                          </td>
                         </tr>
                       );
                     })}
