@@ -833,6 +833,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                                                   <Button 
                                                     variant="ghost" 
                                                     size="icon" 
+                                                    tabIndex={-1}
                                                     className="h-6 w-6 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
                                                     title="View Account Enquiry"
                                                     onClick={() => setViewingItem(item.id)}
@@ -863,7 +864,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                                       </div>
 
                                       <div className="hidden sm:block">
-                                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => removeItem(item.id)}>
+                                          <Button variant="ghost" size="icon" tabIndex={-1} className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => removeItem(item.id)}>
                                               <Trash2 className="w-4 h-4" />
                                           </Button>
                                       </div>
