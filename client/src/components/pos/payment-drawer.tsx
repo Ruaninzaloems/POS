@@ -75,12 +75,18 @@ export function PaymentDrawer() {
     ? (!!payment.cardReference && payment.cardReference.trim().length >= 4) && cardExpiryValid
     : true;
 
+  const cardExceedsRemaining = payment.cardAmount > 0 && payment.cardAmount > Math.round(totalDue * 100) / 100;
+  const cardOverpayWithCash = payment.cardAmount > 0 && payment.cashAmount > 0 && 
+    (payment.cashAmount + payment.cardAmount) > totalDue && payment.cardAmount > Math.round((totalDue - payment.cashAmount) * 100) / 100;
+
   const isCompleteEnabled = 
     transactionItems.length > 0 && 
     payment.tenderTotal >= totalDue &&
     totalDue > 0 &&
     dayEndStatus === 'OPEN' &&
     cardFieldsValid &&
+    !cardExceedsRemaining &&
+    !cardOverpayWithCash &&
     transactionItems.every(item => {
         if (item.type === 'DIRECT_INCOME') {
             return (!!item.paidBy && item.paidBy.trim().length > 0) && 
@@ -265,6 +271,7 @@ export function PaymentDrawer() {
             handlePayExact={handlePayExact}
             handleClearAmount={handleClearAmount}
             cardExpiryValid={cardExpiryValid}
+            cardOverAmount={cardExceedsRemaining || cardOverpayWithCash}
             handleDesktopInput={handleDesktopInput}
           />
         </div>
@@ -292,6 +299,7 @@ export function PaymentDrawer() {
               handleClearAmount={handleClearAmount}
               numKeys={numKeys}
               cardExpiryValid={cardExpiryValid}
+              cardOverAmount={cardExceedsRemaining || cardOverpayWithCash}
             />
           )}
         </div>
@@ -347,7 +355,9 @@ export function PaymentDrawer() {
           onClick={completeTransaction}
           data-testid="button-complete-transaction"
         >
-          {shortfall > 0 ? (
+          {(cardExceedsRemaining || cardOverpayWithCash) ? (
+            <>Card exceeds balance — max R {Math.max(0, totalDue - payment.cashAmount).toFixed(2)}</>
+          ) : shortfall > 0 ? (
             <>R {shortfall.toFixed(2)} still needed</>
           ) : payment.cardAmount > 0 && (!payment.cardReference || payment.cardReference.trim().length < 4) ? (
             <>Enter card number</>
@@ -841,7 +851,7 @@ function MobileItemsList({ items, removeItem, updateItemAmount, updateItemDetail
   );
 }
 
-function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, activeInput, setActiveInput, inputBuffer, payment, setPaymentAmount, setCardReference, setCardExpiry, handleNumpadInput, handleBackspace, handlePayExact, handleClearAmount, numKeys, cardExpiryValid }: any) {
+function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, activeInput, setActiveInput, inputBuffer, payment, setPaymentAmount, setCardReference, setCardExpiry, handleNumpadInput, handleBackspace, handlePayExact, handleClearAmount, numKeys, cardExpiryValid, cardOverAmount }: any) {
   if (dayEndStatus === 'RECONCILED') {
     return (
       <div className="p-4">
@@ -898,18 +908,20 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
           <button
             onClick={() => setActiveInput('card')}
             className={`flex items-center gap-2 p-2.5 rounded-xl border-2 transition-all active:scale-[0.97] touch-manipulation ${
-              activeInput === 'card'
-                ? 'border-blue-500 bg-blue-50 shadow-sm'
-                : 'border-slate-200 bg-white'
+              cardOverAmount
+                ? 'border-red-500 bg-red-50 shadow-sm'
+                : activeInput === 'card'
+                  ? 'border-blue-500 bg-blue-50 shadow-sm'
+                  : 'border-slate-200 bg-white'
             }`}
             data-testid="toggle-card"
           >
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeInput === 'card' ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${cardOverAmount ? 'bg-red-500 text-white' : activeInput === 'card' ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
               <CreditCard className="w-4 h-4" />
             </div>
             <div className="text-left">
-              <div className={`text-[10px] uppercase font-bold tracking-wider ${activeInput === 'card' ? 'text-blue-600' : 'text-slate-400'}`}>Card</div>
-              <div className={`text-sm font-mono font-bold ${activeInput === 'card' ? 'text-blue-700' : 'text-slate-600'}`}>
+              <div className={`text-[10px] uppercase font-bold tracking-wider ${cardOverAmount ? 'text-red-600' : activeInput === 'card' ? 'text-blue-600' : 'text-slate-400'}`}>Card</div>
+              <div className={`text-sm font-mono font-bold ${cardOverAmount ? 'text-red-700' : activeInput === 'card' ? 'text-blue-700' : 'text-slate-600'}`}>
                 {payment.cardAmount > 0 ? `R ${payment.cardAmount.toFixed(2)}` : 'R 0.00'}
               </div>
             </div>
@@ -1151,7 +1163,7 @@ function DesktopItemCard({ item, removeItem, updateItemAmount, updateItemDetails
   );
 }
 
-function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount, updateItemDetails, totalDue, dayEndStatus, cashAllowed, cardAllowed, activeInput, setActiveInput, inputBuffer, payment, setPaymentAmount, setCardReference, setCardExpiry, handleNumpadInput, handleBackspace, handlePayExact, handleClearAmount, handleDesktopInput, cardExpiryValid }: any) {
+function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount, updateItemDetails, totalDue, dayEndStatus, cashAllowed, cardAllowed, activeInput, setActiveInput, inputBuffer, payment, setPaymentAmount, setCardReference, setCardExpiry, handleNumpadInput, handleBackspace, handlePayExact, handleClearAmount, handleDesktopInput, cardExpiryValid, cardOverAmount }: any) {
   const [desktopTab, setDesktopTab] = useState<'payment' | 'items'>('payment');
 
   const hasDirectIncomeIssues = transactionItems.some((i: TransactionItem) => i.type === 'DIRECT_INCOME' && (!i.paidBy?.trim() || !i.notes?.trim()));
@@ -1260,11 +1272,11 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                   {cardAllowed && (
                     <div 
                       onClick={() => setActiveInput('card')}
-                      className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${activeInput === 'card' ? 'border-blue-500 bg-blue-50/40 ring-2 ring-blue-200/50 shadow-sm' : 'border-slate-200 bg-slate-50 hover:bg-slate-100/80'}`}
+                      className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${cardOverAmount ? 'border-red-500 bg-red-50/40 ring-2 ring-red-200/50 shadow-sm' : activeInput === 'card' ? 'border-blue-500 bg-blue-50/40 ring-2 ring-blue-200/50 shadow-sm' : 'border-slate-200 bg-slate-50 hover:bg-slate-100/80'}`}
                     >
-                      <div className={`flex items-center gap-1.5 mb-1 ${activeInput === 'card' ? 'text-blue-600' : 'text-muted-foreground'}`}>
+                      <div className={`flex items-center gap-1.5 mb-1 ${cardOverAmount ? 'text-red-600' : activeInput === 'card' ? 'text-blue-600' : 'text-muted-foreground'}`}>
                         <CreditCard className="w-4 h-4" />
-                        <span className="font-semibold text-xs uppercase tracking-wide">Card</span>
+                        <span className="font-semibold text-xs uppercase tracking-wide">{cardOverAmount ? 'Card — exceeds balance' : 'Card'}</span>
                       </div>
                       <input
                         type="text"
