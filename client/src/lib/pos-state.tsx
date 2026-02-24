@@ -1656,16 +1656,17 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
                 if (isMultiAccount) {
                     const submitAccounts = perAccountPayments.map(({ acct, itemPayment }) => {
-                        const { _userAmountToPay: _, ...submitAccount } = acct;
-                        submitAccount.outStandingAmt = itemPayment;
-                        if (submitAccount.billId == null) submitAccount.billId = 0;
-                        if (submitAccount.sundryDebtorsId == null) submitAccount.sundryDebtorsId = '';
-                        return submitAccount;
+                        const { _userAmountToPay: _, sundryDebtorsId: _sd, ...base } = acct;
+                        base.outStandingAmt = itemPayment;
+                        base.billId = base.billId ?? 0;
+                        return isCardPayment
+                            ? base
+                            : { ...base, sundryDebtorsId: acct.sundryDebtorsId ?? '' };
                     });
 
                     const totalFullOutstanding = perAccountPayments.reduce((s, p) => s + p.acctOutstanding, 0);
                     const requestModel: any = isCardPayment ? {
-                        receiptDate: effectiveReceiptDate,
+                        receiptDate: new Date().toISOString(),
                         totalAmount: totalPaymentAmount,
                         tenderAmount: totalPaymentAmount,
                         changeAmount: 0,
@@ -1728,7 +1729,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         }
 
                         const requestModel: any = isCardPayment ? {
-                            receiptDate: effectiveReceiptDate,
+                            receiptDate: new Date().toISOString(),
                             totalAmount: itemPayment,
                             tenderAmount: itemPayment,
                             changeAmount: 0,
@@ -1767,10 +1768,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
                         console.log(`[Priority 1 ${label}] Submitting SINGLE consumer payment for account ${acct.account_ID} (${acct.name}), PAYMENT amount: R${itemPayment}, outStandingAmount(fullBalance): R${acctOutstanding}, paymentType: ${paymentTypeId}`);
 
-                        const { _userAmountToPay: _, ...submitAccount } = acct;
-                        submitAccount.outStandingAmt = itemPayment;
-                        if (submitAccount.billId == null) submitAccount.billId = 0;
-                        if (submitAccount.sundryDebtorsId == null) submitAccount.sundryDebtorsId = '';
+                        const { _userAmountToPay: _, sundryDebtorsId: _sd, ...submitAccountBase } = acct;
+                        submitAccountBase.outStandingAmt = itemPayment;
+                        submitAccountBase.billId = submitAccountBase.billId ?? 0;
+                        const submitAccount = isCardPayment
+                            ? submitAccountBase
+                            : { ...submitAccountBase, sundryDebtorsId: acct.sundryDebtorsId ?? '' };
                         const result = await submitConsumerPayment(sessionUserId, {
                             account: submitAccount,
                             requestModel,

@@ -729,13 +729,14 @@ export async function registerRoutes(
       const acct = body?.account || {};
       const rm = body?.requestModel || {};
 
-      if (acct.billId === 0) acct.billId = null;
+      const isCard = rm.paymentType === 'CreditCard' || rm.paymentType === 3;
+      if (!isCard && acct.billId === 0) acct.billId = null;
       if (rm.apiTransactionID === undefined) rm.apiTransactionID = 0;
       if (rm.isReconciled === undefined || rm.isReconciled === null) rm.isReconciled = 0;
       if (rm.isCancelled === undefined || rm.isCancelled === null) rm.isCancelled = 0;
 
-      if (rm.paymentType === 3 && !rm.cardNumber) {
-        console.warn(`[submit-consumer-payment] WARNING: Card payment (paymentType=3) but cardNumber is empty!`);
+      if (isCard && !rm.cardNumber) {
+        console.warn(`[submit-consumer-payment] WARNING: Card payment but cardNumber is empty!`);
       }
 
       console.log(`[submit-consumer-payment] userId=${userId}, paymentType=${rm.paymentType}`);
