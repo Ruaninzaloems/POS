@@ -2846,9 +2846,14 @@ export async function registerRoutes(
   app.post("/api/platinum/third-party-payments/:importId/commit", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const data = await platinumPost(session, `/api/billing/pos/third-party-payments/${req.params.importId}/commit`, req.body);
+      const { importId } = req.params;
+      const { groupId, cashBookId, paymentReference, fileName, userId, finYear } = req.body;
+      console.log(`[third-party-commit] importId=${importId}, groupId=${groupId}, cashBookId=${cashBookId}, paymentReference=${paymentReference}, fileName=${fileName}, userId=${userId}, finYear=${finYear}`);
+      const data = await platinumPost(session, `/api/billing/pos/third-party-payments/${importId}/commit`, req.body);
+      console.log(`[third-party-commit] response:`, JSON.stringify(data).substring(0, 1000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
+      console.error(`[third-party-commit] Error:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });

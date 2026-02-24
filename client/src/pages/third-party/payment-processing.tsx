@@ -419,11 +419,15 @@ export default function ThirdPartyPaymentProcessing() {
     setCommitResult(null);
     try {
       const selectedType = thirdPartyTypes.find(t => String(t.id) === selectedTypeId);
+      const userId = posState?.platinumUser?.user_ID || 0;
+      const finYear = posState?.platinumUser?.finYear || '2025/2026';
       const result = await platinumThirdPartyCommit(importId, {
-        groupId: 0,
+        groupId: selectedType?.id || Number(selectedTypeId) || 0,
         cashBookId: Number(cashBookId),
         paymentReference: paymentRef,
         fileName: file?.name || '',
+        userId,
+        finYear,
       });
       setCommitResult(result);
       if (result && !result._error && !result.error) {
@@ -673,7 +677,7 @@ export default function ThirdPartyPaymentProcessing() {
                   {commitResult.error ? <AlertCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4 text-green-600" />}
                   <AlertTitle>{commitResult.error ? "Commit Failed" : "Committed Successfully"}</AlertTitle>
                   <AlertDescription>
-                    {commitResult.message || commitResult.error || 'Payments have been committed and allocated.'}
+                    {commitResult.message || commitResult.error || (commitResult.masterId ? `Payments committed — Master ID: ${commitResult.masterId}` : 'Payments have been committed and allocated.')}
                   </AlertDescription>
                 </Alert>
               )}
@@ -845,6 +849,11 @@ export default function ThirdPartyPaymentProcessing() {
                 <p className="text-muted-foreground max-w-md mx-auto">
                   All valid transactions from import {importId} have been committed and allocated to their respective accounts.
                 </p>
+                {commitResult?.masterId && (
+                  <p className="text-sm font-medium text-slate-700">
+                    Master ID: <span className="font-mono bg-slate-100 px-2 py-0.5 rounded">{commitResult.masterId}</span>
+                  </p>
+                )}
                 <Button onClick={handleNewImport} className="gap-2 bg-blue-600 hover:bg-blue-700 mt-4" data-testid="button-start-new">
                   <Upload className="h-4 w-4" /> Start New Import
                 </Button>
