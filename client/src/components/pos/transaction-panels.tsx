@@ -1291,6 +1291,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                   <Label htmlFor={`lastName-${item.id}`} className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Last Name <span className="text-red-500">*</span></Label>
                   <Input 
                     id={`lastName-${item.id}`}
+                    tabIndex={1}
                     placeholder="Surname / Company"
                     className={`h-9 text-sm bg-slate-50 border-slate-200 ${(item as any).paidByError ? 'border-red-500 ring-1 ring-red-500' : ''}`}
                     value={item.paidBy || ''}
@@ -1303,6 +1304,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                   <Label htmlFor={`initials-${item.id}`} className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Initials</Label>
                   <Input 
                     id={`initials-${item.id}`}
+                    tabIndex={2}
                     placeholder="e.g. JD"
                     className="h-9 text-sm bg-slate-50 border-slate-200"
                     value={item.additionalInfo || ''}
@@ -1316,6 +1318,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                 <Label htmlFor={`desc-${item.id}`} className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Description <span className="text-red-500">*</span></Label>
                 <Textarea 
                   id={`desc-${item.id}`}
+                  tabIndex={3}
                   placeholder="Payment description..."
                   className={`resize-none h-16 text-sm bg-slate-50 border-slate-200 ${(item as any).notesError ? 'border-red-500 ring-1 ring-red-500' : ''}`}
                   value={item.notes || ''}
@@ -1334,6 +1337,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                       id={`amount-${item.id}`}
                       type="text"
                       inputMode="decimal"
+                      tabIndex={4}
                       className="pl-10 h-12 text-xl font-mono font-bold bg-white border-emerald-200 focus:border-emerald-400 focus:ring-emerald-200"
                       value={item.amountToPay || ''} 
                       onChange={(e) => {
