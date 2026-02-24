@@ -966,10 +966,10 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
       {payment.cardAmount > 0 && (
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <Label className="text-[10px] text-slate-400 mb-0.5 flex items-center gap-1">Card Ref <HelpTip text="Enter the last 4 digits of the card or the slip number from the card machine." /></Label>
+            <Label className="text-[10px] text-slate-400 mb-0.5 flex items-center gap-1">Card Number <HelpTip text="Enter the full card number from the card machine slip." /></Label>
             <Input
               type="text"
-              placeholder="Last 4 digits / slip no."
+              placeholder="Card number"
               value={payment.cardReference}
               onChange={(e) => setCardReference(e.target.value)}
               className="h-9 font-mono text-sm"
@@ -977,10 +977,10 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
             />
           </div>
           <div>
-            <Label className="text-[10px] text-slate-400 mb-0.5 flex items-center gap-1">Expiry <HelpTip text="Card expiry date in MM/YYYY format from the card slip." /></Label>
+            <Label className="text-[10px] text-slate-400 mb-0.5 flex items-center gap-1">Expiry <HelpTip text="Card expiry date in MM/YY format from the card slip." /></Label>
             <Input
               type="text"
-              placeholder="MM/YYYY"
+              placeholder="MM/YY"
               value={payment.cardExpiry}
               onChange={(e) => setCardExpiry(e.target.value)}
               className="h-9 font-mono text-sm"
@@ -1260,10 +1260,10 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                 {payment.cardAmount > 0 && (
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <Label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">Card Reference <HelpTip text="Enter the last 4 digits of the card or the slip number from the card machine for audit tracking." /></Label>
+                      <Label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">Card Number <HelpTip text="Enter the full card number from the card machine slip." /></Label>
                       <Input
                         type="text"
-                        placeholder="e.g. last 4 digits or slip number"
+                        placeholder="Card number"
                         value={payment.cardReference}
                         onChange={(e) => setCardReference(e.target.value)}
                         className="h-10 font-mono text-sm"
@@ -1271,10 +1271,10 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                       />
                     </div>
                     <div>
-                      <Label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">Card Expiry <HelpTip text="Card expiry date in MM/YYYY format from the card slip." /></Label>
+                      <Label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">Card Expiry <HelpTip text="Card expiry date in MM/YY format from the card slip." /></Label>
                       <Input
                         type="text"
-                        placeholder="MM/YYYY"
+                        placeholder="MM/YY"
                         value={payment.cardExpiry}
                         onChange={(e) => setCardExpiry(e.target.value)}
                         className="h-10 font-mono text-sm"

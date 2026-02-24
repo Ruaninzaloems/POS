@@ -206,8 +206,11 @@ function formatCardExpiry(exp: string): string {
   if (parts.length === 2) {
     const [mm, yyyy] = parts;
     const month = mm.padStart(2, '0');
-    if (yyyy.length === 4 && parseInt(month) >= 1 && parseInt(month) <= 12) {
-      return `${yyyy}-${month}-15`;
+    if (yyyy.length === 4) {
+      return `${month}/${yyyy.slice(2)}`;
+    }
+    if (yyyy.length === 2) {
+      return `${month}/${yyyy}`;
     }
   }
   return clean;
@@ -1520,7 +1523,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const acctId = Number(orig.account_ID || orig.apiId || orig.accountID || orig.accountId);
             const fullOutstanding = orig.outStandingAmt ?? orig.outstandingAmount ?? orig.balance ?? 0;
             return {
-                isSelected: true,
+                isSelected: null,
                 account_ID: acctId,
                 accountNumber: orig.accountNumber || '',
                 statusDesc: orig.statusDesc || 'Active',
@@ -1535,7 +1538,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 typeOfUseDesc: orig.typeOfUseDesc || '',
                 zoneDesc: orig.zoneDesc || '',
                 outStandingAmt: fullOutstanding,
-                billId: orig.billId || null,
+                billId: orig.billId ?? 0,
                 certificateNo: orig.certificateNo || '',
                 clearance_ID: orig.clearance_ID ?? 0,
                 clearanceAmount: orig.clearanceAmount ?? 0,
@@ -1661,17 +1664,28 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     });
 
                     const totalFullOutstanding = perAccountPayments.reduce((s, p) => s + p.acctOutstanding, 0);
-                    const requestModel = {
+                    const requestModel: any = isCardPayment ? {
+                        receiptDate: effectiveReceiptDate,
+                        totalAmount: totalPaymentAmount,
+                        tenderAmount: totalPaymentAmount,
+                        changeAmount: 0,
+                        paymentType: 'CreditCard',
+                        PaymentOption: paymentOptionId,
+                        cardNumber: record.payment.cardReference || '',
+                        expiryDate: formatCardExpiry(record.payment.cardExpiry),
+                        outStandingAmount: totalFullOutstanding,
+                        finYear,
+                    } : {
                         finYear,
                         receiptDate: effectiveReceiptDate,
                         totalAmount: totalPaymentAmount,
-                        tenderAmount: isCardPayment ? totalPaymentAmount : tenderAmt,
-                        changeAmount: isCardPayment ? 0 : changeAmt,
+                        tenderAmount: tenderAmt,
+                        changeAmount: changeAmt,
                         paymentType: paymentTypeId,
                         paymentOption: paymentOptionId,
                         outStandingAmount: totalFullOutstanding,
-                        cardNumber: isCardPayment ? (record.payment.cardReference || '') : '',
-                        expiryDate: isCardPayment ? formatCardExpiry(record.payment.cardExpiry) : '',
+                        cardNumber: '',
+                        expiryDate: '',
                         chequeNumber: '',
                         chequeDate: null,
                         processingMonth: null,
@@ -1713,17 +1727,28 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             setProcessingStep(`Processing receipt ${i + 1} of ${perAccountPayments.length} — Account ${acct.accountNumber || acct.account_ID}...`);
                         }
 
-                        const requestModel = {
+                        const requestModel: any = isCardPayment ? {
+                            receiptDate: effectiveReceiptDate,
+                            totalAmount: itemPayment,
+                            tenderAmount: itemPayment,
+                            changeAmount: 0,
+                            paymentType: 'CreditCard',
+                            PaymentOption: paymentOptionId,
+                            cardNumber: record.payment.cardReference || '',
+                            expiryDate: formatCardExpiry(record.payment.cardExpiry),
+                            outStandingAmount: acctOutstanding,
+                            finYear,
+                        } : {
                             finYear,
                             receiptDate: effectiveReceiptDate,
                             totalAmount: itemPayment,
-                            tenderAmount: isCardPayment ? itemPayment : tenderAmt,
-                            changeAmount: isCardPayment ? 0 : changeAmt,
+                            tenderAmount: tenderAmt,
+                            changeAmount: changeAmt,
                             paymentType: paymentTypeId,
                             paymentOption: paymentOptionId,
                             outStandingAmount: acctOutstanding,
-                            cardNumber: isCardPayment ? (record.payment.cardReference || '') : '',
-                            expiryDate: isCardPayment ? formatCardExpiry(record.payment.cardExpiry) : '',
+                            cardNumber: '',
+                            expiryDate: '',
                             chequeNumber: '',
                             chequeDate: null,
                             processingMonth: null,
