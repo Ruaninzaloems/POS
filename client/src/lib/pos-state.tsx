@@ -1797,7 +1797,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }
 
                 if (accCardActual > 0) {
-                    setProcessingStep(`Cash receipt created for ${payCtx.detail || payCtx.label}. Preparing card portion — rebuilding account state...`);
+                    setProcessingStep(`Processing card receipt for ${payCtx.detail || payCtx.label} — R ${accCardActual.toFixed(2)}...`);
 
                     const generateFreshReceiptDate = () => {
                         const now = new Date();
@@ -1808,95 +1808,37 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         return `${datePart}T${timePart}`;
                     };
 
-                    const freshRebuildAndFetch = async () => {
-                        console.log(`[Priority 1 SPLIT CARD] Rebuilding account(s) with cache-bust...`);
-                        await Promise.all(
-                            saveAccounts.map(async (acct) => {
-                                try {
-                                    await rebuildFullAccount(Number(acct.account_ID), true);
-                                    console.log(`[Priority 1 SPLIT CARD] Rebuilt account ${acct.account_ID} (no cache)`);
-                                } catch (e) {
-                                    console.warn(`[Priority 1 SPLIT CARD] Failed to rebuild account ${acct.account_ID}`, e);
-                                }
-                            })
-                        );
+                    const cardStagingPayload = saveAccounts.map(acct => {
+                        const { _userAmountToPay, ...rest } = acct;
+                        const userAmt = _userAmountToPay;
+                        const portionAmt = accGroupTotal > 0
+                            ? Math.round((userAmt / accGroupTotal) * accCardActual * 100) / 100
+                            : Math.round(accCardActual / saveAccounts.length * 100) / 100;
+                        return { ...rest, outStandingAmt: portionAmt };
+                    });
+                    const summed = cardStagingPayload.reduce((s, a) => s + a.outStandingAmt, 0);
+                    const delta = Math.round((accCardActual - summed) * 100) / 100;
+                    if (delta !== 0 && cardStagingPayload.length > 0) {
+                        cardStagingPayload[cardStagingPayload.length - 1].outStandingAmt =
+                            Math.round((cardStagingPayload[cardStagingPayload.length - 1].outStandingAmt + delta) * 100) / 100;
+                    }
 
-                        console.log(`[Priority 1 SPLIT CARD] Waiting 5s for cash payment to fully settle...`);
-                        await new Promise(r => setTimeout(r, 5000));
+                    try {
+                        const cardReceiptDate = generateFreshReceiptDate();
+                        console.log(`[Priority 1 SPLIT CARD] Submitting card immediately after cash — no rebuild delay`);
+                        console.log(`[Priority 1 SPLIT CARD] receiptDate: ${cardReceiptDate}, staging ${cardStagingPayload.length} accounts`, cardStagingPayload.map(a => `${a.account_ID}: R${a.outStandingAmt}`));
 
-                        console.log(`[Priority 1 SPLIT CARD] Validating cashier session to refresh receipt range...`);
-                        try {
-                            const vcUserId = sessionUserId || platinumUser?.user_ID;
-                            const vcFinYear = platinumUser?.finYear || '2025/2026';
-                            if (!vcUserId) throw new Error('No userId available for validation');
-                            const vc = await platinumValidateCashier(vcUserId, vcFinYear);
-                            console.log(`[Priority 1 SPLIT CARD] Cashier validated — receipt currentRange: ${vc?.receiptRange?.currentRange}`);
-                        } catch (e) {
-                            console.warn(`[Priority 1 SPLIT CARD] Cashier validation failed (non-fatal)`, e);
-                        }
-
-                        const refreshResults = await Promise.all(
-                            saveAccounts.map(async (acct) => {
-                                try {
-                                    const fresh = await platinumGetConsAccountDetails(Number(acct.account_ID), true);
-                                    if (fresh && !fresh._error) {
-                                        const updatedOutstanding = fresh.outStandingAmt ?? acct.outStandingAmt;
-                                        console.log(`[Priority 1 SPLIT CARD] Fresh account ${acct.account_ID}: outstanding R${updatedOutstanding} (original R${acct.outStandingAmt})`);
-                                        return { ...fresh, _userAmountToPay: acct._userAmountToPay, isSelected: true };
-                                    }
-                                    return acct;
-                                } catch {
-                                    return acct;
-                                }
-                            })
-                        );
-                        return refreshResults as typeof saveAccounts;
-                    };
-
-                    let cardSubmitted = false;
-                    for (let attempt = 1; attempt <= 3 && !cardSubmitted; attempt++) {
-                        try {
-                            setProcessingStep(`Preparing card portion — refreshing account state${attempt > 1 ? ` (attempt ${attempt}/3)` : ''}...`);
-                            const freshAccounts = await freshRebuildAndFetch();
-
-                            const cardStagingPayload = freshAccounts.map(acct => {
-                                const { _userAmountToPay, ...rest } = acct;
-                                const userAmt = _userAmountToPay;
-                                const portionAmt = accGroupTotal > 0
-                                    ? Math.round((userAmt / accGroupTotal) * accCardActual * 100) / 100
-                                    : Math.round(accCardActual / freshAccounts.length * 100) / 100;
-                                return { ...rest, outStandingAmt: portionAmt };
-                            });
-                            const summed = cardStagingPayload.reduce((s, a) => s + a.outStandingAmt, 0);
-                            const delta = Math.round((accCardActual - summed) * 100) / 100;
-                            if (delta !== 0 && cardStagingPayload.length > 0) {
-                                cardStagingPayload[cardStagingPayload.length - 1].outStandingAmt =
-                                    Math.round((cardStagingPayload[cardStagingPayload.length - 1].outStandingAmt + delta) * 100) / 100;
-                            }
-
-                            setProcessingStep(`Processing card receipt for ${payCtx.detail || payCtx.label} — R ${accCardActual.toFixed(2)}${attempt > 1 ? ` (attempt ${attempt}/3)` : ''}...`);
-                            const cardReceiptDate = generateFreshReceiptDate();
-                            console.log(`[Priority 1 SPLIT CARD] Attempt ${attempt}: Using fresh receiptDate: ${cardReceiptDate}`);
-                            console.log(`[Priority 1 SPLIT CARD] Staging ${cardStagingPayload.length} accounts with card portions`, cardStagingPayload.map(a => `${a.account_ID}: R${a.outStandingAmt}, fullOutstanding: R${a.outStandingAmt}`));
-
-                            await platinumSaveMultipleAccountPayment(cardStagingPayload, { userId: String(sessionUserId) });
-                            const cardResult = await submitConsumerPayments(accCardActual, accCardActual, 0, 3, 1, 'CARD', accCardActual, cardReceiptDate, freshAccounts);
-                            console.log(`[Priority 1 SPLIT CARD] Card payment submitted successfully`, cardResult);
-                            const cardReceiptIds = extractReceiptIds(cardResult);
-                            await processAccReceiptResult(cardReceiptIds, 'CARD', 'card', accCardActual, cardResult.perAccountAmounts);
-                            cardSubmitted = true;
-                        } catch (e: any) {
-                            console.warn(`[Priority 1 SPLIT CARD] Attempt ${attempt} failed:`, e?.message);
-                            if (attempt < 3) {
-                                setProcessingStep(`Card attempt ${attempt} failed: ${e?.message || 'Unknown'}. Retrying with fresh state...`);
-                                await new Promise(r => setTimeout(r, 2000));
-                            } else {
-                                const failReason = e?.message || 'Unknown error';
-                                record.splitCardFailReason = failReason;
-                                setRecentTransactions(prev => prev.map(t => t.id === record.id ? { ...t, splitCardFailReason: failReason } : t));
-                                toast({ title: "Card Payment Posting Failed", description: failReason, variant: "destructive" });
-                            }
-                        }
+                        await platinumSaveMultipleAccountPayment(cardStagingPayload, { userId: String(sessionUserId) });
+                        const cardResult = await submitConsumerPayments(accCardActual, accCardActual, 0, 3, 1, 'CARD', accCardActual, cardReceiptDate, saveAccounts);
+                        console.log(`[Priority 1 SPLIT CARD] Card payment submitted successfully`, cardResult);
+                        const cardReceiptIds = extractReceiptIds(cardResult);
+                        await processAccReceiptResult(cardReceiptIds, 'CARD', 'card', accCardActual, cardResult.perAccountAmounts);
+                    } catch (e: any) {
+                        const failReason = e?.message || 'Unknown error';
+                        console.warn(`[Priority 1 SPLIT CARD] Card payment failed:`, failReason);
+                        record.splitCardFailReason = failReason;
+                        setRecentTransactions(prev => prev.map(t => t.id === record.id ? { ...t, splitCardFailReason: failReason } : t));
+                        toast({ title: "Card Payment Posting Failed", description: failReason, variant: "destructive" });
                     }
                 }
             } else {
