@@ -1612,7 +1612,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
                 const isCardPayment = paymentTypeId === 3;
                 const isMultiAccount = perAccountPayments.length > 1;
-                const totalPaymentAmount = perAccountPayments.reduce((s, p) => s + p.itemPayment, 0);
+                const r2 = (v: number) => Math.round(v * 100) / 100;
+                const totalPaymentAmount = r2(perAccountPayments.reduce((s, p) => s + p.itemPayment, 0));
                 const effectiveReceiptDate = receiptDateOverride || formattedReceiptDate;
 
                 if (isMultiAccount) {
@@ -1628,10 +1629,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             name: acct.name || '',
                             sgNumber: acct.erfNumber || '',
                             address: acct.deliveryAddress || '',
-                            outstandingAmount: acctOutstanding || acct.outStandingAmt || itemPayment,
+                            outstandingAmount: r2(acctOutstanding || acct.outStandingAmt || itemPayment),
                             accountStatus: acct.statusDesc || 'Active',
                             accountType: acct.accountDesc || '',
-                            paymentAmount: itemPayment,
+                            paymentAmount: r2(itemPayment),
                             accountNumber: acct.accountNumber || '',
                             receiptID: 0,
                             billId: acct.billId ?? 0,
@@ -1646,13 +1647,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         throw new Error(`${badAccounts.length} account(s) have invalid Account IDs: ${names}. Remove them from the cart and retry.`);
                     }
 
-                    const totalFullOutstanding = perAccountPayments.reduce((s, p) => s + p.acctOutstanding, 0);
+                    const totalFullOutstanding = r2(perAccountPayments.reduce((s, p) => s + p.acctOutstanding, 0));
                     const baseRequestModel = {
                         finYear,
                         receiptDate: effectiveReceiptDate,
                         totalAmount: totalPaymentAmount,
-                        tenderAmount: isCardPayment ? 0 : tenderAmt,
-                        changeAmount: isCardPayment ? 0 : changeAmt,
+                        tenderAmount: isCardPayment ? 0 : r2(tenderAmt),
+                        changeAmount: isCardPayment ? 0 : r2(changeAmt),
                         paymentType: paymentTypeId,
                         cardNumber: isCardPayment ? (record.payment.cardReference || '') : '',
                         expiryDate: isCardPayment ? formatCardExpiry(record.payment.cardExpiry) : '',
