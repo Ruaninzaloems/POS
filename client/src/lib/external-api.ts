@@ -892,8 +892,9 @@ export async function platinumGetConsAccounts(params: Record<string, string>): P
     return platinumFetch(`/api/platinum/receipt-prepaid/cons-accounts?${qs}`);
 }
 
-export async function platinumGetConsAccountDetails(accountId: number): Promise<any> {
-    return platinumFetch(`/api/platinum/receipt-prepaid/cons-account-details?accountId=${accountId}`);
+export async function platinumGetConsAccountDetails(accountId: number, nocache?: boolean): Promise<any> {
+    const cacheBust = nocache ? `&_nocache=${Date.now()}` : '';
+    return platinumFetch(`/api/platinum/receipt-prepaid/cons-account-details?accountId=${accountId}${cacheBust}`);
 }
 
 export async function platinumGetPrepaidAccountDetails(accountId: number): Promise<any> {
@@ -1768,8 +1769,9 @@ export async function submitMiscPayment(data: {
     return result;
 }
 
-export async function rebuildFullAccount(accountId: number): Promise<any> {
-    const res = await apiFetch(`/api/platinum/billing-enquiry/rebuild-full-account?accountId=${accountId}`);
+export async function rebuildFullAccount(accountId: number, nocache?: boolean): Promise<any> {
+    const cacheBust = nocache ? `&_nocache=${Date.now()}` : '';
+    const res = await apiFetch(`/api/platinum/billing-enquiry/rebuild-full-account?accountId=${accountId}${cacheBust}`);
     if (!res.ok) {
         const text = await res.text();
         throw new Error(`Failed to rebuild account ${accountId}: ${text}`);

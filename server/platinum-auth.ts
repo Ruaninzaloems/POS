@@ -51,7 +51,15 @@ const SHORT_CACHEABLE_PATHS = [
 ];
 const SHORT_RESPONSE_CACHE_TTL = 5 * 1000;
 
+const NEVER_CACHE_PATHS = [
+  '/api/BillingEnquiry/rebuild-full-account',
+  '/api/billing-payment/submit-consumer-payment',
+  '/api/billing-payment/submit-multiple-payment',
+  '/api/billing-payment/save-multiple-account-payment',
+];
+
 function getCacheableInfo(path: string): { cacheable: boolean; ttl: number } {
+  if (NEVER_CACHE_PATHS.some(p => path.includes(p))) return { cacheable: false, ttl: 0 };
   if (CACHEABLE_PATHS.some(p => path.startsWith(p))) return { cacheable: true, ttl: RESPONSE_CACHE_TTL };
   if (SHORT_CACHEABLE_PATHS.some(p => path.startsWith(p))) return { cacheable: true, ttl: SHORT_RESPONSE_CACHE_TTL };
   return { cacheable: false, ttl: 0 };

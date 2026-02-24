@@ -1734,7 +1734,11 @@ export async function registerRoutes(
   app.get("/api/platinum/billing-enquiry/rebuild-full-account", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const data = await platinumGet(session, "/api/BillingEnquiry/rebuildFullAccount", req.query as Record<string, string>);
+      const query = { ...req.query as Record<string, string> };
+      delete query._nocache;
+      const data = await platinumGet(session, "/api/BillingEnquiry/rebuildFullAccount", query);
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+      res.set('Pragma', 'no-cache');
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
