@@ -1791,8 +1791,21 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
                 if (accCardActual > 0) {
                     setProcessingStep(`Cash receipt created for ${payCtx.detail || payCtx.label}. Preparing card portion...`);
-                    console.log(`[Priority 1 SPLIT CARD] Waiting 1.5s for cash payment to settle before card submission...`);
-                    await new Promise(r => setTimeout(r, 1500));
+
+                    console.log(`[Priority 1 SPLIT CARD] Rebuilding account(s) after cash payment before card submission...`);
+                    await Promise.all(
+                        saveAccounts.map(async (acct) => {
+                            try {
+                                await rebuildFullAccount(Number(acct.account_ID));
+                                console.log(`[Priority 1 SPLIT CARD] Rebuilt account ${acct.account_ID}`);
+                            } catch (e) {
+                                console.warn(`[Priority 1 SPLIT CARD] Failed to rebuild account ${acct.account_ID}`, e);
+                            }
+                        })
+                    );
+
+                    console.log(`[Priority 1 SPLIT CARD] Waiting 3s for cash payment to fully settle before card submission...`);
+                    await new Promise(r => setTimeout(r, 3000));
 
                     const refreshResults = await Promise.all(
                         saveAccounts.map(async (acct) => {
@@ -1838,9 +1851,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     };
 
                     let cardSubmitted = false;
-                    for (let attempt = 1; attempt <= 2 && !cardSubmitted; attempt++) {
+                    for (let attempt = 1; attempt <= 3 && !cardSubmitted; attempt++) {
                         try {
-                            setProcessingStep(`Processing card receipt for ${payCtx.detail || payCtx.label} — R ${accCardActual.toFixed(2)}${attempt > 1 ? ` (retry ${attempt})` : ''}...`);
+                            setProcessingStep(`Processing card receipt for ${payCtx.detail || payCtx.label} — R ${accCardActual.toFixed(2)}${attempt > 1 ? ` (retry ${attempt}/3)` : ''}...`);
                             const cardReceiptDate = generateFreshReceiptDate();
                             console.log(`[Priority 1 SPLIT CARD] Using fresh receiptDate for card: ${cardReceiptDate} (cash used: ${formattedReceiptDate})`);
                             const cardStagingPayload = buildCardStagingPayload(accCardActual);
@@ -1853,9 +1866,15 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             cardSubmitted = true;
                         } catch (e: any) {
                             console.warn(`[Priority 1 SPLIT CARD] Attempt ${attempt} failed:`, e?.message);
-                            if (attempt < 2) {
-                                console.log(`[Priority 1 SPLIT CARD] Retrying in 2s...`);
-                                await new Promise(r => setTimeout(r, 2000));
+                            if (attempt < 3) {
+                                setProcessingStep(`Card receipt attempt ${attempt} unsuccessful. Waiting for account to settle...`);
+                                console.log(`[Priority 1 SPLIT CARD] Rebuilding account and retrying in 3s...`);
+                                await Promise.all(
+                                    saveAccounts.map(async (acct) => {
+                                        try { await rebuildFullAccount(Number(acct.account_ID)); } catch {}
+                                    })
+                                );
+                                await new Promise(r => setTimeout(r, 3000));
                             } else {
                                 toast({ title: "Card Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
                             }
