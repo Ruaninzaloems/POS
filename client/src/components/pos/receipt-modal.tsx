@@ -137,9 +137,9 @@ export function ReceiptModal() {
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 mb-2">
                 <Loader2 className="w-8 h-8 animate-spin" />
               </div>
-              <DialogTitle className="text-2xl">Posting to Billing System...</DialogTitle>
-              <DialogDescription className="text-lg text-muted-foreground font-medium">
-                 {processingStep || 'Please wait while the payment is being processed'}
+              <DialogTitle className="text-xl">Processing Receipt...</DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground font-medium">
+                 {processingStep || 'Please wait while the receipt is being generated'}
               </DialogDescription>
             </>
           ) : paymentFailed ? (
@@ -317,7 +317,7 @@ export function ReceiptModal() {
                 {transactionProcessing ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Processing...
+                    Please wait...
                   </>
                 ) : isPrinting ? (
                   <>

@@ -1129,7 +1129,28 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentTransactionId(record.id);
     setIsReceiptModalOpen(true);
     setTransactionProcessing(true);
-    setProcessingStep('Validating cashier session...');
+
+    const describePaymentContext = () => {
+        const acctItems = record.items.filter(i => i.type === 'CONSUMER_SERVICES' || i.type === 'MULTI_ACCOUNT' || i.type === 'ACCOUNT_GROUP');
+        const clrItems = record.items.filter(i => i.type === 'CLEARANCE');
+        const incItems = record.items.filter(i => i.type === 'DIRECT_INCOME');
+        const prepItems = record.items.filter(i => i.type === 'PREPAID');
+
+        if (acctItems.length === 1) {
+            const accNo = acctItems[0].originalData?.accountNumber || acctItems[0].originalData?.oldAccountCode || acctItems[0].reference || '';
+            return { label: 'Consumer Account', detail: accNo ? `Account ${accNo}` : 'Account Payment' };
+        }
+        if (acctItems.length > 1) {
+            return { label: 'Multiple Accounts', detail: `${acctItems.length} accounts` };
+        }
+        if (clrItems.length > 0) return { label: 'Clearance', detail: clrItems[0].reference || 'Clearance Payment' };
+        if (incItems.length > 0) return { label: 'Direct Income', detail: incItems[0].description || 'Miscellaneous Payment' };
+        if (prepItems.length > 0) return { label: 'Prepaid', detail: prepItems[0].description || 'Prepaid Recharge' };
+        return { label: 'Payment', detail: '' };
+    };
+    const payCtx = describePaymentContext();
+
+    setProcessingStep(`Verifying session for ${payCtx.detail || payCtx.label}...`);
 
     const finYear = resolvedFinYear;
     console.log(`[Priority 1] Using finYear: ${finYear} (platinumUser: ${platinumUser?.finYear})`);
@@ -1531,7 +1552,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
 
         console.log(`[Priority 1] Staging payload outStandingAmt (user amount): R${stagingPayload[0]?.outStandingAmt}, full outstanding: R${saveAccounts[0]?.outStandingAmt}, user amountToPay: R${saveAccounts[0]?._userAmountToPay}`);
-        setProcessingStep('Staging account payment...');
+        setProcessingStep(`Preparing receipt for ${payCtx.detail || payCtx.label}...`);
 
         const isSingleAccount = accountItems.length === 1;
 
@@ -1657,6 +1678,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 } else {
                     for (let i = 0; i < perAccountPayments.length; i++) {
                         const { acct, itemPayment, acctOutstanding } = perAccountPayments[i];
+                        if (perAccountPayments.length > 1) {
+                            setProcessingStep(`Processing receipt ${i + 1} of ${perAccountPayments.length} — Account ${acct.accountNumber || acct.account_ID}...`);
+                        }
 
                         const requestModel = {
                             finYear,
@@ -1752,7 +1776,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 };
 
                 try {
-                    setProcessingStep(`Posting cash payment (R ${accCashActual.toFixed(2)})...`);
+                    setProcessingStep(`Processing cash receipt for ${payCtx.detail || payCtx.label} — R ${accCashActual.toFixed(2)}...`);
                     const cashStagingPayload = buildPortionStagingPayload(accCashActual);
                     console.log(`[Priority 1 SPLIT CASH] Staging ${cashStagingPayload.length} accounts with cash portions`, cashStagingPayload.map(a => `${a.account_ID}: R${a.outStandingAmt}`));
                     await platinumSaveMultipleAccountPayment(cashStagingPayload, { userId: String(sessionUserId) });
@@ -1766,7 +1790,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }
 
                 if (accCardActual > 0) {
-                    setProcessingStep('Cash receipt created. Preparing card payment...');
+                    setProcessingStep(`Cash receipt created for ${payCtx.detail || payCtx.label}. Preparing card portion...`);
                     console.log(`[Priority 1 SPLIT CARD] Waiting 1.5s for cash payment to settle before card submission...`);
                     await new Promise(r => setTimeout(r, 1500));
 
@@ -1816,7 +1840,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     let cardSubmitted = false;
                     for (let attempt = 1; attempt <= 2 && !cardSubmitted; attempt++) {
                         try {
-                            setProcessingStep(`Posting card payment (R ${accCardActual.toFixed(2)})${attempt > 1 ? ` — retry ${attempt}` : ''}...`);
+                            setProcessingStep(`Processing card receipt for ${payCtx.detail || payCtx.label} — R ${accCardActual.toFixed(2)}${attempt > 1 ? ` (retry ${attempt})` : ''}...`);
                             const cardReceiptDate = generateFreshReceiptDate();
                             console.log(`[Priority 1 SPLIT CARD] Using fresh receiptDate for card: ${cardReceiptDate} (cash used: ${formattedReceiptDate})`);
                             const cardStagingPayload = buildCardStagingPayload(accCardActual);
@@ -1840,7 +1864,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }
             } else {
                 try {
-                    setProcessingStep('Posting payment to billing system...');
+                    setProcessingStep(`Processing receipt for ${payCtx.detail || payCtx.label}...`);
                     const singlePaymentTypeId = record.payment.card > 0 && record.payment.cash === 0 ? 3 : 1;
                     const submitResult = await submitConsumerPayments(accountTotal, accTender, accChange, singlePaymentTypeId, 1, 'ACC');
                     console.log(`[Priority 1] Submitted payment (paymentType=${singlePaymentTypeId})`, submitResult);
@@ -1955,6 +1979,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // --- PRIORITY 1B: Clearance Payments ---
     if (clearanceItems.length > 0) {
+        setProcessingStep(`Processing receipt for ${clearanceItems.length > 1 ? `${clearanceItems.length} Clearance items` : (clearanceItems[0]?.reference || 'Clearance')}...`);
         const clrGroupTender = isMixedBasket ? clrTender : totalTender;
         const clrGroupChange = isMixedBasket ? clrChange : totalChange;
 
@@ -2101,11 +2126,15 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // --- PRIORITY 2: Direct Income / Miscellaneous Payments ---
     if (directIncomeItems.length > 0) {
+        setProcessingStep(`Processing receipt for ${directIncomeItems.length > 1 ? `${directIncomeItems.length} Direct Income items` : (directIncomeItems[0]?.description || 'Direct Income')}...`);
         const incGroupTender = isMixedBasket ? incTender : totalTender;
         const incGroupChange = isMixedBasket ? incChange : totalChange;
 
         for (let idx = 0; idx < directIncomeItems.length; idx++) {
             const item = directIncomeItems[idx];
+            if (directIncomeItems.length > 1) {
+                setProcessingStep(`Processing receipt ${idx + 1} of ${directIncomeItems.length} — ${item.description || 'Direct Income'}...`);
+            }
             const origData = item.originalData;
             const groupId = origData?.groupId;
             const scoaItemId = origData?.scoaItemId || origData?.id;
