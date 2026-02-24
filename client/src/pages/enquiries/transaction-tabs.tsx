@@ -19,7 +19,7 @@ import {
   getBillingTemplate, getDetailBillingTemplate, getServicesSearchResults,
 } from '@/lib/enquiries-service';
 import { fetchPosMultiReceiptPrint, platinumPrintReceiptRaw } from '@/lib/external-api';
-import { openSlipPrintWindow, ReceiptPrintData } from '@/lib/receipt-print';
+import { openReceiptPrintWindow, openReceiptFromMultiPrint, buildReceiptDataFromMultiPrint, ReceiptPrintData } from '@/lib/receipt-print';
 import { LoadingSkeleton, EmptyState, ErrorState, PaginatedTable, getFinYearOptions, MONTHS } from './shared';
 import { downloadSummaryExcel, downloadTransactionExcel, downloadExcel } from '@/lib/excel-export';
 import { parseTariffRateData, parseTariffTiers, calculateTieredBilling, STANDARD_MONTH_DAYS, type TariffTier } from './service-tabs';
@@ -1258,60 +1258,35 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
     if (!receiptId) return;
     setPrintingId(String(receiptId));
     try {
-      const res = await platinumPrintReceiptRaw([Number(receiptId)]);
-      if (res.ok) {
-        const contentType = res.headers.get('content-type') || '';
-        if (contentType.includes('application/pdf')) {
-          const blob = await res.blob();
-          const url = URL.createObjectURL(blob);
-          window.open(url, '_blank');
-          setTimeout(() => URL.revokeObjectURL(url), 60000);
-          setPrintingId(null);
-          return;
-        }
+      const multiData = await fetchPosMultiReceiptPrint(String(receiptId));
+      const items = Array.isArray(multiData) ? multiData : [];
+      if (items.length > 0) {
+        openReceiptFromMultiPrint(items, true);
+        setPrintingId(null);
+        return;
       }
-    } catch (e) {
-      console.warn('Platinum print-receipt failed, falling back to preview:', e);
-    }
-
-    try {
-      const multiData = await fetchPosMultiReceiptPrint(receiptId);
-      const first: any = Array.isArray(multiData) && multiData.length > 0 ? multiData[0] : null;
-
-      const services = Array.isArray(multiData) ? multiData.map((s: any) => ({
-        serviceDescription: s.serviceDescription || s.description || s.service || '',
-        amount: s.amount ?? s.serviceAmount ?? 0,
-      })) : [];
-
-      const totalFromServices = services.reduce((sum: number, s: any) => sum + (s.amount || 0), 0);
-
-      const preview = {
-        receiptNo: first?.receiptNo || first?.receiptNumber || item.receiptNo || '',
-        receiptDate: first?.receiptDate || item.receiptDate || '',
-        accountNumber: first?.accountNumber || first?.accountNo || accountNumber || '',
-        consumerName: first?.consumerName || first?.consumer || item.consumerName || '',
-        municipalityName: first?.municipalityName || 'George Municipality',
-        address: first?.address || '',
-        totalAmount: totalFromServices > 0 ? totalFromServices : (item.amount ?? 0),
-        paymentType: first?.paymentType || item.paymentType || '',
-        cashierName: first?.cashierName || first?.cashier || item.cashierName || '',
-        services,
-      };
-      setReceiptPreview(preview);
-    } catch (e) {
-      console.error('Failed to fetch receipt for preview:', e);
-      setReceiptPreview({
+      const printData: ReceiptPrintData = {
         receiptNo: item.receiptNo || '',
         receiptDate: item.receiptDate || '',
         accountNumber: accountNumber || '',
-        consumerName: item.consumerName || '',
-        municipalityName: 'George Municipality',
-        address: '',
         totalAmount: item.amount ?? 0,
         paymentType: item.paymentType || '',
         cashierName: item.cashierName || '',
         services: [],
-      });
+      };
+      openReceiptPrintWindow(printData, true);
+    } catch (e) {
+      console.error('Failed to fetch receipt:', e);
+      const printData: ReceiptPrintData = {
+        receiptNo: item.receiptNo || '',
+        receiptDate: item.receiptDate || '',
+        accountNumber: accountNumber || '',
+        totalAmount: item.amount ?? 0,
+        paymentType: item.paymentType || '',
+        cashierName: item.cashierName || '',
+        services: [],
+      };
+      openReceiptPrintWindow(printData, true);
     } finally {
       setPrintingId(null);
     }
@@ -1324,14 +1299,12 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
       receiptDate: receiptPreview.receiptDate || '',
       accountNumber: receiptPreview.accountNumber || accountNumber,
       consumerName: receiptPreview.consumerName || '',
-      municipalityName: receiptPreview.municipalityName || 'George Municipality',
-      address: receiptPreview.address || '',
       totalAmount: receiptPreview.totalAmount ?? receiptPreview.amount ?? 0,
       paymentType: receiptPreview.paymentType || '',
       cashierName: receiptPreview.cashierName || '',
       services: Array.isArray(receiptPreview.services) ? receiptPreview.services : [],
     };
-    openSlipPrintWindow(printData, true);
+    openReceiptPrintWindow(printData, true);
   };
 
   return (

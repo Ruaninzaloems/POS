@@ -6,10 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AlertCircle, AlertTriangle, Ban, Receipt, CheckCircle2, Clock, Printer, Search, X, FileWarning, Info } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Ban, Receipt, CheckCircle2, Clock, Printer, Search, X, FileWarning, Info, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { PosReceiptTemplate } from './pos-receipt-template';
+import { fetchPosMultiReceiptPrint } from '@/lib/external-api';
+import { openReceiptFromMultiPrint, openReceiptPrintWindow, ReceiptPrintData } from '@/lib/receipt-print';
 
 interface TransactionHistoryModalProps {
   isOpen: boolean;
@@ -35,9 +36,7 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
   const [cancellationReason, setCancellationReason] = useState('');
   const [showOriginalReceiptWarning, setShowOriginalReceiptWarning] = useState(false);
   const [pendingCancelTx, setPendingCancelTx] = useState<TransactionRecord | null>(null);
-  const [reprintTx, setReprintTx] = useState<TransactionRecord | null>(null);
-  const [showPreview, setShowPreview] = useState(false);
-  const reprintRef = useRef<HTMLDivElement>(null);
+  
 
   const handleSearch = useCallback(() => {
     if (!searchQuery.trim()) return;
@@ -65,51 +64,43 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
       })
     : [];
 
-  const triggerReprint = (tx: TransactionRecord) => {
-    setReprintTx(tx);
-    setShowPreview(true);
-  };
+  const [printingReceiptId, setPrintingReceiptId] = useState<string | null>(null);
 
-  const handlePrintFromPreview = useCallback(() => {
-    if (!reprintRef.current) return;
-    const content = reprintRef.current.innerHTML;
-    const printWindow = window.open('', '_blank', 'width=400,height=600');
-    if (!printWindow) return;
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Receipt-${reprintTx?.receiptNumber || 'Reprint'}</title>
-        <style>
-          body { margin: 0; padding: 10px; font-family: 'Courier New', monospace; font-size: 12px; }
-          * { box-sizing: border-box; }
-          .flex { display: flex; } .justify-between { justify-content: space-between; } .justify-center { justify-content: center; }
-          .items-center { align-items: center; } .text-center { text-align: center; } .text-right { text-align: right; }
-          .font-bold { font-weight: bold; } .font-semibold { font-weight: 600; } .font-mono { font-family: 'Courier New', monospace; }
-          .text-xs { font-size: 10px; } .text-sm { font-size: 11px; } .text-lg { font-size: 14px; } .text-xl { font-size: 16px; }
-          .mb-0\\.5 { margin-bottom: 2px; } .mb-1 { margin-bottom: 4px; } .mb-2 { margin-bottom: 8px; } .mb-3 { margin-bottom: 12px; } .mb-4 { margin-bottom: 16px; }
-          .mt-1 { margin-top: 4px; } .mt-2 { margin-top: 8px; } .mt-3 { margin-top: 12px; } .mt-4 { margin-top: 16px; }
-          .pt-2 { padding-top: 8px; } .pt-3 { padding-top: 12px; } .pb-2 { padding-bottom: 8px; }
-          .py-1 { padding-top: 4px; padding-bottom: 4px; } .py-2 { padding-top: 8px; padding-bottom: 8px; }
-          .px-2 { padding-left: 8px; padding-right: 8px; } .p-2 { padding: 8px; }
-          .border-t { border-top: 1px solid #d1d5db; } .border-b { border-bottom: 1px solid #d1d5db; } .border { border: 1px solid #d1d5db; }
-          .border-dashed { border-style: dashed; } .border-gray-300 { border-color: #d1d5db; } .border-gray-400 { border-color: #9ca3af; }
-          .bg-gray-50 { background-color: #f9fafb; } .bg-gray-100 { background-color: #f3f4f6; } .rounded { border-radius: 4px; }
-          .space-y-1 > * + * { margin-top: 4px; } .gap-1 { gap: 4px; } .gap-2 { gap: 8px; }
-          .w-full { width: 100%; } .flex-1 { flex: 1; } .italic { font-style: italic; } .line-through { text-decoration: line-through; }
-          .text-red-600 { color: #dc2626; } .text-red-700 { color: #b91c1c; } .text-gray-400 { color: #9ca3af; } .text-gray-500 { color: #6b7280; }
-          .text-muted-foreground { color: #6b7280; } .uppercase { text-transform: uppercase; } .tracking-wider { letter-spacing: 0.05em; }
-          .flex-col { flex-direction: column; }
-          @media print { body { margin: 0; padding: 5px; } }
-        </style>
-      </head>
-      <body>${content}</body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => { printWindow.print(); printWindow.close(); }, 300);
-  }, [reprintTx]);
+  const triggerReprint = async (tx: TransactionRecord) => {
+    const receiptId = tx.id || tx.receiptNumber;
+    if (!receiptId) return;
+    setPrintingReceiptId(receiptId);
+    try {
+      const multiData = await fetchPosMultiReceiptPrint(String(receiptId));
+      const items = Array.isArray(multiData) ? multiData : [];
+      if (items.length > 0) {
+        const win = openReceiptFromMultiPrint(items, true);
+        if (!win) {
+          toast({ title: "Popup Blocked", description: "Please allow popups for this site to print receipts.", variant: "destructive" });
+        } else {
+          toast({ title: "Receipt Ready", description: `Receipt ${items[0]?.receiptNo || receiptId} opened for reprinting.` });
+        }
+        return;
+      }
+      const printData: ReceiptPrintData = {
+        receiptNo: tx.receiptNumber || '',
+        receiptDate: tx.timestamp ? new Date(tx.timestamp).toISOString() : '',
+        totalAmount: tx.totalAmount || 0,
+        tenderAmount: (tx.payment?.cash || 0) + (tx.payment?.card || 0),
+        changeAmount: 0,
+        paymentType: tx.paymentTypeName || (tx.payment?.card > 0 ? 'Credit Card' : 'Cash'),
+        paymentOption: tx.paymentOptionName || '',
+        cashierName: tx.cashierName || '',
+        cashOffice: tx.cashOfficeName || '',
+        services: tx.items?.map(i => ({ description: i.description || '', amount: i.amountToPay || 0 })) || [],
+      };
+      openReceiptPrintWindow(printData, true);
+    } catch {
+      toast({ title: "Print Failed", description: "Could not retrieve receipt data.", variant: "destructive" });
+    } finally {
+      setPrintingReceiptId(null);
+    }
+  };
 
   const initiateCancel = (tx: TransactionRecord) => {
     if (dayEndStatus === 'RECONCILED' || dayEndStatus === 'PENDING_APPROVAL') {
@@ -344,10 +335,11 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
                                                 size="sm" 
                                                 className="h-7 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                                 onClick={() => triggerReprint(tx)}
+                                                disabled={printingReceiptId === (tx.id || tx.receiptNumber)}
                                                 title="Reprint Receipt"
                                                 data-testid={`button-reprint-${tx.id}`}
                                              >
-                                                 <Printer className="w-3.5 h-3.5 mr-1" />
+                                                 {printingReceiptId === (tx.id || tx.receiptNumber) ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Printer className="w-3.5 h-3.5 mr-1" />}
                                                  Print
                                              </Button>
                                          )}
@@ -395,35 +387,6 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
           <Button variant="outline" onClick={onClose}>Close History</Button>
         </DialogFooter>
       </DialogContent>
-
-      {/* Receipt Preview / Reprint Dialog */}
-      <Dialog open={showPreview && !!reprintTx} onOpenChange={(o) => { if (!o) { setShowPreview(false); setReprintTx(null); } }}>
-        <DialogContent className="sm:max-w-[420px] max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Receipt className="w-5 h-5" />
-              Receipt Preview
-            </DialogTitle>
-            <DialogDescription>
-              Receipt {reprintTx?.receiptNumber || ''}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex-1 overflow-y-auto border rounded-md bg-white">
-            <div ref={reprintRef}>
-              {reprintTx && (
-                <PosReceiptTemplate transaction={reprintTx} isReprint={true} isCancelled={reprintTx.status === 'CANCELLED'} />
-              )}
-            </div>
-          </div>
-          <DialogFooter className="flex gap-2 sm:justify-between">
-            <Button variant="outline" onClick={() => { setShowPreview(false); setReprintTx(null); }}>Close</Button>
-            <Button onClick={handlePrintFromPreview} className="gap-2" data-testid="button-print-receipt">
-              <Printer className="w-4 h-4" />
-              Print Receipt
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Original Receipt Warning Dialog */}
       <Dialog open={showOriginalReceiptWarning} onOpenChange={(o) => { if (!o) { setShowOriginalReceiptWarning(false); setPendingCancelTx(null); } }}>
