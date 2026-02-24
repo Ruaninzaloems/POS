@@ -199,6 +199,17 @@ export const usePos = () => {
   return context;
 };
 
+function formatCardExpiry(exp: string): string {
+  if (!exp) return '';
+  const parts = exp.replace(/[^0-9/]/g, '').split('/');
+  if (parts.length === 2) {
+    const [mm, yyyy] = parts;
+    return `01/${mm.padStart(2, '0')}/${yyyy}`;
+  }
+  if (exp.includes('/')) return exp;
+  return exp;
+}
+
 export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { toast } = useToast();
   const [currentUser, setCurrentUser] = useState<CashierProfile>({
@@ -1641,6 +1652,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     const submitAccounts = perAccountPayments.map(({ acct, itemPayment }) => {
                         const { _userAmountToPay: _, ...submitAccount } = acct;
                         submitAccount.outStandingAmt = itemPayment;
+                        if (submitAccount.billId == null) submitAccount.billId = 0;
+                        if (submitAccount.sundryDebtorsId == null) submitAccount.sundryDebtorsId = '';
                         return submitAccount;
                     });
 
@@ -1655,7 +1668,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         paymentOption: paymentOptionId,
                         outStandingAmount: totalFullOutstanding,
                         cardNumber: isCardPayment ? (record.payment.cardReference || '') : '',
-                        expiryDate: isCardPayment ? (record.payment.cardExpiry || '') : '',
+                        expiryDate: isCardPayment ? formatCardExpiry(record.payment.cardExpiry) : '',
                         chequeNumber: '',
                         chequeDate: null,
                         processingMonth: null,
@@ -1707,7 +1720,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             paymentOption: paymentOptionId,
                             outStandingAmount: acctOutstanding,
                             cardNumber: isCardPayment ? (record.payment.cardReference || '') : '',
-                            expiryDate: isCardPayment ? (record.payment.cardExpiry || '') : '',
+                            expiryDate: isCardPayment ? formatCardExpiry(record.payment.cardExpiry) : '',
                             chequeNumber: '',
                             chequeDate: null,
                             processingMonth: null,
@@ -1728,6 +1741,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
                         const { _userAmountToPay: _, ...submitAccount } = acct;
                         submitAccount.outStandingAmt = itemPayment;
+                        if (submitAccount.billId == null) submitAccount.billId = 0;
+                        if (submitAccount.sundryDebtorsId == null) submitAccount.sundryDebtorsId = '';
                         const result = await submitConsumerPayment(sessionUserId, {
                             account: submitAccount,
                             requestModel,
