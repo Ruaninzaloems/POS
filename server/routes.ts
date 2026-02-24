@@ -1642,7 +1642,71 @@ export async function registerRoutes(
         }
       }
 
-      console.log('[Receipt Info] Retrieved settings:', Object.keys(settings).length > 0 ? settings : '(no settings found - will use fallback)');
+      if (Object.keys(settings).length === 0) {
+        console.log('[Receipt Info] No settings from GetAppSetting or ConfigSetting. Trying PDF receipt header extraction...');
+        try {
+          const apiUrl = process.env.PLATINUM_API_URL || 'https://georgeplatinumuatapi.azurewebsites.net';
+          const token = session.token;
+
+          const probeIds = [312979, 312980, 312978, 313000, 312950, 312900];
+          let pdfExtracted = false;
+
+          for (const receiptId of probeIds) {
+            if (pdfExtracted) break;
+            try {
+              const pdfRes = await fetch(`${apiUrl}/api/billing-payment/print-receipt`, {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                  Accept: 'application/pdf',
+                },
+                body: JSON.stringify([receiptId]),
+              });
+
+              if (pdfRes.ok) {
+                const contentType = pdfRes.headers.get('content-type') || '';
+                if (contentType.includes('pdf') || contentType.includes('octet')) {
+                  const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+                  if (pdfBuffer.length > 500) {
+                    const tmpPath = `/tmp/receipt_header_${Date.now()}.pdf`;
+                    try {
+                      writeFileSync(tmpPath, pdfBuffer);
+                      const text = execSync(`pdftotext -layout ${tmpPath} -`, { timeout: 10000 }).toString();
+
+                      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+                      const vatLine = lines.findIndex(l => /vat\s*(registration|reg\.?)\s*(number|no\.?)\s*:?\s*/i.test(l));
+                      if (vatLine >= 0) {
+                        const vatMatch = lines[vatLine].match(/vat\s*(?:registration|reg\.?)\s*(?:number|no\.?)\s*:?\s*(\d[\d\s/-]*\d)?/i);
+                        if (vatMatch && vatMatch[1]) {
+                          settings['VATRegistrationNo'] = vatMatch[1].trim();
+                        }
+                        const headerLines = lines.slice(0, vatLine).filter(l => l.length > 2);
+                        if (headerLines.length >= 1) {
+                          settings['InstitutionName'] = headerLines[0];
+                        }
+                        if (headerLines.length >= 2) {
+                          settings['InstitutionAddress1'] = headerLines.slice(1).join(', ');
+                        }
+                        pdfExtracted = true;
+                        console.log(`[Receipt Info] Extracted from PDF receipt ${receiptId}:`, settings);
+                      }
+                    } finally {
+                      if (existsSync(tmpPath)) { try { unlinkSync(tmpPath); } catch {} }
+                    }
+                  }
+                }
+              }
+            } catch (e: any) {
+              console.warn(`[Receipt Info] PDF probe ${receiptId} failed:`, e.message);
+            }
+          }
+        } catch (pdfErr: any) {
+          console.warn('[Receipt Info] PDF header extraction failed:', pdfErr.message);
+        }
+      }
+
+      console.log('[Receipt Info] Retrieved settings:', Object.keys(settings).length > 0 ? settings : '(no settings found)');
       res.json(settings);
     } catch (e: any) {
       console.error('[Receipt Info] Error fetching settings:', e.message);
