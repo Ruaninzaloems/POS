@@ -18,8 +18,7 @@ import {
   getAccountRatesDetails, getAdditionalBillingSearchResults,
   getBillingTemplate, getDetailBillingTemplate, getServicesSearchResults,
 } from '@/lib/enquiries-service';
-import { fetchPosMultiReceiptPrint, platinumPrintReceiptRaw } from '@/lib/external-api';
-import { openReceiptFromMultiPrint } from '@/lib/receipt-print';
+import { platinumPrintReceiptRaw } from '@/lib/external-api';
 import { LoadingSkeleton, EmptyState, ErrorState, PaginatedTable, getFinYearOptions, MONTHS } from './shared';
 import { downloadSummaryExcel, downloadTransactionExcel, downloadExcel } from '@/lib/excel-export';
 import { parseTariffRateData, parseTariffTiers, calculateTieredBilling, STANDARD_MONTH_DAYS, type TariffTier } from './service-tabs';
@@ -1253,23 +1252,30 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorState message={error} onRetry={load} />;
 
+  const openPdfReceipt = async (serialNo: number, label?: string) => {
+    const res = await platinumPrintReceiptRaw([serialNo]);
+    if (!res.ok) {
+      throw new Error('Could not fetch receipt PDF from billing system');
+    }
+    const blob = await res.blob();
+    const pdfUrl = URL.createObjectURL(blob);
+    const pdfTab = window.open(pdfUrl, '_blank');
+    if (!pdfTab) {
+      const link = document.createElement('a');
+      link.href = pdfUrl;
+      link.download = `Receipt_${label || serialNo}.pdf`;
+      link.click();
+    }
+  };
+
   const handlePrintReceipt = async (item: any) => {
     const receiptId = item.receiptId || item.receipt_ID;
     if (!receiptId) return;
     setPrintingId(String(receiptId));
     try {
-      const receiptNoStr = item.receiptNo || item.receiptNumber || item.receipt_No || '';
-      const multiData = await fetchPosMultiReceiptPrint(String(receiptId), 3, receiptNoStr || undefined);
-      const items = Array.isArray(multiData) ? multiData : [];
-      if (items.length > 0) {
-        await openReceiptFromMultiPrint(items, true);
-        setPrintingId(null);
-        return;
-      }
-      toast({ title: "Print Failed", description: "The API returned no receipt data for this transaction. Please try again or contact support.", variant: "destructive" });
+      await openPdfReceipt(Number(receiptId), item.receiptNo || item.receiptNumber || '');
     } catch (e) {
       console.error('Failed to fetch receipt:', e);
-      toast({ title: "Print Failed", description: "Could not retrieve receipt data from the API.", variant: "destructive" });
     } finally {
       setPrintingId(null);
     }
@@ -1278,22 +1284,11 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
   const handlePrintWindow = async () => {
     if (!receiptPreview) return;
     const rid = receiptPreview.receiptId || receiptPreview.receipt_ID;
-    const rno = receiptPreview.receiptNo || receiptPreview.receiptNumber || '';
-    if (!rid) {
-      toast({ title: "Print Failed", description: "No receipt identifier available.", variant: "destructive" });
-      return;
-    }
+    if (!rid) return;
     try {
-      const multiData = await fetchPosMultiReceiptPrint(String(rid), 3, rno || undefined);
-      const items = Array.isArray(multiData) ? multiData : [];
-      if (items.length > 0) {
-        await openReceiptFromMultiPrint(items, true);
-        return;
-      }
-      toast({ title: "Print Failed", description: "The API returned no receipt data. Please try again or contact support.", variant: "destructive" });
+      await openPdfReceipt(Number(rid), receiptPreview.receiptNo || receiptPreview.receiptNumber || '');
     } catch (e) {
       console.error('Failed to fetch receipt:', e);
-      toast({ title: "Print Failed", description: "Could not retrieve receipt data from the API.", variant: "destructive" });
     }
   };
 

@@ -28,11 +28,9 @@ import {
     ViewReceiptItem,
     ReceiptSearchQuery,
     platinumPrintReceiptRaw,
-    fetchPosMultiReceiptPrint,
 } from '@/lib/external-api';
 import { useToast } from '@/hooks/use-toast';
 import { usePos } from '@/lib/pos-state';
-import { openReceiptFromMultiPrint } from '@/lib/receipt-print';
 
 type SortField = 'receiptNo' | 'accountNumber' | 'amount' | 'receiptDate' | 'cashierName' | 'paymentType' | 'paymentOption';
 type SortDir = 'asc' | 'desc';
@@ -421,21 +419,34 @@ export default function ViewReceipts() {
             return;
         }
         try {
-            const multiData = await fetchPosMultiReceiptPrint(String(receiptNo), 3, receiptNo);
-            const items = Array.isArray(multiData) ? multiData : [];
-            if (items.length > 0) {
-                const win = await openReceiptFromMultiPrint(items, true);
-                if (!win) {
-                    toast({ title: "Popup Blocked", description: "Please allow popups for this site to print receipts.", variant: "destructive" });
-                } else {
-                    toast({ title: "Receipt Ready", description: `EFT receipt ${receiptNo} opened for printing.` });
-                }
+            let serialNo = Number(receiptNo);
+            if (!serialNo || isNaN(serialNo)) {
+                const searchRes = await searchReceiptNumbers(String(receiptNo));
+                const found: any = Array.isArray(searchRes) ? searchRes[0] : null;
+                serialNo = found?.serialNo || found?.receiptId || found?.id || 0;
+            }
+            if (!serialNo) {
+                toast({ title: "Print Failed", description: "Could not resolve receipt serial number for PDF.", variant: "destructive" });
                 return;
             }
-            toast({ title: "Print Failed", description: "The API returned no receipt data for this EFT entry. Please try again or contact support.", variant: "destructive" });
+            const res = await platinumPrintReceiptRaw([serialNo]);
+            if (!res.ok) {
+                toast({ title: "Print Failed", description: "Could not fetch receipt PDF from billing system.", variant: "destructive" });
+                return;
+            }
+            const blob = await res.blob();
+            const pdfUrl = URL.createObjectURL(blob);
+            const pdfTab = window.open(pdfUrl, '_blank');
+            if (!pdfTab) {
+                const link = document.createElement('a');
+                link.href = pdfUrl;
+                link.download = `Receipt_EFT_${receiptNo}.pdf`;
+                link.click();
+            }
+            toast({ title: "Receipt Ready", description: `EFT receipt ${receiptNo} opened for printing.` });
         } catch (e: any) {
             console.error('EFT receipt fetch failed:', e);
-            toast({ title: "Print Failed", description: "Could not retrieve receipt data from the API.", variant: "destructive" });
+            toast({ title: "Print Failed", description: "Could not retrieve receipt PDF from the API.", variant: "destructive" });
         }
     };
 
@@ -521,24 +532,26 @@ export default function ViewReceipts() {
         }
         setPrintingReceiptId(serialNo);
         try {
-            const receiptNoStr = getReceiptField(receipt, 'receiptNo');
-            const multiData = await fetchPosMultiReceiptPrint(String(serialNo), 3, receiptNoStr || undefined);
-            const items = Array.isArray(multiData) ? multiData : [];
-
-            if (items.length > 0) {
-                const win = await openReceiptFromMultiPrint(items, true);
-                if (!win) {
-                    toast({ title: "Popup Blocked", description: "Please allow popups for this site to print receipts.", variant: "destructive" });
-                    return;
-                }
-                toast({ title: "Receipt Ready", description: `Receipt ${items[0]?.receiptNo || serialNo} opened for reprinting.` });
+            const res = await platinumPrintReceiptRaw([Number(serialNo)]);
+            if (!res.ok) {
+                const errText = await res.text().catch(() => '');
+                console.error('[ViewReceipts] print-receipt failed:', res.status, errText);
+                toast({ title: "Print Failed", description: "Could not fetch receipt PDF from billing system.", variant: "destructive" });
                 return;
             }
-
-            toast({ title: "Print Failed", description: "The API returned no receipt data for this receipt. Please try again or contact support.", variant: "destructive" });
+            const blob = await res.blob();
+            const pdfUrl = URL.createObjectURL(blob);
+            const pdfTab = window.open(pdfUrl, '_blank');
+            if (!pdfTab) {
+                const link = document.createElement('a');
+                link.href = pdfUrl;
+                link.download = `Receipt_${getReceiptField(receipt, 'receiptNo') || serialNo}.pdf`;
+                link.click();
+            }
+            toast({ title: "Receipt Ready", description: `Receipt ${getReceiptField(receipt, 'receiptNo') || serialNo} opened for printing.` });
         } catch (e: any) {
             console.error('Receipt fetch failed:', e);
-            toast({ title: "Print Failed", description: "Could not retrieve receipt data from the API.", variant: "destructive" });
+            toast({ title: "Print Failed", description: "Could not retrieve receipt PDF from the API.", variant: "destructive" });
         } finally {
             setPrintingReceiptId(null);
         }
