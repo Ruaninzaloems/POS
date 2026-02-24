@@ -60,7 +60,12 @@ function parseReceiptAllocations(pdfText: string): ReceiptAllocation[] {
     'Water', 'Electricity', 'Property Rates', 'Rates', 'Sanitation', 'Sewerage',
     'Waste', 'Refuse', 'Housing', 'Sundry', 'Advance Payment', 'Interest',
     'Electricity Basic', 'Electricity Metered', 'Sanitation Basic', 'Waste Disposal',
-    'Water Basic', 'Water Metered', 'Assessment Rates'
+    'Water Basic', 'Water Metered', 'Assessment Rates',
+    'Advance', 'Arrear', 'Levy', 'Fire', 'Rent', 'Deposit', 'Rebate',
+    'Parks', 'Roads', 'Storm', 'Building', 'Community', 'Environmental',
+    'Valuation', 'Clearance', 'Metered', 'Basic Charge', 'Basic',
+    'Service Charge', 'Availability', 'Fixed Charge', 'Standing Charge',
+    'Capital Contribution', 'Infrastructure', 'Kerbside', 'Kerb',
   ];
 
   for (let i = 0; i < lines.length; i++) {
@@ -3188,6 +3193,26 @@ export async function registerRoutes(
     try {
       const session = requireAuth(req, res); if (!session) return;
       const { accountId, financialYear } = req.query as Record<string, string>;
+      const finYear = financialYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
+
+      try {
+        console.log(`[billed-vs-paid] Trying AccountInquiries for accountId=${accountId}, finYear=${finYear}`);
+        const aiData = await platinumGet(session, `/api/BillingEnquiry/AccountInquiries`, {
+          accountId: accountId,
+          finYear: finYear,
+        });
+        if (aiData) {
+          const items = Array.isArray(aiData) ? aiData : [aiData];
+          if (items.length > 0 && items[0] && typeof items[0] === 'object') {
+            console.log(`[billed-vs-paid] AccountInquiries returned ${items.length} monthly rows`);
+            res.json(items);
+            return;
+          }
+        }
+      } catch (aiErr: any) {
+        console.log(`[billed-vs-paid] AccountInquiries failed (${aiErr.message}), trying BilledVsPaidAmounts`);
+      }
+
       try {
         const data = await platinumGet(session, `/api/BillingEnquiry/BilledVsPaidAmounts`, req.query as Record<string, string>);
         if (data && (Array.isArray(data) ? data.length > 0 : true)) {
@@ -3195,9 +3220,9 @@ export async function registerRoutes(
           return;
         }
       } catch (primaryErr: any) {
-        console.log(`[billed-vs-paid] Primary endpoint failed (${primaryErr.message}), falling back to DetailedTransactionResults`);
+        console.log(`[billed-vs-paid] BilledVsPaidAmounts failed (${primaryErr.message}), falling back to DetailedTransactionResults`);
       }
-      const finYear = financialYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
+
       const txnData = await platinumGet(session, `/api/BillingEnquiry/DetailedTransactionResults`, {
         accountId: accountId,
         finYear: finYear,
@@ -4147,6 +4172,7 @@ export async function registerRoutes(
                   try {
                     writeFileSync(tmpPath, pdfBuffer);
                     const text = execSync(`pdftotext ${tmpPath} -`, { timeout: 10000 }).toString();
+                    console.log(`[pos-multi-receipt-print] PDF text preview (first 2000 chars):`, text.substring(0, 2000).replace(/\n/g, ' | '));
                     const allocations = parseReceiptAllocations(text);
                     if (allocations.length > 0) {
                       console.log(`[pos-multi-receipt-print] Extracted ${allocations.length} service allocations from PDF:`, allocations.map(a => `${a.service}: ${a.amount}`).join(', '));

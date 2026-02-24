@@ -972,9 +972,13 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
     return n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  const totalBilled = data.reduce((s, d) => s + (Number(d.billingAmount ?? d.billedAmount ?? d.amount ?? 0) || 0), 0);
-  const totalPaid = data.reduce((s, d) => s + (Number(d.paidAmount ?? d.paymentAmount ?? 0) || 0), 0);
-  const maxVal = Math.max(...data.map(d => Math.max(Math.abs(Number(d.billingAmount ?? d.billedAmount ?? d.amount ?? 0) || 0), Math.abs(Number(d.paidAmount ?? d.paymentAmount ?? 0) || 0))), 1);
+  const getBilled = (d: any) => Number(d.totalBillAmount ?? d.billingAmount ?? d.billedAmount ?? d.amount ?? 0) || 0;
+  const getPaid = (d: any) => Number(d.paidAmount ?? d.paymentAmount ?? 0) || 0;
+  const getMonth = (d: any) => d.processingMonth || d.month || d.billingMonth || d.period || '-';
+
+  const totalBilled = data.reduce((s, d) => s + getBilled(d), 0);
+  const totalPaid = data.reduce((s, d) => s + getPaid(d), 0);
+  const maxVal = Math.max(...data.map(d => Math.max(Math.abs(getBilled(d)), Math.abs(getPaid(d)))), 1);
 
   return (
     <div className="p-3 sm:p-5 space-y-4 sm:space-y-5">
@@ -998,8 +1002,8 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
           {data.length === 0 ? (
             <div className="py-8 text-center text-slate-400 text-sm italic">No records to display.</div>
           ) : data.map((d: any, i: number) => {
-            const billed = Number(d.billingAmount ?? d.billedAmount ?? d.amount ?? 0) || 0;
-            const paid = Number(d.paidAmount ?? d.paymentAmount ?? 0) || 0;
+            const billed = getBilled(d);
+            const paid = getPaid(d);
             return (
               <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`row-billed-mobile-${i}`}>
                 <div className="flex justify-between text-[11px]">
@@ -1008,7 +1012,7 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
                 </div>
                 <div className="flex justify-between text-[11px]">
                   <span className="text-slate-500 font-medium">Month</span>
-                  <span className="text-slate-800 font-semibold text-right">{d.month || d.billingMonth || d.period || '-'}</span>
+                  <span className="text-slate-800 font-semibold text-right">{getMonth(d)}</span>
                 </div>
                 <div className="flex justify-between text-[11px]">
                   <span className="text-indigo-600 font-medium">Billing Amount</span>
@@ -1048,12 +1052,12 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
               {data.length === 0 ? (
                 <tr><td colSpan={4} className="py-8 text-center text-slate-400 text-sm italic">No records to display.</td></tr>
               ) : data.map((d: any, i: number) => {
-                const billed = d.billingAmount ?? d.billedAmount ?? d.amount ?? 0;
-                const paid = d.paidAmount ?? d.paymentAmount ?? 0;
+                const billed = getBilled(d);
+                const paid = getPaid(d);
                 return (
                   <tr key={i} className="border-b border-slate-100 hover:bg-indigo-50/30 transition-colors" data-testid={`row-billed-${i}`}>
                     <td className="py-2.5 px-4 text-[13px] text-slate-700">{d.financialYear || selectedYear}</td>
-                    <td className="py-2.5 px-4 text-[13px] font-medium text-slate-800">{d.month || d.billingMonth || d.period || '-'}</td>
+                    <td className="py-2.5 px-4 text-[13px] font-medium text-slate-800">{getMonth(d)}</td>
                     <td className="py-2.5 px-4 text-right font-mono text-[13px] text-indigo-700 font-semibold">{fmt(billed)}</td>
                     <td className={`py-2.5 px-4 text-right font-mono text-[13px] font-semibold ${paid < 0 ? 'text-red-600' : 'text-rose-600'}`}>{fmt(paid)}</td>
                   </tr>
@@ -1085,11 +1089,11 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
           <div className="p-3 sm:p-5">
             <div className="flex items-end gap-1 justify-center" style={{ height: '320px' }} data-testid="chart-billed-vs-paid">
               {data.map((d: any, i: number) => {
-                const billed = Math.abs(Number(d.billingAmount ?? d.billedAmount ?? d.amount ?? 0) || 0);
-                const paid = Math.abs(Number(d.paidAmount ?? d.paymentAmount ?? 0) || 0);
+                const billed = Math.abs(getBilled(d));
+                const paid = Math.abs(getPaid(d));
                 const billedPct = maxVal > 0 ? (billed / maxVal) * 100 : 0;
                 const paidPct = maxVal > 0 ? (paid / maxVal) * 100 : 0;
-                const month = d.month || d.billingMonth || d.period || '';
+                const month = getMonth(d);
                 return (
                   <div key={i} className="flex flex-col items-center flex-1 max-w-[100px] group">
                     <div className="flex items-end gap-1 w-full justify-center" style={{ height: '260px' }}>
