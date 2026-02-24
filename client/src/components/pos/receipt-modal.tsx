@@ -151,8 +151,8 @@ export function ReceiptModal() {
 
   return (
     <Dialog open={isReceiptModalOpen} onOpenChange={(open) => !open && closeReceiptModal()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader className="items-center text-center space-y-3 pb-4 border-b">
+      <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogHeader className="items-center text-center space-y-3 pb-4 border-b flex-shrink-0">
           {transactionProcessing ? (
             (() => {
               const stepText = processingStep || 'Preparing payment...';
@@ -225,7 +225,7 @@ export function ReceiptModal() {
           )}
         </DialogHeader>
         
-        <div className="py-6 space-y-4">
+        <div className="py-6 space-y-4 overflow-y-auto flex-1 min-h-0">
             {paymentSucceeded && (() => {
               const items = currentTransaction.items || transactionItems;
               const consumerItems = items.filter((i: TransactionItem) => i.type === 'CONSUMER_SERVICES' || i.type === 'MULTI_ACCOUNT' || i.type === 'ACCOUNT_GROUP');
@@ -446,7 +446,7 @@ export function ReceiptModal() {
             </div>}
         </div>
 
-        <DialogFooter className="sm:justify-between gap-2 border-t pt-4">
+        <DialogFooter className="sm:justify-between gap-2 border-t pt-4 flex-shrink-0">
           <Button variant="ghost" onClick={closeReceiptModal} disabled={transactionProcessing || isPrinting} className="h-12 sm:h-10 rounded-xl">Close</Button>
           {!paymentFailed && (
             <Button onClick={handleComplete} className="min-w-[140px] h-12 sm:h-10 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/20 font-bold" disabled={transactionProcessing || isPrinting}>
