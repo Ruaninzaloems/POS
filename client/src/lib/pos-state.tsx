@@ -1182,8 +1182,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     const payCtx = describePaymentContext();
 
-    setProcessingStep(`Verifying session for ${payCtx.detail || payCtx.label}...`);
-
     const finYear = resolvedFinYear;
     console.log(`[Priority 1] Using finYear: ${finYear} (platinumUser: ${platinumUser?.finYear})`);
 
@@ -1276,49 +1274,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     console.log(`[Payment Split] Prepaid portion: R${prepaidTotal}`);
     if (isSplitPayment) {
         console.log(`[Payment Split] SPLIT PAYMENT detected: Cash R${record.payment.cash} + Card R${record.payment.card} — will create separate receipts`);
-    }
-
-    try {
-        const finYear = platinumUser?.finYear || '2025/2026';
-        const sessionResult = await platinumValidateCashier(sessionUserId, finYear).catch(() => null);
-        if (sessionResult) {
-            const isStillActive = sessionResult?.cashier?.isActive === true;
-            console.log(`[Payment] validate-cashier pre-payment check — isActive: ${isStillActive} (POS_Cashier.IsActive=${sessionResult?.cashier?.isActive})`);
-            if (!isStillActive) {
-                console.error(`[Payment] Session is NOT active (POS_Cashier.IsActive != 1) for userId ${sessionUserId}. BLOCKING payment.`);
-                setActiveSession(false);
-                setSessionDetails(undefined);
-                toast({
-                    title: "Session Expired",
-                    description: "Your cashier session is no longer active. Please restart your session from the setup screen.",
-                    variant: "destructive",
-                });
-                setTransactionProcessing(false);
-                setIsReceiptModalOpen(false);
-                setRecentTransactions(prev => prev.filter(t => t.id !== record.id));
-                return;
-            }
-        } else {
-            console.error(`[Payment] validate-cashier returned null — BLOCKING payment (cannot verify session)`);
-            toast({
-                title: "Session Verification Failed",
-                description: "Unable to verify your session with the billing system. Please try again.",
-                variant: "destructive",
-            });
-            setTransactionProcessing(false);
-            setIsReceiptModalOpen(false);
-            return;
-        }
-    } catch (e: any) {
-        console.error(`[Payment] Failed to call validate-cashier before payment:`, e?.message || e);
-        toast({
-            title: "Session Verification Failed",
-            description: "Unable to verify your session. Please check your connection and try again.",
-            variant: "destructive",
-        });
-        setTransactionProcessing(false);
-        setIsReceiptModalOpen(false);
-        return;
     }
 
     const extractReceiptIds = (result: any): number[] => {
@@ -1946,36 +1901,38 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 console.warn(`[Priority 1] Skipping legacy receipt posting and account rebuild — payment was not successful`);
             }
 
-            for (let accIdx = 0; accIdx < accountItems.length; accIdx++) {
-                const item = accountItems[accIdx];
-                if (!accPaymentSucceeded) break;
+            const latestReceiptId = record.splitReceipts && record.splitReceipts.length > 0
+                ? String(record.splitReceipts[record.splitReceipts.length - 1].receiptId)
+                : record.receiptNumber.replace(/\D/g, '') || '0';
+
+            const BATCH_SIZE = 4;
+            let completedCount = 0;
+            const totalToProcess = accountItems.filter(item => {
+                const aid = item.originalData?.account_ID || item.originalData?.apiId || item.originalData?.accountID || item.originalData?.accountId;
+                return !!aid;
+            }).length;
+
+            const finalizeOneAccount = async (item: typeof accountItems[0], accIdx: number) => {
                 const accountId = item.originalData?.account_ID || item.originalData?.apiId || item.originalData?.accountID || item.originalData?.accountId;
-                if (!accountId) continue;
+                if (!accountId) return;
                 const acctName = item.originalData?.name || item.reference || item.originalData?.accountNumber || accountId;
-                setProcessingStep(`Finalizing account ${accIdx + 1} of ${accountItems.length} — ${acctName}...`);
-                const latestReceiptId = record.splitReceipts && record.splitReceipts.length > 0
-                    ? String(record.splitReceipts[record.splitReceipts.length - 1].receiptId)
-                    : record.receiptNumber.replace(/\D/g, '') || '0';
 
                 try {
-                    await postMultipleAccountPaymentReceipt(String(sessionUserId), accountId, latestReceiptId);
-                    console.log(`[Priority 1] Legacy receipt posted for account ${accountId}`);
-                } catch (e) {
-                    console.warn(`[Priority 1] Failed to post legacy receipt for account ${accountId}`, e);
-                }
-
-                try {
-                    await rebuildFullAccount(Number(accountId));
-                    console.log(`[Priority 1] Rebuild completed for account ${accountId}`);
-                } catch (e) {
-                    console.warn(`[Priority 1] Failed to rebuild account ${accountId}`, e);
-                }
+                    await Promise.all([
+                        postMultipleAccountPaymentReceipt(String(sessionUserId), accountId, latestReceiptId)
+                            .then(() => console.log(`[Priority 1] Legacy receipt posted for account ${accountId}`))
+                            .catch(e => console.warn(`[Priority 1] Failed to post legacy receipt for account ${accountId}`, e)),
+                        rebuildFullAccount(Number(accountId))
+                            .then(() => console.log(`[Priority 1] Rebuild completed for account ${accountId}`))
+                            .catch(e => console.warn(`[Priority 1] Failed to rebuild account ${accountId}`, e)),
+                    ]);
+                } catch (_) {}
 
                 try {
                     const consDetails = await platinumGetConsAccountDetails(Number(accountId));
                     if (consDetails && consDetails.outStandingAmt !== undefined) {
                         const updatedOutstanding = consDetails.outStandingAmt;
-                        console.log(`[Priority 1] Updated outstanding balance for account ${accountId}: R${updatedOutstanding} (from API post-payment)`);
+                        console.log(`[Priority 1] Updated outstanding balance for account ${accountId}: R${updatedOutstanding}`);
 
                         if (record.receiptDetail && (String(record.receiptDetail.accountId) === String(accountId))) {
                             record.receiptDetail.outstandingAmount = updatedOutstanding;
@@ -1994,50 +1951,35 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }
 
                 let allocations: ReceiptAllocation[] = [];
-
                 const prePaymentBalances = serviceBalanceMap.get(String(accountId));
                 if (prePaymentBalances && prePaymentBalances.length > 0) {
                     try {
                         const balanceData = await enquiryGetAccountBalance(accountId);
-                        {
-                            let rows: any[] = [];
-                            if (Array.isArray(balanceData)) rows = balanceData;
-                            else if (balanceData?.results && Array.isArray(balanceData.results)) rows = balanceData.results;
-                            else if (balanceData && typeof balanceData === 'object') rows = [balanceData];
+                        let rows: any[] = [];
+                        if (Array.isArray(balanceData)) rows = balanceData;
+                        else if (balanceData?.results && Array.isArray(balanceData.results)) rows = balanceData.results;
+                        else if (balanceData && typeof balanceData === 'object') rows = [balanceData];
 
-                            if (rows.length > 0) {
-                                const postPaymentMap = new Map<string, number>();
-                                for (const row of rows) {
-                                    const desc = row.serviceDescription || row.description || 'Unknown';
-                                    postPaymentMap.set(desc, row.totalOutStanding || row.totalOutstanding || 0);
+                        if (rows.length > 0) {
+                            const postPaymentMap = new Map<string, number>();
+                            for (const row of rows) {
+                                const desc = row.serviceDescription || row.description || 'Unknown';
+                                postPaymentMap.set(desc, row.totalOutStanding || row.totalOutstanding || 0);
+                            }
+                            for (const pre of prePaymentBalances) {
+                                const postAmount = postPaymentMap.get(pre.serviceDescription) ?? pre.totalAmount;
+                                const allocated = Math.round((pre.totalAmount - postAmount) * 100) / 100;
+                                if (Math.abs(allocated) >= 0.01) {
+                                    allocations.push({ service: pre.serviceDescription, amount: allocated, vat: 0, total: allocated });
                                 }
-
-                                for (const pre of prePaymentBalances) {
-                                    const postAmount = postPaymentMap.get(pre.serviceDescription) ?? pre.totalAmount;
-                                    const allocated = Math.round((pre.totalAmount - postAmount) * 100) / 100;
-                                    if (Math.abs(allocated) >= 0.01) {
-                                        allocations.push({
-                                            service: pre.serviceDescription,
-                                            amount: allocated,
-                                            vat: 0,
-                                            total: allocated,
-                                        });
-                                    }
-                                }
-                                if (allocations.length > 0) {
-                                    console.log(`[Priority 1] Payment allocations from balance diff for account ${accountId}:`, allocations.map(a => `${a.service}: R${a.amount}`));
-                                } else {
-                                    console.log(`[Priority 1] No measurable allocations via diff for account ${accountId}, trying receipt PDF`);
-                                }
+                            }
+                            if (allocations.length > 0) {
+                                console.log(`[Priority 1] Payment allocations for account ${accountId}:`, allocations.map(a => `${a.service}: R${a.amount}`));
                             }
                         }
                     } catch (e) {
-                        console.warn(`[Priority 1] Failed to compute payment allocations via diff for account ${accountId}`, e);
+                        console.warn(`[Priority 1] Failed to compute allocations for account ${accountId}`, e);
                     }
-                }
-
-                if (allocations.length === 0) {
-                    console.log(`[Priority 1] No payment allocations available for account ${accountId} — receipt will show line items only`);
                 }
 
                 if (allocations.length > 0) {
@@ -2049,6 +1991,17 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         }
                     }
                 }
+
+                completedCount++;
+            };
+
+            for (let batchStart = 0; batchStart < accountItems.length; batchStart += BATCH_SIZE) {
+                if (!accPaymentSucceeded) break;
+                const batch = accountItems.slice(batchStart, batchStart + BATCH_SIZE);
+                const batchEnd = Math.min(batchStart + BATCH_SIZE, accountItems.length);
+                const names = batch.map(b => b.originalData?.name || b.reference || '').filter(Boolean);
+                setProcessingStep(`Finalizing ${batchEnd} of ${accountItems.length} — ${names.join(', ')}...`);
+                await Promise.all(batch.map((item, i) => finalizeOneAccount(item, batchStart + i)));
             }
 
             setRecentTransactions(prev => prev.map(t => t.id === record.id ? { ...record } : t));

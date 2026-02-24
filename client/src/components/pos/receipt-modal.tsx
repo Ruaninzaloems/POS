@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { usePos, TransactionItem } from '@/lib/pos-state';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { platinumPrintReceiptRaw } from '@/lib/external-api';
+import { Progress } from '@/components/ui/progress';
 
 export function ReceiptModal() {
   const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions, transactionProcessing, processingStep, currentTransactionId } = usePos();
@@ -133,15 +134,42 @@ export function ReceiptModal() {
       <DialogContent className="sm:max-w-md">
         <DialogHeader className="items-center text-center space-y-3 pb-4 border-b">
           {transactionProcessing ? (
-            <>
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 mb-2">
-                <Loader2 className="w-8 h-8 animate-spin" />
-              </div>
-              <DialogTitle className="text-xl">Processing Receipt...</DialogTitle>
-              <DialogDescription className="text-sm text-muted-foreground font-medium">
-                 {processingStep || 'Please wait while the receipt is being generated'}
-              </DialogDescription>
-            </>
+            (() => {
+              const stepText = processingStep || 'Preparing payment...';
+              const progressMatch = stepText.match(/(\d+)\s+of\s+(\d+)/);
+              const current = progressMatch ? parseInt(progressMatch[1]) : 0;
+              const total = progressMatch ? parseInt(progressMatch[2]) : 0;
+              const pct = total > 0 ? Math.round((current / total) * 100) : -1;
+              const dashIdx = stepText.indexOf('—');
+              const acctDetail = dashIdx > -1 ? stepText.slice(dashIdx + 1).replace(/\.{3}$/, '').trim() : '';
+              const phaseText = dashIdx > -1 ? stepText.slice(0, dashIdx).trim() : stepText.replace(/\.{3}$/, '').trim();
+
+              return (
+                <>
+                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 mb-2 relative">
+                    <Loader2 className="w-8 h-8 animate-spin" />
+                    {pct >= 0 && (
+                      <span className="absolute -bottom-1 -right-1 bg-blue-600 text-white text-[10px] font-bold rounded-full w-6 h-6 flex items-center justify-center shadow">
+                        {pct}%
+                      </span>
+                    )}
+                  </div>
+                  <DialogTitle className="text-xl">Processing Receipt...</DialogTitle>
+                  <div className="w-full space-y-2 mt-1">
+                    <p className="text-sm text-muted-foreground font-medium text-center">{phaseText}</p>
+                    {acctDetail && (
+                      <p className="text-xs font-semibold text-blue-700 text-center truncate max-w-[280px] mx-auto">{acctDetail}</p>
+                    )}
+                    {pct >= 0 && (
+                      <div className="px-2">
+                        <Progress value={pct} className="h-2" />
+                        <p className="text-[10px] text-muted-foreground text-center mt-1">{current} of {total} completed</p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              );
+            })()
           ) : paymentFailed ? (
             <>
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center text-red-600 mb-2">
