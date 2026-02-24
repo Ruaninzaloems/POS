@@ -16,7 +16,6 @@ import {
     searchAccountNumbers,
     searchReceiptNumbers,
     fetchReceiptList,
-    searchSebataReceipts,
     searchCashbookTransactionTrace,
     fetchActiveFinYear,
     searchByBankStatementNote,
@@ -113,7 +112,7 @@ export default function ViewReceipts() {
 
     const [selectedReceipt, setSelectedReceipt] = useState<ViewReceiptItem | null>(null);
     const [printingReceiptId, setPrintingReceiptId] = useState<string | number | null>(null);
-    const [dataSource, setDataSource] = useState<'none' | 'platinum' | 'sebata'>('none');
+    const [dataSource, setDataSource] = useState<'none' | 'platinum'>('none');
 
     const [quickSearch, setQuickSearch] = useState('');
     const [filterPaymentMethod, setFilterPaymentMethod] = useState('__all__');
@@ -296,49 +295,24 @@ export default function ViewReceipts() {
 
             console.log('[ViewReceipts] Searching with query:', query);
             const result = await fetchReceiptList(query);
-            const platinumFailed = (result as any)._platinumError === true;
-            console.log('[ViewReceipts] Platinum result:', result.items.length, 'items, platinumFailed:', platinumFailed);
+            console.log('[ViewReceipts] Result:', result.items.length, 'items');
 
-            if (result.items.length > 0 && !platinumFailed) {
-                setReceipts(result.items);
-                setTotalCount(result.totalCount);
-                setCurrentPage(page);
-                setDataSource('platinum');
-            } else {
-                console.log('[ViewReceipts] Trying Sebata receipt search...');
-                const cashierObj = cashiers.find(c => String(c.id) === cashierFilter);
-                const sebataFilters: { receiptNo?: string; cashierName?: string; accountNumber?: string } = {};
-                if (receiptFilter) sebataFilters.receiptNo = receiptFilter;
-                if (cashierObj) sebataFilters.cashierName = cashierObj.name;
-                if (accountFilter) sebataFilters.accountNumber = accountFilter;
+            setReceipts(result.items);
+            setTotalCount(result.totalCount);
+            setCurrentPage(page);
+            setDataSource(result.items.length > 0 ? 'platinum' : 'none');
 
-                const sebataItems = await searchSebataReceipts(sebataFilters);
-                console.log('[ViewReceipts] Sebata result:', sebataItems.length, 'items');
-
-                setReceipts(sebataItems);
-                setTotalCount(sebataItems.length);
-                setCurrentPage(1);
-                setDataSource(sebataItems.length > 0 ? 'sebata' : 'none');
-
-                if (sebataItems.length === 0) {
-                    toast({
-                        title: "No Results",
-                        description: platinumFailed
-                            ? "Platinum receipt API is temporarily unavailable. No matching receipts found in Sebata."
-                            : "No receipts found matching your criteria.",
-                    });
-                } else if (platinumFailed) {
-                    toast({
-                        title: "Using Sebata Data",
-                        description: "Platinum receipt API is temporarily unavailable. Showing receipts from Sebata.",
-                    });
-                }
+            if (result.items.length === 0) {
+                toast({
+                    title: "No Results",
+                    description: "No receipts found matching your criteria.",
+                });
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to load receipts", error);
             toast({
                 title: "Error",
-                description: "Failed to load receipt data. Please try again.",
+                description: error?.message || "Failed to load receipt data. Please try again.",
                 variant: "destructive"
             });
         } finally {
@@ -1361,9 +1335,6 @@ export default function ViewReceipts() {
                             Receipt Information {totalCount > 0 && <span className="text-blue-600">({totalCount} records)</span>}
                             {dataSource === 'platinum' && totalCount > 0 && (
                                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-blue-700 border-blue-300 bg-blue-50 font-normal normal-case" data-testid="badge-source-platinum">Platinum</Badge>
-                            )}
-                            {dataSource === 'sebata' && totalCount > 0 && (
-                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-amber-700 border-amber-300 bg-amber-50 font-normal normal-case" data-testid="badge-source-sebata">Sebata</Badge>
                             )}
                         </div>
                         <div className="flex gap-2 items-center">

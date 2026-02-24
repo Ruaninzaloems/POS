@@ -2078,11 +2078,11 @@ export async function fetchReceiptList(query: ReceiptSearchQuery): Promise<Recei
                 pageSize: data?.pageSize ?? query.pageSize ?? 50,
             };
         }
-        console.warn(`[fetchReceiptList] Platinum API returned ${res.status}, will fallback to Sebata`);
-        return { items: [], totalCount: 0, page: 1, pageSize: 50, _platinumError: true } as any;
-    } catch (e) {
+        console.warn(`[fetchReceiptList] API returned ${res.status}`);
+        throw new Error(`Receipt API returned error (${res.status}). Please try again.`);
+    } catch (e: any) {
         console.warn('Failed to fetch receipt list', e);
-        return { items: [], totalCount: 0, page: 1, pageSize: 50, _platinumError: true } as any;
+        throw e;
     }
 }
 

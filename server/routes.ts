@@ -957,59 +957,22 @@ export async function registerRoutes(
       params.PageSize = String(body.pageSize ?? body.PageSize ?? 50);
       if (body.orderby || body.Orderby) params.Orderby = body.orderby || body.Orderby;
       if (body.shortDirection || body.ShortDirection) params.ShortDirection = body.shortDirection || body.ShortDirection;
+
       const cashierVal = body.cashierId ?? body.CashierId ?? '';
       if (cashierVal !== '' && cashierVal !== undefined && cashierVal !== null) {
-        params.Cashier = String(cashierVal);
-        params.CashierId = String(cashierVal);
-      }
-      if (body.userId || body.UserId) {
-        params.UserId = String(body.userId || body.UserId);
+        params.CapturerId = String(cashierVal);
       }
       if (body.accountNumber || body.AccountNumber) params.AccountNumber = body.accountNumber || body.AccountNumber;
       if (body.receiptNo || body.ReceiptNo) params.ReceiptNo = body.receiptNo || body.ReceiptNo;
 
-      const userId = session.userData?.user_ID ? String(session.userData.user_ID) : '';
-      const cashierName = session.userData ? `${session.userData.firstName || ''} ${session.userData.lastName || ''}`.trim() : '';
       const isAllCashiers = String(cashierVal) === '0';
-      console.log(`[get-receipt-list] Request params (GET):`, JSON.stringify(params), `userId=${userId}, cashierName=${cashierName}, isAllCashiers=${isAllCashiers}`);
+      console.log(`[get-receipt-list] Request params:`, JSON.stringify(params), `isAllCashiers=${isAllCashiers}`);
 
       let data: any;
 
-      // Strategy 1: Direct GET with params as provided (Cashier=0 for all, or Cashier=id for specific)
-      console.log(`[get-receipt-list] Strategy 1: GET with Cashier=${params.Cashier}`);
+      console.log(`[get-receipt-list] GET with CapturerId=${params.CapturerId || '(not set)'}`);
       data = await platinumGet(session, "/api/ViewReceipt/get-receipt-list", params, { timeoutMs: 90000 });
-      console.log(`[get-receipt-list] Strategy 1 result: type=${typeof data}, isArray=${Array.isArray(data)}, keys=${data && typeof data === 'object' ? Object.keys(data).join(',') : 'N/A'}, first500=${JSON.stringify(data).substring(0, 500)}`);
-
-      // Strategy 2: If failed and a specific cashier was selected, try GET with Cashier=cashierName
-      if ((!data || (data && typeof data === 'object' && data._error)) && !isAllCashiers && cashierName) {
-        const nameParams: Record<string, string> = { ...params, Cashier: cashierName };
-        delete nameParams.CashierId;
-        console.log(`[get-receipt-list] Strategy 2: GET with Cashier="${cashierName}"`);
-        data = await platinumGet(session, "/api/ViewReceipt/get-receipt-list", nameParams, { timeoutMs: 90000 });
-        console.log(`[get-receipt-list] Strategy 2 result: type=${typeof data}, isArray=${Array.isArray(data)}, keys=${data && typeof data === 'object' ? Object.keys(data).join(',') : 'N/A'}, first500=${JSON.stringify(data).substring(0, 500)}`);
-      }
-
-      // Strategy 3: POST with the same params
-      if (data && typeof data === 'object' && data._error) {
-        console.log(`[get-receipt-list] Strategy 3: POST with Cashier=${params.Cashier}`);
-        const postBody: Record<string, any> = {
-          Cashier: isAllCashiers ? 0 : (cashierName || params.Cashier),
-          FromDate: params.FromDate,
-          ToDate: params.ToDate,
-          Page: Number(params.Page),
-          PageSize: Number(params.PageSize),
-          Orderby: params.Orderby,
-          ShortDirection: params.ShortDirection,
-        };
-        if (params.AccountNumber) postBody.AccountNumber = params.AccountNumber;
-        if (params.ReceiptNo) postBody.ReceiptNo = params.ReceiptNo;
-        data = await platinumPost(session, "/api/ViewReceipt/get-receipt-list", postBody);
-        console.log(`[get-receipt-list] Strategy 3 result: type=${typeof data}, isArray=${Array.isArray(data)}, keys=${data && typeof data === 'object' ? Object.keys(data).join(',') : 'N/A'}, first500=${JSON.stringify(data).substring(0, 500)}`);
-      }
-
-      if (data && typeof data === 'object' && '_error' in data) {
-        console.log(`[get-receipt-list] All strategies exhausted. Final response:`, JSON.stringify(data).substring(0, 500));
-      }
+      console.log(`[get-receipt-list] Result: type=${typeof data}, isArray=${Array.isArray(data)}, keys=${data && typeof data === 'object' ? Object.keys(data).join(',') : 'N/A'}, first500=${JSON.stringify(data).substring(0, 500)}`);
 
       if (data && typeof data === 'object' && data._error) {
         console.error(`[get-receipt-list] API error: ${data.status} ${data.statusText}`);
@@ -4051,7 +4014,7 @@ export async function registerRoutes(
           if (!lookupNo) return { serialNo: null, viewMatch: null };
           const lookupParams: Record<string, string> = {
             ReceiptNo: lookupNo,
-            Cashier: '0',
+            CapturerId: '0',
             FromDate: new Date(new Date().getFullYear() - 2, 0, 1).toISOString().split('T')[0] + 'T00:00:00',
             ToDate: new Date().toISOString().split('T')[0] + 'T23:59:59',
             Page: '1',
