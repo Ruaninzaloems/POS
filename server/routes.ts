@@ -1436,6 +1436,9 @@ export async function registerRoutes(
     try {
       const session = requireAuth(req, res); if (!session) return;
       const data = await platinumGet(session, "/api/billing-payment-miscellaneous/get-scoa-items", req.query as Record<string, string>);
+      if (Array.isArray(data) && data.length > 0) {
+        console.log(`[get-scoa-items] Sample item keys:`, Object.keys(data[0]), `First item:`, JSON.stringify(data[0]));
+      }
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -1446,6 +1449,7 @@ export async function registerRoutes(
     try {
       const session = requireAuth(req, res); if (!session) return;
       const data = await platinumGet(session, "/api/billing-payment-miscellaneous/get-vat-rate");
+      console.log(`[get-vat-rate] Response:`, JSON.stringify(data));
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });

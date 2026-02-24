@@ -1708,6 +1708,8 @@ export interface MiscPaymentScoaItem {
     name: string;
     groupId: number;
     groupName: string;
+    isVatable?: boolean;
+    vatPercentage?: number;
 }
 
 export async function fetchMiscPaymentGroups(): Promise<MiscPaymentGroup[]> {

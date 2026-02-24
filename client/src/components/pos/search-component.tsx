@@ -3,7 +3,7 @@ import { Search, CreditCard, Users, Zap, FileText, Layers, Info, Filter, Loader2
 import { getCategoryIcon } from '@/lib/category-icons';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Account, searchInstitutions, InstitutionSearchResult, fetchMiscPaymentGroups, fetchMiscPaymentScoaItems, MiscPaymentGroup, MiscPaymentScoaItem, platinumGetClearanceIds, platinumSearchAccountsWithSignal } from '@/lib/external-api';
+import { Account, searchInstitutions, InstitutionSearchResult, fetchMiscPaymentGroups, fetchMiscPaymentScoaItems, fetchMiscPaymentVatRate, MiscPaymentGroup, MiscPaymentScoaItem, platinumGetClearanceIds, platinumSearchAccountsWithSignal } from '@/lib/external-api';
 
 export function parseMobileFromContactDetails(contactDetails: string | undefined | null): string {
     if (!contactDetails) return '';
@@ -50,13 +50,19 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
   const [scoaItems, setScoaItems] = useState<MiscPaymentScoaItem[]>([]);
   const [loadingScoaItems, setLoadingScoaItems] = useState(false);
   const [scoaItemsError, setScoaItemsError] = useState(false);
+  const [miscVatRate, setMiscVatRate] = useState<number>(15);
 
   useEffect(() => {
     setMiscGroupsLoading(true);
     setMiscGroupsError(false);
-    fetchMiscPaymentGroups()
-      .then(groups => {
+    Promise.all([
+      fetchMiscPaymentGroups(),
+      fetchMiscPaymentVatRate().catch(() => 15),
+    ])
+      .then(([groups, vatRate]) => {
         setMiscGroups(groups);
+        if (typeof vatRate === 'number') setMiscVatRate(vatRate);
+        console.log(`[Misc] Loaded ${groups.length} groups, VAT rate: ${vatRate}%`);
       })
       .catch(err => {
         console.warn('Failed to load misc payment groups:', err);
@@ -101,7 +107,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
           g.name.toLowerCase().includes(q)
         ).slice(0, 6).map(g => ({ 
           type: 'DIRECT' as const, 
-          data: { id: g.id.toString(), groupName: g.name, description: g.name, scoaItem: '', vatRate: 15, isGroup: true, groupId: g.id },
+          data: { id: g.id.toString(), groupName: g.name, description: g.name, scoaItem: '', vatRate: miscVatRate, isGroup: true, groupId: g.id },
           label: g.name
         }));
         combinedResults = [...combinedResults, ...matchedGroups];
@@ -497,7 +503,8 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                                   scoaItem: item.name,
                                   scoaItemId: item.id,
                                   groupId: groupId,
-                                  vatRate: 15,
+                                  vatRate: item.isVatable === false ? 0 : miscVatRate,
+                                  isVatable: item.isVatable !== false,
                                   isGroup: false,
                                 },
                                 label: item.name

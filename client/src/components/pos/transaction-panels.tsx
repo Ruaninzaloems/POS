@@ -1329,37 +1329,57 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
               </div>
 
               <div className="rounded-xl p-3 bg-emerald-50/70 border border-emerald-100 space-y-2">
-                <div className="space-y-1">
-                  <Label htmlFor={`amount-${item.id}`} className="text-[10px] uppercase tracking-wider font-semibold text-emerald-600">Amount (excl VAT)</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-lg font-bold text-emerald-600">R</span>
-                    <Input 
-                      id={`amount-${item.id}`}
-                      type="text"
-                      inputMode="decimal"
-                      tabIndex={4}
-                      className="pl-10 h-12 text-xl font-mono font-bold bg-white border-emerald-200 focus:border-emerald-400 focus:ring-emerald-200"
-                      value={item.amountToPay || ''} 
-                      onChange={(e) => {
-                        const raw = e.target.value;
-                        if (raw === '' || raw === '.' || /^\d*\.?\d{0,2}$/.test(raw)) {
-                          updateItemAmount(item.id, parseFloat(raw) || 0);
-                        }
-                      }}
-                      data-testid={`input-amount-${item.id}`}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-white rounded-lg p-2 border border-emerald-100">
-                    <div className="text-[10px] text-emerald-500 font-semibold uppercase">VAT ({(incomeItem.vatRate || 0).toFixed(0)}%)</div>
-                    <div className="text-sm font-mono font-bold text-emerald-800">R {((item.amountToPay || 0) * (incomeItem.vatRate || 0) / 100).toFixed(2)}</div>
-                  </div>
-                  <div className="bg-emerald-100 rounded-lg p-2 border border-emerald-200">
-                    <div className="text-[10px] text-emerald-600 font-semibold uppercase">Total (incl VAT)</div>
-                    <div className="text-sm font-mono font-bold text-emerald-900">R {((item.amountToPay || 0) * (1 + (incomeItem.vatRate || 0) / 100)).toFixed(2)}</div>
-                  </div>
-                </div>
+                {(() => {
+                  const vatRate = incomeItem.vatRate || 0;
+                  const isVatable = vatRate > 0;
+                  const totalAmount = item.amountToPay || 0;
+                  const vatAmount = isVatable ? Math.round((totalAmount - totalAmount / (1 + vatRate / 100)) * 100) / 100 : 0;
+                  const amountExVat = Math.round((totalAmount - vatAmount) * 100) / 100;
+                  return (
+                    <>
+                      <div className="space-y-1">
+                        <Label htmlFor={`amount-${item.id}`} className="text-[10px] uppercase tracking-wider font-semibold text-emerald-600">
+                          {isVatable ? 'Amount (incl VAT)' : 'Amount'}
+                        </Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-lg font-bold text-emerald-600">R</span>
+                          <Input 
+                            id={`amount-${item.id}`}
+                            type="text"
+                            inputMode="decimal"
+                            tabIndex={4}
+                            className="pl-10 h-12 text-xl font-mono font-bold bg-white border-emerald-200 focus:border-emerald-400 focus:ring-emerald-200"
+                            value={item.amountToPay || ''} 
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              if (raw === '' || raw === '.' || /^\d*\.?\d{0,2}$/.test(raw)) {
+                                updateItemAmount(item.id, parseFloat(raw) || 0);
+                              }
+                            }}
+                            data-testid={`input-amount-${item.id}`}
+                          />
+                        </div>
+                      </div>
+                      {isVatable ? (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-white rounded-lg p-2 border border-emerald-100">
+                            <div className="text-[10px] text-emerald-500 font-semibold uppercase">Excl VAT</div>
+                            <div className="text-sm font-mono font-bold text-emerald-800">R {amountExVat.toFixed(2)}</div>
+                          </div>
+                          <div className="bg-white rounded-lg p-2 border border-emerald-100">
+                            <div className="text-[10px] text-emerald-500 font-semibold uppercase">VAT ({vatRate.toFixed(0)}%)</div>
+                            <div className="text-sm font-mono font-bold text-emerald-800">R {vatAmount.toFixed(2)}</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-white rounded-lg p-2 border border-emerald-100">
+                          <div className="text-[10px] text-slate-500 font-semibold uppercase">Not Vatable</div>
+                          <div className="text-sm font-mono font-bold text-slate-600">No VAT applies</div>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
                 <div className="flex gap-1.5">
                   {[50, 100, 200, 500].map(amt => (
                     <button
