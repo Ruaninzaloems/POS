@@ -201,7 +201,16 @@ export const usePos = () => {
 
 function formatCardExpiry(exp: string): string {
   if (!exp) return '';
-  return exp.replace(/[^0-9/]/g, '');
+  const clean = exp.replace(/[^0-9/]/g, '');
+  const parts = clean.split('/');
+  if (parts.length === 2) {
+    const [mm, yyyy] = parts;
+    const month = mm.padStart(2, '0');
+    if (yyyy.length === 4 && parseInt(month) >= 1 && parseInt(month) <= 12) {
+      return `${yyyy}-${month}-01T00:00:00`;
+    }
+  }
+  return clean;
 }
 
 export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -1663,12 +1672,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         outStandingAmount: totalFullOutstanding,
                         cardNumber: isCardPayment ? (record.payment.cardReference || '') : '',
                         expiryDate: isCardPayment ? formatCardExpiry(record.payment.cardExpiry) : '',
-                        chequeNumber: '',
+                        chequeNumber: isCardPayment ? null : '',
                         chequeDate: null,
                         processingMonth: null,
                         accountHolderName: submitAccounts[0]?.name || '',
-                        bankName: '',
-                        bankBranchCode: '',
+                        bankName: isCardPayment ? null : '',
+                        bankBranchCode: isCardPayment ? null : '',
                         cutOffID: 0,
                         debtArrangementId: 0,
                         cutOffAmount: 0,
@@ -1715,12 +1724,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             outStandingAmount: acctOutstanding,
                             cardNumber: isCardPayment ? (record.payment.cardReference || '') : '',
                             expiryDate: isCardPayment ? formatCardExpiry(record.payment.cardExpiry) : '',
-                            chequeNumber: '',
+                            chequeNumber: isCardPayment ? null : '',
                             chequeDate: null,
                             processingMonth: null,
                             accountHolderName: acct.name || '',
-                            bankName: '',
-                            bankBranchCode: '',
+                            bankName: isCardPayment ? null : '',
+                            bankBranchCode: isCardPayment ? null : '',
                             cutOffID: acct.cutOffID ?? 0,
                             debtArrangementId: acct.debtArrangementId ?? 0,
                             cutOffAmount: acct.cutOffAmount ?? 0,
