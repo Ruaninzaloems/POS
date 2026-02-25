@@ -315,12 +315,52 @@ export function ReceiptModal() {
                   {directIncomeItems.length > 0 && (
                     <div className="bg-emerald-50 rounded-lg p-3 space-y-2">
                       <p className="text-xs font-semibold text-emerald-700">{directIncomeItems.length} direct income item{directIncomeItems.length > 1 ? 's' : ''}</p>
-                      {directIncomeItems.map((item: TransactionItem, idx: number) => (
-                        <div key={idx} className="flex justify-between text-xs">
-                          <span className="truncate mr-2 text-muted-foreground">{item.description}</span>
-                          <span className="font-mono shrink-0">R {item.amountToPay.toFixed(2)}</span>
-                        </div>
-                      ))}
+                      {directIncomeItems.map((item: TransactionItem, idx: number) => {
+                        const sr = splitReceipts.find(s => s.receiptDetail?.miscDescription === item.description || s.receiptDetail?.paymentOption === 'Miscellaneous Payment');
+                        const detail = sr?.receiptDetail;
+                        const vatRate = item.originalData?.vatRate || 15;
+                        const isVatable = vatRate > 0;
+                        const amtExVat = isVatable ? item.amountToPay / (1 + vatRate / 100) : item.amountToPay;
+                        const vatAmt = isVatable ? item.amountToPay - amtExVat : 0;
+                        const groupName = item.originalData?.groupName || item.originalData?.miscGroup || '';
+                        const paidBy = item.paidBy || detail?.accName || 'Walk-in';
+                        return (
+                          <div key={idx} className="space-y-1 border-b border-emerald-200 pb-2 last:border-0 last:pb-0">
+                            <div className="flex justify-between text-xs">
+                              <span className="font-medium text-emerald-800 truncate mr-2">{item.description}</span>
+                              <span className="font-mono font-bold shrink-0">R {item.amountToPay.toFixed(2)}</span>
+                            </div>
+                            {groupName && (
+                              <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">Group</span>
+                                <span className="text-right truncate ml-4">{groupName}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between text-xs">
+                              <span className="text-muted-foreground">Paid By</span>
+                              <span className="font-medium">{paidBy}</span>
+                            </div>
+                            {isVatable && (
+                              <div className="flex justify-between text-xs text-muted-foreground">
+                                <span>Amount ex VAT</span>
+                                <span className="font-mono">R {amtExVat.toFixed(2)}</span>
+                              </div>
+                            )}
+                            {isVatable && vatAmt > 0 && (
+                              <div className="flex justify-between text-xs text-muted-foreground">
+                                <span>VAT ({vatRate}%)</span>
+                                <span className="font-mono">R {vatAmt.toFixed(2)}</span>
+                              </div>
+                            )}
+                            {item.notes && (
+                              <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">Reference</span>
+                                <span className="text-right truncate ml-4">{item.notes}</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

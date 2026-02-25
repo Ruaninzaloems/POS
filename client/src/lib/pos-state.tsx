@@ -255,6 +255,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [processingStep, setProcessingStep] = useState('');
   const [currentTransactionId, setCurrentTransactionId] = useState<string | null>(null);
   const currentTransactionIdRef = React.useRef<string | null>(null);
+  const processingRecordRef = React.useRef<TransactionRecord | null>(null);
   React.useEffect(() => { currentTransactionIdRef.current = currentTransactionId; }, [currentTransactionId]);
   const paymentInFlightRef = React.useRef(false);
   const lastSubmittedPaymentRef = React.useRef<string | null>(null);
@@ -590,22 +591,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
 
           mapped.sort((a, b) => b.timestamp - a.timestamp);
-          setRecentTransactions(prev => {
-            const activeId = currentTransactionIdRef.current;
-            const activeTx = activeId ? prev.find(t => t.id === activeId) : null;
-            const apiReceiptNos = new Set(mapped.map(t => t.receiptNumber).filter(Boolean));
-            const localOnly = prev.filter(t => {
-              if (t.id === activeTx?.id) return false;
-              if (!t.receiptNumber) return false;
-              if (t.id.startsWith('unrec-') || t.id.startsWith('plt-') || t.id.startsWith('vr-')) return false;
-              return !apiReceiptNos.has(t.receiptNumber);
-            });
-            const merged = activeTx
-              ? [activeTx, ...mapped.filter(t => t.id !== activeTx.id), ...localOnly]
-              : [...mapped, ...localOnly];
-            merged.sort((a, b) => b.timestamp - a.timestamp);
-            return merged;
-          });
+          setRecentTransactions(mapped);
           console.log(`[Transactions] Loaded ${mapped.length} transactions (unreconciled + supplementary)`);
           return;
         }
@@ -681,22 +667,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           };
         });
 
-        setRecentTransactions(prev => {
-            const activeId = currentTransactionIdRef.current;
-            const activeTx = activeId ? prev.find(t => t.id === activeId) : null;
-            const apiReceiptNos = new Set(mapped.map(t => t.receiptNumber).filter(Boolean));
-            const localOnly = prev.filter(t => {
-              if (t.id === activeTx?.id) return false;
-              if (!t.receiptNumber) return false;
-              if (t.id.startsWith('unrec-') || t.id.startsWith('plt-') || t.id.startsWith('vr-')) return false;
-              return !apiReceiptNos.has(t.receiptNumber);
-            });
-            const merged = activeTx
-              ? [activeTx, ...mapped.filter(t => t.id !== activeTx.id), ...localOnly]
-              : [...mapped, ...localOnly];
-            merged.sort((a, b) => b.timestamp - a.timestamp);
-            return merged;
-        });
+        mapped.sort((a, b) => b.timestamp - a.timestamp);
+        setRecentTransactions(mapped);
         console.log(`[Transactions] Loaded ${mapped.length} transactions from Platinum ViewReceipt API`);
         return;
       }
@@ -758,22 +730,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           });
 
           mapped.sort((a, b) => b.timestamp - a.timestamp);
-          setRecentTransactions(prev => {
-            const activeId = currentTransactionIdRef.current;
-            const activeTx = activeId ? prev.find(t => t.id === activeId) : null;
-            const apiReceiptNos = new Set(mapped.map(t => t.receiptNumber).filter(Boolean));
-            const localOnly = prev.filter(t => {
-              if (t.id === activeTx?.id) return false;
-              if (!t.receiptNumber) return false;
-              if (t.id.startsWith('unrec-') || t.id.startsWith('plt-') || t.id.startsWith('vr-')) return false;
-              return !apiReceiptNos.has(t.receiptNumber);
-            });
-            const merged = activeTx
-              ? [activeTx, ...mapped.filter(t => t.id !== activeTx.id), ...localOnly]
-              : [...mapped, ...localOnly];
-            merged.sort((a, b) => b.timestamp - a.timestamp);
-            return merged;
-          });
+          setRecentTransactions(mapped);
           console.log(`[Transactions] Loaded ${mapped.length} transactions from receipt discovery`);
           return;
         }
@@ -854,36 +811,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
 
         mapped.sort((a, b) => b.timestamp - a.timestamp);
-        setRecentTransactions(prev => {
-            const activeId = currentTransactionIdRef.current;
-            const activeTx = activeId ? prev.find(t => t.id === activeId) : null;
-            const apiReceiptNos = new Set(mapped.map(t => t.receiptNumber).filter(Boolean));
-            const localOnly = prev.filter(t => {
-              if (t.id === activeTx?.id) return false;
-              if (!t.receiptNumber) return false;
-              if (t.id.startsWith('unrec-') || t.id.startsWith('plt-') || t.id.startsWith('vr-')) return false;
-              return !apiReceiptNos.has(t.receiptNumber);
-            });
-            const merged = activeTx
-              ? [activeTx, ...mapped.filter(t => t.id !== activeTx.id), ...localOnly]
-              : [...mapped, ...localOnly];
-            merged.sort((a, b) => b.timestamp - a.timestamp);
-            return merged;
-        });
+        setRecentTransactions(mapped);
         console.log(`[Transactions] Loaded ${mapped.length} transactions from stored receipt IDs via pos-multi-receipt-print`);
       } else {
-        setRecentTransactions(prev => {
-            const activeId = currentTransactionIdRef.current;
-            const activeTx = activeId ? prev.find(t => t.id === activeId) : null;
-            const localOnly = prev.filter(t => {
-              if (t.id === activeTx?.id) return false;
-              if (!t.receiptNumber) return false;
-              if (t.id.startsWith('unrec-') || t.id.startsWith('plt-') || t.id.startsWith('vr-')) return false;
-              return true;
-            });
-            return activeTx ? [activeTx, ...localOnly] : localOnly;
-        });
-        console.log(`[Transactions] No receipt data found from stored IDs`);
+        setRecentTransactions([]);
+        console.log(`[Transactions] No receipt data found from any API source`);
       }
     } catch (e) {
       console.warn('[Transactions] Failed to load transactions from API:', e);
@@ -1339,7 +1271,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         cashierName: currentUser.name,
         cashOfficeName: sessionOfficeDesc,
     });
-    setRecentTransactions(prev => [earlyRecord, ...prev]);
+    processingRecordRef.current = earlyRecord;
+    setRecentTransactions(prev => [earlyRecord, ...prev.filter(t => !t.id.match(/^[0-9a-f]{8}-/))]);
     setCurrentTransactionId(earlyRecord.id);
     setIsReceiptModalOpen(true);
     setTransactionProcessing(true);
@@ -2533,9 +2466,28 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
                     const splitEntry: SplitReceipt = { receiptNumber: receiptNo, receiptId: miscReceiptId, paymentType: splitType, amount, receiptDetail: miscReceiptDetail };
 
+                    const miscPrintPayload = {
+                        receiptId: miscReceiptId,
+                        receiptNo: receiptNo,
+                        lastName: lastName,
+                        initials: initials,
+                        description: miscItemDesc,
+                        reference: miscReference,
+                        amount: miscAmtExVat,
+                        vatAmount: miscVatAmt,
+                        totalAmount: amount,
+                        tenderAmount: tender,
+                        changeAmount: change,
+                        paymentType: splitType === 'cash' ? 1 : 3,
+                        groupId: Number(groupId),
+                        scoaItemId: Number(scoaItemId),
+                        cashierName: currentUser.name,
+                        cashOffice: sessionDetails?.officeDesc || '',
+                        receiptDate: formattedReceiptDate,
+                    };
                     for (let printAttempt = 1; printAttempt <= 2; printAttempt++) {
                         try {
-                            await platinumPrintMiscellaneousReceipt({}, { id: String(miscReceiptId) });
+                            await platinumPrintMiscellaneousReceipt(miscPrintPayload, { id: String(miscReceiptId) });
                             break;
                         } catch (e) {
                             if (printAttempt === 2) console.warn(`[Priority 2 ${label}] Failed to print misc receipt after 2 attempts`, e);
@@ -2621,6 +2573,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     } finally {
         setProcessingStep('');
+        processingRecordRef.current = { ...record };
         setRecentTransactions(prev => {
             const idx = prev.findIndex(t => t.id === record.id);
             if (idx >= 0) {
@@ -2628,7 +2581,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 updated[idx] = { ...record };
                 return updated;
             }
-            return prev;
+            return [{ ...record }, ...prev];
         });
         setTransactionProcessing(false);
         lastSubmittedPaymentRef.current = fingerprintBase;
