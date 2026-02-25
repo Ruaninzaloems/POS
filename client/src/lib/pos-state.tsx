@@ -126,6 +126,7 @@ interface PosState {
   transactionProcessing: boolean;
   processingStep: string;
   currentTransactionId: string | null;
+  processingRecord: TransactionRecord | null;
   viewingItemId: string | null;
   recentTransactions: TransactionRecord[];
   dayEndStatus: DayEndStatus;
@@ -255,7 +256,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [processingStep, setProcessingStep] = useState('');
   const [currentTransactionId, setCurrentTransactionId] = useState<string | null>(null);
   const currentTransactionIdRef = React.useRef<string | null>(null);
-  const processingRecordRef = React.useRef<TransactionRecord | null>(null);
+  const [processingRecord, setProcessingRecord] = useState<TransactionRecord | null>(null);
   React.useEffect(() => { currentTransactionIdRef.current = currentTransactionId; }, [currentTransactionId]);
   const paymentInFlightRef = React.useRef(false);
   const lastSubmittedPaymentRef = React.useRef<string | null>(null);
@@ -1217,15 +1218,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateRecordReceiptNumber = (record: TransactionRecord, newReceiptNumber: string) => {
     record.receiptNumber = newReceiptNumber;
-    setRecentTransactions(prev => {
-      const idx = prev.findIndex(t => t.id === record.id);
-      if (idx >= 0) {
-        const updated = [...prev];
-        updated[idx] = { ...record };
-        return updated;
-      }
-      return prev;
-    });
+    setProcessingRecord({ ...record });
   };
 
   const completeTransaction = async () => {
@@ -1290,8 +1283,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         cashierName: currentUser.name,
         cashOfficeName: sessionOfficeDesc,
     });
-    processingRecordRef.current = earlyRecord;
-    setRecentTransactions(prev => [earlyRecord, ...prev.filter(t => !t.id.match(/^[0-9a-f]{8}-/))]);
+    setProcessingRecord(earlyRecord);
     setCurrentTransactionId(earlyRecord.id);
     setIsReceiptModalOpen(true);
     setTransactionProcessing(true);
@@ -1319,7 +1311,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setTransactionProcessing(false);
         setProcessingStep('');
         earlyRecord.receiptNumber = '';
-        setRecentTransactions(prev => prev.filter(t => t.id !== earlyRecord.id));
+        setProcessingRecord(null);
         return;
     }
     console.log(`[Payment] Receipt range valid — cashier active at ${receiptRangeResult.officeName}, POS record ${receiptRangeResult.cashierDetailsId}`);
@@ -2065,7 +2057,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         const failReason = e?.message || 'Unknown error';
                         console.warn(`[Priority 1 SPLIT CARD] Card payment failed:`, failReason);
                         record.splitCardFailReason = failReason;
-                        setRecentTransactions(prev => prev.map(t => t.id === record.id ? { ...t, splitCardFailReason: failReason } : t));
+                        setProcessingRecord({ ...record });
                         toast({ title: "Card Payment Posting Failed", description: failReason, variant: "destructive" });
                     }
                 }
@@ -2189,7 +2181,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 await Promise.all(batch.map((item, i) => finalizeOneAccount(item, batchStart + i)));
             }
 
-            setRecentTransactions(prev => prev.map(t => t.id === record.id ? { ...record } : t));
+            setProcessingRecord({ ...record });
         }
     }
 
@@ -2592,16 +2584,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     } finally {
         setProcessingStep('');
-        processingRecordRef.current = { ...record };
-        setRecentTransactions(prev => {
-            const idx = prev.findIndex(t => t.id === record.id);
-            if (idx >= 0) {
-                const updated = [...prev];
-                updated[idx] = { ...record };
-                return updated;
-            }
-            return [{ ...record }, ...prev];
-        });
+        setProcessingRecord({ ...record });
         setTransactionProcessing(false);
         lastSubmittedPaymentRef.current = fingerprintBase;
         paymentInFlightRef.current = false;
@@ -2626,6 +2609,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const closeReceiptModal = () => {
     setIsReceiptModalOpen(false);
     setCurrentTransactionId(null);
+    setProcessingRecord(null);
     setCompletedPaymentSnapshot(null);
     clearTransaction();
     loadTransactionsFromApi().catch(() => {});
@@ -2750,6 +2734,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       transactionProcessing,
       processingStep,
       currentTransactionId,
+      processingRecord,
       viewingItemId,
       recentTransactions,
       dayEndStatus,

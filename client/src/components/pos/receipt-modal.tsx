@@ -10,11 +10,13 @@ import { platinumPrintReceiptRaw } from '@/lib/external-api';
 import { Progress } from '@/components/ui/progress';
 
 export function ReceiptModal() {
-  const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions, transactionProcessing, processingStep, currentTransactionId } = usePos();
+  const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions, transactionProcessing, processingStep, currentTransactionId, processingRecord } = usePos();
   
-  const currentTransaction = currentTransactionId 
-    ? recentTransactions.find(t => t.id === currentTransactionId) || recentTransactions[0]
-    : recentTransactions[0];
+  const currentTransaction = processingRecord && currentTransactionId && processingRecord.id === currentTransactionId
+    ? processingRecord
+    : currentTransactionId 
+      ? recentTransactions.find(t => t.id === currentTransactionId) || null
+      : null;
 
   const [printSelected, setPrintSelected] = useState(true);
   const [elapsed, setElapsed] = useState(0);
