@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { platinumGetAuthDayEndCashierList, platinumGetAuthDayEndCashierDetails, platinumGetAuthDayEndCashierReconcile, platinumGetPendingCancelRequests, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumAuthDayEndValidateCashbook, platinumAuthDayEndSubmitReconcile, platinumAuthDayEndPrintCashReport, platinumAuthDayEndPrintDepositSlip, platinumAuthDayEndDirectCancelReceipt } from '@/lib/external-api';
+import { platinumGetAuthDayEndCashierList, platinumGetAuthDayEndCashierDetails, platinumGetAuthDayEndCashierReconcile, platinumGetPendingCancelRequests, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumAuthDayEndValidateCashbook, platinumAuthDayEndSubmitReconcile, platinumAuthDayEndPrintCashReport, platinumAuthDayEndPrintDepositSlip, platinumAuthDayEndDirectCancelReceipt, platinumPerOfficeCashOfficeList, platinumPerOfficeCashOfficeSelection, platinumPerOfficeCashierSummary, platinumPerOfficeCashierReconcileStatus, platinumPerOfficeProcessStagingPayments, platinumPerOfficeAddStage, platinumPerOfficeVerifyCashierReconcile, platinumPerOfficeSubmitReconcile, platinumPerOfficeFinishStage, platinumPerOfficeCancelReceipt, platinumPerOfficeReturnReconcile, platinumPerOfficePrintCashReport, platinumPerOfficePrintDepositSlip } from '@/lib/external-api';
 import { 
   LayoutDashboard, 
   Users, 
@@ -337,6 +337,241 @@ export default function SupervisorDashboard() {
   const [filterDate, setFilterDate] = useState<string>('All');
 
   const [officeConfigs, setOfficeConfigs] = useState<Record<string, OfficeConfig>>({});
+
+  const [perOfficeList, setPerOfficeList] = useState<any[]>([]);
+  const [perOfficeSelectedId, setPerOfficeSelectedId] = useState<number | null>(null);
+  const [perOfficeData, setPerOfficeData] = useState<{
+    cashBookId: number;
+    cashBookName: string;
+    cashierSummary: any[];
+    completionStatus: string;
+    allVerified: boolean;
+    validationResult?: { isValid: boolean; message: string };
+  } | null>(null);
+  const [perOfficeLoading, setPerOfficeLoading] = useState(false);
+  const [perOfficeStaged, setPerOfficeStaged] = useState(false);
+  const [perOfficeVerifying, setPerOfficeVerifying] = useState<number | null>(null);
+  const [perOfficeSubmitting, setPerOfficeSubmitting] = useState(false);
+
+  const loadPerOfficeList = useCallback(async () => {
+    try {
+      const data = await platinumPerOfficeCashOfficeList();
+      const items = Array.isArray(data) ? data : (data as any)?.items || [];
+      setPerOfficeList(items);
+      console.log('[Supervisor] Per-office list loaded:', items.length, 'offices');
+    } catch (e: any) {
+      console.error('[Supervisor] Failed to load per-office list:', e);
+      setPerOfficeList([]);
+    }
+  }, []);
+
+  const handlePerOfficeSelect = useCallback(async (cashOfficeId: number) => {
+    setPerOfficeSelectedId(cashOfficeId);
+    setPerOfficeData(null);
+    setPerOfficeLoading(true);
+    setPerOfficeStaged(false);
+    try {
+      const data = await platinumPerOfficeCashOfficeSelection(cashOfficeId);
+      console.log('[Supervisor] Per-office selection response:', data);
+      setPerOfficeData({
+        cashBookId: data?.cashBookId || data?.cashbookId || 0,
+        cashBookName: data?.cashBookName || data?.cashbookName || '',
+        cashierSummary: Array.isArray(data?.cashierSummary) ? data.cashierSummary : extractItems(data?.cashierSummary),
+        completionStatus: data?.completionStatus || '',
+        allVerified: data?.allVerified === true,
+        validationResult: data?.validationResult,
+      });
+    } catch (e: any) {
+      console.error('[Supervisor] Per-office selection failed:', e);
+      toast({ title: 'Error', description: `Failed to load office data: ${e.message}`, variant: 'destructive' });
+    } finally {
+      setPerOfficeLoading(false);
+    }
+  }, [toast]);
+
+  const refreshPerOfficeSummary = useCallback(async () => {
+    if (!perOfficeSelectedId) return;
+    try {
+      const data = await platinumPerOfficeCashierSummary(perOfficeSelectedId);
+      console.log('[Supervisor] Per-office summary refresh:', data);
+      const items = data?.data || data?.cashierSummary || (Array.isArray(data) ? data : []);
+      setPerOfficeData(prev => prev ? {
+        ...prev,
+        cashierSummary: items,
+        completionStatus: data?.completionStatus || prev.completionStatus,
+        allVerified: data?.allVerified === true,
+        validationResult: data?.validationResult || prev.validationResult,
+      } : null);
+    } catch (e: any) {
+      console.error('[Supervisor] Per-office summary refresh failed:', e);
+    }
+  }, [perOfficeSelectedId]);
+
+  const handlePerOfficeAddStage = useCallback(async () => {
+    try {
+      await platinumPerOfficeAddStage();
+      setPerOfficeStaged(true);
+      console.log('[Supervisor] Per-office stage lock acquired');
+    } catch (e: any) {
+      console.warn('[Supervisor] Per-office add-stage warning:', e.message);
+      setPerOfficeStaged(true);
+    }
+  }, []);
+
+  const handlePerOfficeFinishStage = useCallback(async () => {
+    try {
+      await platinumPerOfficeFinishStage();
+      setPerOfficeStaged(false);
+      console.log('[Supervisor] Per-office stage lock released');
+    } catch (e: any) {
+      console.warn('[Supervisor] Per-office finish-stage warning:', e.message);
+      setPerOfficeStaged(false);
+    }
+  }, []);
+
+  const handlePerOfficeProcessStaging = useCallback(async (cashOfficeId: number) => {
+    try {
+      await platinumPerOfficeProcessStagingPayments(cashOfficeId);
+      console.log('[Supervisor] Per-office staging payments processed');
+    } catch (e: any) {
+      console.warn('[Supervisor] Per-office process-staging warning:', e.message);
+    }
+  }, []);
+
+  const handlePerOfficeVerifyCashier = useCallback(async (cashierId: number) => {
+    if (!perOfficeSelectedId || !perOfficeData) return;
+    setPerOfficeVerifying(cashierId);
+    try {
+      await handlePerOfficeAddStage();
+      await handlePerOfficeProcessStaging(perOfficeSelectedId);
+      const result = await platinumPerOfficeVerifyCashierReconcile({
+        cashierId,
+        cashOfficeId: perOfficeSelectedId,
+        cashBookId: perOfficeData.cashBookId,
+      });
+      console.log('[Supervisor] Per-office verify cashier result:', result);
+      if (result?.isSuccess === false) {
+        toast({ title: 'Verification Failed', description: result.message || 'Cashier verification failed.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Verified', description: `Cashier ${cashierId} verified successfully.` });
+      }
+      await refreshPerOfficeSummary();
+    } catch (e: any) {
+      console.error('[Supervisor] Per-office verify cashier failed:', e);
+      toast({ title: 'Error', description: `Verification failed: ${e.message}`, variant: 'destructive' });
+    } finally {
+      setPerOfficeVerifying(null);
+    }
+  }, [perOfficeSelectedId, perOfficeData, handlePerOfficeAddStage, handlePerOfficeProcessStaging, refreshPerOfficeSummary, toast]);
+
+  const handlePerOfficeSubmitAll = useCallback(async () => {
+    if (!perOfficeSelectedId || !perOfficeData) return;
+    setPerOfficeSubmitting(true);
+    try {
+      const result = await platinumPerOfficeSubmitReconcile({
+        cashOfficeId: perOfficeSelectedId,
+        cashBookId: perOfficeData.cashBookId,
+      });
+      console.log('[Supervisor] Per-office submit-reconcile result:', result);
+      if (result?.isSuccess === false) {
+        toast({ title: 'Submission Failed', description: result.message || 'Office reconciliation submission failed.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Office Reconciled', description: `All cashiers in this office have been fully reconciled.` });
+      }
+      await handlePerOfficeFinishStage();
+      await refreshPerOfficeSummary();
+      loadCashierList();
+    } catch (e: any) {
+      console.error('[Supervisor] Per-office submit failed:', e);
+      toast({ title: 'Error', description: `Office submission failed: ${e.message}`, variant: 'destructive' });
+      await handlePerOfficeFinishStage();
+    } finally {
+      setPerOfficeSubmitting(false);
+    }
+  }, [perOfficeSelectedId, perOfficeData, handlePerOfficeFinishStage, refreshPerOfficeSummary, toast]);
+
+  const handlePerOfficeReturn = useCallback(async (cashierReconcileId: number, reason: string) => {
+    try {
+      await platinumPerOfficeReturnReconcile({ id: cashierReconcileId, returnReason: reason });
+      toast({ title: 'Returned', description: 'Cashier reconcile returned for correction.' });
+      await handlePerOfficeFinishStage();
+      await refreshPerOfficeSummary();
+    } catch (e: any) {
+      console.error('[Supervisor] Per-office return failed:', e);
+      toast({ title: 'Error', description: `Return failed: ${e.message}`, variant: 'destructive' });
+      await handlePerOfficeFinishStage();
+    }
+  }, [handlePerOfficeFinishStage, refreshPerOfficeSummary, toast]);
+
+  const handlePerOfficeCancelReceipt = useCallback(async (receiptId: number, reason: string) => {
+    try {
+      await platinumPerOfficeCancelReceipt({ id: receiptId, returnReason: reason });
+      toast({ title: 'Receipt Cancelled', description: `Receipt ${receiptId} cancelled.` });
+      await refreshPerOfficeSummary();
+    } catch (e: any) {
+      toast({ title: 'Error', description: `Cancel receipt failed: ${e.message}`, variant: 'destructive' });
+    }
+  }, [refreshPerOfficeSummary, toast]);
+
+  const handlePerOfficePrintCashReport = useCallback(async (cashOfficeId: number) => {
+    try {
+      toast({ title: 'Generating...', description: 'Preparing cash report...' });
+      const officeName = perOfficeList.find((o: any) => (o.cashOffice_ID || o.id) === cashOfficeId)?.cashOfficeDesc || 'Office';
+      const reconcileDate = new Date().toISOString().split('T')[0];
+      const result = await platinumPerOfficePrintCashReport({ cashierId: cashOfficeId, cashierName: officeName, reconcileDate });
+      if (result && typeof result === 'string' && result.startsWith('JVB')) {
+        const byteChars = atob(result);
+        const byteArr = new Uint8Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+        const blob = new Blob([byteArr], { type: 'application/pdf' });
+        window.open(URL.createObjectURL(blob), '_blank');
+      } else if (result?.fileContents || result?.base64) {
+        const b64 = result.fileContents || result.base64;
+        const byteChars = atob(b64);
+        const byteArr = new Uint8Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+        const blob = new Blob([byteArr], { type: 'application/pdf' });
+        window.open(URL.createObjectURL(blob), '_blank');
+      } else {
+        toast({ title: 'Cash Report', description: 'Report generated.' });
+      }
+    } catch (e: any) {
+      toast({ title: 'Error', description: `Failed: ${e.message}`, variant: 'destructive' });
+    }
+  }, [perOfficeList, toast]);
+
+  const handlePerOfficePrintDepositSlip = useCallback(async (cashOfficeId: number) => {
+    try {
+      toast({ title: 'Generating...', description: 'Preparing deposit slip...' });
+      const officeName = perOfficeList.find((o: any) => (o.cashOffice_ID || o.id) === cashOfficeId)?.cashOfficeDesc || 'Office';
+      const reconcileDate = new Date().toISOString().split('T')[0];
+      const result = await platinumPerOfficePrintDepositSlip({ cashierId: cashOfficeId, cashierName: officeName, reconcileDate });
+      if (result && typeof result === 'string' && result.startsWith('JVB')) {
+        const byteChars = atob(result);
+        const byteArr = new Uint8Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+        const blob = new Blob([byteArr], { type: 'application/pdf' });
+        window.open(URL.createObjectURL(blob), '_blank');
+      } else if (result?.fileContents || result?.base64) {
+        const b64 = result.fileContents || result.base64;
+        const byteChars2 = atob(b64);
+        const byteArr2 = new Uint8Array(byteChars2.length);
+        for (let i = 0; i < byteChars2.length; i++) byteArr2[i] = byteChars2.charCodeAt(i);
+        const blob = new Blob([byteArr2], { type: 'application/pdf' });
+        window.open(URL.createObjectURL(blob), '_blank');
+      } else {
+        toast({ title: 'Deposit Slip', description: 'Slip generated.' });
+      }
+    } catch (e: any) {
+      toast({ title: 'Error', description: `Failed: ${e.message}`, variant: 'destructive' });
+    }
+  }, [perOfficeList, toast]);
+
+  useEffect(() => {
+    if (reconMode === 'CASH_OFFICE') {
+      loadPerOfficeList();
+    }
+  }, [reconMode, loadPerOfficeList]);
 
   const loadCashierList = useCallback(async () => {
     setIsLoadingShifts(true);
@@ -1460,168 +1695,219 @@ export default function SupervisorDashboard() {
           </div>
       ) : (
           <div className="grid gap-6">
-              {officeGroups && Object.entries(officeGroups).map(([office, data]) => {
-                  const variance = data.totalSystem - data.totalDeclared;
-                  const allPending = data.shifts.every(s => s.status === 'PENDING_APPROVAL');
-                  const allCompleted = data.shifts.every(s => s.status === 'COMPLETED');
-                  const someNotSubmitted = data.shifts.some(s => s.status === 'NOT_SUBMITTED' || s.status === 'RETURNED');
-                  
-                  return (
-                  <div key={office} className="bg-white rounded-lg shadow-sm border overflow-x-auto">
-                      <div className="p-3 sm:p-4 border-b bg-slate-50">
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                              <div className="flex items-center gap-2">
-                                  <h3 className="font-semibold text-base sm:text-lg">{office}</h3>
-                                  {data.groupCashiers ? (
-                                      <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">
-                                          <Users className="w-3 h-3 mr-1" /> Grouped
-                                      </Badge>
-                                  ) : (
-                                      <Badge variant="outline" className="text-[10px] bg-slate-50 text-slate-600 border-slate-200">
-                                          Individual
-                                      </Badge>
-                                  )}
-                                  {allCompleted && <Badge className="text-[10px] bg-green-100 text-green-700 border-green-200">All Reconciled</Badge>}
-                              </div>
-                              <div className="flex flex-wrap gap-3 sm:gap-4 text-xs sm:text-sm">
-                                  <div className="flex gap-1.5">
-                                      <span className="text-muted-foreground">System:</span>
-                                      <span className="font-mono font-medium">{formatCurrency(data.totalSystem)}</span>
-                                  </div>
-                                  <div className="flex gap-1.5">
-                                      <span className="text-muted-foreground">Declared:</span>
-                                      <span className="font-mono font-medium">{formatCurrency(data.totalDeclared)}</span>
-                                  </div>
-                                  {variance !== 0 && (
-                                      <div className="flex gap-1.5">
-                                          <span className="text-muted-foreground">Variance:</span>
-                                          <span className={`font-mono font-bold ${variance > 0 ? 'text-red-600' : 'text-green-600'}`}>{formatCurrency(variance)}</span>
-                                      </div>
-                                  )}
-                                  <div className="flex gap-1.5">
-                                      <span className="text-muted-foreground">Cashiers:</span>
-                                      <span className="font-medium">{data.shifts.length}</span>
-                                  </div>
-                              </div>
-                          </div>
-                          {data.groupCashiers && someNotSubmitted && (
-                              <div className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 flex items-center gap-1.5">
-                                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                                  Not all cashiers in this office have submitted their day-end. Grouped reconciliation requires all cashiers to submit before the office can be approved.
-                              </div>
-                          )}
-                      </div>
-                      <div className="sm:hidden space-y-2 p-3">
-                          {data.shifts.map(shift => (
-                              <div key={`mobile-office-${shift.id}`} className="bg-white border rounded-xl p-3 space-y-2" data-testid={`mobile-office-shift-${shift.id}`}>
-                                  <div className="flex items-start justify-between">
-                                      <span className="font-bold text-slate-900">{shift.cashierName}</span>
-                                      <StatusBadge status={shift.status} />
-                                  </div>
-                                  <div className="flex items-center justify-between text-sm">
-                                      <div>
-                                          <span className="text-muted-foreground text-xs">System Total</span>
-                                          <p className="font-mono font-medium">{formatCurrency(shift.systemTotals.total)}</p>
-                                      </div>
-                                      <div className="text-right">
-                                          <span className="text-muted-foreground text-xs">Declared Total</span>
-                                          <p className="font-mono font-medium">{formatCurrency(shift.declaredTotals?.total || 0)}</p>
-                                      </div>
-                                  </div>
-                                  <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="w-full h-10 active:scale-[0.99]"
-                                      onClick={() => handleReview(shift)}
-                                      data-testid={`mobile-office-review-${shift.id}`}
-                                  >
-                                      Review Cashier
-                                  </Button>
-                              </div>
-                          ))}
-                          {data.groupCashiers && allPending && !someNotSubmitted && (
-                              <Button
-                                  className="w-full h-11 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold rounded-xl"
-                                  onClick={async () => {
-                                      for (const shift of data.shifts) {
-                                          await handleApprove(shift.id);
-                                      }
-                                  }}
-                                  disabled={actionLoading}
-                                  data-testid={`button-approve-office-${office}`}
-                              >
-                                  {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
-                                  Approve Entire Office ({data.shifts.length} cashiers)
-                              </Button>
-                          )}
-                      </div>
-                      <div className="hidden sm:block">
-                      <Table>
-                          <TableHeader>
-                              <TableRow>
-                                  <TableHead>Cashier</TableHead>
-                                  <TableHead className="text-right">System Total</TableHead>
-                                  <TableHead className="text-right">Declared Total</TableHead>
-                                  <TableHead className="text-right">Variance</TableHead>
-                                  <TableHead className="text-center">Status</TableHead>
-                                  <TableHead className="text-right">Action</TableHead>
-                              </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                              {data.shifts.map(shift => {
-                                  const shiftVariance = shift.systemTotals.total - (shift.declaredTotals?.total || 0);
-                                  return (
-                                  <TableRow key={shift.id}>
-                                      <TableCell className="font-medium">{shift.cashierName}</TableCell>
-                                      <TableCell className="text-right font-mono">{formatCurrency(shift.systemTotals.total)}</TableCell>
-                                      <TableCell className="text-right font-mono">{formatCurrency(shift.declaredTotals?.total || 0)}</TableCell>
-                                      <TableCell className={`text-right font-mono font-bold ${shiftVariance !== 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                          {shiftVariance === 0 ? '-' : formatCurrency(shiftVariance)}
-                                      </TableCell>
-                                      <TableCell className="text-center"><StatusBadge status={shift.status} /></TableCell>
-                                      <TableCell className="text-right">
-                                          <Button size="sm" variant="outline" onClick={() => handleReview(shift)}>
-                                              Review
-                                          </Button>
-                                      </TableCell>
-                                  </TableRow>
-                                  );
-                              })}
-                          </TableBody>
-                      </Table>
-                      </div>
-                      {data.groupCashiers && allPending && !someNotSubmitted && (
-                          <div className="hidden sm:flex p-3 sm:p-4 border-t bg-green-50 items-center justify-between">
-                              <div className="text-sm text-green-800">
-                                  All {data.shifts.length} cashiers have submitted. This is a grouped office — approve all cashiers together.
-                              </div>
-                              <Button
-                                  className="bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold px-6"
-                                  onClick={async () => {
-                                      setActionLoading(true);
-                                      try {
-                                          for (const shift of data.shifts) {
-                                              await apiRequest('POST', `/api/platinum/auth-day-end/finish-day-end-reconcile?userId=${shift.id}`, {});
-                                          }
-                                          toast({ title: 'Success', description: `All ${data.shifts.length} cashiers in ${office} approved.` });
-                                          loadCashierList();
-                                      } catch (e: any) {
-                                          toast({ title: 'Error', description: `Approval failed: ${e.message}`, variant: 'destructive' });
-                                      } finally {
-                                          setActionLoading(false);
-                                      }
-                                  }}
-                                  disabled={actionLoading}
-                                  data-testid={`button-approve-office-desktop-${office}`}
-                              >
-                                  {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
-                                  Approve Entire Office
-                              </Button>
+              <div className="bg-white rounded-lg shadow-sm border p-4">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
+                      <Label className="text-sm font-medium whitespace-nowrap">Cash Office:</Label>
+                      <Select
+                          value={perOfficeSelectedId ? String(perOfficeSelectedId) : ''}
+                          onValueChange={(val) => handlePerOfficeSelect(Number(val))}
+                      >
+                          <SelectTrigger className="w-full sm:w-72" data-testid="select-per-office">
+                              <SelectValue placeholder="Select a grouped cash office..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                              {perOfficeList.map((office: any) => (
+                                  <SelectItem key={office.cashOffice_ID || office.id} value={String(office.cashOffice_ID || office.id)}>
+                                      {office.cashOfficeDesc || office.name || `Office ${office.cashOffice_ID || office.id}`}
+                                  </SelectItem>
+                              ))}
+                              {perOfficeList.length === 0 && (
+                                  <SelectItem value="none" disabled>No grouped offices found</SelectItem>
+                              )}
+                          </SelectContent>
+                      </Select>
+                      {perOfficeData && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Badge variant="outline" className="bg-slate-50">{perOfficeData.cashBookName || `Cashbook ${perOfficeData.cashBookId}`}</Badge>
+                              <span>{perOfficeData.completionStatus}</span>
                           </div>
                       )}
+                      {perOfficeSelectedId && (
+                          <Button size="sm" variant="ghost" onClick={refreshPerOfficeSummary} data-testid="button-refresh-per-office">
+                              <RefreshCcw className="w-3.5 h-3.5" />
+                          </Button>
+                      )}
                   </div>
-                  );
-              })}
+
+                  {perOfficeLoading && (
+                      <div className="flex items-center justify-center py-12">
+                          <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                          <span className="ml-2 text-sm text-muted-foreground">Loading office data...</span>
+                      </div>
+                  )}
+
+                  {!perOfficeLoading && perOfficeData && perOfficeData.cashierSummary.length > 0 && (
+                      <>
+                          <Table>
+                              <TableHeader>
+                                  <TableRow>
+                                      <TableHead>Cashier</TableHead>
+                                      <TableHead className="text-center">Status</TableHead>
+                                      <TableHead className="text-right">Action</TableHead>
+                                  </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                  {perOfficeData.cashierSummary.map((cs: any) => {
+                                      const cId = cs.cashierId || cs.cashier_ID || cs.id;
+                                      const cName = cs.cashierName || cs.name || `Cashier ${cId}`;
+                                      const cStatus = cs.statusDesc || cs.status || 'Pending';
+                                      const isVerified = cStatus.toLowerCase().includes('verif');
+                                      const isReturned = cStatus.toLowerCase().includes('return');
+                                      const isPending = !isVerified && !isReturned;
+                                      return (
+                                          <TableRow key={cId}>
+                                              <TableCell className="font-medium">{cName}</TableCell>
+                                              <TableCell className="text-center">
+                                                  <Badge variant="outline" className={cn(
+                                                      'text-[10px]',
+                                                      isVerified && 'bg-green-50 text-green-700 border-green-200',
+                                                      isReturned && 'bg-amber-50 text-amber-700 border-amber-200',
+                                                      isPending && 'bg-blue-50 text-blue-700 border-blue-200'
+                                                  )}>
+                                                      {cStatus}
+                                                  </Badge>
+                                              </TableCell>
+                                              <TableCell className="text-right">
+                                                  <div className="flex items-center justify-end gap-2">
+                                                      <Button
+                                                          size="sm"
+                                                          variant="outline"
+                                                          onClick={() => {
+                                                              const fakeShift: CashierShift = {
+                                                                  id: String(cId),
+                                                                  cashierName: cName,
+                                                                  cashOffice: perOfficeList.find(o => (o.cashOffice_ID || o.id) === perOfficeSelectedId)?.cashOfficeDesc || '',
+                                                                  cashOfficeId: perOfficeSelectedId,
+                                                                  groupCashiers: true,
+                                                                  startTime: new Date().toISOString(),
+                                                                  status: isVerified ? 'COMPLETED' : isReturned ? 'RETURNED' : 'PENDING_APPROVAL',
+                                                                  systemTotals: { cash: 0, card: 0, total: 0 },
+                                                                  variance: { cash: 0, card: 0, total: 0 },
+                                                                  transactionCount: 0,
+                                                              };
+                                                              handleReview(fakeShift);
+                                                          }}
+                                                          data-testid={`button-review-po-${cId}`}
+                                                      >
+                                                          <Eye className="w-3.5 h-3.5 mr-1" /> Review
+                                                      </Button>
+                                                      {isPending && (
+                                                          <Button
+                                                              size="sm"
+                                                              className="bg-green-600 hover:bg-green-700 text-white"
+                                                              disabled={perOfficeVerifying === cId}
+                                                              onClick={() => handlePerOfficeVerifyCashier(Number(cId))}
+                                                              data-testid={`button-verify-po-${cId}`}
+                                                          >
+                                                              {perOfficeVerifying === cId ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-1" />}
+                                                              Verify
+                                                          </Button>
+                                                      )}
+                                                      {isPending && (
+                                                          <Popover>
+                                                              <PopoverTrigger asChild>
+                                                                  <Button size="sm" variant="outline" className="text-amber-600 border-amber-300" data-testid={`button-return-po-${cId}`}>
+                                                                      <RotateCcw className="w-3.5 h-3.5 mr-1" /> Return
+                                                                  </Button>
+                                                              </PopoverTrigger>
+                                                              <PopoverContent className="w-72">
+                                                                  <div className="space-y-2">
+                                                                      <Label className="text-xs font-medium">Return Reason</Label>
+                                                                      <Input
+                                                                          placeholder="e.g. Cash count mismatch"
+                                                                          value={returnReason}
+                                                                          onChange={(e) => setReturnReason(e.target.value)}
+                                                                          data-testid={`input-return-reason-po-${cId}`}
+                                                                      />
+                                                                      <Button
+                                                                          size="sm"
+                                                                          className="w-full"
+                                                                          disabled={!returnReason}
+                                                                          onClick={async () => {
+                                                                              const reconcileId = cs.cashierReconcileId || cs.reconcileId || cId;
+                                                                              await handlePerOfficeReturn(Number(reconcileId), returnReason);
+                                                                              setReturnReason('');
+                                                                          }}
+                                                                          data-testid={`button-confirm-return-po-${cId}`}
+                                                                      >
+                                                                          Confirm Return
+                                                                      </Button>
+                                                                  </div>
+                                                              </PopoverContent>
+                                                          </Popover>
+                                                      )}
+                                                      {isVerified && <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px]"><CheckCircle2 className="w-3 h-3 mr-1" />Verified</Badge>}
+                                                  </div>
+                                              </TableCell>
+                                          </TableRow>
+                                      );
+                                  })}
+                              </TableBody>
+                          </Table>
+
+                          {perOfficeData.allVerified && (
+                              <div className="p-4 border-t bg-green-50 flex flex-col sm:flex-row items-center justify-between gap-3">
+                                  <div className="text-sm text-green-800 font-medium">
+                                      All cashiers verified. Ready for final office-level submission.
+                                  </div>
+                                  <div className="flex gap-2">
+                                      <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => perOfficeSelectedId && handlePerOfficePrintCashReport(perOfficeSelectedId)}
+                                          data-testid="button-po-print-cash-report"
+                                      >
+                                          <Printer className="w-3.5 h-3.5 mr-1" /> Cash Report
+                                      </Button>
+                                      <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => perOfficeSelectedId && handlePerOfficePrintDepositSlip(perOfficeSelectedId)}
+                                          data-testid="button-po-print-deposit-slip"
+                                      >
+                                          <Printer className="w-3.5 h-3.5 mr-1" /> Deposit Slip
+                                      </Button>
+                                      <Button
+                                          className="bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold px-6"
+                                          disabled={perOfficeSubmitting}
+                                          onClick={handlePerOfficeSubmitAll}
+                                          data-testid="button-submit-per-office"
+                                      >
+                                          {perOfficeSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                                          Submit Office Reconciliation
+                                      </Button>
+                                  </div>
+                              </div>
+                          )}
+
+                          {!perOfficeData.allVerified && perOfficeData.validationResult && !perOfficeData.validationResult.isValid && (
+                              <div className="p-3 border-t bg-amber-50 text-xs text-amber-700 flex items-center gap-2">
+                                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                                  {perOfficeData.validationResult.message || 'Not all cashiers have been verified. Verify each cashier before submitting the office.'}
+                              </div>
+                          )}
+
+                          {!perOfficeData.allVerified && (!perOfficeData.validationResult || perOfficeData.validationResult.isValid) && (
+                              <div className="p-3 border-t bg-blue-50 text-xs text-blue-700 flex items-center gap-2">
+                                  <Info className="w-4 h-4 shrink-0" />
+                                  Verify each cashier individually, then submit the office reconciliation once all are verified.
+                              </div>
+                          )}
+                      </>
+                  )}
+
+                  {!perOfficeLoading && perOfficeData && perOfficeData.cashierSummary.length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground text-sm">
+                          No cashiers found for this office.
+                      </div>
+                  )}
+
+                  {!perOfficeLoading && !perOfficeSelectedId && (
+                      <div className="text-center py-8 text-muted-foreground text-sm">
+                          Select a grouped cash office above to begin per-office reconciliation.
+                      </div>
+                  )}
+              </div>
           </div>
       )}
 

@@ -2574,6 +2574,149 @@ export async function registerRoutes(
     }
   });
 
+  // --- Auth Day-End Reconciliation Per Office (GroupCashiers = true) ---
+
+  app.get("/api/platinum/auth-day-end-per-office/cash-office-list", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing/auth-day-end-reconcile-per-office/cash-office-list");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/auth-day-end-per-office/cash-office-selection", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing/auth-day-end-reconcile-per-office/cash-office-selection", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/auth-day-end-per-office/cashier-summary-by-office", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing/auth-day-end-reconcile-per-office/cashier-summary-by-office", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/auth-day-end-per-office/cashier-reconcile-status", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing/auth-day-end-reconcile-per-office/cashier-reconcile-status", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end-per-office/process-staging-payments", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const qs = req.query.cashOfficeId ? `?cashOfficeId=${req.query.cashOfficeId}` : '';
+      const data = await platinumPost(session, `/api/billing/auth-day-end-reconcile-per-office/process-staging-payments${qs}`, {});
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end-per-office/add-stage", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile-per-office/add-stage", {});
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end-per-office/verify-cashier-reconcile", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile-per-office/verify-cashier-reconcile", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end-per-office/submit-reconcile-per-office", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile-per-office/submit-reconcile-per-office", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end-per-office/finish-stage", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile-per-office/finish-stage", {});
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end-per-office/cancel-day-auth-reconcile-receipt", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile-per-office/cancel-day-auth-reconcile-receipt", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end-per-office/return-day-end-reconcile", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile-per-office/return-day-end-reconcile", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end-per-office/print-receipt", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile-per-office/print-receipt", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end-per-office/print-cash-report", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile-per-office/print-cash-report", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.post("/api/platinum/auth-day-end-per-office/print-deposit-slip", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile-per-office/print-deposit-slip", req.body);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   // --- Direct Deposit Allocation endpoints ---
 
   app.post("/api/platinum/direct-deposit-allocation/get-bank-recon-positem-list", async (req, res) => {

@@ -1390,6 +1390,104 @@ export async function platinumAuthDayEndValidateCashbook(cashierId: number): Pro
     });
 }
 
+// --- Auth Day-End Reconciliation Per Office (GroupCashiers = true) ---
+
+export async function platinumPerOfficeCashOfficeList(): Promise<any[]> {
+    return platinumFetch(`/api/platinum/auth-day-end-per-office/cash-office-list`);
+}
+
+export async function platinumPerOfficeCashOfficeSelection(cashOfficeId: number): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end-per-office/cash-office-selection?cashOfficeId=${cashOfficeId}`);
+}
+
+export async function platinumPerOfficeCashierSummary(cashOfficeId: number): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end-per-office/cashier-summary-by-office?cashOfficeId=${cashOfficeId}`);
+}
+
+export async function platinumPerOfficeCashierReconcileStatus(cashierId: number, cashOfficeId: number): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end-per-office/cashier-reconcile-status?cashierId=${cashierId}&cashOfficeId=${cashOfficeId}`);
+}
+
+export async function platinumPerOfficeProcessStagingPayments(cashOfficeId: number): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end-per-office/process-staging-payments?cashOfficeId=${cashOfficeId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+    });
+}
+
+export async function platinumPerOfficeAddStage(): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end-per-office/add-stage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+    });
+}
+
+export async function platinumPerOfficeVerifyCashierReconcile(data: { cashierId: number; cashOfficeId: number; cashBookId: number }): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end-per-office/verify-cashier-reconcile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumPerOfficeSubmitReconcile(data: { cashOfficeId: number; cashBookId: number }): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end-per-office/submit-reconcile-per-office`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumPerOfficeFinishStage(): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end-per-office/finish-stage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+    });
+}
+
+export async function platinumPerOfficeCancelReceipt(data: { id: number; returnReason: string }): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end-per-office/cancel-day-auth-reconcile-receipt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumPerOfficeReturnReconcile(data: { id: number; returnReason: string }): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end-per-office/return-day-end-reconcile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumPerOfficePrintReceipt(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end-per-office/print-receipt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumPerOfficePrintCashReport(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end-per-office/print-cash-report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumPerOfficePrintDepositSlip(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end-per-office/print-deposit-slip`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
 // --- Direct Deposit Allocation ---
 
 export async function platinumGetBankReconPosItemList(data: any): Promise<any> {
