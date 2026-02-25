@@ -2130,6 +2130,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 });
                 console.log(`[Priority 2 ${label}] Submitted misc payment for SCOA item ${scoaItemId}`, miscResult);
 
+                if (!miscResult || miscResult.isSuccess === false) {
+                    const apiMsg = miscResult?.message || miscResult?.error || 'Platinum API returned failure for miscellaneous payment';
+                    throw new Error(`Direct Income payment failed: ${apiMsg}`);
+                }
+
                 let miscReceiptId: number | null = null;
                 if (miscResult?.ids && Array.isArray(miscResult.ids) && miscResult.ids.length > 0) {
                     miscReceiptId = miscResult.ids[0];
@@ -2137,7 +2142,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     miscReceiptId = miscResult?.receiptID || miscResult?.receiptId || miscResult?.id || null;
                 }
 
-                if (miscReceiptId) {
+                if (!miscReceiptId) {
+                    throw new Error(`Direct Income payment did not return a receipt ID — the transaction may not have been recorded. API response: ${JSON.stringify(miscResult).substring(0, 300)}`);
+                }
+
+                {
                     let receiptNo = `REC-${miscReceiptId}`;
                     let miscReceiptDetail: any = null;
                     const miscItemDesc = item.description || origData?.description || 'Direct Income';
@@ -2283,8 +2292,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }
             } catch (e: any) {
                 const errMsg = e?.message || (typeof e === 'string' ? e : JSON.stringify(e)) || 'Unknown error';
-                console.warn(`[Priority 2] Failed to submit misc payment for ${item.description}: ${errMsg}`, e);
-                toast({ title: "Direct Income Posting Failed", description: errMsg, variant: "destructive" });
+                console.error(`[Priority 2] FAILED to submit misc payment for ${item.description}: ${errMsg}`, e);
+                toast({ title: "Direct Income Payment Failed", description: errMsg, variant: "destructive" });
+                throw new Error(`Direct Income payment failed for "${item.description}": ${errMsg}`);
             }
         }
     }
@@ -2311,6 +2321,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     }
 
+    } catch (paymentError: any) {
+        const errMsg = paymentError?.message || 'Payment processing failed';
+        console.error('[Payment] Transaction FAILED:', errMsg, paymentError);
+        record.status = 'FAILED' as any;
+        toast({ title: "Payment Failed", description: errMsg, variant: "destructive" });
     } finally {
         setProcessingStep('');
         setProcessingRecord({ ...record });

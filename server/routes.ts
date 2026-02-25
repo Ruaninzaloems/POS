@@ -1822,8 +1822,30 @@ export async function registerRoutes(
       }
       const data = await platinumPost(session, "/api/billing-payment-miscellaneous/submit", req.body);
       console.log(`[misc-submit] Response:`, JSON.stringify(data).substring(0, 1000));
+
+      if (data && data._error) {
+        console.error(`[misc-submit] Platinum API error:`, JSON.stringify(data));
+        res.status(data.status || 502).json({ isSuccess: false, message: data.statusText || "Platinum API error", detail: stripHtml(data.detail) || null });
+        return;
+      }
+      if (data && data.isSuccess === false) {
+        const errMsg = data.message || data.error || data.title || 'Miscellaneous payment failed — Platinum API returned isSuccess=false';
+        console.error(`[misc-submit] Payment FAILED — isSuccess=false:`, errMsg, JSON.stringify(data).substring(0, 1000));
+        res.status(400).json({ isSuccess: false, message: errMsg, detail: data });
+        return;
+      }
+      const ids = data?.ids || [];
+      if (!Array.isArray(ids) || ids.length === 0) {
+        const receiptId = data?.receiptID || data?.receiptId || data?.id || data?.receipt_ID;
+        if (!receiptId) {
+          console.error(`[misc-submit] Payment returned NO receipt IDs — response may not have created a POS receipt:`, JSON.stringify(data).substring(0, 1000));
+          res.status(400).json({ isSuccess: false, message: 'Miscellaneous payment returned no receipt ID — receipt may not have been created in POS system', detail: data });
+          return;
+        }
+      }
+
       recordPaymentSubmission(miscDedupKey, data);
-      handlePlatinumResult(res, data);
+      res.json(data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
