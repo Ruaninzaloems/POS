@@ -46,7 +46,7 @@ const COIN_DENOMINATIONS = [
 ];
 
 export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
-  const { platinumCashierId, platinumUser, currentUser, sessionDetails, allowedPaymentTypes } = usePos();
+  const { platinumCashierId, platinumUser, currentUser, sessionDetails, allowedPaymentTypes, dayEndStatus } = usePos();
   const { toast } = useToast();
 
   const [step, setStep] = useState<'capture' | 'confirm' | 'submitting' | 'success' | 'error'>('capture');
@@ -198,7 +198,17 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
       };
 
       console.log('[DayEndModal] Submitting reconcile payload:', JSON.stringify(payload));
-      await platinumSaveDayEndReconcileData(userId, payload);
+      const result = await platinumSaveDayEndReconcileData(userId, payload);
+      console.log('[DayEndModal] API response:', JSON.stringify(result));
+
+      if (result?.error || result?.isError === true || result?.success === false) {
+        const errMsg = result?.error || result?.message || result?.errorMessage || 'API rejected the submission. Please check the values and try again.';
+        console.error('[DayEndModal] API returned error in response:', errMsg);
+        setErrorMessage(errMsg);
+        setStep('error');
+        return;
+      }
+
       setStep('success');
       toast({ title: 'Success', description: 'Day-end reconciliation submitted for supervisor approval.' });
       if (typeof (window as any).__posEndSessionAfterDayEnd === 'function') {
@@ -206,13 +216,29 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
       }
     } catch (e: any) {
       console.error('[DayEndModal] API error:', e);
-      setErrorMessage(e?.message || 'Failed to save reconciliation data.');
+      setErrorMessage(e?.message || 'Failed to save reconciliation data. Please check your connection and try again.');
       setStep('error');
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
+      {dayEndStatus === 'PENDING_APPROVAL' ? (
+        <DialogContent className="sm:max-w-md p-6 rounded-xl border-0 shadow-2xl">
+          <div className="flex flex-col items-center text-center space-y-4 py-6">
+            <div className="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center">
+              <AlertTriangle className="w-8 h-8" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-orange-800">Day-End Already Submitted</h3>
+              <p className="text-slate-500 mt-2 text-sm">
+                Your day-end reconciliation has already been submitted and is waiting for supervisor approval. You cannot modify or re-submit until the supervisor approves or returns it.
+              </p>
+            </div>
+            <Button onClick={onClose} className="w-full" data-testid="button-close-pending">Close</Button>
+          </div>
+        </DialogContent>
+      ) : (
       <DialogContent className="sm:max-w-2xl max-h-[92vh] overflow-y-auto p-0 gap-0 rounded-xl border-0 shadow-2xl">
         <div className="bg-gradient-to-br from-indigo-600 via-blue-600 to-indigo-700 text-white px-6 py-5 rounded-t-xl">
           <div className="flex items-start justify-between">
@@ -815,6 +841,7 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
           )}
         </DialogFooter>
       </DialogContent>
+      )}
     </Dialog>
   );
 }

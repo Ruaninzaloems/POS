@@ -396,19 +396,43 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (data.isActive === true && data.officeId) {
             const officeId = String(data.officeId);
             const cashFloat = data.cashFloat ?? data.details?.cashFloat ?? 0;
-            console.log(`[Session] validate-cashier API confirms session is active (POS_Cashier.IsActive=1). isActive is the single source of truth — auto-resuming.`);
-            {
-              console.log(`[Session] Auto-resuming active session. Office: ${officeName} (ID: ${officeId}), Float: ${cashFloat}`);
-              try {
-                const vcResult = await platinumValidateCashier(platinumUser.user_ID, platinumUser.finYear || '2025/2026');
-                const vcCashierId = vcResult?.cashier?.id;
-                if (vcCashierId) {
-                  console.log(`[Session] validate-cashier returned active cashier ID: ${vcCashierId} (overriding ${receiptCashierId})`);
-                  setPlatinumCashierId(vcCashierId);
-                }
-              } catch (e) {
-                console.warn(`[Session] validate-cashier call failed, using fallback cashier ID: ${receiptCashierId}`);
+            console.log(`[Session] validate-cashier API confirms session is active (POS_Cashier.IsActive=1). isActive is the single source of truth.`);
+
+            let resolvedCashierId = receiptCashierId;
+            try {
+              const vcResult = await platinumValidateCashier(platinumUser.user_ID, platinumUser.finYear || '2025/2026');
+              const vcCashierId = vcResult?.cashier?.id;
+              if (vcCashierId) {
+                console.log(`[Session] validate-cashier returned active cashier ID: ${vcCashierId} (overriding ${receiptCashierId})`);
+                setPlatinumCashierId(vcCashierId);
+                resolvedCashierId = vcCashierId;
               }
+            } catch (e) {
+              console.warn(`[Session] validate-cashier call failed, using fallback cashier ID: ${receiptCashierId}`);
+            }
+
+            let hasPendingDayEnd = false;
+            try {
+              const reconCheck = await platinumValidateCashierDayEndRecon({
+                cashierId: String(resolvedCashierId),
+                userId: String(platinumUser.user_ID),
+              });
+              console.log(`[Session] Day-end recon check response:`, JSON.stringify(reconCheck));
+              if (reconCheck?.isReconciled === true || reconCheck?.isSubmitted === true || reconCheck?.hasPendingReconcile === true) {
+                hasPendingDayEnd = true;
+                console.log(`[Session] Day-end reconciliation is pending/submitted — blocking auto-resume`);
+              }
+            } catch (e) {
+              console.warn(`[Session] Day-end recon check failed — allowing resume:`, e);
+            }
+
+            if (hasPendingDayEnd) {
+              setDayEndStatus('PENDING_APPROVAL');
+              setActiveSession(false);
+              setApiSessionActive(false);
+              console.log(`[Session] Session blocked — day-end pending supervisor approval`);
+            } else {
+              console.log(`[Session] No pending day-end — auto-resuming. Office: ${officeName} (ID: ${officeId}), Float: ${cashFloat}`);
               setActiveSession(true);
               setApiSessionActive(true);
               setSessionDetails({

@@ -59,6 +59,7 @@ export default function CashierSetup() {
     const [setupComplete, setSetupComplete] = useState(false);
     const [resumingSession, setResumingSession] = useState(false);
     const [dayEndCompleted, setDayEndCompleted] = useState(false);
+    const [dayEndPending, setDayEndPending] = useState(false);
     const [defaultOfficeId, setDefaultOfficeId] = useState<string>('');
 
     useEffect(() => {
@@ -90,10 +91,32 @@ export default function CashierSetup() {
                     setStep1Status('success');
 
                     if (data.isActive === true && data.officeId) {
-                        console.log(`[CashierSetup] validate-cashier API confirms session is active (POS_Cashier.IsActive=1) at office ${data.officeName} (ID: ${data.officeId}). isActive is the single source of truth — offering resume.`);
-                        setResumingSession(true);
-                        setStep2Status('success');
-                        setStep3Status('pending');
+                        console.log(`[CashierSetup] validate-cashier API confirms session is active (POS_Cashier.IsActive=1) at office ${data.officeName} (ID: ${data.officeId}). isActive is the single source of truth.`);
+
+                        let pendingDayEnd = false;
+                        try {
+                            const reconCheck = await platinumValidateCashierDayEndRecon({
+                                cashierId: String(data.cashierId),
+                                userId: String(userId),
+                            });
+                            console.log(`[CashierSetup] Day-end recon check:`, JSON.stringify(reconCheck));
+                            if (reconCheck?.isReconciled === true || reconCheck?.isSubmitted === true || reconCheck?.hasPendingReconcile === true) {
+                                pendingDayEnd = true;
+                            }
+                        } catch (e) {
+                            console.warn(`[CashierSetup] Day-end recon check failed:`, e);
+                        }
+
+                        if (pendingDayEnd) {
+                            console.log(`[CashierSetup] Day-end reconciliation is pending supervisor approval — blocking resume`);
+                            setDayEndPending(true);
+                            setResumingSession(false);
+                            setStep2Status('success');
+                        } else {
+                            setResumingSession(true);
+                            setStep2Status('success');
+                            setStep3Status('pending');
+                        }
                     }
 
                     const currentOfficeId = data.officeId || data.details?.officeId;
@@ -205,6 +228,11 @@ export default function CashierSetup() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+
+        if (dayEndPending) {
+            setError('Your day-end reconciliation is pending supervisor approval. You cannot start a new session until it is approved or returned.');
+            return;
+        }
 
         if (!selectedOffice) {
             setError('Please select a cash office.');
@@ -433,7 +461,23 @@ export default function CashierSetup() {
                         </div>
                     )}
 
-                    {resumingSession && cashierDetails && !dayEndCompleted && (
+                    {dayEndPending && (
+                        <div className="mb-6 bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-2xl p-6" data-testid="day-end-pending-section">
+                            <div className="flex items-start gap-3">
+                                <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center shrink-0 mt-0.5">
+                                    <AlertTriangle className="h-5 w-5 text-orange-600" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="font-medium text-orange-800">Day-End Pending Supervisor Approval</p>
+                                    <p className="text-sm text-orange-700 mt-1">
+                                        Your day-end reconciliation has been submitted and is waiting for supervisor review. You cannot start or resume a session until the supervisor approves or returns your submission.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {resumingSession && cashierDetails && !dayEndCompleted && !dayEndPending && (
                         <div className="mb-6 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6" data-testid="resume-session-section">
                             <div className="flex items-start gap-3">
                                 <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
