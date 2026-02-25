@@ -982,33 +982,108 @@ export async function registerRoutes(
       const token = await refreshSessionToken(session);
       const apiUrl = getPlatinumApiUrl();
 
-      const pdfRes = await fetch(`${apiUrl}/api/billing-payment/print-receipt`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          Accept: "application/pdf,application/octet-stream,*/*",
-        },
-        body: JSON.stringify(receiptIds.map(Number)),
-      });
+      const fetchSingleReceiptPdf = async (id: number): Promise<Buffer | null> => {
+        try {
+          const r = await fetch(`${apiUrl}/api/billing-payment/print-receipt`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+              Accept: "application/pdf,application/octet-stream,*/*",
+            },
+            body: JSON.stringify([id]),
+          });
+          if (!r.ok) {
+            console.warn(`[print-receipt] Failed to fetch receipt ${id}: HTTP ${r.status}`);
+            return null;
+          }
+          return Buffer.from(await r.arrayBuffer());
+        } catch (e: any) {
+          console.warn(`[print-receipt] Error fetching receipt ${id}:`, e.message);
+          return null;
+        }
+      };
 
-      if (!pdfRes.ok) {
-        const errorText = await pdfRes.text().catch(() => "");
-        console.error(`[print-receipt] Platinum returned ${pdfRes.status}: ${errorText}`);
-        return res.status(pdfRes.status).json({ message: "Failed to fetch receipt PDF from Platinum", detail: errorText });
-      }
+      if (receiptIds.length === 1) {
+        const pdfRes = await fetch(`${apiUrl}/api/billing-payment/print-receipt`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            Accept: "application/pdf,application/octet-stream,*/*",
+          },
+          body: JSON.stringify(receiptIds.map(Number)),
+        });
 
-      const contentType = pdfRes.headers.get("content-type") || "";
-      const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+        if (!pdfRes.ok) {
+          const errorText = await pdfRes.text().catch(() => "");
+          console.error(`[print-receipt] Platinum returned ${pdfRes.status}: ${errorText}`);
+          return res.status(pdfRes.status).json({ message: "Failed to fetch receipt PDF from Platinum", detail: errorText });
+        }
 
-      if (contentType.includes("application/pdf") || pdfBuffer.length > 100) {
+        const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
         res.setHeader("Content-Type", "application/pdf");
-        res.setHeader("Content-Disposition", `inline; filename="receipt_${receiptIds.join("_")}.pdf"`);
+        res.setHeader("Content-Disposition", `inline; filename="receipt_${receiptIds[0]}.pdf"`);
         res.setHeader("Content-Length", pdfBuffer.length);
         return res.send(pdfBuffer);
       }
 
-      res.json({ message: "Receipt generated", size: pdfBuffer.length });
+      console.log(`[print-receipt] Fetching ${receiptIds.length} receipts individually for proper page breaks`);
+      const { PDFDocument } = await import('pdf-lib');
+
+      const BATCH_SIZE = 10;
+      const allPdfBuffers: Buffer[] = [];
+      for (let i = 0; i < receiptIds.length; i += BATCH_SIZE) {
+        const batch = receiptIds.slice(i, i + BATCH_SIZE).map(Number);
+        const results = await Promise.all(batch.map(fetchSingleReceiptPdf));
+        for (const buf of results) {
+          if (buf && buf.length > 100) allPdfBuffers.push(buf);
+        }
+      }
+
+      if (allPdfBuffers.length === 0) {
+        console.log(`[print-receipt] No individual PDFs fetched, falling back to bulk request`);
+        const pdfRes = await fetch(`${apiUrl}/api/billing-payment/print-receipt`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            Accept: "application/pdf,application/octet-stream,*/*",
+          },
+          body: JSON.stringify(receiptIds.map(Number)),
+        });
+        if (!pdfRes.ok) {
+          const errorText = await pdfRes.text().catch(() => "");
+          return res.status(pdfRes.status).json({ message: "Failed to fetch receipt PDF", detail: errorText });
+        }
+        const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `inline; filename="receipts_${receiptIds.length}.pdf"`);
+        res.setHeader("Content-Length", pdfBuffer.length);
+        return res.send(pdfBuffer);
+      }
+
+      const mergedPdf = await PDFDocument.create();
+      for (const buf of allPdfBuffers) {
+        try {
+          const srcDoc = await PDFDocument.load(buf, { ignoreEncryption: true });
+          const pages = await mergedPdf.copyPages(srcDoc, srcDoc.getPageIndices());
+          for (const page of pages) {
+            mergedPdf.addPage(page);
+          }
+        } catch (mergeErr: any) {
+          console.warn(`[print-receipt] Failed to merge a receipt PDF:`, mergeErr.message);
+        }
+      }
+
+      const mergedBytes = await mergedPdf.save();
+      const mergedBuffer = Buffer.from(mergedBytes);
+      console.log(`[print-receipt] Merged ${allPdfBuffers.length} receipt PDFs into ${mergedBuffer.length} bytes (${mergedPdf.getPageCount()} pages)`);
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="receipts_${receiptIds.length}.pdf"`);
+      res.setHeader("Content-Length", mergedBuffer.length);
+      return res.send(mergedBuffer);
     } catch (e: any) {
       console.error("[print-receipt] Error:", e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
