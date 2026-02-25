@@ -1266,7 +1266,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         for (let rIdx = 0; rIdx < receiptIds.length; rIdx++) {
             const rid = receiptIds[rIdx];
-            let receiptNo = `REC-${rid}`;
+            let receiptNo = '';
             let receiptDetail: any = null;
             let acctId = '';
             let acctName = '';
@@ -1274,9 +1274,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const receiptData = receiptDataResults[rIdx];
             if (receiptData && receiptData.length > 0) {
                 const rd = receiptData[0];
-                if (rd.receiptNo) receiptNo = rd.receiptNo;
+                receiptNo = rd.receiptNo || '';
                 acctId = rd.accountId || '';
                 acctName = rd.accName || '';
+
+                if (!receiptNo) {
+                    throw new Error(`Payment submitted (receiptId=${rid}) but API returned no receipt number. The receipt may not have been recorded properly.`);
+                }
 
                 const lineItems = receiptData.map((row: any) => ({
                     description: row.billType || 'Cash',
@@ -1307,10 +1311,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 };
                 console.log(`[Priority 1 ${paymentLabel}] Receipt ${receiptNo} for account ${acctId} (${acctName}), ${lineItems.length} line items`);
             } else {
-                const matchedAcct = perAccountAmounts?.[rIdx];
-                acctId = String(matchedAcct?.accountId || accountItems[rIdx]?.originalData?.account_ID || accountItems[rIdx]?.reference || '');
-                acctName = matchedAcct?.accountName || accountItems[rIdx]?.originalData?.name || accountItems[rIdx]?.description || '';
-                console.warn(`[Priority 1 ${paymentLabel}] Receipt ${rid} — API returned no receipt data. Receipt detail will be unavailable for reprint.`);
+                throw new Error(`Payment submitted (receiptId=${rid}) but could not retrieve receipt data from API. The POS receipt was not created properly.`);
             }
 
             if (!finalReceiptNumber) {
@@ -1957,49 +1958,50 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 console.log(`[Priority 1B ${label}] Submitted clearance payment for ${clearanceStagingId}`, clrResult);
 
                 const clrReceiptIds = extractReceiptIds(clrResult);
-                if (clrReceiptIds.length > 0) {
-                    let receiptNo = `REC-${clrReceiptIds[0]}`;
+                if (clrReceiptIds.length === 0) {
+                    throw new Error(`Clearance payment submitted but returned no receipt IDs. The receipt was not created. API response: ${JSON.stringify(clrResult).substring(0, 300)}`);
+                }
+
+                {
+                    let receiptNo = '';
                     let clrReceiptDetail: any = null;
                     let clrServiceAllocations: ReceiptAllocation[] = [];
-                    try {
-                        const receiptData = await fetchPosMultiReceiptPrint(String(clrReceiptIds[0]), 3);
-                        if (receiptData && receiptData.length > 0) {
-                            if (receiptData[0].receiptNo) receiptNo = receiptData[0].receiptNo;
-                            const rd = receiptData[0];
-                            clrReceiptDetail = {
-                                receiptNo: rd.receiptNo || receiptNo,
-                                cashierName: rd.cashierName || currentUser.name,
-                                cashOffice: rd.cashOfficeName || sessionDetails?.officeDesc || '',
-                                tenderAmount: rd.tenderAmount ?? tender,
-                                changeAmount: rd.changeAmount ?? change,
-                                outstandingAmount: rd.outstandingAmount,
-                                paymentType: splitType === 'cash' ? 'Cash' : 'Credit Card',
-                                paymentOption: 'Clearance',
-                                accountId: rd.accountId || item.reference || '',
-                                accName: rd.accName || accountHolderName,
-                                receiptDate: rd.receiptDate || formattedReceiptDate,
-                                lineItems: receiptData.map((row: any) => ({
-                                    description: row.billType || 'Clearance',
-                                    amount: row.tenderAmount ?? row.amount ?? 0,
-                                    vatAmount: row.vatAmount ?? 0,
-                                })),
-                            };
-                            const svcAllocs = rd._serviceAllocations;
-                            if (Array.isArray(svcAllocs) && svcAllocs.length > 0) {
-                                clrServiceAllocations = svcAllocs.map((a: any) => ({
-                                    service: a.service || a.description || '',
-                                    amount: a.amount ?? 0,
-                                    vat: a.vat ?? 0,
-                                    total: a.total ?? a.amount ?? 0,
-                                }));
-                            }
+                    const receiptData = await fetchPosMultiReceiptPrint(String(clrReceiptIds[0]), 3);
+                    if (receiptData && receiptData.length > 0) {
+                        const rd = receiptData[0];
+                        receiptNo = rd.receiptNo || '';
+                        if (!receiptNo) {
+                            throw new Error(`Clearance payment submitted (receiptId=${clrReceiptIds[0]}) but API returned no receipt number.`);
                         }
-                    } catch (e) {
-                        console.warn(`[Priority 1B ${label}] Could not fetch receipt number`, e);
-                    }
-
-                    if (!clrReceiptDetail) {
-                        console.warn(`[Priority 1B ${label}] API returned no receipt data for clearance ${clearanceStagingId}. Receipt detail will be unavailable for reprint.`);
+                        clrReceiptDetail = {
+                            receiptNo: rd.receiptNo,
+                            cashierName: rd.cashierName,
+                            cashOffice: rd.cashOfficeName,
+                            tenderAmount: rd.tenderAmount ?? tender,
+                            changeAmount: rd.changeAmount ?? change,
+                            outstandingAmount: rd.outstandingAmount,
+                            paymentType: splitType === 'cash' ? 'Cash' : 'Credit Card',
+                            paymentOption: 'Clearance',
+                            accountId: rd.accountId || item.reference || '',
+                            accName: rd.accName || accountHolderName,
+                            receiptDate: rd.receiptDate,
+                            lineItems: receiptData.map((row: any) => ({
+                                description: row.billType || 'Clearance',
+                                amount: row.tenderAmount ?? row.amount ?? 0,
+                                vatAmount: row.vatAmount ?? 0,
+                            })),
+                        };
+                        const svcAllocs = rd._serviceAllocations;
+                        if (Array.isArray(svcAllocs) && svcAllocs.length > 0) {
+                            clrServiceAllocations = svcAllocs.map((a: any) => ({
+                                service: a.service || a.description || '',
+                                amount: a.amount ?? 0,
+                                vat: a.vat ?? 0,
+                                total: a.total ?? a.amount ?? 0,
+                            }));
+                        }
+                    } else {
+                        throw new Error(`Clearance payment submitted (receiptId=${clrReceiptIds[0]}) but could not retrieve receipt data from API. The POS receipt was not created properly.`);
                     }
 
                     if (!finalReceiptNumber) {
@@ -2147,66 +2149,44 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }
 
                 {
-                    let receiptNo = `REC-${miscReceiptId}`;
-                    let miscReceiptDetail: any = null;
                     const miscItemDesc = item.description || origData?.description || 'Direct Income';
                     const miscReference = item.notes || item.reference || origData?.reference || '';
                     const miscVatAmt = Math.round((isVatable ? amount - amount / (1 + vatRate / 100) : 0) * 100) / 100;
                     const miscAmtExVat = Math.round((amount - miscVatAmt) * 100) / 100;
 
-                    try {
-                        const miscReceiptData = await fetchPosMultiReceiptPrint(String(miscReceiptId), 3);
-                        if (miscReceiptData && miscReceiptData.length > 0) {
-                            if (miscReceiptData[0].receiptNo) receiptNo = miscReceiptData[0].receiptNo;
-                            const rd = miscReceiptData[0];
-                            miscReceiptDetail = {
-                                receiptNo: rd.receiptNo || receiptNo,
-                                cashierName: rd.cashierName || currentUser.name,
-                                cashOffice: rd.cashOfficeName || sessionDetails?.officeDesc || '',
-                                tenderAmount: rd.tenderAmount ?? tender,
-                                changeAmount: rd.changeAmount ?? change,
-                                outstandingAmount: rd.outstandingAmount,
-                                paymentType: splitType === 'cash' ? 'Cash' : 'Credit Card',
-                                paymentOption: 'Miscellaneous Payment',
-                                accountId: rd.accountId || '',
-                                accName: (rd.accName && rd.accName.trim()) ? rd.accName : paidByName,
-                                receiptDate: rd.receiptDate || formattedReceiptDate,
-                                miscDescription: miscItemDesc,
-                                miscReference: miscReference,
-                                miscInitials: initials,
-                                miscSurname: lastName,
-                                lineItems: [{
-                                    description: miscItemDesc,
-                                    amount: miscAmtExVat,
-                                    vatAmount: miscVatAmt,
-                                }],
-                            };
-                        }
-                    } catch (e) {
-                        console.warn(`[Priority 2 ${label}] Could not fetch receipt number`, e);
+                    const miscReceiptData = await fetchPosMultiReceiptPrint(String(miscReceiptId), 3);
+                    if (!miscReceiptData || miscReceiptData.length === 0) {
+                        throw new Error(`Direct Income payment submitted (receiptId=${miscReceiptId}) but could not retrieve receipt data from API. The POS receipt was not created properly.`);
                     }
 
-                    if (!miscReceiptDetail) {
-                        miscReceiptDetail = {
-                            receiptNo,
-                            cashierName: currentUser.name || '',
-                            cashOffice: sessionDetails?.officeDesc || '',
-                            tenderAmount: tender,
-                            changeAmount: change,
-                            outstandingAmount: null,
-                            paymentType: splitType === 'cash' ? 'Cash' : 'Credit Card',
-                            paymentOption: 'Miscellaneous Payment',
-                            accountId: '',
-                            accName: paidByName,
-                            receiptDate: formattedReceiptDate,
-                            miscDescription: miscItemDesc,
-                            miscReference: miscReference,
-                            miscInitials: initials,
-                            miscSurname: lastName,
-                            lineItems: [{ description: miscItemDesc, amount: miscAmtExVat, vatAmount: miscVatAmt }],
-                        };
-                        console.log(`[Priority 2 ${label}] Using fallback receipt data for misc item ${scoaItemId}`);
+                    const rd = miscReceiptData[0];
+                    const receiptNo = rd.receiptNo || '';
+                    if (!receiptNo) {
+                        throw new Error(`Direct Income payment submitted (receiptId=${miscReceiptId}) but API returned no receipt number.`);
                     }
+
+                    const miscReceiptDetail = {
+                        receiptNo: rd.receiptNo,
+                        cashierName: rd.cashierName,
+                        cashOffice: rd.cashOfficeName,
+                        tenderAmount: rd.tenderAmount ?? tender,
+                        changeAmount: rd.changeAmount ?? change,
+                        outstandingAmount: rd.outstandingAmount,
+                        paymentType: splitType === 'cash' ? 'Cash' : 'Credit Card',
+                        paymentOption: 'Miscellaneous Payment',
+                        accountId: rd.accountId || '',
+                        accName: (rd.accName && rd.accName.trim()) ? rd.accName : paidByName,
+                        receiptDate: rd.receiptDate,
+                        miscDescription: miscItemDesc,
+                        miscReference: miscReference,
+                        miscInitials: initials,
+                        miscSurname: lastName,
+                        lineItems: [{
+                            description: miscItemDesc,
+                            amount: miscAmtExVat,
+                            vatAmount: miscVatAmt,
+                        }],
+                    };
 
                     if (!finalReceiptNumber) {
                         finalReceiptNumber = receiptNo;
