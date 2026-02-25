@@ -328,22 +328,48 @@ export async function registerRoutes(
       const cashierReconcile = vcData.cashierReconcile || null;
 
       if (!cashier) {
-        console.log(`[active-cashier] validate-cashier returned cashier=null — checking active-cashierid-by-userid fallback`);
-        try {
-          const fallbackCashierId = await platinumGet(session, "/api/billing/auth-day-end-reconcile/active-cashierid-by-userid", { userid: userId });
-          if (fallbackCashierId && fallbackCashierId !== 0 && !fallbackCashierId._error) {
-            console.log(`[active-cashier] Fallback found active cashierId: ${fallbackCashierId} — fetching details`);
-            const details = await platinumGet(session, `/api/ReceiptPrepaid/cashier-detailsById`, { cashierId: String(fallbackCashierId) });
-            if (details && !details._error && details.id) {
+        console.log(`[active-cashier] validate-cashier returned cashier=null — checking fallbacks`);
+
+        const knownId = (session as any).knownCashierId;
+        if (knownId && knownId > 0) {
+          console.log(`[active-cashier] Trying knownCashierId=${knownId} from session`);
+          try {
+            const details = await platinumGet(session, `/api/ReceiptPrepaid/cashier-detailsById`, { cashierId: String(knownId) });
+            if (details && !details._error && details.id && details.isActive === true) {
               cashier = details;
               cashOffice = details.const_CashOffice || null;
-              console.log(`[active-cashier] Fallback cashier details loaded — id: ${details.id}, isActive: ${details.isActive}, isVirtual: ${details.isVirtual}, officeId: ${details.officeId}`);
+              console.log(`[active-cashier] knownCashierId fallback SUCCESS — id: ${details.id}, isActive: ${details.isActive}, isVirtual: ${details.isVirtual}, officeId: ${details.officeId}`);
+            } else {
+              console.log(`[active-cashier] knownCashierId fallback returned no active session: id=${details?.id}, isActive=${details?.isActive}`);
             }
-          } else {
-            console.log(`[active-cashier] Fallback returned no active cashier: ${JSON.stringify(fallbackCashierId)}`);
+          } catch (knownErr: any) {
+            console.warn(`[active-cashier] knownCashierId lookup failed:`, knownErr.message);
           }
-        } catch (fbErr: any) {
-          console.warn(`[active-cashier] Fallback active-cashierid check failed:`, fbErr.message);
+        }
+
+        if (!cashier) {
+          try {
+            const fallbackCashierId = await platinumGet(session, "/api/billing/auth-day-end-reconcile/active-cashierid-by-userid", { userid: userId });
+            const numFallback = typeof fallbackCashierId === 'number' ? fallbackCashierId : parseInt(String(fallbackCashierId), 10);
+            const numUserId = parseInt(String(userId), 10);
+            if (numFallback && numFallback !== 0 && !isNaN(numFallback) && !(fallbackCashierId as any)?._error) {
+              if (numFallback === numUserId) {
+                console.log(`[active-cashier] Fallback returned userId ${numFallback} (same as user_Id) — this is NOT a valid POS_Cashier.id, skipping details lookup`);
+              } else {
+                console.log(`[active-cashier] Fallback found active cashierId: ${numFallback} (different from userId ${numUserId}) — fetching details`);
+                const details = await platinumGet(session, `/api/ReceiptPrepaid/cashier-detailsById`, { cashierId: String(numFallback) });
+                if (details && !details._error && details.id) {
+                  cashier = details;
+                  cashOffice = details.const_CashOffice || null;
+                  console.log(`[active-cashier] Fallback cashier details loaded — id: ${details.id}, isActive: ${details.isActive}, isVirtual: ${details.isVirtual}, officeId: ${details.officeId}`);
+                }
+              }
+            } else {
+              console.log(`[active-cashier] Fallback returned no active cashier: ${JSON.stringify(fallbackCashierId)}`);
+            }
+          } catch (fbErr: any) {
+            console.warn(`[active-cashier] Fallback active-cashierid check failed:`, fbErr.message);
+          }
         }
       }
 
@@ -760,8 +786,10 @@ export async function registerRoutes(
     try {
       const session = requireAuth(req, res); if (!session) return;
       const body = { ...req.body };
-      body.isActive = true;
-      body.isVirtual = null;
+      if (body._closeOnly !== true) {
+        body.isActive = true;
+      }
+      delete body._closeOnly;
       const userId = body.user_Id;
 
       if (!userId) {
@@ -777,7 +805,8 @@ export async function registerRoutes(
       }
 
       const isNewSession = !body.id || body.id === 0;
-      console.log(`[submit-cashier-setup] ${isNewSession ? 'CREATING NEW' : 'UPDATING existing (id=' + body.id + ')'} session for user ${userDetail.firstName} ${userDetail.lastName} (ID: ${userId}), office: ${body.officeId}`);
+      const isClose = body.isActive === false;
+      console.log(`[submit-cashier-setup] ${isClose ? 'CLOSING' : isNewSession ? 'CREATING NEW' : 'UPDATING existing (id=' + body.id + ')'} session for user ${userDetail.firstName} ${userDetail.lastName} (ID: ${userId}), office: ${body.officeId}`);
       console.log(`[submit-cashier-setup] Payload:`, JSON.stringify(body));
       const data = await platinumPost(session, "/api/ReceiptPrepaid/submit-cashier-setup", body);
       console.log(`[submit-cashier-setup] Response:`, JSON.stringify(data));
@@ -786,6 +815,12 @@ export async function registerRoutes(
         const detail = data.detail || data.statusText || JSON.stringify(data);
         console.error(`[submit-cashier-setup] API error:`, detail);
         return res.status(data.status || 400).json({ message: "Cashier setup failed", detail });
+      }
+
+      if (data?.cashier?.id && data.cashier.isActive === true && !isClose) {
+        (session as any).knownCashierId = data.cashier.id;
+        (session as any).knownCashierOfficeId = data.cashier.officeId || body.officeId;
+        console.log(`[submit-cashier-setup] Stored knownCashierId=${data.cashier.id} in session for fallback lookups`);
       }
 
       handlePlatinumResult(res, data);

@@ -302,26 +302,54 @@ export default function CashierSetup() {
 
             const isAlreadyOpen = apiMessage === 'Cashier Already Open';
             if (isAlreadyOpen) {
-                console.log(`[CashierSetup] "Cashier Already Open" — existing session found. Will use/update existing record.`);
                 const existingCashier = responseData?.cashier;
-                if (existingCashier?.isVirtual === true && existingCashier?.id) {
-                    console.log(`[CashierSetup] Existing session is virtual (isVirtual=true, id=${existingCashier.id}). Updating to non-virtual with correct office.`);
-                    const updatePayload = {
-                        ...payload,
+                console.log(`[CashierSetup] "Cashier Already Open" — existing session id=${existingCashier?.id}, isVirtual=${existingCashier?.isVirtual}, isActive=${existingCashier?.isActive}`);
+
+                if (existingCashier?.id) {
+                    console.log(`[CashierSetup] Step 1: CLOSING old stuck session id=${existingCashier.id}`);
+                    const closePayload = {
                         id: existingCashier.id,
-                        isVirtual: false,
+                        cashFloat: existingCashier.cashFloat ?? 0,
+                        stsPort: existingCashier.stsPort ?? null,
+                        plesseyPort: existingCashier.plesseyPort ?? null,
+                        officeId: existingCashier.officeId ?? payload.officeId,
+                        isActive: false,
+                        dateCaptured: existingCashier.dateCaptured || payload.dateCaptured,
+                        capturerId: existingCashier.capturerId ?? userId,
+                        dateModified: payload.dateCaptured,
+                        modifiredId: userId,
+                        user_Id: userId,
+                        sourceReferenceID: null,
+                        offlineReconciled: null,
+                        offlineRelations: null,
+                        isVirtual: null,
+                        const_CashOffice: payload.const_CashOffice,
+                        _closeOnly: true,
                     };
                     try {
-                        const updateResponse = await platinumSubmitCashierSetup(updatePayload);
-                        console.log(`[CashierSetup] Update-existing response:`, JSON.stringify(updateResponse));
-                        const updateMsg = updateResponse?.message || '';
-                        if (updateResponse?.cashier?.isActive === true) {
-                            Object.assign(responseData, updateResponse);
-                        } else if (updateMsg === 'Cashier Already Open') {
-                            console.log(`[CashierSetup] Update still returned "Already Open" — using existing cashier record as-is.`);
+                        const closeResponse = await platinumSubmitCashierSetup(closePayload);
+                        console.log(`[CashierSetup] Close old session response:`, JSON.stringify(closeResponse));
+                    } catch (closeErr: any) {
+                        console.warn(`[CashierSetup] Failed to close old session, continuing anyway:`, closeErr?.message);
+                    }
+
+                    console.log(`[CashierSetup] Step 2: CREATING brand new session with id=0`);
+                    const newPayload = { ...payload, id: 0 };
+                    try {
+                        const newResponse = await platinumSubmitCashierSetup(newPayload);
+                        console.log(`[CashierSetup] New session response:`, JSON.stringify(newResponse));
+                        const newMsg = newResponse?.message || '';
+                        if (newResponse?.cashier?.isActive === true && newMsg === 'Cashier Setup Added') {
+                            Object.assign(responseData, newResponse);
+                        } else if (newMsg === 'Cashier Already Open' && newResponse?.cashier?.id) {
+                            console.log(`[CashierSetup] Still "Already Open" after close — using returned cashier id=${newResponse.cashier.id}`);
+                            Object.assign(responseData, newResponse);
+                        } else {
+                            console.warn(`[CashierSetup] New session creation returned unexpected: ${newMsg}`);
+                            if (newResponse?.cashier) Object.assign(responseData, newResponse);
                         }
-                    } catch (updateErr: any) {
-                        console.warn(`[CashierSetup] Failed to update virtual session, proceeding with existing:`, updateErr?.message);
+                    } catch (newErr: any) {
+                        console.warn(`[CashierSetup] Failed to create new session after closing old:`, newErr?.message);
                     }
                 }
             } else if (apiMessage && apiMessage !== 'Cashier Setup Added') {
@@ -350,21 +378,8 @@ export default function CashierSetup() {
 
             console.log(`[CashierSetup] POST returned — Cashier id: ${verifiedCashierId}, isActive: true, Office: ${verifiedOfficeName} (ID: ${verifiedOfficeId}), Float: ${verifiedFloat}`);
 
-            console.log(`[CashierSetup] Verifying session was actually persisted via validate-cashier...`);
-            try {
-                await new Promise(resolve => setTimeout(resolve, 500));
-                const verifyData = await fetchActiveCashierByUserId(userId, finYear);
-                console.log(`[CashierSetup] Post-submit verify response:`, JSON.stringify(verifyData));
-                if (verifyData.isActive === true && verifyData.cashierId) {
-                    verifiedCashierId = verifyData.cashierId;
-                    verifiedOfficeId = verifyData.officeId || verifiedOfficeId;
-                    console.log(`[CashierSetup] VERIFIED — POS_Cashier record confirmed active. Real cashierId: ${verifiedCashierId}`);
-                } else {
-                    console.warn(`[CashierSetup] Post-submit verify shows isActive=${verifyData.isActive}, cashierId=${verifyData.cashierId}. The record may not have been persisted correctly.`);
-                }
-            } catch (verifyErr: any) {
-                console.warn(`[CashierSetup] Post-submit verify failed (non-fatal):`, verifyErr?.message);
-            }
+            console.log(`[CashierSetup] Submit returned cashier id=${verifiedCashierId}, isActive=true — trusting submit response (knownCashierId stored server-side for session poll fallback)`);
+
 
             const officeId = String(verifiedOfficeId || selectedOffice.cashOffice_ID);
             const officeName = verifiedOfficeName;
