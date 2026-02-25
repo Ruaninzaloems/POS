@@ -20,6 +20,8 @@ const responseCache = new Map<string, { data: any; ts: number }>();
 const RESPONSE_CACHE_TTL = 30 * 1000;
 const RESPONSE_CACHE_MAX = 500;
 
+const inFlightRequests = new Map<string, Promise<any>>();
+
 function getResponseCache(key: string, ttl: number = RESPONSE_CACHE_TTL): any | undefined {
   const entry = responseCache.get(key);
   if (!entry) return undefined;
@@ -350,13 +352,19 @@ export async function platinumGet(session: UserSession, path: string, params?: R
   }
 
   const cacheInfo = getCacheableInfo(path);
+  const cacheKey = buildCacheKey(url, session, path);
   if (cacheInfo.cacheable) {
-    const cacheKey = buildCacheKey(url, session, path);
     const cached = getResponseCache(cacheKey, cacheInfo.ttl);
     if (cached !== undefined) return cached;
   }
 
-  await acquireSlot();
+  const existing = inFlightRequests.get(cacheKey);
+  if (existing) {
+    return existing;
+  }
+
+  const doFetch = async () => {
+    await acquireSlot();
   try {
     const token = await refreshSessionToken(session);
     const controller = new AbortController();
@@ -408,6 +416,13 @@ export async function platinumGet(session: UserSession, path: string, params?: R
       throw e;
     } finally { clearTimeout(timeoutId); }
   } finally { releaseSlot(); }
+  };
+
+  const promise = doFetch().finally(() => {
+    inFlightRequests.delete(cacheKey);
+  });
+  inFlightRequests.set(cacheKey, promise);
+  return promise;
 }
 
 export async function platinumPost(session: UserSession, path: string, body: any, params?: Record<string, string>, options?: { timeout?: number }): Promise<any> {

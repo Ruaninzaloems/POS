@@ -539,20 +539,20 @@ export async function fetchPosMultiReceiptPrint(receiptId: string, maxRetries: n
                 const items = Array.isArray(data) ? data : (data.value || []);
                 if (items.length > 0) return items;
                 if (attempt < maxRetries) {
-                    const delay = 800 * Math.pow(2, attempt - 1);
+                    const delay = 400 * Math.pow(2, attempt - 1);
                     console.log(`[ReceiptFetch] receiptId ${receiptId} returned empty on attempt ${attempt}/${maxRetries}, retrying in ${delay}ms...`);
                     await new Promise(r => setTimeout(r, delay));
                     continue;
                 }
             } else if (attempt < maxRetries) {
-                const delay = 800 * Math.pow(2, attempt - 1);
+                const delay = 400 * Math.pow(2, attempt - 1);
                 console.log(`[ReceiptFetch] receiptId ${receiptId} returned ${res.status} on attempt ${attempt}/${maxRetries}, retrying in ${delay}ms...`);
                 await new Promise(r => setTimeout(r, delay));
                 continue;
             }
         } catch (e) {
             if (attempt < maxRetries) {
-                const delay = 800 * Math.pow(2, attempt - 1);
+                const delay = 400 * Math.pow(2, attempt - 1);
                 console.warn(`[ReceiptFetch] receiptId ${receiptId} failed on attempt ${attempt}/${maxRetries}, retrying in ${delay}ms...`, e);
                 await new Promise(r => setTimeout(r, delay));
                 continue;

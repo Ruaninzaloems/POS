@@ -1345,6 +1345,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     const serviceBalanceMap = new Map<string, ServiceBalance[]>();
+    const balanceFetchPromises: Promise<void>[] = [];
     for (const item of accountItems) {
         const acct = item.originalData as any;
         const acctId = acct?.apiId || acct?.account_ID || acct?.accountID || acct?.accountId || '';
@@ -1366,30 +1367,36 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
         }
         if (!serviceBalanceMap.has(String(acctId))) {
-            try {
-                const balData = await enquiryGetAccountBalance(acctId);
-                let rows: any[] = [];
-                if (Array.isArray(balData)) rows = balData;
-                else if (balData?.results && Array.isArray(balData.results)) rows = balData.results;
-                else if (balData && typeof balData === 'object') rows = [balData];
-                const balances: ServiceBalance[] = rows
-                    .filter((row: any) => Math.abs(row.totalOutStanding || row.totalOutstanding || 0) >= 0.01)
-                    .map((row: any) => ({
-                        serviceDescription: row.serviceDescription || row.description || 'Unknown',
-                        amount: row.totalOutStanding || row.totalOutstanding || 0,
-                        vat: 0,
-                        totalAmount: row.totalOutStanding || row.totalOutstanding || 0,
-                        currentCharge: 0,
-                        openingBalance: 0,
-                    }));
-                if (balances.length > 0) {
-                    serviceBalanceMap.set(String(acctId), balances);
-                    console.log(`[Priority 1] Pre-payment service balances for ${acctId} (from API):`, balances.map(b => `${b.serviceDescription}: ${b.totalAmount}`));
+            balanceFetchPromises.push((async () => {
+                try {
+                    const balData = await enquiryGetAccountBalance(acctId);
+                    let rows: any[] = [];
+                    if (Array.isArray(balData)) rows = balData;
+                    else if (balData?.results && Array.isArray(balData.results)) rows = balData.results;
+                    else if (balData && typeof balData === 'object') rows = [balData];
+                    const balances: ServiceBalance[] = rows
+                        .filter((row: any) => Math.abs(row.totalOutStanding || row.totalOutstanding || 0) >= 0.01)
+                        .map((row: any) => ({
+                            serviceDescription: row.serviceDescription || row.description || 'Unknown',
+                            amount: row.totalOutStanding || row.totalOutstanding || 0,
+                            vat: 0,
+                            totalAmount: row.totalOutStanding || row.totalOutstanding || 0,
+                            currentCharge: 0,
+                            openingBalance: 0,
+                        }));
+                    if (balances.length > 0) {
+                        serviceBalanceMap.set(String(acctId), balances);
+                        console.log(`[Priority 1] Pre-payment service balances for ${acctId} (from API):`, balances.map(b => `${b.serviceDescription}: ${b.totalAmount}`));
+                    }
+                } catch (e) {
+                    console.warn(`[Priority 1] Failed to fetch pre-payment service balances for ${acctId}`, e);
                 }
-            } catch (e) {
-                console.warn(`[Priority 1] Failed to fetch pre-payment service balances for ${acctId}`, e);
-            }
+            })());
         }
+    }
+    if (balanceFetchPromises.length > 0) {
+        console.log(`[Priority 1] Fetching service balances for ${balanceFetchPromises.length} accounts in parallel`);
+        await Promise.all(balanceFetchPromises);
     }
 
     const processAccReceiptResult = async (receiptIds: number[], paymentLabel: string, paymentType: 'cash' | 'card', paymentAmount: number, perAccountAmounts?: { accountId: string; accountName: string; amount: number }[]) => {
@@ -1608,16 +1615,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     console.warn(`[Priority 1] Failed to save multiple account payment`, e);
                 }
 
-                let serverAccounts: any[] | null = null;
-                try {
-                    const serverData = await platinumGetMultipleAccountPayment({ userId: String(sessionUserId) });
-                    if (Array.isArray(serverData) && serverData.length > 0) {
-                        serverAccounts = serverData;
-                        console.log(`[Priority 1] Fetched ${serverAccounts.length} server-enriched account(s)`);
-                    }
-                } catch (e) {
-                    console.warn(`[Priority 1] Failed to fetch server accounts`, e);
-                }
+                console.log(`[Priority 1] Staging complete — proceeding directly to submission (skipping redundant server verification)`)
             } else {
                 console.log(`[Priority 1] Skipping initial staging for split payment — each portion will stage separately`);
             }
