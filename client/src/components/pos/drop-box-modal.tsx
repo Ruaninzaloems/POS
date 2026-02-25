@@ -19,7 +19,7 @@ interface DropBoxModalProps {
 
 export function DropBoxModal({ isOpen, onClose, triggerReason }: DropBoxModalProps) {
     const { toast } = useToast();
-    const { platinumUser, platinumCashierId, currentUser, sessionDetails } = usePos();
+    const { platinumUser, platinumCashierId, currentUser, sessionDetails, officeLimits } = usePos();
     const [amount, setAmount] = useState('');
     const [description, setDescription] = useState('');
     const [step, setStep] = useState<'input' | 'confirm' | 'submitting' | 'success' | 'error'>('input');
@@ -29,8 +29,9 @@ export function DropBoxModal({ isOpen, onClose, triggerReason }: DropBoxModalPro
     const [showHistory, setShowHistory] = useState(false);
     const [historyLoading, setHistoryLoading] = useState(false);
 
-    const cashOnHandLimit = sessionDetails?.cashOnHandLimit || 999999;
-    const officeName = sessionDetails?.officeName || 'Unknown Office';
+    const officeId = sessionDetails?.officeId || '';
+    const cashOnHandLimit = (officeId && officeLimits[officeId]) ? officeLimits[officeId] : 999999;
+    const officeName = sessionDetails?.officeDesc || currentUser?.cashOffice || 'Unknown Office';
     const cashierId = platinumCashierId;
 
     useEffect(() => {
