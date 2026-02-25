@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect, useRef,
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, CashOffice } from './external-api';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange, fetchActiveCashierByUserId, fetchPosMultiReceiptPrintByCashier, platinumValidateCashier, fetchActiveFinYear, platinumAuthDayEndCancelReceipt, platinumRequestCancelReceipt, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumGetPendingCancelRequests, platinumGetDayEndReconcileList, platinumReceiptDiscovery, platinumGetDayEndUnreconciledList } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange, fetchActiveCashierByUserId, platinumValidateCashier, fetchActiveFinYear, platinumAuthDayEndCancelReceipt, platinumRequestCancelReceipt, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumGetPendingCancelRequests, platinumGetDayEndUnreconciledList } from './external-api';
 import { getAccountBalance as enquiryGetAccountBalance } from './enquiries-service';
 
 if (import.meta.hot) {
@@ -479,366 +479,85 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     try {
       console.log(`[Transactions] Fetching unreconciled receipts for cashierId: ${pCashierId}`);
+      const unreconciledData = await platinumGetDayEndUnreconciledList(pCashierId);
+      const unreconciledItems = Array.isArray(unreconciledData) ? unreconciledData : (unreconciledData as any)?.data || (unreconciledData as any)?.items || (unreconciledData as any)?.value || [];
 
-      try {
-        const unreconciledData = await platinumGetDayEndUnreconciledList(pCashierId);
-        const unreconciledItems = Array.isArray(unreconciledData) ? unreconciledData : (unreconciledData as any)?.data || (unreconciledData as any)?.items || (unreconciledData as any)?.value || [];
-
-        const posUnreconciled = unreconciledItems.filter((r: any) => {
-          const rNo = r.receiptNo || r.receiptNumber || r.receipt_No || '';
-          if (rNo.startsWith('EFT')) return false;
-          return true;
-        });
-        if (posUnreconciled.length > 0) {
-          const mapped: TransactionRecord[] = posUnreconciled.map((r: any, idx: number) => {
-            const paymentTypeStr = r.paymentType || r.paymentTypeName || r.paymentTypeDesc || '';
-            const isCash = paymentTypeStr.toLowerCase().includes('cash') || r.paymentTypeId === 1;
-            const isCard = paymentTypeStr.toLowerCase().includes('card') || paymentTypeStr.toLowerCase().includes('credit') || r.paymentTypeId === 3;
-            const paymentAmount = r.amount || r.paidAmount || r.tenderAmount || r.receiptAmount || 0;
-            const rid = r.receiptId || r.receipt_ID || r.id || idx;
-
-            let txType: TransactionType = 'CONSUMER_SERVICES';
-            const opt = (r.paymentOption || r.paymentOptionName || r.paymentOptionDesc || '').toLowerCase();
-            if (opt.includes('misc') || opt.includes('direct') || opt.includes('income')) {
-              txType = 'DIRECT_INCOME';
-            } else if (opt.includes('clearance')) {
-              txType = 'CLEARANCE';
-            } else if (opt.includes('prepaid')) {
-              txType = 'PREPAID';
-            }
-
-            return {
-              id: `unrec-${rid}`,
-              receiptNumber: r.receiptNo || r.receiptNumber || r.receipt_No || `REC-${rid}`,
-              timestamp: r.receiptDate ? new Date(r.receiptDate).getTime() : (r.dateCaptured ? new Date(r.dateCaptured).getTime() : Date.now()),
-              items: [{
-                id: `item-${rid}`,
-                type: txType,
-                description: r.accName || r.accountName || r.description || r.paymentOption || 'Payment',
-                reference: r.accountNumber || r.accountNo || String(r.accountId || ''),
-                amountDue: r.outstandingAmount || paymentAmount,
-                amountToPay: paymentAmount,
-                originalData: r,
-              }],
-              totalAmount: paymentAmount,
-              payment: {
-                cash: isCash ? paymentAmount : 0,
-                card: isCard ? paymentAmount : 0,
-                cardReference: r.cardNumber || '',
-                cardExpiry: r.cardExpiryDate || '',
-              },
-              status: ((): TransactionStatus => {
-                if (r.isCancelled === 1 || r.isCanceled === 1) return 'CANCELLED';
-                if (r.cancelRequestDeclined === 1 || r.isDeclined === 1) return 'DECLINED';
-                if (r.cancelRequested === 1 || r.isPendingCancel === 1) return 'PENDING_CANCELLATION';
-                if (r.isReconciled === 1) return 'RECONCILED';
-                return 'COMPLETED';
-              })(),
-              cashierId: currentUser.id,
-              cashierName: r.cashierName || currentUser.name || '',
-              cashOfficeName: r.cashOffice || r.cashOfficeName || '',
-              paymentTypeName: paymentTypeStr || (isCash ? 'Cash' : isCard ? 'Credit Card' : ''),
-              paymentOptionName: r.paymentOption || r.paymentOptionName || '',
-              isReconciled: r.isReconciled ?? 0,
-              cancellationReason: r.cancellationReason || r.reasonForCancel || undefined,
-              declineReason: r.declineReason || r.cancelDeclineReason || r.supervisorDeclineReason || undefined,
-            };
-          });
-
-          try {
-            const today = new Date();
-            const fromDate = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0') + 'T00:00:00';
-            const toDate = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0') + 'T23:59:59';
-            let viewResult = await fetchReceiptList({ cashierId: String(pCashierId), fromDate, toDate, page: 1, pageSize: 200, orderby: 'receiptDate', shortDirection: 'desc' });
-            let viewItems = viewResult?.items || [];
-            const pUserId = platinumUser?.user_ID || currentUser?.id;
-            if (viewItems.length === 0 && pUserId && String(pUserId) !== String(pCashierId)) {
-              viewResult = await fetchReceiptList({ cashierId: String(pUserId), fromDate, toDate, page: 1, pageSize: 200, orderby: 'receiptDate', shortDirection: 'desc' });
-              viewItems = viewResult?.items || [];
-            }
-            const unreconReceiptNos = new Set(mapped.map(t => t.receiptNumber).filter(Boolean));
-            const extraReceipts = viewItems.filter((r: any) => {
-              const rNo = r.receiptNo || '';
-              if (!rNo || unreconReceiptNos.has(rNo)) return false;
-              if (r.isReconciled === 1) return false;
-              if (rNo.startsWith('EFT')) return false;
-              return true;
-            });
-            if (extraReceipts.length > 0) {
-              console.log(`[Transactions] Found ${extraReceipts.length} additional receipts from get-receipt-list (misc/clearance/prepaid)`);
-              const extraMapped: TransactionRecord[] = extraReceipts.map((r: any) => {
-                const isCash = (r.paymentType || '').toLowerCase().includes('cash');
-                const isCard = (r.paymentType || '').toLowerCase().includes('card');
-                const paymentAmount = r.amount || 0;
-                let txType: TransactionType = 'CONSUMER_SERVICES';
-                const opt = (r.paymentOption || '').toLowerCase();
-                if (opt.includes('misc') || opt.includes('direct') || opt.includes('income')) txType = 'DIRECT_INCOME';
-                else if (opt.includes('clearance')) txType = 'CLEARANCE';
-                else if (opt.includes('prepaid')) txType = 'PREPAID';
-                return {
-                  id: `plt-${r.receiptId}`,
-                  receiptNumber: r.receiptNo || `REC-${r.receiptId}`,
-                  timestamp: new Date(r.receiptDate).getTime() || Date.now(),
-                  items: [{ id: `item-${r.receiptId}`, type: txType, description: r.accName || r.paymentOption || 'Payment', reference: r.accountNumber || '', amountDue: r.outstandingAmount || paymentAmount, amountToPay: paymentAmount, originalData: r }],
-                  totalAmount: paymentAmount,
-                  payment: { cash: isCash ? paymentAmount : 0, card: isCard ? paymentAmount : 0, cardReference: '', cardExpiry: '' },
-                  status: (r.isCancelled === 1 ? 'CANCELLED' : 'COMPLETED') as TransactionStatus,
-                  cashierId: currentUser.id,
-                  cashierName: r.cashierName || '',
-                  cashOfficeName: r.cashOffice || '',
-                  paymentTypeName: r.paymentType || '',
-                  paymentOptionName: r.paymentOption || '',
-                  isReconciled: 0,
-                  cancellationReason: r.cancellationReason || undefined,
-                };
-              });
-              mapped.push(...extraMapped);
-            }
-          } catch (viewErr: any) {
-            console.warn(`[Transactions] Supplementary get-receipt-list failed (non-fatal):`, viewErr.message);
-          }
-
-          mapped.sort((a, b) => b.timestamp - a.timestamp);
-          setRecentTransactions(mapped);
-          console.log(`[Transactions] Loaded ${mapped.length} transactions (unreconciled + supplementary)`);
-          return;
-        }
-        console.log(`[Transactions] Unreconciled-list returned empty (no unreconciled transactions), falling back to ViewReceipt API`);
-      } catch (e: any) {
-        console.warn(`[Transactions] Unreconciled-list API failed:`, e?.message || e);
-      }
-
-      const today = new Date();
-      const fromDate = today.getFullYear() + '-' +
-          String(today.getMonth() + 1).padStart(2, '0') + '-' +
-          String(today.getDate()).padStart(2, '0') + 'T00:00:00';
-      const toDate = today.getFullYear() + '-' +
-          String(today.getMonth() + 1).padStart(2, '0') + '-' +
-          String(today.getDate()).padStart(2, '0') + 'T23:59:59';
-
-      console.log(`[Transactions] Fetching receipts for platinumCashierId: ${pCashierId}, fromDate: ${fromDate}, toDate: ${toDate}`);
-
-      const result = await fetchReceiptList({
-        cashierId: String(pCashierId),
-        fromDate,
-        toDate,
-        page: 1,
-        pageSize: 200,
-        orderby: 'receiptDate',
-        shortDirection: 'desc',
+      const posUnreconciled = unreconciledItems.filter((r: any) => {
+        const rNo = r.receiptNo || r.receiptNumber || r.receipt_No || '';
+        if (rNo.startsWith('EFT')) return false;
+        return true;
       });
 
-      if (result.items && result.items.length > 0) {
-        const posOnly = result.items.filter((r: any) => {
-          const rNo = r.receiptNo || '';
-          if (rNo.startsWith('EFT')) return false;
-          if (r.isReconciled === 1) return false;
-          return true;
-        });
-        const mapped: TransactionRecord[] = posOnly.map((r) => {
-          const isCash = (r.paymentType || '').toLowerCase().includes('cash');
-          const isCard = (r.paymentType || '').toLowerCase().includes('card');
-          const paymentAmount = r.amount || 0;
-
-          let txType: TransactionType = 'CONSUMER_SERVICES';
-          const opt = (r.paymentOption || '').toLowerCase();
-          if (opt.includes('misc') || opt.includes('direct') || opt.includes('income')) {
-            txType = 'DIRECT_INCOME';
-          } else if (opt.includes('clearance')) {
-            txType = 'CLEARANCE';
-          } else if (opt.includes('prepaid')) {
-            txType = 'PREPAID';
-          }
-
-          return {
-            id: `plt-${r.receiptId}`,
-            receiptNumber: r.receiptNo || `REC-${r.receiptId}`,
-            timestamp: new Date(r.receiptDate).getTime() || Date.now(),
-            items: [{
-              id: `item-${r.receiptId}`,
-              type: txType,
-              description: r.accName || r.paymentOption || 'Payment',
-              reference: r.accountNumber || '',
-              amountDue: r.outstandingAmount || paymentAmount,
-              amountToPay: paymentAmount,
-              originalData: r,
-            }],
-            totalAmount: paymentAmount,
-            payment: {
-              cash: isCash ? paymentAmount : 0,
-              card: isCard ? paymentAmount : 0,
-              cardReference: '',
-              cardExpiry: '',
-            },
-            status: r.isCancelled === 1 ? 'CANCELLED' as TransactionStatus : 'COMPLETED' as TransactionStatus,
-            cashierId: currentUser.id,
-            cashierName: r.cashierName || '',
-            cashOfficeName: r.cashOffice || '',
-            paymentTypeName: r.paymentType || '',
-            paymentOptionName: r.paymentOption || '',
-            isReconciled: 0,
-            cancellationReason: r.cancellationReason || undefined,
-          };
-        });
-
-        mapped.sort((a, b) => b.timestamp - a.timestamp);
-        setRecentTransactions(mapped);
-        console.log(`[Transactions] Loaded ${mapped.length} transactions from Platinum ViewReceipt API`);
+      if (posUnreconciled.length === 0) {
+        console.log(`[Transactions] Unreconciled-list returned 0 POS receipts (${unreconciledItems.length} total, ${unreconciledItems.length - posUnreconciled.length} EFT filtered). No unreconciled transactions for this cashier.`);
+        setRecentTransactions([]);
         return;
       }
 
-      console.log(`[Transactions] ViewReceipt returned empty, trying comprehensive receipt discovery`);
+      const mapped: TransactionRecord[] = posUnreconciled.map((r: any, idx: number) => {
+        const paymentTypeStr = r.paymentType || r.paymentTypeName || r.paymentTypeDesc || '';
+        const isCash = paymentTypeStr.toLowerCase().includes('cash') || r.paymentTypeId === 1;
+        const isCard = paymentTypeStr.toLowerCase().includes('card') || paymentTypeStr.toLowerCase().includes('credit') || r.paymentTypeId === 3;
+        const paymentAmount = r.amount || r.paidAmount || r.tenderAmount || r.receiptAmount || 0;
+        const rid = r.receiptId || r.receipt_ID || r.id || idx;
 
-      try {
-        const discoveryResult = await platinumReceiptDiscovery(String(pCashierId));
-        const discoveryItems = discoveryResult?.items || [];
-
-        const posDiscovery = discoveryItems.filter((r: any) => {
-          const rNo = r.receiptNo || r.receiptNumber || r.receipt_No || '';
-          if (rNo.startsWith('EFT')) return false;
-          if (r.isReconciled === 1) return false;
-          return true;
-        });
-        if (posDiscovery.length > 0) {
-          console.log(`[Transactions] Receipt discovery returned ${posDiscovery.length} POS items (filtered from ${discoveryItems.length} total)`);
-          const mapped: TransactionRecord[] = posDiscovery.map((r: any, idx: number) => {
-            const isCash = r._paymentType === 'Cash' || r.paymentTypeId === 1 || (r.paymentType || '').toLowerCase().includes('cash');
-            const isCard = r._paymentType === 'Credit Card' || r.paymentTypeId === 3 || (r.paymentType || '').toLowerCase().includes('card');
-            const paymentAmount = r.paidAmount || r.amount || r.tenderAmount || r.receiptAmount || 0;
-            const receiptNo = r.receiptNo || r.receiptNumber || r.receipt_No || '';
-            const rid = r.receiptId || r.id || r.receipt_ID || idx;
-
-            let txType: TransactionType = 'CONSUMER_SERVICES';
-            const billType = String(r.billType || r.paymentOption || r.paymentOptionDesc || '').toLowerCase();
-            if (billType.includes('misc') || billType.includes('direct') || billType.includes('4')) {
-              txType = 'DIRECT_INCOME';
-            } else if (billType.includes('clearance') || billType.includes('6')) {
-              txType = 'CLEARANCE';
-            } else if (billType.includes('prepaid') || billType.includes('5')) {
-              txType = 'PREPAID';
-            }
-
-            return {
-              id: `disc-${rid}-${r._source || 'unknown'}`,
-              receiptNumber: receiptNo || `REC-${rid}`,
-              timestamp: r.dateCaptured ? new Date(r.dateCaptured).getTime() : (r.receiptDate ? new Date(r.receiptDate).getTime() : Date.now()),
-              items: [{
-                id: `item-${rid}`,
-                type: txType,
-                description: r.accName || r.accountName || r.description || r.accountDesc || 'Payment',
-                reference: r.accountNumber || r.accountNo || String(r.accountId || r.account_ID || ''),
-                amountDue: r.outstandingAmount || paymentAmount,
-                amountToPay: paymentAmount,
-                originalData: r,
-              }],
-              totalAmount: paymentAmount,
-              payment: {
-                cash: isCash ? paymentAmount : 0,
-                card: isCard ? paymentAmount : 0,
-                cardReference: '',
-                cardExpiry: r.cardExpiryDate || '',
-              },
-              status: (r.isCancelled === 1 || r.isCanceled === 1 || r.canceledStatus === 1) ? 'CANCELLED' as TransactionStatus : 'COMPLETED' as TransactionStatus,
-              cashierId: currentUser.id,
-              cashierName: r.cashierName || currentUser.name || '',
-              cashOfficeName: r.cashOfficeName || r.cashOfficeDesc || '',
-              paymentTypeName: r._paymentType || (isCash ? 'Cash' : isCard ? 'Credit Card' : (r.paymentType || '')),
-              paymentOptionName: r.paymentOption || r.paymentOptionDesc || '',
-              isReconciled: r.isReconciled ?? 0,
-              cancellationReason: r.cancellationReason || r.reasonForCancel || undefined,
-            };
-          });
-
-          mapped.sort((a, b) => b.timestamp - a.timestamp);
-          setRecentTransactions(mapped);
-          console.log(`[Transactions] Loaded ${mapped.length} transactions from receipt discovery`);
-          return;
+        let txType: TransactionType = 'CONSUMER_SERVICES';
+        const opt = (r.paymentOption || r.paymentOptionName || r.paymentOptionDesc || '').toLowerCase();
+        const billType = String(r.billTypeID || r.billType || '');
+        if (opt.includes('misc') || opt.includes('direct') || opt.includes('income') || billType === '4') {
+          txType = 'DIRECT_INCOME';
+        } else if (opt.includes('clearance') || billType === '6') {
+          txType = 'CLEARANCE';
+        } else if (opt.includes('prepaid') || billType === '5') {
+          txType = 'PREPAID';
+        } else if (opt.includes('group') || opt.includes('multiple') || billType === '3') {
+          txType = 'CONSUMER_SERVICES';
         }
-      } catch (e) {
-        console.warn(`[Transactions] Receipt discovery failed:`, e);
-      }
 
-      console.log(`[Transactions] Receipt discovery empty, trying Sebata API scan`);
-      let results: { receiptId: number; data: any }[] = [];
+        return {
+          id: `unrec-${rid}`,
+          receiptNumber: r.receiptNo || r.receiptNumber || r.receipt_No || `REC-${rid}`,
+          timestamp: r.receiptDate ? new Date(r.receiptDate).getTime() : (r.dateCaptured ? new Date(r.dateCaptured).getTime() : Date.now()),
+          items: [{
+            id: `item-${rid}`,
+            type: txType,
+            description: r.accName || r.accountName || r.description || r.paymentOption || 'Payment',
+            reference: r.accountNumber || r.accountNo || String(r.accountId || ''),
+            amountDue: r.outstandingAmount || paymentAmount,
+            amountToPay: paymentAmount,
+            originalData: r,
+          }],
+          totalAmount: paymentAmount,
+          payment: {
+            cash: isCash ? paymentAmount : 0,
+            card: isCard ? paymentAmount : 0,
+            cardReference: r.cardNumber || '',
+            cardExpiry: r.cardExpiryDate || '',
+          },
+          status: ((): TransactionStatus => {
+            if (r.isCancelled === 1 || r.isCanceled === 1) return 'CANCELLED';
+            if (r.cancelRequestDeclined === 1 || r.isDeclined === 1) return 'DECLINED';
+            if (r.cancelRequested === 1 || r.isPendingCancel === 1) return 'PENDING_CANCELLATION';
+            if (r.isReconciled === 1) return 'RECONCILED';
+            return 'COMPLETED';
+          })(),
+          cashierId: currentUser.id,
+          cashierName: r.cashierName || currentUser.name || '',
+          cashOfficeName: r.cashOffice || r.cashOfficeName || '',
+          paymentTypeName: paymentTypeStr || (isCash ? 'Cash' : isCard ? 'Credit Card' : ''),
+          paymentOptionName: r.paymentOption || r.paymentOptionName || '',
+          isReconciled: r.isReconciled ?? 0,
+          cancellationReason: r.cancellationReason || r.reasonForCancel || undefined,
+          declineReason: r.declineReason || r.cancelDeclineReason || r.supervisorDeclineReason || undefined,
+        };
+      });
 
-      if (platinumUser) {
-        console.log(`[Transactions] Running discovery scan for cashier: ${platinumUser.firstName} ${platinumUser.lastName}`);
-        try {
-          const cashierName = `${platinumUser.firstName} ${platinumUser.lastName}`;
-          const discovered = await fetchPosMultiReceiptPrintByCashier(cashierName, 100);
-          if (Array.isArray(discovered) && discovered.length > 0) {
-            results = discovered.map((d: any) => ({ receiptId: d._receiptId, data: d }));
-            console.log(`[Transactions] Discovered ${results.length} receipts via API scan`);
-          }
-        } catch (e) {
-          console.warn(`[Transactions] Discovery scan failed:`, e);
-        }
-      }
-
-      if (results.length > 0) {
-        const mapped: TransactionRecord[] = results.map(({ receiptId: rid, data: rd }) => {
-          const isCash = rd.billType?.toLowerCase().includes('cash') || rd.paymentTypeId === 1;
-          const isCard = rd.billType?.toLowerCase().includes('card') || rd.paymentTypeId === 3;
-          const paymentAmount = rd.tenderAmount || rd.amount || 0;
-
-          let txType: TransactionType = 'CONSUMER_SERVICES';
-          const mode = (rd.payMode || '').toLowerCase();
-          if (mode.includes('misc') || mode.includes('direct') || mode.includes('income')) {
-            txType = 'DIRECT_INCOME';
-          } else if (mode.includes('clearance')) {
-            txType = 'CLEARANCE';
-          } else if (mode.includes('prepaid')) {
-            txType = 'PREPAID';
-          }
-
-          const parseDate = (d: string) => {
-            if (!d) return Date.now();
-            const parts = d.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})/);
-            if (parts) {
-              return new Date(`${parts[3]}-${parts[2]}-${parts[1]}T${parts[4]}:${parts[5]}:${parts[6]}`).getTime();
-            }
-            return new Date(d).getTime() || Date.now();
-          };
-
-          return {
-            id: `plt-${rid}`,
-            receiptNumber: rd.receiptNo || `REC-${rid}`,
-            timestamp: parseDate(rd.receiptDate),
-            items: [{
-              id: `item-${rid}`,
-              type: txType,
-              description: rd.accName || rd.payMode || 'Payment',
-              reference: rd.accountId || rd.oldAccountCode || '',
-              amountDue: rd.outstandingAmount || paymentAmount,
-              amountToPay: paymentAmount,
-              originalData: rd,
-            }],
-            totalAmount: paymentAmount,
-            payment: {
-              cash: isCash ? paymentAmount : 0,
-              card: isCard ? paymentAmount : 0,
-              cardReference: '',
-              cardExpiry: '',
-            },
-            status: rd.isCancelled ? 'CANCELLED' as TransactionStatus : 'COMPLETED' as TransactionStatus,
-            cashierId: currentUser.id,
-            cashierName: rd.cashierName || '',
-            cashOfficeName: rd.cashOfficeName || '',
-            paymentTypeName: rd.billType || '',
-            paymentOptionName: rd.payMode || '',
-            isReconciled: 0,
-          };
-        });
-
-        mapped.sort((a, b) => b.timestamp - a.timestamp);
-        setRecentTransactions(mapped);
-        console.log(`[Transactions] Loaded ${mapped.length} transactions from stored receipt IDs via pos-multi-receipt-print`);
-      } else {
-        setRecentTransactions([]);
-        console.log(`[Transactions] No receipt data found from any API source`);
-      }
-    } catch (e) {
-      console.warn('[Transactions] Failed to load transactions from API:', e);
+      mapped.sort((a, b) => b.timestamp - a.timestamp);
+      setRecentTransactions(mapped);
+      console.log(`[Transactions] Loaded ${mapped.length} unreconciled POS transactions`);
+    } catch (e: any) {
+      console.warn('[Transactions] Unreconciled-list API failed:', e?.message || e);
+      setRecentTransactions([]);
     }
   };
 
@@ -1050,6 +769,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     if (activeSession && platinumUser?.user_ID) {
       sessionPollRef.current = setInterval(checkSessionViaApi, 30000);
+      const handleVisibility = () => {
+        if (document.visibilityState === 'visible' && activeSession) {
+          checkSessionViaApi();
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibility);
+      return () => {
+        if (sessionPollRef.current) clearInterval(sessionPollRef.current);
+        document.removeEventListener('visibilitychange', handleVisibility);
+      };
     }
     return () => {
       if (sessionPollRef.current) clearInterval(sessionPollRef.current);

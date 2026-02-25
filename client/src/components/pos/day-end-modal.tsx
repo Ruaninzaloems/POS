@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, CheckCircle2, Loader2, Banknote, Coins, CreditCard, FileText, ChevronDown, ChevronUp, Mail, User, Building2, Calendar, Clock, ArrowRight, Receipt, XCircle, Archive } from 'lucide-react';
-import { platinumSaveDayEndReconcileData, platinumGetDayEndReconcileList, platinumAuthDayEndValidateCashbook, platinumAuthDayEndSubmitReconcile, platinumGetAuthDayEndCashbookList, fetchReceiptList } from '@/lib/external-api';
+import { platinumSaveDayEndReconcileData, platinumAuthDayEndValidateCashbook, platinumAuthDayEndSubmitReconcile, platinumGetAuthDayEndCashbookList, platinumGetDayEndUnreconciledList } from '@/lib/external-api';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
 
@@ -47,7 +47,7 @@ const COIN_DENOMINATIONS = [
 ];
 
 export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
-  const { platinumCashierId, platinumUser, currentUser, sessionDetails, allowedPaymentTypes, dayEndStatus, recentTransactions } = usePos();
+  const { platinumCashierId, platinumUser, currentUser, sessionDetails, allowedPaymentTypes, dayEndStatus } = usePos();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
@@ -106,127 +106,58 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
   const loadTransactionHistory = async (userId: number) => {
     setIsLoadingHistory(true);
     try {
-      const today = new Date();
-      const dateStr = today.toISOString().split('T')[0];
       const cashierId = platinumCashierId || 0;
+      console.log('[DayEndModal] Fetching unreconciled receipts for cashier', cashierId);
 
-      let allItems: any[] = [];
+      const unreconciledData = await platinumGetDayEndUnreconciledList(cashierId);
+      const unreconciledItems = Array.isArray(unreconciledData) ? unreconciledData : (unreconciledData as any)?.data || (unreconciledData as any)?.items || (unreconciledData as any)?.value || [];
 
-      try {
-        console.log('[DayEndModal] Fetching ALL receipts via get-receipt-list for cashier', cashierId, 'date', dateStr);
-        let receiptResult = await fetchReceiptList({
-          cashierId: String(cashierId),
-          fromDate: `${dateStr}T00:00:00`,
-          toDate: `${dateStr}T23:59:59`,
-          page: 1,
-          pageSize: 500,
-          orderby: 'receiptDate',
-          shortDirection: 'desc',
-        });
-        let viewItems = receiptResult?.items || [];
-        if (viewItems.length === 0 && userId && String(userId) !== String(cashierId)) {
-          console.log('[DayEndModal] No results with cashierId, retrying with userId', userId);
-          receiptResult = await fetchReceiptList({
-            cashierId: String(userId),
-            fromDate: `${dateStr}T00:00:00`,
-            toDate: `${dateStr}T23:59:59`,
-            page: 1,
-            pageSize: 500,
-            orderby: 'receiptDate',
-            shortDirection: 'desc',
-          });
-          viewItems = receiptResult?.items || [];
-        }
-        console.log('[DayEndModal] get-receipt-list returned', viewItems.length, 'items (all types)');
-        const posItems = viewItems.filter((r: any) => {
-          const rNo = r.receiptNo || '';
-          if (rNo.startsWith('EFT')) return false;
-          if (r.isReconciled === 1) return false;
-          return true;
-        });
-        console.log('[DayEndModal] Filtered to', posItems.length, 'POS-only items (excluded', viewItems.length - posItems.length, 'EFT/reconciled)');
+      const posItems = unreconciledItems.filter((r: any) => {
+        const rNo = r.receiptNo || r.receiptNumber || r.receipt_No || '';
+        if (rNo.startsWith('EFT')) return false;
+        return true;
+      });
 
-        allItems = posItems.map((r: any) => {
-          const payType = (r.paymentType || '').toLowerCase();
-          let paymentTypeId = 1;
-          if (payType.includes('card') || payType.includes('credit') || payType.includes('debit')) paymentTypeId = 3;
-          else if (payType.includes('cheque')) paymentTypeId = 2;
-          else if (payType.includes('postal')) paymentTypeId = 4;
-          else if (payType.includes('drop')) paymentTypeId = 5;
+      console.log('[DayEndModal] Unreconciled-list returned', posItems.length, 'POS receipts (filtered', unreconciledItems.length - posItems.length, 'EFT)');
 
-          const payOpt = (r.paymentOption || '').toLowerCase();
-          let billTypeID = 1;
-          let isMiscPayment = 0;
-          if (payOpt.includes('misc') || payOpt.includes('direct income')) { billTypeID = 4; isMiscPayment = 1; }
-          else if (payOpt.includes('clearance')) { billTypeID = 6; }
-          else if (payOpt.includes('prepaid')) { billTypeID = 5; }
-          else if (payOpt.includes('group') || payOpt.includes('multiple')) { billTypeID = 3; }
+      const allItems = posItems.map((r: any) => {
+        const payType = (r.paymentType || r.paymentTypeName || r.paymentTypeDesc || '').toLowerCase();
+        let paymentTypeId = 1;
+        if (payType.includes('card') || payType.includes('credit') || payType.includes('debit')) paymentTypeId = 3;
+        else if (payType.includes('cheque')) paymentTypeId = 2;
+        else if (payType.includes('postal')) paymentTypeId = 4;
+        else if (payType.includes('drop')) paymentTypeId = 5;
 
-          return {
-            receiptNo: r.receiptNo || '',
-            accountNumber: r.accountNumber || '-',
-            paidAmount: Number(r.amount || r.tenderAmount || 0),
-            paymentTypeId,
-            paymentTypeDesc: r.paymentType || (paymentTypeId === 3 ? 'Credit Card' : 'Cash'),
-            billTypeID,
-            isMiscPayment,
-            isCancelled: r.isCancelled === 1 || r.isCancelled === true,
-            cancellationReason: r.cancellationReason || undefined,
-            dateCaptured: r.receiptDate || '',
-            paymentOptionName: r.paymentOption || '',
-            _source: 'view-receipt',
-          };
-        });
-      } catch (viewErr: any) {
-        console.warn('[DayEndModal] get-receipt-list failed, falling back to reconcile-list:', viewErr.message);
-      }
-
-      if (allItems.length === 0) {
-        try {
-          const data = await platinumGetDayEndReconcileList({ userId: String(userId) });
-          const items = Array.isArray(data) ? data : (data as any)?.items || (data as any)?.value || [];
-          console.log('[DayEndModal] Fallback reconcile-list returned', items.length, 'items');
-          allItems = items;
-        } catch (reconErr: any) {
-          console.warn('[DayEndModal] reconcile-list also failed:', reconErr.message);
-        }
-      }
-
-      const apiReceiptNos = new Set(allItems.map((r: any) => String(r.receiptNo || r.receiptNumber || '')).filter(Boolean));
-      const localExtra = (recentTransactions || []).filter(tx => {
-        if (tx.status === 'cancelled') return false;
-        if (!tx.receiptNumber) return false;
-        if (tx.id.startsWith('unrec-') || tx.id.startsWith('plt-') || tx.id.startsWith('vr-')) return false;
-        return !apiReceiptNos.has(tx.receiptNumber);
-      }).map(tx => {
-        const optName = (tx.paymentOptionName || '').toLowerCase();
+        const payOpt = (r.paymentOption || r.paymentOptionName || r.paymentOptionDesc || '').toLowerCase();
+        const billTypeVal = String(r.billTypeID || r.billType || '');
         let billTypeID = 1;
         let isMiscPayment = 0;
-        if (optName.includes('misc') || optName.includes('direct income')) { billTypeID = 4; isMiscPayment = 1; }
-        else if (optName.includes('clearance')) { billTypeID = 6; }
-        else if (optName.includes('prepaid')) { billTypeID = 5; }
-        else if (optName.includes('group') || optName.includes('multiple')) { billTypeID = 3; }
+        if (payOpt.includes('misc') || payOpt.includes('direct income') || billTypeVal === '4') { billTypeID = 4; isMiscPayment = 1; }
+        else if (payOpt.includes('clearance') || billTypeVal === '6') { billTypeID = 6; }
+        else if (payOpt.includes('prepaid') || billTypeVal === '5') { billTypeID = 5; }
+        else if (payOpt.includes('group') || payOpt.includes('multiple') || billTypeVal === '3') { billTypeID = 3; }
 
         return {
-          receiptNo: tx.receiptNumber,
-          accountNumber: tx.items?.[0]?.accountNumber || '-',
-          paidAmount: tx.totalAmount || 0,
-          paymentTypeId: tx.payment?.card > 0 ? 3 : 1,
-          paymentTypeDesc: tx.payment?.card > 0 ? 'Credit Card' : 'Cash',
+          receiptNo: r.receiptNo || r.receiptNumber || r.receipt_No || '',
+          accountNumber: r.accountNumber || r.accountNo || '-',
+          paidAmount: Number(r.amount || r.paidAmount || r.tenderAmount || r.receiptAmount || 0),
+          paymentTypeId,
+          paymentTypeDesc: r.paymentType || r.paymentTypeName || (paymentTypeId === 3 ? 'Credit Card' : 'Cash'),
           billTypeID,
           isMiscPayment,
-          isCancelled: false,
-          dateCaptured: new Date(tx.timestamp).toISOString(),
-          paymentOptionName: tx.paymentOptionName || '',
-          _source: 'local',
+          isCancelled: r.isCancelled === 1 || r.isCancelled === true || r.isCanceled === 1,
+          cancellationReason: r.cancellationReason || r.reasonForCancel || undefined,
+          dateCaptured: r.receiptDate || r.dateCaptured || '',
+          paymentOptionName: r.paymentOption || r.paymentOptionName || '',
+          _source: 'unreconciled',
         };
       });
 
-      const merged = [...allItems, ...localExtra];
-      console.log('[DayEndModal] Final receipt history:', merged.length, 'items (API:', allItems.length, '+ local:', localExtra.length, ')');
-      setReceiptHistory(merged);
+      console.log('[DayEndModal] Final receipt history:', allItems.length, 'unreconciled POS items');
+      setReceiptHistory(allItems);
     } catch (e) {
-      console.error('[DayEndModal] Failed to load receipt history:', e);
+      console.error('[DayEndModal] Failed to load unreconciled receipts:', e);
+      setReceiptHistory([]);
     } finally {
       setIsLoadingHistory(false);
     }
