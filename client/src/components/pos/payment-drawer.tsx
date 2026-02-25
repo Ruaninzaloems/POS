@@ -374,7 +374,7 @@ export function PaymentDrawer() {
           ) : shortfall > 0 ? (
             <>R {shortfall.toFixed(2)} still needed</>
           ) : payment.cardAmount > 0 && (!payment.cardReference || payment.cardReference.trim().length < 4) ? (
-            <>Enter card number</>
+            <>Enter last 4 card digits</>
           ) : payment.cardAmount > 0 && !cardExpiryValid ? (
             <>{!payment.cardExpiry ? 'Enter card expiry' : 'Invalid expiry (MM/YY)'}</>
           ) : (
@@ -1019,15 +1019,16 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
       {payment.cardAmount > 0 && (
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <Label className="text-[10px] text-slate-400 mb-0.5 flex items-center gap-1">Card Number <span className="text-red-500">*</span> <HelpTip text="Enter the full card number from the card machine slip." /></Label>
+            <Label className="text-[10px] text-slate-400 mb-0.5 flex items-center gap-1">Last 4 Digits <span className="text-red-500">*</span> <HelpTip text="Enter the last 4 digits of the card number from the card machine slip." /></Label>
             <Input
               type="text"
-              placeholder="Card number"
+              placeholder="Last 4 digits"
               value={payment.cardReference}
               onChange={(e) => {
-                const val = e.target.value.replace(/[^0-9]/g, '');
+                const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 4);
                 setCardReference(val);
               }}
+              maxLength={4}
               className={`h-9 font-mono text-sm ${payment.cardReference && payment.cardReference.trim().length < 4 ? 'border-red-400 ring-1 ring-red-200' : ''}`}
               data-testid="input-card-reference"
               inputMode="numeric"
@@ -1427,15 +1428,16 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                 {payment.cardAmount > 0 && (
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <Label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">Card Number <span className="text-red-500">*</span> <HelpTip text="Enter the full card number from the card machine slip." /></Label>
+                      <Label className="text-xs text-muted-foreground mb-1 flex items-center gap-1">Last 4 Digits <span className="text-red-500">*</span> <HelpTip text="Enter the last 4 digits of the card number from the card machine slip." /></Label>
                       <Input
                         type="text"
-                        placeholder="Card number"
+                        placeholder="Last 4 digits"
                         value={payment.cardReference}
                         onChange={(e) => {
-                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 4);
                           setCardReference(val);
                         }}
+                        maxLength={4}
                         className={`h-10 font-mono text-sm ${payment.cardReference && payment.cardReference.trim().length < 4 ? 'border-red-400 ring-1 ring-red-200' : ''}`}
                         data-testid="input-card-reference"
                         inputMode="numeric"
