@@ -152,9 +152,13 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
     }
   };
 
-  const systemCashTotal = receiptHistory.filter(r => !r.isCancelled && r.paymentTypeId === 1).reduce((s, r) => s + (Number(r.paidAmount) || 0), 0);
-  const systemCardTotal = receiptHistory.filter(r => !r.isCancelled && r.paymentTypeId === 3).reduce((s, r) => s + (Number(r.paidAmount) || 0), 0);
-  const systemTotal = receiptHistory.filter(r => !r.isCancelled).reduce((s, r) => s + (Number(r.paidAmount) || 0), 0);
+  const activeReceipts = receiptHistory.filter(r => !r.isCancelled);
+  const systemCashTotal = activeReceipts.filter(r => r.paymentTypeId === 1).reduce((s, r) => s + (Number(r.paidAmount) || 0), 0);
+  const systemCardTotal = activeReceipts.filter(r => r.paymentTypeId === 3).reduce((s, r) => s + (Number(r.paidAmount) || 0), 0);
+  const systemChequeTotal = activeReceipts.filter(r => r.paymentTypeId === 2).reduce((s, r) => s + (Number(r.paidAmount) || 0), 0);
+  const systemPostalTotal = activeReceipts.filter(r => r.paymentTypeId === 4).reduce((s, r) => s + (Number(r.paidAmount) || 0), 0);
+  const systemDropBoxTotal = activeReceipts.filter(r => r.paymentTypeId === 5 || String(r.paymentTypeDesc || '').toLowerCase().includes('drop')).reduce((s, r) => s + (Number(r.paidAmount) || 0), 0);
+  const systemTotal = activeReceipts.reduce((s, r) => s + (Number(r.paidAmount) || 0), 0);
 
   const cashierName = platinumUser?.userName || platinumUser?.firstName ? `${platinumUser?.firstName || ''} ${platinumUser?.lastName || ''}`.trim() : currentUser?.name || 'Cashier';
   const officeName = sessionDetails?.officeDesc || 'Cash Office';
@@ -636,20 +640,27 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                         ))}
                       </div>
 
-                      <div className="border-t border-indigo-200 bg-indigo-100/60 px-5 py-2.5">
-                        <div className="grid grid-cols-3 gap-2 text-center">
-                          <div>
-                            <div className="text-[9px] uppercase text-indigo-500 font-bold">System Cash</div>
-                            <div className="text-xs font-mono font-bold text-indigo-800">R {systemCashTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
-                          </div>
-                          <div>
-                            <div className="text-[9px] uppercase text-indigo-500 font-bold">System Card</div>
-                            <div className="text-xs font-mono font-bold text-indigo-800">R {systemCardTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
-                          </div>
-                          <div>
-                            <div className="text-[9px] uppercase text-indigo-500 font-bold">System Total</div>
-                            <div className="text-xs font-mono font-bold text-indigo-900">R {systemTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
-                          </div>
+                      <div className="border-t border-indigo-200 bg-indigo-100/60 px-5 py-2.5 space-y-1.5">
+                        <div className="text-[9px] uppercase tracking-wider text-indigo-500 font-bold mb-1">System Totals</div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-indigo-700">Total Cash on Hand + Drop Box</span>
+                          <span className="font-mono font-bold text-indigo-800">R {(systemCashTotal + systemDropBoxTotal).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-indigo-700">Total Debit/Credit Card Receipts</span>
+                          <span className="font-mono font-bold text-indigo-800">R {systemCardTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-indigo-700">Total Cheque Receipts</span>
+                          <span className="font-mono font-bold text-indigo-800">R {systemChequeTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-indigo-700">Total Postal Order Receipts</span>
+                          <span className="font-mono font-bold text-indigo-800">R {systemPostalTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between text-xs border-t border-indigo-300 pt-1.5 mt-1.5">
+                          <span className="text-indigo-900 font-bold">Grand Total</span>
+                          <span className="font-mono font-black text-indigo-900">R {systemTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
                         </div>
                       </div>
                     </div>
@@ -671,13 +682,32 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
               />
             </div>
 
-            <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-xl p-4 flex items-center justify-between shadow-lg">
-              <div>
-                <div className="text-[10px] uppercase tracking-widest font-medium text-blue-200">Grand Total</div>
-                <div className="text-xs text-blue-200 mt-0.5">Cash + Card{hasCheque ? ' + Cheque' : ''}{hasPostalOrder ? ' + Postal' : ''}{hasDropBox ? ' + Drop Box' : ''}</div>
+            <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-xl p-4 shadow-lg space-y-2">
+              <div className="flex justify-between items-center text-sm text-blue-100">
+                <span>Total Cash on Hand + Drop Box</span>
+                <span className="font-mono font-bold text-white">R {(totalCashAmt + dropBoxAmt).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
               </div>
-              <div className="text-2xl sm:text-3xl font-mono font-black text-white" data-testid="text-grand-total">
-                R {grandTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <div className="flex justify-between items-center text-sm text-blue-100">
+                <span>Total Debit/Credit Card Receipts</span>
+                <span className="font-mono font-bold text-white">R {creditAmt.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+              </div>
+              {(chequeAmt > 0 || hasCheque) && (
+                <div className="flex justify-between items-center text-sm text-blue-100">
+                  <span>Total Cheque Receipts</span>
+                  <span className="font-mono font-bold text-white">R {chequeAmt.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
+              {(postalOrderAmt > 0 || hasPostalOrder) && (
+                <div className="flex justify-between items-center text-sm text-blue-100">
+                  <span>Total Postal Order Receipts</span>
+                  <span className="font-mono font-bold text-white">R {postalOrderAmt.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center pt-2 border-t border-white/20">
+                <div className="text-[10px] uppercase tracking-widest font-medium text-blue-200">Grand Total (R)</div>
+                <div className="text-2xl sm:text-3xl font-mono font-black text-white" data-testid="text-grand-total">
+                  R {grandTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
               </div>
             </div>
           </div>
@@ -701,48 +731,43 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                 <span className="text-xs text-slate-500">{officeName}</span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="bg-white rounded-lg border p-3 text-center">
-                  <Banknote className="w-4 h-4 text-green-500 mx-auto mb-1" />
-                  <div className="text-[10px] text-slate-500 uppercase font-bold">Cash</div>
-                  <div className="text-base font-mono font-bold text-green-700" data-testid="text-confirm-cash">
-                    R {totalCashAmt.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center p-3 bg-white rounded-lg border">
+                  <div className="flex items-center gap-2">
+                    <Banknote className="w-4 h-4 text-green-600" />
+                    <span className="text-sm text-slate-700 font-medium">Total Cash on Hand + Drop Box (R)</span>
                   </div>
+                  <span className="text-base font-mono font-bold text-green-700" data-testid="text-confirm-cash">
+                    {(totalCashAmt + dropBoxAmt).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                  </span>
                 </div>
-                <div className="bg-white rounded-lg border p-3 text-center">
-                  <CreditCard className="w-4 h-4 text-blue-500 mx-auto mb-1" />
-                  <div className="text-[10px] text-slate-500 uppercase font-bold">Card</div>
-                  <div className="text-base font-mono font-bold text-blue-700" data-testid="text-confirm-card">
-                    R {creditAmt.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                <div className="flex justify-between items-center p-3 bg-white rounded-lg border">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm text-slate-700 font-medium">Total Debit/Credit Card Receipts (R)</span>
                   </div>
+                  <span className="text-base font-mono font-bold text-blue-700" data-testid="text-confirm-card">
+                    {creditAmt.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                  </span>
                 </div>
-                {hasCheque && chequeAmt > 0 && (
-                  <div className="bg-white rounded-lg border p-3 text-center">
-                    <FileText className="w-4 h-4 text-purple-500 mx-auto mb-1" />
-                    <div className="text-[10px] text-slate-500 uppercase font-bold">Cheque</div>
-                    <div className="text-base font-mono font-bold text-purple-700" data-testid="text-confirm-cheque">
-                      R {chequeAmt.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
-                    </div>
+                <div className="flex justify-between items-center p-3 bg-white rounded-lg border">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-purple-600" />
+                    <span className="text-sm text-slate-700 font-medium">Total Cheque Receipts (R)</span>
                   </div>
-                )}
-                {hasPostalOrder && postalOrderAmt > 0 && (
-                  <div className="bg-white rounded-lg border p-3 text-center">
-                    <Mail className="w-4 h-4 text-teal-500 mx-auto mb-1" />
-                    <div className="text-[10px] text-slate-500 uppercase font-bold">Postal</div>
-                    <div className="text-base font-mono font-bold text-teal-700" data-testid="text-confirm-postal">
-                      R {postalOrderAmt.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
-                    </div>
+                  <span className="text-base font-mono font-bold text-purple-700" data-testid="text-confirm-cheque">
+                    {chequeAmt.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-white rounded-lg border">
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-teal-600" />
+                    <span className="text-sm text-slate-700 font-medium">Total Postal Order Receipts (R)</span>
                   </div>
-                )}
-                {hasDropBox && dropBoxAmt > 0 && (
-                  <div className="bg-white rounded-lg border p-3 text-center">
-                    <Archive className="w-4 h-4 text-amber-500 mx-auto mb-1" />
-                    <div className="text-[10px] text-slate-500 uppercase font-bold">Drop Box</div>
-                    <div className="text-base font-mono font-bold text-amber-700" data-testid="text-confirm-dropbox">
-                      R {dropBoxAmt.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
-                    </div>
-                  </div>
-                )}
+                  <span className="text-base font-mono font-bold text-teal-700" data-testid="text-confirm-postal">
+                    {postalOrderAmt.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
               </div>
 
               {reason && (

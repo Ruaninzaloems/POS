@@ -34,7 +34,8 @@ import {
   Info,
   Calendar as CalendarIcon,
   BarChart3,
-  Loader2
+  Loader2,
+  Mail
 } from 'lucide-react';
 import {
   HoverCard,
@@ -1678,15 +1679,15 @@ export default function SupervisorDashboard() {
                               <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                                   <div className="flex items-center gap-2">
                                       <Banknote className="w-4 h-4 text-gray-500" />
-                                      <span>Cash</span>
+                                      <span className="text-sm">Total Cash on Hand + Drop Box (R)</span>
                                   </div>
-                                  <span className="font-mono font-medium">{formatCurrency(Number(reviewData.details?.totalCashAmt || reviewData.details?.cashAmount || selectedShift.systemTotals.cash || 0))}</span>
+                                  <span className="font-mono font-medium">{formatCurrency(Number(reviewData.details?.totalCashAmt || reviewData.details?.cashAmount || selectedShift.systemTotals.cash || 0) + Number(reviewData.details?.totalDropBoxAmt || reviewData.details?.dropBoxAmount || 0))}</span>
                               </div>
 
                               <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                                   <div className="flex items-center gap-2">
                                       <CreditCard className="w-4 h-4 text-gray-500" />
-                                      <span>Card</span>
+                                      <span className="text-sm">Total Debit/Credit Card Receipts (R)</span>
                                   </div>
                                   <span className="font-mono font-medium">{formatCurrency(Number(reviewData.details?.totalCreditAmt || reviewData.details?.cardAmount || selectedShift.systemTotals.card || 0))}</span>
                               </div>
@@ -1694,35 +1695,61 @@ export default function SupervisorDashboard() {
                               <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                                   <div className="flex items-center gap-2">
                                       <FileText className="w-4 h-4 text-gray-500" />
-                                      <span>Cheque</span>
+                                      <span className="text-sm">Total Cheque Receipts (R)</span>
                                   </div>
                                   <span className="font-mono font-medium">{formatCurrency(Number(reviewData.details?.totalChequeAmt || reviewData.details?.chequeAmount || 0))}</span>
                               </div>
 
+                              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                  <div className="flex items-center gap-2">
+                                      <Mail className="w-4 h-4 text-gray-500" />
+                                      <span className="text-sm">Total Postal Order Receipts (R)</span>
+                                  </div>
+                                  <span className="font-mono font-medium">{formatCurrency(Number(reviewData.details?.totalPostalOrderAmt || reviewData.details?.postalOrderAmount || 0))}</span>
+                              </div>
+
                               <div className="flex justify-between items-center p-3 bg-gray-100 rounded-lg border border-gray-200">
-                                  <span className="font-bold text-gray-700">Total</span>
+                                  <span className="font-bold text-gray-700">Grand Total (R)</span>
                                   <span className="font-mono font-bold text-lg">{formatCurrency(Number(reviewData.details?.totalAmt || reviewData.details?.totalAmount || selectedShift.systemTotals.total || 0))}</span>
                               </div>
                           </div>
 
                           <div className="space-y-4">
-                              <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground border-b pb-2">Reconcile Data</h3>
+                              <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground border-b pb-2">Cashier Declared Totals</h3>
                               {reviewData.reconcile ? (
                                 <>
-                                  <div className="grid grid-cols-2 gap-2">
-                                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
-                                          <div className="text-xs text-blue-700 mb-1">Cash Declared</div>
-                                          <div className="font-mono font-bold">{formatCurrency(Number(reviewData.reconcile.totalCashAmt || reviewData.reconcile.cashDeclared || 0))}</div>
-                                      </div>
-                                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
-                                          <div className="text-xs text-blue-700 mb-1">Card Declared</div>
-                                          <div className="font-mono font-bold">{formatCurrency(Number(reviewData.reconcile.totalCreditAmt || reviewData.reconcile.cardDeclared || 0))}</div>
-                                      </div>
+                                  <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                      <span className="text-sm text-blue-800">Total Cash on Hand + Drop Box (R)</span>
+                                      <span className="font-mono font-bold">{formatCurrency(Number(reviewData.reconcile.totalCashAmt || reviewData.reconcile.cashDeclared || 0) + Number(reviewData.reconcile.totalDropBoxAmt || reviewData.reconcile.dropBoxDeclared || 0))}</span>
                                   </div>
-                                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
-                                      <div className="text-xs text-blue-700 mb-1">Float</div>
-                                      <div className="font-mono font-bold">{formatCurrency(Number(reviewData.reconcile.cashFloat || reviewData.reconcile.float || 0))}</div>
+                                  <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                      <span className="text-sm text-blue-800">Total Debit/Credit Card Receipts (R)</span>
+                                      <span className="font-mono font-bold">{formatCurrency(Number(reviewData.reconcile.totalCreditAmt || reviewData.reconcile.cardDeclared || 0))}</span>
                                   </div>
+                                  <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                      <span className="text-sm text-blue-800">Total Cheque Receipts (R)</span>
+                                      <span className="font-mono font-bold">{formatCurrency(Number(reviewData.reconcile.totalChequeAmt || reviewData.reconcile.chequeDeclared || 0))}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                      <span className="text-sm text-blue-800">Total Postal Order Receipts (R)</span>
+                                      <span className="font-mono font-bold">{formatCurrency(Number(reviewData.reconcile.totalPostalOrderAmt || reviewData.reconcile.postalOrderDeclared || 0))}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center p-3 bg-blue-100 rounded-lg border border-blue-200">
+                                      <span className="font-bold text-blue-900">Grand Total (R)</span>
+                                      <span className="font-mono font-bold text-lg">{formatCurrency(Number(reviewData.reconcile.totalAmt || reviewData.reconcile.totalDeclared || 0))}</span>
+                                  </div>
+                                  {Number(reviewData.reconcile.cashFloat || reviewData.reconcile.float || 0) > 0 && (
+                                    <div className="flex justify-between items-center p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-sm">
+                                        <span className="text-slate-600">Float</span>
+                                        <span className="font-mono font-medium text-slate-700">{formatCurrency(Number(reviewData.reconcile.cashFloat || reviewData.reconcile.float || 0))}</span>
+                                    </div>
+                                  )}
+                                  {reviewData.reconcile.reason && (
+                                    <div className="p-2.5 bg-amber-50 rounded-lg border border-amber-200 text-sm">
+                                        <span className="text-amber-700 font-medium">Reason: </span>
+                                        <span className="text-amber-800">{reviewData.reconcile.reason}</span>
+                                    </div>
+                                  )}
                                 </>
                               ) : (
                                 <div className="h-full flex items-center justify-center text-muted-foreground italic bg-muted/20 rounded-lg border-2 border-dashed p-8">
