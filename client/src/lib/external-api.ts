@@ -1153,6 +1153,26 @@ export async function platinumSubmitMiscPayment(data: any): Promise<any> {
     });
 }
 
+// --- Drop Box (Cash Drop) ---
+
+export async function platinumSubmitDropBox(data: {
+    amount: number;
+    description?: string;
+    userId: number;
+    finYear?: string;
+    paymentType?: number;
+}): Promise<any> {
+    return platinumFetch(`/api/platinum/drop-box/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumGetDropBoxList(cashierId: number): Promise<any> {
+    return platinumFetch(`/api/platinum/drop-box/list?cashierId=${cashierId}`);
+}
+
 // --- Day-End Reconciliation (Cashier) ---
 
 export async function platinumGetDayEndCashierList(): Promise<any[]> {

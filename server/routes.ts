@@ -1520,6 +1520,91 @@ export async function registerRoutes(
     }
   });
 
+  // --- Drop Box (Cash Drop) ---
+
+  app.post("/api/platinum/drop-box/submit", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const { amount, description, userId, finYear, paymentType } = req.body;
+      console.log(`[drop-box] Submit drop — amount=${amount}, userId=${userId}, paymentType=${paymentType || 1}, description="${description}"`);
+
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ success: false, message: "Drop amount must be greater than zero" });
+      }
+
+      const now = new Date().toISOString();
+      const payload = {
+        lastName: description || "Cash Drop",
+        initials: "",
+        miscellaneousPaymentGroup: null,
+        scoaItem: null,
+        description: description || "Drop Box - Cash Drop",
+        receiptDate: now,
+        totalAmount: amount,
+        vatAmount: 0,
+        amount: amount,
+        tenderAmount: amount,
+        changeAmount: 0,
+        paymentType: paymentType || 1,
+        vatPercentage: 0,
+        cardNo: null,
+        expiryDate: null,
+        isVatable: false,
+        chequeNo: null,
+        bankBranch: null,
+        bankBranchCode: null,
+        accHolderName: null,
+        userId: Number(userId),
+        finYear: finYear || "2025/2026",
+      };
+
+      console.log(`[drop-box] Trying misc submit with payload:`, JSON.stringify(payload));
+      const data = await platinumPost(session, "/api/billing-payment-miscellaneous/submit", payload);
+      console.log(`[drop-box] Misc submit response:`, JSON.stringify(data).substring(0, 1000));
+
+      if (data && !data._error) {
+        const receiptNo = data.receiptNo || data.receipt_no || data.receiptNumber || null;
+        console.log(`[drop-box] Drop box submitted successfully — receiptNo: ${receiptNo}`);
+        res.json({
+          success: true,
+          message: "Drop box payment submitted successfully",
+          receiptNo,
+          amount,
+          data
+        });
+      } else {
+        console.error(`[drop-box] API error:`, JSON.stringify(data));
+        res.status(400).json({
+          success: false,
+          message: data?.message || data?.title || "Failed to submit drop box payment",
+          detail: data
+        });
+      }
+    } catch (e: any) {
+      console.error(`[drop-box] Error:`, e.message);
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/drop-box/list", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const cashierId = req.query.cashierId as string;
+      if (!cashierId) return res.status(400).json({ message: "cashierId is required" });
+
+      console.log(`[drop-box] Fetching drop box list for cashierId=${cashierId}`);
+      const pager = { page: 1, pageSize: 100 };
+      const data = await platinumPost(session, "/api/billing-payment-day-end-reconcile/get-cashier-receipt-drop-box-list", pager, { id: cashierId });
+      console.log(`[drop-box] List response:`, JSON.stringify(data).substring(0, 500));
+
+      const items = Array.isArray(data) ? data : (data?.items || data?.data || data?.value || []);
+      res.json({ success: true, items, total: items.length });
+    } catch (e: any) {
+      console.error(`[drop-box] List error:`, e.message);
+      res.status(502).json({ message: "Failed to fetch drop box list", detail: e.message });
+    }
+  });
+
   // --- Billing Enquiry - Search ---
 
   app.post("/api/platinum/billing-enquiry/enquiry-results", async (req, res) => {
