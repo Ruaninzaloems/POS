@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { platinumGetAuthDayEndCashierList, platinumGetAuthDayEndCashierDetails, platinumGetAuthDayEndCashierReconcile, platinumGetPendingCancelRequests, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumAuthDayEndValidateCashbook, platinumAuthDayEndSubmitReconcile, platinumAuthDayEndPrintCashReport, platinumAuthDayEndPrintDepositSlip, platinumAuthDayEndDirectCancelReceipt, platinumPerOfficeCashOfficeList, platinumPerOfficeCashOfficeSelection, platinumPerOfficeCashierSummary, platinumPerOfficeCashierReconcileStatus, platinumPerOfficeProcessStagingPayments, platinumPerOfficeAddStage, platinumPerOfficeVerifyCashierReconcile, platinumPerOfficeSubmitReconcile, platinumPerOfficeFinishStage, platinumPerOfficeCancelReceipt, platinumPerOfficeReturnReconcile, platinumPerOfficePrintCashReport, platinumPerOfficePrintDepositSlip } from '@/lib/external-api';
+import { platinumGetAuthDayEndCashierList, platinumGetAuthDayEndCashierDetails, platinumGetAuthDayEndCashierReconcile, platinumGetAuthDayEndCashbookList, platinumGetPendingCancelRequests, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumAuthDayEndValidateCashbook, platinumAuthDayEndSubmitReconcile, platinumAuthDayEndPrintCashReport, platinumAuthDayEndPrintDepositSlip, platinumAuthDayEndDirectCancelReceipt, platinumPerOfficeCashOfficeList, platinumPerOfficeCashOfficeSelection, platinumPerOfficeCashierSummary, platinumPerOfficeCashierReconcileStatus, platinumPerOfficeProcessStagingPayments, platinumPerOfficeAddStage, platinumPerOfficeVerifyCashierReconcile, platinumPerOfficeSubmitReconcile, platinumPerOfficeFinishStage, platinumPerOfficeCancelReceipt, platinumPerOfficeReturnReconcile, platinumPerOfficePrintCashReport, platinumPerOfficePrintDepositSlip } from '@/lib/external-api';
 import { 
   LayoutDashboard, 
   Users, 
@@ -59,6 +59,7 @@ type ReconMode = 'PER_CASHIER' | 'CASH_OFFICE';
 
 interface CashierShift {
   id: string;
+  userId: number | null;
   cashierName: string;
   cashOffice: string;
   cashOfficeId: number | null;
@@ -82,6 +83,7 @@ interface CashierShift {
     total: number;
   };
   transactionCount: number;
+  reconcileId: number | null;
   rawData?: any;
 }
 
@@ -110,6 +112,8 @@ function mapCashierToShift(c: any, index: number, officeConfigs?: Record<string,
   const name = c.cashierName || c.name || c.userName || c.cashier_name || `Cashier ${id}`;
   const office = c.cashOfficeName || c.cashOffice || c.cash_office || c.officeName || c.office || '';
   const officeId = Number(c.cashOfficeId || c.cashOffice_ID || c.cash_office_id || c.officeId || c.office_id || 0) || null;
+  const rawUserId = Number(c.user_Id || c.userId || c.user_id || c.capturerId || 0) || null;
+  const rawReconcileId = Number(c.cashierReconcile_Id || c.reconcileId || c.reconcile_id || c.cashierReconcileId || 0) || null;
   const totalAmt = Number(c.totalAmount || c.totalAmt || c.total || c.systemTotal || 0);
   const cashAmt = Number(c.cashAmount || c.cashTotal || c.totalCashAmt || 0);
   const cardAmt = Number(c.cardAmount || c.cardTotal || c.totalCreditAmt || 0);
@@ -134,6 +138,7 @@ function mapCashierToShift(c: any, index: number, officeConfigs?: Record<string,
 
   return {
     id,
+    userId: rawUserId,
     cashierName: name,
     cashOffice: officeConfig?.cashOfficeDesc || office,
     cashOfficeId: officeId,
@@ -144,6 +149,7 @@ function mapCashierToShift(c: any, index: number, officeConfigs?: Record<string,
     declaredTotals: declaredTotal > 0 || declaredCash > 0 ? { cash: declaredCash, card: declaredCard, total: declaredTotal || (declaredCash + declaredCard) } : undefined,
     variance: varianceTotal !== 0 ? { cash: 0, card: 0, total: varianceTotal } : { cash: 0, card: 0, total: 0 },
     transactionCount: txCount,
+    reconcileId: rawReconcileId,
     rawData: c,
   };
 }
@@ -710,7 +716,23 @@ export default function SupervisorDashboard() {
       }
 
       const cashierOfficeId = selectedShift?.cashOfficeId || reviewData?.details?.cashierOfficeId || reviewData?.details?.officeId || 1;
-      const cashBookId = reviewData?.details?.cashBookId || reviewData?.details?.cashbookId || 1;
+      let cashBookId = reviewData?.details?.cashBookId || reviewData?.details?.cashbookId || 0;
+      if (!cashBookId) {
+        try {
+          const cashbooks = await platinumGetAuthDayEndCashbookList();
+          const books = Array.isArray(cashbooks) ? cashbooks : [];
+          if (books.length > 0) {
+            const match = books.find((b: any) => Number(b.cashOfficeId || b.cashOffice_ID) === Number(cashierOfficeId));
+            cashBookId = match?.id || match?.cashBookId || match?.cashBook_ID || books[0]?.id || books[0]?.cashBookId || 1;
+            console.log('[Supervisor] Resolved cashBookId from cashbook-list:', cashBookId);
+          } else {
+            cashBookId = 1;
+          }
+        } catch (cbErr: any) {
+          console.warn('[Supervisor] cashbook-list fetch failed, using fallback:', cbErr.message);
+          cashBookId = 1;
+        }
+      }
       try {
         console.log('[Supervisor] Step 2: submit-day-auth-reconcile for cashier', cashierId, 'cashBookId', cashBookId, 'officeId', cashierOfficeId);
         await platinumAuthDayEndSubmitReconcile({ cashierId: Number(cashierId), cashBookId: Number(cashBookId), cashierOfficeId: Number(cashierOfficeId) });
@@ -718,8 +740,12 @@ export default function SupervisorDashboard() {
         console.warn('[Supervisor] submit-day-auth-reconcile warning (continuing):', subErr.message);
       }
 
-      console.log('[Supervisor] Step 3: finish-day-end-reconcile for cashier', cashierId);
-      await apiRequest('POST', `/api/platinum/auth-day-end/finish-day-end-reconcile?userId=${cashierId}`, {});
+      const resolvedUserId = selectedShift?.userId || reviewData?.details?.user_Id || reviewData?.details?.userId || reviewData?.details?.capturerId || platinumUser?.user_ID || 0;
+      if (!resolvedUserId) {
+        throw new Error('Cannot determine user ID for this cashier. Please check cashier details.');
+      }
+      console.log('[Supervisor] Step 3: finish-day-end-reconcile — userId=', resolvedUserId, '(cashierId=', cashierId, ')');
+      await apiRequest('POST', `/api/platinum/auth-day-end/finish-day-end-reconcile?userId=${resolvedUserId}`, {});
       toast({ title: 'Success', description: 'Day-end reconciliation approved successfully.' });
       setSelectedShift(null);
       loadCashierList();
@@ -804,8 +830,10 @@ export default function SupervisorDashboard() {
     if (!selectedShift || !returnReason) return;
     setActionLoading(true);
     try {
+      const reconcileId = reviewData?.reconcile?.cashierReconcile_Id || reviewData?.reconcile?.id || selectedShift.reconcileId || Number(selectedShift.id);
+      console.log('[Supervisor] return-day-end-reconcile — reconcileId=', reconcileId, '(cashierId=', selectedShift.id, ')');
       await apiRequest('POST', '/api/platinum/auth-day-end/return-day-end-reconcile', {
-        id: Number(selectedShift.id),
+        id: reconcileId,
         returnReason: returnReason,
       });
       toast({ title: 'Returned', description: 'Day-end reconciliation returned to cashier.' });

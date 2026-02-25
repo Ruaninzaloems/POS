@@ -19,6 +19,7 @@ import {
     platinumSaveDayEndReconcileData,
     platinumAuthDayEndValidateCashbook,
     platinumAuthDayEndSubmitReconcile,
+    platinumGetAuthDayEndCashbookList,
 } from '@/lib/external-api';
 import {
     Loader2, CreditCard, FileText,
@@ -251,7 +252,23 @@ export default function CashierDayEnd() {
             }
 
             const cashierOfficeId = Number(cashierDetails?.officeId || cashierDetails?.cashOffice_ID || cashierDetails?.const_CashOffice?.cashOffice_ID || 1);
-            const cashBookId = Number(cashierDetails?.cashBookId || cashierDetails?.cashbookId || (currentUser as any)?.cashBookId || 1);
+            let cashBookId = Number(cashierDetails?.cashBookId || cashierDetails?.cashbookId || (currentUser as any)?.cashBookId || 0);
+            if (!cashBookId) {
+                try {
+                    const cashbooks = await platinumGetAuthDayEndCashbookList();
+                    const books = Array.isArray(cashbooks) ? cashbooks : [];
+                    if (books.length > 0) {
+                        const match = books.find((b: any) => Number(b.cashOfficeId || b.cashOffice_ID) === cashierOfficeId);
+                        cashBookId = match?.id || match?.cashBookId || match?.cashBook_ID || books[0]?.id || books[0]?.cashBookId || 1;
+                        console.log('[DayEnd] Resolved cashBookId from cashbook-list:', cashBookId);
+                    } else {
+                        cashBookId = 1;
+                    }
+                } catch (cbErr: any) {
+                    console.warn('[DayEnd] cashbook-list fetch failed, using fallback:', cbErr.message);
+                    cashBookId = 1;
+                }
+            }
             try {
                 console.log('[DayEnd] Step 3: submit-day-auth-reconcile for cashier', selectedCashierId, 'cashBookId', cashBookId, 'officeId', cashierOfficeId);
                 await platinumAuthDayEndSubmitReconcile({ cashierId: Number(selectedCashierId), cashBookId, cashierOfficeId });

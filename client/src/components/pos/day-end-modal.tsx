@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, CheckCircle2, Loader2, Banknote, Coins, CreditCard, FileText, ChevronDown, ChevronUp, Mail, User, Building2, Calendar, Clock, ArrowRight, Receipt, XCircle, Archive } from 'lucide-react';
-import { platinumSaveDayEndReconcileData, platinumGetDayEndReconcileList, platinumAuthDayEndValidateCashbook, platinumAuthDayEndSubmitReconcile } from '@/lib/external-api';
+import { platinumSaveDayEndReconcileData, platinumGetDayEndReconcileList, platinumAuthDayEndValidateCashbook, platinumAuthDayEndSubmitReconcile, platinumGetAuthDayEndCashbookList } from '@/lib/external-api';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
 
@@ -224,7 +224,23 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
       }
 
       const cashierOfficeId = Number(sessionDetails?.officeId) || 1;
-      const cashBookId = (platinumUser as any)?.cashBookId || (platinumUser as any)?.cashbookId || 1;
+      let cashBookId = (platinumUser as any)?.cashBookId || (platinumUser as any)?.cashbookId || 0;
+      if (!cashBookId) {
+        try {
+          const cashbooks = await platinumGetAuthDayEndCashbookList();
+          const books = Array.isArray(cashbooks) ? cashbooks : [];
+          if (books.length > 0) {
+            const match = books.find((b: any) => Number(b.cashOfficeId || b.cashOffice_ID) === cashierOfficeId);
+            cashBookId = match?.id || match?.cashBookId || match?.cashBook_ID || books[0]?.id || books[0]?.cashBookId || 1;
+            console.log('[DayEndModal] Resolved cashBookId from cashbook-list:', cashBookId);
+          } else {
+            cashBookId = 1;
+          }
+        } catch (cbErr: any) {
+          console.warn('[DayEndModal] cashbook-list fetch failed, using fallback:', cbErr.message);
+          cashBookId = 1;
+        }
+      }
       try {
         console.log('[DayEndModal] Step 3: submit-day-auth-reconcile for cashier', cashierId, 'cashBookId', cashBookId, 'officeId', cashierOfficeId);
         await platinumAuthDayEndSubmitReconcile({ cashierId: Number(cashierId), cashBookId: Number(cashBookId), cashierOfficeId: Number(cashierOfficeId) });
