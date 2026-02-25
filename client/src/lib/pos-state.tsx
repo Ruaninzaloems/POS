@@ -235,6 +235,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [currentTransactionId, setCurrentTransactionId] = useState<string | null>(null);
   const currentTransactionIdRef = React.useRef<string | null>(null);
   React.useEffect(() => { currentTransactionIdRef.current = currentTransactionId; }, [currentTransactionId]);
+  const paymentInFlightRef = React.useRef(false);
+  const lastSubmittedPaymentRef = React.useRef<string | null>(null);
   const [viewingItemId, setViewingItemId] = useState<string | null>(null);
   const [recentTransactions, setRecentTransactions] = useState<TransactionRecord[]>([]);
   const [dayEndStatus, setDayEndStatus] = useState<DayEndStatus>('OPEN');
@@ -1122,6 +1124,17 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const completeTransaction = async () => {
+    if (paymentInFlightRef.current) {
+        console.warn('[Payment] BLOCKED — payment already in flight. Ignoring duplicate call.');
+        toast({ title: "Payment In Progress", description: "A payment is already being processed. Please wait.", variant: "destructive" });
+        return;
+    }
+
+    if (transactionProcessing) {
+        console.warn('[Payment] BLOCKED — transactionProcessing is true. Ignoring duplicate call.');
+        return;
+    }
+
     if (!activeSession || !sessionDetails) {
         toast({
             title: "No Active Session",
@@ -1130,6 +1143,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
         return;
     }
+
+    const paymentFingerprint = `${items.map(i => `${i.id}:${i.amountToPay}`).join('|')}|cash=${payment.cash}|card=${payment.card}|t=${Date.now()}`;
+    const fingerprintBase = paymentFingerprint.replace(/\|t=\d+$/, '');
+    if (lastSubmittedPaymentRef.current === fingerprintBase) {
+        console.warn('[Payment] BLOCKED — identical payment fingerprint detected (same items + amounts). Preventing duplicate submission.');
+        toast({ title: "Duplicate Payment Blocked", description: "This exact payment was just submitted. Please clear the cart and start a new transaction.", variant: "destructive" });
+        return;
+    }
+
+    paymentInFlightRef.current = true;
 
     const sessionUserId = Number(currentUser.id);
     const sessionOfficeId = sessionDetails.officeId ? Number(sessionDetails.officeId) : 0;
@@ -1141,6 +1164,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             description: "Could not determine the cashier user ID from the active session.",
             variant: "destructive",
         });
+        paymentInFlightRef.current = false;
         return;
     }
 
@@ -1148,10 +1172,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (payment.cash > 0 && !isPaymentTypeAllowed(1)) {
         toast({ title: "Payment Method Not Allowed", description: "Cash payments are not enabled for your profile. Contact your supervisor.", variant: "destructive" });
+        paymentInFlightRef.current = false;
         return;
     }
     if (payment.card > 0 && !isPaymentTypeAllowed(3)) {
         toast({ title: "Payment Method Not Allowed", description: "Credit Card payments are not enabled for your profile. Contact your supervisor.", variant: "destructive" });
+        paymentInFlightRef.current = false;
         return;
     }
 
@@ -1173,6 +1199,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             description: receiptRangeResult.reason || "Your cashier session is not properly set up for receipt allocation. Please complete cashier setup.",
             variant: "destructive"
         });
+        paymentInFlightRef.current = false;
         return;
     }
     console.log(`[Payment] Receipt range valid — cashier active at ${receiptRangeResult.officeName}, POS record ${receiptRangeResult.cashierDetailsId}`);
@@ -2395,6 +2422,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } finally {
         setProcessingStep('');
         setTransactionProcessing(false);
+        lastSubmittedPaymentRef.current = fingerprintBase;
+        paymentInFlightRef.current = false;
         setCompletedPaymentSnapshot({
             cashAmount: payment.cash,
             cardAmount: payment.card,

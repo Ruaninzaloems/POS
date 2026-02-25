@@ -23,6 +23,36 @@ function requireAuth(req: Request, res: any): UserSession | null {
 
 const EXTERNAL_API_BASE = "https://george-uat-ems-billing-api.azurewebsites.net";
 
+const recentPaymentSubmissions = new Map<string, { timestamp: number; response: any }>();
+const PAYMENT_DEDUP_WINDOW_MS = 15000;
+
+function getPaymentDeduplicationKey(userId: string, body: any): string {
+  const rm = body?.requestModel || {};
+  const accounts = body?.accounts || [];
+  const acct = body?.account || {};
+  const accountKey = acct.account_ID ? `single:${acct.account_ID}` :
+    accounts.length > 0 ? `multi:${accounts.map((a: any) => a.accountID).sort().join(',')}` : 'unknown';
+  return `${userId}|${accountKey}|${rm.totalAmount}|${rm.paymentType}`;
+}
+
+function checkPaymentDedup(key: string): { isDuplicate: boolean; cachedResponse?: any } {
+  const now = Date.now();
+  for (const [k, v] of recentPaymentSubmissions.entries()) {
+    if (now - v.timestamp > PAYMENT_DEDUP_WINDOW_MS) {
+      recentPaymentSubmissions.delete(k);
+    }
+  }
+  const cached = recentPaymentSubmissions.get(key);
+  if (cached && (now - cached.timestamp) < PAYMENT_DEDUP_WINDOW_MS) {
+    return { isDuplicate: true, cachedResponse: cached.response };
+  }
+  return { isDuplicate: false };
+}
+
+function recordPaymentSubmission(key: string, response: any): void {
+  recentPaymentSubmissions.set(key, { timestamp: Date.now(), response });
+}
+
 interface ReceiptAllocation {
   service: string;
   amount: number;
@@ -787,8 +817,16 @@ export async function registerRoutes(
       console.log(`[submit-consumer-payment] account: account_ID=${acct.account_ID}, accountNumber=${acct.accountNumber}, name=${acct.name}, outStandingAmt=${acct.outStandingAmt}, billId=${acct.billId}, cutOffID=${acct.cutOffID}, cutOffAmount=${acct.cutOffAmount}, debtAmount=${acct.debtAmount}, debtArrangementId=${acct.debtArrangementId}, sundryDebtorsId=${acct.sundryDebtorsId}, billingCycleId=${acct.billingCycleId}`);
       console.log(`[submit-consumer-payment] requestModel: finYear=${rm.finYear}, receiptDate=${rm.receiptDate}, totalAmount=${rm.totalAmount}, tenderAmount=${rm.tenderAmount}, changeAmount=${rm.changeAmount}, paymentType=${rm.paymentType}, paymentOption=${rm.paymentOption}, outStandingAmount=${rm.outStandingAmount}, cutOffID=${rm.cutOffID}, cutOffAmount=${rm.cutOffAmount}, debtAmount=${rm.debtAmount}, debtArrangementId=${rm.debtArrangementId}, sundryDebtorsId=${rm.sundryDebtorsId}, cardNumber=${rm.cardNumber ? '***' + rm.cardNumber.slice(-4) : '(empty)'}, apiTransactionID=${rm.apiTransactionID}, isReconciled=${rm.isReconciled}, isCancelled=${rm.isCancelled}`);
       console.log(`[submit-consumer-payment] full payload:`, JSON.stringify(body, null, 2));
+      const dedupKey = getPaymentDeduplicationKey(userId, body);
+      const dedupCheck = checkPaymentDedup(dedupKey);
+      if (dedupCheck.isDuplicate) {
+        console.warn(`[submit-consumer-payment] DUPLICATE BLOCKED — same payment within ${PAYMENT_DEDUP_WINDOW_MS/1000}s window. Key: ${dedupKey}`);
+        res.json(dedupCheck.cachedResponse);
+        return;
+      }
       const data = await platinumPost(session, `/api/billing-payment/submit-consumer-payment/${userId}`, body);
       console.log(`[submit-consumer-payment] response (full):`, JSON.stringify(data));
+      recordPaymentSubmission(dedupKey, data);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       console.error(`[submit-consumer-payment] Error:`, e.message);
@@ -816,9 +854,17 @@ export async function registerRoutes(
         return;
       }
       console.log(`[submit-multiple-payment] full payload:`, JSON.stringify(body, null, 2).substring(0, 3000));
+      const dedupKey = getPaymentDeduplicationKey(userId, body);
+      const dedupCheck = checkPaymentDedup(dedupKey);
+      if (dedupCheck.isDuplicate) {
+        console.warn(`[submit-multiple-payment] DUPLICATE BLOCKED — same payment within ${PAYMENT_DEDUP_WINDOW_MS/1000}s window. Key: ${dedupKey}`);
+        res.json(dedupCheck.cachedResponse);
+        return;
+      }
       const timeoutMs = Math.max(60000, accounts.length * 8000);
       const data = await platinumPost(session, `/api/billing-payment/submit-multiple-payment/${userId}`, body, undefined, { timeout: timeoutMs });
       console.log(`[submit-multiple-payment] response (full):`, JSON.stringify(data).substring(0, 2000));
+      recordPaymentSubmission(dedupKey, data);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       console.error(`[submit-multiple-payment] Error:`, e.message);
@@ -1429,6 +1475,15 @@ export async function registerRoutes(
       const session = requireAuth(req, res); if (!session) return;
       console.log(`[clearance-submit] Request payload:`, JSON.stringify(req.body));
 
+      const clrBody = req.body;
+      const clrDedupKey = `clearance|${clrBody.userId || 'u'}|${clrBody.clearance_ID || clrBody.clearanceId || 'c'}|${clrBody.paidAmount || clrBody.totalAmount || 0}|${clrBody.paymentTypeId || 0}`;
+      const clrDedupCheck = checkPaymentDedup(clrDedupKey);
+      if (clrDedupCheck.isDuplicate) {
+        console.warn(`[clearance-submit] DUPLICATE BLOCKED — same clearance payment within ${PAYMENT_DEDUP_WINDOW_MS/1000}s window. Key: ${clrDedupKey}`);
+        res.json(clrDedupCheck.cachedResponse);
+        return;
+      }
+
       const token = await refreshSessionToken(session);
       const apiUrl = getPlatinumApiUrl();
       const url = `${apiUrl}/api/billing-payment-clearance/submit-payment`;
@@ -1462,6 +1517,7 @@ export async function registerRoutes(
           data = rawText;
         }
         console.log(`[clearance-submit] Parsed response:`, JSON.stringify(data).substring(0, 500));
+        recordPaymentSubmission(clrDedupKey, data);
         res.json(data);
       } finally {
         clearTimeout(timeoutId);
@@ -1512,8 +1568,17 @@ export async function registerRoutes(
     try {
       const session = requireAuth(req, res); if (!session) return;
       console.log(`[misc-submit] Payload:`, JSON.stringify(req.body));
+      const miscBody = req.body;
+      const miscDedupKey = `misc|${miscBody.userId || 'u'}|${miscBody.description || ''}|${miscBody.totalAmount || miscBody.amount || 0}|${miscBody.paymentType || 0}`;
+      const miscDedupCheck = checkPaymentDedup(miscDedupKey);
+      if (miscDedupCheck.isDuplicate) {
+        console.warn(`[misc-submit] DUPLICATE BLOCKED — same misc payment within ${PAYMENT_DEDUP_WINDOW_MS/1000}s window. Key: ${miscDedupKey}`);
+        res.json(miscDedupCheck.cachedResponse);
+        return;
+      }
       const data = await platinumPost(session, "/api/billing-payment-miscellaneous/submit", req.body);
       console.log(`[misc-submit] Response:`, JSON.stringify(data).substring(0, 1000));
+      recordPaymentSubmission(miscDedupKey, data);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
