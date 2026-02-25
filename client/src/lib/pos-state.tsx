@@ -483,8 +483,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const unreconciledData = await platinumGetDayEndUnreconciledList(pCashierId);
         const unreconciledItems = Array.isArray(unreconciledData) ? unreconciledData : (unreconciledData as any)?.data || (unreconciledData as any)?.items || (unreconciledData as any)?.value || [];
 
-        if (unreconciledItems.length > 0) {
-          const mapped: TransactionRecord[] = unreconciledItems.map((r: any, idx: number) => {
+        const posUnreconciled = unreconciledItems.filter((r: any) => {
+          const rNo = r.receiptNo || r.receiptNumber || r.receipt_No || '';
+          if (rNo.startsWith('EFT')) return false;
+          return true;
+        });
+        if (posUnreconciled.length > 0) {
+          const mapped: TransactionRecord[] = posUnreconciled.map((r: any, idx: number) => {
             const paymentTypeStr = r.paymentType || r.paymentTypeName || r.paymentTypeDesc || '';
             const isCash = paymentTypeStr.toLowerCase().includes('cash') || r.paymentTypeId === 1;
             const isCard = paymentTypeStr.toLowerCase().includes('card') || paymentTypeStr.toLowerCase().includes('credit') || r.paymentTypeId === 3;
@@ -554,6 +559,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const extraReceipts = viewItems.filter((r: any) => {
               const rNo = r.receiptNo || '';
               if (!rNo || unreconReceiptNos.has(rNo)) return false;
+              if (r.isReconciled === 1) return false;
+              if (rNo.startsWith('EFT')) return false;
               return true;
             });
             if (extraReceipts.length > 0) {
@@ -621,7 +628,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
 
       if (result.items && result.items.length > 0) {
-        const mapped: TransactionRecord[] = result.items.map((r) => {
+        const posOnly = result.items.filter((r: any) => {
+          const rNo = r.receiptNo || '';
+          if (rNo.startsWith('EFT')) return false;
+          if (r.isReconciled === 1) return false;
+          return true;
+        });
+        const mapped: TransactionRecord[] = posOnly.map((r) => {
           const isCash = (r.paymentType || '').toLowerCase().includes('cash');
           const isCard = (r.paymentType || '').toLowerCase().includes('card');
           const paymentAmount = r.amount || 0;
@@ -679,9 +692,15 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const discoveryResult = await platinumReceiptDiscovery(String(pCashierId));
         const discoveryItems = discoveryResult?.items || [];
 
-        if (discoveryItems.length > 0) {
-          console.log(`[Transactions] Receipt discovery returned ${discoveryItems.length} items`);
-          const mapped: TransactionRecord[] = discoveryItems.map((r: any, idx: number) => {
+        const posDiscovery = discoveryItems.filter((r: any) => {
+          const rNo = r.receiptNo || r.receiptNumber || r.receipt_No || '';
+          if (rNo.startsWith('EFT')) return false;
+          if (r.isReconciled === 1) return false;
+          return true;
+        });
+        if (posDiscovery.length > 0) {
+          console.log(`[Transactions] Receipt discovery returned ${posDiscovery.length} POS items (filtered from ${discoveryItems.length} total)`);
+          const mapped: TransactionRecord[] = posDiscovery.map((r: any, idx: number) => {
             const isCash = r._paymentType === 'Cash' || r.paymentTypeId === 1 || (r.paymentType || '').toLowerCase().includes('cash');
             const isCard = r._paymentType === 'Credit Card' || r.paymentTypeId === 3 || (r.paymentType || '').toLowerCase().includes('card');
             const paymentAmount = r.paidAmount || r.amount || r.tenderAmount || r.receiptAmount || 0;

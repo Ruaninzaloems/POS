@@ -138,8 +138,15 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
           viewItems = receiptResult?.items || [];
         }
         console.log('[DayEndModal] get-receipt-list returned', viewItems.length, 'items (all types)');
+        const posItems = viewItems.filter((r: any) => {
+          const rNo = r.receiptNo || '';
+          if (rNo.startsWith('EFT')) return false;
+          if (r.isReconciled === 1) return false;
+          return true;
+        });
+        console.log('[DayEndModal] Filtered to', posItems.length, 'POS-only items (excluded', viewItems.length - posItems.length, 'EFT/reconciled)');
 
-        allItems = viewItems.map((r: any) => {
+        allItems = posItems.map((r: any) => {
           const payType = (r.paymentType || '').toLowerCase();
           let paymentTypeId = 1;
           if (payType.includes('card') || payType.includes('credit') || payType.includes('debit')) paymentTypeId = 3;
