@@ -258,7 +258,7 @@ export default function CashierSetup() {
                 cashFloat: float,
                 officeId: selectedOffice.cashOffice_ID,
                 isActive: true,
-                capturerId: userId,
+                isVirtual: false,
             };
 
             console.log(`[CashierSetup] Step 3: submit-cashier-setup POST — userId=${userId}, officeId=${selectedOffice.cashOffice_ID}`);

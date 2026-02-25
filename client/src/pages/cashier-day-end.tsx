@@ -17,6 +17,8 @@ import {
     platinumGetDayEndDropBoxList,
     platinumGetDayEndReconcileList,
     platinumSaveDayEndReconcileData,
+    platinumAuthDayEndValidateCashbook,
+    platinumAuthDayEndSubmitReconcile,
 } from '@/lib/external-api';
 import {
     Loader2, CreditCard, FileText,
@@ -231,8 +233,33 @@ export default function CashierDayEnd() {
                 c50: denominations.c50,
                 finyear: (currentUser as any)?.finYear || null,
             };
-            console.log('[DayEnd] Submitting reconcile payload:', JSON.stringify(payload));
-            await platinumSaveDayEndReconcileData(userId, payload);
+            console.log('[DayEnd] Step 1: save-reconcile-data payload:', JSON.stringify(payload));
+            const result = await platinumSaveDayEndReconcileData(userId, payload);
+            console.log('[DayEnd] Step 1 response:', JSON.stringify(result));
+
+            if (result?.error || result?.isError === true || result?.success === false) {
+                const errMsg = result?.error || result?.message || result?.errorMessage || 'API rejected the submission.';
+                throw new Error(errMsg);
+            }
+
+            try {
+                console.log('[DayEnd] Step 2: validate-cashbook for cashier', selectedCashierId);
+                await platinumAuthDayEndValidateCashbook(Number(selectedCashierId));
+                console.log('[DayEnd] validate-cashbook passed');
+            } catch (valErr: any) {
+                console.warn('[DayEnd] validate-cashbook warning (continuing):', valErr.message);
+            }
+
+            const cashierOfficeId = Number(cashierDetails?.officeId || cashierDetails?.cashOffice_ID || cashierDetails?.const_CashOffice?.cashOffice_ID || 1);
+            const cashBookId = Number(cashierDetails?.cashBookId || cashierDetails?.cashbookId || (currentUser as any)?.cashBookId || 1);
+            try {
+                console.log('[DayEnd] Step 3: submit-day-auth-reconcile for cashier', selectedCashierId, 'cashBookId', cashBookId, 'officeId', cashierOfficeId);
+                await platinumAuthDayEndSubmitReconcile({ cashierId: Number(selectedCashierId), cashBookId, cashierOfficeId });
+                console.log('[DayEnd] submit-day-auth-reconcile succeeded');
+            } catch (subErr: any) {
+                console.warn('[DayEnd] submit-day-auth-reconcile warning (continuing):', subErr.message);
+            }
+
             toast({ title: 'Success', description: 'Day-end reconciliation submitted successfully. Your supervisor will review it.' });
             if (typeof (window as any).__posEndSessionAfterDayEnd === 'function') {
                 (window as any).__posEndSessionAfterDayEnd();
