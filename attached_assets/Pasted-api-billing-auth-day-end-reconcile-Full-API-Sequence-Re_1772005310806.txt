@@ -1,0 +1,218 @@
+api/billing/auth-day-end-reconcile — Full API Sequence Reference
+ 
+  ---
+  Phase 1 — Page Initialisation (load lists)
+ 
+  1. GET cashier-list
+ 
+  - Purpose: Load all available cashiers (for supervisor to select which cashier to reconcile)
+  - Params: none
+  - Response: List<POS_Cashier> or similar list
+ 
+  2. GET cash-office-list
+ 
+  - Purpose: Load all cash office locations
+  - Params: none
+  - Response: List of cash offices
+ 
+  3. GET cashbook-list
+ 
+  - Purpose: Load all cashbooks (needed for submit-day-auth-reconcile)
+  - Params: none
+  - Response: List of cashbooks
+ 
+  ---
+  Phase 2 — Cashier Resolution
+ 
+  4. GET active-cashierid-by-userid
+ 
+  - Purpose: Resolve the active cashier ID for a logged-in user (used when user opens their own reconcile)
+  - Params: ?userid={int}
+  - Response: int — active cashier ID
+ 
+  5. GET pos-cashier
+ 
+  - Purpose: Get POS cashier record by cashier ID
+  - Params: ?cashierId={int}
+  - Response: Cashier info (name, office, status, etc.)
+ 
+  6. GET cashier-details
+ 
+  - Purpose: Get extended cashier details (cashier office, cash-on-hand, session state)
+  - Params: ?cashierId={int}
+  - Response: Cashier details view model
+ 
+  7. GET cashier-reconcile-by-cashierid
+ 
+  - Purpose: Get the existing reconcile record for a cashier (to check if already submitted/returned)
+  - Params: ?cashierId={int}
+  - Response: POS_CashierReconcile record or null
+ 
+  ---
+  Phase 3 — Receipt Grids (supervisor reviews cashier's receipts)
+ 
+  All grid endpoints share the same request structure:
+ 
+  POST <endpoint>?id={cashierId}
+  Body: { "page": 1, "pageSize": 20, "orderby": "DateCaptured", "shortDirection": "desc" }
+ 
+  ┌─────┬────────────────────────────────────────┬────────────────────────────────────┐
+  │  #  │                Endpoint                │            Payment Type            │
+  ├─────┼────────────────────────────────────────┼────────────────────────────────────┤
+  │ 8   │ POST cashier-receipt-cash-list         │ Cash receipts                      │
+  ├─────┼────────────────────────────────────────┼────────────────────────────────────┤
+  │ 9   │ POST cashier-receipt-cheque-list       │ Cheque receipts                    │
+  ├─────┼────────────────────────────────────────┼────────────────────────────────────┤
+  │ 10  │ POST cashier-receipt-card-list         │ Card receipts                      │
+  ├─────┼────────────────────────────────────────┼────────────────────────────────────┤
+  │ 11  │ POST cashier-receipt-postal-order-list │ Postal order receipts              │
+  ├─────┼────────────────────────────────────────┼────────────────────────────────────┤
+  │ 12  │ POST cashier-receipt-drop-box-list     │ Drop-box receipts                  │
+  ├─────┼────────────────────────────────────────┼────────────────────────────────────┤
+  │ 13  │ POST cashier-receipt-offline-data-list │ Offline shift receipts             │
+  ├─────┼────────────────────────────────────────┼────────────────────────────────────┤
+  │ 14  │ POST system-vs-cashier-data-list       │ System vs cashier variance summary │
+  └─────┴────────────────────────────────────────┴────────────────────────────────────┘
+ 
+  Response for all grids: { items: [...], totalCount: N }
+ 
+  ---
+  Phase 4 — Pending Cancel Requests (check before submit)
+ 
+  15. GET pending-cancel-requests
+ 
+  - Purpose: Retrieve receipts where a cashier has requested cancellation but supervisor has not yet approved/declined
+  - Params: ?cashierId={long}
+  - Response: List of pending cancel request records
+ 
+  ---
+  Phase 5 — Validate & Submit (main reconcile flow)
+ 
+  Step A — Validate Cashbook
+ 
+  16. POST validate-cashbook
+ 
+  - Purpose: Validates that the cashier's cashbook is correctly linked: cashier → cash office → SCOA config → cashbook → module → access rights. Must pass before
+  submit is allowed.
+  - Params: ?cashierId={long}
+  - Response: { isValid: bool, message: string }
+ 
+  ---
+  Step B — Submit Reconcile
+ 
+  17. POST submit-day-auth-reconcile
+ 
+  - Purpose: Supervisor submits the day-end reconcile for a cashier. Saves POS_Reconcile + POS_ReconcileDetails, calculates cash variance (surplus/shortage),
+  updates POS_CashierReconcile status to Verified, creates cashbook entry. Internally also calls FinishBillingStageDayEndReconcile(cashierId) to clear the
+  DayEndReconcile block for that cashier.
+  - Params: ?cashierId={long}&cashBookId={int}&cashierOfficeId={int}
+  - Body: none
+  - Response: success/error message
+ 
+  ---
+  Step C — Finish Day End (clear supervisor block)
+ 
+  18. POST finish-day-end-reconcile
+ 
+  - Purpose: Clears the BlockingType.DayEndReconcile block for the supervisor/userId (distinct from the cashierId block cleared in Step B). Called after supervisor
+   completes all cashier reconciles for the session.
+  - Params: ?userId={int}
+  - Body: none
+  - Response: success/error
+ 
+  Note — Two separate unblock calls:
+  - API 17 unblocks cashierId internally
+  - API 18 unblocks userId explicitly
+  These are intentionally separate.
+ 
+  ---
+  Phase 6 — Return (reject reconcile back to cashier)
+ 
+  19. POST return-day-end-reconcile
+ 
+  - Purpose: Supervisor returns the reconcile to the cashier with a reason (e.g. cash count mismatch). Sets reconcile status back to Pending/Returned.
+  - Body:
+  { "id": <cashierReconcileId>, "returnReason": "Cash count mismatch" }
+  - Response: success/error
+ 
+  ---
+  Phase 7 — Cancel Receipt Workflow
+ 
+  Direct Cancel (supervisor cancels immediately — legacy/simple flow)
+ 
+  20. POST cancel-day-auth-reconcile-receipt
+ 
+  - Purpose: Supervisor directly cancels a receipt (sets IsCancelled=true). No approval workflow — immediate.
+  - Body:
+  { "id": <receiptId or miscPaymentId>, "returnReason": "Duplicate receipt" }
+  - Response: success/error
+ 
+  ---
+  Approval Workflow (cashier requests → supervisor approves/declines)
+ 
+  21. POST request-cancel-receipt
+ 
+  - Purpose: Cashier requests cancellation of their own receipt. Sets CancelStatusId = Pending, records CancelRequestedById + CancelRequestedDate. Does not cancel
+  yet.
+  - Body:
+  { "receiptId": 12345, "reason": "Wrong account number", "isMiscPayment": false }
+ 
+  22. POST approve-cancel-receipt
+ 
+  - Purpose: Supervisor approves the cancel request. Sets CancelStatusId = Approved, sets IsCancelled = true, records CancelApprovedById + CancelApprovedDate.
+  - Body:
+  { "receiptId": 12345, "reason": "Approved by supervisor", "isMiscPayment": false }
+ 
+  23. POST decline-cancel-receipt
+ 
+  - Purpose: Supervisor declines the cancel request. Sets CancelStatusId = Declined. Receipt remains active.
+  - Body:
+  { "receiptId": 12345, "reason": "Declined - receipt is correct", "isMiscPayment": false }
+ 
+  isMiscPayment: false = POS_CashierReceipt table; true = POS_MiscPayment table
+ 
+  ---
+  Phase 8 — Print
+ 
+  24. POST print-receipt
+ 
+  - Purpose: Generate PDF for a single receipt. Routes to correct builder based on account prefix:
+    - AccountNumber starts with "E" → Offline receipt builder
+    - IsMiscPayment == 0 → Standard receipt builder
+    - IsMiscPayment != 0 → Misc payment receipt builder
+  - Body:
+  {
+    "id": 12345,
+    "accountNumber": "A001234",
+    "isMiscPayment": 0,
+    "paymentTypeId": 1,
+    "receiptNo": "REC-2025-00001",
+    "dateCaptured": "2025-02-25",
+    "accHolderName": "John Smith",
+    "paidAmount": 500.00,
+    "tenderAmount": 500.00,
+    "changeAmount": 0.00,
+    "chequeNo": null,
+    "bankBranch": null,
+    "bankBrachCode": null,
+    "cardNo": null,
+    "cardExpiryDate": null,
+    "cashierName": "Jane Doe",
+    "cashierOfficeName": "Main Office",
+    "isCancelled": false
+  }
+  - Response: application/pdf → Receipt_{ReceiptNo}.pdf
+ 
+  25. POST print-cash-report
+ 
+  - Purpose: Generate the cashier cash-up summary report PDF (system totals vs cashier counts, variance)
+  - Body:
+  { "cashierId": 101, "cashierName": "Jane Doe", "reconcileDate": "2025-02-25" }
+  - Response: application/pdf → CashierCashUpReport_{CashierName}_{timestamp}.pdf
+ 
+  26. POST print-deposit-slip
+ 
+  - Purpose: Generate deposit slip PDF (summary of cash/cheque to be deposited to bank)
+  - Body:
+  { "cashierId": 101, "cashierName": "Jane Doe", "reconcileDate": "2025-02-25" }
+  - Response: application/pdf → CashierDeposit_{CashierName}_{timestamp}.pdf

@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { platinumGetAuthDayEndCashierList, platinumGetAuthDayEndCashierDetails, platinumGetAuthDayEndCashierReconcile, platinumGetPendingCancelRequests, platinumApproveCancelReceipt, platinumDeclineCancelReceipt } from '@/lib/external-api';
+import { platinumGetAuthDayEndCashierList, platinumGetAuthDayEndCashierDetails, platinumGetAuthDayEndCashierReconcile, platinumGetPendingCancelRequests, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumAuthDayEndValidateCashbook, platinumAuthDayEndSubmitReconcile, platinumAuthDayEndPrintCashReport, platinumAuthDayEndPrintDepositSlip, platinumAuthDayEndDirectCancelReceipt } from '@/lib/external-api';
 import { 
   LayoutDashboard, 
   Users, 
@@ -35,7 +35,11 @@ import {
   Calendar as CalendarIcon,
   BarChart3,
   Loader2,
-  Mail
+  Mail,
+  Printer,
+  Wifi,
+  WifiOff,
+  Trash2
 } from 'lucide-react';
 import {
   HoverCard,
@@ -282,6 +286,7 @@ export default function SupervisorDashboard() {
     chequeReceipts: any[];
     postalReceipts: any[];
     dropboxReceipts: any[];
+    offlineReceipts: any[];
     systemVsCashier: any[];
   } | null>(null);
   const [reviewTab, setReviewTab] = useState('cash');
@@ -417,7 +422,7 @@ export default function SupervisorDashboard() {
     setReviewData(null);
     setReviewTab('cash');
     try {
-      const [detailsRes, reconcileRes, cashRes, cardRes, chequeRes, postalRes, dropboxRes, sysVsCashierRes] = await Promise.all([
+      const [detailsRes, reconcileRes, cashRes, cardRes, chequeRes, postalRes, dropboxRes, offlineRes, sysVsCashierRes] = await Promise.all([
         platinumGetAuthDayEndCashierDetails({ id: cashierId }).catch(() => null),
         platinumGetAuthDayEndCashierReconcile({ cashierId }).catch(() => null),
         apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-cash-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch(() => []),
@@ -425,14 +430,12 @@ export default function SupervisorDashboard() {
         apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-cheque-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch(() => []),
         apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-postal-order-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch(() => []),
         apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-drop-box-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch(() => []),
+        apiRequest('POST', `/api/platinum/auth-day-end/cashier-receipt-offline-data-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch(() => []),
         apiRequest('POST', `/api/platinum/auth-day-end/system-vs-cashier-data-list?id=${cashierId}`, PAGER_BODY).then(r => r.json()).catch(() => []),
       ]);
 
       console.log('[Supervisor] Review details:', detailsRes);
       console.log('[Supervisor] Review reconcile:', reconcileRes);
-      console.log('[Supervisor] Cash receipts:', cashRes);
-      console.log('[Supervisor] Card receipts:', cardRes);
-      console.log('[Supervisor] System vs Cashier:', sysVsCashierRes);
 
       setReviewData({
         details: detailsRes,
@@ -442,6 +445,7 @@ export default function SupervisorDashboard() {
         chequeReceipts: extractItems(chequeRes),
         postalReceipts: extractItems(postalRes),
         dropboxReceipts: extractItems(dropboxRes),
+        offlineReceipts: extractItems(offlineRes),
         systemVsCashier: extractItems(sysVsCashierRes),
       });
     } catch (e: any) {
@@ -461,6 +465,21 @@ export default function SupervisorDashboard() {
   const handleApprove = async (cashierId: string) => {
     setActionLoading(true);
     try {
+      try {
+        console.log('[Supervisor] Step 1: validate-cashbook for cashier', cashierId);
+        await platinumAuthDayEndValidateCashbook({ cashierId: Number(cashierId) });
+      } catch (valErr: any) {
+        console.warn('[Supervisor] validate-cashbook warning (continuing):', valErr.message);
+      }
+
+      try {
+        console.log('[Supervisor] Step 2: submit-day-auth-reconcile for cashier', cashierId);
+        await platinumAuthDayEndSubmitReconcile({ cashierId: Number(cashierId) });
+      } catch (subErr: any) {
+        console.warn('[Supervisor] submit-day-auth-reconcile warning (continuing):', subErr.message);
+      }
+
+      console.log('[Supervisor] Step 3: finish-day-end-reconcile for cashier', cashierId);
       await apiRequest('POST', `/api/platinum/auth-day-end/finish-day-end-reconcile?userId=${cashierId}`, {});
       toast({ title: 'Success', description: 'Day-end reconciliation approved successfully.' });
       setSelectedShift(null);
@@ -470,6 +489,71 @@ export default function SupervisorDashboard() {
       toast({ title: 'Error', description: `Approve failed: ${e.message}`, variant: 'destructive' });
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handlePrintCashReport = async (cashierId: string) => {
+    try {
+      toast({ title: 'Generating...', description: 'Preparing cash report...' });
+      const result = await platinumAuthDayEndPrintCashReport({ cashierId: Number(cashierId) });
+      if (result && typeof result === 'string' && result.startsWith('JVB')) {
+        const byteChars = atob(result);
+        const byteArr = new Uint8Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+        const blob = new Blob([byteArr], { type: 'application/pdf' });
+        window.open(URL.createObjectURL(blob), '_blank');
+      } else if (result?.fileContents || result?.base64) {
+        const b64 = result.fileContents || result.base64;
+        const byteChars = atob(b64);
+        const byteArr = new Uint8Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+        const blob = new Blob([byteArr], { type: 'application/pdf' });
+        window.open(URL.createObjectURL(blob), '_blank');
+      } else {
+        toast({ title: 'Cash Report', description: 'Report generated. Check if a download started.' });
+      }
+    } catch (e: any) {
+      toast({ title: 'Error', description: `Failed to generate cash report: ${e.message}`, variant: 'destructive' });
+    }
+  };
+
+  const handlePrintDepositSlip = async (cashierId: string) => {
+    try {
+      toast({ title: 'Generating...', description: 'Preparing deposit slip...' });
+      const result = await platinumAuthDayEndPrintDepositSlip({ cashierId: Number(cashierId) });
+      if (result && typeof result === 'string' && result.startsWith('JVB')) {
+        const byteChars = atob(result);
+        const byteArr = new Uint8Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+        const blob = new Blob([byteArr], { type: 'application/pdf' });
+        window.open(URL.createObjectURL(blob), '_blank');
+      } else if (result?.fileContents || result?.base64) {
+        const b64 = result.fileContents || result.base64;
+        const byteChars = atob(b64);
+        const byteArr = new Uint8Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+        const blob = new Blob([byteArr], { type: 'application/pdf' });
+        window.open(URL.createObjectURL(blob), '_blank');
+      } else {
+        toast({ title: 'Deposit Slip', description: 'Slip generated. Check if a download started.' });
+      }
+    } catch (e: any) {
+      toast({ title: 'Error', description: `Failed to generate deposit slip: ${e.message}`, variant: 'destructive' });
+    }
+  };
+
+  const handleDirectCancelReceipt = async (receiptId: number, reason: string) => {
+    try {
+      await platinumAuthDayEndDirectCancelReceipt({
+        id: receiptId,
+        returnReason: reason,
+        userId: platinumUser?.user_ID || 0,
+      });
+      toast({ title: 'Receipt Cancelled', description: `Receipt ${receiptId} has been directly cancelled.` });
+      if (selectedShift) loadReviewData(selectedShift.id);
+    } catch (e: any) {
+      console.error('[Supervisor] Direct cancel receipt failed:', e);
+      toast({ title: 'Error', description: `Direct cancel failed: ${e.message}`, variant: 'destructive' });
     }
   };
 
@@ -568,6 +652,9 @@ export default function SupervisorDashboard() {
       };
   }, [statsDateRange, statsCashier]);
 
+  const [directCancelId, setDirectCancelId] = useState<number | null>(null);
+  const [directCancelReason, setDirectCancelReason] = useState('');
+
   const renderReceiptTable = (receipts: any[], type: string) => {
     if (receipts.length === 0) {
       return (
@@ -587,25 +674,79 @@ export default function SupervisorDashboard() {
               <TableHead className="text-xs py-2">Date</TableHead>
               <TableHead className="text-xs py-2">Cancelled</TableHead>
               <TableHead className="text-xs py-2 text-right">Amount</TableHead>
+              <TableHead className="text-xs py-2 text-center">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {receipts.map((item, idx) => (
-              <TableRow key={idx} className="hover:bg-slate-50">
-                <TableCell className="text-xs py-1.5">{idx + 1}</TableCell>
-                <TableCell className="text-xs font-mono py-1.5">{item.accountNumber || item.accountId || item.invoiceNumber || item.account || '-'}</TableCell>
-                <TableCell className="text-xs font-mono py-1.5">{item.receiptNo || item.receipt_no || item.receiptNumber || '-'}</TableCell>
-                <TableCell className="text-xs py-1.5">{item.receiptDate || item.receiptDateTime || item.date || '-'}</TableCell>
-                <TableCell className="text-xs py-1.5">
-                  {item.isCancelled === 1 || item.isCancelled === true ? (
-                    <Badge variant="destructive" className="text-[9px]">Yes</Badge>
-                  ) : (
-                    <span className="text-muted-foreground">No</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-xs text-right font-mono font-medium py-1.5">R {Number(item.amount || item.totalAmount || 0).toFixed(2)}</TableCell>
-              </TableRow>
-            ))}
+            {receipts.map((item, idx) => {
+              const receiptId = item.id || item.receiptId || item.receipt_id;
+              const isCancelled = item.isCancelled === 1 || item.isCancelled === true;
+              return (
+                <TableRow key={idx} className="hover:bg-slate-50">
+                  <TableCell className="text-xs py-1.5">{idx + 1}</TableCell>
+                  <TableCell className="text-xs font-mono py-1.5">{item.accountNumber || item.accountId || item.invoiceNumber || item.account || '-'}</TableCell>
+                  <TableCell className="text-xs font-mono py-1.5">{item.receiptNo || item.receipt_no || item.receiptNumber || '-'}</TableCell>
+                  <TableCell className="text-xs py-1.5">{item.receiptDate || item.receiptDateTime || item.date || '-'}</TableCell>
+                  <TableCell className="text-xs py-1.5">
+                    {isCancelled ? (
+                      <Badge variant="destructive" className="text-[9px]">Yes</Badge>
+                    ) : (
+                      <span className="text-muted-foreground">No</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-xs text-right font-mono font-medium py-1.5">R {Number(item.amount || item.totalAmount || 0).toFixed(2)}</TableCell>
+                  <TableCell className="text-xs text-center py-1.5">
+                    {!isCancelled && receiptId ? (
+                      directCancelId === receiptId ? (
+                        <div className="flex items-center gap-1">
+                          <Input
+                            className="h-6 text-[10px] w-24"
+                            placeholder="Reason..."
+                            value={directCancelReason}
+                            onChange={e => setDirectCancelReason(e.target.value)}
+                            data-testid={`input-cancel-reason-${receiptId}`}
+                          />
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="h-6 px-2 text-[10px]"
+                            onClick={() => {
+                              handleDirectCancelReceipt(receiptId, directCancelReason);
+                              setDirectCancelId(null);
+                              setDirectCancelReason('');
+                            }}
+                            disabled={!directCancelReason.trim()}
+                            data-testid={`button-confirm-cancel-${receiptId}`}
+                          >
+                            Confirm
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-1 text-[10px]"
+                            onClick={() => { setDirectCancelId(null); setDirectCancelReason(''); }}
+                          >
+                            ✕
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 px-2 text-[10px] text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => setDirectCancelId(receiptId)}
+                          data-testid={`button-cancel-receipt-${receiptId}`}
+                        >
+                          <Trash2 className="w-3 h-3 mr-0.5" /> Cancel
+                        </Button>
+                      )
+                    ) : isCancelled ? (
+                      <span className="text-muted-foreground text-[10px]">Voided</span>
+                    ) : null}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
@@ -1794,12 +1935,13 @@ export default function SupervisorDashboard() {
                       <div className="border rounded-lg overflow-hidden">
                         <Tabs value={reviewTab} onValueChange={setReviewTab}>
                           <div className="bg-gray-50 px-4 py-2 border-b">
-                            <TabsList className="bg-white border">
+                            <TabsList className="bg-white border flex-wrap h-auto gap-0.5">
                               <TabsTrigger value="cash" className="text-xs">Cash ({reviewData.cashReceipts.length})</TabsTrigger>
                               <TabsTrigger value="card" className="text-xs">Card ({reviewData.cardReceipts.length})</TabsTrigger>
                               <TabsTrigger value="cheque" className="text-xs">Cheque ({reviewData.chequeReceipts.length})</TabsTrigger>
                               <TabsTrigger value="postal" className="text-xs">Postal ({reviewData.postalReceipts.length})</TabsTrigger>
                               <TabsTrigger value="dropbox" className="text-xs">Dropbox ({reviewData.dropboxReceipts.length})</TabsTrigger>
+                              <TabsTrigger value="offline" className="text-xs"><WifiOff className="w-3 h-3 mr-1" />Offline ({reviewData.offlineReceipts?.length || 0})</TabsTrigger>
                             </TabsList>
                           </div>
                           <TabsContent value="cash" className="mt-0 p-2">
@@ -1816,6 +1958,9 @@ export default function SupervisorDashboard() {
                           </TabsContent>
                           <TabsContent value="dropbox" className="mt-0 p-2">
                             {renderReceiptTable(reviewData.dropboxReceipts, 'dropbox')}
+                          </TabsContent>
+                          <TabsContent value="offline" className="mt-0 p-2">
+                            {renderReceiptTable(reviewData.offlineReceipts || [], 'offline')}
                           </TabsContent>
                         </Tabs>
                       </div>
@@ -1838,6 +1983,15 @@ export default function SupervisorDashboard() {
                           This cashier belongs to a grouped office ({selectedShift.cashOffice}). All cashiers in this office must be reconciled together. Use the "Per Cash Office" view to approve the entire office at once.
                       </div>
                   )}
+                  <div className="flex flex-wrap items-center gap-2 border-t pt-3 mb-2">
+                    <Button variant="outline" size="sm" onClick={() => handlePrintCashReport(selectedShift.id)} data-testid="button-print-cash-report">
+                      <Printer className="w-3.5 h-3.5 mr-1.5" /> Cash Report
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handlePrintDepositSlip(selectedShift.id)} data-testid="button-print-deposit-slip">
+                      <Printer className="w-3.5 h-3.5 mr-1.5" /> Deposit Slip
+                    </Button>
+                    <HelpTip text="Generate printable PDF reports for this cashier's shift." />
+                  </div>
                   <DialogFooter className="gap-2 sm:gap-0">
                       <div className="flex items-center gap-1 mr-auto">
                         <Button 

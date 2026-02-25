@@ -1242,6 +1242,26 @@ export async function platinumGetAuthDayEndCashOfficeList(): Promise<any[]> {
     return platinumFetch(`/api/platinum/auth-day-end/cash-office-list`);
 }
 
+export async function platinumGetAuthDayEndCashbookList(): Promise<any[]> {
+    return platinumFetch(`/api/platinum/auth-day-end/cashbook-list`);
+}
+
+export async function platinumAuthDayEndCashierReceiptOfflineDataList(data: any): Promise<any[]> {
+    return platinumFetch(`/api/platinum/auth-day-end/cashier-receipt-offline-data-list`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
+export async function platinumAuthDayEndDirectCancelReceipt(data: any): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end/cancel-day-auth-reconcile-receipt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+}
+
 export async function platinumGetAuthDayEndCashierReconcile(params: Record<string, string>): Promise<any> {
     const qs = new URLSearchParams(params).toString();
     return platinumFetch(`/api/platinum/auth-day-end/cashier-reconcile-by-cashierid?${qs}`);

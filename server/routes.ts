@@ -2402,6 +2402,16 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/platinum/auth-day-end/cashbook-list", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing/auth-day-end-reconcile/cashbook-list");
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.post("/api/platinum/auth-day-end/system-vs-cashier-data-list", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;

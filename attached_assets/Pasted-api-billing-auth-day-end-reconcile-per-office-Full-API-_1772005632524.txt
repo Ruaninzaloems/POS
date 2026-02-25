@@ -1,0 +1,236 @@
+api/billing/auth-day-end-reconcile-per-office — Full API Sequence Reference
+ 
+  ---
+  Key Difference vs. Per-Cashier Mode
+ 
+  Reconcile.aspx.cs line 1754–1779 shows that when a cashier's office has GroupCashiers = true, the old page immediately redirects to ReconcilePerCashoffice.aspx.
+  This controller handles that per-office mode. The per-cashier controller (api/billing/auth-day-end-reconcile) handles GroupCashiers = false offices.
+ 
+  ---
+  Phase 1 — Page Initialisation
+ 
+  1. GET cash-office-list
+ 
+  - ASPX: PopulateDropdowns() → ddlCashierOffice
+  - Purpose: Load cash offices filtered to GroupCashiers = true only (opposite filter from the per-cashier controller which shows GroupCashiers = false)
+  - Params: none
+  - Response: List<CashOfficeReconcileListItem> → { cashOffice_ID, cashOfficeDesc, groupCashiers }
+ 
+  ---
+  Phase 2 — Office Selection (auto-resolves cashbook + loads cashier grid)
+ 
+  2. GET cash-office-selection
+ 
+  - ASPX: DdlCashierOffice_SelectedIndexChanged
+  - Purpose: When supervisor selects a cash office, returns the auto-resolved cashbook (via SCOA config) + cashier summary list + overall completion status. Single
+   call replaces the old dropdown-change postback that set ddlCashBook and loaded RadGrid5.
+  - Params: ?cashOfficeId={int}
+  - Response:
+  {
+    "cashBookId": 5,
+    "cashBookName": "Main Cashbook",
+    "cashierSummary": [
+      { "cashierId": 101, "cashierName": "Jane Doe", "statusDesc": "Pending" }
+    ],
+    "completionStatus": "1 of 3 Verified",
+    "allVerified": false,
+    "validationResult": { "isValid": true, "message": "" }
+  }
+ 
+  ---
+  Phase 3 — Cashier Grid (refresh on demand)
+ 
+  3. GET cashier-summary-by-office
+ 
+  - ASPX: RadGrid5 data binding
+  - Purpose: Get or refresh the cashier summary grid for an office (status per cashier: Pending / Verified / Returned)
+  - Params: ?cashOfficeId={int}
+  - Response: CashierReconcileSummaryReturnModel → { data: [...], totalRecords, completionStatus, allVerified, validationResult }
+ 
+  ---
+  Phase 4 — Cashier Selection (per cashier within office)
+ 
+  4. GET cashier-reconcile-status
+ 
+  - ASPX: RadGrid5_SelectedIndexChanged
+  - Purpose: When supervisor clicks a cashier row in the grid, get that cashier's reconcile state, whether the Continue/Return buttons should be enabled.
+  - Params: ?cashierId={long}&cashOfficeId={int}
+  - Response:
+  {
+    "cashierId": 101,
+    "cashierReconcileId": 55,
+    "cashierName": "Jane Doe",
+    "statusDesc": "Pending",
+    "reconcileDate": "25/02/2026",
+    "canContinue": true,
+    "canReturn": false,
+    "validationResult": { "isValid": true, "message": "" }
+  }
+ 
+  ---
+  Phase 5 — Process Staging (before receipt grids load)
+ 
+  5. POST process-staging-payments
+ 
+  - ASPX: StagingPaymentsProcessing(cashierId) — called inside BindGrid() before receipt grids are populated
+  - Purpose: Processes all pending misc payments and prepaid recharge payments for every cashier in the cash office, flushing the staging queue. Must run before
+  loading receipt grids so all receipts are visible.
+  - Params: ?cashOfficeId={int}
+  - Body: none
+  - Response: success/error
+ 
+  ---
+  Phase 6 — Receipt Grids (per selected cashier)
+ 
+  All grids reuse the same services as the per-cashier controller. id = cashierId.
+ 
+  POST cashier-receipt-cash-list            ?id={cashierId}
+  POST cashier-receipt-cheque-list          ?id={cashierId}
+  POST cashier-receipt-card-list            ?id={cashierId}
+  POST cashier-receipt-postal-order-list    ?id={cashierId}
+  POST cashier-receipt-drop-box-list        ?id={cashierId}
+  POST cashier-receipt-offline-data-list    ?id={cashierId}
+  POST system-vs-cashier-data-list          ?id={cashierId}
+ 
+  Body for all:
+  { "page": 1, "pageSize": 20, "orderby": "DateCaptured", "shortDirection": "desc" }
+ 
+  ---
+  Phase 7 — Stage Lock (add before verifying, finish after done)
+ 
+  6. POST add-stage
+ 
+  - ASPX: AddDayEndReconcileToStage() — called in ddlCashier_SelectedIndexChanged when supervisor selects a cashier
+  - Purpose: Creates a staging lock record marking that a day-end reconcile is in progress for this office. Prevents concurrent access.
+  - Params: none
+  - Body: none
+  - Response: success/error
+ 
+  ---
+  Cashier Day-End Submit — API 1 → API 2 → API 3
+ 
+  This is the core submit sequence. It is repeated for each cashier in the office before the final office-level submission.
+ 
+  ---
+  API 1 — POST process-staging-payments (see Phase 5 above)
+ 
+  - Run once per office before starting the verify loop
+  - Flushes all staging payments for all cashiers in the office
+ 
+  ---
+  API 2 — POST verify-cashier-reconcile
+ 
+  - ASPX: btnContinue_Click → SaveData()
+  - Purpose: Verifies (reconciles) a single cashier within the office. Saves POS_Reconcile, POS_ReconcileDetails, updates POS_CashierReconcile.StatusId = Verified,
+   handles offline shift balancing, marks drop-box payments as reconciled. Called once per cashier.
+  - Body:
+  {
+    "cashierId": 101,
+    "cashOfficeId": 3,
+    "cashBookId": 5
+  }
+  - Response: { isSuccess: bool, message: string }
+ 
+  Repeat API 2 for every cashier in the office until allVerified = true (check via GET cashier-summary-by-office).
+ 
+  ---
+  API 3 — POST submit-reconcile-per-office
+ 
+  - ASPX: btnReconcile_Click → SaveCashBookEntry()
+  - Purpose: Final office-level submission. Runs DayendAuthService.Execute for all payment types (CC, CH/C/PO) across all cashiers in the office including offline
+  shifts, creating the cashbook journal entries. Calls iConsBill.Reconcile() to mark cashiers as fully reconciled. Only callable after all cashiers are Verified.
+  - Body:
+  {
+    "cashOfficeId": 3,
+    "cashBookId": 5
+  }
+  - Response: { isSuccess: bool, message: string }
+ 
+  ---
+  API 4 — POST finish-stage
+ 
+  - ASPX: FinishEndReconcile() — called at end of SaveData(), btnReturn_Click, and btnBack_Click
+  - Purpose: Clears the staging lock record created by add-stage. Always called after submit, return, or cancel to release the lock.
+  - Params: none
+  - Body: none
+  - Response: success/error
+ 
+  ---
+  Phase 8 — Return (reject back to cashier)
+ 
+  POST return-day-end-reconcile
+ 
+  - ASPX: btnReturn_Click → SubmitCashierReconcileDetails(statusId=Return)
+  - Purpose: Returns a cashier's reconcile with a reason. Sets status back to Return.
+  - Body:
+  { "id": <cashierReconcileId>, "returnReason": "Cash count mismatch" }
+  - Followed by: POST finish-stage to release lock
+ 
+  ---
+  Phase 9 — Cancel Receipt
+ 
+  POST cancel-day-auth-reconcile-receipt
+ 
+  - ASPX: CancelReceipt(receiptId, reason) — triggered by Cancel button in receipt grid
+  - Body: { "id": <receiptId>, "returnReason": "Duplicate receipt" }
+ 
+  ---
+  Phase 10 — Print
+ 
+  POST print-receipt        → Receipt_{ReceiptNo}.pdf
+  POST print-cash-report    → CashOfficeCashUpReport_{CashierName}_{timestamp}.pdf
+  POST print-deposit-slip   → CashOfficeDeposit_{CashierName}_{timestamp}.pdf
+ 
+  Same body shapes as the per-cashier print endpoints. Note the filename prefix is CashOffice* (not Cashier*) to distinguish.
+ 
+  ---
+  Complete Submit Sequence Summary
+ 
+  Phase 1 — Init
+    GET  cash-office-list                          ← offices with GroupCashiers=true only
+ 
+  Phase 2 — Office Selection
+    GET  cash-office-selection?cashOfficeId=N      ← resolves cashbook + cashier grid
+ 
+  Phase 3 — Cashier Grid
+    GET  cashier-summary-by-office?cashOfficeId=N  ← refresh cashier list + completion status
+ 
+  Phase 4 — Cashier Selection (per cashier)
+    GET  cashier-reconcile-status?cashierId=N&cashOfficeId=N
+ 
+  Phase 5 — Lock
+    POST add-stage                                 ← lock session (on cashier select)
+ 
+  Phase 6 — Process Staging
+    POST process-staging-payments?cashOfficeId=N   ← API 1: flush all staging payments
+ 
+  Phase 7 — Review Receipts (per cashier)
+    POST cashier-receipt-cash-list?id=N
+    POST cashier-receipt-cheque-list?id=N
+    POST cashier-receipt-card-list?id=N
+    POST cashier-receipt-postal-order-list?id=N
+    POST cashier-receipt-drop-box-list?id=N
+    POST cashier-receipt-offline-data-list?id=N
+    POST system-vs-cashier-data-list?id=N
+ 
+  Phase 8 — Verify Each Cashier (repeat per cashier)
+    POST verify-cashier-reconcile                  ← API 2: verify one cashier (repeat until all done)
+    GET  cashier-summary-by-office                 ← check allVerified after each
+ 
+  Phase 9 — Final Office Submission
+    POST submit-reconcile-per-office               ← API 3: cashbook journal entries for all cashiers
+ 
+  Phase 10 — Release Lock
+    POST finish-stage                              ← always called after submit, return, or back
+ 
+  Phase 11 — Return (if rejecting)
+    POST return-day-end-reconcile                  ← return one cashier with reason
+    POST finish-stage                              ← release lock after return
+ 
+  Phase 12 — Cancel Receipt (during review)
+    POST cancel-day-auth-reconcile-receipt
+ 
+  Phase 13 — Print
+    POST print-receipt
+    POST print-cash-report
+    POST print-deposit-slip

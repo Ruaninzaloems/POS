@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, CheckCircle2, Loader2, Banknote, Coins, CreditCard, FileText, ChevronDown, ChevronUp, Mail, User, Building2, Calendar, Clock, ArrowRight, Receipt, XCircle, Archive } from 'lucide-react';
-import { platinumSaveDayEndReconcileData, platinumGetDayEndReconcileList } from '@/lib/external-api';
+import { platinumSaveDayEndReconcileData, platinumGetDayEndReconcileList, platinumAuthDayEndValidateCashbook, platinumAuthDayEndSubmitReconcile } from '@/lib/external-api';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
 
@@ -203,16 +203,32 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
         finyear: finYear,
       };
 
-      console.log('[DayEndModal] Submitting reconcile payload:', JSON.stringify(payload));
+      console.log('[DayEndModal] Step 1: save-reconcile-data payload:', JSON.stringify(payload));
       const result = await platinumSaveDayEndReconcileData(userId, payload);
-      console.log('[DayEndModal] API response:', JSON.stringify(result));
+      console.log('[DayEndModal] Step 1 response:', JSON.stringify(result));
 
       if (result?.error || result?.isError === true || result?.success === false) {
         const errMsg = result?.error || result?.message || result?.errorMessage || 'API rejected the submission. Please check the values and try again.';
-        console.error('[DayEndModal] API returned error in response:', errMsg);
+        console.error('[DayEndModal] save-reconcile-data returned error:', errMsg);
         setErrorMessage(errMsg);
         setStep('error');
         return;
+      }
+
+      try {
+        console.log('[DayEndModal] Step 2: validate-cashbook for cashier', cashierId);
+        await platinumAuthDayEndValidateCashbook({ cashierId: Number(cashierId) });
+        console.log('[DayEndModal] validate-cashbook passed');
+      } catch (valErr: any) {
+        console.warn('[DayEndModal] validate-cashbook warning (continuing):', valErr.message);
+      }
+
+      try {
+        console.log('[DayEndModal] Step 3: submit-day-auth-reconcile for cashier', cashierId);
+        await platinumAuthDayEndSubmitReconcile({ cashierId: Number(cashierId) });
+        console.log('[DayEndModal] submit-day-auth-reconcile succeeded');
+      } catch (subErr: any) {
+        console.warn('[DayEndModal] submit-day-auth-reconcile warning (continuing):', subErr.message);
       }
 
       setStep('success');

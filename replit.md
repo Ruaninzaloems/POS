@@ -58,8 +58,8 @@ Preferred communication style: Simple, everyday language.
 - **Rounding**: Transaction totals are rounded up to the nearest 10 cents.
 - **Change Calculation**: Only on the cash portion: `max(0, cash - (total - card))`.
 - **Transaction Types**: Six types auto-detected: Consumer Services, Multi-Account, Account Group, Prepaid, Direct Income, Clearance.
-- **Day-End Process**: Cashiers submit cash counts, supervisors approve.
-- **Cancellation Workflow**: Cashiers request, supervisors approve/cancel.
+- **Day-End Process**: Full 8-phase workflow: Init (cashier-list, cash-office-list, cashbook-list) → Resolve Cashier (active-cashierid, pos-cashier, cashier-details, cashier-reconcile) → Review Receipts (cash/card/cheque/postal-order/drop-box/offline-data/system-vs-cashier lists) → Pending Cancels → Submit Flow (save-reconcile-data → validate-cashbook → submit-day-auth-reconcile) → Return (return-day-end-reconcile) → Cancel Receipts (request/approve/decline/direct-cancel) → Print (receipt/cash-report/deposit-slip). Supervisor approval follows validate → submit → finish-day-end-reconcile sequence.
+- **Cancellation Workflow**: Cashiers request cancellation, supervisors approve/decline via pending-cancel-requests flow. Supervisors can also directly cancel receipts via cancel-day-auth-reconcile-receipt without request-approve flow.
 - **Payment Validation**: Cashier payment options/types are validated against Platinum API endpoints (`/api/billing-payment/payment-options`, `/api/billing-payment/payment-types`).
 - **Receipt Range Validation**: Verified via `/api/platinum/receipt-prepaid/validate-receipt-range` before payment processing.
 - **Session Detection**: Uses `/api/ReceiptPrepaid/validate-cashier` as the single source of truth for cashier session status (`isActive` field). Auto-resume and session enforcement are based on this.
