@@ -542,11 +542,18 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setRecentTransactions(prev => {
             const activeId = currentTransactionIdRef.current;
             const activeTx = activeId ? prev.find(t => t.id === activeId) : null;
-            if (activeTx) {
-              const filtered = mapped.filter(t => t.id !== activeTx.id);
-              return [activeTx, ...filtered];
-            }
-            return mapped;
+            const apiReceiptNos = new Set(mapped.map(t => t.receiptNumber).filter(Boolean));
+            const localOnly = prev.filter(t => {
+              if (t.id === activeTx?.id) return false;
+              if (!t.receiptNumber) return false;
+              if (t.id.startsWith('unrec-') || t.id.startsWith('plt-') || t.id.startsWith('vr-')) return false;
+              return !apiReceiptNos.has(t.receiptNumber);
+            });
+            const merged = activeTx
+              ? [activeTx, ...mapped.filter(t => t.id !== activeTx.id), ...localOnly]
+              : [...mapped, ...localOnly];
+            merged.sort((a, b) => b.timestamp - a.timestamp);
+            return merged;
           });
           console.log(`[Transactions] Loaded ${mapped.length} transactions from unreconciled-list API`);
           return;
@@ -626,11 +633,18 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setRecentTransactions(prev => {
             const activeId = currentTransactionIdRef.current;
             const activeTx = activeId ? prev.find(t => t.id === activeId) : null;
-            if (activeTx) {
-                const filtered = mapped.filter(t => t.id !== activeTx.id);
-                return [activeTx, ...filtered];
-            }
-            return mapped;
+            const apiReceiptNos = new Set(mapped.map(t => t.receiptNumber).filter(Boolean));
+            const localOnly = prev.filter(t => {
+              if (t.id === activeTx?.id) return false;
+              if (!t.receiptNumber) return false;
+              if (t.id.startsWith('unrec-') || t.id.startsWith('plt-') || t.id.startsWith('vr-')) return false;
+              return !apiReceiptNos.has(t.receiptNumber);
+            });
+            const merged = activeTx
+              ? [activeTx, ...mapped.filter(t => t.id !== activeTx.id), ...localOnly]
+              : [...mapped, ...localOnly];
+            merged.sort((a, b) => b.timestamp - a.timestamp);
+            return merged;
         });
         console.log(`[Transactions] Loaded ${mapped.length} transactions from Platinum ViewReceipt API`);
         return;
@@ -696,11 +710,18 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setRecentTransactions(prev => {
             const activeId = currentTransactionIdRef.current;
             const activeTx = activeId ? prev.find(t => t.id === activeId) : null;
-            if (activeTx) {
-              const filtered = mapped.filter(t => t.id !== activeTx.id);
-              return [activeTx, ...filtered];
-            }
-            return mapped;
+            const apiReceiptNos = new Set(mapped.map(t => t.receiptNumber).filter(Boolean));
+            const localOnly = prev.filter(t => {
+              if (t.id === activeTx?.id) return false;
+              if (!t.receiptNumber) return false;
+              if (t.id.startsWith('unrec-') || t.id.startsWith('plt-') || t.id.startsWith('vr-')) return false;
+              return !apiReceiptNos.has(t.receiptNumber);
+            });
+            const merged = activeTx
+              ? [activeTx, ...mapped.filter(t => t.id !== activeTx.id), ...localOnly]
+              : [...mapped, ...localOnly];
+            merged.sort((a, b) => b.timestamp - a.timestamp);
+            return merged;
           });
           console.log(`[Transactions] Loaded ${mapped.length} transactions from receipt discovery`);
           return;
@@ -785,18 +806,31 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setRecentTransactions(prev => {
             const activeId = currentTransactionIdRef.current;
             const activeTx = activeId ? prev.find(t => t.id === activeId) : null;
-            if (activeTx) {
-                const filtered = mapped.filter(t => t.id !== activeTx.id);
-                return [activeTx, ...filtered];
-            }
-            return mapped;
+            const apiReceiptNos = new Set(mapped.map(t => t.receiptNumber).filter(Boolean));
+            const localOnly = prev.filter(t => {
+              if (t.id === activeTx?.id) return false;
+              if (!t.receiptNumber) return false;
+              if (t.id.startsWith('unrec-') || t.id.startsWith('plt-') || t.id.startsWith('vr-')) return false;
+              return !apiReceiptNos.has(t.receiptNumber);
+            });
+            const merged = activeTx
+              ? [activeTx, ...mapped.filter(t => t.id !== activeTx.id), ...localOnly]
+              : [...mapped, ...localOnly];
+            merged.sort((a, b) => b.timestamp - a.timestamp);
+            return merged;
         });
         console.log(`[Transactions] Loaded ${mapped.length} transactions from stored receipt IDs via pos-multi-receipt-print`);
       } else {
         setRecentTransactions(prev => {
             const activeId = currentTransactionIdRef.current;
             const activeTx = activeId ? prev.find(t => t.id === activeId) : null;
-            return activeTx ? [activeTx] : [];
+            const localOnly = prev.filter(t => {
+              if (t.id === activeTx?.id) return false;
+              if (!t.receiptNumber) return false;
+              if (t.id.startsWith('unrec-') || t.id.startsWith('plt-') || t.id.startsWith('vr-')) return false;
+              return true;
+            });
+            return activeTx ? [activeTx, ...localOnly] : localOnly;
         });
         console.log(`[Transactions] No receipt data found from stored IDs`);
       }
