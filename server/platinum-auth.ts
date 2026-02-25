@@ -109,50 +109,43 @@ const tokenRefreshPromises = new Map<string, Promise<{ token: string; userData: 
 async function fetchTokenForUser(username: string, password: string, dbName: string): Promise<{ token: string; userData: any; authMode: 'direct' | 'azure' | 'override' }> {
   console.log(`[PlatinumAuth] Attempting login for username: ${username} on DB: ${dbName}`);
 
-  const usernamesToTry = [username];
-  if (PLATINUM_USERNAME && PLATINUM_USERNAME.toLowerCase() !== username.toLowerCase()) {
-    usernamesToTry.push(PLATINUM_USERNAME);
-  }
-
   if (password) {
-    for (const tryName of usernamesToTry) {
-      try {
-        const res = await fetch(`${PLATINUM_API_URL}/auth/createToken`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userName: tryName, password, dbName }),
-        });
+    try {
+      const res = await fetch(`${PLATINUM_API_URL}/auth/createToken`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userName: username, password, dbName }),
+      });
 
-        if (res.ok) {
-          const data = await res.json();
-          if (data.token) {
-            const userData = data.data || data.user || data.userData || {};
-            const apiUserId = userData.user_ID ?? userData.userId ?? userData.id;
+      if (res.ok) {
+        const data = await res.json();
+        if (data.token) {
+          const userData = data.data || data.user || data.userData || {};
+          const apiUserId = userData.user_ID ?? userData.userId ?? userData.id;
 
-            if (apiUserId && apiUserId !== 1) {
-              const user = {
-                user_ID: apiUserId,
-                userName: userData.userName ?? tryName,
-                firstName: userData.firstName ?? tryName,
-                lastName: userData.lastName ?? '',
-                eMail: userData.eMail ?? null,
-                enabled: userData.enabled ?? true,
-                superUser: userData.superUser ?? false,
-                cashFloat: userData.cashFloat ?? 0,
-                finYear: userData.finYear || data.finYear || "2026/2027"
-              };
-              console.log(`[PlatinumAuth] Token obtained via createToken (tried "${tryName}"). User: ${user.firstName} ${user.lastName} (user_ID: ${user.user_ID})`);
-              return { token: data.token, userData: user, authMode: 'direct' as const };
-            }
-            console.log(`[PlatinumAuth] createToken for "${tryName}" returned generic user (ID:${apiUserId}), will try next`);
+          if (apiUserId && apiUserId !== 1) {
+            const user = {
+              user_ID: apiUserId,
+              userName: userData.userName ?? username,
+              firstName: userData.firstName ?? username,
+              lastName: userData.lastName ?? '',
+              eMail: userData.eMail ?? null,
+              enabled: userData.enabled ?? true,
+              superUser: userData.superUser ?? false,
+              cashFloat: userData.cashFloat ?? 0,
+              finYear: userData.finYear || data.finYear || "2026/2027"
+            };
+            console.log(`[PlatinumAuth] Token obtained via createToken. User: ${user.firstName} ${user.lastName} (user_ID: ${user.user_ID})`);
+            return { token: data.token, userData: user, authMode: 'direct' as const };
           }
-        } else {
-          const text = await res.text();
-          console.log(`[PlatinumAuth] createToken failed for "${tryName}": ${res.status} - ${text.substring(0, 200)}`);
+          console.log(`[PlatinumAuth] createToken returned generic user (ID:${apiUserId}), will try Azure`);
         }
-      } catch (e: any) {
-        console.log(`[PlatinumAuth] createToken error for "${tryName}": ${e.message}`);
+      } else {
+        const text = await res.text();
+        console.log(`[PlatinumAuth] createToken failed for ${username}: ${res.status} - ${text.substring(0, 200)}`);
       }
+    } catch (e: any) {
+      console.log(`[PlatinumAuth] createToken error: ${e.message}`);
     }
   }
 
