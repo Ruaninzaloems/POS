@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, CheckCircle2, Loader2, Banknote, Coins, CreditCard, FileText, ChevronDown, ChevronUp, Mail, User, Building2, Calendar, Clock, ArrowRight, Receipt, XCircle, Archive } from 'lucide-react';
 import { platinumSaveDayEndReconcileData, platinumGetDayEndReconcileList } from '@/lib/external-api';
 import { useToast } from '@/hooks/use-toast';
+import { useLocation } from 'wouter';
 
 interface DayEndModalProps {
   isOpen: boolean;
@@ -48,6 +49,7 @@ const COIN_DENOMINATIONS = [
 export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
   const { platinumCashierId, platinumUser, currentUser, sessionDetails, allowedPaymentTypes, dayEndStatus } = usePos();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const [step, setStep] = useState<'capture' | 'confirm' | 'submitting' | 'success' | 'error'>('capture');
   const [errorMessage, setErrorMessage] = useState('');
@@ -829,8 +831,8 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
             </Button>
           )}
           {step === 'success' && (
-            <Button onClick={onClose} className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold shadow-md" data-testid="button-done">
-              Return to Dashboard
+            <Button onClick={() => { onClose(); setLocation('/cashier-setup'); }} className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold shadow-md" data-testid="button-done">
+              Return to Cashier Setup
             </Button>
           )}
           {step === 'error' && (

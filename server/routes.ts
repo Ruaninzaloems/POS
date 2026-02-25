@@ -293,6 +293,7 @@ export async function registerRoutes(
       const cashier = vcData.cashier || null;
       const cashOffice = vcData.cashOffice || null;
       const receiptRange = vcData.receiptRange || vcData.receiptRangeAvailable || null;
+      const cashierReconcile = vcData.cashierReconcile || null;
 
       const hasReceiptRangeData = receiptRange != null && (receiptRange.user_Id > 0 || receiptRange.isEnabled === true);
       const isCashierRegistered = (cashier != null && (cashier.id > 0 || cashier.user_Id > 0)) || hasReceiptRangeData;
@@ -303,7 +304,8 @@ export async function registerRoutes(
       const cashFloat = cashier?.cashFloat ?? 0;
       const cashOnHandLimit = cashOffice?.cashOnHandLimit || 999999;
 
-      console.log(`[active-cashier] validate-cashier result — registered: ${isCashierRegistered}, isActive: ${isSessionActive} (POS_Cashier.IsActive=${cashier?.isActive}), cashierId: ${cashierId}, officeId: ${activeOfficeId}, officeName: ${activeOfficeName}`);
+      const hasPendingDayEnd = cashierReconcile != null;
+      console.log(`[active-cashier] validate-cashier result — registered: ${isCashierRegistered}, isActive: ${isSessionActive} (POS_Cashier.IsActive=${cashier?.isActive}), cashierId: ${cashierId}, officeId: ${activeOfficeId}, officeName: ${activeOfficeName}, cashierReconcile: ${cashierReconcile ? 'PRESENT (day-end pending)' : 'null (no pending day-end)'}`);
 
       const cashierDetails = cashier ? {
         ...cashier,
@@ -320,6 +322,8 @@ export async function registerRoutes(
         cashOnHandLimit,
         isActive: isSessionActive,
         hasReceiptRange: receiptRange != null && receiptRange.isEnabled === true,
+        hasPendingDayEnd,
+        cashierReconcile,
         details: cashierDetails,
       });
     } catch (e: any) {
@@ -527,6 +531,7 @@ export async function registerRoutes(
     try {
       const session = requireAuth(req, res); if (!session) return;
       const data = await platinumGet(session, "/api/ReceiptPrepaid/ValidateCashierDayEndRecon", req.query as Record<string, string>);
+      console.log(`[validate-day-end-recon] Query: ${JSON.stringify(req.query)}, Response: ${JSON.stringify(data)}`);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });

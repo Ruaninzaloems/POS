@@ -9,7 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { useLocation } from 'wouter';
 import { Loader2, AlertTriangle, CheckCircle2, Circle, ShieldCheck, CreditCard, Banknote, XCircle, RefreshCw } from 'lucide-react';
-import { platinumGetCashOffices, fetchCashierPaymentOptions, fetchCashierPaymentTypes, validateReceiptRange, CashierPaymentOption, CashierPaymentType, ReceiptRangeValidation, fetchActiveCashierByUserId, fetchPlatinumUserInfo, platinumSubmitCashierSetup, platinumValidateCashierDayEndRecon } from '@/lib/external-api';
+import { platinumGetCashOffices, fetchCashierPaymentOptions, fetchCashierPaymentTypes, validateReceiptRange, CashierPaymentOption, CashierPaymentType, ReceiptRangeValidation, fetchActiveCashierByUserId, fetchPlatinumUserInfo, platinumSubmitCashierSetup } from '@/lib/external-api';
 
 interface CashOfficeViewModel {
     cashOffice_ID: number;
@@ -93,26 +93,13 @@ export default function CashierSetup() {
                     if (data.isActive === true && data.officeId) {
                         console.log(`[CashierSetup] validate-cashier API confirms session is active (POS_Cashier.IsActive=1) at office ${data.officeName} (ID: ${data.officeId}). isActive is the single source of truth.`);
 
-                        let pendingDayEnd = false;
-                        try {
-                            const reconCheck = await platinumValidateCashierDayEndRecon({
-                                cashierId: String(data.cashierId),
-                                userId: String(userId),
-                            });
-                            console.log(`[CashierSetup] Day-end recon check:`, JSON.stringify(reconCheck));
-                            if (reconCheck?.isReconciled === true || reconCheck?.isSubmitted === true || reconCheck?.hasPendingReconcile === true) {
-                                pendingDayEnd = true;
-                            }
-                        } catch (e) {
-                            console.warn(`[CashierSetup] Day-end recon check failed:`, e);
-                        }
-
-                        if (pendingDayEnd) {
-                            console.log(`[CashierSetup] Day-end reconciliation is pending supervisor approval — blocking resume`);
+                        if (data.hasPendingDayEnd === true) {
+                            console.log(`[CashierSetup] cashierReconcile is present — day-end pending supervisor approval — blocking resume`);
                             setDayEndPending(true);
                             setResumingSession(false);
                             setStep2Status('success');
                         } else {
+                            console.log(`[CashierSetup] No pending day-end (cashierReconcile=null) — allowing resume`);
                             setResumingSession(true);
                             setStep2Status('success');
                             setStep3Status('pending');
@@ -789,7 +776,7 @@ export default function CashierSetup() {
                             <Button
                                 type="submit"
                                 className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25 h-12 text-base font-bold rounded-xl w-full"
-                                disabled={!selectedOffice || submitting || isCashierRegistered !== true}
+                                disabled={!selectedOffice || submitting || isCashierRegistered !== true || dayEndPending}
                                 data-testid="button-submit"
                             >
                                 {submitting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Setting up...</> : 'Submit'}

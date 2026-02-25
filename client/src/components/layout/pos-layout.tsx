@@ -109,6 +109,40 @@ export function PosLayout({ children }: PosLayoutProps) {
       );
   }
 
+  if (requiresActiveSession && dayEndStatus === 'PENDING_APPROVAL') {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 flex items-center justify-center p-4">
+          <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 max-w-lg w-full p-6 sm:p-8 text-center space-y-4">
+            <div className="mx-auto w-16 h-16 rounded-full bg-orange-500/20 flex items-center justify-center">
+              <AlertTriangle className="h-8 w-8 text-orange-400" />
+            </div>
+            <h2 className="text-xl font-bold text-white">Day-End Pending Reconciliation</h2>
+            <p className="text-blue-200/70 text-sm leading-relaxed">
+              Your day-end reconciliation has been submitted and is awaiting supervisor approval. 
+              You cannot transact, start a new shift, or resume your current shift until the reconciliation has been approved or returned by a supervisor.
+            </p>
+            <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4 text-left space-y-2">
+              <p className="text-sm font-semibold text-orange-300">What happens next:</p>
+              <ul className="text-sm text-orange-200/80 list-disc list-inside space-y-1">
+                <li>Your supervisor will review the submitted figures</li>
+                <li>Once approved, your session will be closed and you can start a new shift</li>
+                <li>If returned, you will be able to re-submit your day-end</li>
+              </ul>
+            </div>
+            <Button
+              onClick={() => setLocation('/cashier-setup')}
+              variant="outline"
+              className="border-white/20 text-white/80 hover:bg-white/10 mt-2"
+              data-testid="button-back-to-setup"
+            >
+              <Home className="w-4 h-4 mr-2" />
+              Back to Cashier Setup
+            </Button>
+          </div>
+        </div>
+      );
+  }
+
   if (isReceiptingPage && !platinumUser) {
       return (
         <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 flex items-center justify-center">

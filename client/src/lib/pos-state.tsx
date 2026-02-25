@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect, useRef,
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, CashOffice } from './external-api';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange, fetchActiveCashierByUserId, fetchPosMultiReceiptPrintByCashier, platinumValidateCashier, platinumValidateCashierDayEndRecon, fetchActiveFinYear, platinumAuthDayEndCancelReceipt, platinumRequestCancelReceipt, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumGetPendingCancelRequests, platinumGetDayEndReconcileList, platinumReceiptDiscovery, platinumGetDayEndUnreconciledList } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchReceiptList, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange, fetchActiveCashierByUserId, fetchPosMultiReceiptPrintByCashier, platinumValidateCashier, fetchActiveFinYear, platinumAuthDayEndCancelReceipt, platinumRequestCancelReceipt, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumGetPendingCancelRequests, platinumGetDayEndReconcileList, platinumReceiptDiscovery, platinumGetDayEndUnreconciledList } from './external-api';
 import { getAccountBalance as enquiryGetAccountBalance } from './enquiries-service';
 
 if (import.meta.hot) {
@@ -411,28 +411,15 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               console.warn(`[Session] validate-cashier call failed, using fallback cashier ID: ${receiptCashierId}`);
             }
 
-            let hasPendingDayEnd = false;
-            try {
-              const reconCheck = await platinumValidateCashierDayEndRecon({
-                cashierId: String(resolvedCashierId),
-                userId: String(platinumUser.user_ID),
-              });
-              console.log(`[Session] Day-end recon check response:`, JSON.stringify(reconCheck));
-              if (reconCheck?.isReconciled === true || reconCheck?.isSubmitted === true || reconCheck?.hasPendingReconcile === true) {
-                hasPendingDayEnd = true;
-                console.log(`[Session] Day-end reconciliation is pending/submitted — blocking auto-resume`);
-              }
-            } catch (e) {
-              console.warn(`[Session] Day-end recon check failed — allowing resume:`, e);
-            }
-
+            const hasPendingDayEnd = data.hasPendingDayEnd === true;
             if (hasPendingDayEnd) {
+              console.log(`[Session] cashierReconcile is present in validate-cashier response — day-end is pending supervisor approval`);
               setDayEndStatus('PENDING_APPROVAL');
               setActiveSession(false);
               setApiSessionActive(false);
               console.log(`[Session] Session blocked — day-end pending supervisor approval`);
             } else {
-              console.log(`[Session] No pending day-end — auto-resuming. Office: ${officeName} (ID: ${officeId}), Float: ${cashFloat}`);
+              console.log(`[Session] No pending day-end (cashierReconcile=null) — auto-resuming. Office: ${officeName} (ID: ${officeId}), Float: ${cashFloat}`);
               setActiveSession(true);
               setApiSessionActive(true);
               setSessionDetails({

@@ -46,9 +46,7 @@ const CACHEABLE_PATHS = [
   '/api/billing-payment/payment-types',
 ];
 
-const SHORT_CACHEABLE_PATHS = [
-  '/api/ReceiptPrepaid/validate-cashier',
-];
+const SHORT_CACHEABLE_PATHS: string[] = [];
 const SHORT_RESPONSE_CACHE_TTL = 5 * 1000;
 
 const NEVER_CACHE_PATHS = [
@@ -57,6 +55,9 @@ const NEVER_CACHE_PATHS = [
   '/api/billing-payment/submit-consumer-payment',
   '/api/billing-payment/submit-multiple-payment',
   '/api/billing-payment/save-multiple-account-payment',
+  '/api/ReceiptPrepaid/validate-cashier',
+  '/api/ReceiptPrepaid/ValidateCashierDayEndRecon',
+  '/api/billing-payment-day-end-reconcile/save-Reconcile-data',
 ];
 
 function getCacheableInfo(path: string): { cacheable: boolean; ttl: number } {
