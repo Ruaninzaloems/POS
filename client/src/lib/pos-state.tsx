@@ -105,6 +105,8 @@ export interface TransactionItem {
   paidByError?: boolean;
   notes?: string;
   additionalInfo?: string;
+  itemCash?: number;
+  itemCard?: number;
 }
 
 interface PosState {
@@ -164,6 +166,7 @@ interface PosState {
   cashierRegistered: boolean | null;
   apiSessionActive: boolean | null;
   receiptDate: string;
+  perItemSplitMode: boolean;
 }
 
 interface PosActions {
@@ -189,6 +192,8 @@ interface PosActions {
   approveCancellation: (id: string, approved: boolean) => void;
   refreshTransactions: () => Promise<void>;
   setReceiptDate: (date: string) => void;
+  setPerItemSplitMode: (enabled: boolean) => void;
+  updateItemSplit: (id: string, cash: number, card: number) => void;
 }
 
 const PosContext = createContext<(PosState & PosActions) | null>(null);
@@ -270,6 +275,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saDate.getFullYear() + '-' + String(saDate.getMonth() + 1).padStart(2, '0') + '-' + String(saDate.getDate()).padStart(2, '0');
   };
   const [receiptDate, setReceiptDate] = useState<string>(getSADateString());
+  const [perItemSplitMode, setPerItemSplitMode] = useState(false);
   
   // API-TODO: officeLimits — should be fetched from Platinum API endpoint for cash office configuration
   // Endpoint needed: GET /api/platinum/pos-settings/office-limits or similar
@@ -1096,18 +1102,53 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateItemAmount = (id: string, amount: number) => {
-    setItems(prev => prev.map(i => i.id === id ? { ...i, amountToPay: amount } : i));
+    setItems(prev => prev.map(i => {
+      if (i.id !== id) return i;
+      if (perItemSplitMode && i.itemCash !== undefined) {
+        const oldTotal = (i.itemCash ?? 0) + (i.itemCard ?? 0);
+        if (oldTotal > 0) {
+          const cashRatio = (i.itemCash ?? 0) / oldTotal;
+          return { ...i, amountToPay: amount, itemCash: Math.round(amount * cashRatio * 100) / 100, itemCard: Math.round(amount * (1 - cashRatio) * 100) / 100 };
+        }
+        return { ...i, amountToPay: amount, itemCash: amount, itemCard: 0 };
+      }
+      return { ...i, amountToPay: amount };
+    }));
   };
 
   const updateItemDetails = (id: string, details: Partial<TransactionItem>) => {
     setItems(prev => prev.map(i => i.id === id ? { ...i, ...details } : i));
   };
   
+  const updateItemSplit = (id: string, cash: number, card: number) => {
+    setItems(prev => prev.map(i => {
+      if (i.id !== id) return i;
+      return { ...i, itemCash: cash, itemCard: card, amountToPay: Math.round((cash + card) * 100) / 100 };
+    }));
+  };
+
+  const handleSetPerItemSplitMode = (enabled: boolean) => {
+    setPerItemSplitMode(enabled);
+    if (enabled) {
+      setItems(prev => prev.map(i => ({
+        ...i,
+        itemCash: i.itemCash ?? i.amountToPay,
+        itemCard: i.itemCard ?? 0,
+      })));
+    } else {
+      setItems(prev => prev.map(i => {
+        const { itemCash, itemCard, ...rest } = i;
+        return rest as TransactionItem;
+      }));
+    }
+  };
+
   const setViewingItem = (id: string | null) => {
       setViewingItemId(id);
   }
 
   const setPaymentAmount = (type: 'cash' | 'card', amount: number) => {
+    if (perItemSplitMode) return;
     setPayment(prev => ({ ...prev, [type]: amount }));
   };
 
@@ -1119,11 +1160,23 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setPayment(prev => ({ ...prev, cardExpiry: exp }));
   };
 
+  React.useEffect(() => {
+    if (!perItemSplitMode) return;
+    const totalCash = items.reduce((sum, i) => sum + (i.itemCash ?? 0), 0);
+    const totalCard = items.reduce((sum, i) => sum + (i.itemCard ?? 0), 0);
+    setPayment(prev => ({
+      ...prev,
+      cash: Math.round(totalCash * 100) / 100,
+      card: Math.round(totalCard * 100) / 100,
+    }));
+  }, [items, perItemSplitMode]);
+
   const clearTransaction = () => {
     setItems([]);
     setPayment({ cash: 0, card: 0, cardReference: '', cardExpiry: '' });
     setSearchQuery('');
     setViewingItemId(null);
+    setPerItemSplitMode(false);
   };
 
   const updateRecordReceiptNumber = (record: TransactionRecord, newReceiptNumber: string) => {
@@ -1881,26 +1934,42 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             let accPaymentSucceeded = false;
 
             if (isSplitPayment) {
+                const hasPerItemSplits = accountItems.some(i => i.itemCash !== undefined && i.itemCard !== undefined);
                 const cashPaid = Math.max(0, record.payment.cash - totalChange);
                 const cardPaid = record.payment.card;
                 const cashPaidRatio = grandTotal > 0 ? cashPaid / grandTotal : 0;
                 const accGroupTotal = isMixedBasket ? accountTotal : grandTotal;
-                const accCashActual = Math.round(accGroupTotal * cashPaidRatio * 100) / 100;
-                const accCardActual = Math.round((accGroupTotal - accCashActual) * 100) / 100;
+
+                let accCashActual: number;
+                let accCardActual: number;
+                if (hasPerItemSplits) {
+                    accCashActual = r2(accountItems.reduce((s, i) => s + (i.itemCash ?? 0), 0));
+                    accCardActual = r2(accountItems.reduce((s, i) => s + (i.itemCard ?? 0), 0));
+                    console.log(`[Priority 1 SPLIT] Per-item mode: Cash R${accCashActual}, Card R${accCardActual}`);
+                } else {
+                    accCashActual = Math.round(accGroupTotal * cashPaidRatio * 100) / 100;
+                    accCardActual = Math.round((accGroupTotal - accCashActual) * 100) / 100;
+                }
                 const accCashTender = isMixedBasket ? accCashActual : record.payment.cash;
                 const accCashChange = isMixedBasket ? 0 : totalChange;
 
                 console.log(`[Priority 1 SPLIT] ACC total: R${accGroupTotal}, Cash: R${accCashActual} (tender: R${accCashTender}, change: R${accCashChange}), Card: R${accCardActual}`);
 
-                const buildPortionStagingPayload = (portionTotal: number) => {
-                    const result = saveAccounts.map(acct => {
+                const buildPortionStagingPayload = (portionTotal: number, portionType?: 'cash' | 'card') => {
+                    const result = saveAccounts.map((acct, idx) => {
                         const { _userAmountToPay, ...rest } = acct;
-                        const userAmt = _userAmountToPay;
-                        const portionAmt = accGroupTotal > 0
-                            ? Math.round((userAmt / accGroupTotal) * portionTotal * 100) / 100
-                            : Math.round(portionTotal / saveAccounts.length * 100) / 100;
-                        return { ...rest, outStandingAmt: portionAmt };
-                    });
+                        let portionAmt: number;
+                        if (hasPerItemSplits && portionType) {
+                            const srcItem = accountItems[idx];
+                            portionAmt = portionType === 'cash' ? (srcItem?.itemCash ?? 0) : (srcItem?.itemCard ?? 0);
+                        } else {
+                            const userAmt = _userAmountToPay;
+                            portionAmt = accGroupTotal > 0
+                                ? Math.round((userAmt / accGroupTotal) * portionTotal * 100) / 100
+                                : Math.round(portionTotal / saveAccounts.length * 100) / 100;
+                        }
+                        return { ...rest, outStandingAmt: r2(portionAmt), _userAmountToPay };
+                    }).filter(a => a.outStandingAmt > 0);
                     const summed = result.reduce((s, a) => s + a.outStandingAmt, 0);
                     const delta = Math.round((portionTotal - summed) * 100) / 100;
                     if (delta !== 0 && result.length > 0) {
@@ -1909,19 +1978,25 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     return result;
                 };
 
-                try {
-                    setProcessingStep(`Processing cash payment (1 of 2) for ${accCount} account${accCount > 1 ? 's' : ''} — R ${accCashActual.toFixed(2)}...`);
-                    const cashStagingPayload = buildPortionStagingPayload(accCashActual);
-                    console.log(`[Priority 1 SPLIT CASH] Staging ${cashStagingPayload.length} accounts with cash portions`, cashStagingPayload.map(a => `${a.account_ID}: R${a.outStandingAmt}`));
-                    await platinumSaveMultipleAccountPayment(cashStagingPayload, { userId: String(sessionUserId) });
-                    const cashResult = await submitConsumerPayments(accCashActual, accCashTender, accCashChange, 1, 1, 'CASH', accCashActual);
-                    console.log(`[Priority 1 SPLIT CASH] Submitted cash payment`, cashResult);
-                    const cashReceiptIds = extractReceiptIds(cashResult);
-                    await processAccReceiptResult(cashReceiptIds, 'CASH', 'cash', accCashActual, cashResult.perAccountAmounts);
+                if (accCashActual > 0) {
+                    try {
+                        setProcessingStep(`Processing cash payment (1 of 2) for ${accCount} account${accCount > 1 ? 's' : ''} — R ${accCashActual.toFixed(2)}...`);
+                        const cashStagingPayload = buildPortionStagingPayload(accCashActual, 'cash');
+                        console.log(`[Priority 1 SPLIT CASH] Staging ${cashStagingPayload.length} accounts with cash portions`, cashStagingPayload.map(a => `${a.account_ID}: R${a.outStandingAmt}`));
+                        await platinumSaveMultipleAccountPayment(cashStagingPayload, { userId: String(sessionUserId) });
+                        const cashAccountsOverride = hasPerItemSplits ? cashStagingPayload : undefined;
+                        const cashResult = await submitConsumerPayments(accCashActual, accCashTender, accCashChange, 1, 1, 'CASH', accCashActual, undefined, cashAccountsOverride);
+                        console.log(`[Priority 1 SPLIT CASH] Submitted cash payment`, cashResult);
+                        const cashReceiptIds = extractReceiptIds(cashResult);
+                        await processAccReceiptResult(cashReceiptIds, 'CASH', 'cash', accCashActual, cashResult.perAccountAmounts);
+                        accPaymentSucceeded = true;
+                    } catch (e: any) {
+                        console.warn(`[Priority 1 SPLIT CASH] Failed to submit cash payment`, e);
+                        toast({ title: "Cash Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
+                    }
+                } else {
+                    console.log(`[Priority 1 SPLIT] Skipping cash round — no cash amounts in per-item splits`);
                     accPaymentSucceeded = true;
-                } catch (e: any) {
-                    console.warn(`[Priority 1 SPLIT CASH] Failed to submit cash payment`, e);
-                    toast({ title: "Cash Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
                 }
 
                 if (accCardActual > 0) {
@@ -1936,20 +2011,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         return `${datePart}T${timePart}`;
                     };
 
-                    const cardStagingPayload = saveAccounts.map(acct => {
-                        const { _userAmountToPay, ...rest } = acct;
-                        const userAmt = _userAmountToPay;
-                        const portionAmt = accGroupTotal > 0
-                            ? Math.round((userAmt / accGroupTotal) * accCardActual * 100) / 100
-                            : Math.round(accCardActual / saveAccounts.length * 100) / 100;
-                        return { ...rest, outStandingAmt: portionAmt };
-                    });
-                    const summed = cardStagingPayload.reduce((s, a) => s + a.outStandingAmt, 0);
-                    const delta = Math.round((accCardActual - summed) * 100) / 100;
-                    if (delta !== 0 && cardStagingPayload.length > 0) {
-                        cardStagingPayload[cardStagingPayload.length - 1].outStandingAmt =
-                            Math.round((cardStagingPayload[cardStagingPayload.length - 1].outStandingAmt + delta) * 100) / 100;
-                    }
+                    const cardStagingPayload = buildPortionStagingPayload(accCardActual, 'card');
 
                     try {
                         const cardReceiptDate = generateFreshReceiptDate();
@@ -1957,7 +2019,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         console.log(`[Priority 1 SPLIT CARD] receiptDate: ${cardReceiptDate}, staging ${cardStagingPayload.length} accounts`, cardStagingPayload.map(a => `${a.account_ID}: R${a.outStandingAmt}`));
 
                         await platinumSaveMultipleAccountPayment(cardStagingPayload, { userId: String(sessionUserId) });
-                        const cardResult = await submitConsumerPayments(accCardActual, accCardActual, 0, 3, 1, 'CARD', accCardActual, cardReceiptDate, saveAccounts);
+                        const cardAccountsOverride = hasPerItemSplits ? cardStagingPayload : saveAccounts;
+                        const cardResult = await submitConsumerPayments(accCardActual, accCardActual, 0, 3, 1, 'CARD', accCardActual, cardReceiptDate, cardAccountsOverride);
                         console.log(`[Priority 1 SPLIT CARD] Card payment submitted successfully`, cardResult);
                         const cardReceiptIds = extractReceiptIds(cardResult);
                         await processAccReceiptResult(cardReceiptIds, 'CARD', 'card', accCardActual, cardResult.perAccountAmounts);
@@ -2215,10 +2278,21 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             };
 
             try {
-                const clrTenderForItem = isMixedBasket ? item.amountToPay : clrGroupTender;
-                const clrChangeForItem = isMixedBasket ? 0 : clrGroupChange;
-                const clrPaymentTypeId = record.payment.card > 0 && record.payment.cash === 0 ? 3 : 1;
-                await submitOneClearance(clrPaymentTypeId, item.amountToPay, clrTenderForItem, clrChangeForItem, 'FULL', record.payment.card > 0 ? 'card' : 'cash');
+                const hasItemSplit = item.itemCash !== undefined && item.itemCard !== undefined;
+                if (hasItemSplit && item.itemCash! > 0 && item.itemCard! > 0) {
+                    console.log(`[Priority 1B PER-ITEM] Clearance "${item.reference}": Cash R${item.itemCash}, Card R${item.itemCard}`);
+                    await submitOneClearance(1, item.itemCash!, item.itemCash!, 0, 'CASH', 'cash');
+                    await submitOneClearance(3, item.itemCard!, item.itemCard!, 0, 'CARD', 'card');
+                } else if (hasItemSplit && item.itemCard! > 0) {
+                    await submitOneClearance(3, item.itemCard!, item.itemCard!, 0, 'CARD', 'card');
+                } else if (hasItemSplit && item.itemCash! > 0) {
+                    await submitOneClearance(1, item.itemCash!, item.itemCash!, 0, 'CASH', 'cash');
+                } else {
+                    const clrTenderForItem = isMixedBasket ? item.amountToPay : clrGroupTender;
+                    const clrChangeForItem = isMixedBasket ? 0 : clrGroupChange;
+                    const clrPaymentTypeId = record.payment.card > 0 && record.payment.cash === 0 ? 3 : 1;
+                    await submitOneClearance(clrPaymentTypeId, item.amountToPay, clrTenderForItem, clrChangeForItem, 'FULL', record.payment.card > 0 ? 'card' : 'cash');
+                }
             } catch (e: any) {
                 console.warn(`[Priority 1B] Failed to submit clearance payment for ${clearanceStagingId}`, e);
                 toast({ title: "Clearance Payment Posting Failed", description: e?.message || 'Unknown error', variant: "destructive" });
@@ -2400,7 +2474,18 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             };
 
             try {
-                if (isSplitPayment) {
+                const hasItemSplit = item.itemCash !== undefined && item.itemCard !== undefined;
+                if (hasItemSplit && (item.itemCash! > 0 || item.itemCard! > 0)) {
+                    const perCash = item.itemCash!;
+                    const perCard = item.itemCard!;
+                    console.log(`[Priority 2 PER-ITEM] Item "${item.description}": Cash R${perCash}, Card R${perCard}`);
+                    if (perCash > 0) {
+                        await submitOneMisc(1, perCash, perCash, 0, 'CASH', 'cash');
+                    }
+                    if (perCard > 0) {
+                        await submitOneMisc(3, perCard, perCard, 0, 'CARD', 'card');
+                    }
+                } else if (isSplitPayment) {
                     const cashPaid = Math.max(0, record.payment.cash - totalChange);
                     const cashPaidRatio = grandTotal > 0 ? cashPaid / grandTotal : 0;
                     const itemCash = Math.round(item.amountToPay * cashPaidRatio * 100) / 100;
@@ -2645,7 +2730,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       cashierRegistered,
       apiSessionActive,
       receiptDate,
-      setReceiptDate
+      setReceiptDate,
+      perItemSplitMode,
+      setPerItemSplitMode: handleSetPerItemSplitMode,
+      updateItemSplit
     }}>
       {children}
     </PosContext.Provider>

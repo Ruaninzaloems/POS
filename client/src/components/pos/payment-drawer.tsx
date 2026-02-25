@@ -23,9 +23,12 @@ export function PaymentDrawer() {
     removeItem,
     updateItemAmount,
     updateItemDetails,
+    updateItemSplit,
     dayEndStatus,
     viewMode,
-    isPaymentTypeAllowed
+    isPaymentTypeAllowed,
+    perItemSplitMode,
+    setPerItemSplitMode
   } = usePos();
 
   const cashAllowed = isPaymentTypeAllowed(1);
@@ -281,6 +284,9 @@ export function PaymentDrawer() {
             cardExpiryValid={cardExpiryValid}
             cardOverAmount={cardExceedsRemaining || cardOverpayWithCash}
             handleDesktopInput={handleDesktopInput}
+            perItemSplitMode={perItemSplitMode}
+            setPerItemSplitMode={setPerItemSplitMode}
+            updateItemSplit={updateItemSplit}
           />
         </div>
 
@@ -1172,7 +1178,7 @@ function DesktopItemCard({ item, removeItem, updateItemAmount, updateItemDetails
   );
 }
 
-function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount, updateItemDetails, totalDue, dayEndStatus, cashAllowed, cardAllowed, activeInput, setActiveInput, inputBuffer, payment, setPaymentAmount, setCardReference, setCardExpiry, handleNumpadInput, handleBackspace, handlePayExact, handleClearAmount, handleDesktopInput, cardExpiryValid, cardOverAmount }: any) {
+function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount, updateItemDetails, totalDue, dayEndStatus, cashAllowed, cardAllowed, activeInput, setActiveInput, inputBuffer, payment, setPaymentAmount, setCardReference, setCardExpiry, handleNumpadInput, handleBackspace, handlePayExact, handleClearAmount, handleDesktopInput, cardExpiryValid, cardOverAmount, perItemSplitMode, setPerItemSplitMode, updateItemSplit }: any) {
   const [desktopTab, setDesktopTab] = useState<'payment' | 'items'>('payment');
 
   const hasDirectIncomeIssues = transactionItems.some((i: TransactionItem) => i.type === 'DIRECT_INCOME' && (!i.paidBy?.trim() || !i.notes?.trim()));
@@ -1252,71 +1258,171 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                 <div className={`grid gap-3 ${cashAllowed && cardAllowed ? 'grid-cols-2' : 'grid-cols-1'}`}>
                   {cashAllowed && (
                     <div 
-                      onClick={() => setActiveInput('cash')}
-                      className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${activeInput === 'cash' ? 'border-green-500 bg-green-50/40 ring-2 ring-green-200/50 shadow-sm' : 'border-slate-200 bg-slate-50 hover:bg-slate-100/80'}`}
+                      onClick={() => !perItemSplitMode && setActiveInput('cash')}
+                      className={`p-4 rounded-xl border-2 text-left transition-all ${perItemSplitMode ? 'border-slate-200 bg-slate-50 opacity-70' : 'cursor-pointer'} ${!perItemSplitMode && activeInput === 'cash' ? 'border-green-500 bg-green-50/40 ring-2 ring-green-200/50 shadow-sm' : !perItemSplitMode ? 'border-slate-200 bg-slate-50 hover:bg-slate-100/80' : ''}`}
                     >
-                      <div className={`flex items-center gap-1.5 mb-1 ${activeInput === 'cash' ? 'text-green-600' : 'text-muted-foreground'}`}>
+                      <div className={`flex items-center gap-1.5 mb-1 ${!perItemSplitMode && activeInput === 'cash' ? 'text-green-600' : 'text-muted-foreground'}`}>
                         <Banknote className="w-4 h-4" />
                         <span className="font-semibold text-xs uppercase tracking-wide">Cash</span>
                       </div>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        tabIndex={5}
-                        className="w-full bg-transparent text-2xl font-mono font-bold focus:outline-none placeholder:text-slate-300"
-                        value={activeInput === 'cash' ? inputBuffer : (payment.cashAmount > 0 ? payment.cashAmount.toFixed(2).replace(/\.00$/, '') : "")}
-                        placeholder="0.00"
-                        onChange={(e) => {
-                          if (activeInput !== 'cash') setActiveInput('cash');
-                          const val = e.target.value;
-                          if (/^[0-9]*\.?[0-9]*$/.test(val)) {
-                            handleDesktopInput('cash', val);
-                          }
-                        }}
-                        onFocus={() => setActiveInput('cash')}
-                      />
+                      {perItemSplitMode ? (
+                        <div className="text-2xl font-mono font-bold text-slate-600">{payment.cashAmount > 0 ? payment.cashAmount.toFixed(2) : '0.00'}</div>
+                      ) : (
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          tabIndex={5}
+                          className="w-full bg-transparent text-2xl font-mono font-bold focus:outline-none placeholder:text-slate-300"
+                          value={activeInput === 'cash' ? inputBuffer : (payment.cashAmount > 0 ? payment.cashAmount.toFixed(2).replace(/\.00$/, '') : "")}
+                          placeholder="0.00"
+                          onChange={(e) => {
+                            if (activeInput !== 'cash') setActiveInput('cash');
+                            const val = e.target.value;
+                            if (/^[0-9]*\.?[0-9]*$/.test(val)) {
+                              handleDesktopInput('cash', val);
+                            }
+                          }}
+                          onFocus={() => setActiveInput('cash')}
+                        />
+                      )}
                     </div>
                   )}
 
                   {cardAllowed && (
                     <div 
-                      onClick={() => setActiveInput('card')}
-                      className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${cardOverAmount ? 'border-red-500 bg-red-50/40 ring-2 ring-red-200/50 shadow-sm' : activeInput === 'card' ? 'border-blue-500 bg-blue-50/40 ring-2 ring-blue-200/50 shadow-sm' : 'border-slate-200 bg-slate-50 hover:bg-slate-100/80'}`}
+                      onClick={() => !perItemSplitMode && setActiveInput('card')}
+                      className={`p-4 rounded-xl border-2 text-left transition-all ${perItemSplitMode ? 'border-slate-200 bg-slate-50 opacity-70' : 'cursor-pointer'} ${!perItemSplitMode && cardOverAmount ? 'border-red-500 bg-red-50/40 ring-2 ring-red-200/50 shadow-sm' : !perItemSplitMode && activeInput === 'card' ? 'border-blue-500 bg-blue-50/40 ring-2 ring-blue-200/50 shadow-sm' : !perItemSplitMode ? 'border-slate-200 bg-slate-50 hover:bg-slate-100/80' : ''}`}
                     >
-                      <div className={`flex items-center gap-1.5 mb-1 ${cardOverAmount ? 'text-red-600' : activeInput === 'card' ? 'text-blue-600' : 'text-muted-foreground'}`}>
+                      <div className={`flex items-center gap-1.5 mb-1 ${!perItemSplitMode && cardOverAmount ? 'text-red-600' : !perItemSplitMode && activeInput === 'card' ? 'text-blue-600' : 'text-muted-foreground'}`}>
                         <CreditCard className="w-4 h-4" />
-                        <span className="font-semibold text-xs uppercase tracking-wide">{cardOverAmount ? 'Card — exceeds balance' : 'Card'}</span>
+                        <span className="font-semibold text-xs uppercase tracking-wide">{!perItemSplitMode && cardOverAmount ? 'Card — exceeds balance' : 'Card'}</span>
                       </div>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        tabIndex={6}
-                        className="w-full bg-transparent text-2xl font-mono font-bold focus:outline-none placeholder:text-slate-300"
-                        value={activeInput === 'card' ? inputBuffer : (payment.cardAmount > 0 ? payment.cardAmount.toFixed(2).replace(/\.00$/, '') : "")}
-                        placeholder="0.00"
-                        onChange={(e) => {
-                          if (activeInput !== 'card') setActiveInput('card');
-                          const val = e.target.value;
-                          if (/^[0-9]*\.?[0-9]*$/.test(val)) {
-                            handleDesktopInput('card', val);
-                          }
-                        }}
-                        onFocus={() => setActiveInput('card')}
-                      />
+                      {perItemSplitMode ? (
+                        <div className="text-2xl font-mono font-bold text-slate-600">{payment.cardAmount > 0 ? payment.cardAmount.toFixed(2) : '0.00'}</div>
+                      ) : (
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          tabIndex={6}
+                          className="w-full bg-transparent text-2xl font-mono font-bold focus:outline-none placeholder:text-slate-300"
+                          value={activeInput === 'card' ? inputBuffer : (payment.cardAmount > 0 ? payment.cardAmount.toFixed(2).replace(/\.00$/, '') : "")}
+                          placeholder="0.00"
+                          onChange={(e) => {
+                            if (activeInput !== 'card') setActiveInput('card');
+                            const val = e.target.value;
+                            if (/^[0-9]*\.?[0-9]*$/.test(val)) {
+                              handleDesktopInput('card', val);
+                            }
+                          }}
+                          onFocus={() => setActiveInput('card')}
+                        />
+                      )}
                     </div>
                   )}
                 </div>
 
-                {/* Pay Exact button for desktop */}
-                <Button
-                  variant="outline"
-                  onClick={handlePayExact}
-                  className="w-full h-10 gap-2 text-sm font-semibold"
-                  data-testid="button-pay-exact-desktop"
-                >
-                  <Coins className="w-4 h-4" />
-                  Pay Exact Amount (R {Math.max(0, totalDue - (activeInput === 'cash' ? payment.cardAmount : payment.cashAmount)).toFixed(2)})
-                </Button>
+                {cashAllowed && cardAllowed && transactionItems.length > 0 && (
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => setPerItemSplitMode(!perItemSplitMode)}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all border ${perItemSplitMode ? 'bg-violet-50 border-violet-300 text-violet-700' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`}
+                      data-testid="button-toggle-per-item-split"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <ArrowRight className="w-3.5 h-3.5" />
+                        Per-Item Split
+                        <HelpTip text="Set different cash/card amounts for each item instead of one global split." size="sm" />
+                      </span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${perItemSplitMode ? 'bg-violet-200 text-violet-800' : 'bg-slate-200 text-slate-600'}`}>
+                        {perItemSplitMode ? 'ON' : 'OFF'}
+                      </span>
+                    </button>
+
+                    {perItemSplitMode && (
+                      <div className="space-y-1.5 bg-violet-50/50 rounded-xl border border-violet-200/50 p-2.5">
+                        {transactionItems.map((item: TransactionItem) => {
+                          const badge = getTypeBadge(item.type, item.originalData);
+                          const itemCash = item.itemCash ?? item.amountToPay;
+                          const itemCard = item.itemCard ?? 0;
+                          const itemTotal = Math.round((itemCash + itemCard) * 100) / 100;
+                          const mismatch = Math.abs(itemTotal - item.amountToPay) > 0.01 && item.amountToPay > 0;
+                          return (
+                            <div key={item.id} className={`bg-white rounded-lg border p-2.5 space-y-1.5 ${mismatch ? 'border-amber-300' : 'border-slate-200'}`} data-testid={`per-item-split-${item.id}`}>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className={`text-[8px] px-1 py-0 h-3.5 font-bold uppercase ${badge.color}`}>{badge.label}</Badge>
+                                <span className="text-[11px] font-medium text-slate-700 truncate flex-1">{item.description || item.reference}</span>
+                                <span className="text-[11px] font-mono font-bold text-slate-600">R {item.amountToPay.toFixed(2)}</span>
+                              </div>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                <div>
+                                  <label className="text-[9px] text-green-600 font-bold uppercase">Cash</label>
+                                  <input
+                                    type="text"
+                                    inputMode="decimal"
+                                    className="w-full h-7 px-2 text-xs font-mono border border-green-200 rounded bg-green-50/50 focus:outline-none focus:ring-1 focus:ring-green-400"
+                                    value={itemCash || ''}
+                                    placeholder="0.00"
+                                    onChange={(e) => {
+                                      const v = parseFloat(e.target.value) || 0;
+                                      updateItemSplit(item.id, v, itemCard);
+                                    }}
+                                    data-testid={`input-item-cash-${item.id}`}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[9px] text-blue-600 font-bold uppercase">Card</label>
+                                  <input
+                                    type="text"
+                                    inputMode="decimal"
+                                    className="w-full h-7 px-2 text-xs font-mono border border-blue-200 rounded bg-blue-50/50 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                    value={itemCard || ''}
+                                    placeholder="0.00"
+                                    onChange={(e) => {
+                                      const v = parseFloat(e.target.value) || 0;
+                                      updateItemSplit(item.id, itemCash, v);
+                                    }}
+                                    data-testid={`input-item-card-${item.id}`}
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <button
+                                  className="text-[9px] text-green-600 font-medium hover:underline"
+                                  onClick={() => updateItemSplit(item.id, item.amountToPay, 0)}
+                                  data-testid={`button-item-all-cash-${item.id}`}
+                                >All Cash</button>
+                                <button
+                                  className="text-[9px] text-blue-600 font-medium hover:underline"
+                                  onClick={() => updateItemSplit(item.id, 0, item.amountToPay)}
+                                  data-testid={`button-item-all-card-${item.id}`}
+                                >All Card</button>
+                                {mismatch && (
+                                  <span className="text-[9px] text-amber-600 font-bold">Cash+Card ≠ Amount</span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <div className="flex justify-between items-center pt-1 px-1 text-[10px]">
+                          <span className="text-green-600 font-bold">Cash: R {payment.cashAmount.toFixed(2)}</span>
+                          <span className="text-blue-600 font-bold">Card: R {payment.cardAmount.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {!perItemSplitMode && (
+                  <Button
+                    variant="outline"
+                    onClick={handlePayExact}
+                    className="w-full h-10 gap-2 text-sm font-semibold"
+                    data-testid="button-pay-exact-desktop"
+                  >
+                    <Coins className="w-4 h-4" />
+                    Pay Exact Amount (R {Math.max(0, totalDue - (activeInput === 'cash' ? payment.cardAmount : payment.cashAmount)).toFixed(2)})
+                  </Button>
+                )}
 
                 {payment.cardAmount > 0 && (
                   <div className="grid grid-cols-2 gap-2">
