@@ -2107,8 +2107,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     section1181Amount: origData.paySection1181Only ? Math.abs(origData.total1181 || 0) : 0,
                     paidItems: paidItems.map((pi: any) => ({
                         account_ID: pi.account_ID ?? pi.accountID ?? pi.accountId ?? null,
-                        accountNumber: pi.accountNumber || pi.accountNo || null,
-                        name: pi.name || null,
                         debT_TYPE: pi.debT_TYPE || pi.debtType || null,
                         amount: pi.paymentAmount || pi.amount || 0,
                     })),
