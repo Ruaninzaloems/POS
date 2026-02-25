@@ -804,6 +804,7 @@ export async function registerRoutes(
 
       const payload: Record<string, any> = {
         id: req.body.id ?? 0,
+        user_Id: userId,
         cashFloat: req.body.cashFloat ?? null,
         stpPort: req.body.stpPort ?? null,
         plesseyPort: req.body.plesseyPort ?? null,
