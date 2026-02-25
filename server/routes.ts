@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { platinumGet, platinumPost, platinumPut, platinumDelete, loginWithCredentials, logoutSession, isSessionAuthenticated, refreshSessionToken, getSessionPosCashierId, getPlatinumApiUrl, getPlatinumDbName, createEmptySession, type UserSession } from "./platinum-auth";
+import { platinumGet, platinumPost, platinumPut, platinumDelete, loginWithCredentials, logoutSession, isSessionAuthenticated, refreshSessionToken, getSessionPosCashierId, getPlatinumApiUrl, getPlatinumDbName, createEmptySession, clearLockoutCache, type UserSession } from "./platinum-auth";
 import { execSync } from "child_process";
 import { writeFileSync, unlinkSync, existsSync } from "fs";
 import type { Request } from "express";
@@ -204,6 +204,7 @@ export async function registerRoutes(
       if (!username) {
         return res.status(400).json({ success: false, error: "Username is required" });
       }
+      clearLockoutCache(username);
       const result = await loginWithCredentials(username, password, dbName);
       if (result.success) {
         req.session.platinumAuth = result.session!;
@@ -826,7 +827,11 @@ export async function registerRoutes(
         const detail = data.detail || data.statusText || JSON.stringify(data);
         console.error(`[submit-cashier-setup] API error:`, detail);
         if (data.status === 401) {
-          return res.status(401).json({ message: "Authentication failed — please log in again", detail });
+          const isAzure = session.authMode === 'azure' || session.authMode === 'override';
+          const msg = isAzure
+            ? "Your account is currently using a bridge token (possibly due to a login lockout). This endpoint requires a direct login token. Please log out and log back in to retry, or wait for the lockout to expire."
+            : "Authentication failed — please log in again";
+          return res.status(401).json({ message: msg, detail, authMode: session.authMode });
         }
         return res.status(data.status || 400).json({ message: "Cashier setup failed", detail });
       }

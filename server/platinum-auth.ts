@@ -106,46 +106,64 @@ function releaseSlot(): void {
 
 const tokenRefreshPromises = new Map<string, Promise<{ token: string; userData: any; authMode: 'direct' | 'azure' | 'override' }>>();
 
+const lockoutCache = new Map<string, { until: number; message: string }>();
+const LOCKOUT_BACKOFF_MS = 10 * 60 * 1000;
+
 async function fetchTokenForUser(username: string, password: string, dbName: string): Promise<{ token: string; userData: any; authMode: 'direct' | 'azure' | 'override' }> {
   console.log(`[PlatinumAuth] Attempting login for username: ${username} on DB: ${dbName}`);
 
   if (password) {
-    try {
-      const res = await fetch(`${PLATINUM_API_URL}/auth/createToken`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userName: username, password, dbName }),
-      });
+    const lockoutKey = `${username}:${dbName}`;
+    const lockout = lockoutCache.get(lockoutKey);
+    if (lockout && Date.now() < lockout.until) {
+      const minsLeft = Math.ceil((lockout.until - Date.now()) / 60000);
+      console.log(`[PlatinumAuth] Skipping createToken for ${username} — lockout backoff active (${minsLeft}min remaining). Falling back to Azure.`);
+    } else {
+      try {
+        const res = await fetch(`${PLATINUM_API_URL}/auth/createToken`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userName: username, password, dbName }),
+        });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.token) {
-          const userData = data.data || data.user || data.userData || {};
-          const apiUserId = userData.user_ID ?? userData.userId ?? userData.id;
+        if (res.ok) {
+          lockoutCache.delete(lockoutKey);
+          const data = await res.json();
+          if (data.token) {
+            const userData = data.data || data.user || data.userData || {};
+            const apiUserId = userData.user_ID ?? userData.userId ?? userData.id;
 
-          if (apiUserId && apiUserId !== 1) {
-            const user = {
-              user_ID: apiUserId,
-              userName: userData.userName ?? username,
-              firstName: userData.firstName ?? username,
-              lastName: userData.lastName ?? '',
-              eMail: userData.eMail ?? null,
-              enabled: userData.enabled ?? true,
-              superUser: userData.superUser ?? false,
-              cashFloat: userData.cashFloat ?? 0,
-              finYear: userData.finYear || data.finYear || "2026/2027"
-            };
-            console.log(`[PlatinumAuth] Token obtained via createToken. User: ${user.firstName} ${user.lastName} (user_ID: ${user.user_ID})`);
-            return { token: data.token, userData: user, authMode: 'direct' as const };
+            if (apiUserId && apiUserId !== 1) {
+              const user = {
+                user_ID: apiUserId,
+                userName: userData.userName ?? username,
+                firstName: userData.firstName ?? username,
+                lastName: userData.lastName ?? '',
+                eMail: userData.eMail ?? null,
+                enabled: userData.enabled ?? true,
+                superUser: userData.superUser ?? false,
+                cashFloat: userData.cashFloat ?? 0,
+                finYear: userData.finYear || data.finYear || "2026/2027"
+              };
+              console.log(`[PlatinumAuth] Token obtained via createToken. User: ${user.firstName} ${user.lastName} (user_ID: ${user.user_ID})`);
+              return { token: data.token, userData: user, authMode: 'direct' as const };
+            }
+            console.log(`[PlatinumAuth] createToken returned generic user (ID:${apiUserId}), will try Azure`);
           }
-          console.log(`[PlatinumAuth] createToken returned generic user (ID:${apiUserId}), will try Azure`);
+        } else {
+          const text = await res.text();
+          console.log(`[PlatinumAuth] createToken failed for ${username}: ${res.status} - ${text.substring(0, 200)}`);
+          if (text.toLowerCase().includes('lockout')) {
+            const match = text.match(/(\d+)\s*min/i);
+            const lockoutMinutes = match ? parseInt(match[1]) : 10;
+            const backoffMs = Math.min(lockoutMinutes * 60 * 1000, LOCKOUT_BACKOFF_MS);
+            lockoutCache.set(lockoutKey, { until: Date.now() + backoffMs, message: text.substring(0, 200) });
+            console.log(`[PlatinumAuth] Lockout detected for ${username} — will skip createToken for ${Math.ceil(backoffMs / 60000)} minutes to avoid extending lockout`);
+          }
         }
-      } else {
-        const text = await res.text();
-        console.log(`[PlatinumAuth] createToken failed for ${username}: ${res.status} - ${text.substring(0, 200)}`);
+      } catch (e: any) {
+        console.log(`[PlatinumAuth] createToken error: ${e.message}`);
       }
-    } catch (e: any) {
-      console.log(`[PlatinumAuth] createToken error: ${e.message}`);
     }
   }
 
@@ -290,6 +308,18 @@ export async function loginWithCredentials(username: string, password: string, d
   } catch (e: any) {
     console.log(`[PlatinumAuth] Login failed for ${username}: ${e.message}`);
     return { success: false, error: e.message || "Could not connect to the billing system" };
+  }
+}
+
+export function clearLockoutCache(username?: string): void {
+  if (username) {
+    const key = `${username}:${PLATINUM_DBNAME}`;
+    if (lockoutCache.delete(key)) {
+      console.log(`[PlatinumAuth] Lockout cache cleared for ${username}`);
+    }
+  } else {
+    lockoutCache.clear();
+    console.log(`[PlatinumAuth] All lockout caches cleared`);
   }
 }
 
