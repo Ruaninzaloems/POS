@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, CheckCircle2, Loader2, Banknote, Coins, CreditCard, FileText, ChevronDown, ChevronUp, Mail, User, Building2, Calendar, Clock, ArrowRight, Receipt, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Loader2, Banknote, Coins, CreditCard, FileText, ChevronDown, ChevronUp, Mail, User, Building2, Calendar, Clock, ArrowRight, Receipt, XCircle, Archive } from 'lucide-react';
 import { platinumSaveDayEndReconcileData, platinumGetDayEndReconcileList } from '@/lib/external-api';
 import { useToast } from '@/hooks/use-toast';
 
@@ -53,18 +53,24 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
   const [errorMessage, setErrorMessage] = useState('');
 
   const [denominations, setDenominations] = useState<DenominationState>(INITIAL_DENOMINATIONS);
+  const [cashEntryMode, setCashEntryMode] = useState<'denominations' | 'total'>('denominations');
+  const [manualCashTotal, setManualCashTotal] = useState('');
   const [totalCreditAmt, setTotalCreditAmt] = useState('');
   const [totalChequeAmt, setTotalChequeAmt] = useState('');
   const [totalPostalOrderAmt, setTotalPostalOrderAmt] = useState('');
+  const [totalDropBoxAmt, setTotalDropBoxAmt] = useState('');
   const [reason, setReason] = useState('');
   const [showDenominations, setShowDenominations] = useState(true);
   const [showCheque, setShowCheque] = useState(false);
   const [showPostalOrder, setShowPostalOrder] = useState(false);
+  const [showDropBox, setShowDropBox] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [receiptHistory, setReceiptHistory] = useState<any[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
+  const hasCheque = allowedPaymentTypes.some(t => t.posPaymentType_ID === 2 && t.enabled);
   const hasPostalOrder = allowedPaymentTypes.some(t => t.posPaymentType_ID === 4 && t.enabled);
+  const hasDropBox = allowedPaymentTypes.some(t => (t.posPaymentType_ID === 5 || t.posPaymentTypeDesc?.toLowerCase().includes('drop')) && t.enabled);
 
   const resolvedUserId = platinumUser?.user_ID || Number(currentUser?.id) || 0;
 
@@ -72,14 +78,18 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
     if (isOpen) {
       setStep('capture');
       setDenominations(INITIAL_DENOMINATIONS);
+      setCashEntryMode('denominations');
+      setManualCashTotal('');
       setTotalCreditAmt('');
       setTotalChequeAmt('');
       setTotalPostalOrderAmt('');
+      setTotalDropBoxAmt('');
       setReason('');
       setErrorMessage('');
       setShowDenominations(true);
       setShowCheque(false);
       setShowPostalOrder(false);
+      setShowDropBox(false);
       setShowHistory(false);
       setReceiptHistory([]);
     }
@@ -112,11 +122,13 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
 
   const totalNotes = NOTE_DENOMINATIONS.reduce((sum, d) => sum + (denominations[d.key] * d.value), 0);
   const totalCoins = COIN_DENOMINATIONS.reduce((sum, d) => sum + (denominations[d.key] * d.value), 0);
-  const totalCashAmt = totalNotes + totalCoins;
+  const denomCashAmt = totalNotes + totalCoins;
+  const totalCashAmt = cashEntryMode === 'total' ? (parseFloat(manualCashTotal) || 0) : denomCashAmt;
   const creditAmt = parseFloat(totalCreditAmt) || 0;
-  const chequeAmt = parseFloat(totalChequeAmt) || 0;
-  const postalOrderAmt = parseFloat(totalPostalOrderAmt) || 0;
-  const grandTotal = totalCashAmt + creditAmt + chequeAmt + postalOrderAmt;
+  const chequeAmt = hasCheque ? (parseFloat(totalChequeAmt) || 0) : 0;
+  const postalOrderAmt = hasPostalOrder ? (parseFloat(totalPostalOrderAmt) || 0) : 0;
+  const dropBoxAmt = hasDropBox ? (parseFloat(totalDropBoxAmt) || 0) : 0;
+  const grandTotal = totalCashAmt + creditAmt + chequeAmt + postalOrderAmt + dropBoxAmt;
 
   const getPaymentTypeLabel = (typeId: number) => {
     switch (typeId) {
@@ -159,27 +171,29 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
       const cashierId = platinumCashierId || 0;
       const finYear = platinumUser?.finYear || '2025/2026';
 
+      const denomsToSend = cashEntryMode === 'denominations' ? denominations : INITIAL_DENOMINATIONS;
+
       const payload = {
         cashierId: Number(cashierId),
         reason: reason || null,
         totalCashAmt,
-        totalChequeAmt: chequeAmt + postalOrderAmt,
-        totalCoins,
+        totalChequeAmt: chequeAmt + postalOrderAmt + dropBoxAmt,
+        totalCoins: cashEntryMode === 'denominations' ? totalCoins : 0,
         totalCreditAmt: creditAmt,
         totalAmt: grandTotal,
-        n10: denominations.n10,
-        n20: denominations.n20,
-        n50: denominations.n50,
-        n100: denominations.n100,
-        n200: denominations.n200,
-        co1: denominations.co1,
-        co2: denominations.co2,
-        co5: denominations.co5,
-        c1: denominations.c1,
-        c5: denominations.c5,
-        c10: denominations.c10,
-        c20: denominations.c20,
-        c50: denominations.c50,
+        n10: denomsToSend.n10,
+        n20: denomsToSend.n20,
+        n50: denomsToSend.n50,
+        n100: denomsToSend.n100,
+        n200: denomsToSend.n200,
+        co1: denomsToSend.co1,
+        co2: denomsToSend.co2,
+        co5: denomsToSend.co5,
+        c1: denomsToSend.c1,
+        c5: denomsToSend.c5,
+        c10: denomsToSend.c10,
+        c20: denomsToSend.c20,
+        c50: denomsToSend.c50,
         finyear: finYear,
       };
 
@@ -247,7 +261,9 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                   </div>
                   <div className="text-left">
                     <div className="text-sm font-bold text-green-900">Cash On Hand</div>
-                    <div className="text-[11px] text-green-600">Count notes and coins in your drawer</div>
+                    <div className="text-[11px] text-green-600">
+                      {cashEntryMode === 'denominations' ? 'Count notes and coins in your drawer' : 'Enter total cash amount'}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -262,75 +278,111 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
 
               {showDenominations && (
                 <div className="px-5 pb-4 pt-1 border-t border-green-200">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <div>
-                      <div className="flex items-center gap-1.5 mb-2.5">
-                        <Banknote className="w-3.5 h-3.5 text-green-700" />
-                        <span className="text-[10px] uppercase tracking-widest font-bold text-green-700">Notes</span>
-                      </div>
-                      <div className="space-y-1.5">
-                        {NOTE_DENOMINATIONS.map(d => {
-                          const subtotal = denominations[d.key] * d.value;
-                          return (
-                            <div key={d.key} className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 ${d.color} transition-all`}>
-                              <div className="w-10 text-xs font-bold text-slate-700 shrink-0">{d.label}</div>
-                              <div className="text-slate-400 text-xs shrink-0">x</div>
-                              <Input
-                                type="number"
-                                inputMode="numeric"
-                                min="0"
-                                placeholder="0"
-                                className="h-8 font-mono text-center text-sm bg-white/80 border-0 shadow-sm focus-visible:ring-green-400 w-16"
-                                value={denominations[d.key] || ''}
-                                onChange={(e) => updateDenomination(d.key, e.target.value)}
-                                data-testid={`input-denom-${d.key}`}
-                              />
-                              <div className="text-xs font-mono text-slate-500 text-right flex-1">
-                                = R {subtotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <div className="mt-2 text-right text-xs font-bold text-green-800 border-t border-green-200 pt-1.5">
-                        R {totalNotes.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex items-center gap-1.5 mb-2.5">
-                        <Coins className="w-3.5 h-3.5 text-green-700" />
-                        <span className="text-[10px] uppercase tracking-widest font-bold text-green-700">Coins</span>
-                      </div>
-                      <div className="space-y-1.5">
-                        {COIN_DENOMINATIONS.map(d => {
-                          const subtotal = denominations[d.key] * d.value;
-                          return (
-                            <div key={d.key} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 transition-all">
-                              <div className="w-10 text-xs font-bold text-slate-700 shrink-0">{d.label}</div>
-                              <div className="text-slate-400 text-xs shrink-0">x</div>
-                              <Input
-                                type="number"
-                                inputMode="numeric"
-                                min="0"
-                                placeholder="0"
-                                className="h-8 font-mono text-center text-sm bg-white/80 border-0 shadow-sm focus-visible:ring-green-400 w-16"
-                                value={denominations[d.key] || ''}
-                                onChange={(e) => updateDenomination(d.key, e.target.value)}
-                                data-testid={`input-denom-${d.key}`}
-                              />
-                              <div className="text-xs font-mono text-slate-500 text-right flex-1">
-                                = R {subtotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <div className="mt-2 text-right text-xs font-bold text-green-800 border-t border-green-200 pt-1.5">
-                        R {totalCoins.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
-                      </div>
-                    </div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <button
+                      type="button"
+                      onClick={() => setCashEntryMode('denominations')}
+                      className={`flex-1 text-xs font-bold py-2 px-3 rounded-lg border transition-all ${cashEntryMode === 'denominations' ? 'bg-green-600 text-white border-green-600 shadow-sm' : 'bg-white text-green-700 border-green-300 hover:bg-green-50'}`}
+                      data-testid="button-mode-denominations"
+                    >
+                      <Coins className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
+                      Count Notes & Coins
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCashEntryMode('total')}
+                      className={`flex-1 text-xs font-bold py-2 px-3 rounded-lg border transition-all ${cashEntryMode === 'total' ? 'bg-green-600 text-white border-green-600 shadow-sm' : 'bg-white text-green-700 border-green-300 hover:bg-green-50'}`}
+                      data-testid="button-mode-total"
+                    >
+                      <Banknote className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
+                      Enter Total
+                    </button>
                   </div>
+
+                  {cashEntryMode === 'total' ? (
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-green-500 font-mono font-bold text-lg">R</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        className="pl-9 text-xl font-mono font-bold h-12 bg-white border-green-200 focus-visible:ring-green-400"
+                        placeholder="0.00"
+                        value={manualCashTotal}
+                        onChange={(e) => setManualCashTotal(e.target.value)}
+                        data-testid="input-manual-cash-total"
+                      />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-2.5">
+                          <Banknote className="w-3.5 h-3.5 text-green-700" />
+                          <span className="text-[10px] uppercase tracking-widest font-bold text-green-700">Notes</span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {NOTE_DENOMINATIONS.map(d => {
+                            const subtotal = denominations[d.key] * d.value;
+                            return (
+                              <div key={d.key} className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 ${d.color} transition-all`}>
+                                <div className="w-10 text-xs font-bold text-slate-700 shrink-0">{d.label}</div>
+                                <div className="text-slate-400 text-xs shrink-0">x</div>
+                                <Input
+                                  type="number"
+                                  inputMode="numeric"
+                                  min="0"
+                                  placeholder="0"
+                                  className="h-8 font-mono text-center text-sm bg-white/80 border-0 shadow-sm focus-visible:ring-green-400 w-16"
+                                  value={denominations[d.key] || ''}
+                                  onChange={(e) => updateDenomination(d.key, e.target.value)}
+                                  data-testid={`input-denom-${d.key}`}
+                                />
+                                <div className="text-xs font-mono text-slate-500 text-right flex-1">
+                                  = R {subtotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="mt-2 text-right text-xs font-bold text-green-800 border-t border-green-200 pt-1.5">
+                          R {totalNotes.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-2.5">
+                          <Coins className="w-3.5 h-3.5 text-green-700" />
+                          <span className="text-[10px] uppercase tracking-widest font-bold text-green-700">Coins</span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {COIN_DENOMINATIONS.map(d => {
+                            const subtotal = denominations[d.key] * d.value;
+                            return (
+                              <div key={d.key} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 transition-all">
+                                <div className="w-10 text-xs font-bold text-slate-700 shrink-0">{d.label}</div>
+                                <div className="text-slate-400 text-xs shrink-0">x</div>
+                                <Input
+                                  type="number"
+                                  inputMode="numeric"
+                                  min="0"
+                                  placeholder="0"
+                                  className="h-8 font-mono text-center text-sm bg-white/80 border-0 shadow-sm focus-visible:ring-green-400 w-16"
+                                  value={denominations[d.key] || ''}
+                                  onChange={(e) => updateDenomination(d.key, e.target.value)}
+                                  data-testid={`input-denom-${d.key}`}
+                                />
+                                <div className="text-xs font-mono text-slate-500 text-right flex-1">
+                                  = R {subtotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="mt-2 text-right text-xs font-bold text-green-800 border-t border-green-200 pt-1.5">
+                          R {totalCoins.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -401,45 +453,89 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
               </div>
             )}
 
-            <div className="rounded-xl border border-slate-200 overflow-hidden">
-              <button
-                type="button"
-                className="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors"
-                onClick={() => setShowCheque(!showCheque)}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-purple-600 text-white flex items-center justify-center shadow-sm">
-                    <FileText className="w-5 h-5" />
+            {hasCheque && (
+              <div className="rounded-xl border border-slate-200 overflow-hidden">
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors"
+                  onClick={() => setShowCheque(!showCheque)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-purple-600 text-white flex items-center justify-center shadow-sm">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-sm font-bold text-slate-800">Cheque</div>
+                      <div className="text-[11px] text-slate-500">Total of cheques received during this shift</div>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <div className="text-sm font-bold text-slate-800">Cheque</div>
-                    <div className="text-[11px] text-slate-500">Total of cheques received during this shift</div>
+                  <div className="flex items-center gap-2">
+                    {chequeAmt > 0 && (
+                      <span className="text-sm font-mono font-bold text-purple-700">R {chequeAmt.toFixed(2)}</span>
+                    )}
+                    {showCheque ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {chequeAmt > 0 && (
-                    <span className="text-sm font-mono font-bold text-purple-700">R {chequeAmt.toFixed(2)}</span>
-                  )}
-                  {showCheque ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-                </div>
-              </button>
-              {showCheque && (
-                <div className="px-5 pb-4 pt-1 border-t">
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400 font-mono font-bold text-lg">R</span>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      className="pl-9 text-xl font-mono font-bold h-12 bg-white border-purple-200 focus-visible:ring-purple-400"
-                      placeholder="0.00"
-                      value={totalChequeAmt}
-                      onChange={(e) => setTotalChequeAmt(e.target.value)}
-                      data-testid="input-cheque-total"
-                    />
+                </button>
+                {showCheque && (
+                  <div className="px-5 pb-4 pt-1 border-t">
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400 font-mono font-bold text-lg">R</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        className="pl-9 text-xl font-mono font-bold h-12 bg-white border-purple-200 focus-visible:ring-purple-400"
+                        placeholder="0.00"
+                        value={totalChequeAmt}
+                        onChange={(e) => setTotalChequeAmt(e.target.value)}
+                        data-testid="input-cheque-total"
+                      />
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
+
+            {hasDropBox && (
+              <div className="rounded-xl border border-slate-200 overflow-hidden">
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors"
+                  onClick={() => setShowDropBox(!showDropBox)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-amber-600 text-white flex items-center justify-center shadow-sm">
+                      <Archive className="w-5 h-5" />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-sm font-bold text-slate-800">Drop Box</div>
+                      <div className="text-[11px] text-slate-500">Total of drop box payments received</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {dropBoxAmt > 0 && (
+                      <span className="text-sm font-mono font-bold text-amber-700">R {dropBoxAmt.toFixed(2)}</span>
+                    )}
+                    {showDropBox ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                  </div>
+                </button>
+                {showDropBox && (
+                  <div className="px-5 pb-4 pt-1 border-t">
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-amber-500 font-mono font-bold text-lg">R</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        className="pl-9 text-xl font-mono font-bold h-12 bg-white border-amber-200 focus-visible:ring-amber-400"
+                        placeholder="0.00"
+                        value={totalDropBoxAmt}
+                        onChange={(e) => setTotalDropBoxAmt(e.target.value)}
+                        data-testid="input-dropbox-total"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="rounded-xl border border-indigo-200 overflow-hidden">
               <button
@@ -550,7 +646,7 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
             <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-xl p-4 flex items-center justify-between shadow-lg">
               <div>
                 <div className="text-[10px] uppercase tracking-widest font-medium text-blue-200">Grand Total</div>
-                <div className="text-xs text-blue-200 mt-0.5">Cash + Card + Cheque + Postal</div>
+                <div className="text-xs text-blue-200 mt-0.5">Cash + Card{hasCheque ? ' + Cheque' : ''}{hasPostalOrder ? ' + Postal' : ''}{hasDropBox ? ' + Drop Box' : ''}</div>
               </div>
               <div className="text-2xl sm:text-3xl font-mono font-black text-white" data-testid="text-grand-total">
                 R {grandTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -592,7 +688,7 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                     R {creditAmt.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
                   </div>
                 </div>
-                {chequeAmt > 0 && (
+                {hasCheque && chequeAmt > 0 && (
                   <div className="bg-white rounded-lg border p-3 text-center">
                     <FileText className="w-4 h-4 text-purple-500 mx-auto mb-1" />
                     <div className="text-[10px] text-slate-500 uppercase font-bold">Cheque</div>
@@ -601,12 +697,21 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                     </div>
                   </div>
                 )}
-                {postalOrderAmt > 0 && (
+                {hasPostalOrder && postalOrderAmt > 0 && (
                   <div className="bg-white rounded-lg border p-3 text-center">
                     <Mail className="w-4 h-4 text-teal-500 mx-auto mb-1" />
                     <div className="text-[10px] text-slate-500 uppercase font-bold">Postal</div>
                     <div className="text-base font-mono font-bold text-teal-700" data-testid="text-confirm-postal">
                       R {postalOrderAmt.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                )}
+                {hasDropBox && dropBoxAmt > 0 && (
+                  <div className="bg-white rounded-lg border p-3 text-center">
+                    <Archive className="w-4 h-4 text-amber-500 mx-auto mb-1" />
+                    <div className="text-[10px] text-slate-500 uppercase font-bold">Drop Box</div>
+                    <div className="text-base font-mono font-bold text-amber-700" data-testid="text-confirm-dropbox">
+                      R {dropBoxAmt.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
                     </div>
                   </div>
                 )}
