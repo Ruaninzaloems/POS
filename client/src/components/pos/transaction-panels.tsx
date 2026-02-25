@@ -1133,9 +1133,14 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                   </div>
                   <div className="text-[10px] text-slate-500 font-mono">ID: {clr.scheduleNo || clr.clearanceId}</div>
                 </div>
-                <div className="shrink-0 text-right">
-                  <div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Due</div>
-                  <div className="text-sm font-bold font-mono text-red-600">R {(clr.totalDue || item.amountDue || 0).toFixed(2)}</div>
+                <div className="shrink-0 text-right flex items-center gap-1.5">
+                  <div>
+                    <div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Due</div>
+                    <div className="text-sm font-bold font-mono text-red-600">R {(clr.totalDue || item.amountDue || 0).toFixed(2)}</div>
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50" onClick={() => removeItem(item.id)} data-testid={`button-remove-clearance-${item.id}`}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
                 </div>
               </div>
             </div>

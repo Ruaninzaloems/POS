@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PosLayout } from '@/components/layout/pos-layout';
 import { UnifiedSearch } from '@/components/pos/unified-search';
 import { TransactionPanels } from '@/components/pos/transaction-panels';
@@ -13,7 +13,14 @@ import { EasyPayBill } from '@/lib/external-api';
 function PosPageContent() {
   const [isEasyPayOpen, setIsEasyPayOpen] = useState(false);
   const [isSearchActive, setIsSearchActive] = useState(false);
-  const { addItem, transactionItems } = usePos();
+  const { addItem, transactionItems, clearTransaction } = usePos();
+
+  useEffect(() => {
+    clearTransaction();
+    return () => {
+      clearTransaction();
+    };
+  }, []);
 
   const handleAddEasyPay = (bill: EasyPayBill) => {
     addItem({
