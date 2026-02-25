@@ -284,6 +284,8 @@ export async function registerRoutes(
 
       console.log(`[active-cashier] Using validate-cashier API as single source of truth — userId=${userId}, finYear=${finYear}`);
       const vcData = await platinumGet(session, "/api/ReceiptPrepaid/validate-cashier", { userId, finYear });
+      console.log(`[active-cashier] RAW validate-cashier top-level keys:`, vcData ? Object.keys(vcData).join(', ') : 'null');
+      console.log(`[active-cashier] RAW cashierReconcile field:`, JSON.stringify(vcData?.cashierReconcile)?.substring(0, 500));
 
       if (!vcData || vcData._error) {
         console.error(`[active-cashier] validate-cashier API failed or returned error:`, vcData?._error || 'no data');
@@ -1963,10 +1965,64 @@ export async function registerRoutes(
   app.post("/api/platinum/billing-payment-day-end/save-reconcile-data", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      console.log(`[dayend-save] Query: userId=${req.query.userId}, Payload:`, JSON.stringify(req.body));
-      const data = await platinumPost(session, "/api/billing-payment-day-end-reconcile/save-Reconcile-data", req.body, req.query as Record<string, string>);
-      console.log(`[dayend-save] Response:`, JSON.stringify(data).substring(0, 1000));
-      handlePlatinumResult(res, data);
+      const userId = req.query.userId as string;
+      console.log(`[dayend-save] Query: userId=${userId}, Payload:`, JSON.stringify(req.body));
+
+      const cashierId = String(req.body.cashierId || '');
+      const endpoints = [
+        { label: 'bp-day-end (userId+cashierId query)', path: '/api/billing-payment-day-end-reconcile/save-Reconcile-data', params: { userId, cashierId } },
+        { label: 'bp-day-end (cashierId query only)', path: '/api/billing-payment-day-end-reconcile/save-Reconcile-data', params: { cashierId } },
+        { label: 'bp-day-end (userId query)', path: '/api/billing-payment-day-end-reconcile/save-Reconcile-data', params: { userId } },
+        { label: 'auth-day-end (userId+cashierId query)', path: '/api/billing/auth-day-end-reconcile/save-Reconcile-data', params: { userId, cashierId } },
+        { label: 'auth-day-end (cashierId query only)', path: '/api/billing/auth-day-end-reconcile/save-Reconcile-data', params: { cashierId } },
+        { label: 'auth-day-end (userId query)', path: '/api/billing/auth-day-end-reconcile/save-Reconcile-data', params: { userId } },
+      ];
+
+      const results: Array<{ label: string; response: any; error?: string }> = [];
+      for (const ep of endpoints) {
+        try {
+          console.log(`[dayend-save] Trying: ${ep.label} → ${ep.path}?${new URLSearchParams(ep.params as any).toString()}`);
+          const data = await platinumPost(session, ep.path, req.body, ep.params as any);
+          const respStr = JSON.stringify(data).substring(0, 500);
+          console.log(`[dayend-save] ${ep.label} Response: ${respStr}`);
+          results.push({ label: ep.label, response: data });
+        } catch (err: any) {
+          console.log(`[dayend-save] ${ep.label} threw: ${err.message}`);
+          results.push({ label: ep.label, response: null, error: err.message });
+        }
+      }
+
+      console.log(`[dayend-save] === ALL RESULTS SUMMARY ===`);
+      for (const r of results) {
+        const isSuccess = r.response && !r.response._error && r.response.success !== false;
+        const isError = r.response?._error === true;
+        const status = isError ? `ERROR(${r.response?.status})` : (isSuccess ? 'SUCCESS' : (r.error ? `THROW(${r.error.substring(0,50)})` : 'UNKNOWN'));
+        console.log(`[dayend-save] ${r.label}: ${status} — ${JSON.stringify(r.response?.message || r.response?.title || r.error || '').substring(0, 200)}`);
+      }
+
+      const validResult = results.find(r => r.response && !r.response._error && r.response.success !== false);
+
+      if (validResult) {
+        console.log(`[dayend-save] Using result from: ${validResult.label}`);
+
+        console.log(`[dayend-save] Now verifying: calling validate-cashier to check if cashierReconcile was created...`);
+        try {
+          const finYear = req.body.finyear || '2025/2026';
+          const vcData = await platinumGet(session, "/api/ReceiptPrepaid/validate-cashier", { userId, finYear });
+          const hasReconcile = vcData?.cashierReconcile != null;
+          console.log(`[dayend-save] Post-save verify: cashierReconcile=${hasReconcile ? 'PRESENT' : 'NULL'} — ${hasReconcile ? 'DB WRITE CONFIRMED' : 'DB WRITE FAILED — record was not created!'}`);
+          if (hasReconcile) {
+            console.log(`[dayend-save] cashierReconcile data:`, JSON.stringify(vcData.cashierReconcile).substring(0, 500));
+          }
+        } catch (verifyErr: any) {
+          console.log(`[dayend-save] Post-save verify failed: ${verifyErr.message}`);
+        }
+
+        handlePlatinumResult(res, validResult.response);
+      } else {
+        console.error(`[dayend-save] ALL endpoints failed!`);
+        res.status(502).json({ message: "All save-Reconcile-data endpoints failed", results: results.map(r => ({ label: r.label, error: r.error || r.response?.message })) });
+      }
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
