@@ -374,12 +374,14 @@ export async function registerRoutes(
           }
         }
 
+        let sessionFromCache = false;
         if (!cashier && (session as any).knownCashierData) {
           const stored = (session as any).knownCashierData;
-          if (stored.isActive === true && stored.id > 0) {
-            console.log(`[active-cashier] Using stored knownCashierData as last resort — id: ${stored.id}, isActive: ${stored.isActive}`);
-            cashier = stored;
+          if (stored.id > 0) {
+            console.log(`[active-cashier] Using stored knownCashierData for registration info only — id: ${stored.id} (NOT treating as active since Platinum API returned cashier=null)`);
+            cashier = { ...stored, isActive: false };
             cashOffice = stored.const_CashOffice || null;
+            sessionFromCache = true;
           }
         }
       }
@@ -414,6 +416,7 @@ export async function registerRoutes(
         hasPendingDayEnd,
         cashierReconcile,
         details: cashierDetails,
+        sessionNeedsCreation: sessionFromCache,
       });
     } catch (e: any) {
       console.error(`[active-cashier] validate-cashier call failed:`, e.message);
