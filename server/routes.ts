@@ -1004,6 +1004,26 @@ export async function registerRoutes(
         }
       };
 
+      const { PDFDocument } = await import('pdf-lib');
+
+      const cropReceiptPages = async (pdfBuffer: Buffer): Promise<Buffer> => {
+        try {
+          const doc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
+          const pages = doc.getPages();
+          for (const page of pages) {
+            const { width, height } = page.getSize();
+            const contentHeight = Math.min(height, Math.ceil(height * 0.58));
+            page.setCropBox(0, height - contentHeight, width, contentHeight);
+            page.setMediaBox(0, height - contentHeight, width, contentHeight);
+          }
+          const cropped = await doc.save();
+          return Buffer.from(cropped);
+        } catch (e: any) {
+          console.warn(`[print-receipt] Failed to crop PDF, returning original:`, e.message);
+          return pdfBuffer;
+        }
+      };
+
       if (receiptIds.length === 1) {
         const pdfRes = await fetch(`${apiUrl}/api/billing-payment/print-receipt`, {
           method: "POST",
@@ -1021,7 +1041,8 @@ export async function registerRoutes(
           return res.status(pdfRes.status).json({ message: "Failed to fetch receipt PDF from Platinum", detail: errorText });
         }
 
-        const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+        const rawBuffer = Buffer.from(await pdfRes.arrayBuffer());
+        const pdfBuffer = await cropReceiptPages(rawBuffer);
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader("Content-Disposition", `inline; filename="receipt_${receiptIds[0]}.pdf"`);
         res.setHeader("Content-Length", pdfBuffer.length);
@@ -1029,7 +1050,6 @@ export async function registerRoutes(
       }
 
       console.log(`[print-receipt] Fetching ${receiptIds.length} receipts individually for proper page breaks`);
-      const { PDFDocument } = await import('pdf-lib');
 
       const BATCH_SIZE = 10;
       const allPdfBuffers: Buffer[] = [];
@@ -1056,7 +1076,8 @@ export async function registerRoutes(
           const errorText = await pdfRes.text().catch(() => "");
           return res.status(pdfRes.status).json({ message: "Failed to fetch receipt PDF", detail: errorText });
         }
-        const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+        const rawBuf = Buffer.from(await pdfRes.arrayBuffer());
+        const pdfBuffer = await cropReceiptPages(rawBuf);
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader("Content-Disposition", `inline; filename="receipts_${receiptIds.length}.pdf"`);
         res.setHeader("Content-Length", pdfBuffer.length);
@@ -1069,6 +1090,10 @@ export async function registerRoutes(
           const srcDoc = await PDFDocument.load(buf, { ignoreEncryption: true });
           const pages = await mergedPdf.copyPages(srcDoc, srcDoc.getPageIndices());
           for (const page of pages) {
+            const { width, height } = page.getSize();
+            const contentHeight = Math.min(height, Math.ceil(height * 0.58));
+            page.setCropBox(0, height - contentHeight, width, contentHeight);
+            page.setMediaBox(0, height - contentHeight, width, contentHeight);
             mergedPdf.addPage(page);
           }
         } catch (mergeErr: any) {
