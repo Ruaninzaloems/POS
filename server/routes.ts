@@ -330,7 +330,7 @@ export async function registerRoutes(
       const hasReceiptRangeData = receiptRange != null && (receiptRange.user_Id > 0 || receiptRange.isEnabled === true);
       const isCashierRegistered = (cashier != null && (cashier.id > 0 || cashier.user_Id > 0)) || hasReceiptRangeData;
       const isSessionActive = cashier?.isActive === true;
-      const cashierId = cashier?.id || cashier?.user_Id || (hasReceiptRangeData ? Number(userId) : null);
+      const cashierId = cashier?.id || cashier?.user_Id || null;
       const activeOfficeId = cashOffice?.cashOffice_ID || cashier?.officeId || null;
       const activeOfficeName = cashOffice?.cashOfficeDesc || null;
       const cashFloat = cashier?.cashFloat ?? 0;
@@ -756,7 +756,8 @@ export async function registerRoutes(
         });
       }
 
-      console.log(`[submit-cashier-setup] Submitting for user ${userDetail.firstName} ${userDetail.lastName} (ID: ${userId}), office: ${body.officeId}`);
+      const isNewSession = !body.id || body.id === 0;
+      console.log(`[submit-cashier-setup] ${isNewSession ? 'CREATING NEW' : 'UPDATING existing (id=' + body.id + ')'} session for user ${userDetail.firstName} ${userDetail.lastName} (ID: ${userId}), office: ${body.officeId}`);
       console.log(`[submit-cashier-setup] Payload:`, JSON.stringify(body));
       const data = await platinumPost(session, "/api/ReceiptPrepaid/submit-cashier-setup", body);
       console.log(`[submit-cashier-setup] Response:`, JSON.stringify(data));

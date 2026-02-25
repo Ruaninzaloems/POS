@@ -84,9 +84,9 @@ export default function CashierSetup() {
                 const data = await fetchActiveCashierByUserId(userId, finYear);
                 console.log(`[CashierSetup] Step 1 response:`, JSON.stringify(data));
 
-                if (data.cashierRegistered === true && data.cashierId) {
+                if (data.cashierRegistered === true) {
                     setIsCashierRegistered(true);
-                    setCashierId(data.cashierId);
+                    setCashierId(data.cashierId || userId);
                     setCashierDetails(data.details || null);
                     setStep1Status('success');
 
@@ -255,7 +255,7 @@ export default function CashierSetup() {
             const nowSAST = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().replace('Z', '');
             const prevOffice = cashierDetails?.const_CashOffice || {};
 
-            const existingId = cashierDetails?.id || cashierId || 0;
+            const existingId = cashierDetails?.id || 0;
 
             const payload = {
                 id: existingId,
@@ -319,12 +319,28 @@ export default function CashierSetup() {
                 );
             }
 
-            const verifiedCashierId = submitId;
+            let verifiedCashierId = submitId;
             const verifiedFloat = submitCashier.cashFloat ?? float;
-            const verifiedOfficeId = submitCashier.officeId || selectedOffice.cashOffice_ID;
+            let verifiedOfficeId = submitCashier.officeId || selectedOffice.cashOffice_ID;
             const verifiedOfficeName = selectedOffice.cashOfficeDesc || '';
 
-            console.log(`[CashierSetup] POST SUCCESS — Cashier record created. id: ${verifiedCashierId}, isActive: true, Office: ${verifiedOfficeName} (ID: ${verifiedOfficeId}), Float: ${verifiedFloat}`);
+            console.log(`[CashierSetup] POST returned — Cashier id: ${verifiedCashierId}, isActive: true, Office: ${verifiedOfficeName} (ID: ${verifiedOfficeId}), Float: ${verifiedFloat}`);
+
+            console.log(`[CashierSetup] Verifying session was actually persisted via validate-cashier...`);
+            try {
+                await new Promise(resolve => setTimeout(resolve, 500));
+                const verifyData = await fetchActiveCashierByUserId(userId, finYear);
+                console.log(`[CashierSetup] Post-submit verify response:`, JSON.stringify(verifyData));
+                if (verifyData.isActive === true && verifyData.cashierId) {
+                    verifiedCashierId = verifyData.cashierId;
+                    verifiedOfficeId = verifyData.officeId || verifiedOfficeId;
+                    console.log(`[CashierSetup] VERIFIED — POS_Cashier record confirmed active. Real cashierId: ${verifiedCashierId}`);
+                } else {
+                    console.warn(`[CashierSetup] Post-submit verify shows isActive=${verifyData.isActive}, cashierId=${verifyData.cashierId}. The record may not have been persisted correctly.`);
+                }
+            } catch (verifyErr: any) {
+                console.warn(`[CashierSetup] Post-submit verify failed (non-fatal):`, verifyErr?.message);
+            }
 
             const officeId = String(verifiedOfficeId || selectedOffice.cashOffice_ID);
             const officeName = verifiedOfficeName;
