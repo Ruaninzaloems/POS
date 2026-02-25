@@ -800,34 +800,44 @@ export async function registerRoutes(
   app.post("/api/platinum/receipt-prepaid/submit-cashier-setup", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const body = { ...req.body };
-      const userId = body.user_Id;
+      const userId = session.userData?.user_ID || req.body.user_Id;
 
-      if (!userId) {
-        return res.status(400).json({ message: "user_Id is required" });
+      const payload: Record<string, any> = {
+        id: req.body.id ?? 0,
+        cashFloat: req.body.cashFloat ?? null,
+        stpPort: req.body.stpPort ?? null,
+        plesseyPort: req.body.plesseyPort ?? null,
+        officeId: req.body.officeId ?? null,
+        isVirtual: req.body.isVirtual ?? false,
+      };
+
+      const isNewSession = !payload.id || payload.id === 0;
+      const isClose = req.body.isActive === false;
+      if (isClose) {
+        payload.isActive = false;
       }
-
-      const isNewSession = !body.id || body.id === 0;
-      const isClose = body.isActive === false;
-      console.log(`[submit-cashier-setup] ${isClose ? 'CLOSING' : isNewSession ? 'CREATING NEW' : 'UPDATING existing (id=' + body.id + ')'} session — userId=${userId}, officeId=${body.officeId}`);
-      console.log(`[submit-cashier-setup] Payload:`, JSON.stringify(body));
-      const data = await platinumPost(session, "/api/ReceiptPrepaid/submit-cashier-setup", body);
+      console.log(`[submit-cashier-setup] ${isClose ? 'CLOSING' : isNewSession ? 'CREATING NEW' : 'UPDATING existing (id=' + payload.id + ')'} session — userId=${userId}, officeId=${payload.officeId}`);
+      console.log(`[submit-cashier-setup] Payload:`, JSON.stringify(payload));
+      const data = await platinumPost(session, "/api/ReceiptPrepaid/submit-cashier-setup", payload);
       console.log(`[submit-cashier-setup] Response:`, JSON.stringify(data));
 
       if (data && data._error) {
         const detail = data.detail || data.statusText || JSON.stringify(data);
         console.error(`[submit-cashier-setup] API error:`, detail);
+        if (data.status === 401) {
+          return res.status(401).json({ message: "Authentication failed — please log in again", detail });
+        }
         return res.status(data.status || 400).json({ message: "Cashier setup failed", detail });
       }
 
       if (data?.cashier?.id && data.cashier.isActive === true) {
         (session as any).knownCashierId = data.cashier.id;
-        (session as any).knownCashierOfficeId = data.cashier.officeId || body.officeId;
+        (session as any).knownCashierOfficeId = data.cashier.officeId || payload.officeId;
         (session as any).knownCashierData = data.cashier;
         console.log(`[submit-cashier-setup] Stored knownCashierId=${data.cashier.id}, officeId=${(session as any).knownCashierOfficeId} in session for fallback lookups`);
       }
 
-      handlePlatinumResult(res, data);
+      res.json(data);
     } catch (e: any) {
       console.error(`[submit-cashier-setup] Error:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });

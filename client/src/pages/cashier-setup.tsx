@@ -254,10 +254,10 @@ export default function CashierSetup() {
         try {
             const payload: Record<string, any> = {
                 id: 0,
-                user_Id: userId,
                 cashFloat: float,
+                stpPort: null,
+                plesseyPort: null,
                 officeId: selectedOffice.cashOffice_ID,
-                isActive: true,
                 isVirtual: false,
             };
 
@@ -267,30 +267,32 @@ export default function CashierSetup() {
             const responseData = await platinumSubmitCashierSetup(payload);
             console.log(`[CashierSetup] Step 3 submit response:`, JSON.stringify(responseData));
 
-            const apiMessage = responseData?.message || '';
+            const apiMessage = (responseData?.message || '').trim();
             console.log(`[CashierSetup] Platinum submit message: "${apiMessage}"`);
 
-            const isAlreadyOpen = apiMessage === 'Cashier Already Open';
+            const cleanMessage = apiMessage.replace(/<br\s*\/?>\s*•?\s*/gi, '\n').trim();
+            const isAlreadyOpen = /cashier already open/i.test(cleanMessage);
+            const isSuccess = /cashier setup added/i.test(cleanMessage);
+            const isValidationError = !isSuccess && !isAlreadyOpen && cleanMessage.length > 0;
+
             if (isAlreadyOpen && responseData?.cashier?.id) {
                 const existingCashier = responseData.cashier;
-                console.log(`[CashierSetup] "Cashier Already Open" — existing id=${existingCashier.id}, isVirtual=${existingCashier.isVirtual}, isActive=${existingCashier.isActive}`);
+                console.log(`[CashierSetup] "Cashier already open" — existing id=${existingCashier.id}, isVirtual=${existingCashier.isVirtual}, isActive=${existingCashier.isActive}`);
                 console.log(`[CashierSetup] Re-submitting with existing id=${existingCashier.id} to claim/update the session`);
                 const updatePayload: Record<string, any> = {
                     id: existingCashier.id,
-                    user_Id: userId,
                     cashFloat: float,
                     officeId: selectedOffice.cashOffice_ID,
-                    isActive: true,
-                    capturerId: userId,
+                    isVirtual: false,
                 };
                 const updateResponse = await platinumSubmitCashierSetup(updatePayload);
                 console.log(`[CashierSetup] Re-submit response:`, JSON.stringify(updateResponse));
                 if (updateResponse?.cashier) {
                     Object.assign(responseData, updateResponse);
                 }
-            } else if (apiMessage && apiMessage !== 'Cashier Setup Added' && !isAlreadyOpen) {
-                console.error(`[CashierSetup] Platinum rejected setup: "${apiMessage}". Full response:`, JSON.stringify(responseData));
-                throw new Error(`Platinum API rejected the setup: "${apiMessage}". Full response: ${JSON.stringify(responseData)}`);
+            } else if (isValidationError) {
+                console.error(`[CashierSetup] Platinum validation failed: "${cleanMessage}". Full response:`, JSON.stringify(responseData));
+                throw new Error(cleanMessage);
             }
 
             const submitCashier = responseData?.cashier;
