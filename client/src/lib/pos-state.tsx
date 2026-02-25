@@ -538,6 +538,57 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             };
           });
 
+          try {
+            const today = new Date();
+            const fromDate = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0') + 'T00:00:00';
+            const toDate = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0') + 'T23:59:59';
+            let viewResult = await fetchReceiptList({ cashierId: String(pCashierId), fromDate, toDate, page: 1, pageSize: 200, orderby: 'receiptDate', shortDirection: 'desc' });
+            let viewItems = viewResult?.items || [];
+            const pUserId = platinumUser?.user_ID || currentUser?.id;
+            if (viewItems.length === 0 && pUserId && String(pUserId) !== String(pCashierId)) {
+              viewResult = await fetchReceiptList({ cashierId: String(pUserId), fromDate, toDate, page: 1, pageSize: 200, orderby: 'receiptDate', shortDirection: 'desc' });
+              viewItems = viewResult?.items || [];
+            }
+            const unreconReceiptNos = new Set(mapped.map(t => t.receiptNumber).filter(Boolean));
+            const extraReceipts = viewItems.filter((r: any) => {
+              const rNo = r.receiptNo || '';
+              if (!rNo || unreconReceiptNos.has(rNo)) return false;
+              return true;
+            });
+            if (extraReceipts.length > 0) {
+              console.log(`[Transactions] Found ${extraReceipts.length} additional receipts from get-receipt-list (misc/clearance/prepaid)`);
+              const extraMapped: TransactionRecord[] = extraReceipts.map((r: any) => {
+                const isCash = (r.paymentType || '').toLowerCase().includes('cash');
+                const isCard = (r.paymentType || '').toLowerCase().includes('card');
+                const paymentAmount = r.amount || 0;
+                let txType: TransactionType = 'CONSUMER_SERVICES';
+                const opt = (r.paymentOption || '').toLowerCase();
+                if (opt.includes('misc') || opt.includes('direct') || opt.includes('income')) txType = 'DIRECT_INCOME';
+                else if (opt.includes('clearance')) txType = 'CLEARANCE';
+                else if (opt.includes('prepaid')) txType = 'PREPAID';
+                return {
+                  id: `plt-${r.receiptId}`,
+                  receiptNumber: r.receiptNo || `REC-${r.receiptId}`,
+                  timestamp: new Date(r.receiptDate).getTime() || Date.now(),
+                  items: [{ id: `item-${r.receiptId}`, type: txType, description: r.accName || r.paymentOption || 'Payment', reference: r.accountNumber || '', amountDue: r.outstandingAmount || paymentAmount, amountToPay: paymentAmount, originalData: r }],
+                  totalAmount: paymentAmount,
+                  payment: { cash: isCash ? paymentAmount : 0, card: isCard ? paymentAmount : 0, cardReference: '', cardExpiry: '' },
+                  status: (r.isCancelled === 1 ? 'CANCELLED' : 'COMPLETED') as TransactionStatus,
+                  cashierId: currentUser.id,
+                  cashierName: r.cashierName || '',
+                  cashOfficeName: r.cashOffice || '',
+                  paymentTypeName: r.paymentType || '',
+                  paymentOptionName: r.paymentOption || '',
+                  isReconciled: 0,
+                  cancellationReason: r.cancellationReason || undefined,
+                };
+              });
+              mapped.push(...extraMapped);
+            }
+          } catch (viewErr: any) {
+            console.warn(`[Transactions] Supplementary get-receipt-list failed (non-fatal):`, viewErr.message);
+          }
+
           mapped.sort((a, b) => b.timestamp - a.timestamp);
           setRecentTransactions(prev => {
             const activeId = currentTransactionIdRef.current;
@@ -555,7 +606,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             merged.sort((a, b) => b.timestamp - a.timestamp);
             return merged;
           });
-          console.log(`[Transactions] Loaded ${mapped.length} transactions from unreconciled-list API`);
+          console.log(`[Transactions] Loaded ${mapped.length} transactions (unreconciled + supplementary)`);
           return;
         }
         console.log(`[Transactions] Unreconciled-list returned empty (no unreconciled transactions), falling back to ViewReceipt API`);
