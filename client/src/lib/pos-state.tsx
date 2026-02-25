@@ -2474,13 +2474,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (receiptId) {
           try {
               if (isSupervisor) {
-                  await platinumAuthDayEndCancelReceipt({ receiptId: Number(receiptId), reason });
+                  await platinumAuthDayEndCancelReceipt({ id: Number(receiptId), returnReason: reason });
                   console.log(`[CancelTransaction] Receipt ${receiptId} cancelled directly by supervisor via Platinum API`);
               } else {
                   await platinumRequestCancelReceipt({
                       receiptId: Number(receiptId),
                       reason,
-                      userId: platinumUser?.user_ID || Number(currentUser.id),
+                      isMiscPayment: false,
                   });
                   console.log(`[CancelTransaction] Receipt ${receiptId} cancellation requested via Platinum API`);
               }

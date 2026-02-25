@@ -217,15 +217,17 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
 
       try {
         console.log('[DayEndModal] Step 2: validate-cashbook for cashier', cashierId);
-        await platinumAuthDayEndValidateCashbook({ cashierId: Number(cashierId) });
+        await platinumAuthDayEndValidateCashbook(Number(cashierId));
         console.log('[DayEndModal] validate-cashbook passed');
       } catch (valErr: any) {
         console.warn('[DayEndModal] validate-cashbook warning (continuing):', valErr.message);
       }
 
+      const cashierOfficeId = Number(sessionDetails?.officeId) || 1;
+      const cashBookId = (platinumUser as any)?.cashBookId || (platinumUser as any)?.cashbookId || 1;
       try {
-        console.log('[DayEndModal] Step 3: submit-day-auth-reconcile for cashier', cashierId);
-        await platinumAuthDayEndSubmitReconcile({ cashierId: Number(cashierId) });
+        console.log('[DayEndModal] Step 3: submit-day-auth-reconcile for cashier', cashierId, 'cashBookId', cashBookId, 'officeId', cashierOfficeId);
+        await platinumAuthDayEndSubmitReconcile({ cashierId: Number(cashierId), cashBookId: Number(cashBookId), cashierOfficeId: Number(cashierOfficeId) });
         console.log('[DayEndModal] submit-day-auth-reconcile succeeded');
       } catch (subErr: any) {
         console.warn('[DayEndModal] submit-day-auth-reconcile warning (continuing):', subErr.message);

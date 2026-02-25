@@ -1340,8 +1340,9 @@ export async function platinumDeclineCancelReceipt(data: any): Promise<any> {
     });
 }
 
-export async function platinumGetPendingCancelRequests(): Promise<any> {
-    return platinumFetch(`/api/platinum/auth-day-end/pending-cancel-requests`);
+export async function platinumGetPendingCancelRequests(cashierId?: number): Promise<any> {
+    const qs = cashierId ? `?cashierId=${cashierId}` : '';
+    return platinumFetch(`/api/platinum/auth-day-end/pending-cancel-requests${qs}`);
 }
 
 export async function platinumAuthDayEndPrintReceipt(data: any): Promise<any> {
@@ -1368,19 +1369,24 @@ export async function platinumAuthDayEndPrintDepositSlip(data: any): Promise<any
     });
 }
 
-export async function platinumAuthDayEndSubmitReconcile(data: any): Promise<any> {
-    return platinumFetch(`/api/platinum/auth-day-end/submit-day-auth-reconcile`, {
+export async function platinumAuthDayEndSubmitReconcile(params: { cashierId: number; cashBookId: number; cashierOfficeId: number }): Promise<any> {
+    const qs = new URLSearchParams({
+        cashierId: String(params.cashierId),
+        cashBookId: String(params.cashBookId),
+        cashierOfficeId: String(params.cashierOfficeId),
+    }).toString();
+    return platinumFetch(`/api/platinum/auth-day-end/submit-day-auth-reconcile?${qs}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({}),
     });
 }
 
-export async function platinumAuthDayEndValidateCashbook(data: any): Promise<any> {
-    return platinumFetch(`/api/platinum/auth-day-end/validate-cashbook`, {
+export async function platinumAuthDayEndValidateCashbook(cashierId: number): Promise<any> {
+    return platinumFetch(`/api/platinum/auth-day-end/validate-cashbook?cashierId=${cashierId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({}),
     });
 }
 

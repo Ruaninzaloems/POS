@@ -176,6 +176,7 @@ interface PendingCancelRequest {
   requestDate: string;
   paymentType: string;
   status: string;
+  isMiscPayment: boolean;
   raw?: any;
 }
 
@@ -207,6 +208,7 @@ export default function SupervisorDashboard() {
         requestDate: item.requestDate || item.requestedDate || item.createdDate || item.date || '',
         paymentType: item.paymentType || item.payMode || '',
         status: item.status || 'PENDING',
+        isMiscPayment: item.isMiscPayment === true || item.isMiscPayment === 1 || item.is_misc_payment === true,
         raw: item,
       }));
       setPendingCancelRequests(mapped);
@@ -227,8 +229,8 @@ export default function SupervisorDashboard() {
     try {
       await platinumApproveCancelReceipt({
         receiptId: req.receiptId,
-        id: Number(req.id),
-        userId: platinumUser?.user_ID || 0,
+        reason: req.reason || 'Approved by supervisor',
+        isMiscPayment: req.isMiscPayment || false,
       });
       toast({ title: 'Cancellation Approved', description: `Receipt ${req.receiptNo || req.receiptId} has been voided.` });
       setProcessedCancelRequests(prev => [...prev, { ...req, status: 'APPROVED' }]);
@@ -247,8 +249,8 @@ export default function SupervisorDashboard() {
     try {
       await platinumDeclineCancelReceipt({
         receiptId: req.receiptId,
-        id: Number(req.id),
-        userId: platinumUser?.user_ID || 0,
+        reason: req.reason || 'Declined by supervisor',
+        isMiscPayment: req.isMiscPayment || false,
       });
       toast({ title: 'Cancellation Declined', description: `Receipt ${req.receiptNo || req.receiptId} cancellation was rejected.` });
       setProcessedCancelRequests(prev => [...prev, { ...req, status: 'DECLINED' }]);
@@ -467,14 +469,16 @@ export default function SupervisorDashboard() {
     try {
       try {
         console.log('[Supervisor] Step 1: validate-cashbook for cashier', cashierId);
-        await platinumAuthDayEndValidateCashbook({ cashierId: Number(cashierId) });
+        await platinumAuthDayEndValidateCashbook(Number(cashierId));
       } catch (valErr: any) {
         console.warn('[Supervisor] validate-cashbook warning (continuing):', valErr.message);
       }
 
+      const cashierOfficeId = selectedShift?.cashOfficeId || reviewData?.details?.cashierOfficeId || reviewData?.details?.officeId || 1;
+      const cashBookId = reviewData?.details?.cashBookId || reviewData?.details?.cashbookId || 1;
       try {
-        console.log('[Supervisor] Step 2: submit-day-auth-reconcile for cashier', cashierId);
-        await platinumAuthDayEndSubmitReconcile({ cashierId: Number(cashierId) });
+        console.log('[Supervisor] Step 2: submit-day-auth-reconcile for cashier', cashierId, 'cashBookId', cashBookId, 'officeId', cashierOfficeId);
+        await platinumAuthDayEndSubmitReconcile({ cashierId: Number(cashierId), cashBookId: Number(cashBookId), cashierOfficeId: Number(cashierOfficeId) });
       } catch (subErr: any) {
         console.warn('[Supervisor] submit-day-auth-reconcile warning (continuing):', subErr.message);
       }
@@ -495,7 +499,9 @@ export default function SupervisorDashboard() {
   const handlePrintCashReport = async (cashierId: string) => {
     try {
       toast({ title: 'Generating...', description: 'Preparing cash report...' });
-      const result = await platinumAuthDayEndPrintCashReport({ cashierId: Number(cashierId) });
+      const cashierName = selectedShift?.cashierName || 'Cashier';
+      const reconcileDate = new Date().toISOString().split('T')[0];
+      const result = await platinumAuthDayEndPrintCashReport({ cashierId: Number(cashierId), cashierName, reconcileDate });
       if (result && typeof result === 'string' && result.startsWith('JVB')) {
         const byteChars = atob(result);
         const byteArr = new Uint8Array(byteChars.length);
@@ -520,7 +526,9 @@ export default function SupervisorDashboard() {
   const handlePrintDepositSlip = async (cashierId: string) => {
     try {
       toast({ title: 'Generating...', description: 'Preparing deposit slip...' });
-      const result = await platinumAuthDayEndPrintDepositSlip({ cashierId: Number(cashierId) });
+      const cashierName = selectedShift?.cashierName || 'Cashier';
+      const reconcileDate = new Date().toISOString().split('T')[0];
+      const result = await platinumAuthDayEndPrintDepositSlip({ cashierId: Number(cashierId), cashierName, reconcileDate });
       if (result && typeof result === 'string' && result.startsWith('JVB')) {
         const byteChars = atob(result);
         const byteArr = new Uint8Array(byteChars.length);

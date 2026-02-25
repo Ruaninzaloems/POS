@@ -2484,6 +2484,18 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/platinum/auth-day-end/cancel-day-auth-reconcile-receipt", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      console.log(`[auth-dayend-direct-cancel] Body:`, JSON.stringify(req.body));
+      const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile/cancel-day-auth-reconcile-receipt", req.body);
+      console.log(`[auth-dayend-direct-cancel] Response:`, JSON.stringify(data).substring(0, 500));
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.post("/api/platinum/auth-day-end/request-cancel-receipt", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
