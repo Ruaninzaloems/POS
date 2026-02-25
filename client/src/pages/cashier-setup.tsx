@@ -26,7 +26,7 @@ interface CashOfficeViewModel {
 type StepStatus = 'pending' | 'loading' | 'success' | 'error';
 
 export default function CashierSetup() {
-    const { startSession, switchUser, currentUser, activeSession, sessionLoading, sessionDetails, platinumUser } = usePos();
+    const { startSession, switchUser, currentUser, activeSession, sessionLoading, sessionDetails, platinumUser, dayEndStatus } = usePos();
     const [, setLocation] = useLocation();
 
     const [step1Status, setStep1Status] = useState<StepStatus>('pending');
@@ -93,13 +93,15 @@ export default function CashierSetup() {
                     if (data.isActive === true && data.officeId) {
                         console.log(`[CashierSetup] validate-cashier API confirms session is active (POS_Cashier.IsActive=1) at office ${data.officeName} (ID: ${data.officeId}). isActive is the single source of truth.`);
 
-                        if (data.hasPendingDayEnd === true) {
-                            console.log(`[CashierSetup] cashierReconcile is present — day-end pending supervisor approval — blocking resume`);
+                        const pendingFromApi = data.hasPendingDayEnd === true;
+                        const pendingFromContext = dayEndStatus === 'PENDING_APPROVAL';
+                        if (pendingFromApi || pendingFromContext) {
+                            console.log(`[CashierSetup] Day-end pending — blocking resume (API: ${pendingFromApi}, Context: ${pendingFromContext})`);
                             setDayEndPending(true);
                             setResumingSession(false);
                             setStep2Status('success');
                         } else {
-                            console.log(`[CashierSetup] No pending day-end (cashierReconcile=null) — allowing resume`);
+                            console.log(`[CashierSetup] No pending day-end — allowing resume only (no new session while active)`);
                             setResumingSession(true);
                             setStep2Status('success');
                             setStep3Status('pending');
@@ -218,6 +220,11 @@ export default function CashierSetup() {
 
         if (dayEndPending) {
             setError('Your day-end reconciliation is pending supervisor approval. You cannot start a new session until it is approved or returned.');
+            return;
+        }
+
+        if (resumingSession) {
+            setError('An active session already exists. You cannot start a new session while another is active. Resume your current session or complete day-end reconciliation first.');
             return;
         }
 
@@ -425,7 +432,7 @@ export default function CashierSetup() {
                                     {dayEndCompleted
                                         ? ' A day-end reconciliation has been completed. Please start a new session below.'
                                         : resumingSession
-                                        ? ' An active session was found (verified via validate-cashier API — POS_Cashier.IsActive=1). You can resume it or start a new one below.'
+                                        ? ' An active session was found (verified via validate-cashier API — POS_Cashier.IsActive=1). Resume your session below.'
                                         : ' Select your cash office and float amount below.'}
                                 </p>
                             </div>
@@ -486,16 +493,8 @@ export default function CashierSetup() {
                                         >
                                             Resume Session
                                         </Button>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            onClick={() => setResumingSession(false)}
-                                            className="border-blue-300 text-blue-700 hover:bg-blue-100"
-                                            data-testid="button-new-session"
-                                        >
-                                            Start New Session
-                                        </Button>
                                     </div>
+                                    <p className="text-xs text-blue-500 mt-2 italic">You cannot start a new session while an active session exists. Resume your current session or complete day-end reconciliation first.</p>
                                 </div>
                             </div>
                         </div>
@@ -776,7 +775,7 @@ export default function CashierSetup() {
                             <Button
                                 type="submit"
                                 className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25 h-12 text-base font-bold rounded-xl w-full"
-                                disabled={!selectedOffice || submitting || isCashierRegistered !== true || dayEndPending}
+                                disabled={!selectedOffice || submitting || isCashierRegistered !== true || dayEndPending || resumingSession}
                                 data-testid="button-submit"
                             >
                                 {submitting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Setting up...</> : 'Submit'}
