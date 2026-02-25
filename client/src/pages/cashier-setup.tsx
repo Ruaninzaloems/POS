@@ -373,7 +373,7 @@ export default function CashierSetup() {
     if (sessionLoading || (step1Status === 'loading' && step2Status === 'pending')) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 flex items-center justify-center p-4" data-testid="cashier-setup-loading">
-                <Card className="w-full max-w-2xl rounded-2xl shadow-xl shadow-black/5 border-slate-200/80 bg-white overflow-hidden">
+                <Card className="w-full max-w-4xl rounded-2xl shadow-xl shadow-black/5 border-slate-200/80 bg-white overflow-hidden">
                     <CardContent className="p-12 flex flex-col items-center gap-4">
                         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
                         <p className="text-slate-600">
@@ -391,7 +391,7 @@ export default function CashierSetup() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 flex items-start sm:items-center justify-center p-4 py-6 overflow-y-auto" data-testid="cashier-setup-page">
-            <Card className="w-full max-w-2xl rounded-2xl shadow-xl shadow-black/5 border-slate-200/80 bg-white overflow-hidden my-auto sm:my-0">
+            <Card className="w-full max-w-4xl rounded-2xl shadow-xl shadow-black/5 border-slate-200/80 bg-white overflow-hidden my-auto sm:my-0">
                 <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4">
                     <CardTitle className="text-white text-lg">Cashier Setup</CardTitle>
                 </CardHeader>
@@ -494,7 +494,7 @@ export default function CashierSetup() {
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-                        <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] items-start sm:items-center gap-1 sm:gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-start sm:items-center gap-1 sm:gap-4">
                             <Label className="text-left sm:text-right text-sm font-semibold text-slate-600">Name</Label>
                             <Input
                                 value={firstName}
@@ -504,7 +504,7 @@ export default function CashierSetup() {
                             />
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] items-start sm:items-center gap-1 sm:gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-start sm:items-center gap-1 sm:gap-4">
                             <Label className="text-left sm:text-right text-sm font-semibold text-slate-600">Surname</Label>
                             <Input
                                 value={lastName}
@@ -514,7 +514,7 @@ export default function CashierSetup() {
                             />
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] items-start sm:items-center gap-1 sm:gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-start sm:items-center gap-1 sm:gap-4">
                             <Label className="text-left sm:text-right text-sm font-semibold text-slate-600">User ID</Label>
                             <Input
                                 value={String(userId)}
@@ -524,7 +524,7 @@ export default function CashierSetup() {
                             />
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] items-start sm:items-center gap-1 sm:gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-start sm:items-center gap-1 sm:gap-4">
                             <Label className="text-left sm:text-right text-sm font-semibold text-slate-600">Cash Float <span className="text-red-500">*</span></Label>
                             <Input
                                 type="number"
@@ -537,7 +537,7 @@ export default function CashierSetup() {
                             />
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] items-start sm:items-center gap-1 sm:gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-start sm:items-center gap-1 sm:gap-4">
                             <Label className="text-left sm:text-right text-sm font-semibold text-slate-600">Cashier Office <span className="text-red-500">*</span></Label>
                             <Select value={selectedOfficeId} onValueChange={setSelectedOfficeId} disabled={isCashierRegistered !== true || cashOffices.length === 0} data-testid="select-cash-office">
                                 <SelectTrigger className="h-11 rounded-xl border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-slate-600" data-testid="select-cash-office-trigger">
@@ -553,18 +553,19 @@ export default function CashierSetup() {
                             </Select>
                         </div>
                         {isNonDefaultOffice && (
-                            <div className="ml-0 sm:ml-[216px] text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1 -mt-1" data-testid="non-default-office-note">
+                            <div className="ml-0 sm:ml-[176px] text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1 -mt-1" data-testid="non-default-office-note">
                                 Different from registered office — payment functions are specific to this cash office
                             </div>
                         )}
 
-                        <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] items-start sm:items-center gap-1 sm:gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-start sm:items-center gap-1 sm:gap-4">
                             <Label className="text-left sm:text-right text-sm font-semibold text-slate-600">Ledger Vote</Label>
                             <div className="space-y-1">
                                 <Input
                                     value={ledgerVoteDisplay}
                                     disabled
-                                    className={`bg-slate-50 rounded-xl border border-slate-200 font-mono ${hasValidVote ? 'text-slate-800 font-medium' : selectedOffice ? 'text-amber-600 border-amber-300' : 'text-slate-400'}`}
+                                    title={ledgerVoteDisplay}
+                                    className={`bg-slate-50 rounded-xl border border-slate-200 font-mono text-[11px] ${hasValidVote ? 'text-slate-800 font-medium' : selectedOffice ? 'text-amber-600 border-amber-300' : 'text-slate-400'}`}
                                     placeholder="Select a cash office to view ledger vote"
                                     data-testid="input-ledger-vote"
                                 />
@@ -652,7 +653,7 @@ export default function CashierSetup() {
                                             <div className="space-y-1.5">
                                                 {paymentOptions.map(opt => (
                                                     <div key={opt.posPaymentOption_ID} className="flex items-center justify-between" data-testid={`payment-option-${opt.posPaymentOption_ID}`}>
-                                                        <span className="text-xs text-slate-700 truncate mr-2">{opt.posPaymentOptionDesc}</span>
+                                                        <span className="text-xs text-slate-700 mr-2">{opt.posPaymentOptionDesc}</span>
                                                         {opt.isTicked && opt.enabled ? (
                                                             <Badge className="text-[10px] px-1.5 py-0 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50" data-testid={`option-status-${opt.posPaymentOption_ID}`}>Enabled</Badge>
                                                         ) : (
