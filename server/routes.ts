@@ -315,6 +315,8 @@ export async function registerRoutes(
       console.log(`[active-cashier] Using validate-cashier API as single source of truth — userId=${userId}, finYear=${finYear}`);
       const vcData = await platinumGet(session, "/api/ReceiptPrepaid/validate-cashier", { userId, finYear });
       console.log(`[active-cashier] RAW validate-cashier top-level keys:`, vcData ? Object.keys(vcData).join(', ') : 'null');
+      console.log(`[active-cashier] RAW cashier field:`, JSON.stringify(vcData?.cashier)?.substring(0, 500) || 'null');
+      console.log(`[active-cashier] RAW cashOffice field:`, JSON.stringify(vcData?.cashOffice)?.substring(0, 300) || 'null');
       console.log(`[active-cashier] RAW cashierReconcile field:`, JSON.stringify(vcData?.cashierReconcile)?.substring(0, 500));
 
       if (!vcData || vcData._error) {
@@ -369,6 +371,15 @@ export async function registerRoutes(
             }
           } catch (fbErr: any) {
             console.warn(`[active-cashier] Fallback active-cashierid check failed:`, fbErr.message);
+          }
+        }
+
+        if (!cashier && (session as any).knownCashierData) {
+          const stored = (session as any).knownCashierData;
+          if (stored.isActive === true && stored.id > 0) {
+            console.log(`[active-cashier] Using stored knownCashierData as last resort — id: ${stored.id}, isActive: ${stored.isActive}`);
+            cashier = stored;
+            cashOffice = stored.const_CashOffice || null;
           }
         }
       }
@@ -820,7 +831,8 @@ export async function registerRoutes(
       if (data?.cashier?.id && data.cashier.isActive === true && !isClose) {
         (session as any).knownCashierId = data.cashier.id;
         (session as any).knownCashierOfficeId = data.cashier.officeId || body.officeId;
-        console.log(`[submit-cashier-setup] Stored knownCashierId=${data.cashier.id} in session for fallback lookups`);
+        (session as any).knownCashierData = data.cashier;
+        console.log(`[submit-cashier-setup] Stored knownCashierId=${data.cashier.id}, officeId=${(session as any).knownCashierOfficeId} in session for fallback lookups`);
       }
 
       handlePlatinumResult(res, data);

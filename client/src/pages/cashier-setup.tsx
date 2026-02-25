@@ -303,26 +303,7 @@ export default function CashierSetup() {
             const isAlreadyOpen = apiMessage === 'Cashier Already Open';
             if (isAlreadyOpen) {
                 const existingCashier = responseData?.cashier;
-                console.log(`[CashierSetup] "Cashier Already Open" — existing session id=${existingCashier?.id}, isVirtual=${existingCashier?.isVirtual}, isActive=${existingCashier?.isActive}`);
-
-                if (existingCashier?.id && existingCashier?.isActive === true) {
-                    console.log(`[CashierSetup] Existing session has isActive=true. Accepting it as the active session and storing for fallback.`);
-                    try {
-                        const storeRes = await platinumFetch(`/api/platinum/receipt-prepaid/store-known-cashier`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                cashier: existingCashier,
-                                officeId: selectedOffice.cashOffice_ID,
-                                officeName: selectedOffice.cashOfficeDesc,
-                                cashFloat: float,
-                            }),
-                        });
-                        console.log(`[CashierSetup] Stored known cashier in server session:`, JSON.stringify(storeRes));
-                    } catch (storeErr: any) {
-                        console.warn(`[CashierSetup] Failed to store known cashier (non-fatal):`, storeErr?.message);
-                    }
-                }
+                console.log(`[CashierSetup] "Cashier Already Open" — existing session id=${existingCashier?.id}, isVirtual=${existingCashier?.isVirtual}, isActive=${existingCashier?.isActive}. Accepting as active session (knownCashierId stored server-side).`);
             } else if (apiMessage && apiMessage !== 'Cashier Setup Added') {
                 console.error(`[CashierSetup] Platinum rejected setup: "${apiMessage}". Full response:`, JSON.stringify(responseData));
                 throw new Error(`Platinum API rejected the setup: "${apiMessage}". Full response: ${JSON.stringify(responseData)}`);

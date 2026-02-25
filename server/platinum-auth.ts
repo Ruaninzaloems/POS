@@ -343,11 +343,6 @@ function buildCacheKey(url: string, session: UserSession, path: string): string 
 export async function platinumGet(session: UserSession, path: string, params?: Record<string, string>, options?: { timeoutMs?: number }): Promise<any> {
   const timeoutMs = options?.timeoutMs || 30000;
 
-  const actualUserId = String(session.userData?.user_ID || 1);
-  if (path === "/api/ReceiptPrepaid/cashier-detailsById" && params?.cashierId && params.cashierId !== actualUserId) {
-    params = { ...params, cashierId: actualUserId };
-  }
-
   let url = `${PLATINUM_API_URL}${path}`;
   if (params) {
     const qs = new URLSearchParams(params).toString();
