@@ -305,51 +305,22 @@ export default function CashierSetup() {
                 const existingCashier = responseData?.cashier;
                 console.log(`[CashierSetup] "Cashier Already Open" — existing session id=${existingCashier?.id}, isVirtual=${existingCashier?.isVirtual}, isActive=${existingCashier?.isActive}`);
 
-                if (existingCashier?.id) {
-                    console.log(`[CashierSetup] Step 1: CLOSING old stuck session id=${existingCashier.id}`);
-                    const closePayload = {
-                        id: existingCashier.id,
-                        cashFloat: existingCashier.cashFloat ?? 0,
-                        stsPort: existingCashier.stsPort ?? null,
-                        plesseyPort: existingCashier.plesseyPort ?? null,
-                        officeId: existingCashier.officeId ?? payload.officeId,
-                        isActive: false,
-                        dateCaptured: existingCashier.dateCaptured || payload.dateCaptured,
-                        capturerId: existingCashier.capturerId ?? userId,
-                        dateModified: payload.dateCaptured,
-                        modifiredId: userId,
-                        user_Id: userId,
-                        sourceReferenceID: null,
-                        offlineReconciled: null,
-                        offlineRelations: null,
-                        isVirtual: null,
-                        const_CashOffice: payload.const_CashOffice,
-                        _closeOnly: true,
-                    };
+                if (existingCashier?.id && existingCashier?.isActive === true) {
+                    console.log(`[CashierSetup] Existing session has isActive=true. Accepting it as the active session and storing for fallback.`);
                     try {
-                        const closeResponse = await platinumSubmitCashierSetup(closePayload);
-                        console.log(`[CashierSetup] Close old session response:`, JSON.stringify(closeResponse));
-                    } catch (closeErr: any) {
-                        console.warn(`[CashierSetup] Failed to close old session, continuing anyway:`, closeErr?.message);
-                    }
-
-                    console.log(`[CashierSetup] Step 2: CREATING brand new session with id=0`);
-                    const newPayload = { ...payload, id: 0 };
-                    try {
-                        const newResponse = await platinumSubmitCashierSetup(newPayload);
-                        console.log(`[CashierSetup] New session response:`, JSON.stringify(newResponse));
-                        const newMsg = newResponse?.message || '';
-                        if (newResponse?.cashier?.isActive === true && newMsg === 'Cashier Setup Added') {
-                            Object.assign(responseData, newResponse);
-                        } else if (newMsg === 'Cashier Already Open' && newResponse?.cashier?.id) {
-                            console.log(`[CashierSetup] Still "Already Open" after close — using returned cashier id=${newResponse.cashier.id}`);
-                            Object.assign(responseData, newResponse);
-                        } else {
-                            console.warn(`[CashierSetup] New session creation returned unexpected: ${newMsg}`);
-                            if (newResponse?.cashier) Object.assign(responseData, newResponse);
-                        }
-                    } catch (newErr: any) {
-                        console.warn(`[CashierSetup] Failed to create new session after closing old:`, newErr?.message);
+                        const storeRes = await platinumFetch(`/api/platinum/receipt-prepaid/store-known-cashier`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                cashier: existingCashier,
+                                officeId: selectedOffice.cashOffice_ID,
+                                officeName: selectedOffice.cashOfficeDesc,
+                                cashFloat: float,
+                            }),
+                        });
+                        console.log(`[CashierSetup] Stored known cashier in server session:`, JSON.stringify(storeRes));
+                    } catch (storeErr: any) {
+                        console.warn(`[CashierSetup] Failed to store known cashier (non-fatal):`, storeErr?.message);
                     }
                 }
             } else if (apiMessage && apiMessage !== 'Cashier Setup Added') {
