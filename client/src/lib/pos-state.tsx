@@ -2536,6 +2536,15 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     } finally {
         setProcessingStep('');
+        setRecentTransactions(prev => {
+            const idx = prev.findIndex(t => t.id === record.id);
+            if (idx >= 0) {
+                const updated = [...prev];
+                updated[idx] = { ...record };
+                return updated;
+            }
+            return prev;
+        });
         setTransactionProcessing(false);
         lastSubmittedPaymentRef.current = fingerprintBase;
         paymentInFlightRef.current = false;
