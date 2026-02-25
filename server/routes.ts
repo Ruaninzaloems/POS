@@ -329,6 +329,8 @@ export async function registerRoutes(
       const receiptRange = vcData.receiptRange || vcData.receiptRangeAvailable || null;
       const cashierReconcile = vcData.cashierReconcile || null;
 
+      let sessionFromCache = false;
+
       if (!cashier) {
         console.log(`[active-cashier] validate-cashier returned cashier=null — checking fallbacks`);
 
@@ -374,7 +376,6 @@ export async function registerRoutes(
           }
         }
 
-        let sessionFromCache = false;
         if (!cashier && (session as any).knownCashierData) {
           const stored = (session as any).knownCashierData;
           if (stored.id > 0) {
