@@ -845,6 +845,74 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/platinum/debug/user-auth-test", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const token = await refreshSessionToken(session);
+      const userId = session.userData?.user_ID || 213;
+
+      const userListRes = await fetch(`${process.env.PLATINUM_API_URL || 'https://georgeplatinumuatapi.azurewebsites.net'}/api/User`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      });
+      if (!userListRes.ok) {
+        return res.json({ error: "Failed to fetch user list", status: userListRes.status });
+      }
+      const users: any[] = await userListRes.json();
+      const target = users.find((u: any) => u.userId === userId || u.user_ID === userId || u.id === userId);
+
+      const allFields = target ? Object.keys(target) : [];
+      console.log(`[debug-auth] User ${userId} fields:`, allFields);
+      console.log(`[debug-auth] User ${userId} data:`, JSON.stringify(target, null, 2));
+
+      const password = process.env.PLATINUM_API_PASSWORD || '';
+      const dbName = process.env.PLATINUM_API_DBNAME || 'George';
+      const apiUrl = process.env.PLATINUM_API_URL || 'https://georgeplatinumuatapi.azurewebsites.net';
+
+      const candidates = new Set<string>();
+      if (target) {
+        if (target.userName) candidates.add(target.userName);
+        if (target.loginName) candidates.add(target.loginName);
+        if (target.email) candidates.add(target.email);
+        if (target.firstName) candidates.add(target.firstName);
+        if (target.lastName) candidates.add(target.lastName);
+        if (target.firstName && target.lastName) {
+          candidates.add(`${target.firstName}${target.lastName}`);
+          candidates.add(`${target.firstName}.${target.lastName}`);
+          candidates.add(`${target.firstName}${target.lastName[0]}`);
+          candidates.add(`${target.firstName[0]}${target.lastName}`);
+        }
+      }
+      candidates.add(process.env.PLATINUM_API_USERNAME || 'Francois');
+
+      const results: Record<string, string> = {};
+      for (const name of candidates) {
+        try {
+          const r = await fetch(`${apiUrl}/auth/createToken`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userName: name, password, dbName }),
+          });
+          const text = await r.text();
+          let parsed: any;
+          try { parsed = JSON.parse(text); } catch { parsed = text; }
+          if (r.ok && parsed.token) {
+            const userData = parsed.data || parsed.user || parsed.userData || {};
+            results[name] = `SUCCESS — user_ID: ${userData.user_ID || userData.userId || 'unknown'}`;
+          } else {
+            results[name] = `FAILED (${r.status}): ${typeof parsed === 'string' ? parsed.substring(0, 100) : JSON.stringify(parsed).substring(0, 100)}`;
+          }
+        } catch (e: any) {
+          results[name] = `ERROR: ${e.message}`;
+        }
+      }
+
+      console.log(`[debug-auth] createToken results:`, JSON.stringify(results, null, 2));
+      res.json({ userId, userRecord: target, fields: allFields, createTokenResults: results });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   app.get("/api/platinum/user/:id", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;

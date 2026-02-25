@@ -257,7 +257,7 @@ export async function refreshSessionToken(session: UserSession): Promise<string>
     return session.token;
   }
 
-  const username = PLATINUM_USERNAME || session.userData?.userName || 'Francois';
+  const username = session.userData?.userName || PLATINUM_USERNAME;
   const mutexKey = `refresh-${username}`;
 
   const existing = tokenRefreshPromises.get(mutexKey);
