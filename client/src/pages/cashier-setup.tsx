@@ -252,43 +252,13 @@ export default function CashierSetup() {
         setStep3Status('loading');
 
         try {
-            const nowSAST = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().replace('Z', '');
-            const prevOffice = cashierDetails?.const_CashOffice || {};
-
-            const existingId = cashierDetails?.id || 0;
-
-            const payload = {
-                id: existingId,
+            const payload: Record<string, any> = {
+                id: 0,
+                user_Id: userId,
                 cashFloat: float,
-                stsPort: null,
-                plesseyPort: null,
                 officeId: selectedOffice.cashOffice_ID,
                 isActive: true,
-                dateCaptured: nowSAST,
                 capturerId: userId,
-                dateModified: null,
-                modifiredId: null,
-                user_Id: userId,
-                sourceReferenceID: null,
-                offlineReconciled: null,
-                offlineRelations: null,
-                isVirtual: null,
-                const_CashOffice: {
-                    cashOffice_ID: selectedOffice.cashOffice_ID,
-                    cashOfficeDesc: selectedOffice.cashOfficeDesc || '',
-                    enabled: prevOffice.enabled ?? true,
-                    dateCaptured: prevOffice.dateCaptured || nowSAST,
-                    capturerID: prevOffice.capturerID ?? 0,
-                    dateModified: prevOffice.dateModified ?? null,
-                    modifierID: prevOffice.modifierID ?? null,
-                    groupCashiers: prevOffice.groupCashiers ?? false,
-                    cashOnHandLimit: selectedOffice.cashOnHandLimit ?? prevOffice.cashOnHandLimit ?? 999999,
-                    scoaConfigurationID: selectedOffice.scoaConfigurationID ?? prevOffice.scoaConfigurationID ?? 4,
-                    classificationID: prevOffice.classificationID ?? null,
-                    allowDelayedDayEndRecon: prevOffice.allowDelayedDayEndRecon ?? true,
-                    delayDaysSincePreviousDayEndRecon: prevOffice.delayDaysSincePreviousDayEndRecon ?? 1,
-                    cashOfficeScoaItemID: selectedOffice.vote_ID || selectedOffice.cashOfficeScoaItemID || prevOffice.cashOfficeScoaItemID || null,
-                },
             };
 
             console.log(`[CashierSetup] Step 3: submit-cashier-setup POST — userId=${userId}, officeId=${selectedOffice.cashOffice_ID}`);
@@ -301,10 +271,24 @@ export default function CashierSetup() {
             console.log(`[CashierSetup] Platinum submit message: "${apiMessage}"`);
 
             const isAlreadyOpen = apiMessage === 'Cashier Already Open';
-            if (isAlreadyOpen) {
-                const existingCashier = responseData?.cashier;
-                console.log(`[CashierSetup] "Cashier Already Open" — existing session id=${existingCashier?.id}, isVirtual=${existingCashier?.isVirtual}, isActive=${existingCashier?.isActive}. Accepting as active session (knownCashierId stored server-side).`);
-            } else if (apiMessage && apiMessage !== 'Cashier Setup Added') {
+            if (isAlreadyOpen && responseData?.cashier?.id) {
+                const existingCashier = responseData.cashier;
+                console.log(`[CashierSetup] "Cashier Already Open" — existing id=${existingCashier.id}, isVirtual=${existingCashier.isVirtual}, isActive=${existingCashier.isActive}`);
+                console.log(`[CashierSetup] Re-submitting with existing id=${existingCashier.id} to claim/update the session`);
+                const updatePayload: Record<string, any> = {
+                    id: existingCashier.id,
+                    user_Id: userId,
+                    cashFloat: float,
+                    officeId: selectedOffice.cashOffice_ID,
+                    isActive: true,
+                    capturerId: userId,
+                };
+                const updateResponse = await platinumSubmitCashierSetup(updatePayload);
+                console.log(`[CashierSetup] Re-submit response:`, JSON.stringify(updateResponse));
+                if (updateResponse?.cashier) {
+                    Object.assign(responseData, updateResponse);
+                }
+            } else if (apiMessage && apiMessage !== 'Cashier Setup Added' && !isAlreadyOpen) {
                 console.error(`[CashierSetup] Platinum rejected setup: "${apiMessage}". Full response:`, JSON.stringify(responseData));
                 throw new Error(`Platinum API rejected the setup: "${apiMessage}". Full response: ${JSON.stringify(responseData)}`);
             }

@@ -797,27 +797,15 @@ export async function registerRoutes(
     try {
       const session = requireAuth(req, res); if (!session) return;
       const body = { ...req.body };
-      if (body._closeOnly !== true) {
-        body.isActive = true;
-      }
-      delete body._closeOnly;
       const userId = body.user_Id;
 
       if (!userId) {
         return res.status(400).json({ message: "user_Id is required" });
       }
 
-      const userDetail = await platinumGet(session, `/api/User/${userId}`);
-      if (!userDetail || userDetail._error || !userDetail.enabled) {
-        return res.status(400).json({
-          message: "User not valid",
-          detail: `User ${userId} is not found or not enabled in Platinum.`,
-        });
-      }
-
       const isNewSession = !body.id || body.id === 0;
       const isClose = body.isActive === false;
-      console.log(`[submit-cashier-setup] ${isClose ? 'CLOSING' : isNewSession ? 'CREATING NEW' : 'UPDATING existing (id=' + body.id + ')'} session for user ${userDetail.firstName} ${userDetail.lastName} (ID: ${userId}), office: ${body.officeId}`);
+      console.log(`[submit-cashier-setup] ${isClose ? 'CLOSING' : isNewSession ? 'CREATING NEW' : 'UPDATING existing (id=' + body.id + ')'} session — userId=${userId}, officeId=${body.officeId}`);
       console.log(`[submit-cashier-setup] Payload:`, JSON.stringify(body));
       const data = await platinumPost(session, "/api/ReceiptPrepaid/submit-cashier-setup", body);
       console.log(`[submit-cashier-setup] Response:`, JSON.stringify(data));
@@ -828,7 +816,7 @@ export async function registerRoutes(
         return res.status(data.status || 400).json({ message: "Cashier setup failed", detail });
       }
 
-      if (data?.cashier?.id && data.cashier.isActive === true && !isClose) {
+      if (data?.cashier?.id && data.cashier.isActive === true) {
         (session as any).knownCashierId = data.cashier.id;
         (session as any).knownCashierOfficeId = data.cashier.officeId || body.officeId;
         (session as any).knownCashierData = data.cashier;
