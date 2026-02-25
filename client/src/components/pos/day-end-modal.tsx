@@ -284,7 +284,7 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
           </div>
         </DialogContent>
       ) : (
-      <DialogContent className="sm:max-w-2xl max-h-[92vh] overflow-y-auto p-0 gap-0 rounded-xl border-0 shadow-2xl">
+      <DialogContent className="sm:max-w-4xl max-h-[92vh] overflow-y-auto p-0 gap-0 rounded-xl border-0 shadow-2xl">
         <div className="bg-gradient-to-br from-indigo-600 via-blue-600 to-indigo-700 text-white px-6 py-5 rounded-t-xl">
           <div className="flex items-start justify-between">
             <div>
