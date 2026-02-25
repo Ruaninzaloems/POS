@@ -47,7 +47,7 @@ const COIN_DENOMINATIONS = [
 ];
 
 export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
-  const { platinumCashierId, platinumUser, currentUser, sessionDetails, allowedPaymentTypes, dayEndStatus } = usePos();
+  const { platinumCashierId, platinumUser, currentUser, sessionDetails, allowedPaymentTypes, dayEndStatus, recentTransactions } = usePos();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
@@ -108,8 +108,33 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
     try {
       const data = await platinumGetDayEndReconcileList({ userId: String(userId) });
       const items = Array.isArray(data) ? data : (data as any)?.items || (data as any)?.value || [];
-      console.log('[DayEndModal] Receipt history loaded:', items.length, 'items');
-      setReceiptHistory(items);
+      console.log('[DayEndModal] Receipt history loaded:', items.length, 'items from API');
+
+      const apiReceiptNos = new Set(items.map((r: any) => String(r.receiptNo || r.receiptNumber || '')).filter(Boolean));
+
+      const miscFromLocal = (recentTransactions || []).filter(tx => {
+        if (tx.status === 'cancelled') return false;
+        if (!tx.receiptNumber) return false;
+        if (tx.id.startsWith('unrec-') || tx.id.startsWith('plt-') || tx.id.startsWith('vr-')) return false;
+        if (apiReceiptNos.has(tx.receiptNumber)) return false;
+        const optName = (tx.paymentOptionName || '').toLowerCase();
+        return optName.includes('misc') || optName.includes('direct income') || optName.includes('clearance') || optName.includes('prepaid');
+      }).map(tx => ({
+        receiptNo: tx.receiptNumber,
+        accountNumber: tx.items?.[0]?.accountNumber || '-',
+        paidAmount: tx.totalAmount || 0,
+        paymentTypeId: tx.payment?.card > 0 ? 3 : 1,
+        paymentTypeDesc: tx.payment?.card > 0 ? 'Credit Card' : 'Cash',
+        billTypeID: tx.paymentOptionName?.toLowerCase().includes('clearance') ? 6 : 4,
+        isMiscPayment: tx.paymentOptionName?.toLowerCase().includes('misc') || tx.paymentOptionName?.toLowerCase().includes('direct income') ? 1 : 0,
+        isCancelled: false,
+        dateCaptured: new Date(tx.timestamp).toISOString(),
+        _source: 'local',
+      }));
+
+      const merged = [...items, ...miscFromLocal];
+      console.log('[DayEndModal] Merged receipt history:', merged.length, 'items (API:', items.length, '+ local misc:', miscFromLocal.length, ')');
+      setReceiptHistory(merged);
     } catch (e) {
       console.error('[DayEndModal] Failed to load receipt history:', e);
     } finally {
