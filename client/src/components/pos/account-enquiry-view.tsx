@@ -3,7 +3,7 @@ import { Account, AgingItem } from '@/lib/external-api';
 import { usePos, TransactionItem } from '@/lib/pos-state';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RefreshCw, ArrowLeft, X, Zap, Droplets, ChevronDown, ChevronUp, AlertTriangle, CalendarRange, Loader2 } from 'lucide-react';
+import { RefreshCw, ArrowLeft, X, Zap, Droplets, ChevronDown, ChevronUp, AlertTriangle, CalendarRange, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -398,11 +398,16 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                 </div>
               </div>
 
-              <div className="shrink-0 text-right">
-                <div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Balance</div>
-                <div className={`text-sm sm:text-base font-bold font-mono tracking-tight ${account.outstandingAmount > 0 ? 'text-red-600' : account.outstandingAmount < 0 ? 'text-emerald-600' : 'text-slate-800'}`} data-testid="text-total-outstanding">
-                  R {account.outstandingAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <div className="shrink-0 text-right flex items-center gap-1.5">
+                <div>
+                  <div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Balance</div>
+                  <div className={`text-sm sm:text-base font-bold font-mono tracking-tight ${account.outstandingAmount > 0 ? 'text-red-600' : account.outstandingAmount < 0 ? 'text-emerald-600' : 'text-slate-800'}`} data-testid="text-total-outstanding">
+                    R {account.outstandingAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
                 </div>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50" onClick={() => removeItem(item.id)} data-testid={`button-remove-account-${item.id}`}>
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
               </div>
            </div>
 
