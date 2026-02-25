@@ -1214,8 +1214,12 @@ export async function platinumSaveDayEndReconcileData(userId: number, data: any)
 
 // --- Auth Day-End Reconciliation (Supervisor) ---
 
-export async function platinumGetAuthDayEndCashierList(): Promise<any[]> {
+export async function platinumGetAuthDayEndCashierList(): Promise<any> {
     return platinumFetch(`/api/platinum/auth-day-end/cashier-list`);
+}
+
+export async function platinumGetAuthDayEndCashOfficeList(): Promise<any[]> {
+    return platinumFetch(`/api/platinum/auth-day-end/cash-office-list`);
 }
 
 export async function platinumGetAuthDayEndCashierReconcile(params: Record<string, string>): Promise<any> {

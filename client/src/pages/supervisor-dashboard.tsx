@@ -56,6 +56,8 @@ interface CashierShift {
   id: string;
   cashierName: string;
   cashOffice: string;
+  cashOfficeId: number | null;
+  groupCashiers: boolean;
   startTime: string;
   endTime?: string;
   status: DayEndStatus;
@@ -78,6 +80,12 @@ interface CashierShift {
   rawData?: any;
 }
 
+interface OfficeConfig {
+  groupCashiers: boolean;
+  cashOfficeDesc: string;
+  cashOnHandLimit: number | null;
+}
+
 const formatCurrency = (amount: number) => {
   return `R ${amount.toFixed(2)}`;
 };
@@ -92,10 +100,11 @@ function extractItems(data: any): any[] {
 
 const PAGER_BODY = { pageNumber: 1, pageSize: 100, query: "", orderBy: "" };
 
-function mapCashierToShift(c: any, index: number): CashierShift {
+function mapCashierToShift(c: any, index: number, officeConfigs?: Record<string, OfficeConfig>): CashierShift {
   const id = String(c.id || c.cashierId || c.cashier_ID || c.cashier_id || index);
   const name = c.cashierName || c.name || c.userName || c.cashier_name || `Cashier ${id}`;
   const office = c.cashOfficeName || c.cashOffice || c.cash_office || c.officeName || c.office || '';
+  const officeId = Number(c.cashOfficeId || c.cashOffice_ID || c.cash_office_id || c.officeId || c.office_id || 0) || null;
   const totalAmt = Number(c.totalAmount || c.totalAmt || c.total || c.systemTotal || 0);
   const cashAmt = Number(c.cashAmount || c.cashTotal || c.totalCashAmt || 0);
   const cardAmt = Number(c.cardAmount || c.cardTotal || c.totalCreditAmt || 0);
@@ -104,6 +113,9 @@ function mapCashierToShift(c: any, index: number): CashierShift {
   const declaredCard = Number(c.declaredCard || c.cashierCard || 0);
   const varianceTotal = Number(c.variance || c.varianceAmount || c.totalVariance || 0);
   const txCount = Number(c.transactionCount || c.receiptCount || c.txCount || c.count || 0);
+
+  const officeConfig = officeId && officeConfigs ? officeConfigs[String(officeId)] : undefined;
+  const groupCashiers = officeConfig?.groupCashiers ?? c.groupCashiers ?? false;
 
   let status: DayEndStatus = 'PENDING_APPROVAL';
   const rawStatus = String(c.status || c.reconcileStatus || c.dayEndStatus || '').toLowerCase();
@@ -118,7 +130,9 @@ function mapCashierToShift(c: any, index: number): CashierShift {
   return {
     id,
     cashierName: name,
-    cashOffice: office,
+    cashOffice: officeConfig?.cashOfficeDesc || office,
+    cashOfficeId: officeId,
+    groupCashiers,
     startTime: c.startTime || c.reconcileDate || c.date || c.createdDate || new Date().toISOString(),
     status,
     systemTotals: { cash: cashAmt, card: cardAmt, total: totalAmt || (cashAmt + cardAmt) },
@@ -314,22 +328,44 @@ export default function SupervisorDashboard() {
   const [filterStatus, setFilterStatus] = useState<string>('All');
   const [filterDate, setFilterDate] = useState<string>('All');
 
+  const [officeConfigs, setOfficeConfigs] = useState<Record<string, OfficeConfig>>({});
+
   const loadCashierList = useCallback(async () => {
     setIsLoadingShifts(true);
     try {
       const data = await platinumGetAuthDayEndCashierList();
       console.log('[Supervisor] Cashier list raw response:', data);
-      const items = extractItems(data);
+
+      let items: any[];
+      let offices: Record<string, OfficeConfig> = {};
+
+      if (data && data.cashiers && data.offices) {
+        items = extractItems(data.cashiers);
+        offices = data.offices || {};
+        console.log('[Supervisor] Enriched response — cashiers:', items.length, ', offices:', Object.keys(offices).length);
+      } else {
+        items = extractItems(data);
+      }
+
+      setOfficeConfigs(offices);
       console.log('[Supervisor] Cashier list items:', items.length, JSON.stringify(items).substring(0, 1000));
-      const mapped = items.map((c: any, i: number) => mapCashierToShift(c, i));
+      const mapped = items.map((c: any, i: number) => mapCashierToShift(c, i, offices));
       setShifts(mapped);
+
+      const hasGrouped = mapped.some((s: CashierShift) => s.groupCashiers);
+      const hasIndividual = mapped.some((s: CashierShift) => !s.groupCashiers);
+      if (hasGrouped && !hasIndividual) {
+        setReconMode('CASH_OFFICE');
+      } else if (!hasGrouped && hasIndividual) {
+        setReconMode('PER_CASHIER');
+      }
+      console.log(`[Supervisor] Office grouping: ${hasGrouped ? 'some grouped' : 'none grouped'}, ${hasIndividual ? 'some individual' : 'none individual'}`);
     } catch (e: any) {
       console.error('[Supervisor] Failed to load cashier list:', e);
       toast({ title: 'Error', description: `Failed to load cashier list: ${e.message}`, variant: 'destructive' });
     } finally {
       setIsLoadingShifts(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -474,28 +510,45 @@ export default function SupervisorDashboard() {
     if (reconMode !== 'CASH_OFFICE') return null;
     
     const groups: Record<string, { 
-      totalSystem: number, 
-      totalDeclared: number, 
-      shifts: CashierShift[],
-      status: 'MIXED' | 'READY' | 'COMPLETED'
+      officeId: number | null;
+      groupCashiers: boolean;
+      totalSystem: number; 
+      totalDeclared: number; 
+      shifts: CashierShift[];
+      status: 'MIXED' | 'READY' | 'COMPLETED';
+      allSubmitted: boolean;
+      pendingCount: number;
     }> = {};
 
     filteredShifts.forEach(shift => {
-      if (!groups[shift.cashOffice || 'Unknown']) {
-        groups[shift.cashOffice || 'Unknown'] = { 
+      const key = shift.cashOffice || 'Unknown';
+      if (!groups[key]) {
+        groups[key] = { 
+          officeId: shift.cashOfficeId,
+          groupCashiers: shift.groupCashiers,
           totalSystem: 0, 
           totalDeclared: 0, 
           shifts: [],
-          status: 'READY'
+          status: 'READY',
+          allSubmitted: true,
+          pendingCount: 0,
         };
       }
-      const key = shift.cashOffice || 'Unknown';
       groups[key].shifts.push(shift);
       groups[key].totalSystem += shift.systemTotals.total;
       groups[key].totalDeclared += shift.declaredTotals?.total || 0;
       
       if (shift.status === 'NOT_SUBMITTED' || shift.status === 'RETURNED') {
           groups[key].status = 'MIXED';
+          groups[key].allSubmitted = false;
+      }
+      if (shift.status === 'PENDING_APPROVAL') {
+          groups[key].pendingCount++;
+      }
+      if (shift.status === 'COMPLETED') {
+          if (groups[key].shifts.every(s => s.status === 'COMPLETED')) {
+              groups[key].status = 'COMPLETED';
+          }
       }
     });
 
@@ -612,9 +665,9 @@ export default function SupervisorDashboard() {
                       className="text-xs sm:text-sm px-2 sm:px-3"
                       onClick={() => setReconMode('CASH_OFFICE')}
                   >
-                      Cash Office
+                      Per Cash Office
                   </Button>
-                  <HelpTip text="Switch between pending submissions needing review and completed/approved submissions." className="ml-1" />
+                  <HelpTip text="Cash offices with 'Group Cashiers' enabled require all cashiers to be reconciled together as a group. Offices without grouping allow individual cashier reconciliation. This toggle switches between the two views." className="ml-1" />
               </div>
           </div>
       </div>
@@ -1168,7 +1221,12 @@ export default function SupervisorDashboard() {
                           <div className="flex items-start justify-between">
                               <div>
                                   <span className="font-bold text-slate-900">{shift.cashierName}</span>
-                                  {shift.cashOffice && <p className="text-xs text-muted-foreground">{shift.cashOffice}</p>}
+                                  {shift.cashOffice && (
+                                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                          {shift.cashOffice}
+                                          {shift.groupCashiers && <Badge variant="outline" className="text-[8px] px-1 py-0 bg-blue-50 text-blue-600 border-blue-200">Grouped</Badge>}
+                                      </p>
+                                  )}
                               </div>
                               <StatusBadge status={shift.status} />
                           </div>
@@ -1218,7 +1276,10 @@ export default function SupervisorDashboard() {
                       {filteredShifts.map(shift => (
                           <TableRow key={shift.id} data-testid={`row-cashier-${shift.id}`}>
                               <TableCell className="font-medium">{shift.cashierName}</TableCell>
-                              <TableCell className="text-muted-foreground">{shift.cashOffice || '-'}</TableCell>
+                              <TableCell className="text-muted-foreground">
+                                  <span>{shift.cashOffice || '-'}</span>
+                                  {shift.groupCashiers && <Badge variant="outline" className="ml-1 text-[8px] px-1 py-0 bg-blue-50 text-blue-600 border-blue-200">Grouped</Badge>}
+                              </TableCell>
                               <TableCell>{new Date(shift.startTime).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' })}</TableCell>
                               <TableCell className="text-right">{shift.transactionCount}</TableCell>
                               <TableCell className="text-right font-mono">{formatCurrency(shift.systemTotals.total)}</TableCell>
@@ -1249,20 +1310,56 @@ export default function SupervisorDashboard() {
           </div>
       ) : (
           <div className="grid gap-6">
-              {officeGroups && Object.entries(officeGroups).map(([office, data]) => (
+              {officeGroups && Object.entries(officeGroups).map(([office, data]) => {
+                  const variance = data.totalSystem - data.totalDeclared;
+                  const allPending = data.shifts.every(s => s.status === 'PENDING_APPROVAL');
+                  const allCompleted = data.shifts.every(s => s.status === 'COMPLETED');
+                  const someNotSubmitted = data.shifts.some(s => s.status === 'NOT_SUBMITTED' || s.status === 'RETURNED');
+                  
+                  return (
                   <div key={office} className="bg-white rounded-lg shadow-sm border overflow-x-auto">
-                      <div className="p-3 sm:p-4 border-b bg-slate-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                          <h3 className="font-semibold text-base sm:text-lg">{office}</h3>
-                          <div className="flex gap-3 sm:gap-4 text-xs sm:text-sm">
-                              <div className="flex gap-2">
-                                  <span className="text-muted-foreground">Total System:</span>
-                                  <span className="font-mono font-medium">{formatCurrency(data.totalSystem)}</span>
+                      <div className="p-3 sm:p-4 border-b bg-slate-50">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                  <h3 className="font-semibold text-base sm:text-lg">{office}</h3>
+                                  {data.groupCashiers ? (
+                                      <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">
+                                          <Users className="w-3 h-3 mr-1" /> Grouped
+                                      </Badge>
+                                  ) : (
+                                      <Badge variant="outline" className="text-[10px] bg-slate-50 text-slate-600 border-slate-200">
+                                          Individual
+                                      </Badge>
+                                  )}
+                                  {allCompleted && <Badge className="text-[10px] bg-green-100 text-green-700 border-green-200">All Reconciled</Badge>}
                               </div>
-                              <div className="flex gap-2">
-                                  <span className="text-muted-foreground">Total Declared:</span>
-                                  <span className="font-mono font-medium">{formatCurrency(data.totalDeclared)}</span>
+                              <div className="flex flex-wrap gap-3 sm:gap-4 text-xs sm:text-sm">
+                                  <div className="flex gap-1.5">
+                                      <span className="text-muted-foreground">System:</span>
+                                      <span className="font-mono font-medium">{formatCurrency(data.totalSystem)}</span>
+                                  </div>
+                                  <div className="flex gap-1.5">
+                                      <span className="text-muted-foreground">Declared:</span>
+                                      <span className="font-mono font-medium">{formatCurrency(data.totalDeclared)}</span>
+                                  </div>
+                                  {variance !== 0 && (
+                                      <div className="flex gap-1.5">
+                                          <span className="text-muted-foreground">Variance:</span>
+                                          <span className={`font-mono font-bold ${variance > 0 ? 'text-red-600' : 'text-green-600'}`}>{formatCurrency(variance)}</span>
+                                      </div>
+                                  )}
+                                  <div className="flex gap-1.5">
+                                      <span className="text-muted-foreground">Cashiers:</span>
+                                      <span className="font-medium">{data.shifts.length}</span>
+                                  </div>
                               </div>
                           </div>
+                          {data.groupCashiers && someNotSubmitted && (
+                              <div className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 flex items-center gap-1.5">
+                                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                                  Not all cashiers in this office have submitted their day-end. Grouped reconciliation requires all cashiers to submit before the office can be approved.
+                              </div>
+                          )}
                       </div>
                       <div className="sm:hidden space-y-2 p-3">
                           {data.shifts.map(shift => (
@@ -1288,10 +1385,25 @@ export default function SupervisorDashboard() {
                                       onClick={() => handleReview(shift)}
                                       data-testid={`mobile-office-review-${shift.id}`}
                                   >
-                                      Review
+                                      Review Cashier
                                   </Button>
                               </div>
                           ))}
+                          {data.groupCashiers && allPending && !someNotSubmitted && (
+                              <Button
+                                  className="w-full h-11 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold rounded-xl"
+                                  onClick={async () => {
+                                      for (const shift of data.shifts) {
+                                          await handleApprove(shift.id);
+                                      }
+                                  }}
+                                  disabled={actionLoading}
+                                  data-testid={`button-approve-office-${office}`}
+                              >
+                                  {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                                  Approve Entire Office ({data.shifts.length} cashiers)
+                              </Button>
+                          )}
                       </div>
                       <div className="hidden sm:block">
                       <Table>
@@ -1300,16 +1412,22 @@ export default function SupervisorDashboard() {
                                   <TableHead>Cashier</TableHead>
                                   <TableHead className="text-right">System Total</TableHead>
                                   <TableHead className="text-right">Declared Total</TableHead>
+                                  <TableHead className="text-right">Variance</TableHead>
                                   <TableHead className="text-center">Status</TableHead>
                                   <TableHead className="text-right">Action</TableHead>
                               </TableRow>
                           </TableHeader>
                           <TableBody>
-                              {data.shifts.map(shift => (
+                              {data.shifts.map(shift => {
+                                  const shiftVariance = shift.systemTotals.total - (shift.declaredTotals?.total || 0);
+                                  return (
                                   <TableRow key={shift.id}>
-                                      <TableCell>{shift.cashierName}</TableCell>
+                                      <TableCell className="font-medium">{shift.cashierName}</TableCell>
                                       <TableCell className="text-right font-mono">{formatCurrency(shift.systemTotals.total)}</TableCell>
                                       <TableCell className="text-right font-mono">{formatCurrency(shift.declaredTotals?.total || 0)}</TableCell>
+                                      <TableCell className={`text-right font-mono font-bold ${shiftVariance !== 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                          {shiftVariance === 0 ? '-' : formatCurrency(shiftVariance)}
+                                      </TableCell>
                                       <TableCell className="text-center"><StatusBadge status={shift.status} /></TableCell>
                                       <TableCell className="text-right">
                                           <Button size="sm" variant="outline" onClick={() => handleReview(shift)}>
@@ -1317,12 +1435,43 @@ export default function SupervisorDashboard() {
                                           </Button>
                                       </TableCell>
                                   </TableRow>
-                              ))}
+                                  );
+                              })}
                           </TableBody>
                       </Table>
                       </div>
+                      {data.groupCashiers && allPending && !someNotSubmitted && (
+                          <div className="hidden sm:flex p-3 sm:p-4 border-t bg-green-50 items-center justify-between">
+                              <div className="text-sm text-green-800">
+                                  All {data.shifts.length} cashiers have submitted. This is a grouped office — approve all cashiers together.
+                              </div>
+                              <Button
+                                  className="bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold px-6"
+                                  onClick={async () => {
+                                      setActionLoading(true);
+                                      try {
+                                          for (const shift of data.shifts) {
+                                              await apiRequest('POST', `/api/platinum/auth-day-end/finish-day-end-reconcile?userId=${shift.id}`, {});
+                                          }
+                                          toast({ title: 'Success', description: `All ${data.shifts.length} cashiers in ${office} approved.` });
+                                          loadCashierList();
+                                      } catch (e: any) {
+                                          toast({ title: 'Error', description: `Approval failed: ${e.message}`, variant: 'destructive' });
+                                      } finally {
+                                          setActionLoading(false);
+                                      }
+                                  }}
+                                  disabled={actionLoading}
+                                  data-testid={`button-approve-office-desktop-${office}`}
+                              >
+                                  {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                                  Approve Entire Office
+                              </Button>
+                          </div>
+                      )}
                   </div>
-              ))}
+                  );
+              })}
           </div>
       )}
 
@@ -1506,8 +1655,13 @@ export default function SupervisorDashboard() {
                       <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
                           Reconciliation Review: <span className="text-blue-600">{selectedShift.cashierName}</span>
                       </DialogTitle>
-                      <DialogDescription className="text-xs sm:text-sm">
-                          Cashier ID: {selectedShift.id} | Office: {selectedShift.cashOffice || 'N/A'}
+                      <DialogDescription className="text-xs sm:text-sm flex items-center gap-2 flex-wrap">
+                          <span>Cashier ID: {selectedShift.id} | Office: {selectedShift.cashOffice || 'N/A'}</span>
+                          {selectedShift.groupCashiers && (
+                              <Badge variant="outline" className="text-[9px] bg-blue-50 text-blue-700 border-blue-200">
+                                  <Users className="w-3 h-3 mr-1" /> Grouped Office
+                              </Badge>
+                          )}
                       </DialogDescription>
                   </DialogHeader>
 
@@ -1651,6 +1805,12 @@ export default function SupervisorDashboard() {
                     </div>
                   ) : null}
 
+                  {selectedShift.groupCashiers && (
+                      <div className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5 shrink-0" />
+                          This cashier belongs to a grouped office ({selectedShift.cashOffice}). All cashiers in this office must be reconciled together. Use the "Per Cash Office" view to approve the entire office at once.
+                      </div>
+                  )}
                   <DialogFooter className="gap-2 sm:gap-0">
                       <div className="flex items-center gap-1 mr-auto">
                         <Button 

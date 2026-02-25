@@ -1974,13 +1974,51 @@ export async function registerRoutes(
 
   // --- Auth Day-End Reconciliation (Supervisor) ---
 
+  app.get("/api/platinum/auth-day-end/cash-office-list", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing/auth-day-end-reconcile/cash-office-list");
+      console.log(`[auth-dayend-cash-office-list] Response:`, JSON.stringify(data).substring(0, 500));
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.get("/api/platinum/auth-day-end/cashier-list", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      console.log(`[auth-dayend-cashier-list] Fetching...`);
-      const data = await platinumGet(session, "/api/billing/auth-day-end-reconcile/cashier-list");
-      console.log(`[auth-dayend-cashier-list] Response:`, JSON.stringify(data).substring(0, 1000));
-      handlePlatinumResult(res, data);
+      console.log(`[auth-dayend-cashier-list] Fetching cashier list and cash office list in parallel...`);
+      const [cashierData, officeData] = await Promise.all([
+        platinumGet(session, "/api/billing/auth-day-end-reconcile/cashier-list"),
+        platinumGet(session, "/api/billing/auth-day-end-reconcile/cash-office-list").catch(() => null),
+      ]);
+      console.log(`[auth-dayend-cashier-list] Cashier response:`, JSON.stringify(cashierData).substring(0, 1000));
+      console.log(`[auth-dayend-cashier-list] Office response:`, JSON.stringify(officeData).substring(0, 500));
+
+      const officeMap = new Map<number, { groupCashiers: boolean; cashOfficeDesc: string; cashOnHandLimit: number | null }>();
+      if (officeData && !officeData._error && Array.isArray(officeData)) {
+        for (const o of officeData) {
+          if (o.cashOffice_ID) {
+            officeMap.set(o.cashOffice_ID, {
+              groupCashiers: o.groupCashiers === true,
+              cashOfficeDesc: o.cashOfficeDesc || '',
+              cashOnHandLimit: o.cashOnHandLimit ?? null,
+            });
+          }
+        }
+        console.log(`[auth-dayend-cashier-list] Built office map with ${officeMap.size} offices. Grouped offices: ${Array.from(officeMap.entries()).filter(([,v]) => v.groupCashiers).map(([id, v]) => `${v.cashOfficeDesc} (ID:${id})`).join(', ') || 'none'}`);
+      }
+
+      if (cashierData && !cashierData._error) {
+        const enriched = {
+          cashiers: cashierData,
+          offices: Object.fromEntries(Array.from(officeMap.entries()).map(([id, data]) => [String(id), data])),
+        };
+        return res.json(enriched);
+      }
+
+      handlePlatinumResult(res, cashierData);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
