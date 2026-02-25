@@ -164,6 +164,12 @@ export function ReceiptModal() {
               const acctDetail = dashIdx > -1 ? stepText.slice(dashIdx + 1).replace(/\.{3}$/, '').trim() : '';
               const phaseText = dashIdx > -1 ? stepText.slice(0, dashIdx).trim() : stepText.replace(/\.{3}$/, '').trim();
 
+              const acctCountMatch = stepText.match(/(\d+)\s+account/);
+              const acctCount = acctCountMatch ? parseInt(acctCountMatch[1]) : 0;
+              const isSubmitting = stepText.toLowerCase().includes('submitting');
+              const estimatedSec = isSubmitting && acctCount > 0 ? Math.ceil(acctCount * 3.2) : 0;
+              const submitPct = isSubmitting && estimatedSec > 0 ? Math.min(95, Math.round((elapsed / estimatedSec) * 100)) : -1;
+
               return (
                 <>
                   <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 mb-2 relative">
@@ -171,6 +177,11 @@ export function ReceiptModal() {
                     {pct >= 0 && (
                       <span className="absolute -bottom-1 -right-1 bg-blue-600 text-white text-[10px] font-bold rounded-full w-6 h-6 flex items-center justify-center shadow">
                         {pct}%
+                      </span>
+                    )}
+                    {submitPct >= 0 && pct < 0 && (
+                      <span className="absolute -bottom-1 -right-1 bg-blue-600 text-white text-[10px] font-bold rounded-full w-6 h-6 flex items-center justify-center shadow">
+                        {submitPct}%
                       </span>
                     )}
                   </div>
@@ -185,8 +196,15 @@ export function ReceiptModal() {
                         <Progress value={pct} className="h-2" />
                         <p className="text-[10px] text-muted-foreground text-center mt-1">{current} of {total} completed</p>
                       </div>
-                    ) : elapsed > 0 && (
-                      <p className="text-xs text-muted-foreground text-center animate-pulse">{elapsed}s elapsed — waiting for billing server...</p>
+                    ) : submitPct >= 0 ? (
+                      <div className="px-2">
+                        <Progress value={submitPct} className="h-2" />
+                        <p className="text-[10px] text-muted-foreground text-center mt-1">
+                          ~{Math.max(0, estimatedSec - elapsed)}s remaining ({elapsed}s / ~{estimatedSec}s)
+                        </p>
+                      </div>
+                    ) : elapsed > 2 && (
+                      <p className="text-xs text-muted-foreground text-center animate-pulse">{elapsed}s elapsed</p>
                     )}
                   </div>
                 </>

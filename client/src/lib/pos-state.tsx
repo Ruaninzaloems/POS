@@ -1181,6 +1181,16 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return;
     }
 
+    const earlyRecord = createTransactionRecord(items, totalToPay, payment, currentUser.id, {
+        cashierName: currentUser.name,
+        cashOfficeName: sessionOfficeDesc,
+    });
+    setRecentTransactions(prev => [earlyRecord, ...prev]);
+    setCurrentTransactionId(earlyRecord.id);
+    setIsReceiptModalOpen(true);
+    setTransactionProcessing(true);
+    setProcessingStep('Validating cashier session...');
+
     let resolvedFinYear = platinumUser?.finYear || '2025/2026';
     if (!resolvedFinYear || resolvedFinYear === '2025/2026') {
         try {
@@ -1200,19 +1210,15 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             variant: "destructive"
         });
         paymentInFlightRef.current = false;
+        setTransactionProcessing(false);
+        setProcessingStep('');
+        earlyRecord.receiptNumber = '';
+        setRecentTransactions(prev => prev.filter(t => t.id !== earlyRecord.id));
         return;
     }
     console.log(`[Payment] Receipt range valid — cashier active at ${receiptRangeResult.officeName}, POS record ${receiptRangeResult.cashierDetailsId}`);
 
-    const record = createTransactionRecord(items, totalToPay, payment, currentUser.id, {
-        cashierName: currentUser.name,
-        cashOfficeName: sessionOfficeDesc,
-    });
-    
-    setRecentTransactions(prev => [record, ...prev]);
-    setCurrentTransactionId(record.id);
-    setIsReceiptModalOpen(true);
-    setTransactionProcessing(true);
+    const record = earlyRecord;
 
     const describePaymentContext = () => {
         const acctItems = record.items.filter(i => i.type === 'CONSUMER_SERVICES' || i.type === 'MULTI_ACCOUNT' || i.type === 'ACCOUNT_GROUP');
@@ -1345,59 +1351,60 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     const serviceBalanceMap = new Map<string, ServiceBalance[]>();
-    const balanceFetchPromises: Promise<void>[] = [];
-    for (const item of accountItems) {
-        const acct = item.originalData as any;
-        const acctId = acct?.apiId || acct?.account_ID || acct?.accountID || acct?.accountId || '';
-        if (!acctId) continue;
-        if (acct?.agingBreakdown && Array.isArray(acct.agingBreakdown) && acct.agingBreakdown.length > 0) {
-            const balances: ServiceBalance[] = acct.agingBreakdown
-                .filter((row: any) => Math.abs(row.totalOutstanding || 0) >= 0.01)
-                .map((row: any) => ({
-                    serviceDescription: row.totalOutstanding < 0 && row.serviceDescription === 'Balance B/F' ? 'Advance Payment' : (row.serviceDescription || 'Unknown'),
-                    amount: row.totalOutstanding || 0,
-                    vat: 0,
-                    totalAmount: row.totalOutstanding || 0,
-                    currentCharge: row.newCharge || 0,
-                    openingBalance: 0,
-                }));
-            if (balances.length > 0) {
-                serviceBalanceMap.set(String(acctId), balances);
-                console.log(`[Priority 1] Pre-payment service balances for ${acctId} (from cart data):`, balances.map(b => `${b.serviceDescription}: ${b.totalAmount}`));
+    const startBalanceFetch = () => {
+        const promises: Promise<void>[] = [];
+        for (const item of accountItems) {
+            const acct = item.originalData as any;
+            const acctId = acct?.apiId || acct?.account_ID || acct?.accountID || acct?.accountId || '';
+            if (!acctId) continue;
+            if (acct?.agingBreakdown && Array.isArray(acct.agingBreakdown) && acct.agingBreakdown.length > 0) {
+                const balances: ServiceBalance[] = acct.agingBreakdown
+                    .filter((row: any) => Math.abs(row.totalOutstanding || 0) >= 0.01)
+                    .map((row: any) => ({
+                        serviceDescription: row.totalOutstanding < 0 && row.serviceDescription === 'Balance B/F' ? 'Advance Payment' : (row.serviceDescription || 'Unknown'),
+                        amount: row.totalOutstanding || 0,
+                        vat: 0,
+                        totalAmount: row.totalOutstanding || 0,
+                        currentCharge: row.newCharge || 0,
+                        openingBalance: 0,
+                    }));
+                if (balances.length > 0) {
+                    serviceBalanceMap.set(String(acctId), balances);
+                }
+            }
+            if (!serviceBalanceMap.has(String(acctId))) {
+                promises.push((async () => {
+                    try {
+                        const balData = await enquiryGetAccountBalance(acctId);
+                        let rows: any[] = [];
+                        if (Array.isArray(balData)) rows = balData;
+                        else if (balData?.results && Array.isArray(balData.results)) rows = balData.results;
+                        else if (balData && typeof balData === 'object') rows = [balData];
+                        const balances: ServiceBalance[] = rows
+                            .filter((row: any) => Math.abs(row.totalOutStanding || row.totalOutstanding || 0) >= 0.01)
+                            .map((row: any) => ({
+                                serviceDescription: row.serviceDescription || row.description || 'Unknown',
+                                amount: row.totalOutStanding || row.totalOutstanding || 0,
+                                vat: 0,
+                                totalAmount: row.totalOutStanding || row.totalOutstanding || 0,
+                                currentCharge: 0,
+                                openingBalance: 0,
+                            }));
+                        if (balances.length > 0) {
+                            serviceBalanceMap.set(String(acctId), balances);
+                        }
+                    } catch (e) {
+                        console.warn(`[Priority 1] Failed to fetch service balances for ${acctId}`, e);
+                    }
+                })());
             }
         }
-        if (!serviceBalanceMap.has(String(acctId))) {
-            balanceFetchPromises.push((async () => {
-                try {
-                    const balData = await enquiryGetAccountBalance(acctId);
-                    let rows: any[] = [];
-                    if (Array.isArray(balData)) rows = balData;
-                    else if (balData?.results && Array.isArray(balData.results)) rows = balData.results;
-                    else if (balData && typeof balData === 'object') rows = [balData];
-                    const balances: ServiceBalance[] = rows
-                        .filter((row: any) => Math.abs(row.totalOutStanding || row.totalOutstanding || 0) >= 0.01)
-                        .map((row: any) => ({
-                            serviceDescription: row.serviceDescription || row.description || 'Unknown',
-                            amount: row.totalOutStanding || row.totalOutstanding || 0,
-                            vat: 0,
-                            totalAmount: row.totalOutStanding || row.totalOutstanding || 0,
-                            currentCharge: 0,
-                            openingBalance: 0,
-                        }));
-                    if (balances.length > 0) {
-                        serviceBalanceMap.set(String(acctId), balances);
-                        console.log(`[Priority 1] Pre-payment service balances for ${acctId} (from API):`, balances.map(b => `${b.serviceDescription}: ${b.totalAmount}`));
-                    }
-                } catch (e) {
-                    console.warn(`[Priority 1] Failed to fetch pre-payment service balances for ${acctId}`, e);
-                }
-            })());
+        if (promises.length > 0) {
+            console.log(`[Priority 1] Background-fetching service balances for ${promises.length} accounts`);
         }
-    }
-    if (balanceFetchPromises.length > 0) {
-        console.log(`[Priority 1] Fetching service balances for ${balanceFetchPromises.length} accounts in parallel`);
-        await Promise.all(balanceFetchPromises);
-    }
+        return Promise.all(promises);
+    };
+    const balanceFetchPromise = startBalanceFetch();
 
     const processAccReceiptResult = async (receiptIds: number[], paymentLabel: string, paymentType: 'cash' | 'card', paymentAmount: number, perAccountAmounts?: { accountId: string; accountName: string; amount: number }[]) => {
         if (receiptIds.length === 0) {
@@ -1967,6 +1974,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const latestReceiptId = record.splitReceipts && record.splitReceipts.length > 0
                 ? String(record.splitReceipts[record.splitReceipts.length - 1].receiptId)
                 : record.receiptNumber.replace(/\D/g, '') || '0';
+
+            await balanceFetchPromise;
 
             const BATCH_SIZE = 6;
             let completedCount = 0;

@@ -8,7 +8,7 @@ Key capabilities include:
 - A unified POS screen that auto-detects transaction types.
 - Split payments (cash + card) with change calculation on the cash portion.
 - Enforcement of a single active session per cashier.
-- Concurrency-optimized for 10+ simultaneous users with token mutex, server-side response caching, request concurrency limiting, and frontend in-flight deduplication.
+- Concurrency-optimized for 10+ simultaneous users with token mutex, server-side response caching, request concurrency limiting, frontend in-flight deduplication, and server-side GET request deduplication (identical concurrent GETs share one HTTP call).
 - All transaction storage handled via the Platinum API, not locally, ensuring data consistency for day-end reconciliation.
 - Cashier session management, float tracking, and day-end reconciliation.
 - Supervisor dashboard for transaction oversight and approvals.
@@ -66,6 +66,7 @@ Preferred communication style: Simple, everyday language.
 - **Session Detection**: Uses `/api/ReceiptPrepaid/validate-cashier` as the single source of truth for cashier session status (`isActive` field). Auto-resume and session enforcement are based on this.
 - **Payment Submission**: For single account, uses `submit-consumer-payment/{userId}`. For multiple accounts (2+), uses `submit-multiple-payment/{userId}` with `{ accounts: [...], requestModel: {...} }` in a single API call. For split payments (cash + card), two separate rounds are made (paymentType 1 for cash, 3 for card), each using the appropriate single/multiple endpoint based on account count. Each round creates separate DB entries with its own `print-receipt` call.
 - **Pre-Payment Session Check**: Before ANY payment processing, validate-cashier is called to verify the session is still active. Payment is BLOCKED if session is inactive or API fails.
+- **Payment Performance**: Service balance pre-fetches run in the background concurrently with payment submission (not blocking it). The receipt modal shows immediately with "Validating cashier session..." and provides a progress bar with time estimate (~3.2s per account) during the `submit-multiple-payment` phase. Server-side in-flight GET deduplication prevents duplicate API calls from retries.
 
 ## External Dependencies
 
