@@ -216,6 +216,22 @@ function formatCardExpiry(exp: string): string {
   return clean;
 }
 
+function formatCardExpiryAsDate(exp: string): string {
+  if (!exp) return '';
+  const clean = exp.replace(/[^0-9/]/g, '');
+  const parts = clean.split('/');
+  if (parts.length === 2) {
+    let [mm, yy] = parts;
+    const month = parseInt(mm, 10);
+    if (month < 1 || month > 12) return '';
+    let year = parseInt(yy, 10);
+    if (yy.length === 2) year += 2000;
+    const lastDay = new Date(year, month, 0).getDate();
+    return `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T00:00:00`;
+  }
+  return '';
+}
+
 export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { toast } = useToast();
   const [currentUser, setCurrentUser] = useState<CashierProfile>({
@@ -2272,7 +2288,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     userId: sessionUserId,
                     finYear,
                     cardNo: record.payment.cardReference || '',
-                    expiryDate: paymentTypeId === 3 ? formatCardExpiry(record.payment.cardExpiry) : '',
+                    expiryDate: paymentTypeId === 3 ? formatCardExpiryAsDate(record.payment.cardExpiry) : '',
                     chequeNo: '',
                 });
                 console.log(`[Priority 2 ${label}] Submitted misc payment for SCOA item ${scoaItemId}`, miscResult);
