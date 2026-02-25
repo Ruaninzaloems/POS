@@ -1676,13 +1676,17 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
                 let roundingAdjustment = 0;
                 let roundingAccountName = '';
+                let tenderAmtAdjusted = tenderAmt;
+                let changeAmtAdjusted = changeAmt;
                 if (!isCardPayment && isMultiAccount) {
                     const roundedUp = Math.ceil(rawPaymentSum * 10) / 10;
                     roundingAdjustment = r2(roundedUp - rawPaymentSum);
                     if (roundingAdjustment > 0) {
                         perAccountPayments[0].itemPayment = r2(perAccountPayments[0].itemPayment + roundingAdjustment);
                         roundingAccountName = perAccountPayments[0].acct.name || perAccountPayments[0].acct.accountNumber || '';
-                        console.log(`[Priority 1] 10c rounding adjustment: +R${roundingAdjustment.toFixed(2)} applied to ${roundingAccountName} (${perAccountPayments[0].acct.account_ID}). Raw sum R${rawPaymentSum} → Rounded R${roundedUp}`);
+                        tenderAmtAdjusted = r2(tenderAmt + roundingAdjustment);
+                        changeAmtAdjusted = r2(Math.max(0, tenderAmtAdjusted - roundedUp));
+                        console.log(`[Priority 1] 10c rounding adjustment: +R${roundingAdjustment.toFixed(2)} applied to ${roundingAccountName} (${perAccountPayments[0].acct.account_ID}). Raw sum R${rawPaymentSum} → Rounded R${roundedUp}. tenderAmt R${tenderAmt} → R${tenderAmtAdjusted}`);
                         toast({
                             title: '10c Rounding Applied',
                             description: `+R ${roundingAdjustment.toFixed(2)} added to ${roundingAccountName} (total rounded R ${rawPaymentSum.toFixed(2)} → R ${roundedUp.toFixed(2)})`,
@@ -1728,8 +1732,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         finYear,
                         receiptDate: effectiveReceiptDate,
                         totalAmount: totalPaymentAmount,
-                        tenderAmount: isCardPayment ? 0 : r2(tenderAmt),
-                        changeAmount: isCardPayment ? 0 : r2(changeAmt),
+                        tenderAmount: isCardPayment ? 0 : r2(tenderAmtAdjusted),
+                        changeAmount: isCardPayment ? 0 : r2(changeAmtAdjusted),
                         paymentType: paymentTypeId,
                         cardNumber: isCardPayment ? (record.payment.cardReference || '') : '',
                         expiryDate: isCardPayment ? formatCardExpiry(record.payment.cardExpiry) : '',
@@ -1749,7 +1753,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     };
                     const requestModel: any = baseRequestModel;
 
-                    console.log(`[Priority 1 ${label}] Submitting MULTIPLE payment for ${submitAccounts.length} accounts, total: R${totalPaymentAmount}, tender: R${tenderAmt}, change: R${changeAmt}, paymentType: ${paymentTypeId}, outStandingAmount(fullBalance): R${totalFullOutstanding}`);
+                    console.log(`[Priority 1 ${label}] Submitting MULTIPLE payment for ${submitAccounts.length} accounts, total: R${totalPaymentAmount}, tender: R${tenderAmtAdjusted}, change: R${changeAmtAdjusted}, paymentType: ${paymentTypeId}, outStandingAmount(fullBalance): R${totalFullOutstanding}`);
                     for (const sa of submitAccounts) {
                         console.log(`[Priority 1 ${label}]   → account ${sa.accountID} (${sa.name}): outstandingAmount=R${sa.outstandingAmount}, paymentAmount=R${sa.paymentAmount}`);
                     }
@@ -1780,8 +1784,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             finYear,
                             receiptDate: effectiveReceiptDate,
                             totalAmount: r2(itemPayment),
-                            tenderAmount: isCardPayment ? 0 : r2(tenderAmt),
-                            changeAmount: isCardPayment ? 0 : r2(changeAmt),
+                            tenderAmount: isCardPayment ? 0 : r2(tenderAmtAdjusted),
+                            changeAmount: isCardPayment ? 0 : r2(changeAmtAdjusted),
                             paymentType: paymentTypeId,
                             cardNumber: isCardPayment ? (record.payment.cardReference || '') : '',
                             expiryDate: isCardPayment ? formatCardExpiry(record.payment.cardExpiry) : '',
