@@ -322,10 +322,30 @@ export async function registerRoutes(
         return res.json({ active: false, cashierId: null, cashierRegistered: false, isActive: false });
       }
 
-      const cashier = vcData.cashier || null;
-      const cashOffice = vcData.cashOffice || null;
+      let cashier = vcData.cashier || null;
+      let cashOffice = vcData.cashOffice || null;
       const receiptRange = vcData.receiptRange || vcData.receiptRangeAvailable || null;
       const cashierReconcile = vcData.cashierReconcile || null;
+
+      if (!cashier) {
+        console.log(`[active-cashier] validate-cashier returned cashier=null — checking active-cashierid-by-userid fallback`);
+        try {
+          const fallbackCashierId = await platinumGet(session, "/api/billing/auth-day-end-reconcile/active-cashierid-by-userid", { userid: userId });
+          if (fallbackCashierId && fallbackCashierId !== 0 && !fallbackCashierId._error) {
+            console.log(`[active-cashier] Fallback found active cashierId: ${fallbackCashierId} — fetching details`);
+            const details = await platinumGet(session, `/api/ReceiptPrepaid/cashier-detailsById`, { cashierId: String(fallbackCashierId) });
+            if (details && !details._error && details.id) {
+              cashier = details;
+              cashOffice = details.const_CashOffice || null;
+              console.log(`[active-cashier] Fallback cashier details loaded — id: ${details.id}, isActive: ${details.isActive}, isVirtual: ${details.isVirtual}, officeId: ${details.officeId}`);
+            }
+          } else {
+            console.log(`[active-cashier] Fallback returned no active cashier: ${JSON.stringify(fallbackCashierId)}`);
+          }
+        } catch (fbErr: any) {
+          console.warn(`[active-cashier] Fallback active-cashierid check failed:`, fbErr.message);
+        }
+      }
 
       const hasReceiptRangeData = receiptRange != null && (receiptRange.user_Id > 0 || receiptRange.isEnabled === true);
       const isCashierRegistered = (cashier != null && (cashier.id > 0 || cashier.user_Id > 0)) || hasReceiptRangeData;

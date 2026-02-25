@@ -300,7 +300,31 @@ export default function CashierSetup() {
             const apiMessage = responseData?.message || '';
             console.log(`[CashierSetup] Platinum submit message: "${apiMessage}"`);
 
-            if (apiMessage && apiMessage !== 'Cashier Setup Added') {
+            const isAlreadyOpen = apiMessage === 'Cashier Already Open';
+            if (isAlreadyOpen) {
+                console.log(`[CashierSetup] "Cashier Already Open" — existing session found. Will use/update existing record.`);
+                const existingCashier = responseData?.cashier;
+                if (existingCashier?.isVirtual === true && existingCashier?.id) {
+                    console.log(`[CashierSetup] Existing session is virtual (isVirtual=true, id=${existingCashier.id}). Updating to non-virtual with correct office.`);
+                    const updatePayload = {
+                        ...payload,
+                        id: existingCashier.id,
+                        isVirtual: false,
+                    };
+                    try {
+                        const updateResponse = await platinumSubmitCashierSetup(updatePayload);
+                        console.log(`[CashierSetup] Update-existing response:`, JSON.stringify(updateResponse));
+                        const updateMsg = updateResponse?.message || '';
+                        if (updateResponse?.cashier?.isActive === true) {
+                            Object.assign(responseData, updateResponse);
+                        } else if (updateMsg === 'Cashier Already Open') {
+                            console.log(`[CashierSetup] Update still returned "Already Open" — using existing cashier record as-is.`);
+                        }
+                    } catch (updateErr: any) {
+                        console.warn(`[CashierSetup] Failed to update virtual session, proceeding with existing:`, updateErr?.message);
+                    }
+                }
+            } else if (apiMessage && apiMessage !== 'Cashier Setup Added') {
                 console.error(`[CashierSetup] Platinum rejected setup: "${apiMessage}". Full response:`, JSON.stringify(responseData));
                 throw new Error(`Platinum API rejected the setup: "${apiMessage}". Full response: ${JSON.stringify(responseData)}`);
             }

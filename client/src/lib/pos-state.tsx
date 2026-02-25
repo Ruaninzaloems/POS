@@ -951,9 +951,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const finYear = platinumUser.finYear || '2025/2026';
       let result: any;
       try {
-        result = await platinumValidateCashier(userId, finYear);
+        result = await fetchActiveCashierByUserId(userId, finYear);
       } catch (e: any) {
-        console.error(`[SessionEnforcement] validate-cashier API failed — ending session`, e);
+        console.error(`[SessionEnforcement] active-cashier API failed — ending session`, e);
         setActiveSession(false);
         setSessionDetails(undefined);
         toast({
@@ -963,10 +963,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
         return;
       }
-      const isActive = result?.cashier?.isActive === true;
+      const isActive = result?.isActive === true;
       setApiSessionActive(isActive);
       if (!isActive) {
-        console.warn(`[SessionEnforcement] validate-cashier returned isActive=${result?.cashier?.isActive} — session is no longer active (POS_Cashier.IsActive != 1). Ending session.`);
+        console.warn(`[SessionEnforcement] active-cashier returned isActive=${result?.isActive} — session is no longer active. Ending session.`);
         setActiveSession(false);
         setSessionDetails(undefined);
         toast({
@@ -975,15 +975,15 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           variant: "destructive"
         });
       } else {
-        console.log(`[SessionEnforcement] validate-cashier confirmed isActive=true (POS_Cashier.IsActive=1). Session is active — isActive is the single source of truth.`);
-        const activeCashierId = result?.cashier?.id;
+        console.log(`[SessionEnforcement] active-cashier confirmed isActive=true. Session is active. cashierId: ${result?.cashierId}`);
+        const activeCashierId = result?.cashierId || result?.details?.id;
         if (activeCashierId && activeCashierId !== platinumCashierId) {
           console.log(`[SessionEnforcement] Updating platinumCashierId: ${platinumCashierId} → ${activeCashierId}`);
           setPlatinumCashierId(activeCashierId);
         }
       }
     } catch (e) {
-      console.error(`[SessionEnforcement] Failed to check validate-cashier:`, e);
+      console.error(`[SessionEnforcement] Failed to check session:`, e);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [platinumUser?.user_ID, platinumUser?.finYear]);
