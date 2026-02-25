@@ -2262,6 +2262,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 continue;
             }
 
+            if (item.amountToPay <= 0) {
+                console.warn(`[Priority 2] Skipping misc payment for "${item.description}" — amount is R${item.amountToPay.toFixed(2)} (must be > 0)`);
+                continue;
+            }
+
             const paidByName = (item.paidBy || 'Walk-in').trim();
             const paidByParts = paidByName.split(/\s+/);
             const lastName = paidByParts.length > 1 ? paidByParts.slice(1).join(' ') : paidByParts[0];
