@@ -160,6 +160,11 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
   const systemDropBoxTotal = activeReceipts.filter(r => r.paymentTypeId === 5 || String(r.paymentTypeDesc || '').toLowerCase().includes('drop')).reduce((s, r) => s + (Number(r.paidAmount) || 0), 0);
   const systemTotal = activeReceipts.reduce((s, r) => s + (Number(r.paidAmount) || 0), 0);
 
+  const consumerServicesTotal = activeReceipts.filter(r => (r.billTypeID === 1 || r.billTypeID === 3) && !r.isMiscPayment).reduce((s, r) => s + (Number(r.paidAmount) || 0), 0);
+  const miscTotal = activeReceipts.filter(r => r.isMiscPayment || r.billTypeID === 4).reduce((s, r) => s + (Number(r.paidAmount) || 0), 0);
+  const clearanceTotal = activeReceipts.filter(r => r.billTypeID === 6 && !r.isMiscPayment).reduce((s, r) => s + (Number(r.paidAmount) || 0), 0);
+  const prepaidTotal = activeReceipts.filter(r => r.billTypeID === 5 && !r.isMiscPayment).reduce((s, r) => s + (Number(r.paidAmount) || 0), 0);
+
   const cashierName = platinumUser?.userName || platinumUser?.firstName ? `${platinumUser?.firstName || ''} ${platinumUser?.lastName || ''}`.trim() : currentUser?.name || 'Cashier';
   const officeName = sessionDetails?.officeDesc || 'Cash Office';
   const today = new Date();
@@ -691,6 +696,33 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                         <div className="flex justify-between text-xs">
                           <span className="text-indigo-700">Total Postal Order Receipts</span>
                           <span className="font-mono font-bold text-indigo-800">R {systemPostalTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="border-t border-indigo-200 pt-1.5 mt-1.5 space-y-1">
+                          <div className="text-[9px] uppercase tracking-wider text-indigo-400 font-bold">By Category</div>
+                          {consumerServicesTotal > 0 && (
+                            <div className="flex justify-between text-xs">
+                              <span className="text-indigo-700">Consumer Services</span>
+                              <span className="font-mono font-bold text-indigo-800">R {consumerServicesTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                          )}
+                          {miscTotal > 0 && (
+                            <div className="flex justify-between text-xs">
+                              <span className="text-indigo-700">Direct Income (Misc)</span>
+                              <span className="font-mono font-bold text-indigo-800">R {miscTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                          )}
+                          {clearanceTotal > 0 && (
+                            <div className="flex justify-between text-xs">
+                              <span className="text-indigo-700">Clearance</span>
+                              <span className="font-mono font-bold text-indigo-800">R {clearanceTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                          )}
+                          {prepaidTotal > 0 && (
+                            <div className="flex justify-between text-xs">
+                              <span className="text-indigo-700">Prepaid Recharge</span>
+                              <span className="font-mono font-bold text-indigo-800">R {prepaidTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                          )}
                         </div>
                         <div className="flex justify-between text-xs border-t border-indigo-300 pt-1.5 mt-1.5">
                           <span className="text-indigo-900 font-bold">Grand Total</span>
