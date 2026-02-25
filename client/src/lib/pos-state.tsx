@@ -2095,7 +2095,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     bankId: null,
                     branchId: null,
                     cardNo: record.payment.cardReference || null,
-                    cardExpiryDate: null,
+                    cardExpiryDate: paymentTypeId === 3 ? formatCardExpiry(record.payment.cardExpiry) : null,
                     paySection1181Only: origData.paySection1181Only || false,
                     section1181Amount: origData.paySection1181Only ? Math.abs(origData.total1181 || 0) : 0,
                     paidItems: paidItems.map((pi: any) => ({
@@ -2263,7 +2263,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     userId: sessionUserId,
                     finYear,
                     cardNo: record.payment.cardReference || '',
-                    expiryDate: '',
+                    expiryDate: paymentTypeId === 3 ? formatCardExpiry(record.payment.cardExpiry) : '',
                     chequeNo: '',
                 });
                 console.log(`[Priority 2 ${label}] Submitted misc payment for SCOA item ${scoaItemId}`, miscResult);
