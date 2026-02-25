@@ -4,10 +4,11 @@ import { Account } from '@/lib/external-api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowRight, CreditCard, Banknote, Trash2, History, Lock, AlertTriangle, ChevronUp, ShieldAlert, X, Delete, Coins, CheckCircle2, Minus, Plus, User, MapPin, FileCheck, Zap, Droplets, ChevronDown, Package, Hash, Building2, Receipt } from 'lucide-react';
+import { ArrowRight, CreditCard, Banknote, Trash2, History, Lock, AlertTriangle, ChevronUp, ShieldAlert, X, Delete, Coins, CheckCircle2, Minus, Plus, User, MapPin, FileCheck, Zap, Droplets, ChevronDown, Package, Hash, Building2, Receipt, Box } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { DayEndModal } from './day-end-modal';
 import { TransactionHistoryModal } from './transaction-history-modal';
+import { DropBoxModal } from './drop-box-modal';
 import { HelpTip } from '@/components/ui/help-tip';
 import { getCategoryIcon } from '@/lib/category-icons';
 
@@ -34,6 +35,7 @@ export function PaymentDrawer() {
   const [inputBuffer, setInputBuffer] = useState<string>("");
   const [showDayEnd, setShowDayEnd] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showDropBox, setShowDropBox] = useState(false);
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
   const [mobileView, setMobileView] = useState<'payment' | 'items'>('payment');
 
@@ -210,6 +212,9 @@ export function PaymentDrawer() {
             )}
           </div>
           <div className="flex items-center gap-0.5">
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-amber-500" onClick={() => setShowDropBox(true)}>
+              <Box className="w-3.5 h-3.5" />
+            </Button>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400" onClick={() => setShowHistory(true)}>
               <History className="w-3.5 h-3.5" />
             </Button>
@@ -230,6 +235,9 @@ export function PaymentDrawer() {
            <p className="text-sm text-muted-foreground">Touch-enabled checkout</p>
         </div>
         <div className="flex gap-2">
+            <Button variant="outline" size="icon" onClick={() => setShowDropBox(true)} title="Drop Box" data-testid="button-drop-box">
+                <Box className="w-5 h-5 text-amber-600" />
+            </Button>
             <Button variant="outline" size="icon" onClick={() => setShowHistory(true)} title="Transaction History">
                 <History className="w-5 h-5 text-muted-foreground" />
             </Button>
@@ -383,6 +391,7 @@ export function PaymentDrawer() {
 
     <DayEndModal isOpen={showDayEnd} onClose={() => setShowDayEnd(false)} />
     <TransactionHistoryModal isOpen={showHistory} onClose={() => setShowHistory(false)} />
+    <DropBoxModal isOpen={showDropBox} onClose={() => setShowDropBox(false)} />
     </>
   );
 }
