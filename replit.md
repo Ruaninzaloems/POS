@@ -12,7 +12,7 @@ Key capabilities include:
 - All transaction and session data are stored and managed exclusively via the Platinum API, ensuring data consistency and simplifying day-end reconciliation.
 - Comprehensive cashier session management, float tracking, and day-end reconciliation workflows.
 - A supervisor dashboard for transaction oversight and approval processes.
-- Functionality for direct deposit allocation, both manual and bulk.
+- Functionality for direct deposit allocation, both manual and bulk, with clearance cost schedule search, linked account display, Section 118(1)/118(3) breakdown allocation, auto-fill capability, and real-time allocated vs remaining total tracking.
 - Robust receipt management (print, email, SMS) and permit/certificate generation.
 - A Client Communications module for custom messaging (email/SMS) and a "Send Statements" feature, integrated with account data.
 - Integration with Platinum Inzalo EMS API and legacy Sebata Billing microservices for real-time account data access.

@@ -200,7 +200,9 @@ export default function AllocateTransaction() {
               });
             }
           }
-        } catch {}
+        } catch (clrErr: any) {
+          console.error('[DDSearch] Clearance autocomplete failed:', clrErr?.message || clrErr);
+        }
       }
 
       if (searchScope === 'ALL' || searchScope === 'GROUP') {
@@ -221,7 +223,9 @@ export default function AllocateTransaction() {
               });
             }
           }
-        } catch {}
+        } catch (grpErr: any) {
+          console.error('[DDSearch] Group payment search failed:', grpErr?.message || grpErr);
+        }
       }
 
       if (searchScope === 'ALL' || searchScope === 'DIRECT') {
@@ -743,16 +747,20 @@ export default function AllocateTransaction() {
 
      const numCostScheduleId = selectedClearance.costScheduleID || 0;
 
-     selectedClearance.section118_1_Breakdown.forEach((item, idx) => {
-         const key = `118_1_${item.accountNo}_${idx}`;
+     const buildLine = (item: { item: string; amount: number; accountNo: string }, idx: number, sectionLabel: string, sectionPrefix: string) => {
+         const key = `${sectionPrefix}_${item.accountNo}_${idx}`;
          const amount = clearanceAllocations[key] || 0;
          if (amount > 0) {
-             const itemAccountId = selectedClearance.linkedAccounts.find(a => a.accountNo === item.accountNo)?.apiId || clearanceAccountId;
+             const matchedAccount = item.accountNo
+                 ? selectedClearance.linkedAccounts.find(a => a.accountNo === item.accountNo)
+                 : null;
+             const itemAccountId = matchedAccount?.apiId || clearanceAccountId;
+             const lineAccountNo = item.accountNo || matchedAccount?.accountNo || selectedClearance.linkedAccounts[0]?.accountNo || '';
              newLines.push({
                  id: Math.random().toString(36).substr(2, 9),
-                 accountNo: item.accountNo,
+                 accountNo: lineAccountNo,
                  amount: amount,
-                 description: `Clearance ${selectedClearance.scheduleNo} - 118(1): ${item.item}`,
+                 description: `Clearance ${selectedClearance.scheduleNo} - ${sectionLabel}: ${item.item}`,
                  allocationType: 'CLEARANCE',
                  accountId: itemAccountId,
                  clearanceId: numCostScheduleId,
@@ -761,27 +769,10 @@ export default function AllocateTransaction() {
              });
              totalToAdd += amount;
          }
-     });
+     };
 
-     selectedClearance.section118_3_Breakdown.forEach((item, idx) => {
-         const key = `118_3_${item.accountNo}_${idx}`;
-         const amount = clearanceAllocations[key] || 0;
-         if (amount > 0) {
-             const itemAccountId = selectedClearance.linkedAccounts.find(a => a.accountNo === item.accountNo)?.apiId || clearanceAccountId;
-             newLines.push({
-                 id: Math.random().toString(36).substr(2, 9),
-                 accountNo: item.accountNo,
-                 amount: amount,
-                 description: `Clearance ${selectedClearance.scheduleNo} - 118(3): ${item.item}`,
-                 allocationType: 'CLEARANCE',
-                 accountId: itemAccountId,
-                 clearanceId: numCostScheduleId,
-                 costScheduleId: numCostScheduleId,
-                 outstandingAmount: item.amount,
-             });
-             totalToAdd += amount;
-         }
-     });
+     selectedClearance.section118_1_Breakdown.forEach((item, idx) => buildLine(item, idx, '118(1)', '118_1'));
+     selectedClearance.section118_3_Breakdown.forEach((item, idx) => buildLine(item, idx, '118(3)', '118_3'));
 
      if (totalToAdd === 0) {
          toast({ title: "No Amounts", description: "Please enter at least one allocation amount.", variant: "destructive" });
@@ -1433,7 +1424,64 @@ export default function AllocateTransaction() {
                     </div>
                 )}
 
-                {selectedClearance && (
+                {selectedClearance && (() => {
+                    const allItems118_1 = selectedClearance.section118_1_Breakdown;
+                    const allItems118_3 = selectedClearance.section118_3_Breakdown;
+
+                    const accountNosFromItems = new Set([
+                        ...allItems118_1.map(i => i.accountNo),
+                        ...allItems118_3.map(i => i.accountNo),
+                    ]);
+                    const linkedAccountNos = new Set(selectedClearance.linkedAccounts.map(a => a.accountNo));
+                    const hasUnmatchedItems = [...accountNosFromItems].some(no => no && !linkedAccountNos.has(no));
+                    const hasEmptyAccountItems = [...accountNosFromItems].some(no => !no);
+
+                    const showByAccount = !hasUnmatchedItems && !hasEmptyAccountItems && selectedClearance.linkedAccounts.length > 0;
+
+                    const allocTotal = Object.values(clearanceAllocations).reduce((a, b) => a + b, 0);
+                    const clearanceRemaining = selectedClearance.totalDue - allocTotal;
+
+                    const handleAutoFill = () => {
+                        const newAlloc: Record<string, number> = {};
+                        let budgetLeft = transaction ? Math.min(transaction.amount - allocatedTotal, selectedClearance.totalDue) : selectedClearance.totalDue;
+                        allItems118_1.forEach((item, idx) => {
+                            const key = `118_1_${item.accountNo}_${idx}`;
+                            const fillAmt = Math.min(item.amount, budgetLeft);
+                            if (fillAmt > 0) { newAlloc[key] = parseFloat(fillAmt.toFixed(2)); budgetLeft -= fillAmt; }
+                        });
+                        allItems118_3.forEach((item, idx) => {
+                            const key = `118_3_${item.accountNo}_${idx}`;
+                            const fillAmt = Math.min(item.amount, budgetLeft);
+                            if (fillAmt > 0) { newAlloc[key] = parseFloat(fillAmt.toFixed(2)); budgetLeft -= fillAmt; }
+                        });
+                        setClearanceAllocations(newAlloc);
+                    };
+
+                    const renderItemRow = (item: { item: string; amount: number; accountNo: string }, idx: number, sectionPrefix: string) => {
+                        const key = `${sectionPrefix}_${item.accountNo}_${idx}`;
+                        return (
+                            <div key={key} className="flex items-center gap-2 py-1" data-testid={`clearance-item-${key}`}>
+                                <div className="flex-1 min-w-0">
+                                    <span className="text-xs truncate block" title={item.item}>{item.item}</span>
+                                    {item.accountNo && <span className="text-[10px] text-muted-foreground font-mono">{item.accountNo}</span>}
+                                </div>
+                                <span className="text-xs text-muted-foreground font-mono whitespace-nowrap w-24 text-right" title="Outstanding amount">R {item.amount.toFixed(2)}</span>
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    max={item.amount}
+                                    className="h-8 w-28 text-right font-mono text-sm"
+                                    placeholder="0.00"
+                                    value={clearanceAllocations[key] ?? ''}
+                                    onChange={e => setClearanceAllocations(prev => ({ ...prev, [key]: parseFloat(e.target.value) || 0 }))}
+                                    data-testid={`input-${key}`}
+                                />
+                            </div>
+                        );
+                    };
+
+                    return (
                     <div className="px-3 sm:px-5 py-3 sm:py-4 bg-gradient-to-r from-amber-50 to-orange-50/30 border-b border-amber-100 animate-in fade-in slide-in-from-top-2 duration-200">
                         <div className="flex justify-between items-start mb-4">
                             <div className="flex items-center gap-3">
@@ -1441,67 +1489,117 @@ export default function AllocateTransaction() {
                                     <FileCheck className="w-5 h-5 text-amber-700" />
                                 </div>
                                 <div>
-                                    <div className="text-sm font-semibold text-slate-800">{selectedClearance.scheduleNo}</div>
+                                    <div className="text-sm font-semibold text-slate-800" data-testid="clearance-schedule-no">{selectedClearance.scheduleNo}</div>
                                     <div className="text-xs text-slate-500">
-                                        {selectedClearance.linkedAccounts.length} accounts | Due: <span className="font-mono font-medium">R {selectedClearance.totalDue.toFixed(2)}</span>
+                                        {selectedClearance.linkedAccounts.length} account{selectedClearance.linkedAccounts.length !== 1 ? 's' : ''} | Total Due: <span className="font-mono font-medium">R {selectedClearance.totalDue.toFixed(2)}</span>
                                     </div>
                                 </div>
                             </div>
-                            <Button size="icon" variant="ghost" onClick={() => setSelectedClearance(null)} className="h-8 w-8 text-slate-400 hover:text-slate-600">
-                                <X className="w-4 h-4" />
-                            </Button>
+                            <div className="flex items-center gap-1">
+                                <Button size="sm" variant="outline" onClick={handleAutoFill} className="h-8 text-xs text-amber-700 border-amber-200 hover:bg-amber-100 gap-1" data-testid="btn-auto-fill-clearance">
+                                    <CheckCircle2 className="w-3 h-3" /> Auto-fill
+                                </Button>
+                                <Button size="icon" variant="ghost" onClick={() => setSelectedClearance(null)} className="h-8 w-8 text-slate-400 hover:text-slate-600" data-testid="btn-close-clearance">
+                                    <X className="w-4 h-4" />
+                                </Button>
+                            </div>
                         </div>
 
                         <div className="space-y-4">
-                            {selectedClearance.linkedAccounts.map(account => {
-                                const s118_1 = selectedClearance.section118_1_Breakdown.filter(i => i.accountNo === account.accountNo);
-                                const s118_3 = selectedClearance.section118_3_Breakdown.filter(i => i.accountNo === account.accountNo);
-                                if (s118_1.length === 0 && s118_3.length === 0) return null;
-                                return (
-                                    <div key={account.accountNo} className="bg-white/70 backdrop-blur-sm p-3.5 rounded-lg border border-amber-100/80">
-                                        <div className="text-sm font-medium mb-2.5 flex items-center gap-2">
-                                            <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-xs font-mono">{account.accountNo}</span>
-                                            <span className="text-slate-700">{account.name}</span>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {s118_1.length > 0 && (
-                                                <div className="space-y-2">
-                                                    <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Section 118(1)</label>
-                                                    {s118_1.map((item, idx) => (
-                                                        <div key={idx} className="flex items-center justify-between gap-2">
-                                                            <span className="text-xs truncate flex-1" title={item.item}>{item.item}</span>
-                                                            <Input type="number" className="h-8 w-28 text-right font-mono text-sm" value={clearanceAllocations[`118_1_${account.accountNo}_${idx}`] || ''} onChange={e => setClearanceAllocations(prev => ({ ...prev, [`118_1_${account.accountNo}_${idx}`]: parseFloat(e.target.value) || 0 }))} />
+                            {showByAccount ? (
+                                selectedClearance.linkedAccounts.map(account => {
+                                    const s118_1 = allItems118_1.filter(i => i.accountNo === account.accountNo);
+                                    const s118_3 = allItems118_3.filter(i => i.accountNo === account.accountNo);
+                                    if (s118_1.length === 0 && s118_3.length === 0) return null;
+                                    return (
+                                        <div key={account.accountNo} className="bg-white/70 backdrop-blur-sm p-3.5 rounded-lg border border-amber-100/80">
+                                            <div className="text-sm font-medium mb-2.5 flex items-center gap-2">
+                                                <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-xs font-mono">{account.accountNo}</span>
+                                                <span className="text-slate-700">{account.name}</span>
+                                                {account.outstandingAmount > 0 && <span className="text-[10px] text-muted-foreground ml-auto font-mono">Bal: R {account.outstandingAmount.toFixed(2)}</span>}
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {s118_1.length > 0 && (
+                                                    <div className="space-y-1">
+                                                        <div className="flex items-center justify-between">
+                                                            <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Section 118(1)</label>
+                                                            <span className="text-[10px] text-muted-foreground font-mono">Due</span>
                                                         </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                            {s118_3.length > 0 && (
-                                                <div className="space-y-2">
-                                                    <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Section 118(3)</label>
-                                                    {s118_3.map((item, idx) => (
-                                                        <div key={idx} className="flex items-center justify-between gap-2">
-                                                            <span className="text-xs truncate flex-1" title={item.item}>{item.item}</span>
-                                                            <Input type="number" className="h-8 w-28 text-right font-mono text-sm" value={clearanceAllocations[`118_3_${account.accountNo}_${idx}`] || ''} onChange={e => setClearanceAllocations(prev => ({ ...prev, [`118_3_${account.accountNo}_${idx}`]: parseFloat(e.target.value) || 0 }))} />
+                                                        {s118_1.map((item, idx) => renderItemRow(item, idx, '118_1'))}
+                                                    </div>
+                                                )}
+                                                {s118_3.length > 0 && (
+                                                    <div className="space-y-1">
+                                                        <div className="flex items-center justify-between">
+                                                            <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Section 118(3)</label>
+                                                            <span className="text-[10px] text-muted-foreground font-mono">Due</span>
                                                         </div>
-                                                    ))}
-                                                </div>
-                                            )}
+                                                        {s118_3.map((item, idx) => renderItemRow(item, idx, '118_3'))}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })
+                            ) : (
+                                <div className="bg-white/70 backdrop-blur-sm p-3.5 rounded-lg border border-amber-100/80">
+                                    {selectedClearance.linkedAccounts.length > 0 && (
+                                        <div className="mb-3">
+                                            <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">Linked Accounts</label>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {selectedClearance.linkedAccounts.map(acc => (
+                                                    <span key={acc.accountNo || acc.apiId} className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-xs font-mono">
+                                                        {acc.accountNo} {acc.name ? `- ${acc.name}` : ''}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {allItems118_1.length > 0 && (
+                                        <div className="space-y-1 mb-3">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Section 118(1)</label>
+                                                <span className="text-[10px] text-muted-foreground font-mono">Due / Allocate</span>
+                                            </div>
+                                            {allItems118_1.map((item, idx) => renderItemRow(item, idx, '118_1'))}
+                                        </div>
+                                    )}
+                                    {allItems118_3.length > 0 && (
+                                        <div className="space-y-1">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Section 118(3)</label>
+                                                <span className="text-[10px] text-muted-foreground font-mono">Due / Allocate</span>
+                                            </div>
+                                            {allItems118_3.map((item, idx) => renderItemRow(item, idx, '118_3'))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
-                        <div className="mt-4 pt-3 border-t border-amber-200/60 flex justify-between items-center">
-                            <div className="text-sm">
-                                <span className="text-muted-foreground">Total:</span>
-                                <span className="ml-2 font-bold font-mono">R {Object.values(clearanceAllocations).reduce((a, b) => a + b, 0).toFixed(2)}</span>
+                        <div className="mt-4 pt-3 border-t border-amber-200/60 flex flex-wrap justify-between items-center gap-2">
+                            <div className="text-sm flex items-center gap-3">
+                                <div>
+                                    <span className="text-muted-foreground">Allocated:</span>
+                                    <span className={`ml-1.5 font-bold font-mono ${Math.abs(clearanceRemaining) < 0.01 ? 'text-green-700' : allocTotal > selectedClearance.totalDue ? 'text-red-600' : 'text-slate-800'}`} data-testid="clearance-alloc-total">
+                                        R {allocTotal.toFixed(2)}
+                                    </span>
+                                </div>
+                                {Math.abs(clearanceRemaining) >= 0.01 && (
+                                    <div className="text-xs text-muted-foreground">
+                                        Remaining: <span className="font-mono font-medium">R {clearanceRemaining.toFixed(2)}</span>
+                                    </div>
+                                )}
+                                {Math.abs(clearanceRemaining) < 0.01 && allocTotal > 0 && (
+                                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[10px]">Fully matched</Badge>
+                                )}
                             </div>
-                            <Button onClick={handleAddClearanceLines} className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5">
+                            <Button onClick={handleAddClearanceLines} className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5" data-testid="btn-add-clearance-lines">
                                 <Plus className="w-4 h-4" /> Add Lines
                             </Button>
                         </div>
                     </div>
-                )}
+                    );
+                })()}
 
                 <div className="min-h-[280px] sm:min-h-[360px]">
                     {lines.length === 0 ? (
