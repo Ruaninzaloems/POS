@@ -38,6 +38,7 @@ export interface Account {
   prepaidType?: "Electricity" | "Water";
   email: string;
   mobile: string;
+  apiId?: number;
   linkedToClearance?: string;
   unitId?: string;
   oldCode?: string;
@@ -117,6 +118,7 @@ export interface AccountGroup {
 
 export interface ClearanceCostSchedule {
   scheduleNo: string;
+  costScheduleID: number;
   status: string;
   totalDue: number;
   linkedAccounts: Account[];

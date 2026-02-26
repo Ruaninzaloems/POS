@@ -3218,9 +3218,12 @@ export async function registerRoutes(
   app.post("/api/platinum/direct-deposit-allocation/get-clearance-details-info", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
+      console.log('[DD Prep] get-clearance-details-info — body:', JSON.stringify(req.body));
       const data = await platinumPost(session, "/api/billing-direct-deposit-allocation/get-clearance-details-info", req.body, undefined, { timeout: 55000 });
+      console.log('[DD Prep] get-clearance-details-info — response:', JSON.stringify(data)?.substring(0, 2000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
+      console.error('[DD Prep] get-clearance-details-info — EXCEPTION:', e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });

@@ -2,114 +2,78 @@
 
 ## Overview
 
-This project is a **Municipal Point-of-Sale (POS) Receipting System** prototype, a React/Express/PostgreSQL web application serving as a unified cashier interface for various municipal payments. It handles consumer services, multi-account payments, prepaid recharges, direct income, clearance, and direct deposit allocations. The system is designed to demonstrate business logic, UI flows, and data models for a future Angular production environment.
+This project is a **Municipal Point-of-Sale (POS) Receipting System** prototype. It's a React/Express/PostgreSQL web application designed as a unified cashier interface for diverse municipal payments, including consumer services, multi-account payments, prepaid recharges, direct income, clearance, and direct deposit allocations. The primary goal is to validate business logic, UI flows, and data models for a future Angular production environment.
 
 Key capabilities include:
-- A unified POS screen that auto-detects transaction types.
-- Split payments (cash + card) with change calculation on the cash portion.
-- Enforcement of a single active session per cashier.
-- Concurrency-optimized for 10+ simultaneous users with token mutex, server-side response caching, request concurrency limiting, frontend in-flight deduplication, and server-side GET request deduplication (identical concurrent GETs share one HTTP call).
-- All transaction storage handled via the Platinum API, not locally, ensuring data consistency for day-end reconciliation.
-- Cashier session management, float tracking, and day-end reconciliation.
-- Supervisor dashboard for transaction oversight and approvals.
-- Direct deposit allocation (manual and bulk).
-- Receipt management (print, email, SMS) and permit/certificate generation.
-- Client Communications module for custom email/SMS sending with account search, contact detail pulling, file attachments (schema only — no actual sending; ready for Angular migration with Mimecast integration).
-- Send Statements feature in Enquiries — select period range, pick email/mobile recipients from account data (including additional emails), preview message, and queue for delivery via Mimecast (email) or SMS Gateway (both not yet connected; payload logged for Angular migration).
-- Integration with Platinum Inzalo EMS API and legacy Sebata Billing microservices for live account data.
-- Comprehensive contextual tooltips throughout all pages via a reusable `HelpTip` component (`client/src/components/ui/help-tip.tsx`) wrapping shadcn Tooltip, providing inline help for every major UI element.
-- Smart category-based icons for Direct Income items via keyword matching (`client/src/lib/category-icons.ts`), mapping 35+ municipal categories (building, fire, water, parks, etc.) to unique Lucide icons with distinct colors.
+- A unified POS screen with automatic transaction type detection.
+- Support for split payments (cash + card) with accurate change calculation.
+- Enforcement of a single active session per cashier for operational integrity.
+- High concurrency optimization for 10+ simultaneous users through token mutexes, server-side caching, request limiting, and frontend/server-side GET request deduplication.
+- All transaction and session data are stored and managed exclusively via the Platinum API, ensuring data consistency and simplifying day-end reconciliation.
+- Comprehensive cashier session management, float tracking, and day-end reconciliation workflows.
+- A supervisor dashboard for transaction oversight and approval processes.
+- Functionality for direct deposit allocation, both manual and bulk.
+- Robust receipt management (print, email, SMS) and permit/certificate generation.
+- A Client Communications module for custom messaging (email/SMS) and a "Send Statements" feature, integrated with account data.
+- Integration with Platinum Inzalo EMS API and legacy Sebata Billing microservices for real-time account data access.
+- Contextual tooltips via a reusable `HelpTip` component for inline user assistance.
+- Smart, category-based icon display for Direct Income items, enhancing UI clarity.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
 
-### Test Cashier
-- **Cashier Name**: Francois Naude
-- **User ID**: 213
-- **Cashier ID**: 31922 (POS cashier record)
-- **Cash Office**: George - York Street (ID: 1)
-
 ## System Architecture
 
 ### Frontend (React + TypeScript)
-- **Framework**: React 18 with TypeScript, using Vite.
-- **Routing**: `wouter` for lightweight routing.
-- **Styling**: Tailwind CSS with `shadcn/ui` (Radix UI primitives).
-- **State Management**: React Context API (`PosProvider`) manages session state, cart, payments, cashier profile, and history.
-- **Data Fetching**: TanStack React Query with a custom `apiRequest` helper.
-- **UI Components**: Separated into generic `shadcn/ui` components and business-specific POS components.
-- **Key Patterns**: Business logic (`pos-logic.ts`, `allocation-logic.ts`) is separated from UI. No `localStorage` is used; all data is API-driven. A `PosLayout` component provides a consistent layout and enforces cashier session gating.
+- **Framework**: React 18 with TypeScript, powered by Vite.
+- **Routing**: `wouter` for lightweight client-side navigation.
+- **Styling**: Tailwind CSS, utilizing `shadcn/ui` (built on Radix UI primitives) for component development.
+- **State Management**: React Context API (`PosProvider`) centrally manages core application state, including session, cart, payments, and cashier profiles.
+- **Data Fetching**: TanStack React Query, enhanced with a custom `apiRequest` helper for API interactions.
+- **Component Structure**: Clear separation between generic `shadcn/ui` components and specific POS business components.
+- **Design Patterns**: Emphasizes separation of business logic (`pos-logic.ts`, `allocation-logic.ts`) from UI components. Data is exclusively API-driven, with no `localStorage` usage. A `PosLayout` component enforces consistent layout and cashier session authentication.
 
 ### Backend (Express + Node.js)
 - **Framework**: Express 5 with TypeScript.
-- **API Pattern**: RESTful routes.
-- **Proxy Layer**: Proxies requests to Platinum Inzalo EMS API (authenticated via JWT for POS operations) and legacy Sebata Billing API (unauthenticated OData for backward compatibility).
-- **Session Management**: `express-session` with in-memory store holds per-user browser sessions (cookie-based). Each user's Platinum JWT token, userData, posCashierId, and authMode are stored in `req.session.platinumAuth` (type `UserSession`). This enables 50+ concurrent users without session cross-contamination. NO local database is used — the Platinum API is the sole authority for authentication and all data.
-- **Concurrency**: Global request queue limits concurrent Platinum API calls to 100. Response cache is user-aware: user-specific paths (validate-cashier, payment-options, etc.) are keyed by userId, shared data (BillingEnquiry) uses URL-only keys.
-- **Serving**: Serves production builds statically; uses Vite middleware for development.
-- **No Local Database for Business Data**: All transaction storage, cashier sessions, account data, receipts, day-end reconciliation, and every other business operation is handled exclusively via the Platinum API. The local PostgreSQL database is NOT used at all. Local database schemas (`storage.ts`, `db.ts`, `shared/schema.ts`) are dead code — never called from routes or client.
+- **API Pattern**: RESTful architecture.
+- **Proxy Layer**: Acts as a gateway to the Platinum Inzalo EMS API (authenticated via JWT) and the legacy Sebata Billing API (unauthenticated OData).
+- **Session Management**: `express-session` handles per-user browser sessions, storing Platinum JWT tokens and user data. This design supports high concurrency without session conflicts.
+- **Concurrency Control**: Implements a global request queue to limit concurrent Platinum API calls and employs user-aware response caching and in-flight GET request deduplication to optimize performance.
+- **Data Persistence**: Crucially, the backend does not use a local database for business data. All transaction storage, cashier sessions, account data, and reconciliation processes are managed entirely through the Platinum API. Legacy local database schemas are present but unused.
 
 ### Database (PostgreSQL)
-- **Purpose**: The local database is NOT used for any business logic or session storage. All persistence goes through the Platinum API exclusively.
-- **Legacy code**: `shared/schema.ts`, `server/storage.ts`, `server/db.ts` define unused tables (`users`, `cashier_sessions`, `transactions`). These are dead code kept for reference only.
+- **Role**: The local PostgreSQL database is explicitly NOT used for any business logic or data persistence. All operational data is handled by the Platinum API.
+- **Legacy Code**: Files defining local database schemas (`shared/schema.ts`, `server/storage.ts`, `server/db.ts`) are considered dead code, kept for reference only, and are not invoked by the application.
 
-### Key Business Logic Decisions
-- **Rounding**: Transaction totals are rounded up to the nearest 10 cents.
-- **Change Calculation**: Only on the cash portion: `max(0, cash - (total - card))`.
-- **Transaction Types**: Six types auto-detected: Consumer Services, Multi-Account, Account Group, Prepaid, Direct Income, Clearance.
-- **Day-End Process (Per-Cashier)**: Full 8-phase workflow via `auth-day-end-reconcile` controller (for GroupCashiers=false offices): Init (cashier-list, cash-office-list, cashbook-list) → Resolve Cashier (active-cashierid, pos-cashier, cashier-details, cashier-reconcile) → Review Receipts (cash/card/cheque/postal-order/drop-box/offline-data/system-vs-cashier lists) → Pending Cancels → Submit Flow (save-reconcile-data → validate-cashbook → submit-day-auth-reconcile) → Return (return-day-end-reconcile) → Cancel Receipts (request/approve/decline/direct-cancel) → Print (receipt/cash-report/deposit-slip). Supervisor approval follows validate → submit → finish-day-end-reconcile(userId=user_ID) sequence. **Critical**: `finish-day-end-reconcile` requires `userId` = the user's `user_ID` (e.g., 213), NOT the POS cashier record ID (e.g., 31941). `return-day-end-reconcile` body `id` = the `cashierReconcile_Id` from reconcile data. `cashBookId` for `submit-day-auth-reconcile` is dynamically resolved from `cashbook-list` API.
-- **Day-End Process (Per-Office)**: Separate 13-phase workflow via `auth-day-end-reconcile-per-office` controller (for GroupCashiers=true offices): Phase 1 Init (cash-office-list) → Phase 2 Office Selection (cash-office-selection?cashOfficeId auto-resolves cashbook + cashier grid) → Phase 3 Cashier Grid (cashier-summary-by-office) → Phase 4 Cashier Selection (cashier-reconcile-status) → Phase 5 Stage Lock (add-stage) → Phase 6 Process Staging (process-staging-payments?cashOfficeId) → Phase 7 Receipt Grids (reuses per-cashier receipt endpoints) → Phase 8 Verify Each Cashier (verify-cashier-reconcile with {cashierId, cashOfficeId, cashBookId}, repeat until allVerified) → Phase 9 Final Office Submission (submit-reconcile-per-office with {cashOfficeId, cashBookId}) → Phase 10 Release Lock (finish-stage) → Phase 11 Return (return-day-end-reconcile + finish-stage) → Phase 12 Cancel Receipt (cancel-day-auth-reconcile-receipt) → Phase 13 Print (print-receipt/cash-report/deposit-slip with CashOffice* filename prefix).
-- **Cancellation Workflow**: Cashiers request cancellation, supervisors approve/decline via pending-cancel-requests flow. Supervisors can also directly cancel receipts via cancel-day-auth-reconcile-receipt without request-approve flow.
-- **Payment Validation**: Cashier payment options/types are validated against Platinum API endpoints (`/api/billing-payment/payment-options`, `/api/billing-payment/payment-types`).
-- **Receipt Range Validation**: Verified via `/api/platinum/receipt-prepaid/validate-receipt-range` before payment processing.
-- **Session Detection**: Uses `/api/ReceiptPrepaid/validate-cashier` as the single source of truth for cashier session status (`isActive` field). Auto-resume and session enforcement are based on this.
-- **Payment Submission**: For single account, uses `submit-consumer-payment/{userId}`. For multiple accounts (2+), uses `submit-multiple-payment/{userId}` with `{ accounts: [...], requestModel: {...} }` in a single API call. For split payments (cash + card), two separate rounds are made (paymentType 1 for cash, 3 for card), each using the appropriate single/multiple endpoint based on account count. Each round creates separate DB entries with its own `print-receipt` call.
-- **Pre-Payment Session Check**: Before ANY payment processing, validate-cashier is called to verify the session is still active. Payment is BLOCKED if session is inactive or API fails.
-- **Payment Performance**: Service balance pre-fetches run in the background concurrently with payment submission (not blocking it). The receipt modal shows immediately with "Validating cashier session..." and provides a progress bar with time estimate (~3.2s per account) during the `submit-multiple-payment` phase. Server-side in-flight GET deduplication prevents duplicate API calls from retries.
+### Web Component / Angular Integration
+- The React application is designed as a Web Component (`<pos-app>`) for seamless embedding into existing Angular applications.
+- Utilizes Shadow DOM for complete style isolation, ensuring no CSS leakage to the host application.
+- All API calls are routed through a centralized URL resolver and authentication header injector, preventing direct `fetch()` calls.
+- Adheres to strict guidelines: `ReactDOM.createRoot` is called within the web component's `connectedCallback()`, HTML attributes are used for passing configuration (`api-base-url`, `auth-token`), and the build process generates a single, self-contained ES module bundle (`dist/bundle.js`) with inlined CSS.
+- No `localStorage` or `sessionStorage` is used, and no local database writes occur, enforcing an API-first data strategy.
 
 ## External Dependencies
 
 ### External APIs
 -   **Platinum Inzalo EMS API** (`georgeplatinumuatapi.azurewebsites.net`):
-    -   Handles all core POS operations (payments, prepaid, clearance, day-end, direct deposits, etc.).
-    -   Authenticated via JWT tokens; `server/platinum-auth.ts` manages token refresh.
-    -   Environment variables: `PLATINUM_API_PASSWORD`, `PLATINUM_API_USERNAME`, `PLATINUM_API_DBNAME`.
-    -   Key endpoint groups: `ReceiptPrepaid`, `billing-payment`, `auth-day-end-reconcile`, `auth-day-end-reconcile-per-office`, `billing-direct-deposit-allocation`, `BillingEnquiry`, `BillingDashboard`.
-    -   **Critical Payment Flow**: `save-multiple-account-payment` → `submit-consumer-payment/{userId}` (per account) → `print-receipt` → `pos-multi-receipt-print` (for structured receipt data).
-    -   Payment Type IDs: 1=Cash, 3=Credit Card (critical for split payments). Payment Option (e.g., 1 for Consumer Services) is distinct from Payment Type.
-    -   Cashier setup and session status are managed through specific Platinum endpoints.
-    -   **Direct Deposit Allocation**: `submit-details-data` endpoint. Processing order: Consumer Services (ACCOUNT, billType "1") → Payment Grouping (GROUP, billType "3") → Clearance (billType "6") → Misc/Direct Income (DIRECT, billType "4") → Cashbook Return (skipped). Each line submitted individually. Mandatory fields: posItemId, reconId, userId, financialYear, transactionDate, paidAmount, billType, accountId.
+    -   Central to all core POS operations: payments, prepaid services, clearance, day-end processes, and direct deposits.
+    -   Authentication via JWT tokens, with token refresh managed server-side.
+    -   Key modules integrated: `ReceiptPrepaid`, `billing-payment`, `auth-day-end-reconcile`, `billing-direct-deposit-allocation`, `BillingEnquiry`, `BillingDashboard`.
+    -   Handles critical payment flows, cashier setup, session status, and direct deposit allocations.
+    -   Manages distinct Payment Type IDs (e.g., 1 for Cash, 3 for Credit Card) for accurate financial processing.
 -   **Sebata Billing Microservice** (`george-uat-ems-billing-api.azurewebsites.net`):
-    -   Legacy OData-based API for consumer account data and billing configuration.
-    -   Accessed via server-side proxy routes (`/api/proxy/`).
+    -   A legacy OData-based API providing consumer account data and billing configurations.
+    -   Accessed through server-side proxy routes.
 
 ### Frontend Libraries
--   `shadcn/ui` + `Radix UI`: Comprehensive UI component library.
--   `TanStack React Query`: Server state management.
--   `date-fns`: Date utilities.
--   `react-to-print`: Printing functionality.
+-   `shadcn/ui` + `Radix UI`: Provides a robust and customizable UI component foundation.
+-   `TanStack React Query`: Used for efficient server state management and data synchronization.
+-   `date-fns`: A utility library for date manipulation.
+-   `react-to-print`: Facilitates client-side printing functionality.
 
 ### Build Tools
--   `Vite`: Frontend bundler.
--   `esbuild`: Server bundler.
--   `tsx`: TypeScript execution for development.
--   `drizzle-kit`: Database schema management (for the unused local database).
-
-### Web Component / Angular Integration
--   `client/src/web-component.tsx`: Custom Element (`<pos-app>`) wrapping the React App with Shadow DOM for style isolation.
--   `client/src/mount.ts`: Exports `render(container, props)` function for Angular to mount the app into any DOM element.
--   `vite.config.lib.ts`: Library build config producing a single ES module bundle with all CSS inlined.
--   Build command: `npx vite build --config vite.config.lib.ts` → output: `dist/bundle.js`.
--   The server serves `dist/bundle.js` at `/dist/bundle.js` with CORS enabled (`Access-Control-Allow-Origin: *`) so Angular apps can fetch it remotely.
--   Local database (`storage.ts`, `db.ts`) is dead code — never called from routes or client. All persistence uses Platinum API.
-
-### MANDATORY Development Rules (Web Component / Angular Embedding)
-All new code MUST follow these rules to keep the app embeddable in Angular:
-1.  **ReactDOM.createRoot in connectedCallback()** — The Custom Element creates the React root inside `connectedCallback()`. Never call `createRoot` outside the web component lifecycle.
-2.  **HTML Attributes as Props** — `api-base-url` and `auth-token` are accepted as HTML attributes on `<pos-app>`, mapped into `PosConfigProvider` context, and consumed by all API calls via `resolveApiUrl()` and `getAuthHeaders()`.
-3.  **Single File Build** — `vite.config.lib.ts` uses `inlineDynamicImports: true` and `cssCodeSplit: false` to produce exactly ONE `dist/bundle.js` (ES module) with no chunks.
-4.  **CSS Scoped via Shadow DOM** — All styles (Tailwind + custom) are loaded via `?inline` import and applied to the Shadow DOM using `adoptedStyleSheets`. No global `:root` or `body` styles leak to the Angular parent.
-5.  **All fetch() calls go through `apiFetch()` or `resolveApiUrl()`** — Every API call in `external-api.ts`, `enquiries-service.ts`, `queryClient.ts`, and `App.tsx` uses the centralized URL resolver and auth header injector. Raw `fetch('/api/...')` calls are prohibited.
-6.  **No localStorage / sessionStorage** — All state comes from APIs.
-7.  **No local database writes** — `storage.ts` and `db.ts` are dead code. All persistence goes through Platinum API.
+-   `Vite`: Frontend bundler, optimized for speed and efficiency.
+-   `esbuild`: Used for efficient server-side bundling.
+-   `tsx`: Enables direct execution of TypeScript files during development.
+-   `drizzle-kit`: Utilized for database schema management, primarily for the unused local database definitions.
