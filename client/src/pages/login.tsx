@@ -43,8 +43,8 @@ export default function LoginPage({ onLoginSuccess }: LoginProps) {
     };
 
     return (
-        <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4 overflow-auto z-50" data-testid="login-page">
-            <div className="absolute inset-0 opacity-30 pointer-events-none">
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4 relative overflow-hidden" data-testid="login-page">
+            <div className="absolute inset-0 opacity-30">
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-400/20 via-transparent to-transparent" />
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-indigo-400/20 via-transparent to-transparent" />
             </div>

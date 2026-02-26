@@ -8,14 +8,6 @@ import { existsSync } from "fs";
 import crypto from "crypto";
 import type { UserSession } from "./platinum-auth";
 
-process.on('uncaughtException', (err) => {
-  console.error('[FATAL] Uncaught exception:', err.message);
-  console.error(err.stack);
-});
-process.on('unhandledRejection', (reason: any) => {
-  console.error('[FATAL] Unhandled rejection:', reason?.message || reason);
-});
-
 const app = express();
 const httpServer = createServer(app);
 
@@ -75,20 +67,11 @@ export function log(message: string, source = "express") {
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedSnippet: string | undefined = undefined;
+  let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
   const originalResJson = res.json;
   res.json = function (bodyJson, ...args) {
-    try {
-      if (Array.isArray(bodyJson) && bodyJson.length > 5) {
-        capturedSnippet = `[Array(${bodyJson.length})]`;
-      } else {
-        const s = JSON.stringify(bodyJson);
-        capturedSnippet = s.length > 500 ? s.substring(0, 500) + '...' : s;
-      }
-    } catch {
-      capturedSnippet = '[unserializable]';
-    }
+    capturedJsonResponse = bodyJson;
     return originalResJson.apply(res, [bodyJson, ...args]);
   };
 
@@ -96,8 +79,8 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedSnippet) {
-        logLine += ` :: ${capturedSnippet}`;
+      if (capturedJsonResponse) {
+        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
       log(logLine);
     }
@@ -131,10 +114,6 @@ app.use((req, res, next) => {
     return res.sendStatus(204);
   });
 
-  app.get("/__health", (_req: Request, res: Response) => {
-    res.status(200).send("ok");
-  });
-
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
@@ -153,14 +132,6 @@ app.use((req, res, next) => {
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
-    const _origExit = process.exit;
-    process.exit = function(code?: number) {
-      if (code === 1) {
-        console.error('[Vite] Suppressed process.exit(1) — keeping server alive');
-        return undefined as never;
-      }
-      return _origExit(code as any);
-    } as any;
     const { setupVite } = await import("./vite");
     await setupVite(httpServer, app);
   }

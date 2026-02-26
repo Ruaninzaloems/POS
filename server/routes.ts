@@ -2066,49 +2066,136 @@ export async function registerRoutes(
     }
   });
 
-  let receiptInfoCache: Record<string, string> | null = null;
-
   app.get("/api/platinum/receipt-info", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-
-      if (receiptInfoCache) {
-        return res.json(receiptInfoCache);
-      }
-
       const settings: Record<string, string> = {};
 
-      try {
-        const val = await platinumGet(session, "/api/BillingEnquiry/GetAppSetting", { key: 'InstitutionName' });
-        if (val && typeof val === 'string' && val.trim().length > 0) {
-          settings['InstitutionName'] = val.trim();
-        }
-      } catch {}
+      const appSettingKeys = [
+        'InstitutionName', 'InstitutionAddress1', 'InstitutionAddress2',
+        'InstitutionAddress3', 'InstitutionPostalCode', 'InstitutionTel',
+        'InstitutionFax', 'VATRegistrationNo', 'InstitutionEmail',
+        'InstitutionWebsite', 'ReceiptFooter', 'ReceiptHeader',
+        'MunicipalityName', 'MunicipalityAddress', 'MunicipalityVatNo',
+        'CompanyName', 'CompanyAddress', 'CompanyVatNo',
+        'SiteName', 'SiteAddress', 'OrgName',
+      ];
 
-      if (settings['InstitutionName']) {
-        for (const key of ['InstitutionAddress1', 'VATRegistrationNo', 'InstitutionTel', 'InstitutionEmail', 'ReceiptFooter']) {
+      const results = await Promise.allSettled(
+        appSettingKeys.map(async (key) => {
           try {
             const val = await platinumGet(session, "/api/BillingEnquiry/GetAppSetting", { key });
-            if (val && typeof val === 'string' && val.trim().length > 0) {
-              settings[key] = val.trim();
-            }
-          } catch {}
+            return { key, value: val };
+          } catch {
+            return { key, value: null };
+          }
+        })
+      );
+      for (const result of results) {
+        if (result.status === 'fulfilled' && result.value.value !== null && result.value.value !== undefined) {
+          const val = result.value.value;
+          if (typeof val === 'string' && val.trim().length > 0) {
+            settings[result.value.key] = val.trim();
+          } else if (typeof val !== 'string' && val) {
+            settings[result.value.key] = String(val);
+          }
         }
       }
 
-      if (!settings['InstitutionName']) {
-        settings['InstitutionName'] = 'George Municipality';
-        settings['InstitutionAddress1'] = 'York Street, George, 6530';
-        settings['VATRegistrationNo'] = '';
+      const configKeys = [
+        'InstitutionName', 'MunicipalityName', 'VATRegistrationNo',
+        'InstitutionAddress', 'ReceiptHeader', 'ReceiptFooter',
+      ];
+      if (Object.keys(settings).length === 0) {
+        const configResults = await Promise.allSettled(
+          configKeys.map(async (key) => {
+            try {
+              const val = await platinumGet(session, "/api/BillingEnquiry/GetAAAA_ConfigSetting", { strKeyName: key });
+              return { key, value: val };
+            } catch {
+              return { key, value: null };
+            }
+          })
+        );
+        for (const result of configResults) {
+          if (result.status === 'fulfilled' && result.value.value !== null && result.value.value !== undefined) {
+            const val = result.value.value;
+            if (typeof val === 'string' && val.trim().length > 0) {
+              settings[result.value.key] = val.trim();
+            }
+          }
+        }
       }
 
-      receiptInfoCache = settings;
-      console.log('[Receipt Info] Retrieved settings:', settings);
+      if (Object.keys(settings).length === 0) {
+        console.log('[Receipt Info] No settings from GetAppSetting or ConfigSetting. Trying PDF receipt header extraction...');
+        try {
+          const apiUrl = process.env.PLATINUM_API_URL || 'https://georgeplatinumuatapi.azurewebsites.net';
+          const token = session.token;
+
+          const probeIds = [312979, 312980, 312978, 313000, 312950, 312900];
+          let pdfExtracted = false;
+
+          for (const receiptId of probeIds) {
+            if (pdfExtracted) break;
+            try {
+              const pdfRes = await fetch(`${apiUrl}/api/billing-payment/print-receipt`, {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                  Accept: 'application/pdf',
+                },
+                body: JSON.stringify([receiptId]),
+              });
+
+              if (pdfRes.ok) {
+                const contentType = pdfRes.headers.get('content-type') || '';
+                if (contentType.includes('pdf') || contentType.includes('octet')) {
+                  const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+                  if (pdfBuffer.length > 500) {
+                    const tmpPath = `/tmp/receipt_header_${Date.now()}.pdf`;
+                    try {
+                      writeFileSync(tmpPath, pdfBuffer);
+                      const text = execSync(`pdftotext -layout ${tmpPath} -`, { timeout: 10000 }).toString();
+
+                      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+                      const vatLine = lines.findIndex(l => /vat\s*(registration|reg\.?)\s*(number|no\.?)\s*:?\s*/i.test(l));
+                      if (vatLine >= 0) {
+                        const vatMatch = lines[vatLine].match(/vat\s*(?:registration|reg\.?)\s*(?:number|no\.?)\s*:?\s*(\d[\d\s/-]*\d)?/i);
+                        if (vatMatch && vatMatch[1]) {
+                          settings['VATRegistrationNo'] = vatMatch[1].trim();
+                        }
+                        const headerLines = lines.slice(0, vatLine).filter(l => l.length > 2);
+                        if (headerLines.length >= 1) {
+                          settings['InstitutionName'] = headerLines[0];
+                        }
+                        if (headerLines.length >= 2) {
+                          settings['InstitutionAddress1'] = headerLines.slice(1).join(', ');
+                        }
+                        pdfExtracted = true;
+                        console.log(`[Receipt Info] Extracted from PDF receipt ${receiptId}:`, settings);
+                      }
+                    } finally {
+                      if (existsSync(tmpPath)) { try { unlinkSync(tmpPath); } catch {} }
+                    }
+                  }
+                }
+              }
+            } catch (e: any) {
+              console.warn(`[Receipt Info] PDF probe ${receiptId} failed:`, e.message);
+            }
+          }
+        } catch (pdfErr: any) {
+          console.warn('[Receipt Info] PDF header extraction failed:', pdfErr.message);
+        }
+      }
+
+      console.log('[Receipt Info] Retrieved settings:', Object.keys(settings).length > 0 ? settings : '(no settings found)');
       res.json(settings);
     } catch (e: any) {
-      const fallback = { InstitutionName: 'George Municipality', InstitutionAddress1: 'York Street, George, 6530', VATRegistrationNo: '' };
-      receiptInfoCache = fallback;
-      res.json(fallback);
+      console.error('[Receipt Info] Error fetching settings:', e.message);
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 

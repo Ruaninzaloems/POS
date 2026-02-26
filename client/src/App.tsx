@@ -132,8 +132,8 @@ function App() {
 
   if (!authChecked) {
     return (
-      <div style={{ position: "fixed", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(to bottom right, #0f172a, #1e3a5f, #312e81)", fontFamily: "system-ui, sans-serif", zIndex: 50 }}>
-        <p style={{ color: "rgba(255,255,255,0.5)" }}>Loading...</p>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "system-ui, sans-serif" }}>
+        <p style={{ color: "#666" }}>Checking authentication...</p>
       </div>
     );
   }
