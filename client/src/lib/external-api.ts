@@ -1934,6 +1934,9 @@ export async function submitMiscPayment(data: {
     if (result && result.isSuccess === false) {
         throw new Error(result.message || 'Miscellaneous payment submission failed');
     }
+    if (result && result._error) {
+        throw new Error(result.detail || result.statusText || `Misc payment failed with status ${result.status}`);
+    }
     return result;
 }
 

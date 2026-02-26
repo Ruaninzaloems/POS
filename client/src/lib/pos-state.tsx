@@ -2110,35 +2110,46 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const submitOneMisc = async (paymentTypeId: number, amount: number, tender: number, change: number, label: string, splitType: 'cash' | 'card') => {
                 const itemAmtExVat = isVatable ? amount / (1 + vatRate / 100) : amount;
                 const itemVat = isVatable ? amount - itemAmtExVat : 0;
-                const miscResult = await submitMiscPayment({
+                const miscPayload = {
                     lastName,
                     initials,
                     miscellaneousPaymentGroup: Number(groupId),
                     scoaItem: Number(scoaItemId),
                     description: item.notes || item.description || origData?.description || '',
                     receiptDate: formattedReceiptDate,
-                    totalAmount: amount,
+                    totalAmount: Math.round(amount * 100) / 100,
                     vatAmount: Math.round(itemVat * 100) / 100,
                     amount: Math.round(itemAmtExVat * 100) / 100,
-                    tenderAmount: tender,
-                    changeAmount: change,
+                    tenderAmount: Math.round(tender * 100) / 100,
+                    changeAmount: Math.round(change * 100) / 100,
                     paymentType: paymentTypeId,
                     vatPercentage: vatRate,
                     isVatable,
                     userId: sessionUserId,
                     finYear,
-                    cardNo: record.payment.cardReference || '',
+                    cardNo: paymentTypeId === 3 ? (record.payment.cardReference || '') : '',
                     expiryDate: paymentTypeId === 3 ? formatCardExpiryAsDate(record.payment.cardExpiry) : '',
                     chequeNo: '',
-                });
-                console.log(`[Priority 2 ${label}] Submitted misc payment for SCOA item ${scoaItemId}`, miscResult);
+                    bankBranch: '',
+                    bankBranchCode: '',
+                    accHolderName: '',
+                };
+                console.log(`[Priority 2 ${label}] Submitting misc payload for SCOA ${scoaItemId}:`, JSON.stringify(miscPayload));
+                const miscResult = await submitMiscPayment(miscPayload);
+                console.log(`[Priority 2 ${label}] Misc submit response:`, JSON.stringify(miscResult)?.substring(0, 500));
 
                 let miscReceiptId: number | null = null;
                 if (miscResult?.ids && Array.isArray(miscResult.ids) && miscResult.ids.length > 0) {
-                    miscReceiptId = miscResult.ids[0];
+                    miscReceiptId = Number(miscResult.ids[0]);
+                } else if (miscResult?.receiptSerialNumber) {
+                    miscReceiptId = Number(miscResult.receiptSerialNumber);
                 } else {
-                    miscReceiptId = miscResult?.receiptID || miscResult?.receiptId || miscResult?.id || null;
+                    const candidateId = miscResult?.receiptID || miscResult?.receiptId || miscResult?.id || null;
+                    if (candidateId && !isNaN(Number(candidateId))) {
+                        miscReceiptId = Number(candidateId);
+                    }
                 }
+                console.log(`[Priority 2 ${label}] Extracted receiptId=${miscReceiptId} from response keys: ${miscResult ? Object.keys(miscResult).join(', ') : 'null'}`);
 
                 if (miscReceiptId) {
                     let receiptNo = `REC-${miscReceiptId}`;
@@ -2148,8 +2159,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     const miscVatAmt = Math.round((isVatable ? amount - amount / (1 + vatRate / 100) : 0) * 100) / 100;
                     const miscAmtExVat = Math.round((amount - miscVatAmt) * 100) / 100;
 
+                    const apiReceiptNo = miscResult?.receiptNo || miscResult?.receipt_no || miscResult?.receiptNumber || null;
+                    if (apiReceiptNo) {
+                        receiptNo = apiReceiptNo;
+                    }
+
                     try {
-                        const miscReceiptData = await fetchPosMultiReceiptPrint(String(miscReceiptId), 3);
+                        const miscReceiptData = await fetchPosMultiReceiptPrint(String(miscReceiptId), 3, apiReceiptNo || undefined);
                         if (miscReceiptData && miscReceiptData.length > 0) {
                             if (miscReceiptData[0].receiptNo) receiptNo = miscReceiptData[0].receiptNo;
                             const rd = miscReceiptData[0];
@@ -2171,13 +2187,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                                 miscSurname: lastName,
                                 lineItems: [{
                                     description: miscItemDesc,
-                                    amount: miscAmtExVat,
-                                    vatAmount: miscVatAmt,
+                                    amount: rd.amount ?? miscAmtExVat,
+                                    vatAmount: rd.vatAmount ?? miscVatAmt,
                                 }],
                             };
                         }
                     } catch (e) {
-                        console.warn(`[Priority 2 ${label}] Could not fetch receipt number`, e);
+                        console.warn(`[Priority 2 ${label}] Could not fetch receipt data from Sebata`, e);
                     }
 
                     if (!miscReceiptDetail) {
@@ -2230,7 +2246,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     };
                     for (let printAttempt = 1; printAttempt <= 2; printAttempt++) {
                         try {
-                            await platinumPrintMiscellaneousReceipt(miscPrintPayload, { id: String(miscReceiptId) });
+                            await platinumPrintMiscellaneousReceipt(miscPrintPayload, { id: String(miscReceiptId), userId: String(sessionUserId) });
                             break;
                         } catch (e) {
                             if (printAttempt === 2) console.warn(`[Priority 2 ${label}] Failed to print misc receipt after 2 attempts`, e);
@@ -2282,7 +2298,9 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     }
                 } else {
                     const miscPaymentTypeId = record.payment.card > 0 && record.payment.cash === 0 ? 3 : 1;
-                    await submitOneMisc(miscPaymentTypeId, item.amountToPay, item.amountToPay, 0, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash');
+                    const singleTender = miscPaymentTypeId === 1 ? incGroupTender : item.amountToPay;
+                    const singleChange = miscPaymentTypeId === 1 ? incGroupChange : 0;
+                    await submitOneMisc(miscPaymentTypeId, item.amountToPay, singleTender, singleChange, 'SINGLE', record.payment.card > 0 ? 'card' : 'cash');
                 }
             } catch (e: any) {
                 const errMsg = e?.message || (typeof e === 'string' ? e : JSON.stringify(e)) || 'Unknown error';

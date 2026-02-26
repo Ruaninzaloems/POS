@@ -1512,9 +1512,13 @@ export async function registerRoutes(
   app.post("/api/platinum/billing-payment/print-miscellaneous-receipt", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const data = await platinumPost(session, "/api/billing-payment/print-miscellaneous-receipt", req.body, req.query as Record<string, string>);
+      const queryParams = req.query as Record<string, string>;
+      console.log(`[print-misc-receipt] Params: ${JSON.stringify(queryParams)}, Body keys: ${Object.keys(req.body || {}).join(', ')}`);
+      const data = await platinumPost(session, "/api/billing-payment/print-miscellaneous-receipt", req.body, queryParams);
+      console.log(`[print-misc-receipt] Response:`, JSON.stringify(data)?.substring(0, 500));
       handlePlatinumResult(res, data);
     } catch (e: any) {
+      console.error(`[print-misc-receipt] Error:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
@@ -1828,20 +1832,61 @@ export async function registerRoutes(
   app.post("/api/platinum/billing-payment-miscellaneous/submit", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      console.log(`[misc-submit] Payload:`, JSON.stringify(req.body));
       const miscBody = req.body;
-      const miscDedupKey = `misc|${miscBody.userId || 'u'}|${miscBody.description || ''}|${miscBody.totalAmount || miscBody.amount || 0}|${miscBody.paymentType || 0}`;
+
+      if (!miscBody.userId) {
+        return res.status(400).json({ message: "userId is required for misc payment submission" });
+      }
+      if (!miscBody.miscellaneousPaymentGroup && miscBody.miscellaneousPaymentGroup !== 0) {
+        return res.status(400).json({ message: "miscellaneousPaymentGroup is required" });
+      }
+      if (!miscBody.scoaItem && miscBody.scoaItem !== 0) {
+        return res.status(400).json({ message: "scoaItem is required" });
+      }
+      if (miscBody.totalAmount === undefined || miscBody.totalAmount === null || miscBody.totalAmount <= 0) {
+        return res.status(400).json({ message: "totalAmount must be greater than 0" });
+      }
+
+      const sanitizedPayload = {
+        lastName: miscBody.lastName || '',
+        initials: miscBody.initials || '',
+        miscellaneousPaymentGroup: Number(miscBody.miscellaneousPaymentGroup),
+        scoaItem: Number(miscBody.scoaItem),
+        description: miscBody.description || '',
+        receiptDate: miscBody.receiptDate || new Date().toISOString(),
+        totalAmount: Number(miscBody.totalAmount),
+        vatAmount: Number(miscBody.vatAmount ?? 0),
+        amount: Number(miscBody.amount ?? miscBody.totalAmount),
+        tenderAmount: Number(miscBody.tenderAmount ?? miscBody.totalAmount),
+        changeAmount: Number(miscBody.changeAmount ?? 0),
+        paymentType: Number(miscBody.paymentType ?? 1),
+        vatPercentage: Number(miscBody.vatPercentage ?? 0),
+        isVatable: Boolean(miscBody.isVatable),
+        userId: Number(miscBody.userId),
+        finYear: miscBody.finYear || '2025/2026',
+        cardNo: miscBody.cardNo || null,
+        expiryDate: miscBody.expiryDate || null,
+        chequeNo: miscBody.chequeNo || null,
+        bankBranch: miscBody.bankBranch || null,
+        bankBranchCode: miscBody.bankBranchCode || null,
+        accHolderName: miscBody.accHolderName || null,
+      };
+
+      console.log(`[misc-submit] Sanitized payload:`, JSON.stringify(sanitizedPayload));
+
+      const miscDedupKey = `misc|${sanitizedPayload.userId}|${sanitizedPayload.scoaItem}|${sanitizedPayload.totalAmount}|${sanitizedPayload.paymentType}`;
       const miscDedupCheck = checkPaymentDedup(miscDedupKey);
       if (miscDedupCheck.isDuplicate) {
         console.warn(`[misc-submit] DUPLICATE BLOCKED — same misc payment within ${PAYMENT_DEDUP_WINDOW_MS/1000}s window. Key: ${miscDedupKey}`);
         res.json(miscDedupCheck.cachedResponse);
         return;
       }
-      const data = await platinumPost(session, "/api/billing-payment-miscellaneous/submit", req.body);
-      console.log(`[misc-submit] Response:`, JSON.stringify(data).substring(0, 1000));
+      const data = await platinumPost(session, "/api/billing-payment-miscellaneous/submit", sanitizedPayload);
+      console.log(`[misc-submit] Response:`, JSON.stringify(data)?.substring(0, 1000));
       recordPaymentSubmission(miscDedupKey, data);
       handlePlatinumResult(res, data);
     } catch (e: any) {
+      console.error(`[misc-submit] Error:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
