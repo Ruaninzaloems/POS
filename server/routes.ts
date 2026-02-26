@@ -151,13 +151,30 @@ function parseReceiptAllocations(pdfText: string): ReceiptAllocation[] {
 }
 
 async function proxyGet(url: string): Promise<any> {
-  const res = await fetch(url, {
-    headers: { 'Accept': 'application/json' }
-  });
-  if (!res.ok) {
-    return { error: true, status: res.status, statusText: res.statusText };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  try {
+    const res = await fetch(url, {
+      headers: { 'Accept': 'application/json' },
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      return { error: true, status: res.status, statusText: res.statusText };
+    }
+    const text = await res.text();
+    if (text.length > 10 * 1024 * 1024) {
+      console.warn(`[proxyGet] Response too large (${(text.length / 1024 / 1024).toFixed(1)}MB) for ${url}`);
+      return { error: true, status: 413, statusText: 'Response too large' };
+    }
+    return JSON.parse(text);
+  } catch (e: any) {
+    if (e.name === 'AbortError') {
+      return { error: true, status: 504, statusText: 'Gateway timeout (30s)' };
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeout);
   }
-  return res.json();
 }
 
 function stripHtml(text: string): string {

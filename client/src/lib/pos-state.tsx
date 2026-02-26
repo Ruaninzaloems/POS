@@ -327,20 +327,23 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               const safe = <T,>(promise: Promise<T>, fallback: T, label: string): Promise<T> =>
                   promise.catch((e) => { console.warn(`[RefData] ${label} failed:`, e?.message || e); return fallback; });
 
-              const timeoutPromise = new Promise((_, reject) => 
-                  setTimeout(() => reject(new Error('Reference data loading timed out after 45 seconds')), 45000)
-              );
-              const dataPromise = Promise.all([
+              const platinumUserInfo = await safe(fetchPlatinumUserInfo(), null, 'platinumUserInfo');
+
+              const [cashOffices, billingConfig] = await Promise.all([
+                  safe(fetchCashOffices(), [], 'cashOffices'),
+                  safe(fetchBillingConfig(), null, 'billingConfig'),
+              ]);
+
+              const [banks, groups, institutions] = await Promise.all([
                   safe(fetchBanks(), [], 'banks'),
                   safe(fetchGroups(), [], 'groups'),
                   safe(fetchInstitutions(), [], 'institutions'),
-                  safe(fetchConfigSettings(), [], 'configSettings'),
-                  safe(fetchCashOffices(), [], 'cashOffices'),
-                  safe(fetchCashiers(), [], 'cashiers'),
-                  safe(fetchBillingConfig(), null, 'billingConfig'),
-                  safe(fetchPlatinumUserInfo(), null, 'platinumUserInfo')
               ]);
-              const [banks, groups, institutions, settings, cashOffices, cashiers, billingConfig, platinumUserInfo] = await Promise.race([dataPromise, timeoutPromise]) as any;
+
+              const [settings, cashiers] = await Promise.all([
+                  safe(fetchConfigSettings(), [], 'configSettings'),
+                  safe(fetchCashiers(), [], 'cashiers'),
+              ]);
               
               setReferenceData({
                   banks: banks || [],

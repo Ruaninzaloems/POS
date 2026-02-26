@@ -16,6 +16,21 @@ export function createEmptySession(): UserSession {
   return { token: '', tokenExpiry: 0, userData: null, posCashierId: null, authMode: 'override', loggedIn: false };
 }
 
+const resolvedUserCache = new Map<string, { userData: any; ts: number }>();
+const USER_CACHE_TTL = 60 * 60 * 1000;
+
+function getCachedUser(username: string): any | undefined {
+  const key = username.toLowerCase();
+  const cached = resolvedUserCache.get(key);
+  if (cached && Date.now() - cached.ts < USER_CACHE_TTL) return cached.userData;
+  if (cached) resolvedUserCache.delete(key);
+  return undefined;
+}
+
+function setCachedUser(username: string, userData: any) {
+  resolvedUserCache.set(username.toLowerCase(), { userData, ts: Date.now() });
+}
+
 const responseCache = new Map<string, { data: any; ts: number }>();
 const RESPONSE_CACHE_TTL = 30 * 1000;
 const RESPONSE_CACHE_MAX = 500;
@@ -82,7 +97,7 @@ function isUserSpecificPath(path: string): boolean {
 }
 
 let activeRequests = 0;
-const MAX_CONCURRENT_REQUESTS = 100;
+const MAX_CONCURRENT_REQUESTS = 6;
 const requestQueue: Array<{ resolve: () => void }> = [];
 
 async function acquireSlot(): Promise<void> {
@@ -194,35 +209,137 @@ async function fetchTokenForUser(username: string, password: string, dbName: str
   const tokenUserName = apiUserData.userName ?? '';
 
   if (tokenUserName.toLowerCase() !== username.toLowerCase() && apiUserId) {
+    const cachedUser = getCachedUser(username);
+    if (cachedUser) {
+      console.log(`[PlatinumAuth] Using cached user data for "${username}" (user_ID: ${cachedUser.user_ID})`);
+      return { token: data.token, userData: { ...cachedUser, finYear: apiUserData.finYear || data.finYear || cachedUser.finYear || "2025/2026" }, authMode: 'azure' as const };
+    }
+
     console.log(`[PlatinumAuth] Token resolved to ${tokenUserName} (ID:${apiUserId}), looking up actual user "${username}"...`);
     try {
-      const userListRes = await fetch(`${PLATINUM_API_URL}/api/User`, {
-        headers: { Authorization: `Bearer ${data.token}`, Accept: "application/json" },
-      });
-      if (userListRes.ok) {
-        const users: any[] = await userListRes.json();
-        const matchedUser = users.find((u: any) =>
-          u.userName?.toLowerCase() === username.toLowerCase() ||
-          u.email?.toLowerCase() === username.toLowerCase()
-        );
-        if (matchedUser) {
-          const user = {
-            user_ID: matchedUser.userId,
-            userName: matchedUser.userName,
-            firstName: matchedUser.firstName || username,
-            lastName: matchedUser.lastName || '',
-            eMail: matchedUser.email || null,
-            enabled: matchedUser.enabled ?? true,
-            superUser: matchedUser.superUser ?? false,
-            cashFloat: matchedUser.cashFloat ?? 0,
-            finYear: apiUserData.finYear || data.finYear || "2025/2026",
-            authMode: 'azure' as const
-          };
-          console.log(`[PlatinumAuth] Login successful — resolved "${username}" to ${user.firstName} ${user.lastName} (user_ID: ${user.user_ID})`);
-          return { token: data.token, userData: user, authMode: 'azure' as const };
-        } else {
-          throw new Error(`User "${username}" not found in the system. Please check the username.`);
+      const searchName = encodeURIComponent(username);
+      let matchedUser: any = null;
+
+      const searchEndpoints = [
+        `${PLATINUM_API_URL}/api/User/search?name=${searchName}`,
+        `${PLATINUM_API_URL}/api/User?$filter=contains(userName,'${username.split(' ')[0]}')`,
+        `${PLATINUM_API_URL}/api/User/by-name?userName=${searchName}`,
+      ];
+
+      for (const searchUrl of searchEndpoints) {
+        try {
+          const searchRes = await fetch(searchUrl, {
+            headers: { Authorization: `Bearer ${data.token}`, Accept: "application/json" },
+          });
+          if (searchRes.ok) {
+            const searchData = await searchRes.json();
+            const users = Array.isArray(searchData) ? searchData : searchData?.value || searchData?.data || [];
+            if (Array.isArray(users) && users.length > 0 && users.length < 500) {
+              matchedUser = users.find((u: any) =>
+                u.userName?.toLowerCase() === username.toLowerCase() ||
+                u.email?.toLowerCase() === username.toLowerCase()
+              );
+              if (matchedUser) break;
+            }
+          }
+        } catch {}
+      }
+
+      if (!matchedUser) {
+        console.log(`[PlatinumAuth] Search endpoints failed, trying streamed /api/User lookup...`);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000);
+        try {
+          const userListRes = await fetch(`${PLATINUM_API_URL}/api/User`, {
+            headers: { Authorization: `Bearer ${data.token}`, Accept: "application/json" },
+            signal: controller.signal,
+          });
+          if (userListRes.ok && userListRes.body) {
+            const reader = userListRes.body.getReader();
+            const decoder = new TextDecoder();
+            let accumulated = '';
+            const lowerUsername = username.toLowerCase();
+            const maxBytes = 5 * 1024 * 1024;
+            let totalBytes = 0;
+
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              totalBytes += value.length;
+              accumulated += decoder.decode(value, { stream: true });
+
+              if (accumulated.toLowerCase().includes(lowerUsername)) {
+                try {
+                  const users: any[] = JSON.parse(accumulated.endsWith(']') ? accumulated : accumulated + ']');
+                  matchedUser = users.find((u: any) =>
+                    u.userName?.toLowerCase() === lowerUsername ||
+                    u.email?.toLowerCase() === lowerUsername
+                  );
+                  if (matchedUser) {
+                    reader.cancel();
+                    break;
+                  }
+                } catch {}
+              }
+
+              if (totalBytes > maxBytes) {
+                console.log(`[PlatinumAuth] User list too large (${(totalBytes / 1024 / 1024).toFixed(1)}MB), aborting stream`);
+                reader.cancel();
+                break;
+              }
+            }
+
+            if (!matchedUser && accumulated.length > 0) {
+              try {
+                const users: any[] = JSON.parse(accumulated);
+                matchedUser = users.find((u: any) =>
+                  u.userName?.toLowerCase() === lowerUsername ||
+                  u.email?.toLowerCase() === lowerUsername
+                );
+              } catch {
+                const nameIdx = accumulated.toLowerCase().indexOf(lowerUsername);
+                if (nameIdx !== -1) {
+                  const objStart = accumulated.lastIndexOf('{', nameIdx);
+                  const objEnd = accumulated.indexOf('}', nameIdx);
+                  if (objStart !== -1 && objEnd !== -1) {
+                    try {
+                      matchedUser = JSON.parse(accumulated.substring(objStart, objEnd + 1));
+                      if (matchedUser.userName?.toLowerCase() !== lowerUsername && matchedUser.email?.toLowerCase() !== lowerUsername) {
+                        matchedUser = null;
+                      }
+                    } catch {}
+                  }
+                }
+              }
+            }
+          }
+        } catch (streamErr: any) {
+          if (streamErr.name !== 'AbortError') {
+            console.log(`[PlatinumAuth] Streamed user lookup failed: ${streamErr.message}`);
+          }
+        } finally {
+          clearTimeout(timeout);
         }
+      }
+
+      if (matchedUser) {
+        const user = {
+          user_ID: matchedUser.userId ?? matchedUser.user_ID,
+          userName: matchedUser.userName,
+          firstName: matchedUser.firstName || username,
+          lastName: matchedUser.lastName || '',
+          eMail: matchedUser.email || matchedUser.eMail || null,
+          enabled: matchedUser.enabled ?? true,
+          superUser: matchedUser.superUser ?? false,
+          cashFloat: matchedUser.cashFloat ?? 0,
+          finYear: apiUserData.finYear || data.finYear || "2025/2026",
+          authMode: 'azure' as const
+        };
+        setCachedUser(username, user);
+        console.log(`[PlatinumAuth] Login successful — resolved "${username}" to ${user.firstName} ${user.lastName} (user_ID: ${user.user_ID})`);
+        return { token: data.token, userData: user, authMode: 'azure' as const };
+      } else {
+        throw new Error(`User "${username}" not found in the system. Please check the username.`);
       }
     } catch (lookupErr: any) {
       if (lookupErr.message.includes('not found')) throw lookupErr;

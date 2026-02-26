@@ -8,6 +8,15 @@ import { existsSync } from "fs";
 import crypto from "crypto";
 import type { UserSession } from "./platinum-auth";
 
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] Uncaught exception:', err.message, err.stack?.substring(0, 500));
+});
+process.on('unhandledRejection', (reason: any) => {
+  console.error('[FATAL] Unhandled rejection:', reason?.message || reason, reason?.stack?.substring(0, 500));
+});
+process.on('SIGTERM', () => { console.log('[PROCESS] Received SIGTERM'); process.exit(0); });
+process.on('SIGINT', () => { console.log('[PROCESS] Received SIGINT'); process.exit(0); });
+
 const app = express();
 const httpServer = createServer(app);
 
