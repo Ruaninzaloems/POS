@@ -236,15 +236,12 @@ export interface PlatinumUserInfo {
     authMode?: 'direct' | 'azure' | 'override';
 }
 
-export async function fetchPlatinumUserInfo(): Promise<PlatinumUserInfo | null> {
-    try {
-        const res = await apiFetch('/api/platinum/auth/user-info');
-        if (!res.ok) return null;
-        return await res.json();
-    } catch (e) {
-        console.error('Failed to fetch Platinum user info', e);
-        return null;
+export async function fetchPlatinumUserInfo(): Promise<PlatinumUserInfo> {
+    const res = await apiFetch('/api/platinum/auth/user-info');
+    if (!res.ok) {
+        throw new Error(`Failed to fetch user info from Platinum API (status ${res.status})`);
     }
+    return await res.json();
 }
 
 export interface Bank {
@@ -265,22 +262,18 @@ export interface Institution {
 }
 
 export async function fetchCashOffices(): Promise<CashOffice[]> {
-    try {
-        const res = await apiFetch(`/api/proxy/odata/ConstCashOffices`);
-        if (res.ok) {
-            const data = await res.json();
-            const items = data.value || [];
-            return items.map((item: any) => ({
-                id: item.cashOfficeId?.toString() || item.id?.toString(),
-                name: item.cashOfficeDesc || item.name,
-                ledgerVote: item.ledgerVote || "Unknown Vote",
-                maxTransactionLimit: item.maxTransactionLimit || 5000
-            }));
-        }
-    } catch (e) {
-        console.warn("Failed to fetch cash offices from API", e);
+    const res = await apiFetch(`/api/proxy/odata/ConstCashOffices`);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch cash offices from API (status ${res.status})`);
     }
-    return [];
+    const data = await res.json();
+    const items = data.value || [];
+    return items.map((item: any) => ({
+        id: item.cashOfficeId?.toString() || item.id?.toString(),
+        name: item.cashOfficeDesc || item.name,
+        ledgerVote: item.ledgerVote || '',
+        maxTransactionLimit: item.maxTransactionLimit || 0
+    }));
 }
 
 export interface ApiCashier {
@@ -291,38 +284,35 @@ export interface ApiCashier {
 }
 
 export async function fetchCashiers(): Promise<ApiCashier[]> {
-    try {
-        const [cashiersRes, userDetailsRes] = await Promise.all([
-            apiFetch(`/api/proxy/odata/ConstCashiers`),
-            apiFetch(`/api/proxy/odata/UserUserDetails`).catch(() => null)
-        ]);
+    const [cashiersRes, userDetailsRes] = await Promise.all([
+        apiFetch(`/api/proxy/odata/ConstCashiers`),
+        apiFetch(`/api/proxy/odata/UserUserDetails`).catch(() => null)
+    ]);
 
-        let userDetails: any[] = [];
-        if (userDetailsRes && userDetailsRes.ok) {
-            const data = await userDetailsRes.json();
-            userDetails = data.value || [];
-        }
-
-        if (cashiersRes.ok) {
-            const data = await cashiersRes.json();
-            return (data.value || []).map((c: any) => {
-                const detail = userDetails.find((u: any) =>
-                    u.id === c.id ||
-                    u.userId === c.id ||
-                    u.userName === c.name
-                );
-                return {
-                    id: c.id || c.cashierId,
-                    name: c.name || c.cashierName,
-                    cashOfficeId: c.cashOfficeId,
-                    float: detail?.cashFloat || detail?.float || c.float || 0
-                };
-            });
-        }
-    } catch (e: any) {
-        console.warn(`Failed to fetch cashiers from API: ${e.message || e}`, e);
+    if (!cashiersRes.ok) {
+        throw new Error(`Failed to fetch cashiers from API (status ${cashiersRes.status})`);
     }
-    return [];
+
+    let userDetails: any[] = [];
+    if (userDetailsRes && userDetailsRes.ok) {
+        const data = await userDetailsRes.json();
+        userDetails = data.value || [];
+    }
+
+    const data = await cashiersRes.json();
+    return (data.value || []).map((c: any) => {
+        const detail = userDetails.find((u: any) =>
+            u.id === c.id ||
+            u.userId === c.id ||
+            u.userName === c.name
+        );
+        return {
+            id: c.id || c.cashierId,
+            name: c.name || c.cashierName,
+            cashOfficeId: c.cashOfficeId,
+            float: detail?.cashFloat || detail?.float || c.float || 0
+        };
+    });
 }
 
 export interface BillingConfig {
@@ -333,30 +323,21 @@ export interface BillingConfig {
 }
 
 export async function fetchBillingConfig(): Promise<BillingConfig | null> {
-    try {
-        const res = await apiFetch(`/api/proxy/odata/BillingConfigSettings`);
-        if (res.ok) {
-            const data = await res.json();
-            const items = data.value || [];
-            const config: BillingConfig = {
-                allowPrepaidAndMiscellaneous: items.find((i: any) => i.KeyName === "Allow Prepaid And Miscellaneous")?.KeyValue === "1",
-                allowPrepaidAndRecovery: items.find((i: any) => i.KeyName === "Allow Prepaid And Recovery")?.KeyValue === "1",
-                allowNormalReceipting: items.find((i: any) => i.KeyName === "Allow Normal Receipting")?.KeyValue === "1",
-                receiptingOptions: items
-            };
-            return config;
-        }
-    } catch (e) {
-        console.warn("Failed to fetch billing config", e);
+    const res = await apiFetch(`/api/proxy/odata/BillingConfigSettings`);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch billing config from API (status ${res.status})`);
     }
-    return null;
+    const data = await res.json();
+    const items = data.value || [];
+    return {
+        allowPrepaidAndMiscellaneous: items.find((i: any) => i.KeyName === "Allow Prepaid And Miscellaneous")?.KeyValue === "1",
+        allowPrepaidAndRecovery: items.find((i: any) => i.KeyName === "Allow Prepaid And Recovery")?.KeyValue === "1",
+        allowNormalReceipting: items.find((i: any) => i.KeyName === "Allow Normal Receipting")?.KeyValue === "1",
+        receiptingOptions: items
+    } as BillingConfig;
 }
 
 // === CASHIER PAYMENT OPTIONS & TYPES ===
-// These functions fetch per-cashier allowed payment options (what functions they can use)
-// and payment types (what tender methods they can accept).
-// Currently using placeholder/global data until the Platinum developer exposes
-// the POS_CashierPOSPaymentOption and POS_CashierPOSPaymentType tables via API.
 
 export interface CashierPaymentOption {
     posPaymentOption_ID: number;
@@ -378,30 +359,25 @@ export async function fetchCashierPaymentOptions(
     cashofficeId?: number,
     officeOnly?: boolean
 ): Promise<{ source: string; data: CashierPaymentOption[] }> {
-    try {
-        const params = new URLSearchParams();
-        params.append('userId', String(userId || 0));
-        params.append('cashofficeId', String(cashofficeId || 0));
-        params.append('cashierId', String(cashierId));
-        if (officeOnly) {
-            params.append('officeOnly', 'true');
-        }
-        const res = await apiFetch(`/api/platinum/receipt-prepaid/cashier-payment-options?${params.toString()}`);
-        if (res.ok) {
-            const result = await res.json();
-            apiLog('PaymentOptions', `Loaded for cashier ${cashierId}, userId=${userId}, officeId=${cashofficeId}, officeOnly=${officeOnly} (source: ${result.source}):`, result.data?.length, 'options');
-            if (result.data) {
-                result.data.forEach((opt: CashierPaymentOption) => {
-                    apiLog('PaymentOptions', `  ${opt.posPaymentOption_ID}: ${opt.posPaymentOptionDesc} — isTicked=${opt.isTicked}, enabled=${opt.enabled}`);
-                });
-            }
-            return result;
-        }
-        console.warn(`[PaymentOptions] API returned ${res.status} for cashier ${cashierId}`);
-    } catch (e) {
-        console.warn("Failed to fetch cashier payment options", e);
+    const params = new URLSearchParams();
+    params.append('userId', String(userId || 0));
+    params.append('cashofficeId', String(cashofficeId || 0));
+    params.append('cashierId', String(cashierId));
+    if (officeOnly) {
+        params.append('officeOnly', 'true');
     }
-    return { source: "error-fallback", data: [] };
+    const res = await apiFetch(`/api/platinum/receipt-prepaid/cashier-payment-options?${params.toString()}`);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch cashier payment options (status ${res.status})`);
+    }
+    const result = await res.json();
+    apiLog('PaymentOptions', `Loaded for cashier ${cashierId}, userId=${userId}, officeId=${cashofficeId}, officeOnly=${officeOnly} (source: ${result.source}):`, result.data?.length, 'options');
+    if (result.data) {
+        result.data.forEach((opt: CashierPaymentOption) => {
+            apiLog('PaymentOptions', `  ${opt.posPaymentOption_ID}: ${opt.posPaymentOptionDesc} — isTicked=${opt.isTicked}, enabled=${opt.enabled}`);
+        });
+    }
+    return result;
 }
 
 export async function fetchCashierPaymentTypes(
@@ -410,30 +386,25 @@ export async function fetchCashierPaymentTypes(
     cashofficeId?: number,
     officeOnly?: boolean
 ): Promise<{ source: string; data: CashierPaymentType[] }> {
-    try {
-        const params = new URLSearchParams();
-        params.append('userId', String(userId || 0));
-        params.append('cashofficeId', String(cashofficeId || 0));
-        params.append('cashierId', String(cashierId));
-        if (officeOnly) {
-            params.append('officeOnly', 'true');
-        }
-        const res = await apiFetch(`/api/platinum/receipt-prepaid/cashier-payment-types?${params.toString()}`);
-        if (res.ok) {
-            const result = await res.json();
-            apiLog('PaymentTypes', `Loaded for cashier ${cashierId}, userId=${userId}, officeId=${cashofficeId}, officeOnly=${officeOnly} (source: ${result.source}):`, result.data?.length, 'types');
-            if (result.data) {
-                result.data.forEach((t: CashierPaymentType) => {
-                    apiLog('PaymentTypes', `  ${t.posPaymentType_ID}: ${t.posPaymentTypeDesc} — isTicked=${t.isTicked}, enabled=${t.enabled}`);
-                });
-            }
-            return result;
-        }
-        console.warn(`[PaymentTypes] API returned ${res.status} for cashier ${cashierId}`);
-    } catch (e) {
-        console.warn("Failed to fetch cashier payment types", e);
+    const params = new URLSearchParams();
+    params.append('userId', String(userId || 0));
+    params.append('cashofficeId', String(cashofficeId || 0));
+    params.append('cashierId', String(cashierId));
+    if (officeOnly) {
+        params.append('officeOnly', 'true');
     }
-    return { source: "error-fallback", data: [] };
+    const res = await apiFetch(`/api/platinum/receipt-prepaid/cashier-payment-types?${params.toString()}`);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch cashier payment types (status ${res.status})`);
+    }
+    const result = await res.json();
+    apiLog('PaymentTypes', `Loaded for cashier ${cashierId}, userId=${userId}, officeId=${cashofficeId}, officeOnly=${officeOnly} (source: ${result.source}):`, result.data?.length, 'types');
+    if (result.data) {
+        result.data.forEach((t: CashierPaymentType) => {
+            apiLog('PaymentTypes', `  ${t.posPaymentType_ID}: ${t.posPaymentTypeDesc} — isTicked=${t.isTicked}, enabled=${t.enabled}`);
+        });
+    }
+    return result;
 }
 
 export interface ReceiptRangeValidation {
@@ -614,42 +585,30 @@ export async function fetchConsAccountById(id: string): Promise<any | null> {
 }
 
 export async function fetchBanks(): Promise<Bank[]> {
-    try {
-        const res = await apiFetch(`/api/proxy/odata/ConstBanks`);
-        if (res.ok) {
-            const data = await res.json();
-            return data.value || [];
-        }
-    } catch (e) {
-        console.error("Failed to fetch banks", e);
+    const res = await apiFetch(`/api/proxy/odata/ConstBanks`);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch banks from API (status ${res.status})`);
     }
-    return [];
+    const data = await res.json();
+    return data.value || [];
 }
 
 export async function fetchGroups(): Promise<GroupCode[]> {
-    try {
-        const res = await apiFetch(`/api/proxy/odata/ConstGroupCodes`);
-        if (res.ok) {
-            const data = await res.json();
-            return data.value || [];
-        }
-    } catch (e) {
-        console.error("Failed to fetch groups", e);
+    const res = await apiFetch(`/api/proxy/odata/ConstGroupCodes`);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch groups from API (status ${res.status})`);
     }
-    return [];
+    const data = await res.json();
+    return data.value || [];
 }
 
 export async function fetchInstitutions(): Promise<Institution[]> {
-    try {
-        const res = await apiFetch(`/api/proxy/odata/ConstInstitutions`);
-        if (res.ok) {
-            const data = await res.json();
-            return data.value || [];
-        }
-    } catch (e) {
-        console.error("Failed to fetch institutions", e);
+    const res = await apiFetch(`/api/proxy/odata/ConstInstitutions`);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch institutions from API (status ${res.status})`);
     }
-    return [];
+    const data = await res.json();
+    return data.value || [];
 }
 
 export interface InstitutionSearchResult {
@@ -809,15 +768,11 @@ export async function enrichAccountData(account: any): Promise<any> {
 }
 
 export async function fetchConfigSettings(): Promise<any[]> {
-    try {
-        const res = await apiFetch(`/api/proxy/odata/AaaaConfigSettings`);
-        if (res.ok) {
-            return await res.json();
-        }
-    } catch (e) {
-        console.error("Failed to fetch config settings", e);
+    const res = await apiFetch(`/api/proxy/odata/AaaaConfigSettings`);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch config settings from API (status ${res.status})`);
     }
-    return [];
+    return await res.json();
 }
 
 

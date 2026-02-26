@@ -33,6 +33,7 @@ Preferred communication style: Simple, everyday language.
 - **Data Fetching**: TanStack React Query, enhanced with a custom `apiRequest` helper for API interactions.
 - **Component Structure**: Clear separation between generic `shadcn/ui` components and specific POS business components.
 - **Design Patterns**: Emphasizes separation of business logic (`pos-logic.ts`, `allocation-logic.ts`) from UI components. Data is exclusively API-driven, with no `localStorage` usage. A `PosLayout` component enforces consistent layout and cashier session authentication.
+- **Error Handling**: All API fetch functions (`fetchPlatinumUserInfo`, `fetchCashOffices`, `fetchCashiers`, `fetchBanks`, `fetchGroups`, `fetchInstitutions`, `fetchConfigSettings`, `fetchBillingConfig`, `fetchCashierPaymentOptions`, `fetchCashierPaymentTypes`) throw errors on failure — no silent fallbacks or empty-array returns. Reference data loading uses a `tracked()` wrapper that records individual failures and surfaces them via toast while allowing partial data loading. Critical failures (e.g., Platinum user info) block session initialization entirely.
 
 ### Backend (Express + Node.js)
 - **Framework**: Express 5 with TypeScript.

@@ -279,9 +279,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [receiptDate, setReceiptDate] = useState<string>(getSADateString());
   const [perItemSplitMode, setPerItemSplitMode] = useState(false);
   
-  // API-TODO: officeLimits — should be fetched from Platinum API endpoint for cash office configuration
-  // Endpoint needed: GET /api/platinum/pos-settings/office-limits or similar
-  // Returns: { officeId: string, maxTransactionLimit: number }[] per cash office
   const [officeLimits, setOfficeLimits] = useState<Record<string, number>>({});
   const [allowedPaymentOptions, setAllowedPaymentOptions] = useState<CashierPaymentOption[]>([]);
   const [allowedPaymentTypes, setAllowedPaymentTypes] = useState<CashierPaymentType[]>([]);
@@ -289,12 +286,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [paymentTypesSource, setPaymentTypesSource] = useState<string>('not-loaded');
 
   const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
-  // API-TODO: systemSettings — all settings should be driven by Platinum API
-  // Endpoint needed: GET /api/platinum/pos-settings/system-config or similar
-  // Expected fields:
-  //   - enableDenominationCounting: boolean (controls day-end cash counting mode)
-  //   - receiptConfig: { template, printDefaults, etc. } (receipt configuration)
-  //   - Any future system-wide POS settings
   const [systemSettings, setSystemSettings] = useState({
       enableDenominationCounting: false
   });
@@ -324,25 +315,27 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const loadData = async () => {
           try {
               console.log("Fetching reference data...");
-              const safe = <T,>(promise: Promise<T>, fallback: T, label: string): Promise<T> =>
-                  promise.catch((e) => { console.warn(`[RefData] ${label} failed:`, e?.message || e); return fallback; });
 
-              const platinumUserInfo = await safe(fetchPlatinumUserInfo(), null, 'platinumUserInfo');
+              const platinumUserInfo = await fetchPlatinumUserInfo();
+
+              const failedDataSources: string[] = [];
+              const tracked = <T,>(promise: Promise<T>, fallback: T, label: string): Promise<T> =>
+                  promise.catch((e) => { console.error(`[RefData] ${label} failed:`, e?.message || e); failedDataSources.push(label); return fallback; });
 
               const [cashOffices, billingConfig] = await Promise.all([
-                  safe(fetchCashOffices(), [], 'cashOffices'),
-                  safe(fetchBillingConfig(), null, 'billingConfig'),
+                  tracked(fetchCashOffices(), [], 'Cash Offices'),
+                  tracked(fetchBillingConfig(), null, 'Billing Config'),
               ]);
 
               const [banks, groups, institutions] = await Promise.all([
-                  safe(fetchBanks(), [], 'banks'),
-                  safe(fetchGroups(), [], 'groups'),
-                  safe(fetchInstitutions(), [], 'institutions'),
+                  tracked(fetchBanks(), [], 'Banks'),
+                  tracked(fetchGroups(), [], 'Groups'),
+                  tracked(fetchInstitutions(), [], 'Institutions'),
               ]);
 
               const [settings, cashiers] = await Promise.all([
-                  safe(fetchConfigSettings(), [], 'configSettings'),
-                  safe(fetchCashiers(), [], 'cashiers'),
+                  tracked(fetchConfigSettings(), [], 'Config Settings'),
+                  tracked(fetchCashiers(), [], 'Cashiers'),
               ]);
               
               setReferenceData({
@@ -355,24 +348,27 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   billingConfig: billingConfig || null
               });
 
-              if (platinumUserInfo) {
-                  setPlatinumUser(platinumUserInfo);
-                  console.log("Platinum user info loaded:", platinumUserInfo);
-                  setCurrentUser({
-                      id: String(platinumUserInfo.user_ID),
-                      name: `${platinumUserInfo.firstName} ${platinumUserInfo.lastName}`.trim(),
-                      role: platinumUserInfo.superUser ? 'SUPERVISOR' : 'CASHIER',
-                      cashOffice: '',
-                      float: platinumUserInfo.cashFloat || 0,
+              if (failedDataSources.length > 0) {
+                  toast({
+                      title: "Partial Data Load Failure",
+                      description: `The following reference data failed to load from API: ${failedDataSources.join(', ')}. Some features may not work correctly.`,
+                      variant: "destructive"
                   });
-              } else {
-                  console.warn("Platinum user info not available - ending session loading");
-                  setSessionLoading(false);
               }
+
+              setPlatinumUser(platinumUserInfo);
+              console.log("Platinum user info loaded:", platinumUserInfo);
+              setCurrentUser({
+                  id: String(platinumUserInfo.user_ID),
+                  name: `${platinumUserInfo.firstName} ${platinumUserInfo.lastName}`.trim(),
+                  role: platinumUserInfo.superUser ? 'SUPERVISOR' : 'CASHIER',
+                  cashOffice: '',
+                  float: platinumUserInfo.cashFloat || 0,
+              });
               
-              console.log("Reference Data Loaded:", { banks, groups, institutions, settings, cashOffices, cashiers, billingConfig });
+              console.log("Reference Data Loaded:", { banks, groups, institutions, settings, cashOffices, cashiers, billingConfig, failedDataSources });
           } catch (error: any) {
-              console.error("Failed to load reference data", error);
+              console.error("Failed to load critical data", error);
               setSessionLoading(false);
               toast({
                   title: "Connection Error",
@@ -385,11 +381,14 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       loadData();
   }, []);
 
-  // API-TODO: currentTransactionLimit — currently defaults to 5000 (hardcoded fallback)
-  // Should be populated from the office-limits API endpoint during session startup
   const currentTransactionLimit = useMemo(() => {
-      if (!sessionDetails?.officeId) return 5000;
-      return officeLimits[sessionDetails.officeId] || 5000;
+      if (!sessionDetails?.officeId) return 0;
+      const limit = officeLimits[sessionDetails.officeId];
+      if (!limit) {
+          console.warn(`[Session] No cashOnHandLimit found for office ${sessionDetails.officeId} — API did not return a limit. Transactions may be blocked.`);
+          return 0;
+      }
+      return limit;
   }, [sessionDetails?.officeId, officeLimits]);
 
   useEffect(() => {
@@ -588,8 +587,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setPaymentTypesSource(typesResult.source);
             console.log(`[PaymentConfig] Loaded ${typesResult.data.length} payment types (source: ${typesResult.source})`);
           }
-        } catch (e) {
-          console.warn('[PaymentConfig] Failed to load payment options/types:', e);
+        } catch (e: any) {
+          console.error('[PaymentConfig] Failed to load payment options/types:', e);
+          toast({
+              title: "Payment Config Error",
+              description: `Failed to load payment options/types from API: ${e?.message || 'Unknown error'}. Some payment functions may be unavailable.`,
+              variant: "destructive"
+          });
         }
       };
       loadPaymentConfig();
@@ -816,9 +820,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setPlatinumCashierId(null);
   };
 
-  // API-TODO: updateOfficeLimit — should persist to Platinum API
-  // Endpoint needed: PUT /api/platinum/pos-settings/office-limits/{officeId}
-  // Currently only updates in-memory (resets on page refresh)
   const updateOfficeLimit = (officeId: string, limit: number) => {
       setOfficeLimits(prev => ({ ...prev, [officeId]: limit }));
   };
