@@ -243,7 +243,7 @@ Responsible for:
 - Transaction record mapping from API to local types
 
 Inline fetch calls to extract:
-- Line 475: `GET /api/proxy/pos-multi-receipt-print/by-cashier` → move to `external-api.ts`
+- Line 475: `GET /api/platinum/pos-multi-receipt-print/by-cashier` → move to `external-api.ts`
 
 **Service 5: `ReferenceDataService` (~100 lines)**
 Responsible for:
@@ -327,7 +327,7 @@ These API calls are made directly inside React components instead of going throu
 ## SECTION 3: BACKEND (Express)
 
 ### `server/routes.ts` (3,047 lines)
-The Express backend acts as a proxy to Platinum API and Sebata Billing API. This is framework-agnostic and can either:
+The Express backend acts as a proxy exclusively to the Platinum Inzalo EMS API. This is framework-agnostic and can either:
 - Stay as a Node.js/Express backend behind Angular
 - Be ported to NestJS if preferred
 

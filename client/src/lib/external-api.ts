@@ -264,18 +264,18 @@ export interface Institution {
 }
 
 export async function fetchCashOffices(): Promise<CashOffice[]> {
-    const res = await apiFetch(`/api/proxy/odata/ConstCashOffices`);
+    const res = await apiFetch(`/api/platinum/receipt-prepaid/cash-offices`);
     if (res.status === 404) return [];
     if (!res.ok) {
         throw new Error(`Failed to fetch cash offices from API (status ${res.status})`);
     }
-    const data = await res.json();
-    const items = data.value || [];
-    return items.map((item: any) => ({
-        id: item.cashOfficeId?.toString() || item.id?.toString(),
+    const items = await res.json();
+    const arr = Array.isArray(items) ? items : [];
+    return arr.map((item: any) => ({
+        id: item.cashOffice_ID?.toString() || item.cashOfficeId?.toString() || item.id?.toString(),
         name: item.cashOfficeDesc || item.name,
-        ledgerVote: item.ledgerVote || '',
-        maxTransactionLimit: item.maxTransactionLimit || 0
+        ledgerVote: item.vote || item.ledgerVote || '',
+        maxTransactionLimit: item.cashOnHandLimit || item.maxTransactionLimit || 0
     }));
 }
 
@@ -287,36 +287,19 @@ export interface ApiCashier {
 }
 
 export async function fetchCashiers(): Promise<ApiCashier[]> {
-    const [cashiersRes, userDetailsRes] = await Promise.all([
-        apiFetch(`/api/proxy/odata/ConstCashiers`),
-        apiFetch(`/api/proxy/odata/UserUserDetails`).catch(() => null)
-    ]);
-
-    if (cashiersRes.status === 404) return [];
-    if (!cashiersRes.ok) {
-        throw new Error(`Failed to fetch cashiers from API (status ${cashiersRes.status})`);
+    const res = await apiFetch(`/api/platinum/view-receipt/get-cashiers`);
+    if (res.status === 404) return [];
+    if (!res.ok) {
+        throw new Error(`Failed to fetch cashiers from API (status ${res.status})`);
     }
-
-    let userDetails: any[] = [];
-    if (userDetailsRes && userDetailsRes.ok) {
-        const data = await userDetailsRes.json();
-        userDetails = data.value || [];
-    }
-
-    const data = await cashiersRes.json();
-    return (data.value || []).map((c: any) => {
-        const detail = userDetails.find((u: any) =>
-            u.id === c.id ||
-            u.userId === c.id ||
-            u.userName === c.name
-        );
-        return {
-            id: c.id || c.cashierId,
-            name: c.name || c.cashierName,
-            cashOfficeId: c.cashOfficeId,
-            float: detail?.cashFloat || detail?.float || c.float || 0
-        };
-    });
+    const items = await res.json();
+    const arr = Array.isArray(items) ? items : [];
+    return arr.map((c: any) => ({
+        id: c.id?.toString() || c.cashierId?.toString(),
+        name: c.name || c.cashierName,
+        cashOfficeId: c.cashOfficeId?.toString() || '',
+        float: c.cashFloat || c.float || 0
+    }));
 }
 
 export interface BillingConfig {
@@ -327,17 +310,16 @@ export interface BillingConfig {
 }
 
 export async function fetchBillingConfig(): Promise<BillingConfig | null> {
-    const res = await apiFetch(`/api/proxy/odata/BillingConfigSettings`);
+    const res = await apiFetch(`/api/platinum/billing-config`);
     if (!res.ok) {
         throw new Error(`Failed to fetch billing config from API (status ${res.status})`);
     }
     const data = await res.json();
-    const items = data.value || [];
     return {
-        allowPrepaidAndMiscellaneous: items.find((i: any) => i.KeyName === "Allow Prepaid And Miscellaneous")?.KeyValue === "1",
-        allowPrepaidAndRecovery: items.find((i: any) => i.KeyName === "Allow Prepaid And Recovery")?.KeyValue === "1",
-        allowNormalReceipting: items.find((i: any) => i.KeyName === "Allow Normal Receipting")?.KeyValue === "1",
-        receiptingOptions: items
+        allowPrepaidAndMiscellaneous: data["Allow Prepaid And Miscellaneous"] === "1",
+        allowPrepaidAndRecovery: data["Allow Prepaid And Recovery"] === "1",
+        allowNormalReceipting: data["Allow Normal Receipting"] === "1",
+        receiptingOptions: data
     } as BillingConfig;
 }
 
@@ -465,7 +447,7 @@ export async function fetchBillingStageCashierReceiptDetails(referenceId: string
     try {
         const params = new URLSearchParams();
         params.append('referenceId', referenceId);
-        const res = await apiFetch(`/api/proxy/billing-stage-cashier-receipt-details/reference?${params.toString()}`);
+        const res = await apiFetch(`/api/platinum/billing-stage-cashier-receipt-details/reference?${params.toString()}`);
         if (res.ok) {
             const data = await res.json();
             return Array.isArray(data) ? data : (data.value || []);
@@ -510,7 +492,7 @@ export async function fetchPosMultiReceiptPrint(receiptId: string, maxRetries: n
             const params = new URLSearchParams();
             params.append('receiptId', receiptId);
             if (receiptNo) params.append('receiptNo', receiptNo);
-            const res = await apiFetch(`/api/proxy/pos-multi-receipt-print?${params.toString()}`);
+            const res = await apiFetch(`/api/platinum/pos-multi-receipt-print?${params.toString()}`);
             if (res.ok) {
                 const data = await res.json();
                 const items = Array.isArray(data) ? data : (data.value || []);
@@ -542,7 +524,7 @@ export async function fetchPosMultiReceiptPrint(receiptId: string, maxRetries: n
 
 export async function fetchBillingStagePrepaidRecharge(id: string): Promise<any | null> {
     try {
-        const res = await apiFetch(`/api/proxy/billing-stage-prepaid-recharge/${id}`);
+        const res = await apiFetch(`/api/platinum/billing-stage-prepaid-recharge/${id}`);
         if (res.ok) {
             return await res.json();
         }
@@ -556,11 +538,11 @@ export async function fetchBillingStagePrepaidRecovery(identifier: string, type:
     try {
         let url = '';
         if (type === 'id') {
-            url = `/api/proxy/billing-stage-prepaid-recovery/${identifier}`;
+            url = `/api/platinum/billing-stage-prepaid-recovery/${identifier}`;
         } else {
             const params = new URLSearchParams();
             params.append('reference', identifier);
-            url = `/api/proxy/billing-stage-prepaid-recovery/reference?${params.toString()}`;
+            url = `/api/platinum/billing-stage-prepaid-recovery/reference?${params.toString()}`;
         }
         const res = await apiFetch(url);
         if (res.ok) {
@@ -578,7 +560,7 @@ export async function fetchBillingStagePrepaidRecovery(identifier: string, type:
 
 export async function fetchConsAccountById(id: string): Promise<any | null> {
     try {
-        const res = await apiFetch(`/api/proxy/cons-accounts/${id}`);
+        const res = await apiFetch(`/api/platinum/cons-accounts/${id}`);
         if (res.ok) {
             return await res.json();
         }
@@ -589,30 +571,34 @@ export async function fetchConsAccountById(id: string): Promise<any | null> {
 }
 
 export async function fetchBanks(): Promise<Bank[]> {
-    const res = await apiFetch(`/api/proxy/odata/ConstBanks`);
+    const res = await apiFetch(`/api/platinum/billing-payment-clearance/get-banks`);
     if (!res.ok) {
         throw new Error(`Failed to fetch banks from API (status ${res.status})`);
     }
     const data = await res.json();
-    return data.value || [];
+    return Array.isArray(data) ? data : [];
 }
 
 export async function fetchGroups(): Promise<GroupCode[]> {
-    const res = await apiFetch(`/api/proxy/odata/ConstGroupCodes`);
+    const res = await apiFetch(`/api/platinum/billing-payment-miscellaneous/get-groups`);
     if (!res.ok) {
         throw new Error(`Failed to fetch groups from API (status ${res.status})`);
     }
     const data = await res.json();
-    return data.value || [];
+    return Array.isArray(data) ? data : [];
 }
 
 export async function fetchInstitutions(): Promise<Institution[]> {
-    const res = await apiFetch(`/api/proxy/odata/ConstInstitutions`);
+    const res = await apiFetch(`/api/platinum/const-institutions`);
     if (!res.ok) {
         throw new Error(`Failed to fetch institutions from API (status ${res.status})`);
     }
     const data = await res.json();
-    return data.value || [];
+    const arr = Array.isArray(data) ? data : [];
+    return arr.map((item: any) => ({
+        institutionId: item.institutionID || item.institutionId || item.id,
+        institutionName: item.institutionDesc || item.institutionName || item.name || '',
+    }));
 }
 
 export interface InstitutionSearchResult {
@@ -630,7 +616,7 @@ export async function searchInstitutions(query: string): Promise<InstitutionSear
     try {
         const params = new URLSearchParams();
         params.append('name', query);
-        const res = await apiFetch(`/api/proxy/const-institutions/search?${params.toString()}`);
+        const res = await apiFetch(`/api/platinum/const-institutions/search?${params.toString()}`);
         if (res.ok) {
             const data = await res.json();
             return Array.isArray(data) ? data : [];
@@ -643,7 +629,7 @@ export async function searchInstitutions(query: string): Promise<InstitutionSear
 
 export async function fetchAccountsByGroup(institutionId: number): Promise<any[]> {
     try {
-        const res = await apiFetch(`/api/proxy/billing-enquiry-search?accountGroup=${institutionId}`);
+        const res = await apiFetch(`/api/platinum/billing-enquiry-search?accountGroup=${institutionId}`);
         if (res.ok) {
             const data = await res.json();
             if (Array.isArray(data)) return data;
@@ -772,17 +758,18 @@ export async function enrichAccountData(account: any): Promise<any> {
 }
 
 export async function fetchConfigSettings(): Promise<any[]> {
-    const res = await apiFetch(`/api/proxy/odata/AaaaConfigSettings`);
+    const res = await apiFetch(`/api/platinum/billing-enquiry/get-config-setting`);
     if (res.status === 404) return [];
     if (!res.ok) {
         throw new Error(`Failed to fetch config settings from API (status ${res.status})`);
     }
-    return await res.json();
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
 }
 
 
 export async function postMultipleAccountPaymentReceipt(capturerId: string, accountId: string | number, receiptId: string | number): Promise<any> {
-    const res = await apiFetch(`/api/proxy/pos-multiple-account-payments/${capturerId}/${accountId}/receipt/${receiptId}`, {
+    const res = await apiFetch(`/api/platinum/pos-multiple-account-payments/${capturerId}/${accountId}/receipt/${receiptId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
     });
@@ -796,7 +783,7 @@ export async function fetchReceiptsBatch(startId: number, count: number = 50, di
         count: count.toString(),
         direction
     });
-    const res = await apiFetch(`/api/proxy/pos-multi-receipt-print/batch?${params.toString()}`);
+    const res = await apiFetch(`/api/platinum/pos-multi-receipt-print/batch?${params.toString()}`);
     if (!res.ok) throw new Error('Failed to fetch receipts batch');
     return res.json();
 }
@@ -2236,7 +2223,7 @@ export async function fetchReceiptList(query: ReceiptSearchQuery): Promise<Recei
     }
 }
 
-export async function searchSebataReceipts(filters: {
+export async function searchPlatinumReceipts(filters: {
     receiptNo?: string;
     cashierName?: string;
     accountNumber?: string;
@@ -2247,7 +2234,7 @@ export async function searchSebataReceipts(filters: {
         if (filters.cashierName) params.append('cashierName', filters.cashierName);
         if (filters.accountNumber) params.append('accountNumber', filters.accountNumber);
 
-        const res = await apiFetch(`/api/proxy/pos-multi-receipt-print/search?${params.toString()}`);
+        const res = await apiFetch(`/api/platinum/pos-multi-receipt-print/search?${params.toString()}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (!Array.isArray(data)) return [];
@@ -2282,12 +2269,12 @@ export async function searchSebataReceipts(filters: {
                 accName: first.consumerName || '',
                 accAddress: '',
                 outstandingAmount: parseFloat(first.outstandingAmount) || 0,
-                _source: 'sebata',
+                _source: 'platinum-search',
             });
         }
         return items;
     } catch (e) {
-        console.warn('Failed to search Sebata receipts', e);
+        console.warn('Failed to search Platinum receipts', e);
         return [];
     }
 }
@@ -2471,7 +2458,7 @@ export async function fetchAdditionalEmailsByAccountId(accountId: number): Promi
 export async function fetchPosMultiReceiptPrintByCashier(cashierName: string, scanCount: number = 100): Promise<any[]> {
     try {
         const params = new URLSearchParams({ cashierName, scanCount: String(scanCount) });
-        const res = await apiFetch(`/api/proxy/pos-multi-receipt-print/by-cashier?${params}`);
+        const res = await apiFetch(`/api/platinum/pos-multi-receipt-print/by-cashier?${params}`);
         if (res.ok) return res.json();
     } catch (e) {
         console.warn('Failed to fetch receipts by cashier', e);

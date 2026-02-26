@@ -21,7 +21,6 @@ function requireAuth(req: Request, res: any): UserSession | null {
   return session;
 }
 
-const EXTERNAL_API_BASE = "https://george-uat-ems-billing-api.azurewebsites.net";
 
 const recentPaymentSubmissions = new Map<string, { timestamp: number; response: any }>();
 const PAYMENT_DEDUP_WINDOW_MS = 15000;
@@ -150,32 +149,6 @@ function parseReceiptAllocations(pdfText: string): ReceiptAllocation[] {
   return allocations;
 }
 
-async function proxyGet(url: string): Promise<any> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
-  try {
-    const res = await fetch(url, {
-      headers: { 'Accept': 'application/json' },
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      return { error: true, status: res.status, statusText: res.statusText };
-    }
-    const text = await res.text();
-    if (text.length > 10 * 1024 * 1024) {
-      console.warn(`[proxyGet] Response too large (${(text.length / 1024 / 1024).toFixed(1)}MB) for ${url}`);
-      return { error: true, status: 413, statusText: 'Response too large' };
-    }
-    return JSON.parse(text);
-  } catch (e: any) {
-    if (e.name === 'AbortError') {
-      return { error: true, status: 504, statusText: 'Gateway timeout (30s)' };
-    }
-    throw e;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
 
 function stripHtml(text: string): string {
   if (!text) return text;
@@ -1467,7 +1440,7 @@ export async function registerRoutes(
       items = await tryEndpoint('billing-payment/pos-cashier-receipt', 'GET', '/api/billing-payment/pos-cashier-receipt', { cashierId, userId });
       if (items.length > 0) { items.forEach((i: any) => { i._source = 'bp-pos-receipt'; }); allReceipts.push(...items); }
 
-      // Probe 8: Try pos-multi-receipt-print with known receipt IDs from Platinum (not Sebata)
+      // Probe 8: Try pos-multi-receipt-print with known receipt IDs from Platinum
       if (allReceipts.length === 0 && receiptCurrent > receiptStart) {
         for (let receiptNum = receiptStart; receiptNum < receiptCurrent; receiptNum++) {
           const receiptItems = await tryEndpoint(`platinum/pos-multi-receipt(${receiptNum})`, 'GET', '/api/billing-payment/pos-multi-receipt-print', { id: String(receiptNum) });
@@ -4230,7 +4203,6 @@ export async function registerRoutes(
       const fullUrl = fileUrl.startsWith('/') ? `${platinumApiUrl}${fileUrl}` : fileUrl;
       const allowedHosts = [
         'georgeplatinumuatapi.azurewebsites.net',
-        'george-uat-ems-billing-api.azurewebsites.net',
       ];
       try {
         const parsedUrl = new URL(fullUrl);
@@ -4635,82 +4607,90 @@ export async function registerRoutes(
   });
 
   // =====================================================
-  // LEGACY EXTERNAL API PROXY ROUTES (old billing API, no auth needed)
+  // PLATINUM API DATA ROUTES
   // =====================================================
 
-  app.get("/api/proxy/odata/:entity", async (req, res) => {
+  app.get("/api/platinum/billing-config", async (req, res) => {
     try {
-      const entity = req.params.entity;
-      const data = await proxyGet(`${EXTERNAL_API_BASE}/odata/${entity}`);
-      if (data.error) {
-        return res.status(data.status).json({ message: data.statusText });
-      }
-      res.json(data);
+      const session = requireAuth(req, res); if (!session) return;
+      const keys = ["Allow Prepaid And Miscellaneous", "Allow Prepaid And Recovery", "Allow Normal Receipting"];
+      const results = await Promise.allSettled(
+        keys.map(key => platinumGet(session, "/api/BillingEnquiry/GetAppSetting", { keyName: key }))
+      );
+      const config: Record<string, any> = {};
+      keys.forEach((key, idx) => {
+        const r = results[idx];
+        if (r.status === 'fulfilled' && r.value && !r.value._error) {
+          const val = typeof r.value === 'string' ? r.value.replace(/"/g, '') : String(r.value);
+          config[key] = val;
+        }
+      });
+      res.json(config);
     } catch (e: any) {
-      res.status(502).json({ message: "External API unreachable", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
-  app.get("/api/proxy/cons-accounts/search", async (req, res) => {
+  app.get("/api/platinum/cons-accounts/search", async (req, res) => {
     try {
-      const params = new URLSearchParams(req.query as Record<string, string>);
-      const data = await proxyGet(`${EXTERNAL_API_BASE}/api/cons-accounts/search?${params.toString()}`);
-      if (data.error) {
-        return res.status(data.status).json({ message: data.statusText });
-      }
-      res.json(data);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/cons-accounts/search", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(502).json({ message: "External API unreachable", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
-  app.get("/api/proxy/billing-enquiry-search", async (req, res) => {
+  app.get("/api/platinum/billing-enquiry-search", async (req, res) => {
     try {
-      const params = new URLSearchParams(req.query as Record<string, string>);
-      const data = await proxyGet(`${EXTERNAL_API_BASE}/api/billing-enquiry-search?${params.toString()}`);
-      if (data.error) {
-        return res.status(data.status).json({ message: data.statusText });
-      }
-      res.json(data);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-enquiry-search", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(502).json({ message: "External API unreachable", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
-  app.get("/api/proxy/const-institutions/search", async (req, res) => {
+  app.get("/api/platinum/const-institutions", async (req, res) => {
     try {
-      const params = new URLSearchParams(req.query as Record<string, string>);
-      const data = await proxyGet(`${EXTERNAL_API_BASE}/api/const-institutions/search?${params.toString()}`);
-      if (data.error) {
-        return res.status(data.status).json({ message: data.statusText });
-      }
-      res.json(data);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/const-institutions");
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(502).json({ message: "External API unreachable", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
-  app.get("/api/proxy/cons-accounts/:id", async (req, res) => {
+  app.get("/api/platinum/const-institutions/search", async (req, res) => {
     try {
-      const data = await proxyGet(`${EXTERNAL_API_BASE}/api/cons-accounts/${req.params.id}`);
-      if (data.error) {
-        return res.status(data.status).json({ message: data.statusText });
-      }
-      res.json(data);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/const-institutions/search", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(502).json({ message: "External API unreachable", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
-  app.get("/api/proxy/accounts-by-name-id", async (req, res) => {
+  app.get("/api/platinum/cons-accounts/:id", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/cons-accounts/" + req.params.id);
+      handlePlatinumResult(res, data);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/accounts-by-name-id", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
       const accountId = req.query.accountId as string;
       if (!accountId) {
         return res.status(400).json({ message: "accountId is required" });
       }
 
-      const accountData = await proxyGet(`${EXTERNAL_API_BASE}/api/cons-accounts/${accountId}`);
-      if (accountData.error || !accountData) {
+      const accountData = await platinumGet(session, "/api/cons-accounts/" + accountId);
+      if (!accountData || accountData._error) {
         return res.status(404).json({ message: "Account not found" });
       }
 
@@ -4719,13 +4699,13 @@ export async function registerRoutes(
         return res.json({ nameId: null, accounts: [] });
       }
 
-      const searchData = await proxyGet(`${EXTERNAL_API_BASE}/api/cons-accounts/search?nameId=${nameId}`);
+      const searchData = await platinumGet(session, "/api/cons-accounts/search", { nameId: String(nameId) });
       let accounts: any[] = [];
       if (Array.isArray(searchData)) {
         accounts = searchData;
       } else if (searchData?.value && Array.isArray(searchData.value)) {
         accounts = searchData.value;
-      } else if (searchData && !searchData.error) {
+      } else if (searchData && !searchData._error) {
         accounts = [searchData];
       }
 
@@ -4737,169 +4717,152 @@ export async function registerRoutes(
       res.json({ nameId, accounts });
     } catch (e: any) {
       console.error(`[accounts-by-name-id] Error:`, e.message);
-      res.status(502).json({ message: "External API unreachable", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
-  app.get("/api/proxy/cons-names/:id", async (req, res) => {
+  app.get("/api/platinum/cons-names/:id", async (req, res) => {
     try {
-      const data = await proxyGet(`${EXTERNAL_API_BASE}/api/cons-names/${req.params.id}`);
-      if (data.error) {
-        return res.status(data.status).json({ message: data.statusText });
-      }
-      res.json(data);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/cons-names/" + req.params.id);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(502).json({ message: "External API unreachable", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
-  app.get("/api/proxy/cons-units/:id", async (req, res) => {
+  app.get("/api/platinum/cons-units/:id", async (req, res) => {
     try {
-      const data = await proxyGet(`${EXTERNAL_API_BASE}/api/cons-units/${req.params.id}`);
-      if (data.error) {
-        return res.status(data.status).json({ message: data.statusText });
-      }
-      res.json(data);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/cons-units/" + req.params.id);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(502).json({ message: "External API unreachable", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
-  app.get("/api/proxy/account-full-details/:id", async (req, res) => {
+  app.get("/api/platinum/account-full-details/:id", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const accountId = req.params.id;
-      const accountData = await proxyGet(`${EXTERNAL_API_BASE}/api/cons-accounts/${accountId}`);
-      if (accountData.error) {
-        return res.status(accountData.status).json({ message: accountData.statusText });
+      const accountData = await platinumGet(session, "/api/cons-accounts/" + accountId);
+      if (!accountData || accountData._error) {
+        return res.status(404).json({ message: "Account not found" });
       }
 
       const results: any = { account: accountData };
 
       const [nameData, unitData] = await Promise.all([
-        accountData.nameId ? proxyGet(`${EXTERNAL_API_BASE}/api/cons-names/${accountData.nameId}`) : null,
-        accountData.unitId ? proxyGet(`${EXTERNAL_API_BASE}/api/cons-units/${accountData.unitId}`) : null,
+        accountData.nameId ? platinumGet(session, "/api/cons-names/" + accountData.nameId).catch(() => null) : null,
+        accountData.unitId ? platinumGet(session, "/api/cons-units/" + accountData.unitId).catch(() => null) : null,
       ]);
 
-      if (nameData && !nameData.error) results.name = nameData;
-      if (unitData && !unitData.error) results.unit = unitData;
+      if (nameData && !nameData._error) results.name = nameData;
+      if (unitData && !unitData._error) results.unit = unitData;
 
       res.json(results);
     } catch (e: any) {
-      res.status(502).json({ message: "External API unreachable", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
-  app.get("/api/proxy/billing-stage-cashier-receipt-details/reference", async (req, res) => {
+  app.get("/api/platinum/billing-stage-cashier-receipt-details/reference", async (req, res) => {
     try {
-      const params = new URLSearchParams(req.query as Record<string, string>);
-      const url = `${EXTERNAL_API_BASE}/api/billing-stage-cashier-receipt-details/reference?${params.toString()}`;
-      const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
-      if (response.ok) {
-        const data = await response.json();
-        res.json(data);
-      } else if (response.status === 400 || response.status === 404) {
-        res.json([]);
-      } else {
-        res.status(response.status).json({ message: response.statusText });
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-stage-cashier-receipt-details/reference", req.query as Record<string, string>);
+      if (data && data._error) {
+        const statusCode = data._statusCode || 502;
+        if (statusCode === 400 || statusCode === 404) {
+          return res.json([]);
+        }
+        return res.status(statusCode).json({ message: data._error });
       }
+      res.json(data || []);
     } catch (e: any) {
-      res.status(502).json({ message: "External API unreachable", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
-  app.get("/api/proxy/billing-stage-prepaid-recharge/:id", async (req, res) => {
+  app.get("/api/platinum/billing-stage-prepaid-recharge/:id", async (req, res) => {
     try {
-      const data = await proxyGet(`${EXTERNAL_API_BASE}/api/billing-stage-prepaid-recharge/${req.params.id}`);
-      if (data.error) return res.status(data.status).json({ message: data.statusText });
-      res.json(data);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-stage-prepaid-recharge/" + req.params.id);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(502).json({ message: "External API unreachable", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
-  app.get("/api/proxy/billing-stage-prepaid-recovery/:identifier", async (req, res) => {
+  app.get("/api/platinum/billing-stage-prepaid-recovery/:identifier", async (req, res) => {
     try {
-      const data = await proxyGet(`${EXTERNAL_API_BASE}/api/billing-stage-prepaid-recovery/${req.params.identifier}`);
-      if (data.error) return res.status(data.status).json({ message: data.statusText });
-      res.json(data);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-stage-prepaid-recovery/" + req.params.identifier);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(502).json({ message: "External API unreachable", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
-  app.get("/api/proxy/billing-stage-prepaid-recovery/reference", async (req, res) => {
+  app.get("/api/platinum/billing-stage-prepaid-recovery/reference", async (req, res) => {
     try {
-      const params = new URLSearchParams(req.query as Record<string, string>);
-      const data = await proxyGet(`${EXTERNAL_API_BASE}/api/billing-stage-prepaid-recovery/reference?${params.toString()}`);
-      if (data.error) return res.status(data.status).json({ message: data.statusText });
-      res.json(data);
+      const session = requireAuth(req, res); if (!session) return;
+      const data = await platinumGet(session, "/api/billing-stage-prepaid-recovery/reference", req.query as Record<string, string>);
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(502).json({ message: "External API unreachable", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
-  app.post("/api/proxy/pos-multiple-account-payments/:capturerId/:accountId/receipt/:receiptId", async (req, res) => {
+  app.post("/api/platinum/pos-multiple-account-payments/:capturerId/:accountId/receipt/:receiptId", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const { capturerId, accountId, receiptId } = req.params;
-      const url = `${EXTERNAL_API_BASE}/api/pos-multiple-account-payments/${capturerId}/${accountId}/receipt/${receiptId}`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-      });
-      if (!response.ok) {
-        return res.status(response.status).json({ message: response.statusText });
-      }
-      const text = await response.text();
-      res.json(text ? JSON.parse(text) : { success: true });
+      const data = await platinumPost(session, `/api/pos-multiple-account-payments/${capturerId}/${accountId}/receipt/${receiptId}`, req.body || {});
+      handlePlatinumResult(res, data);
     } catch (e: any) {
-      res.status(502).json({ message: "External API unreachable", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
-  app.get("/api/proxy/pos-multi-receipt-print", async (req, res) => {
+  app.get("/api/platinum/pos-multi-receipt-print", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const receiptId = req.query.receiptId as string;
       const receiptNo = req.query.receiptNo as string;
 
       const tryMultiPrint = async (id: string): Promise<any[]> => {
         try {
-          const url = `${EXTERNAL_API_BASE}/api/pos-multi-receipt-print?receiptId=${encodeURIComponent(id)}`;
-          console.log(`[pos-multi-receipt-print] Calling API: pos-multi-receipt-print?receiptId=${id}`);
-          const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
-          if (response.ok) {
-            const data = await response.json();
-            const items = Array.isArray(data) ? data : [];
-            console.log(`[pos-multi-receipt-print] API returned ${items.length} items for receiptId=${id}`);
-            if (items.length > 0) {
-              const first = items[0];
-              console.log(`[pos-multi-receipt-print] ITEM FIELDS for receiptId=${id}:`, JSON.stringify({
-                receiptNo: first.receiptNo,
-                accountId: first.accountId,
-                oldAccountCode: first.oldAccountCode,
-                accName: first.accName,
-                sgNumber: first.sgNumber,
-                accAddress: first.accAddress,
-                cashierName: first.cashierName,
-                cashOfficeName: first.cashOfficeName,
-                billType: first.billType,
-                amount: first.amount,
-                vatAmount: first.vatAmount,
-                tenderAmount: first.tenderAmount,
-                changeAmount: first.changeAmount,
-                outstandingAmount: first.outstandingAmount,
-                payMode: first.payMode,
-                paymentTypeId: first.paymentTypeId,
-                billTypeId: first.billTypeId,
-              }));
-              if (items.length > 1) {
-                console.log(`[pos-multi-receipt-print] ALL ${items.length} line items:`, items.map((it: any, idx: number) => `  [${idx}] billType="${it.billType}" amount=${it.amount} vatAmount=${it.vatAmount}`).join('\n'));
-              }
-              console.log(`[pos-multi-receipt-print] FULL RAW first item keys:`, Object.keys(first).join(', '));
+          console.log(`[pos-multi-receipt-print] Calling Platinum API: pos-multi-receipt-print?receiptId=${id}`);
+          const data = await platinumGet(session, "/api/pos-multi-receipt-print", { receiptId: id });
+          const items = Array.isArray(data) ? data : (data && !data._error ? [] : []);
+          console.log(`[pos-multi-receipt-print] API returned ${items.length} items for receiptId=${id}`);
+          if (items.length > 0) {
+            const first = items[0];
+            console.log(`[pos-multi-receipt-print] ITEM FIELDS for receiptId=${id}:`, JSON.stringify({
+              receiptNo: first.receiptNo,
+              accountId: first.accountId,
+              oldAccountCode: first.oldAccountCode,
+              accName: first.accName,
+              sgNumber: first.sgNumber,
+              accAddress: first.accAddress,
+              cashierName: first.cashierName,
+              cashOfficeName: first.cashOfficeName,
+              billType: first.billType,
+              amount: first.amount,
+              vatAmount: first.vatAmount,
+              tenderAmount: first.tenderAmount,
+              changeAmount: first.changeAmount,
+              outstandingAmount: first.outstandingAmount,
+              payMode: first.payMode,
+              paymentTypeId: first.paymentTypeId,
+              billTypeId: first.billTypeId,
+            }));
+            if (items.length > 1) {
+              console.log(`[pos-multi-receipt-print] ALL ${items.length} line items:`, items.map((it: any, idx: number) => `  [${idx}] billType="${it.billType}" amount=${it.amount} vatAmount=${it.vatAmount}`).join('\n'));
             }
-            if (items.length > 0) return items;
-          } else {
-            console.log(`[pos-multi-receipt-print] API returned HTTP ${response.status} for receiptId=${id}`);
+            console.log(`[pos-multi-receipt-print] FULL RAW first item keys:`, Object.keys(first).join(', '));
           }
+          if (items.length > 0) return items;
         } catch (e: any) {
           console.warn(`[pos-multi-receipt-print] API call failed for receiptId=${id}:`, e.message);
         }
@@ -4908,8 +4871,6 @@ export async function registerRoutes(
 
       const lookupViewReceipt = async (): Promise<{ serialNo: string | null; viewMatch: any | null }> => {
         try {
-          const session = (req as any).session?.platinumAuth;
-          if (!session?.token) return { serialNo: null, viewMatch: null };
           const lookupNo = receiptNo || '';
           if (!lookupNo) return { serialNo: null, viewMatch: null };
           const lookupParams: Record<string, string> = {
@@ -5026,46 +4987,43 @@ export async function registerRoutes(
         
         if (needsServiceBreakdown) {
           try {
-            const session = (req as any).session?.platinumAuth;
-            if (session?.token) {
-              const token = await refreshSessionToken(session);
-              const apiUrl = getPlatinumApiUrl();
-              console.log(`[pos-multi-receipt-print] Fetching service breakdown from print-receipt PDF for serialNo=${serialNo}`);
-              const pdfRes = await fetch(`${apiUrl}/api/billing-payment/print-receipt`, {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  "Content-Type": "application/json",
-                  Accept: "application/pdf",
-                },
-                body: JSON.stringify([Number(serialNo)]),
-              });
-              if (pdfRes.ok) {
-                const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
-                if (pdfBuffer.length > 100) {
-                  const tmpPath = `/tmp/receipt_svc_${serialNo}_${Date.now()}.pdf`;
-                  try {
-                    writeFileSync(tmpPath, pdfBuffer);
-                    const text = execSync(`pdftotext -layout ${tmpPath} -`, { timeout: 10000 }).toString();
-                    console.log(`[pos-multi-receipt-print] PDF text (layout mode, first 3000 chars):`, text.substring(0, 3000).replace(/\n/g, ' | '));
-                    const allocations = parseReceiptAllocations(text);
-                    if (allocations.length > 0) {
-                      console.log(`[pos-multi-receipt-print] Extracted ${allocations.length} service allocations from PDF:`, allocations.map(a => `${a.service}: ${a.amount}`).join(', '));
-                      for (const item of items) {
-                        (item as any)._serviceAllocations = allocations;
-                      }
-                    } else {
-                      console.log(`[pos-multi-receipt-print] No service allocations found in PDF text`);
+            const token = await refreshSessionToken(session);
+            const apiUrl = getPlatinumApiUrl();
+            console.log(`[pos-multi-receipt-print] Fetching service breakdown from print-receipt PDF for serialNo=${serialNo}`);
+            const pdfRes = await fetch(`${apiUrl}/api/billing-payment/print-receipt`, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+                Accept: "application/pdf",
+              },
+              body: JSON.stringify([Number(serialNo)]),
+            });
+            if (pdfRes.ok) {
+              const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+              if (pdfBuffer.length > 100) {
+                const tmpPath = `/tmp/receipt_svc_${serialNo}_${Date.now()}.pdf`;
+                try {
+                  writeFileSync(tmpPath, pdfBuffer);
+                  const text = execSync(`pdftotext -layout ${tmpPath} -`, { timeout: 10000 }).toString();
+                  console.log(`[pos-multi-receipt-print] PDF text (layout mode, first 3000 chars):`, text.substring(0, 3000).replace(/\n/g, ' | '));
+                  const allocations = parseReceiptAllocations(text);
+                  if (allocations.length > 0) {
+                    console.log(`[pos-multi-receipt-print] Extracted ${allocations.length} service allocations from PDF:`, allocations.map(a => `${a.service}: ${a.amount}`).join(', '));
+                    for (const item of items) {
+                      (item as any)._serviceAllocations = allocations;
                     }
-                  } finally {
-                    if (existsSync(tmpPath)) {
-                      try { unlinkSync(tmpPath); } catch {}
-                    }
+                  } else {
+                    console.log(`[pos-multi-receipt-print] No service allocations found in PDF text`);
+                  }
+                } finally {
+                  if (existsSync(tmpPath)) {
+                    try { unlinkSync(tmpPath); } catch {}
                   }
                 }
-              } else {
-                console.log(`[pos-multi-receipt-print] print-receipt PDF returned HTTP ${pdfRes.status}`);
               }
+            } else {
+              console.log(`[pos-multi-receipt-print] print-receipt PDF returned HTTP ${pdfRes.status}`);
             }
           } catch (e: any) {
             console.warn(`[pos-multi-receipt-print] Service breakdown extraction failed:`, e.message);
@@ -5079,12 +5037,13 @@ export async function registerRoutes(
 
       res.json(items);
     } catch (e: any) {
-      res.status(502).json({ message: "External API unreachable", detail: e.message });
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
 
-  app.get("/api/proxy/pos-multi-receipt-print/by-cashier", async (req, res) => {
+  app.get("/api/platinum/pos-multi-receipt-print/by-cashier", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const cashierName = req.query.cashierName as string;
       const startId = parseInt(req.query.startId as string) || 0;
       const scanCount = Math.min(parseInt(req.query.scanCount as string) || 100, 300);
@@ -5099,27 +5058,19 @@ export async function registerRoutes(
           const baseProbe = 1041300;
           const probeIds = [baseProbe + 200, baseProbe + 150, baseProbe + 100, baseProbe + 50, baseProbe, baseProbe - 20];
           for (const probeId of probeIds) {
-            const url = `${EXTERNAL_API_BASE}/api/pos-multi-receipt-print?receiptId=${probeId}`;
-            const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
-            if (resp.ok) {
-              const data = await resp.json();
-              if (Array.isArray(data) && data.length > 0) {
-                highestKnownId = probeId;
-                break;
-              }
+            const data = await platinumGet(session, "/api/pos-multi-receipt-print", { receiptId: String(probeId) });
+            if (Array.isArray(data) && data.length > 0) {
+              highestKnownId = probeId;
+              break;
             }
           }
           if (!highestKnownId) {
             let probeId = baseProbe;
             while (probeId > baseProbe - 100) {
-              const url = `${EXTERNAL_API_BASE}/api/pos-multi-receipt-print?receiptId=${probeId}`;
-              const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
-              if (resp.ok) {
-                const data = await resp.json();
-                if (Array.isArray(data) && data.length > 0) {
-                  highestKnownId = probeId;
-                  break;
-                }
+              const data = await platinumGet(session, "/api/pos-multi-receipt-print", { receiptId: String(probeId) });
+              if (Array.isArray(data) && data.length > 0) {
+                highestKnownId = probeId;
+                break;
               }
               probeId -= 5;
             }
@@ -5143,17 +5094,11 @@ export async function registerRoutes(
         const batchIds = ids.slice(batch, batch + batchSize);
         const fetchOne = async (id: number) => {
           try {
-            const url = `${EXTERNAL_API_BASE}/api/pos-multi-receipt-print?receiptId=${id}`;
-            const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
-            if (response.ok) {
-              const data = await response.json();
-              if (Array.isArray(data) && data.length > 0) {
-                const item = data[0];
-                if (
-                  item.cashierName && item.cashierName.toLowerCase() === cashierName.toLowerCase()
-                ) {
-                  return data.map((d: any) => ({ ...d, _receiptId: id }));
-                }
+            const data = await platinumGet(session, "/api/pos-multi-receipt-print", { receiptId: String(id) });
+            if (Array.isArray(data) && data.length > 0) {
+              const item = data[0];
+              if (item.cashierName && item.cashierName.toLowerCase() === cashierName.toLowerCase()) {
+                return data.map((d: any) => ({ ...d, _receiptId: id }));
               }
             }
           } catch {}
@@ -5175,8 +5120,9 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/proxy/pos-multi-receipt-print/search", async (req, res) => {
+  app.get("/api/platinum/pos-multi-receipt-print/search", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const receiptNo = (req.query.receiptNo as string) || '';
       const cashierName = (req.query.cashierName as string) || '';
       const accountNumber = (req.query.accountNumber as string) || '';
@@ -5186,27 +5132,19 @@ export async function registerRoutes(
       try {
         const probeIds = [1041500, 1041450, 1041400, 1041350, 1041300, 1041280];
         for (const probeId of probeIds) {
-          const url = `${EXTERNAL_API_BASE}/api/pos-multi-receipt-print?receiptId=${probeId}`;
-          const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
-          if (resp.ok) {
-            const data = await resp.json();
-            if (Array.isArray(data) && data.length > 0) {
-              highestKnownId = probeId;
-              break;
-            }
+          const data = await platinumGet(session, "/api/pos-multi-receipt-print", { receiptId: String(probeId) });
+          if (Array.isArray(data) && data.length > 0) {
+            highestKnownId = probeId;
+            break;
           }
         }
         if (!highestKnownId) {
           let probeId = 1041300;
           while (probeId > 1041200) {
-            const url = `${EXTERNAL_API_BASE}/api/pos-multi-receipt-print?receiptId=${probeId}`;
-            const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
-            if (resp.ok) {
-              const data = await resp.json();
-              if (Array.isArray(data) && data.length > 0) {
-                highestKnownId = probeId;
-                break;
-              }
+            const data = await platinumGet(session, "/api/pos-multi-receipt-print", { receiptId: String(probeId) });
+            if (Array.isArray(data) && data.length > 0) {
+              highestKnownId = probeId;
+              break;
             }
             probeId -= 5;
           }
@@ -5229,32 +5167,28 @@ export async function registerRoutes(
         const batchIds = ids.slice(batch, batch + batchSize);
         const fetchOne = async (id: number) => {
           try {
-            const url = `${EXTERNAL_API_BASE}/api/pos-multi-receipt-print?receiptId=${id}`;
-            const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
-            if (response.ok) {
-              const data = await response.json();
-              if (Array.isArray(data) && data.length > 0) {
-                const item = data[0];
-                let matches = true;
-                if (receiptNo && item.receiptNo) {
-                  matches = matches && item.receiptNo.toLowerCase().includes(receiptNo.toLowerCase());
-                } else if (receiptNo) {
-                  matches = false;
-                }
-                if (cashierName && item.cashierName) {
-                  matches = matches && item.cashierName.toLowerCase().includes(cashierName.toLowerCase());
-                } else if (cashierName) {
-                  matches = false;
-                }
-                if (accountNumber) {
-                  const hasAccount = data.some((d: any) =>
-                    d.accountNo && d.accountNo.toLowerCase().includes(accountNumber.toLowerCase())
-                  );
-                  matches = matches && hasAccount;
-                }
-                if (matches) {
-                  return data.map((d: any) => ({ ...d, _receiptId: id }));
-                }
+            const data = await platinumGet(session, "/api/pos-multi-receipt-print", { receiptId: String(id) });
+            if (Array.isArray(data) && data.length > 0) {
+              const item = data[0];
+              let matches = true;
+              if (receiptNo && item.receiptNo) {
+                matches = matches && item.receiptNo.toLowerCase().includes(receiptNo.toLowerCase());
+              } else if (receiptNo) {
+                matches = false;
+              }
+              if (cashierName && item.cashierName) {
+                matches = matches && item.cashierName.toLowerCase().includes(cashierName.toLowerCase());
+              } else if (cashierName) {
+                matches = false;
+              }
+              if (accountNumber) {
+                const hasAccount = data.some((d: any) =>
+                  d.accountNo && d.accountNo.toLowerCase().includes(accountNumber.toLowerCase())
+                );
+                matches = matches && hasAccount;
+              }
+              if (matches) {
+                return data.map((d: any) => ({ ...d, _receiptId: id }));
               }
             }
           } catch {}
@@ -5276,8 +5210,9 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/proxy/pos-multi-receipt-print/batch", async (req, res) => {
+  app.get("/api/platinum/pos-multi-receipt-print/batch", async (req, res) => {
     try {
+      const session = requireAuth(req, res); if (!session) return;
       const startId = parseInt(req.query.startId as string) || 312979;
       const count = Math.min(parseInt(req.query.count as string) || 50, 200);
       const direction = (req.query.direction as string) === 'forward' ? 1 : -1;
@@ -5289,13 +5224,9 @@ export async function registerRoutes(
 
       const fetchOne = async (id: number) => {
         try {
-          const url = `${EXTERNAL_API_BASE}/api/pos-multi-receipt-print?receiptId=${id}`;
-          const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
-          if (response.ok) {
-            const data = await response.json();
-            if (Array.isArray(data) && data.length > 0) {
-              return data.map((item: any) => ({ ...item, _receiptId: id }));
-            }
+          const data = await platinumGet(session, "/api/pos-multi-receipt-print", { receiptId: String(id) });
+          if (Array.isArray(data) && data.length > 0) {
+            return data.map((item: any) => ({ ...item, _receiptId: id }));
           }
         } catch {}
         return null;

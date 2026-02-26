@@ -2194,7 +2194,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             };
                         }
                     } catch (e) {
-                        console.warn(`[Priority 2 ${label}] Could not fetch receipt data from Sebata`, e);
+                        console.warn(`[Priority 2 ${label}] Could not fetch receipt data from Platinum`, e);
                     }
 
                     if (!miscReceiptDetail) {

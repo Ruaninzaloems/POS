@@ -400,7 +400,7 @@ export async function getNameInfo(accountId: number): Promise<any> {
 
 export async function getAccountsByNameId(accountId: number): Promise<{ nameId: number | null; accounts: any[] }> {
   return deduplicatedFetch(`accounts-by-name-${accountId}`,
-    () => fetchWithTimeout(`/api/proxy/accounts-by-name-id?accountId=${accountId}`));
+    () => fetchWithTimeout(`/api/platinum/accounts-by-name-id?accountId=${accountId}`));
 }
 
 export async function getContactDetails(accountId: number): Promise<any> {
