@@ -13,11 +13,8 @@ process.on('uncaughtException', (err) => {
   console.error(err.stack);
 });
 process.on('unhandledRejection', (reason: any) => {
-  console.error('[FATAL] Unhandled promise rejection:', reason?.message || reason);
-  if (reason?.stack) console.error(reason.stack);
+  console.error('[FATAL] Unhandled rejection:', reason?.message || reason);
 });
-process.on('SIGTERM', () => console.error('[SIGNAL] Received SIGTERM'));
-process.on('SIGINT', () => console.error('[SIGNAL] Received SIGINT'));
 
 const app = express();
 const httpServer = createServer(app);
@@ -134,6 +131,10 @@ app.use((req, res, next) => {
     return res.sendStatus(204);
   });
 
+  app.get("/__health", (_req: Request, res: Response) => {
+    res.status(200).send("ok");
+  });
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
@@ -155,7 +156,7 @@ app.use((req, res, next) => {
     const _origExit = process.exit;
     process.exit = function(code?: number) {
       if (code === 1) {
-        console.error(`[Vite] Suppressed process.exit(1) from Vite error handler — keeping server alive`);
+        console.error('[Vite] Suppressed process.exit(1) — keeping server alive');
         return undefined as never;
       }
       return _origExit(code as any);
