@@ -239,7 +239,9 @@ export interface PlatinumUserInfo {
 export async function fetchPlatinumUserInfo(): Promise<PlatinumUserInfo> {
     const res = await apiFetch('/api/platinum/auth/user-info');
     if (!res.ok) {
-        throw new Error(`Failed to fetch user info from Platinum API (status ${res.status})`);
+        let detail = '';
+        try { const body = await res.json(); detail = body?.message || body?.error || ''; } catch {}
+        throw new Error(`Failed to fetch user info from Platinum API (status ${res.status})${detail ? ': ' + detail : ''}`);
     }
     return await res.json();
 }
@@ -263,6 +265,7 @@ export interface Institution {
 
 export async function fetchCashOffices(): Promise<CashOffice[]> {
     const res = await apiFetch(`/api/proxy/odata/ConstCashOffices`);
+    if (res.status === 404) return [];
     if (!res.ok) {
         throw new Error(`Failed to fetch cash offices from API (status ${res.status})`);
     }
@@ -289,6 +292,7 @@ export async function fetchCashiers(): Promise<ApiCashier[]> {
         apiFetch(`/api/proxy/odata/UserUserDetails`).catch(() => null)
     ]);
 
+    if (cashiersRes.status === 404) return [];
     if (!cashiersRes.ok) {
         throw new Error(`Failed to fetch cashiers from API (status ${cashiersRes.status})`);
     }
@@ -769,6 +773,7 @@ export async function enrichAccountData(account: any): Promise<any> {
 
 export async function fetchConfigSettings(): Promise<any[]> {
     const res = await apiFetch(`/api/proxy/odata/AaaaConfigSettings`);
+    if (res.status === 404) return [];
     if (!res.ok) {
         throw new Error(`Failed to fetch config settings from API (status ${res.status})`);
     }
