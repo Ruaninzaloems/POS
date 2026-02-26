@@ -67,11 +67,20 @@ export function log(message: string, source = "express") {
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+  let capturedSnippet: string | undefined = undefined;
 
   const originalResJson = res.json;
   res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
+    try {
+      if (Array.isArray(bodyJson) && bodyJson.length > 5) {
+        capturedSnippet = `[Array(${bodyJson.length})]`;
+      } else {
+        const s = JSON.stringify(bodyJson);
+        capturedSnippet = s.length > 500 ? s.substring(0, 500) + '...' : s;
+      }
+    } catch {
+      capturedSnippet = '[unserializable]';
+    }
     return originalResJson.apply(res, [bodyJson, ...args]);
   };
 
@@ -79,9 +88,8 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        const jsonStr = JSON.stringify(capturedJsonResponse);
-        logLine += ` :: ${jsonStr.length > 2000 ? jsonStr.substring(0, 2000) + '...[truncated]' : jsonStr}`;
+      if (capturedSnippet) {
+        logLine += ` :: ${capturedSnippet}`;
       }
       log(logLine);
     }
