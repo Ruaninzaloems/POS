@@ -294,118 +294,75 @@ export default function AllocateTransaction() {
       const detailsData = clearanceInfo.status === 'fulfilled' ? clearanceInfo.value : null;
       const loadData = loadResult.status === 'fulfilled' ? loadResult.value : null;
       
-      console.log('[Clearance] Details info response:', JSON.stringify(detailsData)?.substring(0, 1000));
-      console.log('[Clearance] Load details response:', JSON.stringify(loadData)?.substring(0, 1000));
+      console.log('[Clearance] Details info response:', JSON.stringify(detailsData)?.substring(0, 2000));
+      console.log('[Clearance] Load details response:', JSON.stringify(loadData)?.substring(0, 2000));
       
+      if (!detailsData && !loadData) {
+        const infoErr = clearanceInfo.status === 'rejected' ? (clearanceInfo.reason?.message || 'Unknown error') : '';
+        const loadErr = loadResult.status === 'rejected' ? (loadResult.reason?.message || 'Unknown error') : '';
+        throw new Error(`Both clearance API calls failed. Details: ${infoErr}. Load: ${loadErr}`);
+      }
+
       const scheduleNo = rawItem.displayItem || rawItem.certificateNo || rawItem.accountNumber || result.accountNo || String(costScheduleID);
+      const numericCostScheduleID = Number(costScheduleID) || 0;
       
-      const linkedAccounts: Account[] = [];
+      if (!numericCostScheduleID) {
+        throw new Error(`Invalid costScheduleID (${costScheduleID}) from API response. Cannot proceed with clearance allocation.`);
+      }
+
+      const primaryData = detailsData || loadData;
+      
+      const rawAccounts = primaryData.accounts || primaryData.linkedAccounts || [];
+      if (!Array.isArray(rawAccounts) || rawAccounts.length === 0) {
+        throw new Error(`No linked accounts returned from API for cost schedule ${scheduleNo}. The clearance may have no active accounts.`);
+      }
+
+      const linkedAccounts: Account[] = rawAccounts.map((acc: any) => ({
+        accountNo: acc.accountNumber || acc.accountNo || String(acc.account_ID || acc.accountId || ''),
+        name: [acc.initials, acc.lastName].filter(Boolean).join(' ') || acc.name || acc.ownerName || '',
+        apiId: acc.account_ID || acc.accountId || acc.accountID || 0,
+        outstandingAmount: acc.outStandingAmt || acc.outstandingAmount || acc.totalDue || 0,
+      } as Account));
+
+      const rawItems = primaryData.items || primaryData.costScheduleItems || primaryData.section118Items || [];
+      if (!Array.isArray(rawItems) || rawItems.length === 0) {
+        throw new Error(`No cost schedule items (118(1)/118(3) breakdown) returned from API for cost schedule ${scheduleNo}. Cannot allocate without line items.`);
+      }
+
       const section118_1: { item: string; amount: number; accountNo: string }[] = [];
       const section118_3: { item: string; amount: number; accountNo: string }[] = [];
       let totalDue = 0;
       
-      if (detailsData) {
-        const accounts = detailsData.accounts || detailsData.linkedAccounts || [];
-        const items = detailsData.items || detailsData.costScheduleItems || detailsData.section118Items || [];
-        
-        if (Array.isArray(accounts)) {
-          for (const acc of accounts) {
-            const accNo = acc.accountNumber || acc.accountNo || String(acc.account_ID || acc.accountId || '');
-            const accName = [acc.initials, acc.lastName].filter(Boolean).join(' ') || acc.name || acc.ownerName || 'Unknown';
-            linkedAccounts.push({
-              accountNo: accNo,
-              name: accName,
-              apiId: acc.account_ID || acc.accountId || acc.accountID || 0,
-              outstandingAmount: acc.outStandingAmt || acc.outstandingAmount || acc.totalDue || 0,
-            });
-          }
-        }
-        
-        if (Array.isArray(items)) {
-          for (const item of items) {
-            const sectionType = item.sectionType || item.section || item.type || '118(1)';
-            const entry = {
-              item: item.description || item.name || item.item || 'Unknown',
-              amount: item.amount || item.totalAmount || item.balance || 0,
-              accountNo: item.accountNumber || item.accountNo || (linkedAccounts[0]?.accountNo || ''),
-            };
-            totalDue += entry.amount;
-            if (String(sectionType).includes('3') || String(sectionType) === '118(3)') {
-              section118_3.push(entry);
-            } else {
-              section118_1.push(entry);
-            }
-          }
-        }
-        
-        if (linkedAccounts.length === 0 && section118_1.length === 0 && section118_3.length === 0) {
-          if (detailsData.accountNumber || detailsData.account_ID) {
-            linkedAccounts.push({
-              accountNo: detailsData.accountNumber || String(detailsData.account_ID || accountID),
-              name: [detailsData.initials, detailsData.lastName].filter(Boolean).join(' ') || result.name || 'Unknown',
-              apiId: detailsData.account_ID || accountID,
-              outstandingAmount: detailsData.outStandingAmt || detailsData.totalDue || 0,
-            });
-          }
+      for (const item of rawItems) {
+        const sectionType = item.sectionType || item.section || item.type || '';
+        const entry = {
+          item: item.description || item.name || item.item || '',
+          amount: item.amount || item.totalAmount || item.balance || 0,
+          accountNo: item.accountNumber || item.accountNo || '',
+        };
+        totalDue += entry.amount;
+        if (String(sectionType).includes('3') || String(sectionType) === '118(3)') {
+          section118_3.push(entry);
+        } else {
+          section118_1.push(entry);
         }
       }
-      
-      if (loadData && linkedAccounts.length === 0) {
-        const loadAccounts = loadData.accounts || loadData.linkedAccounts || (loadData.accountNumber ? [loadData] : []);
-        for (const acc of (Array.isArray(loadAccounts) ? loadAccounts : [])) {
-          linkedAccounts.push({
-            accountNo: acc.accountNumber || acc.accountNo || String(acc.account_ID || ''),
-            name: [acc.initials, acc.lastName].filter(Boolean).join(' ') || acc.name || 'Unknown',
-            apiId: acc.account_ID || acc.accountId || 0,
-            outstandingAmount: acc.outStandingAmt || acc.outstandingAmount || 0,
-          });
-        }
-      }
-      
-      if (linkedAccounts.length === 0) {
-        linkedAccounts.push({
-          accountNo: result.accountNo,
-          name: result.name,
-          apiId: accountID,
-          outstandingAmount: 0,
-        });
-      }
-      
-      if (section118_1.length === 0 && section118_3.length === 0) {
-        const fallbackAccNo = linkedAccounts[0]?.accountNo || result.accountNo;
-        section118_1.push({
-          item: result.name || `Clearance ${scheduleNo}`,
-          amount: totalDue || transaction.amount,
-          accountNo: fallbackAccNo,
-        });
-        if (totalDue === 0) totalDue = transaction.amount;
-      }
-      
-      const numericCostScheduleID = Number(costScheduleID) || 0;
       
       const costSchedule: ClearanceCostSchedule = {
         scheduleNo,
         costScheduleID: numericCostScheduleID,
         status: 'Active',
-        totalDue: totalDue || transaction.amount,
+        totalDue,
         linkedAccounts,
         section118_1_Breakdown: section118_1,
         section118_3_Breakdown: section118_3,
       };
       
-      console.log('[Clearance] Built cost schedule:', JSON.stringify(costSchedule));
+      console.log('[Clearance] Built cost schedule from API:', JSON.stringify(costSchedule));
       setSelectedClearance(costSchedule);
     } catch (err: any) {
       console.error('[Clearance] Failed to load details:', err);
-      setClearanceLoadError(err.message || 'Failed to load clearance details');
-      setSelectedAccount({
-        accountNo: result.accountNo,
-        name: result.name,
-        description: `Clearance: ${result.name}`,
-        accountId: result.accountId,
-        allocationType: 'CLEARANCE',
-      });
-      setNewLineAmount("0.00");
+      setClearanceLoadError(err.message || 'Failed to load clearance details from Platinum API');
     } finally {
       setLoadingClearanceDetails(false);
     }
