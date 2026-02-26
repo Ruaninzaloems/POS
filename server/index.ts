@@ -141,6 +141,14 @@ app.use((req, res, next) => {
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
+    const _origExit = process.exit;
+    process.exit = function(code?: number) {
+      if (code === 1) {
+        console.error(`[Vite] Suppressed process.exit(1) from Vite error handler — keeping server alive`);
+        return undefined as never;
+      }
+      return _origExit(code as any);
+    } as any;
     const { setupVite } = await import("./vite");
     await setupVite(httpServer, app);
   }
