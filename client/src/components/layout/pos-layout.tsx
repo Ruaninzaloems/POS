@@ -71,13 +71,12 @@ export function PosLayout({ children }: PosLayoutProps) {
 
   if (sessionLoading && isPosPage) {
       return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 flex items-center justify-center">
+        <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="flex flex-col items-center gap-4">
             <div className="relative">
-              <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-blue-500/20 border-t-blue-400" />
-              <div className="absolute inset-0 h-10 w-10 animate-spin rounded-full border-[3px] border-transparent border-b-indigo-400" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }} />
+              <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-[#D6D6D6] border-t-[#E6A57E]" />
             </div>
-            <p className="text-blue-200/80 text-sm font-medium">Checking session...</p>
+            <p className="text-muted-foreground text-sm font-medium">Checking session...</p>
           </div>
         </div>
       );
@@ -85,25 +84,25 @@ export function PosLayout({ children }: PosLayoutProps) {
 
   if (isReceiptingPage && platinumUser?.authMode === 'override') {
       return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 flex items-center justify-center p-4">
-          <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 max-w-lg w-full p-6 sm:p-8 text-center space-y-4">
-            <div className="mx-auto w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center">
-              <AlertTriangle className="h-8 w-8 text-amber-400" />
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <div className="bg-card rounded-xl border border-border shadow-[0_1px_3px_rgba(0,0,0,0.15)] max-w-lg w-full p-6 sm:p-8 text-center space-y-4">
+            <div className="mx-auto w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">
+              <AlertTriangle className="h-8 w-8 text-amber-600" />
             </div>
-            <h2 className="text-xl font-bold text-white">Authentication Not Verified</h2>
-            <p className="text-blue-200/70 text-sm leading-relaxed">
+            <h2 className="text-xl font-bold text-foreground">Authentication Not Verified</h2>
+            <p className="text-muted-foreground text-sm leading-relaxed">
               This user could not be properly authenticated through the Platinum API. 
               The system was unable to verify the identity via direct login or Azure SSO — 
               a hardcoded override was used instead.
             </p>
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 text-left space-y-2">
-              <p className="text-sm font-semibold text-amber-300">To resolve this, the Platinum administrator needs to:</p>
-              <ul className="text-sm text-amber-200/80 list-disc list-inside space-y-1">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-left space-y-2">
+              <p className="text-sm font-semibold text-amber-700">To resolve this, the Platinum administrator needs to:</p>
+              <ul className="text-sm text-amber-600 list-disc list-inside space-y-1">
                 <li>Set up the correct password for the user's direct login, <strong>or</strong></li>
                 <li>Configure the Azure SSO mapping to properly resolve this user</li>
               </ul>
             </div>
-            <p className="text-xs text-blue-300/50">
+            <p className="text-xs text-muted-foreground">
               Receipting is disabled until proper authentication is configured.
             </p>
           </div>
@@ -113,19 +112,19 @@ export function PosLayout({ children }: PosLayoutProps) {
 
   if (requiresActiveSession && dayEndStatus === 'PENDING_APPROVAL') {
       return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 flex items-center justify-center p-4">
-          <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 max-w-lg w-full p-6 sm:p-8 text-center space-y-4">
-            <div className="mx-auto w-16 h-16 rounded-full bg-orange-500/20 flex items-center justify-center">
-              <AlertTriangle className="h-8 w-8 text-orange-400" />
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <div className="bg-card rounded-xl border border-border shadow-[0_1px_3px_rgba(0,0,0,0.15)] max-w-lg w-full p-6 sm:p-8 text-center space-y-4">
+            <div className="mx-auto w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center">
+              <AlertTriangle className="h-8 w-8 text-orange-600" />
             </div>
-            <h2 className="text-xl font-bold text-white">Day-End Pending Reconciliation</h2>
-            <p className="text-blue-200/70 text-sm leading-relaxed">
+            <h2 className="text-xl font-bold text-foreground">Day-End Pending Reconciliation</h2>
+            <p className="text-muted-foreground text-sm leading-relaxed">
               Your day-end reconciliation has been submitted and is awaiting supervisor approval. 
               You cannot transact, start a new shift, or resume your current shift until the reconciliation has been approved or returned by a supervisor.
             </p>
-            <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4 text-left space-y-2">
-              <p className="text-sm font-semibold text-orange-300">What happens next:</p>
-              <ul className="text-sm text-orange-200/80 list-disc list-inside space-y-1">
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-left space-y-2">
+              <p className="text-sm font-semibold text-orange-700">What happens next:</p>
+              <ul className="text-sm text-orange-600 list-disc list-inside space-y-1">
                 <li>Your supervisor will review the submitted figures</li>
                 <li>Once approved, your session will be closed and you can start a new shift</li>
                 <li>If returned, you will be able to re-submit your day-end</li>
@@ -134,7 +133,7 @@ export function PosLayout({ children }: PosLayoutProps) {
             <Button
               onClick={() => setLocation('/cashier-setup')}
               variant="outline"
-              className="border-white/20 text-white/80 hover:bg-white/10 mt-2"
+              className="border-border text-foreground hover:bg-muted mt-2"
               data-testid="button-back-to-setup"
             >
               <Home className="w-4 h-4 mr-2" />
@@ -147,12 +146,12 @@ export function PosLayout({ children }: PosLayoutProps) {
 
   if (isReceiptingPage && !platinumUser) {
       return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 flex items-center justify-center">
+        <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="flex flex-col items-center gap-4">
             <div className="relative">
-              <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-blue-500/20 border-t-blue-400" />
+              <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-[#D6D6D6] border-t-[#E6A57E]" />
             </div>
-            <p className="text-blue-200/80 text-sm font-medium">Verifying authentication...</p>
+            <p className="text-muted-foreground text-sm font-medium">Verifying authentication...</p>
           </div>
         </div>
       );
@@ -229,8 +228,8 @@ export function PosLayout({ children }: PosLayoutProps) {
 
   return (
     <div className="flex flex-col h-screen bg-background overflow-x-hidden overflow-y-auto lg:overflow-hidden">
-      <header className={`h-11 sm:h-12 text-white flex items-center px-2 sm:px-3 justify-between shrink-0 z-20 relative border-b border-white/[0.06] ${isSite02 ? 'bg-gradient-to-r from-[#1d3347] via-[#243A53] to-[#1d3347]' : 'bg-gradient-to-r from-slate-900 via-[#1e293b] to-slate-900'}`}>
-        <div className={`absolute inset-0 bg-gradient-to-r ${isSite02 ? 'from-[#2BB3A6]/[0.08] via-transparent to-[#6EC6C0]/[0.08]' : 'from-blue-600/[0.08] via-transparent to-indigo-600/[0.08]'}`} />
+      <header className={`h-11 sm:h-12 text-white flex items-center px-2 sm:px-3 justify-between shrink-0 z-20 relative border-b border-white/[0.06] ${isSite02 ? 'bg-gradient-to-r from-[#1d3347] via-[#243A53] to-[#1d3347]' : 'bg-[linear-gradient(180deg,#8C8C8C_0%,#6F6F6F_100%)]'}`}>
+        <div className={`absolute inset-0 ${isSite02 ? 'bg-gradient-to-r from-[#2BB3A6]/[0.08] via-transparent to-[#6EC6C0]/[0.08]' : ''}`} />
         
         <div className="flex items-center gap-1.5 sm:gap-2 relative z-10">
           <Link href="/">
@@ -316,7 +315,7 @@ export function PosLayout({ children }: PosLayoutProps) {
 
                <HelpTip text="Logged in as this cashier. Your permissions determine available payment types." side="bottom">
                  <div className="flex items-center gap-1.5">
-                   <div className="h-6 w-6 rounded-full bg-gradient-to-br from-blue-400/30 to-indigo-400/30 flex items-center justify-center text-[10px] font-bold text-white/80 border border-white/10 shrink-0">
+                   <div className="h-6 w-6 rounded-full bg-[#E6A57E]/30 flex items-center justify-center text-[10px] font-bold text-white/90 border border-white/10 shrink-0">
                      {currentUser.name?.charAt(0) || 'C'}
                    </div>
                    <div className="hidden sm:flex flex-col items-start leading-none">
@@ -362,7 +361,7 @@ export function PosLayout({ children }: PosLayoutProps) {
                <HelpTip text="Begin a new cashier session to start processing receipts." side="bottom">
                  <button 
                    onClick={() => setLocation('/cashier-setup')} 
-                   className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 border border-blue-400/20 transition-colors"
+                   className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-[#E6A57E]/20 text-[#F0C3A7] hover:bg-[#E6A57E]/30 border border-[#E6A57E]/20 transition-colors"
                    data-testid="button-start-session"
                  >
                    <Layers className="w-3.5 h-3.5" />

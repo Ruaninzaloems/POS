@@ -30,14 +30,14 @@ const SITE_STYLES: Record<string, {
     subtitle: string;
 }> = {
     george: {
-        gradient: 'from-slate-900 via-blue-900 to-indigo-900',
-        overlayFrom: 'from-blue-400/20',
-        overlayTo: 'from-indigo-400/20',
-        accentBar: 'from-blue-600 to-indigo-600',
-        buttonGradient: 'from-blue-600 to-indigo-600',
-        buttonHover: 'hover:from-blue-700 hover:to-indigo-700',
-        buttonShadow: 'shadow-blue-500/25',
-        inputFocus: 'focus:ring-blue-500/20 focus:border-blue-500',
+        gradient: 'from-[#F2F4F7] via-[#E8ECF1] to-[#F2F4F7]',
+        overlayFrom: 'from-[#E6A57E]/10',
+        overlayTo: 'from-[#C9D6E2]/15',
+        accentBar: 'from-[#E6A57E] to-[#D18E65]',
+        buttonGradient: 'from-[#C9D6E2] to-[#B7C7D6]',
+        buttonHover: 'hover:from-[#B7C7D6] hover:to-[#A9B8C7]',
+        buttonShadow: 'shadow-[0_1px_3px_rgba(0,0,0,0.15)]',
+        inputFocus: 'focus:ring-[#E6A57E]/20 focus:border-[#E6A57E]',
         title: 'Platinum POS',
         subtitle: 'George Municipality',
     },
@@ -130,16 +130,16 @@ export default function LoginPage({ onLoginSuccess }: LoginProps) {
                     <div className={`absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] ${styles.overlayTo} via-transparent to-transparent`} />
                 </div>
 
-                <Card className="w-full max-w-lg bg-white/95 backdrop-blur-xl shadow-2xl border-0 rounded-xl overflow-hidden relative z-10">
+                <Card className="w-full max-w-lg bg-white shadow-[0_1px_3px_rgba(0,0,0,0.15)] border border-[#D6D6D6] rounded-xl overflow-hidden relative z-10">
                     <div className={`h-1.5 bg-gradient-to-r ${styles.accentBar} rounded-t`} />
                     <CardHeader className="text-center pt-8 pb-2">
                         <div className="flex justify-center mb-3">
-                            <Building2 className="w-12 h-12 text-slate-600" />
+                            <Building2 className="w-12 h-12 text-[#6B6B6B]" />
                         </div>
-                        <CardTitle className="text-2xl font-bold text-slate-800 tracking-tight">
+                        <CardTitle className="text-2xl font-bold text-[#2E2E2E] tracking-tight">
                             Select Your Site
                         </CardTitle>
-                        <p className="text-sm text-slate-500 mt-1">Choose the EMS environment to connect to</p>
+                        <p className="text-sm text-[#6B6B6B] mt-1">Choose the EMS environment to connect to</p>
                     </CardHeader>
                     <CardContent className="px-6 pb-8">
                         {loadingSites ? (
@@ -154,10 +154,10 @@ export default function LoginPage({ onLoginSuccess }: LoginProps) {
                                         <button
                                             key={site.id}
                                             onClick={() => handleSelectSite(site)}
-                                            className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 transition-all group cursor-pointer text-left"
+                                            className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-[#D6D6D6] hover:border-[#E6A57E] bg-white hover:bg-[#F7F7F7] shadow-[0_1px_3px_rgba(0,0,0,0.15)] transition-all group cursor-pointer text-left"
                                             data-testid={`button-site-${site.id}`}
                                         >
-                                            <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 overflow-hidden">
+                                            <div className="w-12 h-12 rounded-lg bg-[#F7F7F7] flex items-center justify-center shrink-0 overflow-hidden">
                                                 <img
                                                     src={site.logo}
                                                     alt={site.name}
@@ -168,8 +168,8 @@ export default function LoginPage({ onLoginSuccess }: LoginProps) {
                                                 />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <div className="font-semibold text-slate-800 text-base">{siteStyles.title}</div>
-                                                <div className="text-sm text-slate-500">{site.name}</div>
+                                                <div className="font-semibold text-[#2E2E2E] text-base">{siteStyles.title}</div>
+                                                <div className="text-sm text-[#6B6B6B]">{site.name}</div>
                                             </div>
                                             <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${siteStyles.accentBar} opacity-60 group-hover:opacity-100 transition-opacity`} />
                                         </button>
@@ -181,11 +181,13 @@ export default function LoginPage({ onLoginSuccess }: LoginProps) {
                 </Card>
 
                 <div className="fixed bottom-4 right-4 z-20">
-                    <span className="text-[10px] font-medium bg-white/10 text-white/60 backdrop-blur-sm px-2 py-1 rounded-full">v2.0</span>
+                    <span className="text-[10px] font-medium bg-black/5 text-[#6B6B6B] backdrop-blur-sm px-2 py-1 rounded-full">v2.0</span>
                 </div>
             </div>
         );
     }
+
+    const isLightBg = selectedSite?.id !== 'site02';
 
     return (
         <div className={`min-h-screen bg-gradient-to-br ${styles.gradient} flex items-center justify-center p-4 relative overflow-hidden`} data-testid="login-page">
@@ -194,13 +196,13 @@ export default function LoginPage({ onLoginSuccess }: LoginProps) {
                 <div className={`absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] ${styles.overlayTo} via-transparent to-transparent`} />
             </div>
 
-            <Card className="w-full max-w-md bg-white/95 backdrop-blur-xl shadow-2xl border-0 rounded-xl overflow-hidden relative z-10">
+            <Card className={`w-full max-w-md backdrop-blur-xl rounded-xl overflow-hidden relative z-10 ${isLightBg ? 'bg-white shadow-[0_1px_3px_rgba(0,0,0,0.15)] border border-[#D6D6D6]' : 'bg-white/95 shadow-2xl border-0'}`}>
                 <div className={`h-1.5 bg-gradient-to-r ${styles.accentBar} rounded-t`} />
                 <CardHeader className="text-center pt-6 pb-4">
                     {sites.length > 1 && (
                         <button
                             onClick={handleBack}
-                            className="absolute left-4 top-5 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                            className="absolute left-4 top-5 text-[#6B6B6B] hover:text-[#2E2E2E] transition-colors p-1"
                             data-testid="button-back-to-sites"
                         >
                             <ArrowLeft className="w-5 h-5" />
@@ -209,22 +211,22 @@ export default function LoginPage({ onLoginSuccess }: LoginProps) {
                     <div className="flex justify-center mb-3">
                         <img src={selectedSite.logo} alt={selectedSite.name} className="w-14 h-14 object-contain" />
                     </div>
-                    <CardTitle className="text-2xl font-bold text-slate-800 tracking-tight">
+                    <CardTitle className="text-2xl font-bold text-[#2E2E2E] tracking-tight">
                         {styles.title}
                     </CardTitle>
-                    <p className="text-sm text-slate-500 mt-1">{styles.subtitle}</p>
+                    <p className="text-sm text-[#6B6B6B] mt-1">{styles.subtitle}</p>
                 </CardHeader>
                 <CardContent className="px-6 pb-8">
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-1.5">
-                            <Label htmlFor="username" className="text-slate-600 text-sm font-medium">Username</Label>
+                            <Label htmlFor="username" className="text-[#2E2E2E] text-sm font-medium">Username</Label>
                             <Input
                                 id="username"
                                 type="text"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                                 placeholder="Enter your username"
-                                className={`h-11 rounded-xl bg-slate-50/80 border-slate-200 focus:ring-2 ${styles.inputFocus} transition-all`}
+                                className={`h-11 rounded-xl bg-white border-[#D6D6D6] focus:ring-2 ${styles.inputFocus} transition-all`}
                                 autoFocus
                                 disabled={loading}
                                 data-testid="input-username"
@@ -232,8 +234,8 @@ export default function LoginPage({ onLoginSuccess }: LoginProps) {
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label htmlFor="password" className="text-slate-600 text-sm font-medium">
-                                Password <span className="text-xs text-slate-400">(optional — leave blank for SSO login)</span>
+                            <Label htmlFor="password" className="text-[#2E2E2E] text-sm font-medium">
+                                Password <span className="text-xs text-[#6B6B6B]">(optional — leave blank for SSO login)</span>
                             </Label>
                             <Input
                                 id="password"
@@ -241,34 +243,34 @@ export default function LoginPage({ onLoginSuccess }: LoginProps) {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="Leave blank for SSO"
-                                className={`h-11 rounded-xl bg-slate-50/80 border-slate-200 focus:ring-2 ${styles.inputFocus} transition-all`}
+                                className={`h-11 rounded-xl bg-white border-[#D6D6D6] focus:ring-2 ${styles.inputFocus} transition-all`}
                                 disabled={loading}
                                 data-testid="input-password"
                             />
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label htmlFor="dbName" className="text-slate-600 text-sm font-medium">Database</Label>
+                            <Label htmlFor="dbName" className="text-[#2E2E2E] text-sm font-medium">Database</Label>
                             <Input
                                 id="dbName"
                                 type="text"
                                 value={dbName}
                                 onChange={(e) => setDbName(e.target.value)}
-                                className={`h-11 rounded-xl bg-slate-50/80 border-slate-200 focus:ring-2 ${styles.inputFocus} transition-all`}
+                                className={`h-11 rounded-xl bg-white border-[#D6D6D6] focus:ring-2 ${styles.inputFocus} transition-all`}
                                 disabled={loading}
                                 data-testid="input-dbname"
                             />
                         </div>
 
                         {error && (
-                            <div className="text-red-500 text-sm text-center bg-red-50 p-2.5 rounded-lg border border-red-200" data-testid="text-login-error">
+                            <div className="text-[#D14343] text-sm text-center bg-red-50 p-2.5 rounded-lg border border-red-200" data-testid="text-login-error">
                                 {error}
                             </div>
                         )}
 
                         <Button
                             type="submit"
-                            className={`w-full bg-gradient-to-r ${styles.buttonGradient} ${styles.buttonHover} shadow-lg ${styles.buttonShadow} h-12 text-base font-semibold rounded-xl transition-all`}
+                            className={`w-full bg-gradient-to-r ${styles.buttonGradient} ${styles.buttonHover} ${styles.buttonShadow} h-12 text-base font-semibold rounded-xl transition-all ${selectedSite?.id !== 'site02' ? 'text-[#2E2E2E] border border-[#A9B8C7]' : 'text-white'}`}
                             disabled={loading}
                             data-testid="button-login"
                         >
@@ -283,7 +285,7 @@ export default function LoginPage({ onLoginSuccess }: LoginProps) {
             </Card>
 
             <div className="fixed bottom-4 right-4 z-20">
-                <span className="text-[10px] font-medium bg-white/10 text-white/60 backdrop-blur-sm px-2 py-1 rounded-full">v2.0</span>
+                <span className={`text-[10px] font-medium backdrop-blur-sm px-2 py-1 rounded-full ${isLightBg ? 'bg-black/5 text-[#6B6B6B]' : 'bg-white/10 text-white/60'}`}>v2.0</span>
             </div>
         </div>
     );
