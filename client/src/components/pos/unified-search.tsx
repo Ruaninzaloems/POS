@@ -118,101 +118,66 @@ export function UnifiedSearch({ onSearchActiveChange }: { onSearchActiveChange?:
         }
     } else if (result.type === 'GROUP') {
         const group = result.data as any;
+        const instId = group.institutionID;
         
-        if (group.members && Array.isArray(group.members) && group.members.length > 0) {
-            const memberItems: TransactionItem[] = group.members.map((member: any) => ({
-                id: crypto.randomUUID(),
-                type: 'CONSUMER_SERVICES' as const,
-                description: `${group.institutionDesc} - ${member.name || [member.initials, member.lastName].filter(Boolean).join(' ') || 'Acc'} (${member.accountNumber || member.accountID})`,
-                reference: member.accountNumber || `${member.accountID}`,
-                amountDue: member.outStandingAmt || 0,
-                amountToPay: 0,
-                originalData: { ...member, institutionDesc: group.institutionDesc }
-            }));
-            memberItems.forEach(item => addItem(item));
+        if (!instId) {
+            alert("No institution ID found for this group.");
+            return;
+        }
 
-            Promise.allSettled(
-                memberItems.map(async (item) => {
-                    const accId = item.originalData?.accountID || item.originalData?.accountId || item.originalData?.account_ID;
-                    if (!accId) return;
-                    try {
-                        const [details, balanceDebt] = await Promise.all([
-                            platinumGetConsAccountDetails(Number(accId), true).catch(() => null),
-                            fetchTotalBalanceDebt(Number(accId)).catch(() => null),
-                        ]);
-                        let outstanding = 0;
-                        if (balanceDebt) {
-                            let rows: any[] = Array.isArray(balanceDebt) ? balanceDebt : (balanceDebt?.results && Array.isArray(balanceDebt.results) ? balanceDebt.results : []);
-                            if (rows.length > 0) {
-                                outstanding = Math.round(rows.reduce((s: number, r: any) => s + (r.totalOutStanding || r.totalOutstanding || 0), 0) * 100) / 100;
-                            }
-                        }
-                        if (outstanding === 0 && details && !details._error) {
-                            outstanding = details.outStandingAmt ?? details.outstandingAmount ?? details.outStandingAmount ?? 0;
-                        }
-                        updateItemDetails(item.id, {
-                            amountDue: outstanding,
-                            amountToPay: 0,
-                            originalData: { ...item.originalData, ...(details && !details._error ? details : {}), outStandingAmt: outstanding, outstandingAmount: outstanding }
-                        });
-                    } catch (e) {
-                        console.warn(`[Group Enrich] Failed for account ${accId}:`, e);
-                    }
-                })
-            );
-        } else if (group.isLocal && group.institutionID) {
-            try {
-                const accounts = await fetchAccountsByGroup(group.institutionID);
-                if (accounts.length > 0) {
-                    const memberItems: TransactionItem[] = accounts.map((acc: any) => ({
-                        id: crypto.randomUUID(),
-                        type: 'CONSUMER_SERVICES' as const,
-                        description: `${group.institutionDesc || 'Group'} - ${acc.name || 'Unknown'} (${acc.accountNumber || acc.accountID})`,
-                        reference: acc.accountNumber || acc.oldAccountCode || `${acc.accountID}`,
-                        amountDue: acc.outStandingAmount || acc.outStandingAmt || 0,
-                        amountToPay: 0,
-                        originalData: { ...acc, institutionDesc: group.institutionDesc, accountID: acc.accountID }
-                    }));
-                    memberItems.forEach(item => addItem(item));
+        try {
+            console.log(`[Group] Fetching all accounts for institution ${instId} (${group.institutionDesc})`);
+            const accounts = await fetchAccountsByGroup(instId);
+            if (accounts.length > 0) {
+                console.log(`[Group] Found ${accounts.length} accounts for ${group.institutionDesc}`);
+                const memberItems: TransactionItem[] = accounts.map((acc: any) => ({
+                    id: crypto.randomUUID(),
+                    type: 'CONSUMER_SERVICES' as const,
+                    description: `${group.institutionDesc || 'Group'} - ${acc.name || 'Unknown'} (${acc.accountNumber || acc.account_ID || acc.accountID})`,
+                    reference: acc.accountNumber || acc.oldAccountCode || `${acc.account_ID || acc.accountID}`,
+                    amountDue: acc.outStandingAmt || acc.outStandingAmount || 0,
+                    amountToPay: 0,
+                    originalData: { ...acc, institutionDesc: group.institutionDesc, accountID: acc.account_ID || acc.accountID }
+                }));
+                memberItems.forEach(item => addItem(item));
 
-                    Promise.allSettled(
-                        memberItems.map(async (item) => {
-                            const accId = item.originalData?.accountID || item.originalData?.accountId || item.originalData?.account_ID;
-                            if (!accId) return;
-                            try {
-                                const [details, balanceDebt] = await Promise.all([
-                                    platinumGetConsAccountDetails(Number(accId), true).catch(() => null),
-                                    fetchTotalBalanceDebt(Number(accId)).catch(() => null),
-                                ]);
-                                let outstanding = 0;
-                                if (balanceDebt) {
-                                    let rows: any[] = Array.isArray(balanceDebt) ? balanceDebt : (balanceDebt?.results && Array.isArray(balanceDebt.results) ? balanceDebt.results : []);
-                                    if (rows.length > 0) {
-                                        outstanding = Math.round(rows.reduce((s: number, r: any) => s + (r.totalOutStanding || r.totalOutstanding || 0), 0) * 100) / 100;
-                                    }
+                Promise.allSettled(
+                    memberItems.map(async (item) => {
+                        const accId = item.originalData?.accountID || item.originalData?.accountId || item.originalData?.account_ID;
+                        if (!accId) return;
+                        try {
+                            const [details, balanceDebt] = await Promise.all([
+                                platinumGetConsAccountDetails(Number(accId), true).catch(() => null),
+                                fetchTotalBalanceDebt(Number(accId)).catch(() => null),
+                            ]);
+                            let outstanding = 0;
+                            if (balanceDebt) {
+                                let rows: any[] = Array.isArray(balanceDebt) ? balanceDebt : (balanceDebt?.results && Array.isArray(balanceDebt.results) ? balanceDebt.results : []);
+                                if (rows.length > 0) {
+                                    outstanding = Math.round(rows.reduce((s: number, r: any) => s + (r.totalOutStanding || r.totalOutstanding || 0), 0) * 100) / 100;
                                 }
-                                if (outstanding === 0 && details && !details._error) {
-                                    outstanding = details.outStandingAmt ?? details.outstandingAmount ?? details.outStandingAmount ?? 0;
-                                }
-                                updateItemDetails(item.id, {
-                                    amountDue: outstanding,
-                                    amountToPay: 0,
-                                    originalData: { ...item.originalData, ...(details && !details._error ? details : {}), outStandingAmt: outstanding, outstandingAmount: outstanding }
-                                });
-                            } catch (e) {
-                                console.warn(`[Group Enrich] Failed for account ${accId}:`, e);
                             }
-                        })
-                    );
-                } else {
-                    alert(`No linked accounts found for group "${group.institutionDesc}".`);
-                    return;
-                }
-            } catch (e) {
-                console.error("Failed to fetch group accounts", e);
-                alert("Failed to load group accounts. Please try again.");
+                            if (outstanding === 0 && details && !details._error) {
+                                outstanding = details.outStandingAmt ?? details.outstandingAmount ?? details.outStandingAmount ?? 0;
+                            }
+                            updateItemDetails(item.id, {
+                                amountDue: outstanding,
+                                amountToPay: 0,
+                                originalData: { ...item.originalData, ...(details && !details._error ? details : {}), outStandingAmt: outstanding, outstandingAmount: outstanding }
+                            });
+                        } catch (e) {
+                            console.warn(`[Group Enrich] Failed for account ${accId}:`, e);
+                        }
+                    })
+                );
+            } else {
+                alert(`No linked accounts found for group "${group.institutionDesc}".`);
                 return;
             }
+        } catch (e) {
+            console.error("Failed to fetch group accounts", e);
+            alert("Failed to load group accounts. Please try again.");
+            return;
         }
         
         return;

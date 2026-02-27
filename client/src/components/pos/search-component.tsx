@@ -117,11 +117,15 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
         const instResults = institutions.filter((inst: any) =>
           inst.Description && inst.Description.toLowerCase().includes(q) && inst.IsEnabled
           && !/^\d+$/.test(inst.Description.trim())
-        ).slice(0, 5).map((inst: any) => ({
-            type: 'GROUP' as const,
-            data: { institutionID: inst.Id, institutionDesc: inst.Description, isLocal: true },
-            label: `Group: ${inst.Description}`
-        }));
+        ).slice(0, 5).map((inst: any) => {
+            const acctCount = inst.activeServiceCount || inst.account_ID || 0;
+            const totalOuts = inst.outStandingAmt || 0;
+            return {
+                type: 'GROUP' as const,
+                data: { institutionID: inst.Id, institutionDesc: inst.Description, isLocal: true, accountCount: acctCount, totalOutstanding: totalOuts },
+                label: `Group: ${inst.Description} (${acctCount} accounts)`
+            };
+        });
         combinedResults = [...combinedResults, ...instResults];
     }
 
@@ -280,17 +284,21 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
               }
           }
 
-          const groupResults: SearchResult[] = Array.from(groupedInstitutions.entries()).slice(0, 5).map(([instId, group]) => ({
-              type: 'GROUP' as const,
-              data: {
-                  institutionID: instId,
-                  institutionDesc: group.desc,
-                  members: group.members,
-                  totalOutstanding: group.members.reduce((sum, m) => sum + (m.outStandingAmt || 0), 0),
-                  memberCount: group.members.length,
-              },
-              label: `Group: ${group.desc} (${group.members.length} accounts)`
-          }));
+          const groupResults: SearchResult[] = Array.from(groupedInstitutions.entries()).slice(0, 5).map(([instId, group]) => {
+              const summary = group.members[0];
+              const accountCount = summary?.activeServiceCount || summary?.account_ID || group.members.length;
+              const totalOuts = summary?.outStandingAmt || group.members.reduce((sum, m) => sum + (m.outStandingAmt || 0), 0);
+              return {
+                  type: 'GROUP' as const,
+                  data: {
+                      institutionID: instId,
+                      institutionDesc: group.desc,
+                      accountCount,
+                      totalOutstanding: totalOuts,
+                  },
+                  label: `Group: ${group.desc} (${accountCount} accounts)`
+              };
+          });
 
           const clearanceSearchResults: SearchResult[] = (Array.isArray(clearanceResults) ? clearanceResults : []).slice(0, 5).map((clrId: any) => {
               const id = typeof clrId === 'string' ? clrId : String(clrId);
@@ -326,9 +334,21 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
       return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Combine results
   const combinedResults = React.useMemo(() => {
-      return [...results, ...externalResults];
+      const externalGroupIds = new Set(
+          externalResults
+              .filter(r => r.type === 'GROUP')
+              .map(r => (r.data as any).institutionID)
+              .filter(Boolean)
+      );
+      const deduped = results.filter(r => {
+          if (r.type === 'GROUP') {
+              const localId = (r.data as any).institutionID;
+              if (localId && externalGroupIds.has(localId)) return false;
+          }
+          return true;
+      });
+      return [...deduped, ...externalResults];
   }, [results, externalResults]);
 
   useEffect(() => {
@@ -462,8 +482,8 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
                       <div className="text-xs text-muted-foreground">
                         {result.type === 'ACCOUNT' && (result.data as any).address}
                         {result.type === 'DIRECT' && isDirectGroup && 'Direct Payment Group — click to view items'}
-                        {result.type === 'GROUP' && (result.data as any).members && (
-                            <span>Total Outstanding: R {((result.data as any).totalOutstanding || 0).toFixed(2)} | {(result.data as any).memberCount} account(s)</span>
+                        {result.type === 'GROUP' && (
+                            <span>Total Outstanding: R {((result.data as any).totalOutstanding || 0).toFixed(2)} | {(result.data as any).accountCount || (result.data as any).memberCount || ''} account(s)</span>
                         )}
                       </div>
                     </div>
