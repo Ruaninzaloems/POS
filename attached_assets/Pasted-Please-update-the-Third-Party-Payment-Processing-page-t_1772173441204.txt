@@ -1,0 +1,50 @@
+Please update the “Third Party Payment Processing” page to improve the UI/UX and make it more user-friendly.
+
+Problem.
+The “Reference” field sometimes contains an old account number.
+Processing must use the current/new account number to allocate payments correctly.
+
+Goal.
+Automatically detect when the imported account number/reference is an old account number.
+Automatically map it to the new account number (Cons_Account.accountId) where possible.
+Use the mapped new account number for validation and final commit/allocate processing.
+
+UI improvements required.
+Add a clear “Account Match” section per row with a visible match result.
+Show both values when relevant: “Imported Account” and “Resolved (New) Account”.
+Add a status badge per row that is easy to understand and filter on.
+Add quick actions per row: “View Account”, “Search & Link”, “Override Link”, “Clear Link”.
+Add filters/tabs: All, Auto-Matched, Needs Review, Unmatched, Ready to Commit.
+
+Matching logic.
+On import and on Validate, attempt to resolve the imported account number/reference to the current account.
+If an exact match exists to a current account (Cons_Account.accountId), set ResolvedAccountId = that value.
+If the imported value is an old account number, attempt to find the current account and set ResolvedAccountId accordingly.
+If an exact match is found, mark the record as Validated = true and MatchStatus = “Auto-Matched”.
+If no match is found, mark Validated = false and MatchStatus = “Unmatched”.
+If multiple possible matches are found, mark Validated = false and MatchStatus = “Needs Review”.
+
+Unmatched / Needs Review flow.
+If a row is Unmatched or Needs Review, the user must be able to search for the account on the grid.
+Provide an in-grid search modal/panel that lets the user search accounts (by account number, name, ID number, property/SG, etc as available).
+When the user selects an account, link it by setting ResolvedAccountId = selected Cons_Account.accountId.
+After linking, set MatchStatus = “Manually Matched” and Validated = true.
+
+Commit & Allocate rules.
+Only rows with Validated = true can be included in “Commit & Allocate”.
+“Commit & Allocate” must use ResolvedAccountId (the new/current account) for all posting/allocation.
+If ResolvedAccountId is empty for any row, block commit for that row and keep it flagged.
+
+Data fields to add or ensure exist for the import rows.
+ImportedAccountNumber (what came from the file).
+ImportedReference (raw reference).
+ResolvedAccountId (the new/current account id used for processing).
+MatchStatus (Auto-Matched / Manually Matched / Needs Review / Unmatched).
+Validated (boolean).
+ValidationMessage (short reason like “Exact match found”, “No match”, “Multiple matches”).
+
+Acceptance criteria.
+After Validate, any row with an exact match is automatically corrected to the new account and marked Validated.
+Rows without a match are clearly flagged and cannot be committed until linked.
+User can search and manually link an account for flagged rows inside the grid.
+All committed allocations use only the new/current account (ResolvedAccountId).
