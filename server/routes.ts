@@ -1156,6 +1156,36 @@ export async function registerRoutes(
         }
       };
 
+      const validatePdfContent = async (pdfBuffer: Buffer, expectedReceiptNos: string[]): Promise<boolean> => {
+        if (expectedReceiptNos.length === 0) return true;
+        try {
+          const pdfParse = (await import('pdf-parse')).default;
+          const parsed = await pdfParse(pdfBuffer);
+          const text = parsed.text || '';
+          const normalizedText = text.replace(/\s+/g, ' ').toLowerCase();
+          for (const rn of expectedReceiptNos) {
+            const normalizedRn = rn.replace(/\s+/g, '').toLowerCase();
+            const parts = normalizedRn.split('/');
+            if (parts.length === 2) {
+              if (normalizedText.includes(parts[0]) && normalizedText.includes(parts[1])) {
+                console.log(`[print-receipt] PDF validation passed — found receipt number parts ${parts[0]}/${parts[1]} in PDF text`);
+                return true;
+              }
+            }
+            if (normalizedText.replace(/\s+/g, '').includes(normalizedRn)) {
+              console.log(`[print-receipt] PDF validation passed — found receipt number ${rn} in PDF text`);
+              return true;
+            }
+          }
+          const snippet = text.substring(0, 500).replace(/\n/g, ' | ');
+          console.warn(`[print-receipt] PDF validation FAILED — expected receipt nos [${expectedReceiptNos.join(', ')}] not found in PDF. PDF text snippet: ${snippet}`);
+          return false;
+        } catch (e: any) {
+          console.warn(`[print-receipt] PDF text extraction failed (allowing PDF through): ${e.message}`);
+          return true;
+        }
+      };
+
       if (receiptIds.length === 1) {
         const pdfRes = await fetch(`${apiUrl}/api/billing-payment/print-receipt`, {
           method: "POST",
@@ -1174,6 +1204,18 @@ export async function registerRoutes(
         }
 
         const rawBuffer = Buffer.from(await pdfRes.arrayBuffer());
+
+        if (receiptNos.length > 0) {
+          const isValid = await validatePdfContent(rawBuffer, receiptNos);
+          if (!isValid) {
+            return res.status(409).json({ 
+              message: "Wrong receipt returned by billing system", 
+              detail: `Requested receipt ${receiptNos.join(', ')} (ID: ${receiptIds.join(', ')}) but the billing system returned a PDF for a different transaction. Use local receipt instead.`,
+              wrongReceipt: true
+            });
+          }
+        }
+
         const pdfBuffer = await cropReceiptPages(rawBuffer);
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader("Content-Disposition", `inline; filename="receipt_${receiptIds[0]}.pdf"`);

@@ -129,13 +129,17 @@ export function ReceiptModal() {
       const res = await platinumPrintReceiptRaw(receiptIds, receiptNos.length > 0 ? receiptNos : undefined);
       if (!res.ok) {
         let detail = '';
-        try { const errJson = await res.json(); detail = errJson.detail || errJson.message || ''; } catch { detail = `HTTP ${res.status}`; }
-        console.error('[ReceiptModal] print-receipt API failed:', res.status, detail);
+        let isWrongReceipt = false;
+        try { const errJson = await res.json(); detail = errJson.detail || errJson.message || ''; isWrongReceipt = !!errJson.wrongReceipt; } catch { detail = `HTTP ${res.status}`; }
+        console.error('[ReceiptModal] print-receipt API failed:', res.status, detail, isWrongReceipt ? '(wrong receipt detected)' : '');
         console.log('[ReceiptModal] Attempting local receipt generation as fallback...');
         const fallbackData = buildFallbackReceiptData(currentTransaction, sessionDetails);
         if (fallbackData.receiptNo) {
           openReceiptPrintWindow(fallbackData, false);
-          toast({ title: 'Receipt Generated Locally', description: 'The billing system PDF was unavailable — a receipt was generated from your transaction data.' });
+          const toastMsg = isWrongReceipt
+            ? 'The billing system returned a receipt for a different transaction — a correct receipt was generated from your transaction data.'
+            : 'The billing system PDF was unavailable — a receipt was generated from your transaction data.';
+          toast({ title: 'Receipt Generated Locally', description: toastMsg });
           closeReceiptModal();
           return;
         }

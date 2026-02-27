@@ -542,9 +542,13 @@ export default function ViewReceipts() {
             const res = await platinumPrintReceiptRaw([Number(serialNo)], receiptNo ? [receiptNo] : undefined);
             if (!res.ok) {
                 let detail = '';
-                try { const errJson = await res.json(); detail = errJson.detail || errJson.message || ''; } catch { detail = `HTTP ${res.status}`; }
-                console.error('[ViewReceipts] print-receipt API failed:', res.status, detail);
-                toast({ title: "Print Failed", description: `The billing system returned an error: ${detail || `HTTP ${res.status}`}`, variant: "destructive" });
+                let isWrongReceipt = false;
+                try { const errJson = await res.json(); detail = errJson.detail || errJson.message || ''; isWrongReceipt = !!errJson.wrongReceipt; } catch { detail = `HTTP ${res.status}`; }
+                console.error('[ViewReceipts] print-receipt API failed:', res.status, detail, isWrongReceipt ? '(wrong receipt detected)' : '');
+                const desc = isWrongReceipt
+                    ? `The billing system returned a PDF for a different transaction instead of receipt ${receiptNo || serialNo}. This is a known billing system issue.`
+                    : `The billing system returned an error: ${detail || `HTTP ${res.status}`}`;
+                toast({ title: "Print Failed", description: desc, variant: "destructive" });
                 return;
             }
             const blob = await res.blob();
