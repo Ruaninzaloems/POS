@@ -4,7 +4,7 @@ import { ConsumerSearchForm } from './consumer-search-form';
 import { UnifiedSearch as SearchComponent, SearchResult, parseMobileFromContactDetails } from './search-component';
 import { Filter, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Account, fetchAccounts, fetchBillingStagePrepaidRecharge, fetchBillingStagePrepaidRecovery, searchInstitutions, fetchAccountsByGroup, platinumGetAccountsForClearance, platinumGetClearanceData, enrichAccountData, platinumGetConsAccountDetails, fetchTotalBalanceDebt } from '@/lib/external-api';
+import { Account, fetchAccounts, fetchBillingStagePrepaidRecharge, fetchBillingStagePrepaidRecovery, searchInstitutions, fetchAccountsByGroup, platinumGetAccountsForClearance, platinumGetClearanceData, enrichAccountData, platinumGetConsAccountDetails, fetchTotalBalanceDebt, fetchBatchBalances } from '@/lib/external-api';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -131,18 +131,35 @@ export function UnifiedSearch({ onSearchActiveChange }: { onSearchActiveChange?:
             if (accounts.length > 0) {
                 console.log(`[Group] Found ${accounts.length} accounts for ${group.institutionDesc}`);
                 const memberItems: TransactionItem[] = accounts.map((acc: any) => {
-                    const outstanding = acc.outStandingAmt ?? acc.outStandingAmount ?? acc.outstandingAmount ?? 0;
+                    const accId = acc.account_ID || acc.accountID;
                     return {
                         id: crypto.randomUUID(),
                         type: 'CONSUMER_SERVICES' as const,
-                        description: `${group.institutionDesc || 'Group'} - ${acc.name || 'Unknown'} (${acc.accountNumber || acc.account_ID || acc.accountID})`,
-                        reference: acc.accountNumber || acc.oldAccountCode || `${acc.account_ID || acc.accountID}`,
-                        amountDue: outstanding,
+                        description: `${group.institutionDesc || 'Group'} - ${acc.name || 'Unknown'} (${acc.accountNumber || accId})`,
+                        reference: acc.accountNumber || acc.oldAccountCode || `${accId}`,
+                        amountDue: 0,
                         amountToPay: 0,
-                        originalData: { ...acc, institutionDesc: group.institutionDesc, accountID: acc.account_ID || acc.accountID, outStandingAmt: outstanding, outstandingAmount: outstanding }
+                        originalData: { ...acc, institutionDesc: group.institutionDesc, accountID: accId }
                     };
                 });
                 memberItems.forEach(item => addItem(item));
+
+                const accountIds = memberItems.map(i => Number(i.originalData?.accountID)).filter(Boolean);
+                if (accountIds.length > 0) {
+                    fetchBatchBalances(accountIds).then((balances) => {
+                        console.log(`[Group] Batch balances received for ${Object.keys(balances).length} accounts`);
+                        for (const item of memberItems) {
+                            const accId = String(item.originalData?.accountID);
+                            const bal = balances[accId];
+                            if (bal !== undefined) {
+                                updateItemDetails(item.id, {
+                                    amountDue: bal,
+                                    originalData: { ...item.originalData, outStandingAmt: bal, outstandingAmount: bal }
+                                });
+                            }
+                        }
+                    }).catch(e => console.warn('[Group] Batch balance fetch failed:', e));
+                }
             } else {
                 alert(`No linked accounts found for group "${group.institutionDesc}".`);
                 return;

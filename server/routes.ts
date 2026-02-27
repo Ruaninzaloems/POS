@@ -3870,6 +3870,43 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/platinum/billing-enquiry/batch-balance", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const accountIds: number[] = req.body?.accountIds;
+      if (!Array.isArray(accountIds) || accountIds.length === 0) {
+        return res.json({});
+      }
+      const limited = accountIds.slice(0, 50);
+      console.log(`[batch-balance] Fetching balances for ${limited.length} accounts`);
+
+      const results: Record<string, number> = {};
+      const batchSize = 5;
+      for (let i = 0; i < limited.length; i += batchSize) {
+        const batch = limited.slice(i, i + batchSize);
+        const batchResults = await Promise.allSettled(
+          batch.map(async (accId) => {
+            const data = await platinumGet(session, "/api/BillingEnquiry/TotalBalanceDebtInquiry", { accountId: String(accId) });
+            if (data && !data._error && Array.isArray(data) && data.length > 0) {
+              const total = Math.round(data.reduce((s: number, r: any) => s + (r.totalOutStanding || r.totalOutstanding || 0), 0) * 100) / 100;
+              return { accId, total };
+            }
+            return { accId, total: 0 };
+          })
+        );
+        for (const r of batchResults) {
+          if (r.status === 'fulfilled') {
+            results[String(r.value.accId)] = r.value.total;
+          }
+        }
+      }
+      console.log(`[batch-balance] Completed ${Object.keys(results).length} balances`);
+      res.json(results);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.get("/api/platinum/billing-enquiry/service-type-balance", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
