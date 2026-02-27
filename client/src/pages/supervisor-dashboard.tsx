@@ -1090,71 +1090,94 @@ export default function SupervisorDashboard() {
 
       <div className="flex-1 overflow-auto bg-[#F2F4F7] p-4 sm:p-6 space-y-4 sm:space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <Card className="border-l-4 border-l-[#E6A57E]">
+        <Card className="border border-[#D6D6D6] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
           <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-1">Pending Approvals <HelpTip text="Total number of cashier day-end submissions and cancellation requests awaiting supervisor review." /></CardTitle>
+            <CardTitle className="text-xs sm:text-sm font-medium text-[#6B6B6B] flex items-center gap-1">
+              <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center mr-1">
+                <RefreshCcw className="w-3 h-3 text-white" />
+              </div>
+              Pending Approvals <HelpTip text="Total number of cashier day-end submissions and cancellation requests awaiting supervisor review." />
+            </CardTitle>
           </CardHeader>
           <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-            <div className="text-2xl sm:text-3xl font-bold text-[#E6A57E]">{pendingCount + allPendingCancellationCount}</div>
-            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                <RefreshCcw className="w-3 h-3" /> {pendingCount} shifts, {allPendingCancellationCount} voids
+            <div className="text-2xl sm:text-3xl font-bold text-[#2E2E2E]">{pendingCount + allPendingCancellationCount}</div>
+            <p className="text-xs text-[#6B6B6B] mt-1 flex items-center gap-1">
+                {pendingCount} shifts, {allPendingCancellationCount} voids
             </p>
           </CardContent>
         </Card>
         
-        <Card className="border-l-4 border-l-red-600">
+        <Card className="border border-[#D6D6D6] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
           <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-1">Variances Detected <HelpTip text="Number of pending shifts where the cashier's declared amount differs from the system total." /></CardTitle>
+            <CardTitle className="text-xs sm:text-sm font-medium text-[#6B6B6B] flex items-center gap-1">
+              <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#D14343] to-[#B83030] flex items-center justify-center mr-1">
+                <AlertTriangle className="w-3 h-3 text-white" />
+              </div>
+              Variances Detected <HelpTip text="Number of pending shifts where the cashier's declared amount differs from the system total." />
+            </CardTitle>
           </CardHeader>
           <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-            <div className="text-2xl sm:text-3xl font-bold text-red-600">{varianceCount}</div>
-            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3" /> Requires attention
+            <div className="text-2xl sm:text-3xl font-bold text-[#D14343]">{varianceCount}</div>
+            <p className="text-xs text-[#6B6B6B] mt-1 flex items-center gap-1">
+                Requires attention
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-green-600">
+        <Card className="border border-[#D6D6D6] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
           <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-1">Total Posted (Today) <HelpTip text="Sum of all successfully reconciled and approved cashier shift totals for today." /></CardTitle>
+            <CardTitle className="text-xs sm:text-sm font-medium text-[#6B6B6B] flex items-center gap-1">
+              <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#4CAF50] to-[#388E3C] flex items-center justify-center mr-1">
+                <CheckCircle2 className="w-3 h-3 text-white" />
+              </div>
+              Total Posted (Today) <HelpTip text="Sum of all successfully reconciled and approved cashier shift totals for today." />
+            </CardTitle>
           </CardHeader>
           <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-            <div className="text-xl sm:text-3xl font-bold text-green-600">{formatCurrency(totalPosted)}</div>
-            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" /> Successfully reconciled
+            <div className="text-xl sm:text-3xl font-bold text-[#2E2E2E]">{formatCurrency(totalPosted)}</div>
+            <p className="text-xs text-[#6B6B6B] mt-1 flex items-center gap-1">
+                Successfully reconciled
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-purple-600">
+        <Card className="border border-[#D6D6D6] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
           <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-1">Total System Revenue <HelpTip text="Combined system-recorded revenue across all active cashier shifts, regardless of approval status." /></CardTitle>
+            <CardTitle className="text-xs sm:text-sm font-medium text-[#6B6B6B] flex items-center gap-1">
+              <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center mr-1">
+                <TrendingUp className="w-3 h-3 text-white" />
+              </div>
+              Total System Revenue <HelpTip text="Combined system-recorded revenue across all active cashier shifts, regardless of approval status." />
+            </CardTitle>
           </CardHeader>
           <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-            <div className="text-xl sm:text-3xl font-bold text-purple-600">{formatCurrency(totalSystemRevenue)}</div>
-            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                <TrendingUp className="w-3 h-3" /> All active shifts
+            <div className="text-xl sm:text-3xl font-bold text-[#2E2E2E]">{formatCurrency(totalSystemRevenue)}</div>
+            <p className="text-xs text-[#6B6B6B] mt-1 flex items-center gap-1">
+                All active shifts
             </p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 sm:p-4">
+      <Card className="border border-[#D6D6D6] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
+        <CardContent className="p-3 sm:p-4">
           <Tabs defaultValue="pending" className="w-full">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 sm:mb-4">
-                <h3 className="font-semibold text-orange-900 flex items-center gap-2 text-sm sm:text-base">
-                    <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                <h3 className="font-semibold text-[#2E2E2E] flex items-center gap-2 text-sm sm:text-base">
+                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center">
+                      <AlertCircle className="h-3.5 w-3.5 text-white" />
+                    </div>
                     Cancellation Requests
                     <HelpTip text="Transactions that cashiers have requested to void. Review the reason before approving." />
-                    <Button variant="ghost" size="sm" className="h-6 px-2 text-orange-700 hover:bg-orange-100" onClick={loadPendingCancelRequests} disabled={cancelRequestsLoading}>
+                    <Button variant="ghost" size="sm" className="h-6 px-2 text-[#6B6B6B] hover:bg-[#F7F7F7]" onClick={loadPendingCancelRequests} disabled={cancelRequestsLoading}>
                         <RefreshCcw className={`w-3 h-3 ${cancelRequestsLoading ? 'animate-spin' : ''}`} />
                     </Button>
                 </h3>
-                <TabsList className="bg-white/50 border border-orange-100">
-                    <TabsTrigger value="pending" className="text-xs sm:text-sm data-[state=active]:bg-orange-100 data-[state=active]:text-orange-900">
+                <TabsList className="bg-[#F2F4F7] border border-[#D6D6D6] rounded-xl p-1">
+                    <TabsTrigger value="pending" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:text-[#2E2E2E] data-[state=active]:shadow-sm">
                         Pending ({allPendingCancellationCount})
                     </TabsTrigger>
-                    <TabsTrigger value="history" className="text-xs sm:text-sm data-[state=active]:bg-orange-100 data-[state=active]:text-orange-900">
+                    <TabsTrigger value="history" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:text-[#2E2E2E] data-[state=active]:shadow-sm">
                         History
                     </TabsTrigger>
                 </TabsList>
@@ -1162,11 +1185,11 @@ export default function SupervisorDashboard() {
             
             <TabsContent value="pending" className="mt-0">
                 {cancelRequestsLoading ? (
-                    <div className="text-center py-8 bg-white/50 rounded border border-dashed border-orange-200 text-orange-800/60 text-sm flex items-center justify-center gap-2">
+                    <div className="text-center py-8 bg-[#F7F7F7] rounded-xl border border-dashed border-[#D6D6D6] text-[#6B6B6B] text-sm flex items-center justify-center gap-2">
                         <Loader2 className="w-4 h-4 animate-spin" /> Loading pending cancellation requests...
                     </div>
                 ) : allPendingCancellationCount === 0 ? (
-                    <div className="text-center py-8 bg-white/50 rounded border border-dashed border-orange-200 text-orange-800/60 text-sm">
+                    <div className="text-center py-8 bg-[#F7F7F7] rounded-xl border border-dashed border-[#D6D6D6] text-[#6B6B6B] text-sm">
                         No pending cancellation requests
                     </div>
                 ) : (
@@ -1398,7 +1421,7 @@ export default function SupervisorDashboard() {
             
             <TabsContent value="history" className="mt-0">
                 {processedCancellations.length === 0 && processedCancelRequests.length === 0 ? (
-                    <div className="text-center py-8 bg-white/50 rounded border border-dashed border-slate-200 text-slate-500 text-sm">
+                    <div className="text-center py-8 bg-[#F7F7F7] rounded-xl border border-dashed border-[#D6D6D6] text-[#6B6B6B] text-sm">
                         No cancellation history found
                     </div>
                 ) : (
@@ -1521,9 +1544,10 @@ export default function SupervisorDashboard() {
                 )}
             </TabsContent>
           </Tabs>
-      </div>
+        </CardContent>
+      </Card>
 
-      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-stretch sm:items-center bg-white p-3 sm:p-4 rounded-lg border shadow-sm">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-stretch sm:items-center bg-[#F7F7F7] p-3 sm:p-4 rounded-xl border border-[#D6D6D6]">
           <div className="relative flex-1 w-full md:w-auto">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input 
@@ -1601,18 +1625,18 @@ export default function SupervisorDashboard() {
       </div>
       
       <Tabs value={filterStatus} onValueChange={setFilterStatus} className="w-full">
-        <TabsList className="bg-white border w-full justify-start h-auto p-1 flex-wrap gap-1">
+        <TabsList className="bg-[#F2F4F7] border border-[#D6D6D6] rounded-xl w-full justify-start h-auto p-1 flex-wrap gap-1">
             <HelpTip text="Active = currently working, Pending = awaiting approval, Reconciled = shift approved and closed." className="ml-1" />
-            <TabsTrigger value="All" className="text-xs sm:text-sm data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900">
+            <TabsTrigger value="All" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:text-[#2E2E2E] data-[state=active]:shadow-sm">
                 All Active
             </TabsTrigger>
-            <TabsTrigger value="PENDING_APPROVAL" className="text-xs sm:text-sm data-[state=active]:bg-[#F0C3A7]/20 data-[state=active]:text-[#E6A57E]">
-                <span className="hidden sm:inline">Pending </span>Approval
+            <TabsTrigger value="PENDING_APPROVAL" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:text-[#E6A57E] data-[state=active]:shadow-sm">
+                <span className="hidden sm:inline">Pending</span>Approval
                 {pendingCount > 0 && <Badge variant="secondary" className="ml-1 sm:ml-2 h-4 px-1 text-[10px] bg-[#F0C3A7]/30 text-[#E6A57E] hover:bg-[#F0C3A7]/30">{pendingCount}</Badge>}
             </TabsTrigger>
-            <TabsTrigger value="NOT_SUBMITTED" className="text-xs sm:text-sm data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900">Not <span className="hidden sm:inline">Submitted</span><span className="sm:hidden">Sub</span></TabsTrigger>
-            <TabsTrigger value="RETURNED" className="text-xs sm:text-sm data-[state=active]:bg-red-50 data-[state=active]:text-red-700">Returned</TabsTrigger>
-            <TabsTrigger value="COMPLETED" className="text-xs sm:text-sm data-[state=active]:bg-green-50 data-[state=active]:text-green-700">Completed</TabsTrigger>
+            <TabsTrigger value="NOT_SUBMITTED" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:text-[#2E2E2E] data-[state=active]:shadow-sm">Not<span className="hidden sm:inline">Submitted</span><span className="sm:hidden">Sub</span></TabsTrigger>
+            <TabsTrigger value="RETURNED" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:text-[#D14343] data-[state=active]:shadow-sm">Returned</TabsTrigger>
+            <TabsTrigger value="COMPLETED" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:text-[#4CAF50] data-[state=active]:shadow-sm">Completed</TabsTrigger>
         </TabsList>
       </Tabs>
 
