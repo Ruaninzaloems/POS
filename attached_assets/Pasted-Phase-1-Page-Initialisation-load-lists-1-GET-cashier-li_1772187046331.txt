@@ -1,0 +1,95 @@
+Phase 1 — Page Initialisation (load lists)
+ 
+  1. GET cashier-list
+ 
+  - Purpose: Load all available cashiers (for supervisor to select which cashier to reconcile)
+  - Params: none
+  - Response: List<POS_Cashier> or similar list
+ 
+  2. GET cash-office-list
+ 
+  - Purpose: Load all cash office locations
+  - Params: none
+  - Response: List of cash offices
+ 
+  3. GET cashbook-list
+ 
+  - Purpose: Load all cashbooks (needed for submit-day-auth-reconcile)
+  - Params: none
+  - Response: List of cashbooks
+ 
+  ---
+  Phase 2 — Cashier Resolution
+ 
+  4. GET active-cashierid-by-userid
+ 
+  - Purpose: Resolve the active cashier ID for a logged-in user (used when user opens their own reconcile)
+  - Params: ?userid={int}
+  - Response: int — active cashier ID
+ 
+  5. GET pos-cashier
+ 
+  - Purpose: Get POS cashier record by cashier ID
+  - Params: ?cashierId={int}
+  - Response: Cashier info (name, office, status, etc.)
+ 
+  6. GET cashier-details
+ 
+  - Purpose: Get extended cashier details (cashier office, cash-on-hand, session state)
+  - Params: ?cashierId={int}
+  - Response: Cashier details view model
+ 
+  7. GET cashier-reconcile-by-cashierid
+ 
+  - Purpose: Get the existing reconcile record for a cashier (to check if already submitted/returned)
+  - Params: ?cashierId={int}
+  - Response: POS_CashierReconcile record or null
+ 
+  ---
+  Phase 3 — Receipt Grids (supervisor reviews cashier's receipts)
+ 
+  All grid endpoints share the same request structure:
+ 
+  POST <endpoint>?id={cashierId}
+  Body: { "page": 1, "pageSize": 20, "orderby": "DateCaptured", "shortDirection": "desc" }
+ 
+  ┌─────┬────────────────────────────────────────┬────────────────────────────────────┐
+  │  #  │                Endpoint                │            Payment Type            │
+  ├─────┼────────────────────────────────────────┼────────────────────────────────────┤
+  │ 8   │ POST cashier-receipt-cash-list         │ Cash receipts                      │
+  ├─────┼────────────────────────────────────────┼────────────────────────────────────┤
+  │ 9   │ POST cashier-receipt-cheque-list       │ Cheque receipts                    │
+  ├─────┼────────────────────────────────────────┼────────────────────────────────────┤
+  │ 10  │ POST cashier-receipt-card-list         │ Card receipts                      │
+  ├─────┼────────────────────────────────────────┼────────────────────────────────────┤
+  │ 11  │ POST cashier-receipt-postal-order-list │ Postal order receipts              │
+  ├─────┼────────────────────────────────────────┼────────────────────────────────────┤
+  │ 12  │ POST cashier-receipt-drop-box-list     │ Drop-box receipts                  │
+  ├─────┼────────────────────────────────────────┼────────────────────────────────────┤
+  │ 13  │ POST cashier-receipt-offline-data-list │ Offline shift receipts             │
+  ├─────┼────────────────────────────────────────┼────────────────────────────────────┤
+  │ 14  │ POST system-vs-cashier-data-list       │ System vs cashier variance summary │
+  └─────┴────────────────────────────────────────┴────────────────────────────────────┘
+ 
+  Response for all grids: { items: [...], totalCount: N }
+ 
+  ---
+  Phase 4 — Pending Cancel Requests (check before submit)
+ 
+  15. GET pending-cancel-requests
+ 
+  - Purpose: Retrieve receipts where a cashier has requested cancellation but supervisor has not yet approved/declined
+  - Params: ?cashierId={long}
+  - Response: List of pending cancel request records
+ 
+  ---
+  Phase 5 — Validate & Submit (main reconcile flow)
+ 
+  Step A — Validate Cashbook
+ 
+  16. POST validate-cashbook
+ 
+  - Purpose: Validates that the cashier's cashbook is correctly linked: cashier → cash office → SCOA config → cashbook → module → access rights. Must pass before
+  submit is allowed.
+  - Params: ?cashierId={long}
+  - Response: { isValid: bool, message: string }
