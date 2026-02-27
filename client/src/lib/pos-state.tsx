@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect, useRef,
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, CashOffice } from './external-api';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange, fetchActiveCashierByUserId, platinumValidateCashier, fetchActiveFinYear, platinumAuthDayEndCancelReceipt, platinumRequestCancelReceipt, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumGetPendingCancelRequests, platinumGetDayEndUnreconciledList } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange, fetchActiveCashierByUserId, platinumValidateCashier, fetchActiveFinYear, platinumAuthDayEndCancelReceipt, platinumRequestCancelReceipt, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumGetPendingCancelRequests, platinumGetDayEndUnreconciledList, platinumSubmitCashierSetup } from './external-api';
 import { getAccountBalance as enquiryGetAccountBalance } from './enquiries-service';
 
 if (import.meta.hot) {
@@ -815,6 +815,39 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           });
           return;
       }
+
+      if (platinumCashierId && platinumCashierId > 0) {
+          try {
+              const closePayload = {
+                  id: platinumCashierId,
+                  user_Id: platinumUser?.user_ID || Number(currentUser.id) || 0,
+                  cashFloat: null,
+                  stpPort: null,
+                  plesseyPort: null,
+                  officeId: sessionDetails?.officeId ? Number(sessionDetails.officeId) : 1,
+                  isVirtual: false,
+                  isActive: false,
+              };
+              console.log(`[endSession] Closing Platinum session — cashierId=${platinumCashierId}, payload:`, JSON.stringify(closePayload));
+              const closeResult = await platinumSubmitCashierSetup(closePayload);
+              console.log(`[endSession] Platinum close response:`, JSON.stringify(closeResult));
+
+              const closeMsg = closeResult?.message || '';
+              if (/session closed/i.test(closeMsg) || closeResult?.cashier?.isActive === false) {
+                  console.log(`[endSession] Platinum confirmed session closed`);
+              } else {
+                  console.warn(`[endSession] Unexpected close response message: "${closeMsg}"`);
+              }
+          } catch (e: any) {
+              console.error(`[endSession] Failed to close Platinum session:`, e.message);
+              toast({
+                  title: "Warning",
+                  description: "Session ended locally but could not notify the billing system. Contact your supervisor if issues persist.",
+                  variant: "destructive",
+              });
+          }
+      }
+
       setActiveSession(false);
       setSessionDetails(undefined);
       setPlatinumCashierId(null);

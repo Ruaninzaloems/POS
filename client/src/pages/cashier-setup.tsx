@@ -254,6 +254,7 @@ export default function CashierSetup() {
         try {
             const payload: Record<string, any> = {
                 id: 0,
+                user_Id: userId,
                 cashFloat: float,
                 stpPort: null,
                 plesseyPort: null,
@@ -277,18 +278,18 @@ export default function CashierSetup() {
 
             if (isAlreadyOpen && responseData?.cashier?.id) {
                 const existingCashier = responseData.cashier;
-                console.log(`[CashierSetup] "Cashier already open" — existing id=${existingCashier.id}, isVirtual=${existingCashier.isVirtual}, isActive=${existingCashier.isActive}`);
-                console.log(`[CashierSetup] Re-submitting with existing id=${existingCashier.id} to claim/update the session`);
-                const updatePayload: Record<string, any> = {
+                console.log(`[CashierSetup] "Cashier Already Open" — existing id=${existingCashier.id}, isVirtual=${existingCashier.isVirtual}, isActive=${existingCashier.isActive}`);
+                console.log(`[CashierSetup] Re-claiming session with id=${existingCashier.id} (per API spec: re-send with returned id)`);
+                const reclaimPayload: Record<string, any> = {
                     id: existingCashier.id,
                     cashFloat: float,
                     officeId: selectedOffice.cashOffice_ID,
                     isVirtual: false,
                 };
-                const updateResponse = await platinumSubmitCashierSetup(updatePayload);
-                console.log(`[CashierSetup] Re-submit response:`, JSON.stringify(updateResponse));
-                if (updateResponse?.cashier) {
-                    Object.assign(responseData, updateResponse);
+                const reclaimResponse = await platinumSubmitCashierSetup(reclaimPayload);
+                console.log(`[CashierSetup] Re-claim response:`, JSON.stringify(reclaimResponse));
+                if (reclaimResponse?.cashier) {
+                    Object.assign(responseData, reclaimResponse);
                 }
             } else if (isValidationError) {
                 console.error(`[CashierSetup] Platinum validation failed: "${cleanMessage}". Full response:`, JSON.stringify(responseData));

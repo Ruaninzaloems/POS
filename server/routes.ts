@@ -833,6 +833,13 @@ export async function registerRoutes(
         console.log(`[submit-cashier-setup] Stored knownCashierId=${data.cashier.id}, officeId=${(session as any).knownCashierOfficeId} in session for fallback lookups`);
       }
 
+      if (isClose && data?.cashier?.isActive === false) {
+        (session as any).knownCashierId = null;
+        (session as any).knownCashierOfficeId = null;
+        (session as any).knownCashierData = null;
+        console.log(`[submit-cashier-setup] Session closed — cleared knownCashier data from server session`);
+      }
+
       res.json(data);
     } catch (e: any) {
       console.error(`[submit-cashier-setup] Error:`, e.message);
