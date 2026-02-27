@@ -399,11 +399,33 @@ export async function registerRoutes(
       const cashFloat = cashier?.cashFloat ?? 0;
       const cashOnHandLimit = cashOffice?.cashOnHandLimit || 999999;
 
-      const hasPendingDayEnd = cashierReconcile != null || session.dayEndPending === true;
-      if (!cashierReconcile && session.dayEndPending === true) {
+      let resolvedCashierReconcile = cashierReconcile;
+
+      if (!resolvedCashierReconcile && cashierId) {
+        try {
+          console.log(`[active-cashier] validate-cashier cashierReconcile=null — calling cashier-reconcile-by-cashierid?cashierId=${cashierId} as secondary check`);
+          const reconcileData = await platinumGet(session, "/api/billing/auth-day-end-reconcile/cashier-reconcile-by-cashierid", { cashierId: String(cashierId) });
+          if (reconcileData && !reconcileData._error && reconcileData !== null && typeof reconcileData === 'object') {
+            const hasId = reconcileData.id || reconcileData.reconcileId || reconcileData.cashierReconcile_ID;
+            if (hasId) {
+              console.log(`[active-cashier] cashier-reconcile-by-cashierid returned a reconcile record — id: ${hasId}, status: ${reconcileData.status || reconcileData.reconcileStatus || 'unknown'}`);
+              resolvedCashierReconcile = reconcileData;
+            } else {
+              console.log(`[active-cashier] cashier-reconcile-by-cashierid returned data but no reconcile ID — treating as no pending reconcile`);
+            }
+          } else {
+            console.log(`[active-cashier] cashier-reconcile-by-cashierid returned null/error — no pending reconcile`);
+          }
+        } catch (reconcileErr: any) {
+          console.warn(`[active-cashier] cashier-reconcile-by-cashierid check failed:`, reconcileErr.message);
+        }
+      }
+
+      const hasPendingDayEnd = resolvedCashierReconcile != null || session.dayEndPending === true;
+      if (!resolvedCashierReconcile && session.dayEndPending === true) {
         console.log(`[active-cashier] API cashierReconcile is null but session.dayEndPending=true — treating as pending (API may not reflect submission yet)`);
       }
-      console.log(`[active-cashier] validate-cashier result — registered: ${isCashierRegistered}, isActive: ${isSessionActive} (POS_Cashier.IsActive=${cashier?.isActive}), cashierId: ${cashierId}, officeId: ${activeOfficeId}, officeName: ${activeOfficeName}, cashierReconcile: ${cashierReconcile ? 'PRESENT' : 'null'}, session.dayEndPending: ${session.dayEndPending}, hasPendingDayEnd: ${hasPendingDayEnd}`);
+      console.log(`[active-cashier] validate-cashier result — registered: ${isCashierRegistered}, isActive: ${isSessionActive} (POS_Cashier.IsActive=${cashier?.isActive}), cashierId: ${cashierId}, officeId: ${activeOfficeId}, officeName: ${activeOfficeName}, cashierReconcile: ${resolvedCashierReconcile ? 'PRESENT' : 'null'}, session.dayEndPending: ${session.dayEndPending}, hasPendingDayEnd: ${hasPendingDayEnd}`);
 
       const cashierDetails = cashier ? {
         ...cashier,
@@ -421,7 +443,7 @@ export async function registerRoutes(
         isActive: isSessionActive,
         hasReceiptRange: receiptRange != null && receiptRange.isEnabled === true,
         hasPendingDayEnd,
-        cashierReconcile,
+        cashierReconcile: resolvedCashierReconcile,
         details: cashierDetails,
         sessionNeedsCreation: sessionFromCache,
       });

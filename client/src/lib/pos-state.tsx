@@ -763,11 +763,24 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
           variant: "destructive"
         });
       } else {
-        console.log(`[SessionEnforcement] active-cashier confirmed isActive=true. Session is active. cashierId: ${result?.cashierId}`);
-        const activeCashierId = result?.cashierId || result?.details?.id;
-        if (activeCashierId && activeCashierId !== platinumCashierId) {
-          console.log(`[SessionEnforcement] Updating platinumCashierId: ${platinumCashierId} → ${activeCashierId}`);
-          setPlatinumCashierId(activeCashierId);
+        if (result?.hasPendingDayEnd === true) {
+          console.warn(`[SessionEnforcement] active-cashier returned isActive=true BUT hasPendingDayEnd=true — day-end reconcile pending. Blocking session.`);
+          setDayEndStatus('PENDING_APPROVAL');
+          setActiveSession(false);
+          setApiSessionActive(false);
+          setSessionDetails(undefined);
+          toast({
+            title: "Day-End Pending",
+            description: "Your day-end reconciliation is pending supervisor approval. You cannot transact until it is processed.",
+            variant: "destructive"
+          });
+        } else {
+          console.log(`[SessionEnforcement] active-cashier confirmed isActive=true, no pending day-end. Session is active. cashierId: ${result?.cashierId}`);
+          const activeCashierId = result?.cashierId || result?.details?.id;
+          if (activeCashierId && activeCashierId !== platinumCashierId) {
+            console.log(`[SessionEnforcement] Updating platinumCashierId: ${platinumCashierId} → ${activeCashierId}`);
+            setPlatinumCashierId(activeCashierId);
+          }
         }
       }
     } catch (e) {
