@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect, useRef,
 import { useToast } from '@/hooks/use-toast';
 import { Account, DirectIncomeItem, ClearanceCostSchedule, AccountGroup, CashOffice } from './external-api';
 import { calculateTransactionTotals, determineTransactionType, createTransactionRecord } from './pos-logic';
-import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintReceipt, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange, fetchActiveCashierByUserId, platinumValidateCashier, fetchActiveFinYear, platinumAuthDayEndCancelReceipt, platinumRequestCancelReceipt, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumGetPendingCancelRequests, platinumGetDayEndUnreconciledList, platinumSubmitCashierSetup } from './external-api';
+import { fetchBanks, fetchGroups, fetchInstitutions, fetchConfigSettings, fetchCashOffices, fetchCashiers, fetchBillingConfig, fetchPlatinumUserInfo, ApiCashier, BillingConfig, PlatinumUserInfo, postMultipleAccountPaymentReceipt, rebuildFullAccount, submitMiscPayment, submitConsumerPayment, submitMultiplePayment, submitPrepaidPayment, platinumPrintMiscellaneousReceipt, platinumSaveMultipleAccountPayment, platinumGetMultipleAccountPayment, fetchPosMultiReceiptPrint, fetchReceiptAllocations, platinumSubmitClearancePayment, getReceiptTransactionDetail, fetchCashierPaymentOptions, fetchCashierPaymentTypes, CashierPaymentOption, CashierPaymentType, mapTransactionTypeToPaymentOptionId, platinumGetConsAccountDetails, validateReceiptRange, fetchActiveCashierByUserId, platinumValidateCashier, fetchActiveFinYear, platinumAuthDayEndCancelReceipt, platinumRequestCancelReceipt, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumGetPendingCancelRequests, platinumGetDayEndUnreconciledList, platinumSubmitCashierSetup } from './external-api';
 import { getAccountBalance as enquiryGetAccountBalance } from './enquiries-service';
 
 if (import.meta.hot) {
@@ -791,9 +791,11 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
 
   useEffect(() => {
     if (activeSession && platinumUser?.user_ID) {
-      sessionPollRef.current = setInterval(checkSessionViaApi, 30000);
+      sessionPollRef.current = setInterval(() => {
+        if (!transactionProcessing) checkSessionViaApi();
+      }, 30000);
       const handleVisibility = () => {
-        if (document.visibilityState === 'visible' && activeSession) {
+        if (document.visibilityState === 'visible' && activeSession && !transactionProcessing) {
           checkSessionViaApi();
         }
       };
@@ -806,7 +808,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
     return () => {
       if (sessionPollRef.current) clearInterval(sessionPollRef.current);
     };
-  }, [activeSession, platinumUser?.user_ID, checkSessionViaApi]);
+  }, [activeSession, platinumUser?.user_ID, checkSessionViaApi, transactionProcessing]);
 
   useEffect(() => {
     (window as any).__posEndSessionAfterDayEnd = () => {
@@ -1334,10 +1336,12 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
             return;
         }
 
+        const unreconciledPromise = lookupReceiptNoById(receiptIds[0]).catch(() => null);
+
         const receiptDataResults = await Promise.all(
             receiptIds.map(async (rid) => {
                 try {
-                    const data = await fetchPosMultiReceiptPrint(String(rid), 3);
+                    const data = await fetchPosMultiReceiptPrint(String(rid), 2);
                     if (data.length > 0) return data;
                     console.warn(`[Priority 1 ${paymentLabel}] Receipt data empty for ${rid} after retries — receipt detail unavailable`);
                     return [] as any[];
@@ -1347,6 +1351,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
                 }
             })
         );
+
+        const preResolvedReceiptNo = await unreconciledPromise;
 
         const uniqueAccountIds = new Set<string>();
         for (let rIdx = 0; rIdx < receiptIds.length; rIdx++) {
@@ -1406,7 +1412,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
                 acctId = String(matchedAcct?.accountId || accountItems[rIdx]?.originalData?.account_ID || accountItems[rIdx]?.reference || '');
                 acctName = matchedAcct?.accountName || accountItems[rIdx]?.originalData?.name || accountItems[rIdx]?.description || '';
                 console.warn(`[Priority 1 ${paymentLabel}] Receipt ${rid} — API returned no receipt data. Looking up receiptNo from unreconciled list...`);
-                const lookedUpNo = await lookupReceiptNoById(rid);
+                const lookedUpNo = (rIdx === 0 && preResolvedReceiptNo) ? preResolvedReceiptNo : await lookupReceiptNoById(rid);
                 if (lookedUpNo) {
                     receiptNo = lookedUpNo;
                     receiptDetail = {
@@ -1784,23 +1790,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
                     }
                 }
 
-                if (allReceiptIds.length > 0) {
-                    for (let printAttempt = 1; printAttempt <= 2; printAttempt++) {
-                        try {
-                            await platinumPrintReceipt(allReceiptIds);
-                            console.log(`[Priority 1 ${label}] print-receipt called for IDs: ${allReceiptIds.join(', ')}`);
-                            break;
-                        } catch (e) {
-                            if (printAttempt === 2) {
-                                console.warn(`[Priority 1 ${label}] print-receipt failed after 2 attempts (non-critical)`, e);
-                            } else {
-                                console.warn(`[Priority 1 ${label}] print-receipt attempt ${printAttempt} failed, retrying in 1s...`);
-                                await new Promise(r => setTimeout(r, 1000));
-                            }
-                        }
-                    }
-                }
-
                 return { isSuccess: true, ids: allReceiptIds, perAccountAmounts: perAccountPayments.map(p => ({ accountId: String(p.acct.account_ID), accountName: p.acct.name || '', amount: p.itemPayment })) };
             };
 
@@ -2142,16 +2131,6 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
 
                     const splitEntry: SplitReceipt = { receiptNumber: receiptNo, receiptId: clrReceiptIds[0], paymentType: splitType, amount, receiptDetail: clrReceiptDetail };
                     if (clrServiceAllocations.length > 0) splitEntry.allocations = clrServiceAllocations;
-
-                    for (let printAttempt = 1; printAttempt <= 2; printAttempt++) {
-                        try {
-                            await platinumPrintReceipt(clrReceiptIds);
-                            break;
-                        } catch (e) {
-                            if (printAttempt === 2) console.warn(`[Priority 1B ${label}] Failed to print clearance receipt after 2 attempts`, e);
-                            else await new Promise(r => setTimeout(r, 1000));
-                        }
-                    }
 
                     try {
                         const clrAllocs = await fetchReceiptAllocations(String(clrReceiptIds[0]));

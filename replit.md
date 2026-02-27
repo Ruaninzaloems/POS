@@ -52,6 +52,15 @@ The application is designed to support multiple EMS sites, each with its own API
 ### Receipt Number Resolution
 When a payment is submitted, the Platinum API returns a receipt ID (e.g., `1239092`). The real EMS receipt number (e.g., `27022026/460001`) is fetched via `pos-multi-receipt-print`. If that API returns a 500 error (known Platinum bug), the system falls back to querying the unreconciled list (`cashier-receipt-unreconciled-list`) to find the correct `receiptNo` for that receipt ID. This fallback is applied in all three payment paths: consumer services, clearance, and miscellaneous/direct income. The `receipt-template.tsx` also uses `transaction.receiptNumber` directly instead of fabricating a number.
 
+### Receipt Processing Performance Optimizations
+The post-payment receipt flow is optimized for speed:
+- **No in-flow print-receipt calls**: The `platinumPrintReceipt()` function (which always failed trying to parse PDF as JSON) was removed from the payment processing flow. Actual PDF printing happens only when the user clicks "Print & Complete" via `platinumPrintReceiptRaw()`.
+- **Parallel receipt resolution**: The unreconciled list lookup starts in parallel with the receipt data fetch, rather than sequentially waiting for the receipt fetch to fail first.
+- **Optimized unreconciled list strategy**: The server tries `userId` first (the only strategy that works on George) before falling back to `cashierId`-based strategies.
+- **Reduced retries**: Receipt data fetch uses 2 retries (down from 3) with shorter linear delays (300ms × attempt).
+- **Session polling paused during payment**: The 30-second session enforcement polling is suppressed while `transactionProcessing` is true, preventing interference during active payments.
+- **Receipt numbers passed to print API**: The `print-receipt` endpoint now accepts `{ ids, receiptNos }` format, passing receipt numbers alongside IDs for better receipt matching (mitigates a known Platinum API bug where `billing-payment/print-receipt` returns wrong PDFs for given IDs).
+
 ### Frontend Libraries
 -   `shadcn/ui` + `Radix UI`: For robust and customizable UI components.
 -   `TanStack React Query`: For efficient server state management.

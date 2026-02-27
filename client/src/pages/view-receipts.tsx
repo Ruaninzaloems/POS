@@ -434,7 +434,7 @@ export default function ViewReceipts() {
                 toast({ title: "Print Failed", description: "Could not resolve receipt serial number for PDF.", variant: "destructive" });
                 return;
             }
-            const res = await platinumPrintReceiptRaw([serialNo]);
+            const res = await platinumPrintReceiptRaw([serialNo], receiptNo ? [String(receiptNo)] : undefined);
             if (!res.ok) {
                 toast({ title: "Print Failed", description: "Could not fetch receipt PDF from billing system.", variant: "destructive" });
                 return;
@@ -536,9 +536,10 @@ export default function ViewReceipts() {
             toast({ title: "Print Failed", description: "No receipt identifier found.", variant: "destructive" });
             return;
         }
+        const receiptNo = getReceiptField(receipt, 'receiptNo') || '';
         setPrintingReceiptId(serialNo);
         try {
-            const res = await platinumPrintReceiptRaw([Number(serialNo)]);
+            const res = await platinumPrintReceiptRaw([Number(serialNo)], receiptNo ? [receiptNo] : undefined);
             if (!res.ok) {
                 let detail = '';
                 try { const errJson = await res.json(); detail = errJson.detail || errJson.message || ''; } catch { detail = `HTTP ${res.status}`; }

@@ -1094,9 +1094,21 @@ export async function registerRoutes(
   app.post("/api/platinum/billing-payment/print-receipt", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const receiptIds = req.body;
-      if (!Array.isArray(receiptIds) || receiptIds.length === 0) {
-        return res.status(400).json({ message: "Request body must be an array of receipt serial numbers" });
+      let receiptIds: number[];
+      let receiptNos: string[] = [];
+      if (Array.isArray(req.body)) {
+        receiptIds = req.body;
+      } else if (req.body && Array.isArray(req.body.ids)) {
+        receiptIds = req.body.ids;
+        receiptNos = req.body.receiptNos || [];
+      } else {
+        return res.status(400).json({ message: "Request body must be an array of receipt serial numbers or { ids, receiptNos }" });
+      }
+      if (receiptIds.length === 0) {
+        return res.status(400).json({ message: "No receipt IDs provided" });
+      }
+      if (receiptNos.length > 0) {
+        console.log(`[print-receipt] Receipt IDs: [${receiptIds.join(', ')}], Receipt Nos: [${receiptNos.join(', ')}]`);
       }
 
       const token = await refreshSessionToken(session);
@@ -2500,12 +2512,14 @@ export async function registerRoutes(
       if (!cashierId && !userId) { res.status(400).json({ message: "Missing id parameter" }); return; }
 
       const strategies = [
+        ...(userId ? [
+          { label: 'GET userId', method: 'GET' as const, path: '/api/billing-payment-day-end-reconcile/cashier-receipt-unreconciled-list', params: { id: userId } },
+        ] : []),
         { label: 'GET cashierId', method: 'GET' as const, path: '/api/billing-payment-day-end-reconcile/cashier-receipt-unreconciled-list', params: { id: cashierId || userId } },
         { label: 'POST cashierId', method: 'POST' as const, path: '/api/billing-payment-day-end-reconcile/cashier-receipt-unreconciled-list', params: { id: cashierId || userId }, body: { page: 1, pageSize: 500, orderby: 'dateCaptured', shortDirection: 'desc' } },
         { label: 'GET get-prefix', method: 'GET' as const, path: '/api/billing-payment-day-end-reconcile/get-cashier-receipt-unreconciled-list', params: { id: cashierId || userId } },
         { label: 'POST get-prefix', method: 'POST' as const, path: '/api/billing-payment-day-end-reconcile/get-cashier-receipt-unreconciled-list', params: { id: cashierId || userId }, body: { page: 1, pageSize: 500, orderby: 'dateCaptured', shortDirection: 'desc' } },
         ...(userId && userId !== cashierId ? [
-          { label: 'GET userId', method: 'GET' as const, path: '/api/billing-payment-day-end-reconcile/cashier-receipt-unreconciled-list', params: { id: userId } },
           { label: 'POST userId', method: 'POST' as const, path: '/api/billing-payment-day-end-reconcile/cashier-receipt-unreconciled-list', params: { id: userId }, body: { page: 1, pageSize: 500, orderby: 'dateCaptured', shortDirection: 'desc' } },
         ] : []),
       ];

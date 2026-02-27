@@ -495,7 +495,7 @@ export interface PosMultiReceiptPrintItem {
     _viewPaymentOption?: string;
 }
 
-export async function fetchPosMultiReceiptPrint(receiptId: string, maxRetries: number = 3, receiptNo?: string): Promise<PosMultiReceiptPrintItem[]> {
+export async function fetchPosMultiReceiptPrint(receiptId: string, maxRetries: number = 2, receiptNo?: string): Promise<PosMultiReceiptPrintItem[]> {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
             const params = new URLSearchParams();
@@ -507,20 +507,20 @@ export async function fetchPosMultiReceiptPrint(receiptId: string, maxRetries: n
                 const items = Array.isArray(data) ? data : (data.value || []);
                 if (items.length > 0) return items;
                 if (attempt < maxRetries) {
-                    const delay = 400 * Math.pow(2, attempt - 1);
+                    const delay = 300 * attempt;
                     console.log(`[ReceiptFetch] receiptId ${receiptId} returned empty on attempt ${attempt}/${maxRetries}, retrying in ${delay}ms...`);
                     await new Promise(r => setTimeout(r, delay));
                     continue;
                 }
             } else if (attempt < maxRetries) {
-                const delay = 400 * Math.pow(2, attempt - 1);
+                const delay = 300 * attempt;
                 console.log(`[ReceiptFetch] receiptId ${receiptId} returned ${res.status} on attempt ${attempt}/${maxRetries}, retrying in ${delay}ms...`);
                 await new Promise(r => setTimeout(r, delay));
                 continue;
             }
         } catch (e) {
             if (attempt < maxRetries) {
-                const delay = 400 * Math.pow(2, attempt - 1);
+                const delay = 300 * attempt;
                 console.warn(`[ReceiptFetch] receiptId ${receiptId} failed on attempt ${attempt}/${maxRetries}, retrying in ${delay}ms...`, e);
                 await new Promise(r => setTimeout(r, delay));
                 continue;
@@ -999,11 +999,14 @@ export async function platinumSearchAccountsPayment(data: any): Promise<any[]> {
     });
 }
 
-export async function platinumPrintReceiptRaw(data: any): Promise<Response> {
+export async function platinumPrintReceiptRaw(data: any, receiptNos?: string[]): Promise<Response> {
+    const payload = receiptNos && receiptNos.length > 0
+        ? { ids: Array.isArray(data) ? data : [data], receiptNos }
+        : data;
     return apiFetch(`/api/platinum/billing-payment/print-receipt`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
     });
 }
 

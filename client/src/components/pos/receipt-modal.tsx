@@ -80,14 +80,26 @@ export function ReceiptModal() {
       return;
     }
 
+    const receiptNos: string[] = [];
+    if (currentTransaction.splitReceipts && currentTransaction.splitReceipts.length > 0) {
+      for (const sr of currentTransaction.splitReceipts) {
+        if (sr.receiptNumber && !receiptNos.includes(sr.receiptNumber)) {
+          receiptNos.push(sr.receiptNumber);
+        }
+      }
+    }
+    if (receiptNos.length === 0 && currentTransaction.receiptNumber) {
+      receiptNos.push(currentTransaction.receiptNumber);
+    }
+
     const cashIds = currentTransaction.splitReceipts?.filter(sr => sr.paymentType === 'cash').map(sr => sr.receiptId).filter(Boolean) || [];
     const cardIds = currentTransaction.splitReceipts?.filter(sr => sr.paymentType === 'card').map(sr => sr.receiptId).filter(Boolean) || [];
     const isSplitPrint = cashIds.length > 0 && cardIds.length > 0;
-    console.log(`[ReceiptModal] Printing ${isSplitPrint ? 'CONSOLIDATED split payment' : 'single'} receipt. IDs: [${receiptIds.join(', ')}]${isSplitPrint ? ` (Cash: [${cashIds.join(', ')}], Card: [${cardIds.join(', ')}])` : ''}`);
+    console.log(`[ReceiptModal] Printing ${isSplitPrint ? 'CONSOLIDATED split payment' : 'single'} receipt. IDs: [${receiptIds.join(', ')}], ReceiptNos: [${receiptNos.join(', ')}]${isSplitPrint ? ` (Cash: [${cashIds.join(', ')}], Card: [${cardIds.join(', ')}])` : ''}`);
 
     setIsPrinting(true);
     try {
-      const res = await platinumPrintReceiptRaw(receiptIds);
+      const res = await platinumPrintReceiptRaw(receiptIds, receiptNos.length > 0 ? receiptNos : undefined);
       if (!res.ok) {
         let detail = '';
         try { const errJson = await res.json(); detail = errJson.detail || errJson.message || ''; } catch { detail = `HTTP ${res.status}`; }
