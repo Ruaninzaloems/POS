@@ -21,7 +21,7 @@ import ViewReceipts from "@/pages/view-receipts";
 import DirectDepositsAutoAllocation from "@/pages/direct-deposits/auto/auto-allocation";
 import ThirdPartyPaymentProcessing from "@/pages/third-party/payment-processing";
 
-import CashierDayEnd from "@/pages/cashier-day-end";
+
 import BillingDashboard from "@/pages/billing-dashboard";
 import GeneralEnquiries from "@/pages/enquiries-general";
 import ClientCommunications from "@/pages/client-communications";
@@ -88,7 +88,7 @@ function Router() {
       </Route>
       <Route path="/bulk-allocation" component={BulkAllocationProgress} />
       <Route path="/view-receipts" component={ViewReceipts} />
-      <Route path="/cashier-day-end" component={CashierDayEnd} />
+
       <Route path="/billing-dashboard" component={BillingDashboard} />
       <Route path="/enquiries/general" component={GeneralEnquiries} />
       <Route path="/communications" component={ClientCommunications} />

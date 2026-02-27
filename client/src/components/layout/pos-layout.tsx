@@ -18,7 +18,7 @@ import {
   Monitor,
   Smartphone,
   Home,
-  Calculator,
+
   BarChart3,
   AlertTriangle,
   MessageSquareMore,
@@ -169,7 +169,7 @@ export function PosLayout({ children }: PosLayoutProps) {
     if (path.startsWith('/utilipay')) return 'Utilipay Distribution';
     if (path.startsWith('/bulk-allocation')) return 'Bulk Allocation Progress';
     if (path.startsWith('/view-receipts')) return 'View Receipts';
-    if (path.startsWith('/cashier-day-end')) return 'Day-End Reconciliation';
+
     if (path.startsWith('/billing-dashboard')) return 'Billing Dashboard';
     if (path.startsWith('/enquiries')) return 'Enquiries';
     if (path.startsWith('/communications')) return 'Client Communications';
@@ -187,7 +187,7 @@ export function PosLayout({ children }: PosLayoutProps) {
     'Utilipay Distribution Reconciliation Processing': 'Reconcile Utilipay distribution payments',
     'Bulk Allocation Progress': 'Track bulk allocation batch progress',
     'View Receipts': 'Search and reprint receipts',
-    'Day-End Reconciliation': 'Submit your end-of-shift reconciliation',
+
     'Billing Dashboard': 'View billing statistics and reports',
     'Enquiries': 'Look up account details and balances',
     'General Enquiries': 'Look up account details and balances',
@@ -211,7 +211,7 @@ export function PosLayout({ children }: PosLayoutProps) {
     },
     { label: 'Bulk Allocation Progress', href: '/bulk-allocation', icon: FileBarChart },
     { label: 'View Receipts', href: '/view-receipts', icon: FileSearch },
-    { label: 'Day-End Reconciliation', href: '/cashier-day-end', icon: Calculator },
+
     {
         label: 'Enquiries',
         icon: Search,
