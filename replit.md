@@ -2,161 +2,44 @@
 
 ## Overview
 
-This project is a **Municipal Point-of-Sale (POS) Receipting System** prototype. It's a React/Express/PostgreSQL web application designed as a unified cashier interface for diverse municipal payments, including consumer services, multi-account payments, prepaid recharges, direct income, clearance, and direct deposit allocations. The primary goal is to validate business logic, UI flows, and data models for a future Angular production environment.
+This project is a **Municipal Point-of-Sale (POS) Receipting System** prototype, implemented as a React/Express/PostgreSQL web application. It aims to provide a unified cashier interface for various municipal payments, including consumer services, multi-account payments, prepaid recharges, direct income, clearance, and direct deposit allocations. The primary purpose is to validate business logic, UI flows, and data models for a future Angular production environment.
 
-Key capabilities include:
-- A unified POS screen with automatic transaction type detection.
-- Support for split payments (cash + card) with accurate change calculation.
-- Enforcement of a single active session per cashier for operational integrity.
-- High concurrency optimization for 10+ simultaneous users through token mutexes, server-side caching, request limiting, and frontend/server-side GET request deduplication.
-- All transaction and session data are stored and managed exclusively via the Platinum API, ensuring data consistency and simplifying day-end reconciliation.
-- Comprehensive cashier session management, float tracking, and day-end reconciliation workflows.
-- A supervisor dashboard for transaction oversight and approval processes.
-- Functionality for direct deposit allocation, both manual and bulk, with two-step clearance search (typeahead via `get-clearanceids` + full data via `get-clearance-data`), property detail display (SG number, address, expiry), Section 118(1)/118(3) breakdown allocation, auto-fill capability, and real-time allocated vs remaining total tracking.
-- Robust receipt management (print, email, SMS) and permit/certificate generation.
-- A Client Communications module for custom messaging (email/SMS) and a "Send Statements" feature, integrated with account data.
-- Integration exclusively with Platinum Inzalo EMS API for all real-time account data access.
-- Contextual tooltips via a reusable `HelpTip` component for inline user assistance.
-- Smart, category-based icon display for Direct Income items, enhancing UI clarity.
+Key capabilities include a unified POS screen with automatic transaction type detection, support for split payments, comprehensive cashier session management, float tracking, day-end reconciliation, and a supervisor dashboard. It also features robust direct deposit allocation, receipt management (print, email, SMS), permit/certificate generation, and a Client Communications module. The system is designed for high concurrency and integrates exclusively with the Platinum Inzalo EMS API for all real-time account data access.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
 
-## Design System — Colour Palettes
-
-**IMPORTANT: Always use these exact colours when creating or updating any UI component. Choose the correct palette based on the active site.**
-
-### Platinum POS / SAMRAS Billing (George — default theme)
-| Token | Value | Usage |
-|---|---|---|
-| Primary brand / accent | `#E6A57E` | Active sidebar items, highlight pills, accent bars, focus rings |
-| Primary dark text | `#2E2E2E` | Headings, labels, primary body text |
-| Secondary text | `#6B6B6B` | Descriptions, helper text, muted labels |
-| App background | `#F2F4F7` | Page / app background |
-| Panel / form background | `#FFFFFF` | Cards, modals, form areas |
-| Sidebar background | `#F7F7F7` | Sidebar, muted panels |
-| Sidebar active item | `#E6A57E` | Active / selected sidebar row background |
-| Sidebar hover | `#F0C3A7` | Hovered sidebar row tint |
-| Borders / input borders | `#D6D6D6` | Card borders, input borders, dividers |
-| Section header bar | `linear-gradient(180deg, #8C8C8C 0%, #6F6F6F 100%)` | Top header bar, section header bars |
-| Primary buttons (Search/Add) | bg `#C9D6E2`, border `#A9B8C7`, text `#2E2E2E` | Default action buttons |
-| Primary button hover | bg `#B7C7D6` | Button hover state |
-| Highlight pill (Welcome banner) | bg `#E6A57E`, text `#FFFFFF` | Badge / pill highlights |
-| Error text | `#D14343` | Validation errors, destructive actions |
-| Shadow | `0 1px 3px rgba(0,0,0,0.15)` | Cards, panels, dropdowns |
-
-### Inzalo EMS Site02 (`.theme-site02` CSS class)
-| Token | Value | Usage |
-|---|---|---|
-| Primary brand / accent | `#2BB3A6` (teal) | Accent bars, focus rings, active states |
-| Header / sidebar dark bg | `#243A53` | Header gradient, sidebar background |
-| Header gradient | `from-[#1d3347] via-[#243A53] to-[#1d3347]` | Top header bar |
-| Accent lighter | `#6EC6C0` | Secondary teal accent |
-| All other tokens | Same structural role as Platinum palette but with teal/navy substitutions | — |
-
-### Rules
-- When `siteInfo?.id === 'site02'`, use Inzalo EMS palette; otherwise use Platinum/SAMRAS palette.
-- Never use old blue/navy/indigo colours (`blue-600`, `indigo-600`, `slate-900 via-blue-900`) for George theme — those are replaced by the SAMRAS palette above.
-- CSS variables in `:root` (index.css) map to the Platinum palette; `.theme-site02` overrides map to Inzalo EMS palette.
-- Hardcoded colour references in components should use the hex values above, conditional on `isSite02`.
-
 ## System Architecture
 
 ### Frontend (React + TypeScript)
-- **Framework**: React 18 with TypeScript, powered by Vite.
-- **Routing**: `wouter` for lightweight client-side navigation.
-- **Styling**: Tailwind CSS, utilizing `shadcn/ui` (built on Radix UI primitives) for component development.
-- **State Management**: React Context API (`PosProvider`) centrally manages core application state, including session, cart, payments, and cashier profiles.
-- **Data Fetching**: TanStack React Query, enhanced with a custom `apiRequest` helper for API interactions.
-- **Component Structure**: Clear separation between generic `shadcn/ui` components and specific POS business components.
-- **Design Patterns**: Emphasizes separation of business logic (`pos-logic.ts`, `allocation-logic.ts`) from UI components. Data is exclusively API-driven, with no `localStorage` usage. A `PosLayout` component enforces consistent layout and cashier session authentication.
-- **Error Handling**: All API fetch functions (`fetchPlatinumUserInfo`, `fetchCashOffices`, `fetchCashiers`, `fetchBanks`, `fetchGroups`, `fetchInstitutions`, `fetchConfigSettings`, `fetchBillingConfig`, `fetchCashierPaymentOptions`, `fetchCashierPaymentTypes`) throw errors on failure — no silent fallbacks or empty-array returns. Reference data loading uses a `tracked()` wrapper that records individual failures and surfaces them via toast while allowing partial data loading. Critical failures (e.g., Platinum user info) block session initialization entirely.
+The frontend uses React 18 with TypeScript, powered by Vite, and `wouter` for routing. Styling is handled by Tailwind CSS, leveraging `shadcn/ui` for components. State management relies on the React Context API (`PosProvider`), and data fetching is done via TanStack React Query with a custom `apiRequest` helper. The architecture emphasizes separating business logic from UI components, with all data being API-driven. Error handling is robust, ensuring critical failures block session initialization.
 
 ### Backend (Express + Node.js)
-- **Framework**: Express 5 with TypeScript.
-- **API Pattern**: RESTful architecture.
-- **Proxy Layer**: Acts as an authenticated gateway exclusively to the Platinum Inzalo EMS API (JWT-based).
-- **Session Management**: `express-session` handles per-user browser sessions, storing Platinum JWT tokens and user data. This design supports high concurrency without session conflicts.
-- **Concurrency Control**: Implements a global request queue to limit concurrent Platinum API calls and employs user-aware response caching and in-flight GET request deduplication to optimize performance.
-- **Data Persistence**: Crucially, the backend does not use a local database for business data. All transaction storage, cashier sessions, account data, and reconciliation processes are managed entirely through the Platinum API. Legacy local database schemas are present but unused.
+The backend is an Express 5 application with TypeScript, acting as an authenticated proxy to the Platinum Inzalo EMS API. It uses `express-session` for user session management, storing JWT tokens and user data. Concurrency is managed through a global request queue, user-aware response caching, and in-flight GET request deduplication. Importantly, the backend does not use a local database for business data; all operational data is managed through the Platinum API.
 
 ### Database (PostgreSQL)
-- **Role**: The local PostgreSQL database is explicitly NOT used for any business logic or data persistence. All operational data is handled by the Platinum API.
-- **Legacy Code**: Files defining local database schemas (`shared/schema.ts`, `server/storage.ts`, `server/db.ts`) are considered dead code, kept for reference only, and are not invoked by the application.
+A local PostgreSQL database is present but **explicitly not used** for any business logic or data persistence. All operational data is handled by the Platinum API.
 
 ### Web Component / Angular Integration
-- The React application is designed as a Web Component (`<pos-app>`) for seamless embedding into existing Angular applications.
-- Utilizes Shadow DOM for complete style isolation, ensuring no CSS leakage to the host application.
-- All API calls are routed through a centralized URL resolver and authentication header injector, preventing direct `fetch()` calls.
-- Adheres to strict guidelines: `ReactDOM.createRoot` is called within the web component's `connectedCallback()`, HTML attributes are used for passing configuration (`api-base-url`, `auth-token`), and the build process generates a single, self-contained ES module bundle (`dist/bundle.js`) with inlined CSS.
-- No `localStorage` or `sessionStorage` is used, and no local database writes occur, enforcing an API-first data strategy.
+The React application is designed as a self-contained Web Component (`<pos-app>`) for seamless embedding into existing Angular applications. It utilizes Shadow DOM for style isolation and routes all API calls through a centralized URL resolver. It adheres to strict guidelines for integration, including configuration via HTML attributes and generating a single ES module bundle.
+
+### Design System — Colour Palettes
+The application supports multi-site theming with distinct color palettes for "Platinum POS / SAMRAS Billing (George)" and "Inzalo EMS Site02". Theme switching is dynamic based on `siteInfo?.id`, applying specific CSS classes and corresponding color tokens for various UI elements like accents, backgrounds, text, and borders.
+
+### Page Layout Standards
+All pages follow a mandatory, consistent layout comprising a sticky header with an icon, title, and description, and a scrollable content area. Key rules include full-width content (no `max-w-* mx-auto`), full-height layout, consistent header styling, specific background colors for content areas, and predefined styles for cards, stat cards, and empty states.
 
 ## External Dependencies
 
 ### Multi-Site Support
-- The application supports multiple EMS sites, each with its own API endpoint and visual branding.
-- Site selection happens at the login screen — the user picks which EMS site to connect to before entering credentials.
-- The API base URL is stored per-session (`UserSession.siteId`), so all `platinumGet`/`platinumPost`/`platinumPut`/`platinumDelete` calls use the correct site URL.
-- Site configuration is defined in `server/platinum-auth.ts` (`SITE_CONFIGS` array).
-- Each site has: `id`, `name`, `apiUrl`, `dbName`, `logo`, `themeClass`.
-- Currently configured sites:
-  - **George Municipality** (`george`): `georgeplatinumuatapi.azurewebsites.net` — SAMRAS Platinum palette (peach `#E6A57E` accent, grey header)
-  - **Inzalo EMS (Site02)** (`site02`): `test-ems-site02-token-api.azurewebsites.net` — teal `#2BB3A6` theme
-- Theme switching uses CSS classes on `<html>` root (e.g., `.theme-site02` in `client/src/index.css`).
-- The header, logo, and gradient colors in `pos-layout.tsx` adapt dynamically based on the active site.
-- Adding a new site requires: adding an entry to `SITE_CONFIGS`, a CSS theme class, and site styles in `login.tsx`.
+The application is designed to support multiple EMS sites, each with its own API endpoint and visual branding. Site selection occurs at login, and the API base URL is managed per-session. Currently configured sites include **George Municipality** and **Inzalo EMS (Site02)**, each with distinct API URLs and theme classes.
 
 ### External APIs
--   **Platinum Inzalo EMS API** (multi-site, per-session URL):
-    -   George: `georgeplatinumuatapi.azurewebsites.net`
-    -   Site02: `test-ems-site02-token-api.azurewebsites.net`
-    -   Central to all core POS operations: payments, prepaid services, clearance, day-end processes, and direct deposits.
-    -   Authentication via JWT tokens, with token refresh managed server-side.
-    -   Key modules integrated: `ReceiptPrepaid`, `billing-payment`, `auth-day-end-reconcile`, `billing-direct-deposit-allocation`, `BillingEnquiry`, `BillingDashboard`.
-    -   Handles critical payment flows, cashier setup, session status, and direct deposit allocations.
-    -   Manages distinct Payment Type IDs (e.g., 1 for Cash, 3 for Credit Card) for accurate financial processing.
+-   **Platinum Inzalo EMS API** (multi-site): This is the central dependency, providing all core POS operations such as payments, prepaid services, clearance, day-end processes, and direct deposits. It handles authentication via JWT tokens and integrates key modules like `ReceiptPrepaid`, `billing-payment`, `auth-day-end-reconcile`, `billing-direct-deposit-allocation`, `BillingEnquiry`, and `BillingDashboard`.
+
 ### Frontend Libraries
--   `shadcn/ui` + `Radix UI`: Provides a robust and customizable UI component foundation.
--   `TanStack React Query`: Used for efficient server state management and data synchronization.
--   `date-fns`: A utility library for date manipulation.
--   `react-to-print`: Facilitates client-side printing functionality.
-
-## Page Layout Standards — MANDATORY
-
-**CRITICAL: Every page MUST follow this consistent layout pattern. Always verify new pages match this standard before delivering.**
-
-### Standard Page Structure
-```
-<div className="flex flex-col h-full overflow-hidden">
-  {/* HEADER — sticky, white bg, bottom border */}
-  <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
-    {/* Title row: icon + title + description */}
-    {/* Filter/action bar (if applicable): wrapped in bg-[#F7F7F7] rounded-xl p-4 border */}
-  </div>
-  
-  {/* CONTENT — fills remaining height, scrollable, full width */}
-  <div className="flex-1 overflow-auto bg-[#F2F4F7] p-4 sm:p-6">
-    {/* Content fills full width — NO max-w-* mx-auto constraints */}
-    {/* Use grid/flex to arrange cards/tables */}
-  </div>
-</div>
-```
-
-### Rules
-1. **Full-width content**: Never use `max-w-*xl mx-auto` to center-constrain page content. Content should fill the available width with padding only.
-2. **Full-height layout**: Always use `flex flex-col h-full overflow-hidden` as the outer wrapper so the page fills the PosLayout viewport.
-3. **Consistent header**: Every page has a white header bar with `border-b border-[#D6D6D6]`, containing an icon (gradient `from-[#E6A57E] to-[#D18E65]`), title, and subtitle.
-4. **Filter/search areas**: Wrap in `bg-[#F7F7F7] rounded-xl p-4 border border-[#D6D6D6]` inside the header section.
-5. **Content background**: Always `bg-[#F2F4F7]` for the scrollable content area.
-6. **Empty states**: Use a centered card with icon, title, description, and optional step cards — never just a plain icon floating in space.
-7. **Tabs/view toggles**: Use pill-style toggles inside a `bg-[#F2F4F7] rounded-xl p-1 border` container.
-8. **Cards**: White bg, `border border-[#D6D6D6]`, `rounded-xl`, `shadow-[0_1px_3px_rgba(0,0,0,0.08)]`.
-9. **Stat cards**: Use the `StatCard` component pattern with gradient icon, label, value, sub-value.
-10. **Test every new page** against this checklist before delivering.
-
-### Build Tools
--   `Vite`: Frontend bundler, optimized for speed and efficiency.
--   `esbuild`: Used for efficient server-side bundling.
--   `tsx`: Enables direct execution of TypeScript files during development.
--   `drizzle-kit`: Utilized for database schema management, primarily for the unused local database definitions.
+-   `shadcn/ui` + `Radix UI`: For robust and customizable UI components.
+-   `TanStack React Query`: For efficient server state management.
+-   `date-fns`: For date manipulation.
+-   `react-to-print`: For client-side printing.

@@ -229,7 +229,7 @@ export function PosLayout({ children }: PosLayoutProps) {
   return (
     <div className="flex flex-col h-screen bg-background overflow-x-hidden overflow-y-auto lg:overflow-hidden">
       <header className={`h-11 sm:h-12 text-white flex items-center px-2 sm:px-3 justify-between shrink-0 z-20 relative border-b border-white/[0.06] ${isSite02 ? 'bg-gradient-to-r from-[#1d3347] via-[#243A53] to-[#1d3347]' : 'bg-[linear-gradient(180deg,#8C8C8C_0%,#6F6F6F_100%)]'}`}>
-        <div className={`absolute inset-0 ${isSite02 ? 'bg-gradient-to-r from-[#2BB3A6]/[0.08] via-transparent to-[#6EC6C0]/[0.08]' : ''}`} />
+        <div className={`absolute inset-0 ${isSite02 ? 'bg-gradient-to-r from-[#2FB5AD]/[0.08] via-transparent to-[#6EC6C0]/[0.08]' : ''}`} />
         
         <div className="flex items-center gap-1.5 sm:gap-2 relative z-10">
           <Link href="/">

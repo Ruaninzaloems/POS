@@ -187,7 +187,8 @@ interface PendingCancelRequest {
 }
 
 export default function SupervisorDashboard() {
-  const { returnDayEnd, approveCancellation, recentTransactions, referenceData, platinumUser } = usePos();
+  const { returnDayEnd, approveCancellation, recentTransactions, referenceData, platinumUser, siteInfo } = usePos();
+  const isSite02 = siteInfo?.id === 'site02';
   const { toast } = useToast();
   const [reconMode, setReconMode] = useState<ReconMode>('PER_CASHIER');
   
@@ -1029,7 +1030,7 @@ export default function SupervisorDashboard() {
     <div className="flex flex-col h-full overflow-hidden">
       <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+          <div className={`w-11 h-11 rounded-xl bg-gradient-to-br flex items-center justify-center ${isSite02 ? 'from-[#2FB5AD] to-[#249E97] shadow-[0_2px_8px_rgba(33,58,83,0.08)]' : 'from-[#E6A57E] to-[#D18E65] shadow-[0_1px_3px_rgba(0,0,0,0.15)]'}`}>
             <LayoutDashboard className="w-5 h-5 text-white" />
           </div>
           <div className="flex-1">
@@ -1093,7 +1094,7 @@ export default function SupervisorDashboard() {
         <Card className="border border-[#D6D6D6] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
           <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium text-[#6B6B6B] flex items-center gap-1">
-              <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center mr-1">
+              <div className={`w-6 h-6 rounded-lg bg-gradient-to-br flex items-center justify-center mr-1 ${isSite02 ? 'from-[#2FB5AD] to-[#249E97]' : 'from-[#E6A57E] to-[#D18E65]'}`}>
                 <RefreshCcw className="w-3 h-3 text-white" />
               </div>
               Pending Approvals <HelpTip text="Total number of cashier day-end submissions and cancellation requests awaiting supervisor review." />
@@ -1110,7 +1111,7 @@ export default function SupervisorDashboard() {
         <Card className="border border-[#D6D6D6] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
           <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium text-[#6B6B6B] flex items-center gap-1">
-              <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#D14343] to-[#B83030] flex items-center justify-center mr-1">
+              <div className={`w-6 h-6 rounded-lg bg-gradient-to-br flex items-center justify-center mr-1 ${isSite02 ? 'from-[#D14343] to-[#B83030]' : 'from-[#D14343] to-[#B83030]'}`}>
                 <AlertTriangle className="w-3 h-3 text-white" />
               </div>
               Variances Detected <HelpTip text="Number of pending shifts where the cashier's declared amount differs from the system total." />
@@ -1130,6 +1131,7 @@ export default function SupervisorDashboard() {
               <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#4CAF50] to-[#388E3C] flex items-center justify-center mr-1">
                 <CheckCircle2 className="w-3 h-3 text-white" />
               </div>
+
               Total Posted (Today) <HelpTip text="Sum of all successfully reconciled and approved cashier shift totals for today." />
             </CardTitle>
           </CardHeader>
@@ -1144,7 +1146,7 @@ export default function SupervisorDashboard() {
         <Card className="border border-[#D6D6D6] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
           <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium text-[#6B6B6B] flex items-center gap-1">
-              <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center mr-1">
+              <div className={`w-6 h-6 rounded-lg bg-gradient-to-br flex items-center justify-center mr-1 ${isSite02 ? 'from-[#2FB5AD] to-[#249E97]' : 'from-[#E6A57E] to-[#D18E65]'}`}>
                 <TrendingUp className="w-3 h-3 text-white" />
               </div>
               Total System Revenue <HelpTip text="Combined system-recorded revenue across all active cashier shifts, regardless of approval status." />
@@ -1164,7 +1166,7 @@ export default function SupervisorDashboard() {
           <Tabs defaultValue="pending" className="w-full">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 sm:mb-4">
                 <h3 className="font-semibold text-[#2E2E2E] flex items-center gap-2 text-sm sm:text-base">
-                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center">
+                    <div className={`w-7 h-7 rounded-lg bg-gradient-to-br flex items-center justify-center ${isSite02 ? 'from-[#2FB5AD] to-[#249E97]' : 'from-[#E6A57E] to-[#D18E65]'}`}>
                       <AlertCircle className="h-3.5 w-3.5 text-white" />
                     </div>
                     Cancellation Requests
@@ -1630,9 +1632,9 @@ export default function SupervisorDashboard() {
             <TabsTrigger value="All" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:text-[#2E2E2E] data-[state=active]:shadow-sm">
                 All Active
             </TabsTrigger>
-            <TabsTrigger value="PENDING_APPROVAL" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:text-[#E6A57E] data-[state=active]:shadow-sm">
+            <TabsTrigger value="PENDING_APPROVAL" className={`text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm ${isSite02 ? 'data-[state=active]:text-[#2FB5AD]' : 'data-[state=active]:text-[#E6A57E]'}`}>
                 <span className="hidden sm:inline">Pending</span>Approval
-                {pendingCount > 0 && <Badge variant="secondary" className="ml-1 sm:ml-2 h-4 px-1 text-[10px] bg-[#F0C3A7]/30 text-[#E6A57E] hover:bg-[#F0C3A7]/30">{pendingCount}</Badge>}
+                {pendingCount > 0 && <Badge variant="secondary" className={`ml-1 sm:ml-2 h-4 px-1 text-[10px] ${isSite02 ? 'bg-[#2FB5AD]/15 text-[#2FB5AD]' : 'bg-[#F0C3A7]/30 text-[#E6A57E]'}`}>{pendingCount}</Badge>}
             </TabsTrigger>
             <TabsTrigger value="NOT_SUBMITTED" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:text-[#2E2E2E] data-[state=active]:shadow-sm">Not<span className="hidden sm:inline">Submitted</span><span className="sm:hidden">Sub</span></TabsTrigger>
             <TabsTrigger value="RETURNED" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:text-[#D14343] data-[state=active]:shadow-sm">Returned</TabsTrigger>

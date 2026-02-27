@@ -86,42 +86,42 @@
 }
 
 .theme-site02 {
-  --background: 214 50% 97%;
-  --foreground: 210 25% 16%;
+  --background: 214 33% 97%;       /* #F4F7FB */
+  --foreground: 207 28% 16%;       /* #1F2933 */
 
-  --card: 0 0% 100%;
-  --card-foreground: 210 25% 16%;
+  --card: 0 0% 100%;               /* #FFFFFF */
+  --card-foreground: 207 28% 16%;  /* #1F2933 */
 
   --popover: 0 0% 100%;
-  --popover-foreground: 210 25% 16%;
+  --popover-foreground: 207 28% 16%;
 
-  --primary: 173 61% 43%;
-  --primary-foreground: 0 0% 100%;
+  --primary: 176 55% 45%;          /* #2FB5AD */
+  --primary-foreground: 0 0% 100%; /* #FFFFFF */
 
-  --secondary: 173 40% 95%;
+  --secondary: 176 30% 95%;
   --secondary-foreground: 212 39% 23%;
 
-  --muted: 214 14% 91%;
-  --muted-foreground: 209 14% 37%;
+  --muted: 214 17% 93%;            /* light bg for muted panels */
+  --muted-foreground: 207 13% 37%; /* #52606D */
 
-  --accent: 173 40% 95%;
+  --accent: 176 30% 90%;
   --accent-foreground: 212 39% 23%;
 
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 214 14% 91%;
-  --input: 214 14% 91%;
-  --ring: 173 61% 43%;
+  --border: 214 14% 90%;           /* #E4E7EB */
+  --input: 214 14% 90%;            /* #E4E7EB */
+  --ring: 176 55% 45%;             /* #2FB5AD */
 
-  --sidebar: 212 39% 23%;
-  --sidebar-foreground: 210 40% 98%;
-  --sidebar-primary: 173 61% 43%;
+  --sidebar: 213 43% 23%;          /* #213A53 */
+  --sidebar-foreground: 213 50% 93%; /* #E6EEF6 */
+  --sidebar-primary: 176 55% 45%;  /* #2FB5AD */
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 212 35% 28%;
-  --sidebar-accent-foreground: 210 40% 98%;
-  --sidebar-border: 212 35% 28%;
-  --sidebar-ring: 173 61% 43%;
+  --sidebar-accent: 213 40% 28%;   /* #2A4A66 */
+  --sidebar-accent-foreground: 213 50% 93%; /* #E6EEF6 */
+  --sidebar-border: 213 40% 28%;   /* #2A4A66 */
+  --sidebar-ring: 176 55% 45%;     /* #2FB5AD */
 }
 
 .dark {
