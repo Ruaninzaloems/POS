@@ -759,6 +759,21 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
+                          {(() => {
+                            const zeroItems = transactionItems.filter(i => (i.amountDue ?? 0) <= 0);
+                            return zeroItems.length > 0 ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-xs gap-1.5 text-red-600 border-red-300 hover:bg-red-50"
+                                onClick={() => { zeroItems.forEach(i => removeItem(i.id)); }}
+                                data-testid="btn-remove-zero-balances"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                Remove R 0 ({zeroItems.length})
+                              </Button>
+                            ) : null;
+                          })()}
                           {itemsMissing.length > 0 && (
                             <>
                               <Button
