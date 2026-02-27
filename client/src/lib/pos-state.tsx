@@ -75,6 +75,8 @@ export interface TransactionRecord {
   cashierId: string;
   cashierName?: string;
   cashOfficeName?: string;
+  platinumCashierId?: number;
+  platinumCashOfficeId?: number;
   paymentTypeName?: string;
   paymentOptionName?: string;
   isReconciled: number;
@@ -1032,7 +1034,30 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return;
     }
 
-    console.log(`[Payment] Active session context — userId: ${sessionUserId}, officeId: ${sessionOfficeId}, office: ${sessionOfficeDesc}, platinumCashierId: ${platinumCashierId}, float: ${sessionDetails.floatAmount}`);
+    if (!platinumCashierId || platinumCashierId <= 0) {
+        toast({
+            title: "No Active Cashier Session",
+            description: "A valid cashier session is required before processing payments. Please complete the cashier setup first.",
+            variant: "destructive",
+        });
+        paymentInFlightRef.current = false;
+        return;
+    }
+
+    if (!sessionOfficeId || sessionOfficeId <= 0) {
+        toast({
+            title: "No Office Selected",
+            description: "A valid cash office must be assigned to your session before processing payments.",
+            variant: "destructive",
+        });
+        paymentInFlightRef.current = false;
+        return;
+    }
+
+    const sessionCashierId = platinumCashierId;
+    const sessionCashierName = currentUser.name || '';
+
+    console.log(`[Payment] Active session context — userId: ${sessionUserId}, cashierId: ${sessionCashierId}, officeId: ${sessionOfficeId}, office: ${sessionOfficeDesc}, cashierName: ${sessionCashierName}, float: ${sessionDetails.floatAmount}`);
 
     if (payment.cash > 0 && !isPaymentTypeAllowed(1)) {
         toast({ title: "Payment Method Not Allowed", description: "Cash payments are not enabled for your profile. Contact your supervisor.", variant: "destructive" });
@@ -1046,8 +1071,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const earlyRecord = createTransactionRecord(items, totalToPay, payment, currentUser.id, {
-        cashierName: currentUser.name,
+        cashierName: sessionCashierName,
         cashOfficeName: sessionOfficeDesc,
+        cashierId: sessionCashierId,
+        cashOfficeId: sessionOfficeId,
     });
     setProcessingRecord(earlyRecord);
     setCurrentTransactionId(earlyRecord.id);
@@ -1614,6 +1641,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         debtAmount: 0,
                         sundryDebtorsId: '',
                         paymentOption: paymentOptionId,
+                        cashierId: sessionCashierId,
+                        cashOfficeId: sessionOfficeId,
                     };
                     const requestModel: any = baseRequestModel;
 
@@ -1666,6 +1695,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             debtAmount: acct.debtAmount ?? 0,
                             sundryDebtorsId: String(acct.sundryDebtorsId ?? ''),
                             paymentOption: paymentOptionId,
+                            cashierId: sessionCashierId,
+                            cashOfficeId: sessionOfficeId,
                         };
 
                         console.log(`[Priority 1 ${label}] Submitting SINGLE consumer payment for account ${acct.account_ID} (${acct.name}), PAYMENT amount: R${itemPayment}, outStandingAmount(fullBalance): R${acctOutstanding}, paymentType: ${paymentTypeId}`);
@@ -1967,7 +1998,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 const clrPayload = {
                     userId: sessionUserId,
                     paymentTypeId,
-                    cashierId: platinumCashierId || null,
+                    cashierId: sessionCashierId,
+                    cashOfficeId: sessionOfficeId,
                     receiptDate: formattedReceiptDate,
                     tenderAmount: tender,
                     changeAmount: change,
@@ -2160,8 +2192,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     vatPercentage: vatRate,
                     isVatable,
                     userId: sessionUserId,
-                    cashierId: platinumCashierId || 0,
-                    cashOfficeId: sessionDetails?.officeId ? Number(sessionDetails.officeId) : 0,
+                    cashierId: sessionCashierId,
+                    cashOfficeId: sessionOfficeId,
                     finYear,
                     cardNo: paymentTypeId === 3 ? (record.payment.cardReference || '') : '',
                     expiryDate: paymentTypeId === 3 ? formatCardExpiryAsDate(record.payment.cardExpiry) : '',
@@ -2235,8 +2267,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     if (!miscReceiptDetail) {
                         miscReceiptDetail = {
                             receiptNo,
-                            cashierName: currentUser.name || '',
-                            cashOffice: sessionDetails?.officeDesc || '',
+                            cashierName: sessionCashierName,
+                            cashOffice: sessionOfficeDesc,
                             tenderAmount: tender,
                             changeAmount: change,
                             outstandingAmount: null,
@@ -2276,13 +2308,13 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         paymentType: splitType === 'cash' ? 1 : 3,
                         groupId: Number(groupId),
                         scoaItemId: Number(scoaItemId),
-                        cashierName: currentUser.name,
-                        cashOffice: sessionDetails?.officeDesc || '',
+                        cashierName: sessionCashierName,
+                        cashOffice: sessionOfficeDesc,
                         receiptDate: formattedReceiptDate,
                     };
                     for (let printAttempt = 1; printAttempt <= 2; printAttempt++) {
                         try {
-                            await platinumPrintMiscellaneousReceipt(miscPrintPayload, { id: String(miscReceiptId), userId: String(sessionUserId) });
+                            await platinumPrintMiscellaneousReceipt(miscPrintPayload, { id: String(miscReceiptId), userId: String(sessionUserId), cashierId: String(sessionCashierId) });
                             break;
                         } catch (e) {
                             if (printAttempt === 2) console.warn(`[Priority 2 ${label}] Failed to print misc receipt after 2 attempts`, e);
@@ -2422,18 +2454,31 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       else if (id.startsWith('disc-')) receiptId = id.replace(/^disc-(\d+).*/, '$1');
       const isSupervisor = currentUser.role === 'SUPERVISOR';
 
+      const cancelUserId = platinumUser?.user_ID || Number(currentUser.id) || 0;
+      const cancelCashierId = platinumCashierId || 0;
+      const cancelOfficeId = sessionDetails?.officeId ? Number(sessionDetails.officeId) : 0;
+
       if (receiptId) {
           try {
               if (isSupervisor) {
-                  await platinumAuthDayEndCancelReceipt({ id: Number(receiptId), returnReason: reason });
-                  console.log(`[CancelTransaction] Receipt ${receiptId} cancelled directly by supervisor via Platinum API`);
+                  await platinumAuthDayEndCancelReceipt({
+                      id: Number(receiptId),
+                      returnReason: reason,
+                      userId: cancelUserId,
+                      cashierId: cancelCashierId,
+                      cashOfficeId: cancelOfficeId,
+                  });
+                  console.log(`[CancelTransaction] Receipt ${receiptId} cancelled directly by supervisor (userId=${cancelUserId}, cashierId=${cancelCashierId}) via Platinum API`);
               } else {
                   await platinumRequestCancelReceipt({
                       receiptId: Number(receiptId),
                       reason,
                       isMiscPayment: false,
+                      userId: cancelUserId,
+                      cashierId: cancelCashierId,
+                      cashOfficeId: cancelOfficeId,
                   });
-                  console.log(`[CancelTransaction] Receipt ${receiptId} cancellation requested via Platinum API`);
+                  console.log(`[CancelTransaction] Receipt ${receiptId} cancellation requested (userId=${cancelUserId}, cashierId=${cancelCashierId}) via Platinum API`);
               }
           } catch (e: any) {
               console.error('[CancelTransaction] API cancel failed:', e);
@@ -2463,20 +2508,28 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       else if (id.startsWith('unrec-')) receiptId = id.replace('unrec-', '');
       else if (id.startsWith('disc-')) receiptId = id.replace(/^disc-(\d+).*/, '$1');
 
+      const approvalUserId = platinumUser?.user_ID || Number(currentUser.id) || 0;
+      const approvalCashierId = platinumCashierId || 0;
+      const approvalOfficeId = sessionDetails?.officeId ? Number(sessionDetails.officeId) : 0;
+
       if (receiptId) {
           try {
               if (approved) {
                   await platinumApproveCancelReceipt({
                       receiptId: Number(receiptId),
-                      userId: platinumUser?.user_ID || Number(currentUser.id),
+                      userId: approvalUserId,
+                      cashierId: approvalCashierId,
+                      cashOfficeId: approvalOfficeId,
                   });
-                  console.log(`[ApproveCancellation] Receipt ${receiptId} approved via Platinum API`);
+                  console.log(`[ApproveCancellation] Receipt ${receiptId} approved (userId=${approvalUserId}, cashierId=${approvalCashierId}) via Platinum API`);
               } else {
                   await platinumDeclineCancelReceipt({
                       receiptId: Number(receiptId),
-                      userId: platinumUser?.user_ID || Number(currentUser.id),
+                      userId: approvalUserId,
+                      cashierId: approvalCashierId,
+                      cashOfficeId: approvalOfficeId,
                   });
-                  console.log(`[ApproveCancellation] Receipt ${receiptId} declined via Platinum API`);
+                  console.log(`[ApproveCancellation] Receipt ${receiptId} declined (userId=${approvalUserId}, cashierId=${approvalCashierId}) via Platinum API`);
               }
           } catch (e: any) {
               console.error('[ApproveCancellation] API call failed:', e);

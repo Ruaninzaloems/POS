@@ -72,7 +72,7 @@ export function createTransactionRecord(
   totalToPay: number,
   payment: PaymentState,
   cashierId: string,
-  extras?: { cashierName?: string; cashOfficeName?: string }
+  extras?: { cashierName?: string; cashOfficeName?: string; cashierId?: number; cashOfficeId?: number }
 ): TransactionRecord {
   // Sort items: Account payments first, Prepaid last
   const sortedItems = [...items].sort((a, b) => {
@@ -120,6 +120,8 @@ export function createTransactionRecord(
       cashierId: cashierId,
       cashierName: extras?.cashierName || '',
       cashOfficeName: extras?.cashOfficeName || '',
+      platinumCashierId: extras?.cashierId || 0,
+      platinumCashOfficeId: extras?.cashOfficeId || 0,
       paymentTypeName,
       paymentOptionName,
       isReconciled: 0
