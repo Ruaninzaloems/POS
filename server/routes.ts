@@ -1859,12 +1859,12 @@ export async function registerRoutes(
         cashierId: Number(miscBody.cashierId ?? 0),
         cashOfficeId: Number(miscBody.cashOfficeId ?? 0),
         finYear: miscBody.finYear || '2025/2026',
-        cardNo: miscBody.cardNo || null,
-        expiryDate: miscBody.expiryDate || null,
-        chequeNo: miscBody.chequeNo || null,
-        bankBranch: miscBody.bankBranch || null,
-        bankBranchCode: miscBody.bankBranchCode || null,
-        accHolderName: miscBody.accHolderName || null,
+        cardNo: miscBody.cardNo || '',
+        expiryDate: miscBody.expiryDate || '',
+        chequeNo: miscBody.chequeNo || '',
+        bankBranch: miscBody.bankBranch || '',
+        bankBranchCode: miscBody.bankBranchCode || '',
+        accHolderName: miscBody.accHolderName || '',
       };
 
       console.log(`[misc-submit] Sanitized payload:`, JSON.stringify(sanitizedPayload));
@@ -1876,8 +1876,49 @@ export async function registerRoutes(
         res.json(miscDedupCheck.cachedResponse);
         return;
       }
-      const data = await platinumPost(session, "/api/billing-payment-miscellaneous/submit", sanitizedPayload);
-      console.log(`[misc-submit] Response:`, JSON.stringify(data)?.substring(0, 1000));
+      const pascalPayload = {
+        LastName: sanitizedPayload.lastName,
+        Initials: sanitizedPayload.initials,
+        MiscellaneousPaymentGroup: sanitizedPayload.miscellaneousPaymentGroup,
+        ScoaItem: sanitizedPayload.scoaItem,
+        Description: sanitizedPayload.description,
+        ReceiptDate: sanitizedPayload.receiptDate,
+        TotalAmount: sanitizedPayload.totalAmount,
+        VatAmount: sanitizedPayload.vatAmount,
+        Amount: sanitizedPayload.amount,
+        TenderAmount: sanitizedPayload.tenderAmount,
+        ChangeAmount: sanitizedPayload.changeAmount,
+        PaymentType: sanitizedPayload.paymentType,
+        VatPercentage: sanitizedPayload.vatPercentage,
+        IsVatable: sanitizedPayload.isVatable,
+        UserId: sanitizedPayload.userId,
+        CashierId: sanitizedPayload.cashierId,
+        CashOfficeId: sanitizedPayload.cashOfficeId,
+        FinYear: sanitizedPayload.finYear,
+        CardNo: sanitizedPayload.cardNo,
+        ExpiryDate: sanitizedPayload.expiryDate,
+        ChequeNo: sanitizedPayload.chequeNo,
+        BankBranch: sanitizedPayload.bankBranch,
+        BankBranchCode: sanitizedPayload.bankBranchCode,
+        AccHolderName: sanitizedPayload.accHolderName,
+      };
+
+      const attempts: { endpoint: string; payload: any }[] = [
+        { endpoint: `/api/billing-payment-miscellaneous/submit/${sanitizedPayload.userId}`, payload: sanitizedPayload },
+        { endpoint: `/api/billing-payment-miscellaneous/submit`, payload: pascalPayload },
+        { endpoint: `/api/billing-payment-miscellaneous/submit`, payload: sanitizedPayload },
+      ];
+
+      let data: any = null;
+      for (const { endpoint: ep, payload: pl } of attempts) {
+        data = await platinumPost(session, ep, pl);
+        if (data && !data._error) {
+          console.log(`[misc-submit] SUCCESS via ${ep}:`, JSON.stringify(data)?.substring(0, 1000));
+          break;
+        }
+        console.warn(`[misc-submit] ${ep} returned error (${data?.status}):`, JSON.stringify(data)?.substring(0, 500));
+      }
+
       recordPaymentSubmission(miscDedupKey, data);
       handlePlatinumResult(res, data);
     } catch (e: any) {
