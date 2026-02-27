@@ -130,46 +130,19 @@ export function UnifiedSearch({ onSearchActiveChange }: { onSearchActiveChange?:
             const accounts = await fetchAccountsByGroup(instId);
             if (accounts.length > 0) {
                 console.log(`[Group] Found ${accounts.length} accounts for ${group.institutionDesc}`);
-                const memberItems: TransactionItem[] = accounts.map((acc: any) => ({
-                    id: crypto.randomUUID(),
-                    type: 'CONSUMER_SERVICES' as const,
-                    description: `${group.institutionDesc || 'Group'} - ${acc.name || 'Unknown'} (${acc.accountNumber || acc.account_ID || acc.accountID})`,
-                    reference: acc.accountNumber || acc.oldAccountCode || `${acc.account_ID || acc.accountID}`,
-                    amountDue: acc.outStandingAmt || acc.outStandingAmount || 0,
-                    amountToPay: 0,
-                    originalData: { ...acc, institutionDesc: group.institutionDesc, accountID: acc.account_ID || acc.accountID }
-                }));
+                const memberItems: TransactionItem[] = accounts.map((acc: any) => {
+                    const outstanding = acc.outStandingAmt ?? acc.outStandingAmount ?? acc.outstandingAmount ?? 0;
+                    return {
+                        id: crypto.randomUUID(),
+                        type: 'CONSUMER_SERVICES' as const,
+                        description: `${group.institutionDesc || 'Group'} - ${acc.name || 'Unknown'} (${acc.accountNumber || acc.account_ID || acc.accountID})`,
+                        reference: acc.accountNumber || acc.oldAccountCode || `${acc.account_ID || acc.accountID}`,
+                        amountDue: outstanding,
+                        amountToPay: 0,
+                        originalData: { ...acc, institutionDesc: group.institutionDesc, accountID: acc.account_ID || acc.accountID, outStandingAmt: outstanding, outstandingAmount: outstanding }
+                    };
+                });
                 memberItems.forEach(item => addItem(item));
-
-                Promise.allSettled(
-                    memberItems.map(async (item) => {
-                        const accId = item.originalData?.accountID || item.originalData?.accountId || item.originalData?.account_ID;
-                        if (!accId) return;
-                        try {
-                            const [details, balanceDebt] = await Promise.all([
-                                platinumGetConsAccountDetails(Number(accId), true).catch(() => null),
-                                fetchTotalBalanceDebt(Number(accId)).catch(() => null),
-                            ]);
-                            let outstanding = 0;
-                            if (balanceDebt) {
-                                let rows: any[] = Array.isArray(balanceDebt) ? balanceDebt : (balanceDebt?.results && Array.isArray(balanceDebt.results) ? balanceDebt.results : []);
-                                if (rows.length > 0) {
-                                    outstanding = Math.round(rows.reduce((s: number, r: any) => s + (r.totalOutStanding || r.totalOutstanding || 0), 0) * 100) / 100;
-                                }
-                            }
-                            if (outstanding === 0 && details && !details._error) {
-                                outstanding = details.outStandingAmt ?? details.outstandingAmount ?? details.outStandingAmount ?? 0;
-                            }
-                            updateItemDetails(item.id, {
-                                amountDue: outstanding,
-                                amountToPay: 0,
-                                originalData: { ...item.originalData, ...(details && !details._error ? details : {}), outStandingAmt: outstanding, outstandingAmount: outstanding }
-                            });
-                        } catch (e) {
-                            console.warn(`[Group Enrich] Failed for account ${accId}:`, e);
-                        }
-                    })
-                );
             } else {
                 alert(`No linked accounts found for group "${group.institutionDesc}".`);
                 return;
