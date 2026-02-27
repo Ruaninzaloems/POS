@@ -598,17 +598,26 @@ export async function fetchGroups(): Promise<GroupCode[]> {
     return Array.isArray(data) ? data : [];
 }
 
-export async function fetchInstitutions(): Promise<Institution[]> {
+export async function fetchInstitutions(): Promise<any[]> {
     const res = await apiFetch(`/api/platinum/const-institutions`);
     if (!res.ok) {
         throw new Error(`Failed to fetch institutions from API (status ${res.status})`);
     }
     const data = await res.json();
     const arr = Array.isArray(data) ? data : [];
-    return arr.map((item: any) => ({
-        institutionId: item.accountGroupId || item.accountGroupID || item.institutionID || item.institutionId || item.id,
-        institutionName: item.accountGroupDesc || item.accountGroupName || item.institutionDesc || item.institutionName || item.name || '',
-    }));
+    return arr.map((item: any) => {
+        const id = item.accountGroupId || item.accountGroupID || item.institutionID || item.institutionId || item.institution_ID || item.id;
+        const name = item.accountGroupDesc || item.accountGroupName || item.institutionDesc || item.institutionName || item.name || '';
+        const enabled = item.isEnabled !== undefined ? item.isEnabled : (item.enabled !== undefined ? item.enabled : true);
+        return {
+            institutionId: id,
+            institutionName: name,
+            Id: id,
+            Description: name,
+            IsEnabled: enabled,
+            ...item,
+        };
+    });
 }
 
 export interface InstitutionSearchResult {
@@ -638,6 +647,16 @@ export async function searchInstitutions(query: string): Promise<InstitutionSear
 }
 
 export async function fetchAccountsByGroup(institutionId: number): Promise<any[]> {
+    try {
+        const res = await apiFetch(`/api/platinum/receipting-account-group-payment/search-accounts-by-group?institutionId=${institutionId}`);
+        if (res.ok) {
+            const data = await res.json();
+            const arr = Array.isArray(data) ? data : (data?.value && Array.isArray(data.value) ? data.value : []);
+            if (arr.length > 0) return arr;
+        }
+    } catch (e) {
+        console.warn("[fetchAccountsByGroup] receipting-account-group-payment failed, trying billing-enquiry-search", e);
+    }
     try {
         const res = await apiFetch(`/api/platinum/billing-enquiry-search?accountGroup=${institutionId}`);
         if (res.ok) {

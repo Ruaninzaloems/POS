@@ -4764,8 +4764,11 @@ export async function registerRoutes(
       const finYear = session.platinumUser?.finYear || req.query.finYear || '2025/2026';
       const data = await platinumGet(session, "/api/receipting-account-group/get-account-groups", { finYear: String(finYear) });
       if (data && !data._error) {
+        const arr = Array.isArray(data) ? data : [];
+        console.log(`[const-institutions] get-account-groups returned ${arr.length} groups` + (arr.length > 0 ? `, sample keys: ${JSON.stringify(Object.keys(arr[0]))}` : ''));
         return handlePlatinumResult(res, data);
       }
+      console.log(`[const-institutions] get-account-groups failed, trying fallbacks`);
       const fallbacks = [
         "/api/const-institutions",
         "/api/BillingEnquiry/GetConstInstitutions",
@@ -4774,11 +4777,14 @@ export async function registerRoutes(
       for (const endpoint of fallbacks) {
         const fbData = await platinumGet(session, endpoint);
         if (fbData && !fbData._error) {
+          const arr = Array.isArray(fbData) ? fbData : [];
+          console.log(`[const-institutions] ${endpoint} returned ${arr.length} items` + (arr.length > 0 ? `, sample keys: ${JSON.stringify(Object.keys(arr[0]))}` : ''));
           return handlePlatinumResult(res, fbData);
         }
         lastError = fbData;
       }
       if (lastError?._error) {
+        console.log(`[const-institutions] All endpoints failed:`, lastError);
         return res.status(lastError.status || 500).json({ message: lastError.statusText || "Failed to load institutions", detail: lastError.detail });
       }
       res.json([]);
@@ -4790,11 +4796,45 @@ export async function registerRoutes(
   app.get("/api/platinum/const-institutions/search", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
+      const nameQuery = (req.query.name as string || '').toLowerCase().trim();
+
       let data = await platinumGet(session, "/api/receipting-account-group/search", req.query as Record<string, string>);
-      if (data && data._error) {
+      if (data && !data._error && Array.isArray(data) && data.length > 0) {
+        return handlePlatinumResult(res, data);
+      }
+
+      if (!data || data._error) {
         data = await platinumGet(session, "/api/const-institutions/search", req.query as Record<string, string>);
       }
-      handlePlatinumResult(res, data);
+      if (data && !data._error && Array.isArray(data) && data.length > 0) {
+        return handlePlatinumResult(res, data);
+      }
+
+      if (nameQuery) {
+        const finYear = session.platinumUser?.finYear || '2025/2026';
+        const allGroups = await platinumGet(session, "/api/receipting-account-group/get-account-groups", { finYear: String(finYear) });
+        if (allGroups && !allGroups._error && Array.isArray(allGroups)) {
+          const filtered = allGroups.filter((g: any) => {
+            const desc = (g.accountGroupDesc || g.institutionDesc || g.name || '').toLowerCase();
+            return desc.includes(nameQuery);
+          });
+          if (filtered.length > 0) {
+            const results = filtered.map((g: any) => ({
+              institutionDesc: g.accountGroupDesc || g.institutionDesc || g.name || '',
+              institutionID: g.accountGroupId || g.accountGroupID || g.institutionID || g.id,
+              groupCodeID: null,
+              groupCodeDesc: null,
+              accountID: null,
+              accountNumber: null,
+              outStandingAmt: g.outStandingAmt || 0,
+              activeServiceCount: g.activeServiceCount || 0,
+            }));
+            return res.json(results);
+          }
+        }
+      }
+
+      res.json([]);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
