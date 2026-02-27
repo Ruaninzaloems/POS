@@ -14,26 +14,91 @@ import { useToast } from '@/hooks/use-toast';
 function buildFallbackReceiptData(txn: any, sessionDetails?: any): ReceiptPrintData {
   const rd = txn.receiptDetail || {};
   const sr = txn.splitReceipts?.[0];
+  const srDetail = sr?.receiptDetail || {};
   const allocs = txn.allocations || sr?.allocations || [];
+
+  const isMisc = srDetail.paymentOption === 'Miscellaneous Payment' ||
+    (txn.items && txn.items.length > 0 && txn.items.every((i: any) => i.type === 'DIRECT_INCOME'));
+
+  let services: { description: string; amount: number }[] | undefined;
+  let totalAmount = txn.totalAmount || 0;
+  let tenderAmount = 0;
+  let changeAmount = 0;
+  let vatAmount = 0;
+  let paymentOption = '';
+  let accountName = '';
+
+  if (isMisc) {
+    const miscServices: { description: string; amount: number }[] = [];
+
+    if (txn.splitReceipts && txn.splitReceipts.length > 0) {
+      for (const split of txn.splitReceipts) {
+        const detail = split.receiptDetail;
+        if (detail?.lineItems && Array.isArray(detail.lineItems)) {
+          for (const li of detail.lineItems) {
+            miscServices.push({
+              description: li.description || detail.miscDescription || 'Direct Income',
+              amount: li.amount ?? 0,
+            });
+            vatAmount += li.vatAmount ?? 0;
+          }
+        } else if (detail?.miscDescription) {
+          const itemAmt = split.amount || detail.tenderAmount || 0;
+          miscServices.push({ description: detail.miscDescription, amount: itemAmt });
+        }
+        tenderAmount += detail?.tenderAmount ?? split.amount ?? 0;
+        changeAmount += detail?.changeAmount ?? 0;
+      }
+    }
+
+    if (miscServices.length === 0 && txn.items) {
+      for (const item of txn.items) {
+        if (item.type === 'DIRECT_INCOME' && item.amountToPay > 0) {
+          const vr = item.originalData?.vatRate || 15;
+          const isVatable = vr > 0;
+          const amtExVat = isVatable ? item.amountToPay / (1 + vr / 100) : item.amountToPay;
+          const vat = isVatable ? item.amountToPay - amtExVat : 0;
+          miscServices.push({ description: item.description || 'Direct Income', amount: Math.round(amtExVat * 100) / 100 });
+          vatAmount += Math.round(vat * 100) / 100;
+        }
+      }
+    }
+
+    services = miscServices.length > 0 ? miscServices : undefined;
+    if (!totalAmount && miscServices.length > 0) {
+      totalAmount = miscServices.reduce((s, svc) => s + svc.amount, 0) + vatAmount;
+    }
+    if (!tenderAmount) tenderAmount = totalAmount;
+    paymentOption = 'Misc Payment';
+    accountName = srDetail.accName || (txn.items?.[0]?.paidBy) || 'Walk-in';
+  } else {
+    services = allocs.length > 0
+      ? allocs.map((a: any) => ({ description: a.service || a.description || '', amount: a.amount ?? a.total ?? 0 }))
+      : undefined;
+    tenderAmount = rd.tenderAmount || txn.totalAmount || sr?.amount || 0;
+    changeAmount = rd.changeAmount || 0;
+    paymentOption = rd.paymentOption || srDetail.paymentOption || 'Consumer Services';
+    accountName = rd.accName || srDetail.accName || sr?.accountName || txn.description || '';
+  }
+
   return {
-    receiptNo: txn.receiptNumber || rd.receiptNo || sr?.receiptNumber || '',
-    receiptDate: rd.receiptDate || rd.paymentDate || new Date().toISOString(),
-    accountNumber: rd.accountId || sr?.accountId || '',
+    receiptNo: txn.receiptNumber || rd.receiptNo || sr?.receiptNumber || srDetail.receiptNo || '',
+    receiptDate: rd.receiptDate || srDetail.receiptDate || rd.paymentDate || new Date().toISOString(),
+    accountNumber: rd.accountId || srDetail.accountId || sr?.accountId || '',
     oldAccountCode: rd.oldAccountCode || '',
-    accountName: rd.accName || sr?.accountName || txn.description || '',
+    accountName,
     sgNumber: rd.sgNumber || '',
     address: rd.accAddress || '',
-    totalAmount: txn.totalAmount || rd.tenderAmount || sr?.amount || 0,
-    tenderAmount: rd.tenderAmount || txn.totalAmount || sr?.amount || 0,
-    changeAmount: rd.changeAmount || 0,
+    totalAmount: totalAmount || tenderAmount,
+    tenderAmount,
+    changeAmount,
     outstandingBalance: rd.outstandingAmount ?? 0,
-    paymentType: rd.paymentType || (sr?.paymentType === 'card' ? 'Credit Card' : 'Cash'),
-    paymentOption: rd.paymentOption || 'Consumer Services',
-    cashierName: rd.cashierName || '',
-    cashOffice: rd.cashOffice || sessionDetails?.officeDesc || '',
-    services: allocs.length > 0
-      ? allocs.map((a: any) => ({ description: a.service || a.description || '', amount: a.amount ?? a.total ?? 0 }))
-      : undefined,
+    vatAmount: vatAmount || undefined,
+    paymentType: rd.paymentType || srDetail.paymentType || (sr?.paymentType === 'card' ? 'Credit Card' : 'Cash'),
+    paymentOption,
+    cashierName: rd.cashierName || srDetail.cashierName || '',
+    cashOffice: rd.cashOffice || srDetail.cashOffice || sessionDetails?.officeDesc || '',
+    services,
   };
 }
 

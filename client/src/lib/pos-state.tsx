@@ -2239,7 +2239,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
                     cashOfficeId: sessionOfficeId,
                     finYear,
                     cardNo: paymentTypeId === 3 ? (record.payment.cardReference || '') : '',
-                    expiryDate: paymentTypeId === 3 ? formatCardExpiryAsDate(record.payment.cardExpiry) : '',
+                    expiryDate: paymentTypeId === 3 ? formatCardExpiry(record.payment.cardExpiry) : '',
                     chequeNo: '',
                     bankBranch: '',
                     bankBranchCode: '',
