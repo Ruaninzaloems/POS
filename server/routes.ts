@@ -3870,6 +3870,53 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/platinum/billing-enquiry/batch-account-names", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const accountNumbers: string[] = req.body?.accountNumbers;
+      if (!Array.isArray(accountNumbers) || accountNumbers.length === 0) {
+        return res.json({});
+      }
+      const limited = accountNumbers.slice(0, 100);
+      console.log(`[batch-account-names] Looking up ${limited.length} accounts`);
+
+      const results: Record<string, { name: string; address: string }> = {};
+      const batchSize = 10;
+      for (let i = 0; i < limited.length; i += batchSize) {
+        const batch = limited.slice(i, i + batchSize);
+        const batchResults = await Promise.allSettled(
+          batch.map(async (accNo) => {
+            const stripped = accNo.replace(/^0+/, '') || '0';
+            const data = await platinumGet(session, `/api/cons-accounts/${stripped}`);
+            if (data && !data._error) {
+              const name = data.name || data.ownerName || data.accountName || '';
+              const address = data.address || data.locationAddress || data.propertyAddress || '';
+              return { accNo, name, address };
+            }
+            const searchData = await platinumGet(session, "/api/cons-accounts/search", { accountNumber: accNo });
+            if (searchData && !searchData._error) {
+              const arr = Array.isArray(searchData) ? searchData : (searchData.value || [searchData]);
+              if (arr.length > 0) {
+                const r = arr[0];
+                return { accNo, name: r.name || r.ownerName || '', address: r.address || r.locationAddress || '' };
+              }
+            }
+            return null;
+          })
+        );
+        for (const r of batchResults) {
+          if (r.status === 'fulfilled' && r.value) {
+            results[r.value.accNo] = { name: r.value.name, address: r.value.address };
+          }
+        }
+      }
+      console.log(`[batch-account-names] Resolved ${Object.keys(results).length}/${limited.length} names`);
+      res.json(results);
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
   app.post("/api/platinum/billing-enquiry/batch-balance", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;

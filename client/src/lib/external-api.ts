@@ -2533,6 +2533,16 @@ export async function fetchTotalBalanceDebt(accountId: number): Promise<any> {
     return res.json();
 }
 
+export async function fetchBatchAccountNames(accountNumbers: string[]): Promise<Record<string, { name: string; address: string }>> {
+    const res = await apiFetch('/api/platinum/billing-enquiry/batch-account-names', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountNumbers }),
+    });
+    if (!res.ok) return {};
+    return res.json();
+}
+
 export async function fetchBatchBalances(accountIds: number[]): Promise<Record<string, number>> {
     const res = await apiFetch('/api/platinum/billing-enquiry/batch-balance', {
         method: 'POST',

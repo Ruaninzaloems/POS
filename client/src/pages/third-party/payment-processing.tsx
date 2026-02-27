@@ -22,6 +22,7 @@ import {
   platinumThirdPartyAccountSearch,
   platinumThirdPartyValidateAccount,
   platinumThirdPartyCashierDetails,
+  fetchBatchAccountNames,
 } from '@/lib/external-api';
 import { usePos } from '@/lib/pos-state';
 
@@ -320,7 +321,7 @@ export default function ThirdPartyPaymentProcessing() {
           return {
             index: idx,
             importedAccountNumber: importedAcct,
-            importedReference: t.reference || t.paymentReference || '',
+            importedReference: t.documentNumber || t.reference || t.paymentReference || '',
             resolvedAccountId,
             resolvedAccountNumber,
             matchStatus,
@@ -337,6 +338,26 @@ export default function ThirdPartyPaymentProcessing() {
         });
 
         setTransactions(builtTxns);
+
+        const needsNameLookup = builtTxns.filter(t => !t.ownerName && (t.resolvedAccountId || t.importedAccountNumber));
+        if (needsNameLookup.length > 0) {
+          const accNos = [...new Set(needsNameLookup.map(t => t.resolvedAccountId || t.importedAccountNumber).filter(Boolean))];
+          fetchBatchAccountNames(accNos).then((nameMap) => {
+            console.log(`[ThirdParty] Batch name lookup resolved ${Object.keys(nameMap).length}/${accNos.length} names`);
+            setTransactions(prev => prev.map(txn => {
+              const key = txn.resolvedAccountId || txn.importedAccountNumber;
+              const found = nameMap[key];
+              if (found && (found.name || found.address)) {
+                return {
+                  ...txn,
+                  ownerName: found.name || txn.ownerName,
+                  propertyAddress: found.address || txn.propertyAddress,
+                };
+              }
+              return txn;
+            }));
+          }).catch(e => console.warn('[ThirdParty] Batch name lookup failed:', e));
+        }
 
         if (migratedEntries.length > 0) {
           setLoadProgress({ step: `Auto-updating ${migratedEntries.length} migrated account(s) on server...`, percent: 96 });
