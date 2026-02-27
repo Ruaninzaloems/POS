@@ -1,0 +1,123 @@
+Clearance Search Implementation Guide
+Overview
+We need to implement a two-step search flow for clearance records:
+Step 1: Search/Typeahead - GET Request
+Endpoint: GET api/billing-payment-clearance/get-clearanceids
+Purpose: Auto-suggest/display matching clearance IDs as user types
+Query Parameter: clearanceId - The partial ID entered by user (e.g., "000000001612")
+Example Request:
+text
+ 
+Plain Text
+GET api/billing-payment-clearance/get-clearanceids?clearanceId=160
+ 
+Example Response:
+json
+ 
+Plain Text
+[  "000000000160",  "000000001160"]
+ 
+Behavior:
+Returns list of matching formatted IDs (12 digits with leading zeros)
+User selects one ID from this list
+Step 2: Fetch Full Data - POST Request
+Endpoint: POST api/billing-payment-clearance/get-clearance-data
+Purpose: Retrieve complete clearance details after user selects an ID
+Request Body: Raw integer ID (without formatting)
+json
+ 
+Plain Text
+"000000000160"
+ 
+Example Response:
+json
+ 
+Plain Text
+{
+    "items": [
+        {
+            "total": 17293.38,
+            "total1181": 17293.38,
+            "total1183": 0.00,
+            "paid": 0,
+            "remaining": 17293.38,
+            "clearanceStaging_ID": 1600,
+            "clearanceTypeID": null,
+            "clearanceType": null,
+            "additionalTypeID": null,
+            "additionalType": null,
+            "unitID": null,
+            "accountID": "000000016485",
+            "sgNumber": "C027/0002/00009010/00000",
+            "name": "Barbara Joan Tops",
+            "locationAddress": "2 Stockenström Street, Bodorp, George, George",
+            "oldPropertyCode": null,
+            "propertyTypeID": null,
+            "propertyType": null,
+            "clearanceFromDate": null,
+            "clearanceExpiryDate": "2026-05-27T00:00:00",
+            "clearanceExpiryDateStr": "27/05/2026",
+            "purchaseDate": null,
+            "purchasePrice": null,
+            "clearanceReason": null,
+            "newownerTypeID": null,
+            "nameType": null,
+            "newOwnerTypeName": null,
+            "responsiblePersonName": null,
+            "responsiblePersonLastName": null,
+            "responsiblePersonID": null,
+            "responsiblePersonPassportNumber": null,
+            "responsiblePersonCountryID": null,
+            "country": null,
+            "managingAgency": null,
+            "isRegistered": null,
+            "registeredAs": null,
+            "registrationNumber": null,
+            "isVatRegistered": null,
+            "vatRegistrationNumber": null,
+            "personTitleID": null,
+            "title": null,
+            "personInitiuals": null,
+            "personName": null,
+            "personLastName": null,
+            "personNickName": null,
+            "personMaidenName": null,
+            "personDOB": null,
+            "personGenderID": null,
+            "gender": null,
+            "personEthnicID": null,
+            "ethnic": null,
+            "personIsFarmer": null,
+            "personIsSoleProprietor": null,
+            "correspondanceLanguageID": null,
+            "language": null,
+            "contactMobileNumber": null,
+            "contactHomeNumber": null,
+            "contactWorkNumber": null,
+            "contactFaxNumber": null,
+            "contactEmailAddress": null,
+            "attorneyID": null,
+            "attorney": null,
+            "attorneyFileNo": null,
+            "attorneyContactName": null,
+            "attorneyContactEmailAddress": null,
+            "financialYear": null,
+            "capturerID": null,
+            "userName": null,
+            "captureDate": null,
+            "reviewerID": null,
+            "reviewDate": null,
+            "reviewReason": null,
+            "reviewClearanceStatusID": null,
+            "status": "Approved",
+            "partitions": 0,
+            "accountName": null,
+            "certificateNumber": null,
+            "clearanceValidityPeriod": null,
+            "clearancePaymentPeriod": null,
+            "responsiblePersonNameID": null
+        }
+    ],
+    "totalCount": 1
+}
+ 

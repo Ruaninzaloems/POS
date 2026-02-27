@@ -142,7 +142,7 @@ export default function BulkAllocationProgress() {
         count = result.totalCount ?? result.total ?? result.data.length;
       } else if (result?.value && Array.isArray(result.value)) {
         items = result.value;
-        count = result['@odata.count'] ?? result.totalCount ?? result.value.length;
+        count = result.totalCount ?? result.value.length;
       } else if (result?.items && Array.isArray(result.items)) {
         items = result.items;
         count = result.totalCount ?? result.total ?? result.items.length;

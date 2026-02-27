@@ -1664,13 +1664,33 @@ export async function registerRoutes(
     }
   });
 
+  // TODO: PLATINUM API NEEDED — Banks list endpoint
+  // Currently all Platinum bank endpoints return 500:
+  //   - /api/billing-payment-clearance/get-banks
+  //   - /api/BillingEnquiry/GetConstBanks
+  //   - /api/const-banks
+  // Request Platinum team to create: GET /api/billing-payment-clearance/get-banks
+  // Expected response: Array of { bankId: number, bankName: string, branchCode?: string }
+  // Used for: Clearance payment bank selection dropdown
   app.get("/api/platinum/billing-payment-clearance/get-banks", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const data = await platinumGet(session, "/api/billing-payment-clearance/get-banks");
-      handlePlatinumResult(res, data);
+      const endpoints = [
+        "/api/billing-payment-clearance/get-banks",
+        "/api/BillingEnquiry/GetConstBanks",
+        "/api/const-banks",
+      ];
+      for (const endpoint of endpoints) {
+        const data = await platinumGet(session, endpoint);
+        if (data && !data._error) {
+          return handlePlatinumResult(res, data);
+        }
+      }
+      console.log('[get-banks] All Platinum bank endpoints unavailable — returning empty. Awaiting Platinum API implementation.');
+      res.json([]);
     } catch (e: any) {
-      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+      console.log('[get-banks] Platinum API unreachable — returning empty:', e.message);
+      res.json([]);
     }
   });
 
@@ -2072,8 +2092,45 @@ export async function registerRoutes(
   app.get("/api/platinum/billing-enquiry/get-config-setting", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const data = await platinumGet(session, "/api/BillingEnquiry/GetAAAA_ConfigSetting", req.query as Record<string, string>);
-      handlePlatinumResult(res, data);
+      const keyName = req.query.strKeyName || req.query.keyName || req.query.key;
+      if (keyName) {
+        let data = await platinumGet(session, "/api/BillingEnquiry/GetAAAA_ConfigSetting", { strKeyName: String(keyName) });
+        if (data && data._error) {
+          data = await platinumGet(session, "/api/BillingEnquiry/GetAppSetting", { key: String(keyName) });
+        }
+        handlePlatinumResult(res, data);
+      } else {
+        res.status(400).json({ message: "key query parameter is required" });
+      }
+    } catch (e: any) {
+      res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
+    }
+  });
+
+  app.get("/api/platinum/billing-enquiry/get-config-settings-batch", async (req, res) => {
+    try {
+      const session = requireAuth(req, res); if (!session) return;
+      const keys = [
+        "Allow Prepaid And Miscellaneous",
+        "Allow Prepaid And Recovery",
+        "Allow Normal Receipting",
+        "AllowCashierToAllocateDirectDeposit",
+        "AllowCashierToViewBillingDashboard",
+        "AllowCashierToViewEnquiries",
+      ];
+      const results = await Promise.allSettled(
+        keys.map(key => platinumGet(session, "/api/BillingEnquiry/GetAAAA_ConfigSetting", { strKeyName: key })
+          .catch(() => platinumGet(session, "/api/BillingEnquiry/GetAppSetting", { key }))
+        )
+      );
+      const settings: Array<{ keyName: string; value: any }> = [];
+      keys.forEach((key, idx) => {
+        const r = results[idx];
+        if (r.status === 'fulfilled' && r.value && !r.value._error) {
+          settings.push({ keyName: key, value: r.value });
+        }
+      });
+      res.json(settings);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
@@ -4615,7 +4672,7 @@ export async function registerRoutes(
       const session = requireAuth(req, res); if (!session) return;
       const keys = ["Allow Prepaid And Miscellaneous", "Allow Prepaid And Recovery", "Allow Normal Receipting"];
       const results = await Promise.allSettled(
-        keys.map(key => platinumGet(session, "/api/BillingEnquiry/GetAppSetting", { keyName: key }))
+        keys.map(key => platinumGet(session, "/api/BillingEnquiry/GetAppSetting", { key }))
       );
       const config: Record<string, any> = {};
       keys.forEach((key, idx) => {
@@ -4654,8 +4711,27 @@ export async function registerRoutes(
   app.get("/api/platinum/const-institutions", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const data = await platinumGet(session, "/api/const-institutions");
-      handlePlatinumResult(res, data);
+      const finYear = session.platinumUser?.finYear || req.query.finYear || '2025/2026';
+      const data = await platinumGet(session, "/api/receipting-account-group/get-account-groups", { finYear: String(finYear) });
+      if (data && !data._error) {
+        return handlePlatinumResult(res, data);
+      }
+      const fallbacks = [
+        "/api/const-institutions",
+        "/api/BillingEnquiry/GetConstInstitutions",
+      ];
+      let lastError = data;
+      for (const endpoint of fallbacks) {
+        const fbData = await platinumGet(session, endpoint);
+        if (fbData && !fbData._error) {
+          return handlePlatinumResult(res, fbData);
+        }
+        lastError = fbData;
+      }
+      if (lastError?._error) {
+        return res.status(lastError.status || 500).json({ message: lastError.statusText || "Failed to load institutions", detail: lastError.detail });
+      }
+      res.json([]);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
@@ -4664,7 +4740,10 @@ export async function registerRoutes(
   app.get("/api/platinum/const-institutions/search", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const data = await platinumGet(session, "/api/const-institutions/search", req.query as Record<string, string>);
+      let data = await platinumGet(session, "/api/receipting-account-group/search", req.query as Record<string, string>);
+      if (data && data._error) {
+        data = await platinumGet(session, "/api/const-institutions/search", req.query as Record<string, string>);
+      }
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });

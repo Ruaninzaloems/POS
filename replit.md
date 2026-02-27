@@ -12,7 +12,7 @@ Key capabilities include:
 - All transaction and session data are stored and managed exclusively via the Platinum API, ensuring data consistency and simplifying day-end reconciliation.
 - Comprehensive cashier session management, float tracking, and day-end reconciliation workflows.
 - A supervisor dashboard for transaction oversight and approval processes.
-- Functionality for direct deposit allocation, both manual and bulk, with clearance cost schedule search, linked account display, Section 118(1)/118(3) breakdown allocation, auto-fill capability, and real-time allocated vs remaining total tracking.
+- Functionality for direct deposit allocation, both manual and bulk, with two-step clearance search (typeahead via `get-clearanceids` + full data via `get-clearance-data`), property detail display (SG number, address, expiry), Section 118(1)/118(3) breakdown allocation, auto-fill capability, and real-time allocated vs remaining total tracking.
 - Robust receipt management (print, email, SMS) and permit/certificate generation.
 - A Client Communications module for custom messaging (email/SMS) and a "Send Statements" feature, integrated with account data.
 - Integration exclusively with Platinum Inzalo EMS API for all real-time account data access.
@@ -38,7 +38,7 @@ Preferred communication style: Simple, everyday language.
 ### Backend (Express + Node.js)
 - **Framework**: Express 5 with TypeScript.
 - **API Pattern**: RESTful architecture.
-- **Proxy Layer**: Acts as a gateway exclusively to the Platinum Inzalo EMS API (authenticated via JWT). No Sebata/legacy API calls.
+- **Proxy Layer**: Acts as an authenticated gateway exclusively to the Platinum Inzalo EMS API (JWT-based).
 - **Session Management**: `express-session` handles per-user browser sessions, storing Platinum JWT tokens and user data. This design supports high concurrency without session conflicts.
 - **Concurrency Control**: Implements a global request queue to limit concurrent Platinum API calls and employs user-aware response caching and in-flight GET request deduplication to optimize performance.
 - **Data Persistence**: Crucially, the backend does not use a local database for business data. All transaction storage, cashier sessions, account data, and reconciliation processes are managed entirely through the Platinum API. Legacy local database schemas are present but unused.

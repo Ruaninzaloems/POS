@@ -124,6 +124,15 @@ export interface ClearanceCostSchedule {
   linkedAccounts: Account[];
   section118_1_Breakdown: { item: string; amount: number; accountNo: string }[];
   section118_3_Breakdown: { item: string; amount: number; accountNo: string }[];
+  clearanceData?: {
+    sgNumber: string;
+    locationAddress: string;
+    expiryDate: string;
+    accountName: string;
+    paid: number;
+    total: number;
+    remaining: number;
+  };
 }
 
 export interface CashOffice {
@@ -573,7 +582,8 @@ export async function fetchConsAccountById(id: string): Promise<any | null> {
 export async function fetchBanks(): Promise<Bank[]> {
     const res = await apiFetch(`/api/platinum/billing-payment-clearance/get-banks`);
     if (!res.ok) {
-        throw new Error(`Failed to fetch banks from API (status ${res.status})`);
+        console.warn('[Banks] Platinum bank endpoints not yet available (status ' + res.status + '). Banks dropdown will be empty until Platinum API is implemented.');
+        return [];
     }
     const data = await res.json();
     return Array.isArray(data) ? data : [];
@@ -596,8 +606,8 @@ export async function fetchInstitutions(): Promise<Institution[]> {
     const data = await res.json();
     const arr = Array.isArray(data) ? data : [];
     return arr.map((item: any) => ({
-        institutionId: item.institutionID || item.institutionId || item.id,
-        institutionName: item.institutionDesc || item.institutionName || item.name || '',
+        institutionId: item.accountGroupId || item.accountGroupID || item.institutionID || item.institutionId || item.id,
+        institutionName: item.accountGroupDesc || item.accountGroupName || item.institutionDesc || item.institutionName || item.name || '',
     }));
 }
 
@@ -758,7 +768,7 @@ export async function enrichAccountData(account: any): Promise<any> {
 }
 
 export async function fetchConfigSettings(): Promise<any[]> {
-    const res = await apiFetch(`/api/platinum/billing-enquiry/get-config-setting`);
+    const res = await apiFetch(`/api/platinum/billing-enquiry/get-config-settings-batch`);
     if (res.status === 404) return [];
     if (!res.ok) {
         throw new Error(`Failed to fetch config settings from API (status ${res.status})`);
@@ -1529,6 +1539,10 @@ export async function platinumDDOldAccountAutocomplete(searchTerm: string): Prom
 
 export async function platinumDDClearanceAutocomplete(searchTerm: string): Promise<any[]> {
     return platinumFetch(`/api/platinum/direct-deposit-allocation/get-clearance-autocomplete?searchTerm=${encodeURIComponent(searchTerm)}`);
+}
+
+export async function platinumSearchClearanceIds(clearanceId: string): Promise<string[]> {
+    return platinumFetch(`/api/platinum/billing-payment-clearance/get-clearanceids?clearanceId=${encodeURIComponent(clearanceId)}`);
 }
 
 export async function platinumLoadDetailsClearance(data: any): Promise<any> {

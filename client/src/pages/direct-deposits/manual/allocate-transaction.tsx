@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { ArrowLeft, Plus, Trash2, CheckCircle, AlertCircle, Upload, X, Loader2, Search, Banknote, Building2, FileCheck, Receipt, CreditCard, RotateCcw, FileSpreadsheet, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { AllocationLine, Account, ClearanceCostSchedule, platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, platinumLoadDetailsPaymentGrouping, platinumLoadDetailsPaymentGroupingInstitutionData, platinumLoadDetailsConsumerServices, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, platinumGetConsumerDetailsData, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, platinumGetGroupPaymentDetails, fetchMiscPaymentGroups, rebuildFullAccount, platinumSearchAccountsPayment, fetchActiveFinYear, fetchPlatinumUserInfo } from '@/lib/external-api';
+import { AllocationLine, Account, ClearanceCostSchedule, platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, platinumLoadDetailsPaymentGrouping, platinumLoadDetailsPaymentGroupingInstitutionData, platinumLoadDetailsConsumerServices, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, platinumGetConsumerDetailsData, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, platinumSearchClearanceIds, platinumGetClearanceData, platinumGetGroupPaymentDetails, fetchMiscPaymentGroups, rebuildFullAccount, platinumSearchAccountsPayment, fetchActiveFinYear, fetchPlatinumUserInfo } from '@/lib/external-api';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 
@@ -188,20 +188,36 @@ export default function AllocateTransaction() {
 
       if (searchScope === 'ALL' || searchScope === 'CLEARANCE') {
         try {
-          const clearanceResults = await platinumDDClearanceAutocomplete(query);
-          if (Array.isArray(clearanceResults)) {
-            for (const item of clearanceResults) {
+          const clearanceIds = await platinumSearchClearanceIds(query);
+          if (Array.isArray(clearanceIds)) {
+            for (const formattedId of clearanceIds) {
               results.push({
-                accountId: item.account_ID || item.accountId || item.id || 0,
-                accountNo: item.accountNumber || item.certificateNo || item.displayItem || String(item.id || ''),
-                name: item.name || item.displayItem || item.description || 'Clearance',
+                accountId: 0,
+                accountNo: formattedId,
+                name: `Clearance ${formattedId}`,
                 type: 'CLEARANCE',
-                rawData: item,
+                rawData: { clearanceFormattedId: formattedId },
               });
             }
           }
         } catch (clrErr: any) {
-          console.error('[DDSearch] Clearance autocomplete failed:', clrErr?.message || clrErr);
+          console.error('[DDSearch] Clearance ID search failed:', clrErr?.message || clrErr);
+          try {
+            const clearanceResults = await platinumDDClearanceAutocomplete(query);
+            if (Array.isArray(clearanceResults)) {
+              for (const item of clearanceResults) {
+                results.push({
+                  accountId: item.account_ID || item.accountId || item.id || 0,
+                  accountNo: item.accountNumber || item.certificateNo || item.displayItem || String(item.id || ''),
+                  name: item.name || item.displayItem || item.description || 'Clearance',
+                  type: 'CLEARANCE',
+                  rawData: item,
+                });
+              }
+            }
+          } catch (fallbackErr: any) {
+            console.error('[DDSearch] Clearance autocomplete fallback also failed:', fallbackErr?.message || fallbackErr);
+          }
         }
       }
 
@@ -275,12 +291,84 @@ export default function AllocateTransaction() {
     setSelectedClearance(null);
     
     const rawItem = result.rawData || {};
-    const costScheduleID = rawItem.costScheduleID || rawItem.costSchedule_ID || rawItem.id || rawItem.clearanceId || result.accountId || 0;
-    const accountID = rawItem.account_ID || rawItem.accountId || rawItem.accountID || result.accountId || 0;
+    const formattedClearanceId = rawItem.clearanceFormattedId || result.accountNo || '';
     
-    console.log(`[Clearance] Loading details for costScheduleID=${costScheduleID}, accountID=${accountID}, posItemID=${transaction.posItem_ID}`);
+    console.log(`[Clearance] Loading details for clearanceId=${formattedClearanceId}, posItemID=${transaction.posItem_ID}`);
     
     try {
+      let clearanceData: any = null;
+
+      if (formattedClearanceId) {
+        try {
+          clearanceData = await platinumGetClearanceData(formattedClearanceId);
+          console.log('[Clearance] get-clearance-data response:', JSON.stringify(clearanceData)?.substring(0, 2000));
+        } catch (e: any) {
+          console.warn('[Clearance] get-clearance-data failed, trying legacy endpoints:', e.message);
+        }
+      }
+
+      if (clearanceData && clearanceData.items && Array.isArray(clearanceData.items) && clearanceData.items.length > 0) {
+        const item = clearanceData.items[0];
+        const clearanceStagingId = item.clearanceStaging_ID || 0;
+        const accountID = item.accountID || '';
+        const scheduleNo = formattedClearanceId || String(clearanceStagingId);
+
+        const linkedAccounts: Account[] = [{
+          accountNo: item.accountID || '',
+          name: item.name || '',
+          apiId: parseInt(String(item.accountID).replace(/^0+/, ''), 10) || 0,
+          outstandingAmount: item.remaining || item.total || 0,
+        } as Account];
+
+        const section118_1: { item: string; amount: number; accountNo: string }[] = [];
+        const section118_3: { item: string; amount: number; accountNo: string }[] = [];
+
+        if (item.total1181 && item.total1181 > 0) {
+          section118_1.push({
+            item: 'Section 118(1) — Municipal Debt',
+            amount: item.total1181,
+            accountNo: item.accountID || '',
+          });
+        }
+        if (item.total1183 && item.total1183 > 0) {
+          section118_3.push({
+            item: 'Section 118(3) — Rates Clearance',
+            amount: item.total1183,
+            accountNo: item.accountID || '',
+          });
+        }
+
+        const totalDue = item.remaining ?? item.total ?? ((item.total1181 || 0) + (item.total1183 || 0));
+
+        const costSchedule: ClearanceCostSchedule = {
+          scheduleNo,
+          costScheduleID: clearanceStagingId,
+          status: item.status || 'Active',
+          totalDue,
+          linkedAccounts,
+          section118_1_Breakdown: section118_1,
+          section118_3_Breakdown: section118_3,
+          clearanceData: {
+            sgNumber: item.sgNumber || '',
+            locationAddress: item.locationAddress || '',
+            expiryDate: item.clearanceExpiryDateStr || item.clearanceExpiryDate || '',
+            accountName: item.name || '',
+            paid: item.paid || 0,
+            total: item.total || 0,
+            remaining: item.remaining || 0,
+          },
+        };
+
+        console.log('[Clearance] Built cost schedule from get-clearance-data:', JSON.stringify(costSchedule));
+        setSelectedClearance(costSchedule);
+        return;
+      }
+
+      const costScheduleID = rawItem.costScheduleID || rawItem.costSchedule_ID || rawItem.id || rawItem.clearanceId || result.accountId || 0;
+      const accountID = rawItem.account_ID || rawItem.accountId || rawItem.accountID || result.accountId || 0;
+
+      console.log(`[Clearance] Falling back to legacy endpoints: costScheduleID=${costScheduleID}, accountID=${accountID}`);
+
       const [clearanceInfo, loadResult] = await Promise.allSettled([
         platinumGetClearanceDetailsInfo({
           costScheduleID: String(costScheduleID),
@@ -298,30 +386,27 @@ export default function AllocateTransaction() {
       const detailsData = clearanceInfo.status === 'fulfilled' ? clearanceInfo.value : null;
       const loadData = loadResult.status === 'fulfilled' ? loadResult.value : null;
       
-      console.log('[Clearance] Details info response:', JSON.stringify(detailsData)?.substring(0, 2000));
-      console.log('[Clearance] Load details response:', JSON.stringify(loadData)?.substring(0, 2000));
-      
       if (!detailsData && !loadData) {
         const infoErr = clearanceInfo.status === 'rejected' ? (clearanceInfo.reason?.message || 'Unknown error') : '';
         const loadErr = loadResult.status === 'rejected' ? (loadResult.reason?.message || 'Unknown error') : '';
-        throw new Error(`Both clearance API calls failed. Details: ${infoErr}. Load: ${loadErr}`);
+        throw new Error(`Failed to load clearance details. Details: ${infoErr}. Load: ${loadErr}`);
       }
 
-      const scheduleNo = rawItem.displayItem || rawItem.certificateNo || rawItem.accountNumber || result.accountNo || String(costScheduleID);
+      const legacyScheduleNo = rawItem.displayItem || rawItem.certificateNo || rawItem.accountNumber || result.accountNo || String(costScheduleID);
       const numericCostScheduleID = Number(costScheduleID) || 0;
       
       if (!numericCostScheduleID) {
-        throw new Error(`Invalid costScheduleID (${costScheduleID}) from API response. Cannot proceed with clearance allocation.`);
+        throw new Error(`Invalid costScheduleID (${costScheduleID}) from API response.`);
       }
 
       const primaryData = detailsData || loadData;
       
       const rawAccounts = primaryData.accounts || primaryData.linkedAccounts || [];
       if (!Array.isArray(rawAccounts) || rawAccounts.length === 0) {
-        throw new Error(`No linked accounts returned from API for cost schedule ${scheduleNo}. The clearance may have no active accounts.`);
+        throw new Error(`No linked accounts returned for cost schedule ${legacyScheduleNo}.`);
       }
 
-      const linkedAccounts: Account[] = rawAccounts.map((acc: any) => ({
+      const legacyLinkedAccounts: Account[] = rawAccounts.map((acc: any) => ({
         accountNo: acc.accountNumber || acc.accountNo || String(acc.account_ID || acc.accountId || ''),
         name: [acc.initials, acc.lastName].filter(Boolean).join(' ') || acc.name || acc.ownerName || '',
         apiId: acc.account_ID || acc.accountId || acc.accountID || 0,
@@ -330,40 +415,40 @@ export default function AllocateTransaction() {
 
       const rawItems = primaryData.items || primaryData.costScheduleItems || primaryData.section118Items || [];
       if (!Array.isArray(rawItems) || rawItems.length === 0) {
-        throw new Error(`No cost schedule items (118(1)/118(3) breakdown) returned from API for cost schedule ${scheduleNo}. Cannot allocate without line items.`);
+        throw new Error(`No cost schedule items returned for ${legacyScheduleNo}.`);
       }
 
-      const section118_1: { item: string; amount: number; accountNo: string }[] = [];
-      const section118_3: { item: string; amount: number; accountNo: string }[] = [];
-      let totalDue = 0;
+      const legacySection118_1: { item: string; amount: number; accountNo: string }[] = [];
+      const legacySection118_3: { item: string; amount: number; accountNo: string }[] = [];
+      let legacyTotalDue = 0;
       
-      for (const item of rawItems) {
-        const sectionType = item.sectionType || item.section || item.type || '';
+      for (const sItem of rawItems) {
+        const sectionType = sItem.sectionType || sItem.section || sItem.type || '';
         const entry = {
-          item: item.description || item.name || item.item || '',
-          amount: item.amount || item.totalAmount || item.balance || 0,
-          accountNo: item.accountNumber || item.accountNo || '',
+          item: sItem.description || sItem.name || sItem.item || '',
+          amount: sItem.amount || sItem.totalAmount || sItem.balance || 0,
+          accountNo: sItem.accountNumber || sItem.accountNo || '',
         };
-        totalDue += entry.amount;
+        legacyTotalDue += entry.amount;
         if (String(sectionType).includes('3') || String(sectionType) === '118(3)') {
-          section118_3.push(entry);
+          legacySection118_3.push(entry);
         } else {
-          section118_1.push(entry);
+          legacySection118_1.push(entry);
         }
       }
       
-      const costSchedule: ClearanceCostSchedule = {
-        scheduleNo,
+      const legacyCostSchedule: ClearanceCostSchedule = {
+        scheduleNo: legacyScheduleNo,
         costScheduleID: numericCostScheduleID,
         status: 'Active',
-        totalDue,
-        linkedAccounts,
-        section118_1_Breakdown: section118_1,
-        section118_3_Breakdown: section118_3,
+        totalDue: legacyTotalDue,
+        linkedAccounts: legacyLinkedAccounts,
+        section118_1_Breakdown: legacySection118_1,
+        section118_3_Breakdown: legacySection118_3,
       };
       
-      console.log('[Clearance] Built cost schedule from API:', JSON.stringify(costSchedule));
-      setSelectedClearance(costSchedule);
+      console.log('[Clearance] Built cost schedule from legacy API:', JSON.stringify(legacyCostSchedule));
+      setSelectedClearance(legacyCostSchedule);
     } catch (err: any) {
       console.error('[Clearance] Failed to load details:', err);
       setClearanceLoadError(err.message || 'Failed to load clearance details from Platinum API');
@@ -1504,6 +1589,35 @@ export default function AllocateTransaction() {
                                 </Button>
                             </div>
                         </div>
+
+                        {selectedClearance.clearanceData && (
+                            <div className="bg-white/60 backdrop-blur-sm p-3 rounded-lg border border-amber-100/80 mb-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1.5" data-testid="clearance-property-details">
+                                <div>
+                                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Account</span>
+                                    <div className="text-xs font-medium text-slate-700">{selectedClearance.clearanceData.accountName || '—'}</div>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">SG Number</span>
+                                    <div className="text-xs font-mono text-slate-700">{selectedClearance.clearanceData.sgNumber || '—'}</div>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Address</span>
+                                    <div className="text-xs text-slate-700 truncate" title={selectedClearance.clearanceData.locationAddress}>{selectedClearance.clearanceData.locationAddress || '—'}</div>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Expiry Date</span>
+                                    <div className="text-xs text-slate-700">{selectedClearance.clearanceData.expiryDate || '—'}</div>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Paid</span>
+                                    <div className="text-xs font-mono text-green-700">R {(selectedClearance.clearanceData.paid || 0).toFixed(2)}</div>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Remaining</span>
+                                    <div className="text-xs font-mono text-amber-700">R {(selectedClearance.clearanceData.remaining || 0).toFixed(2)}</div>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="space-y-4">
                             {showByAccount ? (
