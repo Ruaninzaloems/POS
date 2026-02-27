@@ -909,12 +909,29 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                                       </div>
                                   </div>
 
-                                  {item.type === 'DIRECT_INCOME' && (
+                                  {item.type === 'DIRECT_INCOME' && (() => {
+                                      const incItem = item.originalData as DirectIncomeItem;
+                                      const vatRate = incItem?.vatRate || 0;
+                                      const isVatable = vatRate > 0;
+                                      const totalAmount = item.amountToPay || 0;
+                                      const vatAmount = isVatable ? Math.round((totalAmount - totalAmount / (1 + vatRate / 100)) * 100) / 100 : 0;
+                                      const amountExVat = Math.round((totalAmount - vatAmount) * 100) / 100;
+                                      return (
                                       <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-0">
                                           <div className="bg-green-50 border border-green-200 rounded-md p-3 space-y-2">
-                                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                              <div className="grid grid-cols-[100px_1fr] sm:grid-cols-[120px_1fr] gap-2">
                                                   <div>
-                                                      <Label className="text-[10px] font-semibold text-green-700 uppercase flex items-center gap-1">Paid By (Last Name) * <HelpTip text="Enter the surname or company name of the person making this payment. Required for audit." /></Label>
+                                                      <Label className="text-[10px] font-semibold text-green-700 uppercase flex items-center gap-1">Initials</Label>
+                                                      <Input
+                                                          placeholder="e.g. JD"
+                                                          className="h-9 rounded-lg text-sm bg-white border-green-200"
+                                                          value={item.additionalInfo || ''}
+                                                          onChange={(e) => updateItemDetails(item.id, { additionalInfo: e.target.value })}
+                                                          data-testid={`input-basket-initials-${item.id}`}
+                                                      />
+                                                  </div>
+                                                  <div>
+                                                      <Label className="text-[10px] font-semibold text-green-700 uppercase flex items-center gap-1">Last Name * <HelpTip text="Enter the surname or company name of the person making this payment. Required for audit." /></Label>
                                                       <Input
                                                           placeholder="Surname / Company"
                                                           className={`h-9 rounded-lg text-sm bg-white ${(item as any).paidByError ? 'border-red-400 ring-1 ring-red-400' : 'border-green-200'}`}
@@ -923,20 +940,39 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                                                           data-testid={`input-basket-paidby-${item.id}`}
                                                       />
                                                   </div>
-                                                  <div>
-                                                      <Label className="text-[10px] font-semibold text-green-700 uppercase flex items-center gap-1">Description/Notes * <HelpTip text="Describe what this payment is for. Required for financial records." /></Label>
-                                                      <Input
-                                                          placeholder="Payment description..."
-                                                          className={`h-9 rounded-lg text-sm bg-white ${(item as any).notesError ? 'border-red-400 ring-1 ring-red-400' : 'border-green-200'}`}
-                                                          value={item.notes || ''}
-                                                          onChange={(e) => updateItemDetails(item.id, { notes: e.target.value })}
-                                                          data-testid={`input-basket-notes-${item.id}`}
-                                                      />
-                                                  </div>
                                               </div>
+                                              <div>
+                                                  <Label className="text-[10px] font-semibold text-green-700 uppercase flex items-center gap-1">Description/Notes * <HelpTip text="Describe what this payment is for. Required for financial records." /></Label>
+                                                  <Input
+                                                      placeholder="Payment description..."
+                                                      className={`h-9 rounded-lg text-sm bg-white ${(item as any).notesError ? 'border-red-400 ring-1 ring-red-400' : 'border-green-200'}`}
+                                                      value={item.notes || ''}
+                                                      onChange={(e) => updateItemDetails(item.id, { notes: e.target.value })}
+                                                      data-testid={`input-basket-notes-${item.id}`}
+                                                  />
+                                              </div>
+                                              {totalAmount > 0 && (
+                                                  isVatable ? (
+                                                      <div className="grid grid-cols-2 gap-2">
+                                                          <div className="bg-white rounded-lg p-2 border border-green-100">
+                                                              <div className="text-[10px] text-green-600 font-semibold uppercase">Excl VAT</div>
+                                                              <div className="text-sm font-mono font-bold text-green-800">R {amountExVat.toFixed(2)}</div>
+                                                          </div>
+                                                          <div className="bg-white rounded-lg p-2 border border-green-100">
+                                                              <div className="text-[10px] text-green-600 font-semibold uppercase">VAT ({vatRate.toFixed(0)}%)</div>
+                                                              <div className="text-sm font-mono font-bold text-green-800">R {vatAmount.toFixed(2)}</div>
+                                                          </div>
+                                                      </div>
+                                                  ) : (
+                                                      <div className="bg-white rounded-lg p-2 border border-green-100">
+                                                          <div className="text-[10px] text-slate-500 font-semibold uppercase">Not Vatable</div>
+                                                      </div>
+                                                  )
+                                              )}
                                           </div>
                                       </div>
-                                  )}
+                                      );
+                                  })()}
 
                                   {item.type === 'CLEARANCE' && (
                                       <ClearanceBasketExpander item={item} updateItemDetails={updateItemDetails} updateItemAmount={updateItemAmount} />
