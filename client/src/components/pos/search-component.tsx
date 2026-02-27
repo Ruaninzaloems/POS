@@ -269,13 +269,14 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
 
           const groupedInstitutions = new Map<number, { desc: string; members: InstitutionSearchResult[] }>();
           for (const inst of (institutionResults || [])) {
-              if (inst.institutionID != null) {
+              const instId = inst.institutionID ?? inst.institution_ID;
+              if (instId != null) {
                   const desc = inst.institutionDesc || 'Unknown Group';
                   if (/^\d+$/.test(desc.trim())) continue;
-                  if (!groupedInstitutions.has(inst.institutionID)) {
-                      groupedInstitutions.set(inst.institutionID, { desc, members: [] });
+                  if (!groupedInstitutions.has(instId)) {
+                      groupedInstitutions.set(instId, { desc, members: [] });
                   }
-                  groupedInstitutions.get(inst.institutionID)!.members.push(inst);
+                  groupedInstitutions.get(instId)!.members.push(inst);
               }
           }
 

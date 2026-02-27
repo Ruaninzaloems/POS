@@ -4762,31 +4762,26 @@ export async function registerRoutes(
     try {
       const session = requireAuth(req, res); if (!session) return;
       const finYear = session.platinumUser?.finYear || req.query.finYear || '2025/2026';
-      const data = await platinumGet(session, "/api/receipting-account-group/get-account-groups", { finYear: String(finYear) });
-      if (data && !data._error) {
-        const arr = Array.isArray(data) ? data : [];
-        console.log(`[const-institutions] get-account-groups returned ${arr.length} groups` + (arr.length > 0 ? `, sample keys: ${JSON.stringify(Object.keys(arr[0]))}` : ''));
-        return handlePlatinumResult(res, data);
-      }
-      console.log(`[const-institutions] get-account-groups failed, trying fallbacks`);
-      const fallbacks = [
-        "/api/const-institutions",
-        "/api/BillingEnquiry/GetConstInstitutions",
+
+      const endpoints = [
+        { url: "/api/receipting-account-group/search", params: {} },
+        { url: "/api/receipting-account-group/get-account-groups", params: { finYear: String(finYear) } },
+        { url: "/api/const-institutions", params: {} },
+        { url: "/api/BillingEnquiry/GetConstInstitutions", params: {} },
       ];
-      let lastError = data;
-      for (const endpoint of fallbacks) {
-        const fbData = await platinumGet(session, endpoint);
-        if (fbData && !fbData._error) {
-          const arr = Array.isArray(fbData) ? fbData : [];
-          console.log(`[const-institutions] ${endpoint} returned ${arr.length} items` + (arr.length > 0 ? `, sample keys: ${JSON.stringify(Object.keys(arr[0]))}` : ''));
-          return handlePlatinumResult(res, fbData);
+
+      for (const ep of endpoints) {
+        const data = await platinumGet(session, ep.url, ep.params);
+        if (data && !data._error) {
+          const arr = Array.isArray(data) ? data : [];
+          if (arr.length > 0) {
+            console.log(`[const-institutions] ${ep.url} returned ${arr.length} groups, sample keys: ${JSON.stringify(Object.keys(arr[0]))}`);
+            return handlePlatinumResult(res, data);
+          }
         }
-        lastError = fbData;
       }
-      if (lastError?._error) {
-        console.log(`[const-institutions] All endpoints failed:`, lastError);
-        return res.status(lastError.status || 500).json({ message: lastError.statusText || "Failed to load institutions", detail: lastError.detail });
-      }
+
+      console.log(`[const-institutions] All endpoints returned empty or failed`);
       res.json([]);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
@@ -4797,39 +4792,39 @@ export async function registerRoutes(
     try {
       const session = requireAuth(req, res); if (!session) return;
       const nameQuery = (req.query.name as string || '').toLowerCase().trim();
+      if (!nameQuery) return res.json([]);
 
-      let data = await platinumGet(session, "/api/receipting-account-group/search", req.query as Record<string, string>);
-      if (data && !data._error && Array.isArray(data) && data.length > 0) {
-        return handlePlatinumResult(res, data);
-      }
+      const filterByName = (items: any[]): any[] => {
+        return items.filter((g: any) => {
+          const desc = (g.institutionDesc || g.accountGroupDesc || g.name || '').toLowerCase();
+          return desc.includes(nameQuery);
+        });
+      };
 
-      if (!data || data._error) {
-        data = await platinumGet(session, "/api/const-institutions/search", req.query as Record<string, string>);
-      }
-      if (data && !data._error && Array.isArray(data) && data.length > 0) {
-        return handlePlatinumResult(res, data);
-      }
+      const normalizeResult = (g: any) => ({
+        institutionDesc: g.institutionDesc || g.accountGroupDesc || g.name || '',
+        institution_ID: g.institution_ID || g.institutionID || g.accountGroupId || g.accountGroupID || g.id,
+        institutionID: g.institution_ID || g.institutionID || g.accountGroupId || g.accountGroupID || g.id,
+        groupCode_ID: g.groupCode_ID || g.groupCodeID || 0,
+        groupCodeDesc: g.groupCodeDesc || '',
+        account_ID: g.account_ID || g.accountID || null,
+        accountNumber: g.accountNumber || '',
+        outStandingAmt: g.outStandingAmt || 0,
+        activeServiceCount: g.activeServiceCount || 0,
+      });
 
-      if (nameQuery) {
-        const finYear = session.platinumUser?.finYear || '2025/2026';
-        const allGroups = await platinumGet(session, "/api/receipting-account-group/get-account-groups", { finYear: String(finYear) });
-        if (allGroups && !allGroups._error && Array.isArray(allGroups)) {
-          const filtered = allGroups.filter((g: any) => {
-            const desc = (g.accountGroupDesc || g.institutionDesc || g.name || '').toLowerCase();
-            return desc.includes(nameQuery);
-          });
+      const finYear = session.platinumUser?.finYear || '2025/2026';
+      const endpoints = [
+        { url: "/api/receipting-account-group/search", params: {} },
+        { url: "/api/receipting-account-group/get-account-groups", params: { finYear: String(finYear) } },
+      ];
+
+      for (const ep of endpoints) {
+        const data = await platinumGet(session, ep.url, ep.params);
+        if (data && !data._error && Array.isArray(data) && data.length > 0) {
+          const filtered = filterByName(data);
           if (filtered.length > 0) {
-            const results = filtered.map((g: any) => ({
-              institutionDesc: g.accountGroupDesc || g.institutionDesc || g.name || '',
-              institutionID: g.accountGroupId || g.accountGroupID || g.institutionID || g.id,
-              groupCodeID: null,
-              groupCodeDesc: null,
-              accountID: null,
-              accountNumber: null,
-              outStandingAmt: g.outStandingAmt || 0,
-              activeServiceCount: g.activeServiceCount || 0,
-            }));
-            return res.json(results);
+            return res.json(filtered.map(normalizeResult));
           }
         }
       }
