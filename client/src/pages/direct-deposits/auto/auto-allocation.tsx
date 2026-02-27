@@ -256,30 +256,32 @@ function AutoAllocationContent() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="shrink-0 bg-white border-b border-slate-200 px-3 sm:px-6 py-3 sm:py-4">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h1 className="text-sm sm:text-lg font-bold text-slate-900 flex items-center gap-2" data-testid="text-page-title">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center shadow-sm">
-                <RefreshCw className="w-4 h-4 text-white" />
-              </div>
-              Direct Deposits Auto Allocation
-              <HelpTip text="Automatically allocate EFT and direct deposit payments to consumer accounts in bulk. Select a date range, fetch unprocessed batches, and process them for automatic allocation." side="bottom" />
-            </h1>
-            <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5 ml-10">Bulk process and reconcile direct deposit payments</p>
+      <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+              <RefreshCw className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-base sm:text-xl font-bold text-[#2E2E2E] flex items-center gap-2" data-testid="text-page-title">
+                Direct Deposits Auto Allocation
+                <HelpTip text="Automatically allocate EFT and direct deposit payments to consumer accounts in bulk. Select a date range, fetch unprocessed batches, and process them for automatic allocation." side="bottom" />
+              </h1>
+              <p className="text-xs sm:text-sm text-[#6B6B6B] mt-0.5">Bulk process and reconcile direct deposit payments</p>
+            </div>
           </div>
           {hasSearched && unprocessedBatches.length > 0 && (
-            <div className="flex gap-1.5">
+            <div className="flex bg-[#F2F4F7] rounded-xl p-1 gap-1 border border-[#D6D6D6]">
               <button
                 onClick={() => setActiveView('unprocessed')}
-                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${activeView === 'unprocessed' ? 'bg-[#E6A57E] text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${activeView === 'unprocessed' ? 'bg-white text-[#2E2E2E] shadow-[0_1px_3px_rgba(0,0,0,0.15)]' : 'text-[#6B6B6B] hover:text-[#2E2E2E]'}`}
                 data-testid="tab-unprocessed"
               >
                 Unprocessed
               </button>
               <button
                 onClick={() => { setActiveView('processed'); handleFetchProcessed(); }}
-                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${activeView === 'processed' ? 'bg-[#E6A57E] text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${activeView === 'processed' ? 'bg-white text-[#2E2E2E] shadow-[0_1px_3px_rgba(0,0,0,0.15)]' : 'text-[#6B6B6B] hover:text-[#2E2E2E]'}`}
                 data-testid="tab-processed"
               >
                 Processed
@@ -288,11 +290,11 @@ function AutoAllocationContent() {
           )}
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2 sm:gap-3">
-          <div className="flex-1 grid grid-cols-2 gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3 sm:gap-4 bg-[#F7F7F7] rounded-xl p-4 border border-[#D6D6D6]">
+          <div className="flex-1 grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
-                <Calendar className="w-3 h-3" />
+              <Label className="text-xs font-semibold text-[#2E2E2E] mb-1.5 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-[#E6A57E]" />
                 From Date
                 <HelpTip text="Start date for the deposit search range" side="top" />
               </Label>
@@ -302,8 +304,8 @@ function AutoAllocationContent() {
               />
             </div>
             <div>
-              <Label className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
-                <Calendar className="w-3 h-3" />
+              <Label className="text-xs font-semibold text-[#2E2E2E] mb-1.5 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-[#E6A57E]" />
                 To Date
                 <HelpTip text="End date for the deposit search range" side="top" />
               </Label>
@@ -317,7 +319,7 @@ function AutoAllocationContent() {
             <Button
               onClick={handleFetchUnprocessed}
               disabled={loading}
-              className="h-10 sm:h-9 gap-2 bg-[#E6A57E] hover:bg-[#D18E65] shadow-sm flex-1 sm:flex-none"
+              className="h-10 gap-2.5 px-5 bg-[#E6A57E] hover:bg-[#D18E65] shadow-[0_1px_3px_rgba(0,0,0,0.15)] text-white font-semibold text-sm flex-1 sm:flex-none rounded-lg"
               data-testid="button-fetch-unprocessed"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
@@ -328,20 +330,20 @@ function AutoAllocationContent() {
                 onClick={handleFetchUnprocessed}
                 variant="outline"
                 size="icon"
-                className="h-10 sm:h-9 w-10 sm:w-9"
+                className="h-10 w-10 border-[#D6D6D6] hover:bg-[#F0C3A7]/20 rounded-lg"
                 disabled={loading}
                 data-testid="button-refresh"
               >
-                <RotateCcw className="w-4 h-4" />
+                <RotateCcw className="w-4 h-4 text-[#6B6B6B]" />
               </Button>
             )}
           </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto bg-slate-50/80 p-3 sm:p-4">
+      <div className="flex-1 overflow-auto bg-[#F2F4F7] p-4 sm:p-6">
         {error && (
-          <Alert variant="destructive" className="mb-3" data-testid="alert-error">
+          <Alert variant="destructive" className="mb-4" data-testid="alert-error">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
@@ -349,19 +351,43 @@ function AutoAllocationContent() {
         )}
 
         {!hasSearched && (
-          <div className="flex flex-col items-center justify-center h-full text-slate-400 px-4">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-[#F0C3A7]/20 to-[#F7F7F7] flex items-center justify-center border border-[#D6D6D6] mb-3">
-              <Package className="w-8 h-8 sm:w-10 sm:h-10 text-[#E6A57E]/50" />
+          <div className="flex flex-col items-center justify-center h-full px-4">
+            <div className="max-w-lg w-full">
+              <div className="text-center mb-8">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center mx-auto mb-5 shadow-[0_4px_16px_rgba(230,165,126,0.3)]">
+                  <Package className="w-10 h-10 text-white" />
+                </div>
+                <h2 className="text-xl font-bold text-[#2E2E2E] mb-2">Fetch Unprocessed Deposits</h2>
+                <p className="text-sm text-[#6B6B6B] max-w-sm mx-auto">Select a date range above and click "Fetch Deposits" to load unprocessed direct deposits for automatic allocation.</p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { step: '1', icon: <Search className="w-5 h-5" />, title: 'Search', desc: 'Set date range and fetch deposits' },
+                  { step: '2', icon: <ListFilter className="w-5 h-5" />, title: 'Review', desc: 'Review batches and allocations' },
+                  { step: '3', icon: <CheckCheck className="w-5 h-5" />, title: 'Process', desc: 'Reconcile and confirm deposits' },
+                ].map((s) => (
+                  <div key={s.step} className="bg-white rounded-xl border border-[#D6D6D6] p-4 text-center shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] transition-shadow">
+                    <div className="w-10 h-10 rounded-full bg-[#F0C3A7]/25 flex items-center justify-center mx-auto mb-3 text-[#E6A57E]">
+                      {s.icon}
+                    </div>
+                    <div className="text-[10px] font-bold text-[#E6A57E] uppercase tracking-widest mb-1">Step {s.step}</div>
+                    <div className="text-sm font-semibold text-[#2E2E2E] mb-1">{s.title}</div>
+                    <div className="text-xs text-[#6B6B6B] leading-relaxed">{s.desc}</div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <p className="text-sm font-semibold text-slate-600 mb-1">Fetch Unprocessed Deposits</p>
-            <p className="text-xs text-slate-400 text-center max-w-xs">Select a date range and click "Fetch Deposits" to load unprocessed direct deposits for automatic allocation</p>
           </div>
         )}
 
         {loading && (
-          <div className="flex flex-col items-center justify-center py-16 text-slate-400">
-            <Loader2 className="w-8 h-8 animate-spin text-[#E6A57E] mb-3" />
-            <p className="text-sm text-slate-500">Loading deposits...</p>
+          <div className="flex flex-col items-center justify-center py-20 text-[#6B6B6B]">
+            <div className="w-16 h-16 rounded-2xl bg-white border border-[#D6D6D6] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.08)] mb-4">
+              <Loader2 className="w-8 h-8 animate-spin text-[#E6A57E]" />
+            </div>
+            <p className="text-sm font-semibold text-[#2E2E2E] mb-1">Loading deposits...</p>
+            <p className="text-xs text-[#6B6B6B]">Fetching data from the server</p>
           </div>
         )}
 
@@ -405,10 +431,12 @@ function AutoAllocationContent() {
             )}
 
             {unprocessedBatches.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-16 text-slate-400">
-                <CheckCheck className="w-10 h-10 mb-3 text-emerald-300" />
-                <p className="text-sm font-semibold text-slate-600 mb-1">No Unprocessed Deposits</p>
-                <p className="text-xs text-slate-400 text-center">All deposits in the selected date range have been processed</p>
+              <div className="flex flex-col items-center justify-center py-20">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center mb-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
+                  <CheckCheck className="w-8 h-8 text-emerald-500" />
+                </div>
+                <p className="text-base font-bold text-[#2E2E2E] mb-1">All Caught Up</p>
+                <p className="text-sm text-[#6B6B6B] text-center max-w-xs">All deposits in the selected date range have been processed. Try a different date range to find more.</p>
               </div>
             )}
 
@@ -651,10 +679,12 @@ function AutoAllocationContent() {
         {hasSearched && !loading && activeView === 'processed' && (
           <>
             {processedBatches.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-16 text-slate-400">
-                <FileText className="w-10 h-10 mb-3 text-slate-300" />
-                <p className="text-sm font-semibold text-slate-600 mb-1">No Processed Batches</p>
-                <p className="text-xs text-slate-400 text-center">Process unprocessed batches first to see them here</p>
+              <div className="flex flex-col items-center justify-center py-20">
+                <div className="w-16 h-16 rounded-2xl bg-[#F7F7F7] border border-[#D6D6D6] flex items-center justify-center mb-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
+                  <FileText className="w-8 h-8 text-[#6B6B6B]" />
+                </div>
+                <p className="text-base font-bold text-[#2E2E2E] mb-1">No Processed Batches</p>
+                <p className="text-sm text-[#6B6B6B] text-center max-w-xs">Process unprocessed batches first to see them here.</p>
               </div>
             )}
 
