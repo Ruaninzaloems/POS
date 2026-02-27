@@ -2642,8 +2642,48 @@ export async function registerRoutes(
       }
 
       if (cashierData && !cashierData._error) {
+        const cashiers = Array.isArray(cashierData) ? cashierData : [];
+        
+        if (cashiers.length > 0) {
+          console.log(`[auth-dayend-cashier-list] Enriching ${cashiers.length} cashiers with reconcile status...`);
+          const reconcileResults = await Promise.allSettled(
+            cashiers.map((c: any) => {
+              const cid = c.id || c.cashierId || c.cashier_ID;
+              if (!cid) return Promise.resolve(null);
+              return platinumGet(session, "/api/billing/auth-day-end-reconcile/cashier-reconcile-by-cashierid", { cashierId: String(cid) });
+            })
+          );
+          
+          for (let i = 0; i < cashiers.length; i++) {
+            const result = reconcileResults[i];
+            if (result.status === 'fulfilled' && result.value && !result.value._error) {
+              const rec = result.value;
+              const hasReconcile = rec.id || rec.reconcileId || rec.cashierReconcile_ID;
+              if (hasReconcile) {
+                cashiers[i].reconcileId = rec.id || rec.reconcileId || rec.cashierReconcile_ID;
+                cashiers[i].reconcileStatus = rec.status || rec.reconcileStatus || rec.dayEndStatus || 'Submitted';
+                cashiers[i].returnReason = rec.returnReason || rec.reason || rec.returnedReason || rec.comments || null;
+                cashiers[i].reconcileDate = rec.reconcileDate || rec.dateCaptured || rec.dateModified || null;
+                cashiers[i].totalAmount = rec.totalAmount || rec.systemTotal || rec.total || cashiers[i].totalAmount || 0;
+                cashiers[i].transactionCount = rec.transactionCount || rec.receiptCount || cashiers[i].transactionCount || 0;
+                cashiers[i].cashAmount = rec.cashAmount || rec.totalCashAmt || cashiers[i].cashAmount || 0;
+                cashiers[i].cardAmount = rec.cardAmount || rec.totalCreditAmt || cashiers[i].cardAmount || 0;
+                cashiers[i].declaredTotal = rec.declaredTotal || rec.cashierTotal || rec.totalDeclared || 0;
+                cashiers[i].variance = rec.variance || rec.varianceAmount || rec.totalVariance || 0;
+                console.log(`[auth-dayend-cashier-list] Cashier ${cashiers[i].name || cashiers[i].id}: reconcileId=${hasReconcile}, status="${cashiers[i].reconcileStatus}", returnReason=${cashiers[i].returnReason || 'none'}`);
+              } else {
+                cashiers[i].reconcileStatus = 'Not Submitted';
+                console.log(`[auth-dayend-cashier-list] Cashier ${cashiers[i].name || cashiers[i].id}: no reconcile record — Not Submitted`);
+              }
+            } else {
+              cashiers[i].reconcileStatus = 'Not Submitted';
+              console.log(`[auth-dayend-cashier-list] Cashier ${cashiers[i].name || cashiers[i].id}: reconcile lookup failed/empty — Not Submitted`);
+            }
+          }
+        }
+        
         const enriched = {
-          cashiers: cashierData,
+          cashiers: cashiers,
           offices: Object.fromEntries(Array.from(officeMap.entries()).map(([id, data]) => [String(id), data])),
         };
         return res.json(enriched);

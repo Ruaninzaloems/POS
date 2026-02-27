@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { platinumGetAuthDayEndCashierList, platinumGetAuthDayEndCashierDetails, platinumGetAuthDayEndCashierReconcile, platinumGetAuthDayEndCashbookList, platinumGetPendingCancelRequests, platinumApproveCancelReceipt, platinumDeclineCancelReceipt, platinumAuthDayEndValidateCashbook, platinumAuthDayEndSubmitReconcile, platinumAuthDayEndPrintCashReport, platinumAuthDayEndPrintDepositSlip, platinumAuthDayEndDirectCancelReceipt, platinumPerOfficeCashOfficeList, platinumPerOfficeCashOfficeSelection, platinumPerOfficeCashierSummary, platinumPerOfficeCashierReconcileStatus, platinumPerOfficeProcessStagingPayments, platinumPerOfficeAddStage, platinumPerOfficeVerifyCashierReconcile, platinumPerOfficeSubmitReconcile, platinumPerOfficeFinishStage, platinumPerOfficeCancelReceipt, platinumPerOfficeReturnReconcile, platinumPerOfficePrintCashReport, platinumPerOfficePrintDepositSlip } from '@/lib/external-api';
@@ -84,6 +85,7 @@ interface CashierShift {
   };
   transactionCount: number;
   reconcileId: number | null;
+  returnReason?: string | null;
   rawData?: any;
 }
 
@@ -126,15 +128,21 @@ function mapCashierToShift(c: any, index: number, officeConfigs?: Record<string,
   const officeConfig = officeId && officeConfigs ? officeConfigs[String(officeId)] : undefined;
   const groupCashiers = officeConfig?.groupCashiers ?? c.groupCashiers ?? false;
 
-  let status: DayEndStatus = 'PENDING_APPROVAL';
+  let status: DayEndStatus = 'NOT_SUBMITTED';
   const rawStatus = String(c.status || c.reconcileStatus || c.dayEndStatus || '').toLowerCase();
   if (rawStatus.includes('complet') || rawStatus.includes('post') || rawStatus.includes('finish') || rawStatus.includes('approved')) {
     status = 'COMPLETED';
   } else if (rawStatus.includes('return')) {
     status = 'RETURNED';
-  } else if (rawStatus.includes('not') || rawStatus.includes('open') || rawStatus.includes('submit')) {
+  } else if (rawStatus.includes('submit') || rawStatus.includes('pending') || rawStatus.includes('awaiting')) {
+    status = 'PENDING_APPROVAL';
+  } else if (rawStatus.includes('not') || rawStatus.includes('open') || rawStatus === '' || rawStatus === 'not submitted') {
     status = 'NOT_SUBMITTED';
+  } else if (rawReconcileId && rawReconcileId > 0) {
+    status = 'PENDING_APPROVAL';
   }
+
+  const returnReason = c.returnReason || c.reason || c.returnedReason || c.comments || null;
 
   return {
     id,
@@ -150,6 +158,7 @@ function mapCashierToShift(c: any, index: number, officeConfigs?: Record<string,
     variance: varianceTotal !== 0 ? { cash: 0, card: 0, total: varianceTotal } : { cash: 0, card: 0, total: 0 },
     transactionCount: txCount,
     reconcileId: rawReconcileId,
+    returnReason,
     rawData: c,
   };
 }
@@ -1671,7 +1680,7 @@ export default function SupervisorDashboard() {
                                       </p>
                                   )}
                               </div>
-                              <StatusBadge status={shift.status} />
+                              <StatusBadge status={shift.status} returnReason={shift.returnReason} />
                           </div>
                           <div className="flex items-center justify-between text-sm">
                               <span className="text-muted-foreground">{new Date(shift.startTime).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' })}</span>
@@ -1730,7 +1739,7 @@ export default function SupervisorDashboard() {
                                   {(shift.variance?.total || 0) === 0 ? '-' : formatCurrency(shift.variance?.total || 0)}
                               </TableCell>
                               <TableCell className="text-center">
-                                  <StatusBadge status={shift.status} />
+                                  <StatusBadge status={shift.status} returnReason={shift.returnReason} />
                               </TableCell>
                               <TableCell className="text-right">
                                   <Button 
@@ -2379,16 +2388,31 @@ export default function SupervisorDashboard() {
   );
 }
 
-function StatusBadge({ status }: { status: DayEndStatus }) {
+function StatusBadge({ status, returnReason }: { status: DayEndStatus; returnReason?: string | null }) {
     switch (status) {
         case 'NOT_SUBMITTED':
-            return <Badge variant="outline" className="text-gray-500 border-gray-300">Open</Badge>;
+            return <Badge variant="outline" className="text-gray-500 border-gray-300">Not Submitted</Badge>;
         case 'PENDING_APPROVAL':
             return <Badge variant="secondary" className="bg-[var(--pos-accent-tint-strong)] text-[var(--pos-accent)] hover:bg-[var(--pos-accent-tint-strong)]">Pending Approval</Badge>;
         case 'RETURNED':
+            if (returnReason) {
+                return (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Badge variant="destructive" className="cursor-help">Returned</Badge>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[300px]">
+                                <p className="text-xs font-medium">Return Reason:</p>
+                                <p className="text-xs">{returnReason}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                );
+            }
             return <Badge variant="destructive">Returned</Badge>;
         case 'COMPLETED':
-            return <Badge className="bg-green-100 text-green-700 hover:bg-green-200 border-green-200 shadow-none">Posted</Badge>;
+            return <Badge className="bg-green-100 text-green-700 hover:bg-green-200 border-green-200 shadow-none">Approved</Badge>;
         default:
             return null;
     }
