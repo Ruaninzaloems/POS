@@ -1063,7 +1063,7 @@ export default function ThirdPartyPaymentProcessing() {
               <CardContent className="pt-8 pb-8 text-center space-y-4">
                 <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto" />
                 <h2 className="text-xl font-semibold text-slate-900">Payments Committed Successfully</h2>
-                <p className="text-muted-foreground max-w-md mx-auto">
+                <p className="text-muted-foreground">
                   All validated transactions from import {importId} have been committed and allocated to their respective accounts using resolved (current) account numbers.
                 </p>
                 {commitResult?.masterId && (

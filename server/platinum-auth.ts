@@ -59,10 +59,11 @@ export interface UserSession {
   authMode: 'direct' | 'azure' | 'override';
   loggedIn: boolean;
   siteId: string;
+  dayEndPending?: boolean;
 }
 
 export function createEmptySession(): UserSession {
-  return { token: '', tokenExpiry: 0, userData: null, posCashierId: null, authMode: 'override', loggedIn: false, siteId: 'george' };
+  return { token: '', tokenExpiry: 0, userData: null, posCashierId: null, authMode: 'override', loggedIn: false, siteId: 'george', dayEndPending: false };
 }
 
 const resolvedUserCache = new Map<string, { userData: any; ts: number }>();

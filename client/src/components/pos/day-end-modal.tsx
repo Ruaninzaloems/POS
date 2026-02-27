@@ -344,7 +344,7 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
         </DialogContent>
       ) : (
       <DialogContent className="sm:max-w-4xl max-h-[92vh] overflow-y-auto p-0 gap-0 rounded-xl border-0 shadow-2xl">
-        <div className="bg-[linear-gradient(180deg,#8C8C8C_0%,#6F6F6F_100%)] text-white px-6 py-5 rounded-t-xl">
+        <div className="bg-[linear-gradient(180deg,var(--pos-accent)_0%,var(--pos-accent-dark)_100%)] text-white px-6 py-5 rounded-t-xl">
           <div className="flex items-start justify-between">
             <div>
               <h2 className="text-xl font-bold tracking-tight">Day End Reconciliation</h2>

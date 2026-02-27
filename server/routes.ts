@@ -399,8 +399,11 @@ export async function registerRoutes(
       const cashFloat = cashier?.cashFloat ?? 0;
       const cashOnHandLimit = cashOffice?.cashOnHandLimit || 999999;
 
-      const hasPendingDayEnd = cashierReconcile != null;
-      console.log(`[active-cashier] validate-cashier result — registered: ${isCashierRegistered}, isActive: ${isSessionActive} (POS_Cashier.IsActive=${cashier?.isActive}), cashierId: ${cashierId}, officeId: ${activeOfficeId}, officeName: ${activeOfficeName}, cashierReconcile: ${cashierReconcile ? 'PRESENT (day-end pending)' : 'null (no pending day-end)'}`);
+      const hasPendingDayEnd = cashierReconcile != null || session.dayEndPending === true;
+      if (!cashierReconcile && session.dayEndPending === true) {
+        console.log(`[active-cashier] API cashierReconcile is null but session.dayEndPending=true — treating as pending (API may not reflect submission yet)`);
+      }
+      console.log(`[active-cashier] validate-cashier result — registered: ${isCashierRegistered}, isActive: ${isSessionActive} (POS_Cashier.IsActive=${cashier?.isActive}), cashierId: ${cashierId}, officeId: ${activeOfficeId}, officeName: ${activeOfficeName}, cashierReconcile: ${cashierReconcile ? 'PRESENT' : 'null'}, session.dayEndPending: ${session.dayEndPending}, hasPendingDayEnd: ${hasPendingDayEnd}`);
 
       const cashierDetails = cashier ? {
         ...cashier,
@@ -842,7 +845,8 @@ export async function registerRoutes(
         (session as any).knownCashierId = data.cashier.id;
         (session as any).knownCashierOfficeId = data.cashier.officeId || payload.officeId;
         (session as any).knownCashierData = data.cashier;
-        console.log(`[submit-cashier-setup] Stored knownCashierId=${data.cashier.id}, officeId=${(session as any).knownCashierOfficeId} in session for fallback lookups`);
+        session.dayEndPending = false;
+        console.log(`[submit-cashier-setup] Stored knownCashierId=${data.cashier.id}, officeId=${(session as any).knownCashierOfficeId} in session for fallback lookups. Cleared dayEndPending.`);
       }
 
       if (isClose && data?.cashier?.isActive === false) {
@@ -2809,6 +2813,8 @@ export async function registerRoutes(
       console.log(`[auth-dayend-submit] Query:`, req.query);
       const data = await platinumPost(session, "/api/billing/auth-day-end-reconcile/submit-day-auth-reconcile", req.body, req.query as Record<string, string>);
       console.log(`[auth-dayend-submit] Response:`, JSON.stringify(data).substring(0, 500));
+      session.dayEndPending = true;
+      console.log(`[auth-dayend-submit] Marked session.dayEndPending=true`);
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
