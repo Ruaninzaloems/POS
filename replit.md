@@ -23,6 +23,44 @@ Key capabilities include:
 
 Preferred communication style: Simple, everyday language.
 
+## Design System — Colour Palettes
+
+**IMPORTANT: Always use these exact colours when creating or updating any UI component. Choose the correct palette based on the active site.**
+
+### Platinum POS / SAMRAS Billing (George — default theme)
+| Token | Value | Usage |
+|---|---|---|
+| Primary brand / accent | `#E6A57E` | Active sidebar items, highlight pills, accent bars, focus rings |
+| Primary dark text | `#2E2E2E` | Headings, labels, primary body text |
+| Secondary text | `#6B6B6B` | Descriptions, helper text, muted labels |
+| App background | `#F2F4F7` | Page / app background |
+| Panel / form background | `#FFFFFF` | Cards, modals, form areas |
+| Sidebar background | `#F7F7F7` | Sidebar, muted panels |
+| Sidebar active item | `#E6A57E` | Active / selected sidebar row background |
+| Sidebar hover | `#F0C3A7` | Hovered sidebar row tint |
+| Borders / input borders | `#D6D6D6` | Card borders, input borders, dividers |
+| Section header bar | `linear-gradient(180deg, #8C8C8C 0%, #6F6F6F 100%)` | Top header bar, section header bars |
+| Primary buttons (Search/Add) | bg `#C9D6E2`, border `#A9B8C7`, text `#2E2E2E` | Default action buttons |
+| Primary button hover | bg `#B7C7D6` | Button hover state |
+| Highlight pill (Welcome banner) | bg `#E6A57E`, text `#FFFFFF` | Badge / pill highlights |
+| Error text | `#D14343` | Validation errors, destructive actions |
+| Shadow | `0 1px 3px rgba(0,0,0,0.15)` | Cards, panels, dropdowns |
+
+### Inzalo EMS Site02 (`.theme-site02` CSS class)
+| Token | Value | Usage |
+|---|---|---|
+| Primary brand / accent | `#2BB3A6` (teal) | Accent bars, focus rings, active states |
+| Header / sidebar dark bg | `#243A53` | Header gradient, sidebar background |
+| Header gradient | `from-[#1d3347] via-[#243A53] to-[#1d3347]` | Top header bar |
+| Accent lighter | `#6EC6C0` | Secondary teal accent |
+| All other tokens | Same structural role as Platinum palette but with teal/navy substitutions | — |
+
+### Rules
+- When `siteInfo?.id === 'site02'`, use Inzalo EMS palette; otherwise use Platinum/SAMRAS palette.
+- Never use old blue/navy/indigo colours (`blue-600`, `indigo-600`, `slate-900 via-blue-900`) for George theme — those are replaced by the SAMRAS palette above.
+- CSS variables in `:root` (index.css) map to the Platinum palette; `.theme-site02` overrides map to Inzalo EMS palette.
+- Hardcoded colour references in components should use the hex values above, conditional on `isSite02`.
+
 ## System Architecture
 
 ### Frontend (React + TypeScript)
@@ -63,7 +101,7 @@ Preferred communication style: Simple, everyday language.
 - Site configuration is defined in `server/platinum-auth.ts` (`SITE_CONFIGS` array).
 - Each site has: `id`, `name`, `apiUrl`, `dbName`, `logo`, `themeClass`.
 - Currently configured sites:
-  - **George Municipality** (`george`): `georgeplatinumuatapi.azurewebsites.net` — default blue theme
+  - **George Municipality** (`george`): `georgeplatinumuatapi.azurewebsites.net` — SAMRAS Platinum palette (peach `#E6A57E` accent, grey header)
   - **Inzalo EMS (Site02)** (`site02`): `test-ems-site02-token-api.azurewebsites.net` — teal `#2BB3A6` theme
 - Theme switching uses CSS classes on `<html>` root (e.g., `.theme-site02` in `client/src/index.css`).
 - The header, logo, and gradient colors in `pos-layout.tsx` adapt dynamically based on the active site.
