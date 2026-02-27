@@ -7,11 +7,38 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { platinumPrintReceiptRaw } from '@/lib/external-api';
+import { openReceiptPrintWindow, type ReceiptPrintData } from '@/lib/receipt-print';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 
+function buildFallbackReceiptData(txn: any, sessionDetails?: any): ReceiptPrintData {
+  const rd = txn.receiptDetail || {};
+  const sr = txn.splitReceipts?.[0];
+  const allocs = txn.allocations || sr?.allocations || [];
+  return {
+    receiptNo: txn.receiptNumber || rd.receiptNo || sr?.receiptNumber || '',
+    receiptDate: rd.receiptDate || rd.paymentDate || new Date().toISOString(),
+    accountNumber: rd.accountId || sr?.accountId || '',
+    oldAccountCode: rd.oldAccountCode || '',
+    accountName: rd.accName || sr?.accountName || txn.description || '',
+    sgNumber: rd.sgNumber || '',
+    address: rd.accAddress || '',
+    totalAmount: txn.totalAmount || rd.tenderAmount || sr?.amount || 0,
+    tenderAmount: rd.tenderAmount || txn.totalAmount || sr?.amount || 0,
+    changeAmount: rd.changeAmount || 0,
+    outstandingBalance: rd.outstandingAmount ?? 0,
+    paymentType: rd.paymentType || (sr?.paymentType === 'card' ? 'Credit Card' : 'Cash'),
+    paymentOption: rd.paymentOption || 'Consumer Services',
+    cashierName: rd.cashierName || '',
+    cashOffice: rd.cashOffice || sessionDetails?.officeDesc || '',
+    services: allocs.length > 0
+      ? allocs.map((a: any) => ({ description: a.service || a.description || '', amount: a.amount ?? a.total ?? 0 }))
+      : undefined,
+  };
+}
+
 export function ReceiptModal() {
-  const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions, transactionProcessing, processingStep, currentTransactionId, processingRecord } = usePos();
+  const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions, transactionProcessing, processingStep, currentTransactionId, processingRecord, sessionDetails } = usePos();
   
   const currentTransaction = processingRecord && currentTransactionId && processingRecord.id === currentTransactionId
     ? processingRecord
@@ -103,8 +130,16 @@ export function ReceiptModal() {
       if (!res.ok) {
         let detail = '';
         try { const errJson = await res.json(); detail = errJson.detail || errJson.message || ''; } catch { detail = `HTTP ${res.status}`; }
-        const errMsg = `Receipt print failed — the billing system returned an error: ${detail || `HTTP ${res.status}`}. You can reprint from View Receipts.`;
         console.error('[ReceiptModal] print-receipt API failed:', res.status, detail);
+        console.log('[ReceiptModal] Attempting local receipt generation as fallback...');
+        const fallbackData = buildFallbackReceiptData(currentTransaction, sessionDetails);
+        if (fallbackData.receiptNo) {
+          openReceiptPrintWindow(fallbackData, false);
+          toast({ title: 'Receipt Generated Locally', description: 'The billing system PDF was unavailable — a receipt was generated from your transaction data.' });
+          closeReceiptModal();
+          return;
+        }
+        const errMsg = `Receipt print failed — the billing system returned an error: ${detail || `HTTP ${res.status}`}. You can reprint from View Receipts.`;
         setPrintError(errMsg);
         toast({ title: 'Print Failed', description: errMsg, variant: 'destructive' });
         return;
@@ -112,8 +147,16 @@ export function ReceiptModal() {
 
       const blob = await res.blob();
       if (blob.size < 100) {
-        const errMsg = 'Receipt print failed — the billing system returned an empty PDF. You can reprint from View Receipts.';
         console.error('[ReceiptModal] print-receipt returned tiny response:', blob.size, 'bytes');
+        console.log('[ReceiptModal] Attempting local receipt generation as fallback...');
+        const fallbackData = buildFallbackReceiptData(currentTransaction, sessionDetails);
+        if (fallbackData.receiptNo) {
+          openReceiptPrintWindow(fallbackData, false);
+          toast({ title: 'Receipt Generated Locally', description: 'The billing system returned an empty PDF — a receipt was generated from your transaction data.' });
+          closeReceiptModal();
+          return;
+        }
+        const errMsg = 'Receipt print failed — the billing system returned an empty PDF. You can reprint from View Receipts.';
         setPrintError(errMsg);
         toast({ title: 'Print Failed', description: errMsg, variant: 'destructive' });
         return;
@@ -128,8 +171,16 @@ export function ReceiptModal() {
       }
       closeReceiptModal();
     } catch (err: any) {
-      const errMsg = `Receipt print failed: ${err.message || 'Unknown error'}. You can reprint from View Receipts.`;
       console.error('[ReceiptModal] PDF print error:', err);
+      console.log('[ReceiptModal] Attempting local receipt generation as fallback...');
+      const fallbackData = buildFallbackReceiptData(currentTransaction, sessionDetails);
+      if (fallbackData.receiptNo) {
+        openReceiptPrintWindow(fallbackData, false);
+        toast({ title: 'Receipt Generated Locally', description: 'The billing system PDF was unavailable — a receipt was generated from your transaction data.' });
+        closeReceiptModal();
+        return;
+      }
+      const errMsg = `Receipt print failed: ${err.message || 'Unknown error'}. You can reprint from View Receipts.`;
       setPrintError(errMsg);
       toast({ title: 'Print Failed', description: errMsg, variant: 'destructive' });
     } finally {
