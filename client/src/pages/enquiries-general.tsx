@@ -237,11 +237,11 @@ function RiskFlagsBanner({ accountId }: { accountId: number }) {
       pulse: 'bg-amber-500',
     },
     info: {
-      container: 'bg-blue-50 border-blue-300 ring-1 ring-blue-200',
-      icon: 'text-blue-600',
-      label: 'text-blue-800',
-      detail: 'text-blue-600',
-      pulse: 'bg-blue-500',
+      container: 'bg-[#F0C3A7]/20 border-[#D6D6D6] ring-1 ring-[#F0C3A7]',
+      icon: 'text-[#E6A57E]',
+      label: 'text-[#2E2E2E]',
+      detail: 'text-[#E6A57E]',
+      pulse: 'bg-[#E6A57E]',
     },
   };
 
@@ -351,17 +351,17 @@ function FieldAutocompleteInput({ fieldKey, placeholder, value, onChange, onSele
         onChange={(e) => handleChange(e.target.value)}
         onFocus={() => { if (suggestions.length > 0) setOpen(true); }}
         onKeyDown={(e) => { if (e.key === 'Enter') { setOpen(false); onEnter(); } if (e.key === 'Escape') setOpen(false); }}
-        className="w-full h-9 sm:h-8 px-2.5 sm:px-2 text-xs rounded-lg sm:rounded border border-slate-300 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 sm:focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+        className="w-full h-9 sm:h-8 px-2.5 sm:px-2 text-xs rounded-lg sm:rounded border border-slate-300 bg-white placeholder:text-slate-400 focus:outline-none focus:ring-2 sm:focus:ring-1 focus:ring-[#E6A57E] focus:border-[#E6A57E] transition-colors"
         data-testid={`input-field-${fieldKey}`}
       />
-      {loading && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-blue-400 animate-spin" />}
+      {loading && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[#E6A57E] animate-spin" />}
       {open && suggestions.length > 0 && (
         <div className="absolute left-0 right-0 top-full mt-0.5 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-[200px] overflow-y-auto overscroll-contain">
           {suggestions.map((s, i) => (
             <button
               key={`${s.accountId}-${i}`}
               onClick={() => handleSelect(s)}
-              className="w-full text-left px-2.5 py-2 sm:py-1.5 text-xs text-slate-700 hover:bg-blue-50 active:bg-blue-100 transition-colors border-b border-slate-100 last:border-0"
+              className="w-full text-left px-2.5 py-2 sm:py-1.5 text-xs text-slate-700 hover:bg-[#F0C3A7]/15 active:bg-[#F0C3A7]/25 transition-colors border-b border-slate-100 last:border-0"
               data-testid={`suggestion-${fieldKey}-${i}`}
             >
               {s.displayItem}
@@ -841,8 +841,8 @@ function GeneralEnquiriesContent() {
     ];
 
     const tabColorMap: Record<string, { bg: string; border: string; text: string; iconBg: string; activeBg: string; activeBorder: string; activeText: string; activeIconBg: string }> = {
-      blue: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-blue-50 text-blue-500', activeBg: 'bg-blue-50', activeBorder: 'border-blue-400 ring-1 ring-blue-200', activeText: 'text-blue-800', activeIconBg: 'bg-blue-500 text-white' },
-      indigo: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-indigo-50 text-indigo-500', activeBg: 'bg-indigo-50', activeBorder: 'border-indigo-400 ring-1 ring-indigo-200', activeText: 'text-indigo-800', activeIconBg: 'bg-indigo-500 text-white' },
+      blue: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-[#F0C3A7]/20 text-[#E6A57E]', activeBg: 'bg-[#F0C3A7]/20', activeBorder: 'border-[#E6A57E] ring-1 ring-[#F0C3A7]', activeText: 'text-[#2E2E2E]', activeIconBg: 'bg-[#E6A57E] text-white' },
+      indigo: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-[#F0C3A7]/20 text-[#E6A57E]', activeBg: 'bg-[#F0C3A7]/20', activeBorder: 'border-[#E6A57E] ring-1 ring-[#F0C3A7]', activeText: 'text-[#2E2E2E]', activeIconBg: 'bg-[#E6A57E] text-white' },
       red: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-red-50 text-red-500', activeBg: 'bg-red-50', activeBorder: 'border-red-400 ring-1 ring-red-200', activeText: 'text-red-800', activeIconBg: 'bg-red-500 text-white' },
       emerald: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-emerald-50 text-emerald-500', activeBg: 'bg-emerald-50', activeBorder: 'border-emerald-400 ring-1 ring-emerald-200', activeText: 'text-emerald-800', activeIconBg: 'bg-emerald-500 text-white' },
       amber: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-amber-50 text-amber-600', activeBg: 'bg-amber-50', activeBorder: 'border-amber-400 ring-1 ring-amber-200', activeText: 'text-amber-800', activeIconBg: 'bg-amber-500 text-white' },
@@ -865,7 +865,7 @@ function GeneralEnquiriesContent() {
             <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={() => setSelectedAccount(null)}
-                className="inline-flex items-center gap-1 text-slate-500 hover:text-blue-600 text-sm font-medium transition-colors group shrink-0"
+                className="inline-flex items-center gap-1 text-slate-500 hover:text-[#E6A57E] text-sm font-medium transition-colors group shrink-0"
                 data-testid="button-back-to-results"
               >
                 <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
@@ -874,7 +874,7 @@ function GeneralEnquiriesContent() {
 
               <div className="h-6 w-px bg-slate-200 hidden sm:block" />
 
-              <div className="shrink-0 h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs sm:text-sm font-bold shadow-sm">
+              <div className="shrink-0 h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center text-white text-xs sm:text-sm font-bold shadow-sm">
                 {accountName.charAt(0).toUpperCase()}
               </div>
 
@@ -910,13 +910,13 @@ function GeneralEnquiriesContent() {
 
             {(selectedAccount.accountType || selectedAccount.accountDesc) && (
               <div className="mt-1 sm:hidden">
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 ring-1 ring-blue-200" data-testid="badge-account-type">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-[#F0C3A7]/20 text-[#E6A57E] ring-1 ring-[#F0C3A7]" data-testid="badge-account-type">
                   {selectedAccount.accountType || selectedAccount.accountDesc}
                 </span>
               </div>
             )}
             {(selectedAccount.accountType || selectedAccount.accountDesc) && (
-              <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 ring-1 ring-blue-200 ml-[88px]" data-testid="badge-account-type-desktop">
+              <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#F0C3A7]/20 text-[#E6A57E] ring-1 ring-[#F0C3A7] ml-[88px]" data-testid="badge-account-type-desktop">
                 {selectedAccount.accountType || selectedAccount.accountDesc}
               </span>
             )}
@@ -1105,7 +1105,7 @@ function GeneralEnquiriesContent() {
 
             {dropdownSearching && (
               <div className="absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
-                <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+                <Loader2 className="w-4 h-4 text-[#E6A57E] animate-spin" />
               </div>
             )}
 
@@ -1118,7 +1118,7 @@ function GeneralEnquiriesContent() {
               onFocus={() => { if (quickQuery.trim().length >= 2 || recentSearches.length > 0 || pinnedAccounts.length > 0) setShowDropdown(true); }}
               placeholder="Search account, name, ID, phone..."
               className="w-full h-10 sm:h-11 pl-9 sm:pl-10 pr-[88px] sm:pr-[180px] rounded-xl sm:rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-800 placeholder:text-slate-400
-                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                focus:outline-none focus:ring-2 focus:ring-[#E6A57E] focus:border-[#E6A57E] transition-all shadow-sm"
               data-testid="input-smart-search"
               aria-label="Search accounts"
               aria-controls="search-dropdown"
@@ -1132,7 +1132,7 @@ function GeneralEnquiriesContent() {
                 <span className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium whitespace-nowrap
                   ${detectedType.unsupported
                     ? 'bg-amber-50 text-amber-600 border border-amber-200'
-                    : 'bg-blue-50 text-blue-600 border border-blue-200'}`}
+                    : 'bg-[#F0C3A7]/20 text-[#E6A57E] border border-[#D6D6D6]'}`}
                   data-testid="badge-detected-type"
                 >
                   {detectedType.unsupported ? <AlertTriangle className="w-2.5 h-2.5" /> : <CircleDot className="w-2.5 h-2.5" />}
@@ -1167,7 +1167,7 @@ function GeneralEnquiriesContent() {
               <button
                 onClick={handleFullSearch}
                 disabled={searching || (quickQuery.trim().length < 2 && !Object.values(criteria).some(v => v && String(v).trim()))}
-                className="h-8 w-8 sm:h-8 sm:w-auto sm:px-3 rounded-lg sm:rounded-md bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-slate-300 text-white flex items-center justify-center gap-1.5 text-xs font-medium transition-colors shadow-sm"
+                className="h-8 w-8 sm:h-8 sm:w-auto sm:px-3 rounded-lg sm:rounded-md bg-[#E6A57E] hover:bg-[#D18E65] active:bg-[#D18E65] disabled:bg-slate-300 text-white flex items-center justify-center gap-1.5 text-xs font-medium transition-colors shadow-sm"
                 data-testid="button-search"
                 aria-label="Search"
                 tabIndex={0}
@@ -1183,7 +1183,7 @@ function GeneralEnquiriesContent() {
               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-medium
                 ${detectedType.unsupported
                   ? 'bg-amber-50 text-amber-600 border border-amber-200'
-                  : 'bg-blue-50 text-blue-600 border border-blue-200'}`}
+                  : 'bg-[#F0C3A7]/20 text-[#E6A57E] border border-[#D6D6D6]'}`}
                 data-testid="badge-detected-type-mobile"
               >
                 {detectedType.unsupported ? <AlertTriangle className="w-2.5 h-2.5" /> : <CircleDot className="w-2.5 h-2.5" />}
@@ -1213,12 +1213,12 @@ function GeneralEnquiriesContent() {
                 <span className="text-[11px] sm:text-[10px] font-semibold text-slate-600 sm:text-slate-500 sm:uppercase sm:tracking-wider">Field Search</span>
                 <HelpTip text="Search by specific fields like account number, name, meter number, etc. for precise results." side="right" />
                 {activeFilterCount > 0 && (
-                  <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] sm:min-w-[16px] sm:h-[16px] rounded-full bg-blue-600 text-white text-[9px] font-bold px-1">{activeFilterCount}</span>
+                  <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] sm:min-w-[16px] sm:h-[16px] rounded-full bg-[#E6A57E] text-white text-[9px] font-bold px-1">{activeFilterCount}</span>
                 )}
                 {activeFilterCount > 0 && (
                   <button
                     onClick={(e) => { e.stopPropagation(); setCriteria({}); }}
-                    className="hidden sm:inline text-[10px] text-blue-600 hover:text-blue-800 underline underline-offset-2"
+                    className="hidden sm:inline text-[10px] text-[#E6A57E] hover:text-[#D18E65] underline underline-offset-2"
                     data-testid="button-clear-field-filters"
                   >
                     Clear
@@ -1269,7 +1269,7 @@ function GeneralEnquiriesContent() {
                     </div>
                     <button
                       onClick={() => setShowAllFields(prev => !prev)}
-                      className="sm:hidden mt-1.5 text-[10px] text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                      className="sm:hidden mt-1.5 text-[10px] text-[#E6A57E] hover:text-[#D18E65] font-medium flex items-center gap-1"
                       data-testid="button-toggle-more-fields"
                     >
                       <SlidersHorizontal className="w-3 h-3" />
@@ -1282,7 +1282,7 @@ function GeneralEnquiriesContent() {
                 <button
                   onClick={handleFullSearch}
                   disabled={searching || (quickQuery.trim().length < 2 && !Object.values(criteria).some(v => v && String(v).trim()))}
-                  className="h-8 sm:h-7 px-4 sm:px-3 rounded-lg sm:rounded bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-slate-300 text-white flex items-center gap-1.5 text-xs sm:text-[11px] font-medium transition-colors shadow-sm"
+                  className="h-8 sm:h-7 px-4 sm:px-3 rounded-lg sm:rounded bg-[#E6A57E] hover:bg-[#D18E65] active:bg-[#D18E65] disabled:bg-slate-300 text-white flex items-center gap-1.5 text-xs sm:text-[11px] font-medium transition-colors shadow-sm"
                   data-testid="button-field-search"
                 >
                   {searching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
@@ -1304,7 +1304,7 @@ function GeneralEnquiriesContent() {
                   More
                 </button>
                 {activeFilterCount > 0 && (
-                  <button onClick={() => setCriteria({})} className="sm:hidden text-[10px] text-blue-600 hover:text-blue-800 underline underline-offset-2" data-testid="button-clear-field-filters-mobile">
+                  <button onClick={() => setCriteria({})} className="sm:hidden text-[10px] text-[#E6A57E] hover:text-[#D18E65] underline underline-offset-2" data-testid="button-clear-field-filters-mobile">
                     Clear Filters ({activeFilterCount})
                   </button>
                 )}
@@ -1320,7 +1320,7 @@ function GeneralEnquiriesContent() {
                 onClick={() => toggleQuickFilter(chip.key)}
                 className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 sm:py-1 rounded-full text-[11px] font-medium border transition-all whitespace-nowrap active:scale-95
                   ${quickFilters.has(chip.key)
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                    ? 'bg-[#E6A57E] text-white border-[#E6A57E] shadow-sm'
                     : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:border-slate-300'}`}
                 data-testid={`chip-filter-${chip.key}`}
                 aria-pressed={quickFilters.has(chip.key)}
@@ -1333,7 +1333,7 @@ function GeneralEnquiriesContent() {
             {quickFilters.size > 0 && (
               <button
                 onClick={() => setQuickFilters(new Set())}
-                className="text-[10px] text-blue-600 hover:text-blue-800 ml-1 underline underline-offset-2"
+                className="text-[10px] text-[#E6A57E] hover:text-[#D18E65] ml-1 underline underline-offset-2"
                 data-testid="button-clear-quick-filters"
               >
                 Clear
@@ -1372,14 +1372,14 @@ function GeneralEnquiriesContent() {
                       <button
                         key={acct.account_ID || acct.accountID || i}
                         onClick={() => handleSelectAccount(acct)}
-                        className="w-full text-left px-4 py-2 hover:bg-blue-50 transition-colors flex items-center gap-3"
+                        className="w-full text-left px-4 py-2 hover:bg-[#F0C3A7]/15 transition-colors flex items-center gap-3"
                         data-testid={`pinned-account-${i}`}
                         role="option"
                       >
                         <Star className="w-3 h-3 text-amber-500 fill-amber-500 shrink-0" />
                         <div className="flex-1 min-w-0">
                           <span className="text-sm font-medium text-slate-800">{acct.name || acct.surname_Company || 'Unknown'}</span>
-                          <span className="text-[10px] font-mono text-blue-600 ml-2">{acctNum}</span>
+                          <span className="text-[10px] font-mono text-[#E6A57E] ml-2">{acctNum}</span>
                         </div>
                         <span className={`text-xs font-mono font-semibold ${bal > 0 ? 'text-red-600' : 'text-green-600'}`}>
                           R {bal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
@@ -1425,10 +1425,10 @@ function GeneralEnquiriesContent() {
         {!hasSearched && !searchError && (
           <div className="flex flex-col items-center justify-center h-full text-slate-400 px-4 sm:px-8 py-8 sm:py-12">
             <div className="relative mb-3 sm:mb-4">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center border border-blue-100">
-                <Search className="w-7 h-7 sm:w-9 sm:h-9 text-blue-300" />
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-[#F0C3A7]/15 to-[#F0C3A7]/10 flex items-center justify-center border border-[#D6D6D6]">
+                <Search className="w-7 h-7 sm:w-9 sm:h-9 text-[#E6A57E]/50" />
               </div>
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center shadow-sm">
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-[#E6A57E] rounded-full flex items-center justify-center shadow-sm">
                 <Zap className="w-3 h-3 text-white" />
               </div>
             </div>
@@ -1443,11 +1443,11 @@ function GeneralEnquiriesContent() {
                     key={i}
                     onClick={() => { setQuickQuery(example.value); handleQuickQueryChange(example.value); inputRef.current?.focus(); }}
                     className="group flex flex-col sm:flex-row items-start sm:items-center gap-0.5 sm:gap-2 text-[11px] sm:text-xs px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl sm:rounded-lg border border-slate-200 text-slate-500
-                      hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 active:bg-blue-100 transition-all shadow-sm bg-white"
+                      hover:bg-[#F0C3A7]/15 hover:text-[#E6A57E] hover:border-[#D6D6D6] active:bg-[#F0C3A7]/25 transition-all shadow-sm bg-white"
                     data-testid={`example-search-${i}`}
                   >
-                    <span className="font-mono text-blue-600 group-hover:text-blue-800 text-[11px]">{example.value}</span>
-                    <span className="text-[9px] sm:text-[10px] text-slate-400 group-hover:text-blue-500">{example.label}</span>
+                    <span className="font-mono text-[#E6A57E] group-hover:text-[#D18E65] text-[11px]">{example.value}</span>
+                    <span className="text-[9px] sm:text-[10px] text-slate-400 group-hover:text-[#E6A57E]">{example.label}</span>
                   </button>
                 ))}
               </div>
@@ -1464,7 +1464,7 @@ function GeneralEnquiriesContent() {
                     <button
                       key={i}
                       onClick={() => { setQuickQuery(term); handleQuickQueryChange(term); inputRef.current?.focus(); }}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-slate-200 text-[11px] text-slate-600 hover:bg-blue-50 hover:border-blue-200 active:bg-blue-100 transition-all"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-slate-200 text-[11px] text-slate-600 hover:bg-[#F0C3A7]/15 hover:border-[#D6D6D6] active:bg-[#F0C3A7]/25 transition-all"
                       data-testid={`recent-chip-${i}`}
                     >
                       <Clock className="w-2.5 h-2.5 text-slate-300" />
@@ -1490,7 +1490,7 @@ function GeneralEnquiriesContent() {
                       <button
                         key={i}
                         onClick={() => handleSelectAccount(acct)}
-                        className="flex items-center gap-2.5 sm:gap-3 px-3 py-2 rounded-xl sm:rounded-lg border border-slate-200 bg-white hover:bg-blue-50 hover:border-blue-200 active:bg-blue-100 transition-all text-left shadow-sm"
+                        className="flex items-center gap-2.5 sm:gap-3 px-3 py-2 rounded-xl sm:rounded-lg border border-slate-200 bg-white hover:bg-[#F0C3A7]/15 hover:border-[#D6D6D6] active:bg-[#F0C3A7]/25 transition-all text-left shadow-sm"
                         data-testid={`pinned-home-${i}`}
                       >
                         <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 text-xs sm:text-sm font-bold ring-1 ring-amber-200">
@@ -1514,7 +1514,7 @@ function GeneralEnquiriesContent() {
 
         {searching && (
           <div className="flex flex-col items-center justify-center py-16 text-slate-400">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-400 mb-3" />
+            <Loader2 className="w-8 h-8 animate-spin text-[#E6A57E] mb-3" />
             <p className="text-sm text-slate-500">Searching...</p>
           </div>
         )}
@@ -1535,7 +1535,7 @@ function GeneralEnquiriesContent() {
                   <li>Check your spelling</li>
                   <li>Try fewer words or characters</li>
                   <li>Search by account number for exact results</li>
-                  {quickFilters.size > 0 && <li className="text-blue-600 font-medium">Remove active quick filters to see all results</li>}
+                  {quickFilters.size > 0 && <li className="text-[#E6A57E] font-medium">Remove active quick filters to see all results</li>}
                 </ul>
               </div>
             )}
@@ -1548,14 +1548,14 @@ function GeneralEnquiriesContent() {
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{filteredResults.length} Account{filteredResults.length !== 1 ? 's' : ''}</span>
                 {quickFilters.size > 0 && (
-                  <span className="text-[9px] text-blue-600 font-medium">(filtered)</span>
+                  <span className="text-[9px] text-[#E6A57E] font-medium">(filtered)</span>
                 )}
               </div>
               <div className="flex items-center gap-2">
                 {!fieldSearchOpen && (
                   <button
                     onClick={() => { setFieldSearchOpen(true); setMobileFormCollapsed(false); }}
-                    className="text-[10px] text-blue-600 hover:text-blue-800 flex items-center gap-0.5 font-medium active:text-blue-900"
+                    className="text-[10px] text-[#E6A57E] hover:text-[#D18E65] flex items-center gap-0.5 font-medium active:text-[#D18E65]"
                     data-testid="button-show-filters-mobile"
                   >
                     <Filter className="w-2.5 h-2.5" />
@@ -1589,12 +1589,12 @@ function GeneralEnquiriesContent() {
                   <button
                     key={aid}
                     onClick={() => handleSelectAccount(account)}
-                    className={`w-full text-left bg-white border border-slate-200 ${borderColor} border-l-[3px] rounded-lg p-2.5 hover:bg-blue-50/50 hover:border-blue-200 transition-all shadow-sm active:scale-[0.99] active:shadow-none`}
+                    className={`w-full text-left bg-white border border-slate-200 ${borderColor} border-l-[3px] rounded-lg p-2.5 hover:bg-[#F0C3A7]/15 hover:border-[#D6D6D6] transition-all shadow-sm active:scale-[0.99] active:shadow-none`}
                     data-testid={`mobile-result-${i}`}
                   >
                     <div className="flex items-start gap-2.5">
                       <div className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold mt-0.5 ${
-                        isActive ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white' : 'bg-slate-200 text-slate-500'
+                        isActive ? 'bg-gradient-to-br from-[#E6A57E] to-[#D18E65] text-white' : 'bg-slate-200 text-slate-500'
                       }`}>
                         {name.charAt(0).toUpperCase()}
                       </div>
@@ -1603,7 +1603,7 @@ function GeneralEnquiriesContent() {
                           <span className="text-[13px] font-semibold text-slate-900 truncate">{name}</span>
                         </div>
                         <div className="flex items-center gap-2 mb-0.5">
-                          <span className="text-[11px] font-mono text-blue-600 font-medium">{acctNum}</span>
+                          <span className="text-[11px] font-mono text-[#E6A57E] font-medium">{acctNum}</span>
                           <span className={`shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wide ${isActive ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200'}`}>
                             <span className={`w-1 h-1 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                             {status}
@@ -1618,7 +1618,7 @@ function GeneralEnquiriesContent() {
                         </div>
                         <div className="flex items-center gap-0.5 text-[9px] text-slate-400">
                           <span>View</span>
-                          <ArrowRight className="w-3 h-3 text-blue-400" />
+                          <ArrowRight className="w-3 h-3 text-[#E6A57E]/60" />
                         </div>
                       </div>
                     </div>
@@ -1679,7 +1679,7 @@ function GeneralEnquiriesContent() {
                 <SlidersHorizontal className="w-4 h-4 text-slate-500" />
                 <h3 className="text-sm font-semibold text-slate-800">All Search Fields</h3>
                 {activeFilterCount > 0 && (
-                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold">{activeFilterCount}</span>
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#E6A57E] text-white text-[10px] font-bold">{activeFilterCount}</span>
                 )}
               </div>
               <button

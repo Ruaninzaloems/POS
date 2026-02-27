@@ -96,7 +96,7 @@ function StatCard({ label, value, subValue, icon, color, tip }: {
   label: string; value: string | number; subValue?: string; icon: React.ReactNode; color: string; tip?: string;
 }) {
   const colorMap: Record<string, string> = {
-    blue: 'from-blue-500 to-blue-600 text-white',
+    blue: 'from-[#E6A57E] to-[#D18E65] text-white',
     green: 'from-emerald-500 to-emerald-600 text-white',
     amber: 'from-amber-500 to-amber-600 text-white',
     red: 'from-red-500 to-red-600 text-white',
@@ -260,7 +260,7 @@ function AutoAllocationContent() {
         <div className="flex items-center justify-between mb-3">
           <div>
             <h1 className="text-sm sm:text-lg font-bold text-slate-900 flex items-center gap-2" data-testid="text-page-title">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center shadow-sm">
                 <RefreshCw className="w-4 h-4 text-white" />
               </div>
               Direct Deposits Auto Allocation
@@ -272,14 +272,14 @@ function AutoAllocationContent() {
             <div className="flex gap-1.5">
               <button
                 onClick={() => setActiveView('unprocessed')}
-                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${activeView === 'unprocessed' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${activeView === 'unprocessed' ? 'bg-[#E6A57E] text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                 data-testid="tab-unprocessed"
               >
                 Unprocessed
               </button>
               <button
                 onClick={() => { setActiveView('processed'); handleFetchProcessed(); }}
-                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${activeView === 'processed' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${activeView === 'processed' ? 'bg-[#E6A57E] text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                 data-testid="tab-processed"
               >
                 Processed
@@ -317,7 +317,7 @@ function AutoAllocationContent() {
             <Button
               onClick={handleFetchUnprocessed}
               disabled={loading}
-              className="h-10 sm:h-9 gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-sm flex-1 sm:flex-none"
+              className="h-10 sm:h-9 gap-2 bg-[#E6A57E] hover:bg-[#D18E65] shadow-sm flex-1 sm:flex-none"
               data-testid="button-fetch-unprocessed"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
@@ -350,8 +350,8 @@ function AutoAllocationContent() {
 
         {!hasSearched && (
           <div className="flex flex-col items-center justify-center h-full text-slate-400 px-4">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center border border-blue-100 mb-3">
-              <Package className="w-8 h-8 sm:w-10 sm:h-10 text-blue-300" />
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-[#F0C3A7]/20 to-[#F7F7F7] flex items-center justify-center border border-[#D6D6D6] mb-3">
+              <Package className="w-8 h-8 sm:w-10 sm:h-10 text-[#E6A57E]/50" />
             </div>
             <p className="text-sm font-semibold text-slate-600 mb-1">Fetch Unprocessed Deposits</p>
             <p className="text-xs text-slate-400 text-center max-w-xs">Select a date range and click "Fetch Deposits" to load unprocessed direct deposits for automatic allocation</p>
@@ -360,7 +360,7 @@ function AutoAllocationContent() {
 
         {loading && (
           <div className="flex flex-col items-center justify-center py-16 text-slate-400">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-400 mb-3" />
+            <Loader2 className="w-8 h-8 animate-spin text-[#E6A57E] mb-3" />
             <p className="text-sm text-slate-500">Loading deposits...</p>
           </div>
         )}
@@ -425,7 +425,7 @@ function AutoAllocationContent() {
                       data-testid={`button-expand-batch-${batch.num}`}
                     >
                       <div className="flex items-center gap-2 sm:gap-3">
-                        <div className="shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs sm:text-sm font-bold shadow-sm">
+                        <div className="shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center text-white text-xs sm:text-sm font-bold shadow-sm">
                           {batch.num}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -536,8 +536,8 @@ function AutoAllocationContent() {
                                 </thead>
                                 <tbody>
                                   {batch.items.map((item, idx) => (
-                                    <tr key={item.posItem_ID || idx} className="border-t border-slate-100 hover:bg-blue-50/30 transition-colors" data-testid={`item-row-${item.posItem_ID}`}>
-                                      <td className="px-2 py-2 font-mono text-blue-600 font-medium">{item.posItem_ID}</td>
+                                    <tr key={item.posItem_ID || idx} className="border-t border-slate-100 hover:bg-[#F0C3A7]/10 transition-colors" data-testid={`item-row-${item.posItem_ID}`}>
+                                      <td className="px-2 py-2 font-mono text-[#E6A57E] font-medium">{item.posItem_ID}</td>
                                       <td className="px-2 py-2 whitespace-nowrap">{formatDate(item.dateOfTransaction)}</td>
                                       <td className="px-2 py-2 max-w-[150px] truncate" title={item.reference}>{item.reference || '-'}</td>
                                       <td className="px-2 py-2 max-w-[150px] truncate text-slate-500" title={item.note || ''}>{item.note || '-'}</td>

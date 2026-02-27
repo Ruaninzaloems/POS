@@ -56,7 +56,7 @@ export function EasyPayModal({ open, onOpenChange, onAddToTransaction }: EasyPay
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-blue-600" />
+            <Building2 className="h-5 w-5 text-[#E6A57E]" />
             EasyPay Bill Payment
           </DialogTitle>
         </DialogHeader>
@@ -86,22 +86,22 @@ export function EasyPayModal({ open, onOpenChange, onAddToTransaction }: EasyPay
           )}
 
           {result && (
-            <Card className="border-blue-100 bg-blue-50/50">
+            <Card className="border-[#D6D6D6] bg-[#F0C3A7]/20">
               <CardContent className="pt-4 space-y-3">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="font-semibold text-slate-900">{result.billerName}</h4>
+                    <h4 className="font-semibold text-[#2E2E2E]">{result.billerName}</h4>
                     <p className="text-sm text-slate-500">{result.accountName}</p>
                   </div>
                   <div className="text-right">
-                    <span className="block font-bold text-lg text-blue-600">
+                    <span className="block font-bold text-lg text-[#E6A57E]">
                       R {result.amount.toFixed(2)}
                     </span>
                     <span className="text-xs text-slate-500">Due Date: {result.dueDate}</span>
                   </div>
                 </div>
                 
-                <div className="text-xs text-slate-500 pt-2 border-t border-blue-100 flex justify-between">
+                <div className="text-xs text-slate-500 pt-2 border-t border-[#D6D6D6] flex justify-between">
                   <span>Ref: {result.reference}</span>
                   <span className="flex items-center gap-1 text-green-600 font-medium">
                     <CheckCircle2 className="h-3 w-3" />
@@ -120,7 +120,7 @@ export function EasyPayModal({ open, onOpenChange, onAddToTransaction }: EasyPay
           <Button 
             onClick={handleAdd} 
             disabled={!result}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-[#E6A57E] hover:bg-[#D18E65]"
           >
             Add to Transaction
           </Button>

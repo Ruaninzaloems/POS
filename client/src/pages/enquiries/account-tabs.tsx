@@ -269,10 +269,10 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
     const display = safeStr(value);
     return (
       <div className="group flex items-start gap-2 sm:gap-3 py-2 sm:py-2.5 px-2 sm:px-3 rounded-lg hover:bg-slate-50/80 transition-all duration-200 cursor-default" data-testid={`field-${label.toLowerCase().replace(/\s+/g, '-')}`}>
-        {icon && <span className="mt-0.5 text-slate-400 group-hover:text-blue-500 transition-colors shrink-0 hidden sm:block">{icon}</span>}
+        {icon && <span className="mt-0.5 text-slate-400 group-hover:text-[#E6A57E] transition-colors shrink-0 hidden sm:block">{icon}</span>}
         <div className="flex-1 min-w-0">
           <div className="text-[9px] sm:text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-0.5">{label}</div>
-          <div className={`text-[12px] sm:text-[13px] font-medium leading-snug break-words ${mono ? 'font-mono' : ''} ${accent ? 'text-blue-700' : 'text-slate-800'} ${display === '-' ? 'text-slate-300' : ''}`}>{display}</div>
+          <div className={`text-[12px] sm:text-[13px] font-medium leading-snug break-words ${mono ? 'font-mono' : ''} ${accent ? 'text-[#E6A57E]' : 'text-slate-800'} ${display === '-' ? 'text-slate-300' : ''}`}>{display}</div>
         </div>
       </div>
     );
@@ -300,7 +300,7 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
     <div className="p-4 sm:p-5 space-y-4" data-testid="account-info-panel">
       {error && !coreLoaded ? <ErrorState message={error} onRetry={load} /> : (
         <>
-          <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-2xl shadow-lg overflow-hidden" data-testid="account-hero">
+          <div className="bg-gradient-to-br from-[#E6A57E] via-[#D18E65] to-[#C47A52] rounded-2xl shadow-lg overflow-hidden" data-testid="account-hero">
             <div className="p-5 sm:p-6">
               <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                 <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center shrink-0">
@@ -314,18 +314,18 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
-                    <span className="inline-flex items-center gap-1.5 text-blue-100 text-[13px]">
+                    <span className="inline-flex items-center gap-1.5 text-[#F0C3A7] text-[13px]">
                       <CreditCard className="w-3.5 h-3.5" />
                       <span className="font-mono font-semibold text-white" data-testid="text-account-number">{accountNumber}</span>
                     </span>
                     {accountType !== '-' && (
-                      <span className="inline-flex items-center gap-1.5 text-blue-200 text-[12px]">
+                      <span className="inline-flex items-center gap-1.5 text-[#F0C3A7] text-[12px]">
                         <Briefcase className="w-3.5 h-3.5" />
                         {accountType}
                       </span>
                     )}
                     {accountGroup !== '-' && (
-                      <span className="inline-flex items-center gap-1.5 text-blue-200 text-[12px]">
+                      <span className="inline-flex items-center gap-1.5 text-[#F0C3A7] text-[12px]">
                         <Layers className="w-3.5 h-3.5" />
                         {accountGroup}
                       </span>
@@ -335,14 +335,14 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   {depositDisplay !== '-' && depositDisplay !== 'R 0.00' && (
                     <div className="bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2 text-right">
-                      <div className="text-[10px] uppercase tracking-wider text-blue-200 font-semibold">Deposit</div>
+                      <div className="text-[10px] uppercase tracking-wider text-[#F0C3A7] font-semibold">Deposit</div>
                       <div className="text-base font-bold text-white font-mono" data-testid="text-deposit-amount">{depositDisplay}</div>
                     </div>
                   )}
                 </div>
               </div>
             </div>
-            <div className="bg-black/10 px-5 sm:px-6 py-3 flex flex-wrap gap-x-6 gap-y-2 text-[12px] text-blue-100">
+            <div className="bg-black/10 px-5 sm:px-6 py-3 flex flex-wrap gap-x-6 gap-y-2 text-[12px] text-[#F0C3A7]">
               {contactNo !== '-' && (
                 <span className="inline-flex items-center gap-1.5">
                   <Phone className="w-3.5 h-3.5" />
@@ -364,7 +364,7 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
             </div>
           </div>
 
-          <CollapsibleSection id="account" title="Account Details" icon={<CreditCard className="w-4 h-4" />} color="from-blue-600 to-blue-700">
+          <CollapsibleSection id="account" title="Account Details" icon={<CreditCard className="w-4 h-4" />} color="from-[#E6A57E] to-[#D18E65]">
             {!coreLoaded ? (
               <div className="p-4 space-y-2">
                 {[...Array(6)].map((_, i) => <div key={i} className="h-5 bg-slate-100 rounded animate-pulse" style={{ width: `${60 + Math.random() * 30}%` }} />)}
@@ -659,7 +659,7 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
   return (
     <div className="p-3 sm:p-5 space-y-4 sm:space-y-5" data-testid="name-info-panel">
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] flex items-center gap-2">
           <User className="w-4 h-4 text-white" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Person Details</h3>
         </div>
@@ -714,7 +714,7 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center gap-2">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] flex items-center gap-2">
           <Users className="w-4 h-4 text-white" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Next of Kin</h3>
         </div>
@@ -788,9 +788,9 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
                     acc.accountStatus?.toLowerCase() === 'closed' || acc.accountStatus?.toLowerCase() === 'inactive' ? 'bg-red-50 text-red-700' :
                     'bg-slate-100 text-slate-600';
                   return (
-                    <div key={`${aid}-${idx}`} className="border border-slate-200 rounded-lg p-3 space-y-1.5 active:bg-blue-50" onClick={() => onNavigateToAccount?.(acc)}>
+                    <div key={`${aid}-${idx}`} className="border border-slate-200 rounded-lg p-3 space-y-1.5 active:bg-[#F0C3A7]/20" onClick={() => onNavigateToAccount?.(acc)}>
                       <div className="flex items-center justify-between">
-                        <span className="font-mono text-xs font-semibold text-blue-700">{acc.accountNumber || acc.oldAccountCode || String(aid)}</span>
+                        <span className="font-mono text-xs font-semibold text-[#E6A57E]">{acc.accountNumber || acc.oldAccountCode || String(aid)}</span>
                         <Badge variant="secondary" className={`text-[9px] ${statusClass}`}>{acc.accountStatus || '-'}</Badge>
                       </div>
                       <div className="text-[11px] font-medium text-slate-800">{acc.name || [acc.initials, acc.surname_Company].filter(Boolean).join(' ') || '-'}</div>
@@ -833,7 +833,7 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
                           </td>
                           <td className="px-4 py-2.5">
                             {onNavigateToAccount && (
-                              <Button variant="ghost" size="sm" className="h-6 text-[10px] text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2" onClick={() => onNavigateToAccount(acc)} data-testid={`button-view-account-${aid}`}>
+                              <Button variant="ghost" size="sm" className="h-6 text-[10px] text-[#E6A57E] hover:text-[#C47A52] hover:bg-[#F0C3A7]/20 px-2" onClick={() => onNavigateToAccount(acc)} data-testid={`button-view-account-${aid}`}>
                                 <Eye className="w-3 h-3 mr-1" /> View
                               </Button>
                             )}
@@ -1209,7 +1209,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
       {receiptPreview && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setReceiptPreview(null)} data-testid="receipt-preview-overlay">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
-            <div className="px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-xl flex items-center justify-between">
+            <div className="px-5 py-3 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] rounded-t-xl flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-white" />
                 <h4 className="text-sm font-bold text-white">Receipt Preview</h4>
@@ -1242,7 +1242,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
               <div className="border-t border-dashed border-slate-300 my-2" />
               <div className="flex justify-between font-bold text-sm">
                 <span>Total</span>
-                <span className="text-blue-700">R {(receiptPreview.totalAmount ?? 0).toFixed(2)}</span>
+                <span className="text-[#E6A57E]">R {(receiptPreview.totalAmount ?? 0).toFixed(2)}</span>
               </div>
               <div className="grid grid-cols-2 gap-1 text-xs">
                 <span className="text-slate-500">Payment:</span><span className="text-slate-700">{receiptPreview.paymentType || '-'}</span>
@@ -1251,7 +1251,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
             </div>
             <div className="px-5 py-3 border-t border-slate-200 flex items-center justify-end gap-2">
               <button onClick={() => setReceiptPreview(null)} className="px-4 py-2 border border-slate-300 text-slate-600 text-xs font-semibold rounded-lg hover:bg-slate-50" data-testid="button-close-receipt">Close</button>
-              <button onClick={handlePrintWindow} className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-xs font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 flex items-center gap-1.5 shadow-sm" data-testid="button-print-receipt-confirm">
+              <button onClick={handlePrintWindow} className="px-4 py-2 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] text-white text-xs font-semibold rounded-lg hover:from-[#D18E65] hover:to-[#C47A52] flex items-center gap-1.5 shadow-sm" data-testid="button-print-receipt-confirm">
                 <Printer className="w-3.5 h-3.5" />
                 Print Receipt
               </button>
@@ -1270,7 +1270,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] flex items-center gap-2">
           <Landmark className="w-4 h-4 text-white shrink-0" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide truncate">Total Balance / Debt</h3>
           <div className="ml-auto flex items-center gap-1 sm:gap-2 shrink-0">
@@ -1334,9 +1334,9 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
                   </div>
                 </div>
               ))}
-              <div className="border-2 border-blue-200 rounded-lg p-3 bg-blue-50/50">
+              <div className="border-2 border-[#D6D6D6] rounded-lg p-3 bg-[#F0C3A7]/20/50">
                 <div className="flex items-center justify-between">
-                  <span className="text-[12px] font-bold text-slate-900">Total</span>
+                  <span className="text-[12px] font-bold text-[#2E2E2E]">Total</span>
                   <span className="text-[13px] font-bold font-mono text-red-700">{fmt(sumField(balanceData, 'totalOutStanding', 'totalOutstandingAmount'))}</span>
                 </div>
               </div>
@@ -1358,7 +1358,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
               {balanceData.length === 0 ? (
                 <tr><td colSpan={agingCols.length + 2} className="py-6 text-center text-slate-400 text-sm">No balance data available</td></tr>
               ) : balanceData.map((item: any, i: number) => (
-                <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors group">
+                <tr key={i} className="border-b border-slate-100 hover:bg-[#F0C3A7]/20/30 transition-colors group">
                   <td className="py-2.5 px-3 font-medium text-slate-800 text-[13px]">{item.serviceDescription || `Service ${i + 1}`}</td>
                   <td className="py-2.5 px-3 text-right font-mono text-red-600 font-bold text-[13px]">{fmt(item.totalOutStanding ?? item.totalOutstandingAmount ?? 0)}</td>
                   {agingCols.map(col => {
@@ -1370,8 +1370,8 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
             </tbody>
             {balanceData.length > 0 && (
               <tfoot>
-                <tr className="border-t-2 border-blue-200 bg-blue-50/50">
-                  <td className="py-2.5 px-3 font-bold text-slate-900 text-[13px]">Total</td>
+                <tr className="border-t-2 border-[#D6D6D6] bg-[#F0C3A7]/20/50">
+                  <td className="py-2.5 px-3 font-bold text-[#2E2E2E] text-[13px]">Total</td>
                   <td className="py-2.5 px-3 text-right font-mono text-red-700 font-bold text-[13px]">{fmt(sumField(balanceData, 'totalOutStanding', 'totalOutstandingAmount'))}</td>
                   {agingCols.map(col => (
                     <td key={col.label} className="py-2.5 px-3 text-right font-mono font-bold text-slate-800 text-[13px]">{fmtDash(sumField(balanceData, ...col.keys))}</td>
@@ -1438,7 +1438,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
               ))}
               <div className="border-2 border-purple-200 rounded-lg p-3 bg-purple-50/50">
                 <div className="flex items-center justify-between text-[11px]">
-                  <span className="font-bold text-slate-900">Total Remaining</span>
+                  <span className="font-bold text-[#2E2E2E]">Total Remaining</span>
                   <span className="font-bold font-mono text-purple-700">{fmt(capitalPlans.reduce((s: number, p: any) => s + (p.remainingCapitalAmount ?? p.remainingCapital ?? p.capitalRemaining ?? 0), 0))}</span>
                 </div>
               </div>
@@ -1476,7 +1476,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
             {capitalPlans.length > 0 && (
               <tfoot>
                 <tr className="border-t-2 border-purple-200 bg-purple-50/50">
-                  <td className="py-2.5 px-3 font-bold text-slate-900 text-[13px]">Total</td>
+                  <td className="py-2.5 px-3 font-bold text-[#2E2E2E] text-[13px]">Total</td>
                   <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800 text-[13px]">{fmt(capitalPlans.reduce((s: number, p: any) => s + (p.capitalAmount ?? p.originalCapital ?? 0), 0))}</td>
                   <td className="py-2.5 px-3 text-right font-mono font-bold text-purple-700 text-[13px]">{fmt(capitalPlans.reduce((s: number, p: any) => s + (p.remainingCapitalAmount ?? p.remainingCapital ?? p.capitalRemaining ?? 0), 0))}</td>
                   <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800 text-[13px]">{fmt(capitalPlans.reduce((s: number, p: any) => s + (p.instalmentAmount ?? p.installmentAmount ?? p.monthlyInstalment ?? 0), 0))}</td>
@@ -1544,7 +1544,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
                 <button
                   onClick={() => handlePrintReceipt(p)}
                   disabled={printingId === String(p.receiptId || p.receipt_ID || p.id)}
-                  className="text-blue-600 hover:text-blue-800 text-[10px] font-medium disabled:opacity-50 flex items-center gap-1"
+                  className="text-[#E6A57E] hover:text-[#C47A52] text-[10px] font-medium disabled:opacity-50 flex items-center gap-1"
                   data-testid={`btn-print-receipt-${i}`}
                 >
                   {printingId === String(p.receiptId || p.receipt_ID || p.id) ? (
@@ -1585,7 +1585,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
                       <button
                         onClick={() => handlePrintReceipt(p)}
                         disabled={printingId === String(p.receiptId || p.receipt_ID || p.id)}
-                        className="text-blue-600 hover:text-blue-800 hover:underline text-xs font-medium disabled:opacity-50 flex items-center gap-1 mx-auto"
+                        className="text-[#E6A57E] hover:text-[#C47A52] hover:underline text-xs font-medium disabled:opacity-50 flex items-center gap-1 mx-auto"
                         data-testid={`btn-print-receipt-${i}`}
                       >
                         {printingId === String(p.receiptId || p.receipt_ID || p.id) ? (
@@ -1797,7 +1797,7 @@ export function LinkedAccountsTab({ accountId, onSelectAccount }: { accountId: n
                       {onSelectAccount && (
                         <button
                           onClick={(e) => { e.stopPropagation(); onSelectAccount(acct); }}
-                          className="mt-2 px-3 py-1.5 text-[11px] font-medium bg-blue-50 text-blue-600 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors w-full sm:w-auto"
+                          className="mt-2 px-3 py-1.5 text-[11px] font-medium bg-[#F0C3A7]/20 text-[#E6A57E] border border-[#D6D6D6] rounded-md hover:bg-[#F0C3A7]/30 transition-colors w-full sm:w-auto"
                           data-testid={`button-view-account-${aId}`}
                         >
                           View Account

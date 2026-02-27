@@ -65,7 +65,7 @@ function PaymentInput({ id, value, onChange }: { id: string; value: number; onCh
         id={id}
         type="text"
         inputMode="decimal"
-        className="pl-12 w-full sm:w-56 h-14 text-2xl font-mono font-bold border-2 border-blue-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 bg-white rounded-lg"
+        className="pl-12 w-full sm:w-56 h-14 text-2xl font-mono font-bold border-2 border-[#E6A57E] focus:border-[#E6A57E] focus:ring-2 focus:ring-[#E6A57E]/30 bg-white rounded-lg"
         value={rawText}
         placeholder="0.00"
         tabIndex={1}
@@ -378,13 +378,13 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                 <ArrowLeft className="w-3.5 h-3.5" />
               </button>
 
-              <div className="shrink-0 h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+              <div className="shrink-0 h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-gradient-to-r from-[#E6A57E] to-[#D18E65] flex items-center justify-center text-white text-xs font-bold shadow-sm">
                 {accountName.charAt(0).toUpperCase()}
               </div>
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <h3 className="text-sm font-bold text-slate-900 truncate max-w-[160px] sm:max-w-none" data-testid="text-account-name">
+                  <h3 className="text-sm font-bold text-[#2E2E2E] truncate max-w-[160px] sm:max-w-none" data-testid="text-account-name">
                     {accountName}
                   </h3>
                   <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${isActive ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200'}`}>
@@ -418,7 +418,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                 </button>
               )}
               {account.prepaidMeterNo && (
-                <button onClick={handleBuyPrepaid} className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium ring-1 hover:opacity-90 transition-colors ${account.prepaidType === 'Water' ? 'bg-blue-50 text-blue-700 ring-blue-200' : 'bg-amber-50 text-amber-700 ring-amber-200'}`} data-testid="button-buy-prepaid">
+                <button onClick={handleBuyPrepaid} className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium ring-1 hover:opacity-90 transition-colors ${account.prepaidType === 'Water' ? 'bg-[#F0C3A7]/20 text-[#E6A57E] ring-[#E6A57E]/30' : 'bg-amber-50 text-amber-700 ring-amber-200'}`} data-testid="button-buy-prepaid">
                   {account.prepaidType === 'Water' ? <Droplets className="w-3 h-3" /> : <Zap className="w-3 h-3" />}
                   Prepaid {account.prepaidType || 'Electricity'}
                 </button>
@@ -451,7 +451,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                  Account Details
                </span>
-               {detailsLoading && <Loader2 className="w-3 h-3 animate-spin text-blue-400" />}
+               {detailsLoading && <Loader2 className="w-3 h-3 animate-spin text-[#6B6B6B]" />}
              </button>
            </CollapsibleTrigger>
            <CollapsibleContent>
@@ -504,7 +504,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
          <div className="px-3 sm:px-4 py-2 border-b border-slate-100 flex items-center justify-between">
            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Services & Balance</span>
            {balanceError && (
-             <button onClick={fetchBalanceData} className="text-[10px] text-blue-600 font-medium hover:underline">Retry</button>
+             <button onClick={fetchBalanceData} className="text-[10px] text-[#E6A57E] font-medium hover:underline">Retry</button>
            )}
          </div>
 
@@ -582,7 +582,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                      totalOutstanding: account.outstandingAmount, newCharge: 0, currentAccount: account.outstandingAmount,
                      days30: 0, days60: 0, days90: 0, days120: 0, days150: 0, days180Plus: 0
                    }]).map((row, idx) => (
-                     <tr key={idx} className="border-b border-slate-100 last:border-0 hover:bg-blue-50/50" data-testid={`row-aging-desktop-${idx}`}>
+                     <tr key={idx} className="border-b border-slate-100 last:border-0 hover:bg-[#F0C3A7]/20" data-testid={`row-aging-desktop-${idx}`}>
                        <td className="p-2">{row.totalOutstanding < 0 && row.serviceDescription === 'Balance B/F' ? 'Advance Payment' : row.serviceDescription}</td>
                        <td className="p-2 text-right font-mono">{(row.totalOutstanding || 0).toFixed(2)}</td>
                        <td className="p-2 text-right font-mono">{(row.newCharge || 0).toFixed(2)}</td>
@@ -616,11 +616,11 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
          )}
        </div>
 
-       <div className="bg-white rounded-xl border-2 border-blue-200 shadow-sm overflow-hidden">
-         <div className="px-3 sm:px-4 py-3 sm:py-4 bg-gradient-to-r from-blue-50 to-indigo-50/50">
+       <div className="bg-white rounded-xl border-2 border-[#D6D6D6] shadow-sm overflow-hidden">
+         <div className="px-3 sm:px-4 py-3 sm:py-4 bg-[#F7F7F7]">
            <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
              <div className="flex-1">
-               <div className="text-[10px] uppercase tracking-wider text-blue-500 font-semibold mb-0.5">Payment Amount</div>
+               <div className="text-[10px] uppercase tracking-wider text-[#E6A57E] font-semibold mb-0.5">Payment Amount</div>
                <PaymentInput
                  id={`pay-${item.id}`}
                  value={item.amountToPay}
@@ -628,12 +628,12 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
                />
              </div>
              <div className="sm:w-40">
-               <div className="text-[10px] uppercase tracking-wider text-blue-500 font-semibold mb-0.5">Receipt Date</div>
+               <div className="text-[10px] uppercase tracking-wider text-[#E6A57E] font-semibold mb-0.5">Receipt Date</div>
                <Input
                  type="date"
                  value={receiptDate}
                  onChange={(e) => setReceiptDate(e.target.value)}
-                 className="h-10 bg-white border-blue-200 text-slate-800 font-mono text-sm focus:border-blue-400 focus:ring-blue-200"
+                 className="h-10 bg-white border-[#D6D6D6] text-slate-800 font-mono text-sm focus:border-[#E6A57E] focus:ring-[#E6A57E]/30"
                  data-testid="input-receipt-date"
                />
              </div>

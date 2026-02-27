@@ -155,7 +155,7 @@ function SummaryTable({ pivotData, year, hasData }: { pivotData: any[]; year: st
           <div className="text-center text-slate-400 py-4 text-sm">No records to display</div>
         ) : pivotData.map((row: any, i: number) => (
             <div key={i} className={`border rounded-lg p-3 ${row.isBold ? 'bg-slate-50 border-slate-300' : row.isSpecial ? 'bg-slate-50/50 border-slate-200' : 'bg-white border-slate-200'}`}>
-              <div className={`text-xs mb-1.5 ${row.isBold ? 'font-bold text-slate-900' : row.isSpecial ? 'italic text-slate-600' : 'font-semibold text-slate-800'}`}>{row.description}</div>
+              <div className={`text-xs mb-1.5 ${row.isBold ? 'font-bold text-[#2E2E2E]' : row.isSpecial ? 'italic text-slate-600' : 'font-semibold text-slate-800'}`}>{row.description}</div>
               <div className="text-[10px] text-slate-400 mb-1.5">{year}</div>
               <div className="grid grid-cols-3 gap-x-3 gap-y-1">
                 {MONTHS.map(m => (
@@ -184,10 +184,10 @@ function SummaryTable({ pivotData, year, hasData }: { pivotData: any[]; year: st
               <tr><td colSpan={14} className="text-center text-slate-400 py-4">No records to display</td></tr>
             ) : pivotData.map((row: any, i: number) => (
               <tr key={i} className={`border-b border-slate-100 hover:bg-slate-50 ${row.isBold ? 'bg-slate-50 font-bold' : ''} ${row.isSpecial ? 'border-t border-slate-200' : ''}`}>
-                <td className={`px-3 py-2 whitespace-nowrap sticky left-0 ${row.isBold ? 'bg-slate-50 font-bold text-slate-900' : row.isSpecial ? 'bg-white text-slate-600 italic' : 'bg-white text-slate-700'}`}>{row.description}</td>
+                <td className={`px-3 py-2 whitespace-nowrap sticky left-0 ${row.isBold ? 'bg-slate-50 font-bold text-[#2E2E2E]' : row.isSpecial ? 'bg-white text-slate-600 italic' : 'bg-white text-slate-700'}`}>{row.description}</td>
                 <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{year}</td>
                 {MONTHS.map(m => (
-                  <td key={m} className={`px-3 py-2 text-right whitespace-nowrap font-mono ${row.isBold ? 'font-bold text-slate-900' : 'text-slate-700'} ${(row[m] || 0) < 0 ? 'text-red-600' : ''}`}>{fmtAmount(row[m])}</td>
+                  <td key={m} className={`px-3 py-2 text-right whitespace-nowrap font-mono ${row.isBold ? 'font-bold text-[#2E2E2E]' : 'text-slate-700'} ${(row[m] || 0) < 0 ? 'text-red-600' : ''}`}>{fmtAmount(row[m])}</td>
                 ))}
               </tr>
             ))}
@@ -387,7 +387,7 @@ export function TransactionSummaryTab({ accountId, accountNumber }: { accountId:
                 onClick={() => toggleYearSelection(y)}
                 className={`px-2.5 py-1 text-xs rounded-full border transition-all ${
                   selectedYears.includes(y)
-                    ? 'bg-blue-50 border-blue-300 text-blue-700 font-semibold'
+                    ? 'bg-[#F0C3A7]/20 border-[#D6D6D6] text-[#E6A57E] font-semibold'
                     : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700'
                 }`}
                 data-testid={`chip-year-${y}`}
@@ -401,9 +401,9 @@ export function TransactionSummaryTab({ accountId, accountNumber }: { accountId:
         <div className="flex items-center gap-2">
           {multiView && selectedYears.length > 1 && (
             <>
-              <button onClick={expandAll} className="text-xs text-blue-600 hover:text-blue-800 hover:underline" data-testid="btn-expand-all">Expand All</button>
+              <button onClick={expandAll} className="text-xs text-[#E6A57E] hover:text-[#C47A52] hover:underline" data-testid="btn-expand-all">Expand All</button>
               <span className="text-slate-300">|</span>
-              <button onClick={collapseAll} className="text-xs text-blue-600 hover:text-blue-800 hover:underline" data-testid="btn-collapse-all">Collapse All</button>
+              <button onClick={collapseAll} className="text-xs text-[#E6A57E] hover:text-[#C47A52] hover:underline" data-testid="btn-collapse-all">Collapse All</button>
             </>
           )}
           <button
@@ -779,7 +779,7 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
             <span className="hidden sm:inline">Download {selectedMonth}</span>
             <span className="sm:hidden">{selectedMonth?.slice(0, 3)}</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={openDownloadModal} className="text-[10px] sm:text-xs gap-1 sm:gap-1.5 px-2 sm:px-3 border-blue-200 text-blue-700 hover:bg-blue-50" data-testid="button-download-range">
+          <Button variant="outline" size="sm" onClick={openDownloadModal} className="text-[10px] sm:text-xs gap-1 sm:gap-1.5 px-2 sm:px-3 border-[#D6D6D6] text-[#E6A57E] hover:bg-[#F0C3A7]/20" data-testid="button-download-range">
             <CalendarDays className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             <span className="hidden sm:inline">Download Range</span>
             <span className="sm:hidden">Range</span>
@@ -800,7 +800,7 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
         <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="border border-slate-300 rounded px-2 sm:px-3 py-1.5 text-xs sm:text-sm bg-white" data-testid="select-detail-month">
           {finYearMonths.map(m => <option key={m} value={m}>{m}</option>)}
         </select>
-        {loading && <Loader2 className="w-4 h-4 animate-spin text-blue-500" />}
+        {loading && <Loader2 className="w-4 h-4 animate-spin text-[#E6A57E]" />}
       </div>
 
       {/* Mobile card view */}
@@ -817,12 +817,12 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
             <div
               key={i}
               onClick={() => handleRowClick(row)}
-              className={`border rounded-lg p-3 cursor-pointer transition-colors ${row.isBold ? 'bg-amber-50/50 border-amber-200' : row.isOpenBalance ? 'bg-blue-50/30 border-blue-200' : row.isCloseBalance ? 'bg-amber-50/50 border-amber-200' : row.isPayment ? 'border-red-200 bg-red-50/30' : 'border-slate-200 bg-white'}`}
+              className={`border rounded-lg p-3 cursor-pointer transition-colors ${row.isBold ? 'bg-amber-50/50 border-amber-200' : row.isOpenBalance ? 'bg-[#F0C3A7]/20/30 border-[#D6D6D6]' : row.isCloseBalance ? 'bg-amber-50/50 border-amber-200' : row.isPayment ? 'border-red-200 bg-red-50/30' : 'border-slate-200 bg-white'}`}
               data-testid={`detail-card-${i}`}
             >
               <div className="flex items-start justify-between gap-2 mb-1.5">
                 <div className="min-w-0 flex-1">
-                  <div className={`text-[11px] font-semibold truncate ${row.isBold ? 'font-bold text-slate-900' : row.isOpenBalance ? 'text-blue-600 italic' : row.isCloseBalance ? 'text-amber-800' : row.isPayment ? 'text-red-600' : 'text-slate-800'}`}>{row.description}</div>
+                  <div className={`text-[11px] font-semibold truncate ${row.isBold ? 'font-bold text-[#2E2E2E]' : row.isOpenBalance ? 'text-[#E6A57E] italic' : row.isCloseBalance ? 'text-amber-800' : row.isPayment ? 'text-red-600' : 'text-slate-800'}`}>{row.description}</div>
                   <div className="text-[10px] text-slate-500 mt-0.5">{row.transactionDate}</div>
                 </div>
                 <div className={`text-right shrink-0 font-mono text-sm font-bold ${row.isBold ? 'font-bold' : ''} ${(row.total || 0) < 0 ? 'text-red-600' : 'text-slate-800'}`}>{fmt(row.total)}</div>
@@ -848,15 +848,15 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
         <table className="w-full text-xs" data-testid="detailed-transactions-table">
           <thead>
             <tr className="bg-slate-100 border-b border-slate-200">
-              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-slate-900">Transaction Date &#x25B4;</th>
-              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-slate-900">Transaction Description &#x25B4;</th>
-              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-slate-900">Receipt ID/ Doc Transaction ID &#x25B4;</th>
-              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-slate-900">Document Number &#x25B4;</th>
-              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-slate-900">Tariff &#x25B4;</th>
-              <th className="text-right px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-slate-900">Amount &#x25B4;</th>
-              <th className="text-right px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-slate-900">Interest &#x25B4;</th>
-              <th className="text-right px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-slate-900">VAT &#x25B4;</th>
-              <th className="text-right px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-slate-900">Total &#x25B4;</th>
+              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-[#2E2E2E]">Transaction Date &#x25B4;</th>
+              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-[#2E2E2E]">Transaction Description &#x25B4;</th>
+              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-[#2E2E2E]">Receipt ID/ Doc Transaction ID &#x25B4;</th>
+              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-[#2E2E2E]">Document Number &#x25B4;</th>
+              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-[#2E2E2E]">Tariff &#x25B4;</th>
+              <th className="text-right px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-[#2E2E2E]">Amount &#x25B4;</th>
+              <th className="text-right px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-[#2E2E2E]">Interest &#x25B4;</th>
+              <th className="text-right px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-[#2E2E2E]">VAT &#x25B4;</th>
+              <th className="text-right px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-[#2E2E2E]">Total &#x25B4;</th>
             </tr>
           </thead>
           <tbody>
@@ -873,12 +873,12 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
               return (
               <tr
                 key={i}
-                className={`border-b border-slate-100 cursor-pointer ${row.isBold ? 'bg-amber-50/50 font-bold border-t border-amber-200' : ''} ${row.isOpenBalance ? 'bg-blue-50/30' : ''} ${row.isCloseBalance ? 'bg-amber-50/50 border-t border-amber-200' : ''} ${row.isPayment ? 'hover:bg-blue-50 text-red-600' : 'hover:bg-slate-50'}`}
+                className={`border-b border-slate-100 cursor-pointer ${row.isBold ? 'bg-amber-50/50 font-bold border-t border-amber-200' : ''} ${row.isOpenBalance ? 'bg-[#F0C3A7]/20/30' : ''} ${row.isCloseBalance ? 'bg-amber-50/50 border-t border-amber-200' : ''} ${row.isPayment ? 'hover:bg-[#F0C3A7]/20 text-red-600' : 'hover:bg-slate-50'}`}
                 onClick={() => handleRowClick(row)}
                 data-testid={`detail-row-${i}`}
               >
                 <td className="px-3 py-2 text-slate-700 whitespace-nowrap">{row.transactionDate}</td>
-                <td className={`px-3 py-2 whitespace-nowrap ${row.isBold ? 'font-bold text-slate-900' : row.isOpenBalance ? 'text-blue-600 italic text-[11px]' : row.isCloseBalance ? 'font-semibold text-amber-800' : row.isPayment ? 'text-red-600' : 'text-slate-700'}`}>{row.description}</td>
+                <td className={`px-3 py-2 whitespace-nowrap ${row.isBold ? 'font-bold text-[#2E2E2E]' : row.isOpenBalance ? 'text-[#E6A57E] italic text-[11px]' : row.isCloseBalance ? 'font-semibold text-amber-800' : row.isPayment ? 'text-red-600' : 'text-slate-700'}`}>{row.description}</td>
                 <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{row.receiptId || ''}</td>
                 <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{row.documentNumber || ''}</td>
                 <td className="px-3 py-2 text-slate-600 whitespace-nowrap max-w-[300px] truncate" title={row.tariff || ''}>{row.tariff || ''}</td>
@@ -901,14 +901,14 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
       {showDownloadModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => !downloading && setShowDownloadModal(false)} data-testid="download-range-overlay">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm sm:max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-blue-600 to-indigo-700 flex items-center justify-between">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] flex items-center justify-between">
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/15 flex items-center justify-center">
                   <Download className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                 </div>
                 <div>
                   <h4 className="text-xs sm:text-sm font-bold text-white">Download Transaction Data</h4>
-                  <p className="text-[10px] sm:text-[11px] text-blue-200">Select a period range to export</p>
+                  <p className="text-[10px] sm:text-[11px] text-[#F0C3A7]">Select a period range to export</p>
                 </div>
               </div>
               {!downloading && (
@@ -940,9 +940,9 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
               </div>
 
               {downloadFromMonth && downloadToMonth && (
-                <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 rounded-lg border border-blue-100">
-                  <CalendarDays className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                  <p className="text-xs text-blue-700">
+                <div className="flex items-center gap-2 px-4 py-3 bg-[#F0C3A7]/20 rounded-lg border border-[#D6D6D6]">
+                  <CalendarDays className="w-4 h-4 text-[#E6A57E] flex-shrink-0" />
+                  <p className="text-xs text-[#E6A57E]">
                     {finYearMonths.indexOf(downloadFromMonth) === finYearMonths.indexOf(downloadToMonth)
                       ? <span>Downloading <strong>{downloadFromMonth} {downloadYear}</strong></span>
                       : <span>Downloading <strong>{downloadFromMonth}</strong> to <strong>{downloadToMonth}</strong> ({finYearMonths.indexOf(downloadToMonth) - finYearMonths.indexOf(downloadFromMonth) + 1} months) for <strong>{downloadYear}</strong></span>
@@ -953,12 +953,12 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
 
               {downloading && downloadProgress && (
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-blue-700">
+                  <div className="flex items-center gap-2 text-sm text-[#E6A57E]">
                     <Loader2 className="w-4 h-4 animate-spin" />
                     <span>{downloadProgress}</span>
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-1.5">
-                    <div className="bg-blue-600 h-1.5 rounded-full transition-all" style={{
+                    <div className="bg-[#E6A57E] h-1.5 rounded-full transition-all" style={{
                       width: downloadProgress.includes('Error') ? '100%' :
                         downloadProgress.includes('Preparing') ? '95%' :
                         `${((parseInt(downloadProgress.match(/\d+(?= of)/)?.[0] || '0') / parseInt(downloadProgress.match(/of (\d+)/)?.[1] || '1')) * 100)}%`
@@ -969,7 +969,7 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
 
               <div className="flex gap-3 pt-2">
                 <Button variant="outline" className="flex-1" onClick={() => setShowDownloadModal(false)} disabled={downloading} data-testid="button-cancel-download">Cancel</Button>
-                <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white gap-2" onClick={handleDownloadRange} disabled={downloading || !downloadFromMonth || !downloadToMonth} data-testid="button-confirm-download">
+                <Button className="flex-1 bg-[#E6A57E] hover:bg-[#D18E65] text-white gap-2" onClick={handleDownloadRange} disabled={downloading || !downloadFromMonth || !downloadToMonth} data-testid="button-confirm-download">
                   {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                   {downloading ? 'Downloading...' : 'Download Excel'}
                 </Button>
@@ -982,12 +982,12 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
       {selectedTxn && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setSelectedTxn(null); setTxnDetailData(null); }} data-testid="txn-detail-overlay">
           <div className="bg-white rounded-xl shadow-2xl max-w-[95vw] w-full max-h-[95vh] overflow-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-xl">
+            <div className="flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] rounded-t-xl">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-white shrink-0" />
                 <div className="min-w-0">
                   <h4 className="text-xs sm:text-sm font-bold text-white">Transaction Detail & Ledger Posting</h4>
-                  <p className="text-[10px] sm:text-[11px] text-blue-200 truncate">{selectedTxn.description} — {selectedTxn.transactionDate}</p>
+                  <p className="text-[10px] sm:text-[11px] text-[#F0C3A7] truncate">{selectedTxn.description} — {selectedTxn.transactionDate}</p>
                 </div>
               </div>
               <button onClick={() => { setSelectedTxn(null); setTxnDetailData(null); }} className="text-white/70 hover:text-white text-xl font-bold w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors" data-testid="button-close-detail">&times;</button>
@@ -1022,7 +1022,7 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
                       { label: 'Amount', value: fmt(selectedTxn.amount), color: (selectedTxn.amount || 0) < 0 ? 'text-red-600' : 'text-slate-800', bold: true },
                       { label: 'Interest', value: fmt(selectedTxn.interest ?? 0), color: 'text-slate-700', bold: false },
                       { label: 'VAT', value: fmt(selectedTxn.vat ?? 0), color: 'text-slate-700', bold: false },
-                      { label: 'Total', value: fmt(selectedTxn.total), color: (selectedTxn.total || 0) < 0 ? 'text-red-600' : 'text-blue-700', bold: true },
+                      { label: 'Total', value: fmt(selectedTxn.total), color: (selectedTxn.total || 0) < 0 ? 'text-red-600' : 'text-[#E6A57E]', bold: true },
                     ].map(item => (
                       <div key={item.label} className="bg-white p-2.5 flex justify-between items-center">
                         <span className="text-[10px] uppercase tracking-wider text-teal-700 font-semibold">{item.label}</span>
@@ -1045,7 +1045,7 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
                           <td className={`px-3 py-2.5 text-right font-mono font-semibold ${(selectedTxn.amount || 0) < 0 ? 'text-red-600' : 'text-slate-800'}`}>{fmt(selectedTxn.amount)}</td>
                           <td className="px-3 py-2.5 text-right font-mono text-slate-700">{fmt(selectedTxn.interest ?? 0)}</td>
                           <td className="px-3 py-2.5 text-right font-mono text-slate-700">{fmt(selectedTxn.vat ?? 0)}</td>
-                          <td className={`px-3 py-2.5 text-right font-mono font-bold ${(selectedTxn.total || 0) < 0 ? 'text-red-600' : 'text-blue-700'}`}>{fmt(selectedTxn.total)}</td>
+                          <td className={`px-3 py-2.5 text-right font-mono font-bold ${(selectedTxn.total || 0) < 0 ? 'text-red-600' : 'text-[#E6A57E]'}`}>{fmt(selectedTxn.total)}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -1060,7 +1060,7 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
                 </div>
                 {txnDetailLoading ? (
                   <div className="p-8 flex items-center justify-center gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                    <Loader2 className="w-5 h-5 animate-spin text-[#E6A57E]" />
                     <span className="text-sm text-slate-500">Loading detail...</span>
                   </div>
                 ) : typeof txnDetailData === 'string' && txnDetailData.length > 0 ? (
@@ -1110,7 +1110,7 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
                           {txnDetailData.map((row: any, ri: number) => {
                             const keys = Object.keys(row).filter(k => !k.startsWith('_') && k !== 'id').slice(0, 12);
                             return (
-                              <tr key={ri} className="border-b border-slate-100 hover:bg-blue-50/30">
+                              <tr key={ri} className="border-b border-slate-100 hover:bg-[#F0C3A7]/20/30">
                                 {keys.map(key => {
                                   const val = row[key];
                                   const isNum = typeof val === 'number';
@@ -1297,7 +1297,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
       {receiptPreview && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setReceiptPreview(null)} data-testid="receipt-preview-overlay">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
-            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-xl flex items-center justify-between">
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] rounded-t-xl flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-white" />
                 <h4 className="text-xs sm:text-sm font-bold text-white">Receipt Preview</h4>
@@ -1330,7 +1330,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
               <div className="border-t border-dashed border-slate-300 my-2" />
               <div className="flex justify-between font-bold text-sm">
                 <span>Total</span>
-                <span className="text-blue-700">R {(receiptPreview.totalAmount ?? receiptPreview.amount ?? 0).toFixed(2)}</span>
+                <span className="text-[#E6A57E]">R {(receiptPreview.totalAmount ?? receiptPreview.amount ?? 0).toFixed(2)}</span>
               </div>
               <div className="grid grid-cols-2 gap-1 text-xs">
                 <span className="text-slate-500">Payment:</span><span className="text-slate-700">{receiptPreview.paymentType || '-'}</span>
@@ -1339,7 +1339,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
             </div>
             <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-t border-slate-200 flex items-center justify-end gap-2">
               <button onClick={() => setReceiptPreview(null)} className="px-3 sm:px-4 py-1.5 sm:py-2 border border-slate-300 text-slate-600 text-[10px] sm:text-xs font-semibold rounded-lg hover:bg-slate-50" data-testid="button-close-receipt">Close</button>
-              <button onClick={handlePrintWindow} className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-[10px] sm:text-xs font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 flex items-center gap-1.5 shadow-sm" data-testid="button-print-receipt-confirm">
+              <button onClick={handlePrintWindow} className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] text-white text-[10px] sm:text-xs font-semibold rounded-lg hover:from-[#D18E65] hover:to-[#C47A52] flex items-center gap-1.5 shadow-sm" data-testid="button-print-receipt-confirm">
                 <FileText className="w-3.5 h-3.5" />
                 Print Receipt
               </button>
@@ -1387,7 +1387,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                       )}
                       <div className="flex justify-between items-baseline">
                         <span className="text-[10px] text-slate-500">Receipt</span>
-                        <span className="text-xs font-mono font-semibold text-blue-700">{receiptNo || '-'}</span>
+                        <span className="text-xs font-mono font-semibold text-[#E6A57E]">{receiptNo || '-'}</span>
                       </div>
                       <div className="flex justify-between items-baseline">
                         <span className="text-[10px] text-slate-500">Amount</span>
@@ -1432,7 +1432,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                               <span className="text-slate-400 italic text-[10px]">No note</span>
                             )}
                           </td>
-                          <td className="px-3 py-2 font-mono font-semibold text-blue-700">{receiptNo || '-'}</td>
+                          <td className="px-3 py-2 font-mono font-semibold text-[#E6A57E]">{receiptNo || '-'}</td>
                           <td className="px-3 py-2 text-right font-mono font-bold text-slate-800">
                             R {Number(amount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
                           </td>
@@ -1456,7 +1456,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
       {data.length === 0 ? <EmptyState message="No receipt history found" /> : (
           <div className="space-y-4">
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700">
+              <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[#E6A57E] to-[#D18E65]">
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <div className="flex items-center gap-1.5 sm:gap-2">
                     <Receipt className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-white shrink-0" />
@@ -1467,14 +1467,14 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                     <div className="flex items-center bg-white/15 rounded-lg p-0.5">
                       <button
                         onClick={() => setReceiptView('timeline')}
-                        className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 text-[9px] sm:text-[10px] font-semibold rounded-md transition-all ${receiptView === 'timeline' ? 'bg-white text-blue-700 shadow-sm' : 'text-white/80 hover:text-white hover:bg-white/10'}`}
+                        className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 text-[9px] sm:text-[10px] font-semibold rounded-md transition-all ${receiptView === 'timeline' ? 'bg-white text-[#E6A57E] shadow-sm' : 'text-white/80 hover:text-white hover:bg-white/10'}`}
                         data-testid="button-receipt-view-timeline"
                       >
                         <Clock className="w-3 h-3" /> <span className="hidden sm:inline">Timeline</span><span className="sm:hidden">Time</span>
                       </button>
                       <button
                         onClick={() => setReceiptView('table')}
-                        className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 text-[9px] sm:text-[10px] font-semibold rounded-md transition-all ${receiptView === 'table' ? 'bg-white text-blue-700 shadow-sm' : 'text-white/80 hover:text-white hover:bg-white/10'}`}
+                        className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 text-[9px] sm:text-[10px] font-semibold rounded-md transition-all ${receiptView === 'table' ? 'bg-white text-[#E6A57E] shadow-sm' : 'text-white/80 hover:text-white hover:bg-white/10'}`}
                         data-testid="button-receipt-view-table"
                       >
                         <List className="w-3 h-3" /> Table
@@ -1505,7 +1505,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                         <button
                           key={f.key}
                           onClick={() => setTimelineFilter(f.key)}
-                          className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 text-[9px] sm:text-[10px] font-semibold rounded-md transition-all ${timelineFilter === f.key ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}`}
+                          className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 text-[9px] sm:text-[10px] font-semibold rounded-md transition-all ${timelineFilter === f.key ? 'bg-[#E6A57E] text-white shadow-sm' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}`}
                           data-testid={`button-filter-${f.key}`}
                         >
                           {Icon && <Icon className="w-3 h-3" />}
@@ -1532,7 +1532,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                   ) : groupedByMonth.map(group => (
                     <div key={group.key} className="relative">
                       <div className="sticky top-0 z-10 flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3 bg-white py-1.5 sm:py-1 border-b border-slate-100 sm:border-0">
-                        <div className="flex items-center gap-1.5 sm:gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-2.5 sm:px-3 py-1.5 rounded-lg shadow-sm shrink-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] text-white px-2.5 sm:px-3 py-1.5 rounded-lg shadow-sm shrink-0">
                           <CalendarDays className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
                           <span className="text-[11px] sm:text-xs font-bold tracking-wide">{group.label}</span>
                         </div>
@@ -1543,7 +1543,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                         </div>
                       </div>
 
-                      <div className="relative ml-3 sm:ml-6 border-l-2 border-blue-200 pl-3 sm:pl-6 space-y-2.5 sm:space-y-3">
+                      <div className="relative ml-3 sm:ml-6 border-l-2 border-[#D6D6D6] pl-3 sm:pl-6 space-y-2.5 sm:space-y-3">
                         {group.items.map((item: any, i: number) => {
                           const pt = (item.paymentType || '').toLowerCase();
                           const isCash = pt.includes('cash');
@@ -1555,10 +1555,10 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                           const dotColor = isCancelled ? 'bg-red-500' :
                             isCash ? 'bg-green-500' :
                             isCard ? 'bg-purple-500' :
-                            isEft ? 'bg-blue-500' : 'bg-slate-400';
+                            isEft ? 'bg-[#E6A57E]' : 'bg-slate-400';
 
                           const cardBg = isCancelled ? 'bg-red-50/50 border-red-200 hover:border-red-300' :
-                            'bg-white border-slate-200 hover:border-blue-300 hover:shadow-md';
+                            'bg-white border-slate-200 hover:border-[#D6D6D6] hover:shadow-md';
 
                           return (
                             <div key={item.receiptId || i} className="relative group" data-testid={`timeline-receipt-${i}`}>
@@ -1571,7 +1571,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                                       isCancelled ? 'bg-red-100 text-red-600' :
                                       isCash ? 'bg-green-100 text-green-700' :
                                       isCard ? 'bg-purple-100 text-purple-700' :
-                                      isEft ? 'bg-blue-100 text-blue-700' :
+                                      isEft ? 'bg-[#F0C3A7]/30 text-[#E6A57E]' :
                                       'bg-slate-100 text-slate-600'
                                     }`}>
                                       {isCash ? <Banknote className="w-4 h-4" /> :
@@ -1581,7 +1581,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
 
                                     <div className="min-w-0 flex-1">
                                       <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                                        <span className="font-mono text-[11px] sm:text-xs font-bold text-blue-700">{item.receiptNo || '-'}</span>
+                                        <span className="font-mono text-[11px] sm:text-xs font-bold text-[#E6A57E]">{item.receiptNo || '-'}</span>
                                         {isCancelled && (
                                           <span className="inline-flex items-center gap-0.5 px-1 sm:px-1.5 py-0.5 rounded-full text-[8px] sm:text-[9px] font-bold bg-red-100 text-red-700 border border-red-200">
                                             <XCircle className="w-2.5 h-2.5" /> Cancelled
@@ -1605,7 +1605,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                                         <span className={`inline-flex items-center gap-0.5 px-1 sm:px-1.5 py-0.5 rounded-md text-[9px] sm:text-[10px] font-medium ${
                                           isCash ? 'bg-green-50 text-green-700 border border-green-200' :
                                           isCard ? 'bg-purple-50 text-purple-700 border border-purple-200' :
-                                          isEft ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                                          isEft ? 'bg-[#F0C3A7]/20 text-[#E6A57E] border border-[#D6D6D6]' :
                                           'bg-slate-50 text-slate-600 border border-slate-200'
                                         }`}>
                                           {item.paymentType || 'Unknown'}
@@ -1623,7 +1623,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                                     <button
                                       onClick={() => handlePrintReceipt(item)}
                                       disabled={printingId === String(item.receiptId || item.receipt_ID) || !item.receiptId}
-                                      className="flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-[9px] sm:text-[10px] font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                                      className="flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] text-white text-[9px] sm:text-[10px] font-semibold rounded-lg hover:from-[#D18E65] hover:to-[#C47A52] transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                                       data-testid={`button-print-timeline-${i}`}
                                     >
                                       {printingId === String(item.receiptId || item.receipt_ID) ? (
@@ -1647,7 +1647,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                                     <span><span className="font-semibold text-slate-600">Detail:</span> {item.cardChequeDetail}</span>
                                   )}
                                   {(bankNotes[item.receiptNo] || item.bankStatementNote) && (
-                                    <span><span className="font-semibold text-blue-600">Statement:</span> <span className="text-blue-700 font-medium">{bankNotes[item.receiptNo] || item.bankStatementNote}</span></span>
+                                    <span><span className="font-semibold text-[#E6A57E]">Statement:</span> <span className="text-[#E6A57E] font-medium">{bankNotes[item.receiptNo] || item.bankStatementNote}</span></span>
                                   )}
                                 </div>
                               </div>
@@ -1666,7 +1666,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                     <div key={item.receiptId || i} className={`border rounded-lg p-3 ${item.isCancelled ? 'bg-red-50/30 border-red-200' : 'bg-white border-slate-200'}`} data-testid={`receipt-card-${i}`}>
                       <div className="flex items-start justify-between gap-2 mb-1.5">
                         <div>
-                          <div className="font-mono text-xs font-bold text-blue-700">{item.receiptNo || '-'}</div>
+                          <div className="font-mono text-xs font-bold text-[#E6A57E]">{item.receiptNo || '-'}</div>
                           <div className="text-[10px] text-slate-500 mt-0.5">{item.receiptDate ? new Date(item.receiptDate).toLocaleDateString('en-ZA') : '-'}</div>
                         </div>
                         <div className="text-right">
@@ -1687,13 +1687,13 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                           }`}>{item.paymentType || '-'}</span>
                           {item.cashierName && <span>• {item.cashierName}</span>}
                           {(bankNotes[item.receiptNo] || item.bankStatementNote) && (
-                            <span className="text-blue-700 font-medium">• {bankNotes[item.receiptNo] || item.bankStatementNote}</span>
+                            <span className="text-[#E6A57E] font-medium">• {bankNotes[item.receiptNo] || item.bankStatementNote}</span>
                           )}
                         </div>
                         <button
                           onClick={() => handlePrintReceipt(item)}
                           disabled={printingId === String(item.receiptId || item.receipt_ID) || !item.receiptId}
-                          className="inline-flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-[10px] font-semibold rounded-lg disabled:opacity-40 shrink-0"
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] text-white text-[10px] font-semibold rounded-lg disabled:opacity-40 shrink-0"
                           data-testid={`button-print-receipt-mobile-${i}`}
                         >
                           {printingId === String(item.receiptId || item.receipt_ID) ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />}
@@ -1722,13 +1722,13 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                     </thead>
                     <tbody>
                       {sortedReceipts.map((item: any, i: number) => (
-                        <tr key={item.receiptId || i} className={`border-b border-slate-100 hover:bg-blue-50/30 transition-colors ${item.isCancelled ? 'bg-red-50/30' : ''}`}>
-                          <td className="py-2.5 px-3 font-mono text-blue-700 font-semibold whitespace-nowrap text-xs">{item.receiptNo || '-'}</td>
+                        <tr key={item.receiptId || i} className={`border-b border-slate-100 hover:bg-[#F0C3A7]/20/30 transition-colors ${item.isCancelled ? 'bg-red-50/30' : ''}`}>
+                          <td className="py-2.5 px-3 font-mono text-[#E6A57E] font-semibold whitespace-nowrap text-xs">{item.receiptNo || '-'}</td>
                           <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{item.receiptDate ? new Date(item.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
                           <td className="py-2.5 px-3">
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium ${
                               (item.paymentType || '').toLowerCase().includes('cash') ? 'bg-green-50 text-green-700 border border-green-200' :
-                              (item.paymentType || '').toLowerCase().includes('eft') ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                              (item.paymentType || '').toLowerCase().includes('eft') ? 'bg-[#F0C3A7]/20 text-[#E6A57E] border border-[#D6D6D6]' :
                               (item.paymentType || '').toLowerCase().includes('card') ? 'bg-purple-50 text-purple-700 border border-purple-200' :
                               'bg-slate-50 text-slate-600 border border-slate-200'
                             }`}>
@@ -1743,7 +1743,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                           <td className="py-2.5 px-3 text-slate-500 text-xs">{item.cashBook || '-'}</td>
                           <td className="py-2.5 px-3 text-xs">
                             {(bankNotes[item.receiptNo] || item.bankStatementNote) ? (
-                              <span className="text-blue-700 font-medium">{bankNotes[item.receiptNo] || item.bankStatementNote}</span>
+                              <span className="text-[#E6A57E] font-medium">{bankNotes[item.receiptNo] || item.bankStatementNote}</span>
                             ) : (
                               <span className="text-slate-400">-</span>
                             )}
@@ -1763,7 +1763,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                             <button
                               onClick={() => handlePrintReceipt(item)}
                               disabled={printingId === String(item.receiptId || item.receipt_ID) || !item.receiptId}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-[10px] font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] text-white text-[10px] font-semibold rounded-lg hover:from-[#D18E65] hover:to-[#C47A52] transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
                               data-testid={`button-print-receipt-${i}`}
                               title="Print Receipt"
                             >
@@ -1819,7 +1819,7 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
 
   const getServiceIcon = (desc: string) => {
     const d = (desc || '').toLowerCase();
-    if (d.includes('water') || d.includes('sewerage') || d.includes('sanitation')) return <Droplets className="w-3.5 h-3.5 text-blue-500" />;
+    if (d.includes('water') || d.includes('sewerage') || d.includes('sanitation')) return <Droplets className="w-3.5 h-3.5 text-[#E6A57E]" />;
     if (d.includes('electric') || d.includes('elec')) return <Zap className="w-3.5 h-3.5 text-amber-500" />;
     if (d.includes('refuse') || d.includes('solid waste') || d.includes('waste')) return <Layers className="w-3.5 h-3.5 text-green-500" />;
     if (d.includes('rate') || d.includes('property') || d.includes('valuation')) return <Home className="w-3.5 h-3.5 text-orange-500" />;
@@ -2388,7 +2388,7 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
         items.push({
           category: 'Additional Billing',
           serviceDesc: desc,
-          icon: <Plus className="w-3.5 h-3.5 text-indigo-500" />,
+          icon: <Plus className="w-3.5 h-3.5 text-[#E6A57E]" />,
           amount,
           vatAmount: vat,
           total: amount + vat,
@@ -2428,24 +2428,24 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
   }, [lineItems]);
 
   const categoryIcons: Record<string, React.ReactNode> = {
-    'Metered Services': <Droplets className="w-4 h-4 text-blue-600" />,
+    'Metered Services': <Droplets className="w-4 h-4 text-[#E6A57E]" />,
     'Property Rates': <Home className="w-4 h-4 text-orange-600" />,
     'Fixed Charges': <Layers className="w-4 h-4 text-emerald-600" />,
-    'Additional Billing': <Plus className="w-4 h-4 text-indigo-600" />,
+    'Additional Billing': <Plus className="w-4 h-4 text-[#E6A57E]" />,
   };
 
   const categoryColors: Record<string, string> = {
-    'Metered Services': 'from-blue-600 to-blue-700',
+    'Metered Services': 'from-[#E6A57E] to-[#D18E65]',
     'Property Rates': 'from-orange-500 to-orange-600',
     'Fixed Charges': 'from-emerald-600 to-emerald-700',
-    'Additional Billing': 'from-indigo-600 to-indigo-700',
+    'Additional Billing': 'from-[#E6A57E] to-[#D18E65]',
   };
 
   if (!calculated) {
     return (
       <div className="p-4 sm:p-6 max-w-3xl mx-auto" data-testid="next-bill-estimate-tab">
-        <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 border border-indigo-200 rounded-2xl p-6 sm:p-10 text-center space-y-4">
-          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-indigo-200">
+        <div className="bg-gradient-to-br from-[#F7F7F7] via-[#F7F7F7] to-[#F7F7F7] border border-[#D6D6D6] rounded-2xl p-6 sm:p-10 text-center space-y-4">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-[#E6A57E] to-[#D18E65] rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
             <Calculator className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
           </div>
           <h2 className="text-lg sm:text-xl font-bold text-slate-800">Next Bill Estimate</h2>
@@ -2460,7 +2460,7 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
           <Button
             onClick={calculateEstimate}
             disabled={loading}
-            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-indigo-200 transition-all"
+            className="bg-gradient-to-r from-[#E6A57E] to-[#D18E65] hover:from-[#D18E65] hover:to-[#C47A52] text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-[0_1px_3px_rgba(0,0,0,0.15)] transition-all"
             data-testid="button-calculate-estimate"
           >
             {loading ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Calculating...</> : <><Calculator className="w-4 h-4 mr-2" /> Calculate Estimate</>}
@@ -2472,7 +2472,7 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
 
   return (
     <div className="p-3 sm:p-4 space-y-4" data-testid="next-bill-estimate-results">
-      <div className="bg-gradient-to-r from-indigo-700 via-purple-700 to-indigo-800 rounded-xl p-4 sm:p-5 text-white shadow-lg">
+      <div className="bg-gradient-to-r from-[#E6A57E] via-[#D18E65] to-[#C47A52] rounded-xl p-4 sm:p-5 text-white shadow-lg">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center backdrop-blur-sm">
@@ -2575,14 +2575,14 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
                     {hasTiers && (
                       <div className="px-4 pb-3">
                         <div className="bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
-                          <div className="px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-slate-200 flex items-center justify-between">
+                          <div className="px-3 py-1.5 bg-gradient-to-r from-[#F0C3A7]/20 to-[#F7F7F7] border-b border-slate-200 flex items-center justify-between">
                             <div className="flex items-center gap-1.5">
-                              <Layers className="w-3 h-3 text-blue-500" />
-                              <span className="text-[10px] uppercase tracking-wider text-blue-700 font-bold">Tariff Tier Breakdown</span>
+                              <Layers className="w-3 h-3 text-[#E6A57E]" />
+                              <span className="text-[10px] uppercase tracking-wider text-[#E6A57E] font-bold">Tariff Tier Breakdown</span>
                             </div>
                             <div className="flex items-center gap-2">
                               {item.isProRated && item.readingDays && (
-                                <span className="text-[10px] text-blue-600 font-medium bg-blue-100 px-1.5 py-0.5 rounded">{item.readingDays} days / {STANDARD_MONTH_DAYS} std</span>
+                                <span className="text-[10px] text-[#E6A57E] font-medium bg-[#F0C3A7]/30 px-1.5 py-0.5 rounded">{item.readingDays} days / {STANDARD_MONTH_DAYS} std</span>
                               )}
                               <span className="text-[10px] text-slate-500 font-mono">{item.consumption} units</span>
                             </div>
@@ -2607,7 +2607,7 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
                                     </td>
                                   )}
                                   <td className="py-1.5 px-3 text-right font-mono text-slate-700">{fmt(tier.units)}</td>
-                                  <td className="py-1.5 px-3 text-right font-mono text-blue-600">{tier.rate.toFixed(4)}</td>
+                                  <td className="py-1.5 px-3 text-right font-mono text-[#E6A57E]">{tier.rate.toFixed(4)}</td>
                                   <td className="py-1.5 px-3 text-right font-mono font-semibold text-slate-800">R {fmt(tier.amount)}</td>
                                 </tr>
                               ))}

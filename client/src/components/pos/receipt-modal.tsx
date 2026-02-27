@@ -174,15 +174,15 @@ export function ReceiptModal() {
 
               return (
                 <>
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 mb-2 relative">
+                  <div className="w-16 h-16 bg-[#F0C3A7]/30 rounded-full flex items-center justify-center text-[#E6A57E] mb-2 relative">
                     <Loader2 className="w-8 h-8 animate-spin" />
                     {pct >= 0 && (
-                      <span className="absolute -bottom-1 -right-1 bg-blue-600 text-white text-[10px] font-bold rounded-full w-6 h-6 flex items-center justify-center shadow">
+                      <span className="absolute -bottom-1 -right-1 bg-[#E6A57E] text-white text-[10px] font-bold rounded-full w-6 h-6 flex items-center justify-center shadow">
                         {pct}%
                       </span>
                     )}
                     {submitPct >= 0 && pct < 0 && (
-                      <span className="absolute -bottom-1 -right-1 bg-blue-600 text-white text-[10px] font-bold rounded-full w-6 h-6 flex items-center justify-center shadow">
+                      <span className="absolute -bottom-1 -right-1 bg-[#E6A57E] text-white text-[10px] font-bold rounded-full w-6 h-6 flex items-center justify-center shadow">
                         {submitPct}%
                       </span>
                     )}
@@ -191,7 +191,7 @@ export function ReceiptModal() {
                   <div className="w-full space-y-2 mt-1">
                     <p className="text-sm text-muted-foreground font-medium text-center">{phaseText}</p>
                     {acctDetail && (
-                      <p className="text-xs font-semibold text-blue-700 text-center truncate max-w-[280px] mx-auto">{acctDetail}</p>
+                      <p className="text-xs font-semibold text-[#E6A57E] text-center truncate max-w-[280px] mx-auto">{acctDetail}</p>
                     )}
                     {pct >= 0 ? (
                       <div className="px-2">
@@ -284,8 +284,8 @@ export function ReceiptModal() {
                     </div>
                   )}
                   {clearanceItems.length > 0 && (
-                    <div className="bg-blue-50 rounded-lg p-3 space-y-2">
-                      <p className="text-xs font-semibold text-blue-700">Clearance</p>
+                    <div className="bg-[#F0C3A7]/20 rounded-lg p-3 space-y-2">
+                      <p className="text-xs font-semibold text-[#E6A57E]">Clearance</p>
                       {clearanceItems.map((item: TransactionItem, idx: number) => (
                         <div key={idx} className="space-y-1">
                           <div className="flex justify-between text-xs">
@@ -451,23 +451,23 @@ export function ReceiptModal() {
                 <p className="text-sm font-medium mb-2">Receipt Options</p>
                 
                 <div 
-                    className={`flex items-center space-x-3 border p-4 rounded-xl cursor-pointer transition-colors touch-manipulation ${printSelected ? 'border-blue-500 bg-blue-50/50 ring-1 ring-blue-200' : 'border-input hover:bg-muted/50'}`}
+                    className={`flex items-center space-x-3 border p-4 rounded-xl cursor-pointer transition-colors touch-manipulation ${printSelected ? 'border-[#E6A57E] bg-[#F0C3A7]/20 ring-1 ring-[#E6A57E]/30' : 'border-input hover:bg-muted/50'}`}
                     onClick={() => setPrintSelected(!printSelected)}
                 >
                     <Checkbox id="print-opt" checked={printSelected} onCheckedChange={(c) => setPrintSelected(!!c)} />
                     <Label htmlFor="print-opt" className="flex-1 cursor-pointer flex items-center gap-2 font-medium">
-                        <Printer className="w-5 h-5 text-blue-600" /> Print Receipt
+                        <Printer className="w-5 h-5 text-[#E6A57E]" /> Print Receipt
                     </Label>
                 </div>
 
-                <div className={`border rounded-xl transition-all ${emailSelected ? 'border-blue-500 bg-blue-50/50 ring-1 ring-blue-200' : 'border-input'}`}>
+                <div className={`border rounded-xl transition-all ${emailSelected ? 'border-[#E6A57E] bg-[#F0C3A7]/20 ring-1 ring-[#E6A57E]/30' : 'border-input'}`}>
                     <div 
                         className="flex items-center space-x-3 p-4 cursor-pointer hover:bg-muted/50 rounded-t-xl touch-manipulation"
                         onClick={() => setEmailSelected(!emailSelected)}
                     >
                         <Checkbox id="email-opt" checked={emailSelected} onCheckedChange={(c) => setEmailSelected(!!c)} />
                         <Label htmlFor="email-opt" className="flex-1 cursor-pointer flex items-center gap-2 font-medium">
-                            <Mail className="w-5 h-5 text-blue-600" /> Email Receipt
+                            <Mail className="w-5 h-5 text-[#E6A57E]" /> Email Receipt
                         </Label>
                     </div>
                     {emailSelected && (
@@ -482,14 +482,14 @@ export function ReceiptModal() {
                     )}
                 </div>
 
-                <div className={`border rounded-xl transition-all ${smsSelected ? 'border-blue-500 bg-blue-50/50 ring-1 ring-blue-200' : 'border-input'}`}>
+                <div className={`border rounded-xl transition-all ${smsSelected ? 'border-[#E6A57E] bg-[#F0C3A7]/20 ring-1 ring-[#E6A57E]/30' : 'border-input'}`}>
                     <div 
                         className="flex items-center space-x-3 p-4 cursor-pointer hover:bg-muted/50 rounded-t-xl touch-manipulation"
                         onClick={() => setSmsSelected(!smsSelected)}
                     >
                         <Checkbox id="sms-opt" checked={smsSelected} onCheckedChange={(c) => setSmsSelected(!!c)} />
                         <Label htmlFor="sms-opt" className="flex-1 cursor-pointer flex items-center gap-2 font-medium">
-                            <MessageSquare className="w-5 h-5 text-blue-600" /> SMS Receipt
+                            <MessageSquare className="w-5 h-5 text-[#E6A57E]" /> SMS Receipt
                         </Label>
                     </div>
                     {smsSelected && (
@@ -509,7 +509,7 @@ export function ReceiptModal() {
         <DialogFooter className="sm:justify-between gap-2 border-t pt-4 flex-shrink-0">
           <Button variant="ghost" onClick={closeReceiptModal} disabled={transactionProcessing || isPrinting} className="h-12 sm:h-10 rounded-xl">Close</Button>
           {!paymentFailed && (
-            <Button onClick={handleComplete} className="min-w-[140px] h-12 sm:h-10 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/20 font-bold" disabled={transactionProcessing || isPrinting}>
+            <Button onClick={handleComplete} className="min-w-[140px] h-12 sm:h-10 rounded-xl bg-gradient-to-r from-[#E6A57E] to-[#D18E65] hover:from-[#D18E65] hover:to-[#C07D55] shadow-lg shadow-[0_1px_3px_rgba(0,0,0,0.15)] font-bold" disabled={transactionProcessing || isPrinting}>
                 {transactionProcessing ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />

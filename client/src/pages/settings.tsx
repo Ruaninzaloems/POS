@@ -61,7 +61,7 @@ export default function SettingsPage() {
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
-                    <div className="p-2 bg-blue-100 rounded-lg text-blue-700">
+                    <div className="p-2 bg-[#F0C3A7]/20 rounded-lg text-[#6B6B6B]">
                         <ShieldAlert className="w-5 h-5" />
                     </div>
                     <div>

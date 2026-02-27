@@ -1035,7 +1035,7 @@ export default function SupervisorDashboard() {
             </div>
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border shadow-sm">
                 <div className="text-xs font-medium text-muted-foreground">Administrator</div>
-                <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs">AD</div>
+                <div className="w-6 h-6 rounded-full bg-[#2E2E2E] text-white flex items-center justify-center text-xs">AD</div>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -1086,12 +1086,12 @@ export default function SupervisorDashboard() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <Card className="border-l-4 border-l-blue-600">
+        <Card className="border-l-4 border-l-[#E6A57E]">
           <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-1">Pending Approvals <HelpTip text="Total number of cashier day-end submissions and cancellation requests awaiting supervisor review." /></CardTitle>
           </CardHeader>
           <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-            <div className="text-2xl sm:text-3xl font-bold text-blue-600">{pendingCount + allPendingCancellationCount}</div>
+            <div className="text-2xl sm:text-3xl font-bold text-[#E6A57E]">{pendingCount + allPendingCancellationCount}</div>
             <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                 <RefreshCcw className="w-3 h-3" /> {pendingCount} shifts, {allPendingCancellationCount} voids
             </p>
@@ -1177,7 +1177,7 @@ export default function SupervisorDashboard() {
                                             {req.paymentType && (
                                                 <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 uppercase text-[10px] tracking-wider font-semibold">{req.paymentType}</span>
                                             )}
-                                            <Badge variant="outline" className="text-[10px] px-1 py-0 text-blue-700 border-blue-300 bg-blue-50">API</Badge>
+                                            <Badge variant="outline" className="text-[10px] px-1 py-0 text-[#6B6B6B] border-[#D6D6D6] bg-[#F7F7F7]">API</Badge>
                                         </div>
                                     </div>
                                     <span className="font-bold text-slate-900 font-mono">R {req.amount.toFixed(2)}</span>
@@ -1278,7 +1278,7 @@ export default function SupervisorDashboard() {
                                                             {req.paymentType}
                                                         </span>
                                                     )}
-                                                    <Badge variant="outline" className="text-[10px] px-1 py-0 text-blue-700 border-blue-300 bg-blue-50">API</Badge>
+                                                    <Badge variant="outline" className="text-[10px] px-1 py-0 text-[#6B6B6B] border-[#D6D6D6] bg-[#F7F7F7]">API</Badge>
                                                 </div>
                                             </div>
                                         </TableCell>
@@ -1602,9 +1602,9 @@ export default function SupervisorDashboard() {
             <TabsTrigger value="All" className="text-xs sm:text-sm data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900">
                 All Active
             </TabsTrigger>
-            <TabsTrigger value="PENDING_APPROVAL" className="text-xs sm:text-sm data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">
+            <TabsTrigger value="PENDING_APPROVAL" className="text-xs sm:text-sm data-[state=active]:bg-[#F0C3A7]/20 data-[state=active]:text-[#E6A57E]">
                 <span className="hidden sm:inline">Pending </span>Approval
-                {pendingCount > 0 && <Badge variant="secondary" className="ml-1 sm:ml-2 h-4 px-1 text-[10px] bg-blue-100 text-blue-700 hover:bg-blue-100">{pendingCount}</Badge>}
+                {pendingCount > 0 && <Badge variant="secondary" className="ml-1 sm:ml-2 h-4 px-1 text-[10px] bg-[#F0C3A7]/30 text-[#E6A57E] hover:bg-[#F0C3A7]/30">{pendingCount}</Badge>}
             </TabsTrigger>
             <TabsTrigger value="NOT_SUBMITTED" className="text-xs sm:text-sm data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900">Not <span className="hidden sm:inline">Submitted</span><span className="sm:hidden">Sub</span></TabsTrigger>
             <TabsTrigger value="RETURNED" className="text-xs sm:text-sm data-[state=active]:bg-red-50 data-[state=active]:text-red-700">Returned</TabsTrigger>
@@ -1637,7 +1637,7 @@ export default function SupervisorDashboard() {
                                   {shift.cashOffice && (
                                       <p className="text-xs text-muted-foreground flex items-center gap-1">
                                           {shift.cashOffice}
-                                          {shift.groupCashiers && <Badge variant="outline" className="text-[8px] px-1 py-0 bg-blue-50 text-blue-600 border-blue-200">Grouped</Badge>}
+                                          {shift.groupCashiers && <Badge variant="outline" className="text-[8px] px-1 py-0 bg-[#F0C3A7]/20 text-[#E6A57E] border-[#D6D6D6]">Grouped</Badge>}
                                       </p>
                                   )}
                               </div>
@@ -1691,7 +1691,7 @@ export default function SupervisorDashboard() {
                               <TableCell className="font-medium">{shift.cashierName}</TableCell>
                               <TableCell className="text-muted-foreground">
                                   <span>{shift.cashOffice || '-'}</span>
-                                  {shift.groupCashiers && <Badge variant="outline" className="ml-1 text-[8px] px-1 py-0 bg-blue-50 text-blue-600 border-blue-200">Grouped</Badge>}
+                                  {shift.groupCashiers && <Badge variant="outline" className="ml-1 text-[8px] px-1 py-0 bg-[#F0C3A7]/20 text-[#E6A57E] border-[#D6D6D6]">Grouped</Badge>}
                               </TableCell>
                               <TableCell>{new Date(shift.startTime).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' })}</TableCell>
                               <TableCell className="text-right">{shift.transactionCount}</TableCell>
@@ -1759,7 +1759,7 @@ export default function SupervisorDashboard() {
 
                   {perOfficeLoading && (
                       <div className="flex items-center justify-center py-12">
-                          <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                          <Loader2 className="w-6 h-6 animate-spin text-[#E6A57E]" />
                           <span className="ml-2 text-sm text-muted-foreground">Loading office data...</span>
                       </div>
                   )}
@@ -1790,7 +1790,7 @@ export default function SupervisorDashboard() {
                                                       'text-[10px]',
                                                       isVerified && 'bg-green-50 text-green-700 border-green-200',
                                                       isReturned && 'bg-amber-50 text-amber-700 border-amber-200',
-                                                      isPending && 'bg-blue-50 text-blue-700 border-blue-200'
+                                                      isPending && 'bg-[#F0C3A7]/20 text-[#E6A57E] border-[#D6D6D6]'
                                                   )}>
                                                       {cStatus}
                                                   </Badge>
@@ -1916,7 +1916,7 @@ export default function SupervisorDashboard() {
                           )}
 
                           {!perOfficeData.allVerified && (!perOfficeData.validationResult || perOfficeData.validationResult.isValid) && (
-                              <div className="p-3 border-t bg-blue-50 text-xs text-blue-700 flex items-center gap-2">
+                              <div className="p-3 border-t bg-[#F0C3A7]/15 text-xs text-[#6B6B6B] flex items-center gap-2">
                                   <Info className="w-4 h-4 shrink-0" />
                                   Verify each cashier individually, then submit the office reconciliation once all are verified.
                               </div>
@@ -1943,7 +1943,7 @@ export default function SupervisorDashboard() {
         <DialogContent className="max-w-5xl h-[90vh] flex flex-col">
             <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-blue-600" />
+                    <TrendingUp className="w-5 h-5 text-[#E6A57E]" />
                     Cashier Variance Statistics
                 </DialogTitle>
                 <DialogDescription>
@@ -2032,9 +2032,9 @@ export default function SupervisorDashboard() {
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-blue-50 border-blue-200 shadow-sm">
+                    <Card className="bg-[#F0C3A7]/20 border-[#D6D6D6] shadow-sm">
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-blue-800">Net Variance</CardTitle>
+                            <CardTitle className="text-sm font-medium text-[#2E2E2E]">Net Variance</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className={`text-2xl font-bold ${
@@ -2042,7 +2042,7 @@ export default function SupervisorDashboard() {
                             }`}>
                                 {formatCurrency(varianceStats?.netVariance || 0)}
                             </div>
-                            <p className="text-xs text-blue-700 mt-1">
+                            <p className="text-xs text-[#6B6B6B] mt-1">
                                 Over {varianceStats?.shiftCount} shifts
                             </p>
                         </CardContent>
@@ -2117,12 +2117,12 @@ export default function SupervisorDashboard() {
               <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[95vh] overflow-y-auto">
                   <DialogHeader>
                       <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
-                          Reconciliation Review: <span className="text-blue-600">{selectedShift.cashierName}</span>
+                          Reconciliation Review: <span className="text-[#E6A57E]">{selectedShift.cashierName}</span>
                       </DialogTitle>
                       <DialogDescription className="text-xs sm:text-sm flex items-center gap-2 flex-wrap">
                           <span>Cashier ID: {selectedShift.id} | Office: {selectedShift.cashOffice || 'N/A'}</span>
                           {selectedShift.groupCashiers && (
-                              <Badge variant="outline" className="text-[9px] bg-blue-50 text-blue-700 border-blue-200">
+                              <Badge variant="outline" className="text-[9px] bg-[#F0C3A7]/20 text-[#E6A57E] border-[#D6D6D6]">
                                   <Users className="w-3 h-3 mr-1" /> Grouped Office
                               </Badge>
                           )}
@@ -2181,24 +2181,24 @@ export default function SupervisorDashboard() {
                               <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground border-b pb-2">Cashier Declared Totals</h3>
                               {reviewData.reconcile ? (
                                 <>
-                                  <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-100">
-                                      <span className="text-sm text-blue-800">Total Cash on Hand + Drop Box (R)</span>
+                                  <div className="flex justify-between items-center p-3 bg-[#F0C3A7]/15 rounded-lg border border-[#D6D6D6]">
+                                      <span className="text-sm text-[#2E2E2E]">Total Cash on Hand + Drop Box (R)</span>
                                       <span className="font-mono font-bold">{formatCurrency(Number(reviewData.reconcile.totalCashAmt || reviewData.reconcile.cashDeclared || 0) + Number(reviewData.reconcile.totalDropBoxAmt || reviewData.reconcile.dropBoxDeclared || 0))}</span>
                                   </div>
-                                  <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-100">
-                                      <span className="text-sm text-blue-800">Total Debit/Credit Card Receipts (R)</span>
+                                  <div className="flex justify-between items-center p-3 bg-[#F0C3A7]/15 rounded-lg border border-[#D6D6D6]">
+                                      <span className="text-sm text-[#2E2E2E]">Total Debit/Credit Card Receipts (R)</span>
                                       <span className="font-mono font-bold">{formatCurrency(Number(reviewData.reconcile.totalCreditAmt || reviewData.reconcile.cardDeclared || 0))}</span>
                                   </div>
-                                  <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-100">
-                                      <span className="text-sm text-blue-800">Total Cheque Receipts (R)</span>
+                                  <div className="flex justify-between items-center p-3 bg-[#F0C3A7]/15 rounded-lg border border-[#D6D6D6]">
+                                      <span className="text-sm text-[#2E2E2E]">Total Cheque Receipts (R)</span>
                                       <span className="font-mono font-bold">{formatCurrency(Number(reviewData.reconcile.totalChequeAmt || reviewData.reconcile.chequeDeclared || 0))}</span>
                                   </div>
-                                  <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-100">
-                                      <span className="text-sm text-blue-800">Total Postal Order Receipts (R)</span>
+                                  <div className="flex justify-between items-center p-3 bg-[#F0C3A7]/15 rounded-lg border border-[#D6D6D6]">
+                                      <span className="text-sm text-[#2E2E2E]">Total Postal Order Receipts (R)</span>
                                       <span className="font-mono font-bold">{formatCurrency(Number(reviewData.reconcile.totalPostalOrderAmt || reviewData.reconcile.postalOrderDeclared || 0))}</span>
                                   </div>
-                                  <div className="flex justify-between items-center p-3 bg-blue-100 rounded-lg border border-blue-200">
-                                      <span className="font-bold text-blue-900">Grand Total (R)</span>
+                                  <div className="flex justify-between items-center p-3 bg-[#F0C3A7]/25 rounded-lg border border-[#D6D6D6]">
+                                      <span className="font-bold text-[#2E2E2E]">Grand Total (R)</span>
                                       <span className="font-mono font-bold text-lg">{formatCurrency(Number(reviewData.reconcile.totalAmt || reviewData.reconcile.totalDeclared || 0))}</span>
                                   </div>
                                   {Number(reviewData.reconcile.cashFloat || reviewData.reconcile.float || 0) > 0 && (
@@ -2300,7 +2300,7 @@ export default function SupervisorDashboard() {
                   ) : null}
 
                   {selectedShift.groupCashiers && (
-                      <div className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 flex items-center gap-1.5">
+                      <div className="text-xs text-[#6B6B6B] bg-[#F0C3A7]/15 border border-[#D6D6D6] rounded-lg px-3 py-2 flex items-center gap-1.5">
                           <Users className="w-3.5 h-3.5 shrink-0" />
                           This cashier belongs to a grouped office ({selectedShift.cashOffice}). All cashiers in this office must be reconciled together. Use the "Per Cash Office" view to approve the entire office at once.
                       </div>
@@ -2351,7 +2351,7 @@ function StatusBadge({ status }: { status: DayEndStatus }) {
         case 'NOT_SUBMITTED':
             return <Badge variant="outline" className="text-gray-500 border-gray-300">Open</Badge>;
         case 'PENDING_APPROVAL':
-            return <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-200">Pending Approval</Badge>;
+            return <Badge variant="secondary" className="bg-[#F0C3A7]/30 text-[#E6A57E] hover:bg-[#F0C3A7]/40">Pending Approval</Badge>;
         case 'RETURNED':
             return <Badge variant="destructive">Returned</Badge>;
         case 'COMPLETED':

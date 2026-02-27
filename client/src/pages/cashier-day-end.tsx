@@ -696,7 +696,7 @@ export default function CashierDayEnd() {
                                         </div>
                                         <div className="flex justify-between items-center py-2 border-b-2 border-slate-400">
                                             <span className="text-sm font-bold text-slate-800 flex items-center gap-1">Grand Total (R) <HelpTip text="The difference between your counted cash and the system's expected amount. A zero variance is ideal." /></span>
-                                            <span className="font-mono font-bold text-base bg-blue-50 border-2 border-blue-300 px-4 py-1.5 rounded min-w-[120px] text-right text-blue-900">
+                                            <span className="font-mono font-bold text-base bg-[#F0C3A7]/20 border-2 border-[#E6A57E] px-4 py-1.5 rounded min-w-[120px] text-right text-[#2E2E2E]">
                                                 {grandTotal.toFixed(2)}
                                             </span>
                                         </div>

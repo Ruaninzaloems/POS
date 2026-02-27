@@ -167,12 +167,12 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
     return (
       <div className="p-3 sm:p-4 space-y-6" data-testid="service-balance-detail">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-3">
-            <button onClick={() => setSelectedService(null)} className="text-white hover:text-blue-200 transition-colors" data-testid="button-back-services">
+          <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] flex items-center gap-3">
+            <button onClick={() => setSelectedService(null)} className="text-white hover:text-[#F0C3A7] transition-colors" data-testid="button-back-services">
               <ChevronLeft className="w-5 h-5" />
             </button>
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Service Type Balance</h3>
-            <span className="text-[10px] sm:text-xs text-blue-200 truncate">- {svcDesc}</span>
+            <span className="text-[10px] sm:text-xs text-[#F0C3A7] truncate">- {svcDesc}</span>
             <div className="ml-auto">
               <select value={finYear} onChange={e => setFinYear(e.target.value)} className="text-xs bg-white/20 text-white border border-white/30 rounded px-2 py-1 focus:outline-none" data-testid="select-fin-year-detail">
                 {yearOptions.map(y => <option key={y} value={y} className="text-slate-800">{y}</option>)}
@@ -194,7 +194,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
                       <div className="flex justify-between text-[11px]"><span className="text-slate-500">Opening</span><span className="font-mono font-semibold text-slate-800">{fmt(r.openingBalance)}</span></div>
                       <div className="flex justify-between text-[11px]"><span className="text-slate-500">Amount</span><span className="font-mono font-semibold text-slate-800">{fmt(r.amount)}</span></div>
                       <div className="flex justify-between text-[11px]"><span className="text-slate-500">Interest</span><span className="font-mono font-semibold text-slate-800">{fmt(r.interestAmount ?? r.interest)}</span></div>
-                      <div className="flex justify-between text-[11px]"><span className="text-slate-500">Total</span><span className="font-mono font-bold text-blue-700">{fmt(r.totalAmount ?? r.total)}</span></div>
+                      <div className="flex justify-between text-[11px]"><span className="text-slate-500">Total</span><span className="font-mono font-bold text-[#E6A57E]">{fmt(r.totalAmount ?? r.total)}</span></div>
                       <div className="flex justify-between text-[11px]"><span className="text-slate-500">VAT</span><span className="font-mono text-slate-700">{fmt(r.vat)}</span></div>
                       <div className="flex justify-between text-[11px]"><span className="text-slate-500">Closing</span><span className="font-mono text-slate-700">{fmt(r.closingBalance ?? r.closingBal)}</span></div>
                     </div>
@@ -206,7 +206,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
                     <div className="flex justify-between text-[11px]"><span className="text-slate-500">Opening</span><span className="font-mono font-bold">{fmt(totals.openingBalance)}</span></div>
                     <div className="flex justify-between text-[11px]"><span className="text-slate-500">Amount</span><span className="font-mono font-bold">{fmt(totals.amount)}</span></div>
                     <div className="flex justify-between text-[11px]"><span className="text-slate-500">Interest</span><span className="font-mono font-bold">{fmt(totals.interestAmount)}</span></div>
-                    <div className="flex justify-between text-[11px]"><span className="text-slate-500">Total</span><span className="font-mono font-bold text-blue-700">{fmt(totals.totalAmount)}</span></div>
+                    <div className="flex justify-between text-[11px]"><span className="text-slate-500">Total</span><span className="font-mono font-bold text-[#E6A57E]">{fmt(totals.totalAmount)}</span></div>
                   </div>
                 </div>
               </div>
@@ -229,13 +229,13 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
                   </thead>
                   <tbody>
                     {sorted.map((r: any, i: number) => (
-                      <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
+                      <tr key={i} className="border-b border-slate-100 hover:bg-[#F0C3A7]/20/30 transition-colors">
                         <td className="py-2 px-3 text-slate-700">{r.serviceDescription || svcDesc}</td>
                         <td className="py-2 px-3 text-right font-mono">{fmt(r.openingBalance)}</td>
                         <td className="py-2 px-3 text-right font-mono">{fmt(r.amount)}</td>
                         <td className="py-2 px-3 text-right font-mono">{fmt(r.vat)}</td>
                         <td className="py-2 px-3 text-right font-mono">{fmt(r.interestAmount ?? r.interest)}</td>
-                        <td className="py-2 px-3 text-right font-mono font-semibold text-blue-700">{fmt(r.totalAmount ?? r.total)}</td>
+                        <td className="py-2 px-3 text-right font-mono font-semibold text-[#E6A57E]">{fmt(r.totalAmount ?? r.total)}</td>
                         <td className="py-2 px-3 text-right font-mono">{fmt(r.closingBalance ?? r.closingBal)}</td>
                         <td className="py-2 px-3 text-right font-mono">{fmt(r.currentInterestAmount)}</td>
                         <td className="py-2 px-3 text-right font-mono">{fmt(r.currentCharge)}</td>
@@ -249,7 +249,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
                       <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.amount)}</td>
                       <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.vat)}</td>
                       <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.interestAmount)}</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-blue-700">{fmt(totals.totalAmount)}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-[#E6A57E]">{fmt(totals.totalAmount)}</td>
                       <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.closingBalance)}</td>
                       <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.currentInterestAmount)}</td>
                       <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.currentCharge)}</td>
@@ -264,7 +264,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
 
         {chartData.length > 0 && (
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700">
+            <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-[#E6A57E] to-[#D18E65]">
               <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Service Type Balance</h3>
             </div>
             <div className="p-3 sm:p-4 h-[250px] sm:h-[350px]">
@@ -309,7 +309,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
     if (lower.includes('sanitation') || lower.includes('sewer')) return { bg: 'from-violet-500 to-violet-600', light: 'bg-violet-50 text-violet-700 ring-violet-200', iconBg: 'bg-violet-100 text-violet-600' };
     if (lower.includes('waste') || lower.includes('refuse')) return { bg: 'from-emerald-500 to-emerald-600', light: 'bg-emerald-50 text-emerald-700 ring-emerald-200', iconBg: 'bg-emerald-100 text-emerald-600' };
     if (lower.includes('rates') || lower.includes('property')) return { bg: 'from-orange-500 to-orange-600', light: 'bg-orange-50 text-orange-700 ring-orange-200', iconBg: 'bg-orange-100 text-orange-600' };
-    return { bg: 'from-blue-500 to-blue-600', light: 'bg-blue-50 text-blue-700 ring-blue-200', iconBg: 'bg-blue-100 text-blue-600' };
+    return { bg: 'from-[#E6A57E] to-[#D18E65]', light: 'bg-[#F0C3A7]/20 text-[#E6A57E] ring-[#D6D6D6]', iconBg: 'bg-[#F0C3A7]/30 text-[#E6A57E]' };
   };
 
   const serviceGroups = useMemo(() => {
@@ -355,7 +355,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
       <div key={globalIdx} className="bg-slate-50 rounded-lg border border-slate-200 p-3 space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <button onClick={() => setSelectedService(svc)} className="text-[12px] font-semibold text-blue-700 hover:text-blue-900 truncate text-left" data-testid={`btn-service-detail-${globalIdx}`}>
+            <button onClick={() => setSelectedService(svc)} className="text-[12px] font-semibold text-[#E6A57E] hover:text-[#C47A52] truncate text-left" data-testid={`btn-service-detail-${globalIdx}`}>
               {svc.tariff || svc.tariffDesc || svc.tariffDescription || getServiceTypeDesc(svc) || 'Service Entry'}
             </button>
           </div>
@@ -374,7 +374,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
         </div>
         {tariffInfo.blocks.length > 0 && (
           <div className="pt-2 border-t border-slate-200">
-            <button onClick={(e) => { e.stopPropagation(); toggleRate(globalIdx); }} className="flex items-center gap-1 text-[10px] font-semibold text-blue-600 hover:text-blue-800" data-testid={`btn-tariff-rate-${globalIdx}`}>
+            <button onClick={(e) => { e.stopPropagation(); toggleRate(globalIdx); }} className="flex items-center gap-1 text-[10px] font-semibold text-[#E6A57E] hover:text-[#C47A52]" data-testid={`btn-tariff-rate-${globalIdx}`}>
               {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
               Tariff Rates ({tariffInfo.blocks.reduce((sum, b) => sum + b.intervals.length, 0)} entries)
             </button>
@@ -388,7 +388,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
                         {block.intervals.map((iv, idx) => (
                           <tr key={idx} className="border-t border-slate-100 first:border-t-0">
                             <td className="py-1 px-2.5 text-slate-600">{iv.interval}</td>
-                            <td className="py-1 px-2.5 text-right font-mono font-semibold text-blue-700">R {iv.cost}</td>
+                            <td className="py-1 px-2.5 text-right font-mono font-semibold text-[#E6A57E]">R {iv.cost}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -474,7 +474,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
                     </div>
                     {(() => { const ti = parseTariffRateData(group.services[0]); return ti.blocks.length > 0 ? (
                       <div className="mt-3 pt-3 border-t border-slate-100">
-                        <button onClick={(e) => { e.stopPropagation(); toggleRate(startIdx); }} className="flex items-center gap-1.5 text-[11px] font-semibold text-blue-600 hover:text-blue-800 mb-2" data-testid={`btn-tariff-rate-${startIdx}`}>
+                        <button onClick={(e) => { e.stopPropagation(); toggleRate(startIdx); }} className="flex items-center gap-1.5 text-[11px] font-semibold text-[#E6A57E] hover:text-[#C47A52] mb-2" data-testid={`btn-tariff-rate-${startIdx}`}>
                           {expandedRates.has(startIdx) ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                           Tariff Rates ({ti.blocks.reduce((sum, b) => sum + b.intervals.length, 0)} entries)
                         </button>
@@ -483,7 +483,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
                             {(block.startDate || block.endDate) && <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200 text-[11px] text-slate-500 font-medium">Period: {block.startDate || '—'} to {block.endDate || '—'}</div>}
                             <table className="w-full text-[12px]"><tbody>
                               {block.intervals.map((iv, idx) => (
-                                <tr key={idx} className="border-t border-slate-100 first:border-t-0 hover:bg-blue-50/30"><td className="py-1.5 px-3 text-slate-700">{iv.interval}</td><td className="py-1.5 px-3 text-right font-mono font-semibold text-blue-700">{iv.cost}</td></tr>
+                                <tr key={idx} className="border-t border-slate-100 first:border-t-0 hover:bg-[#F0C3A7]/20/30"><td className="py-1.5 px-3 text-slate-700">{iv.interval}</td><td className="py-1.5 px-3 text-right font-mono font-semibold text-[#E6A57E]">{iv.cost}</td></tr>
                               ))}
                             </tbody></table>
                           </div>
@@ -491,9 +491,9 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
                         {!expandedRates.has(startIdx) && (
                           <div className="flex flex-wrap gap-2">
                             {ti.blocks.slice(0, 1).flatMap(b => b.intervals.slice(0, 4)).map((iv, idx) => (
-                              <div key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 border border-blue-100 text-[11px]">
+                              <div key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#F0C3A7]/20 border border-[#D6D6D6] text-[11px]">
                                 <span className="text-slate-600">{iv.interval}:</span>
-                                <span className="font-mono font-semibold text-blue-700">R {iv.cost}</span>
+                                <span className="font-mono font-semibold text-[#E6A57E]">R {iv.cost}</span>
                               </div>
                             ))}
                           </div>
@@ -516,7 +516,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
                     )}
                     {!isGroupExpanded && (
                       <div className="px-3 sm:px-4 py-2 text-center">
-                        <button onClick={() => toggleGroup(group.name)} className="text-[11px] text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-1" data-testid={`btn-expand-group-${group.name.toLowerCase().replace(/\s+/g, '-')}`}>
+                        <button onClick={() => toggleGroup(group.name)} className="text-[11px] text-[#E6A57E] hover:text-[#C47A52] font-semibold inline-flex items-center gap-1" data-testid={`btn-expand-group-${group.name.toLowerCase().replace(/\s+/g, '-')}`}>
                           <ChevronDown className="w-3.5 h-3.5" />
                           Show {group.totalCount} {group.name} entries
                         </button>
@@ -544,7 +544,7 @@ export function ServiceBalanceChart({ data }: { data: { month: string; amount: n
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-center gap-2 mb-3">
-        <div className="w-4 h-3 bg-blue-600 rounded-sm" />
+        <div className="w-4 h-3 bg-[#E6A57E] rounded-sm" />
         <span className="text-xs text-slate-600 font-medium">Current Billing Amount</span>
       </div>
       <div className="flex-1 flex">
@@ -559,7 +559,7 @@ export function ServiceBalanceChart({ data }: { data: { month: string; amount: n
             return (
               <div key={i} className="flex flex-col items-center flex-1" style={{ maxWidth: barWidth }}>
                 <div className="w-full flex items-end justify-center" style={{ height: '100%', minHeight: 150 }}>
-                  <div className="w-full bg-blue-600 rounded-t-sm transition-all hover:bg-blue-500 relative group" style={{ height: `${height}%`, minHeight: d.amount > 0 ? 4 : 0 }} data-testid={`bar-${i}`}>
+                  <div className="w-full bg-[#E6A57E] rounded-t-sm transition-all hover:bg-[#E6A57E] relative group" style={{ height: `${height}%`, minHeight: d.amount > 0 ? 4 : 0 }} data-testid={`bar-${i}`}>
                     <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
                       R {d.amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
                     </div>
@@ -603,7 +603,7 @@ export function ConsumptionChart({ readings }: { readings: any[] }) {
     const flag = (item.flag || item.levyStatus || '').toLowerCase();
     if (flag.includes('reversed') || flag.includes('cancel')) return { bg: 'bg-red-500', label: 'Reversed' };
     if (flag.includes('estimate') || flag.includes('levy')) return { bg: 'bg-gray-400', label: 'Levy Estimate' };
-    return { bg: 'bg-blue-500', label: 'Actual' };
+    return { bg: 'bg-[#E6A57E]', label: 'Actual' };
   };
 
   const formatMonth = (item: any, short?: boolean) => {
@@ -630,7 +630,7 @@ export function ConsumptionChart({ readings }: { readings: any[] }) {
   return (
     <div className="mt-4">
       <div className="flex items-center justify-center gap-6 mb-4 text-xs">
-        <div className="flex items-center gap-1.5"><div className="w-4 h-3 bg-blue-500 rounded-sm" /><span className="text-slate-600">Actual</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-4 h-3 bg-[#E6A57E] rounded-sm" /><span className="text-slate-600">Actual</span></div>
         <div className="flex items-center gap-1.5"><div className="w-4 h-3 bg-gray-400 rounded-sm" /><span className="text-slate-600">Levy Estimate</span></div>
         <div className="flex items-center gap-1.5"><div className="w-4 h-3 bg-red-500 rounded-sm" /><span className="text-slate-600">Reversed</span></div>
       </div>
@@ -969,10 +969,10 @@ function MeterIntelligence({ allReadings }: { allReadings: any[] }) {
                   <div className="text-sm sm:text-base font-mono font-black text-amber-800 mt-0.5">{fmt(analysis.avgDailyConsumption)}</div>
                   <div className="text-[9px] text-amber-500">units/day</div>
                 </div>
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg px-3 py-2.5 border border-blue-200">
-                  <div className="text-[9px] text-blue-600 uppercase tracking-wider font-bold">Avg Monthly</div>
-                  <div className="text-sm sm:text-base font-mono font-black text-blue-800 mt-0.5">{fmt(analysis.avgMonthlyConsumption)}</div>
-                  <div className="text-[9px] text-blue-500">units/{STANDARD_MONTH_DAYS}d</div>
+                <div className="bg-gradient-to-br from-[#F0C3A7]/20 to-[#F7F7F7] rounded-lg px-3 py-2.5 border border-[#D6D6D6]">
+                  <div className="text-[9px] text-[#E6A57E] uppercase tracking-wider font-bold">Avg Monthly</div>
+                  <div className="text-sm sm:text-base font-mono font-black text-[#2E2E2E] mt-0.5">{fmt(analysis.avgMonthlyConsumption)}</div>
+                  <div className="text-[9px] text-[#E6A57E]">units/{STANDARD_MONTH_DAYS}d</div>
                 </div>
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg px-3 py-2.5 border border-green-200">
                   <div className="text-[9px] text-green-600 uppercase tracking-wider font-bold">Range (Daily)</div>
@@ -991,7 +991,7 @@ function MeterIntelligence({ allReadings }: { allReadings: any[] }) {
                   <BarChart3 className="w-3.5 h-3.5 text-slate-500" />
                   <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Daily Consumption Trend</span>
                   <div className="ml-auto flex items-center gap-3 text-[9px]">
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-blue-500 inline-block" /> Normal</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-[#E6A57E] inline-block" /> Normal</span>
                     <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-500 inline-block" /> High Spike</span>
                     <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-500 inline-block" /> Low Spike</span>
                   </div>
@@ -1010,7 +1010,7 @@ function MeterIntelligence({ allReadings }: { allReadings: any[] }) {
                     const maxD = Math.max(...display.map(r => r.dailyConsumption), analysis.avgDailyConsumption * 1.5);
                     return display.map((r, i) => {
                       const pct = maxD > 0 ? (r.dailyConsumption / maxD) * 100 : 0;
-                      const barColor = r.spikeType === 'high' ? 'bg-red-500' : r.spikeType === 'low' ? 'bg-amber-500' : 'bg-blue-500';
+                      const barColor = r.spikeType === 'high' ? 'bg-red-500' : r.spikeType === 'low' ? 'bg-amber-500' : 'bg-[#E6A57E]';
                       const bm = r.billingMonth || '';
                       const label = bm === 'Current Open Period' ? 'CUR' : bm.substring(0, 3);
                       const isOpen = bm.toLowerCase().includes('open period') || r.readingStatus.toLowerCase().includes('awaiting');
@@ -1202,8 +1202,8 @@ function BillingEstimator({ readingHistory, selectedMeter, allReadings }: { read
   const fmt = (v: number) => v.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
-    <div className="bg-white rounded-xl border border-indigo-200 shadow-sm overflow-hidden" data-testid="billing-estimator">
-      <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-between">
+    <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden" data-testid="billing-estimator">
+      <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Scale className="w-4 h-4 text-white" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Billing Estimation Calculator</h3>
@@ -1220,13 +1220,13 @@ function BillingEstimator({ readingHistory, selectedMeter, allReadings }: { read
       {showDetails && (
         <div className="p-3 sm:p-4 space-y-4">
           {!estimateData && historicalAvg && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-xs text-blue-800">
+            <div className="bg-[#F0C3A7]/20 border border-[#D6D6D6] rounded-lg p-3">
+              <p className="text-xs text-[#2E2E2E]">
                 No unbilled readings found. Based on the last {historicalAvg.months} billing periods, 
                 the average consumption is <span className="font-bold font-mono">{fmt(historicalAvg.avg)}</span> units per month.
               </p>
               <div className="mt-2">
-                <p className="text-[10px] text-blue-600 uppercase tracking-wider font-semibold mb-1">Projected next bill (at average consumption)</p>
+                <p className="text-[10px] text-[#E6A57E] uppercase tracking-wider font-semibold mb-1">Projected next bill (at average consumption)</p>
                 {(() => {
                   const factor = selectedMeter?.tarifffactor ?? selectedMeter?.factorQuantity ?? 1;
                   const factorNum = typeof factor === 'number' ? factor : parseFloat(factor) || 1;
@@ -1235,17 +1235,17 @@ function BillingEstimator({ readingHistory, selectedMeter, allReadings }: { read
                   const total = subtotal + vatAmount;
                   return (
                     <div className="grid grid-cols-3 gap-2 mt-1">
-                      <div className="bg-white rounded-md px-2 py-1.5 border border-blue-100 text-center">
+                      <div className="bg-white rounded-md px-2 py-1.5 border border-[#D6D6D6] text-center">
                         <div className="text-[9px] text-slate-500 uppercase">Subtotal</div>
                         <div className="text-xs font-mono font-bold text-slate-800">R {fmt(subtotal)}</div>
                       </div>
-                      <div className="bg-white rounded-md px-2 py-1.5 border border-blue-100 text-center">
+                      <div className="bg-white rounded-md px-2 py-1.5 border border-[#D6D6D6] text-center">
                         <div className="text-[9px] text-slate-500 uppercase">VAT ({vatRate}%)</div>
                         <div className="text-xs font-mono font-bold text-slate-800">R {fmt(vatAmount)}</div>
                       </div>
-                      <div className="bg-indigo-50 rounded-md px-2 py-1.5 border border-indigo-200 text-center">
-                        <div className="text-[9px] text-indigo-600 uppercase font-bold">Est. Total</div>
-                        <div className="text-sm font-mono font-black text-indigo-700">R {fmt(total)}</div>
+                      <div className="bg-[#F7F7F7] rounded-md px-2 py-1.5 border border-[#D6D6D6] text-center">
+                        <div className="text-[9px] text-[#E6A57E] uppercase font-bold">Est. Total</div>
+                        <div className="text-sm font-mono font-black text-[#E6A57E]">R {fmt(total)}</div>
                       </div>
                     </div>
                   );
@@ -1256,38 +1256,38 @@ function BillingEstimator({ readingHistory, selectedMeter, allReadings }: { read
 
           {estimateData && estimateData.map((est: any, idx: number) => (
             <div key={idx} className="space-y-3">
-              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-3">
+              <div className="bg-gradient-to-r from-[#F7F7F7] to-[#F7F7F7] border border-[#D6D6D6] rounded-lg p-3">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-indigo-800">
+                  <span className="text-xs font-bold text-[#2E2E2E]">
                     {est.billingMonth}
                     <span className="ml-2 inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-100 text-green-700 border border-green-200">Actual Reading</span>
                   </span>
                   <span className="text-[10px] text-slate-500">{est.readingDate}</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
-                  <div className="bg-white rounded px-2 py-1 border border-indigo-100">
+                  <div className="bg-white rounded px-2 py-1 border border-[#D6D6D6]">
                     <span className="text-slate-500 block text-[9px] uppercase">Old Reading</span>
                     <span className="font-mono font-semibold">{est.oldReading}</span>
                   </div>
-                  <div className="bg-white rounded px-2 py-1 border border-indigo-100">
+                  <div className="bg-white rounded px-2 py-1 border border-[#D6D6D6]">
                     <span className="text-slate-500 block text-[9px] uppercase">New Reading</span>
                     <span className="font-mono font-semibold">{est.newReading}</span>
                   </div>
-                  <div className="bg-white rounded px-2 py-1 border border-indigo-100">
+                  <div className="bg-white rounded px-2 py-1 border border-[#D6D6D6]">
                     <span className="text-slate-500 block text-[9px] uppercase">Total Units</span>
-                    <span className="font-mono font-bold text-blue-700">{est.consumption}</span>
+                    <span className="font-mono font-bold text-[#E6A57E]">{est.consumption}</span>
                   </div>
-                  <div className="bg-white rounded px-2 py-1 border border-indigo-100">
+                  <div className="bg-white rounded px-2 py-1 border border-[#D6D6D6]">
                     <span className="text-slate-500 block text-[9px] uppercase">Reading Days</span>
                     <span className="font-mono font-semibold">{est.readingDays}</span>
                   </div>
-                  <div className="bg-white rounded px-2 py-1 border border-indigo-100">
+                  <div className="bg-white rounded px-2 py-1 border border-[#D6D6D6]">
                     <span className="text-slate-500 block text-[9px] uppercase">Daily Avg</span>
                     <span className="font-mono font-semibold text-purple-700">{est.dailyConsumption ? fmt(est.dailyConsumption) : '-'} /day</span>
                   </div>
                 </div>
                 {est.isProRated && typeof est.readingDays === 'number' && (
-                  <div className="mt-2 px-2 py-1 bg-blue-50 border border-blue-100 rounded text-[10px] text-blue-700">
+                  <div className="mt-2 px-2 py-1 bg-[#F0C3A7]/20 border border-[#D6D6D6] rounded text-[10px] text-[#E6A57E]">
                     Tariff tiers pro-rated for <span className="font-bold">{est.readingDays}</span> days (standard: {STANDARD_MONTH_DAYS} days). Tier boundaries adjusted proportionally.
                   </div>
                 )}
@@ -1298,7 +1298,7 @@ function BillingEstimator({ readingHistory, selectedMeter, allReadings }: { read
                   <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between flex-wrap gap-1">
                     <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Per-Day Tariff Tier Calculation</span>
                     <span className="text-[10px] text-slate-400">
-                      {est.factor !== 1 && <span className="text-indigo-600 font-medium mr-2">Factor: {est.factor}</span>}
+                      {est.factor !== 1 && <span className="text-[#E6A57E] font-medium mr-2">Factor: {est.factor}</span>}
                       {est.isProRated && typeof est.readingDays === 'number' && <span>{est.readingDays} days / {STANDARD_MONTH_DAYS} std days</span>}
                     </span>
                   </div>
@@ -1322,7 +1322,7 @@ function BillingEstimator({ readingHistory, selectedMeter, allReadings }: { read
                             </td>
                           )}
                           <td className="py-1.5 px-3 text-right font-mono text-slate-700">{fmt(tier.units)}</td>
-                          <td className="py-1.5 px-3 text-right font-mono text-blue-600">{tier.rate.toFixed(6)}</td>
+                          <td className="py-1.5 px-3 text-right font-mono text-[#E6A57E]">{tier.rate.toFixed(6)}</td>
                           <td className="py-1.5 px-3 text-right font-mono font-semibold text-slate-800">{fmt(tier.amount)}</td>
                         </tr>
                       ))}
@@ -1340,9 +1340,9 @@ function BillingEstimator({ readingHistory, selectedMeter, allReadings }: { read
                   <div className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">VAT ({vatRate}%)</div>
                   <div className="text-sm font-mono font-bold text-slate-800 mt-0.5">R {fmt(est.vatAmount)}</div>
                 </div>
-                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg px-3 py-2 border border-indigo-300 text-center">
-                  <div className="text-[9px] text-indigo-600 uppercase tracking-wider font-bold">Estimated Total</div>
-                  <div className="text-base font-mono font-black text-indigo-700 mt-0.5">R {fmt(est.total)}</div>
+                <div className="bg-gradient-to-r from-[#F7F7F7] to-[#F7F7F7] rounded-lg px-3 py-2 border border-[#D6D6D6] text-center">
+                  <div className="text-[9px] text-[#E6A57E] uppercase tracking-wider font-bold">Estimated Total</div>
+                  <div className="text-base font-mono font-black text-[#E6A57E] mt-0.5">R {fmt(est.total)}</div>
                 </div>
               </div>
             </div>
@@ -1371,7 +1371,7 @@ function BillingEstimator({ readingHistory, selectedMeter, allReadings }: { read
           {historicalAvg && estimateData && (
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mt-2">
               <p className="text-[11px] text-slate-600">
-                <span className="font-semibold">Historical comparison:</span> Average consumption over last {historicalAvg.months} months was <span className="font-mono font-bold text-blue-700">{fmt(historicalAvg.avg)}</span> units/month.
+                <span className="font-semibold">Historical comparison:</span> Average consumption over last {historicalAvg.months} months was <span className="font-mono font-bold text-[#E6A57E]">{fmt(historicalAvg.avg)}</span> units/month.
                 {estimateData[0] && (
                   <>
                     {' '}Current unbilled consumption of <span className="font-mono font-bold">{estimateData[0].consumption}</span> is{' '}
@@ -1390,7 +1390,7 @@ function BillingEstimator({ readingHistory, selectedMeter, allReadings }: { read
             <select
               value={vatRate}
               onChange={e => setVatRate(Number(e.target.value))}
-              className="text-xs border border-slate-200 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-300"
+              className="text-xs border border-slate-200 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-[#E6A57E]"
               data-testid="select-vat-rate"
             >
               <option value={0}>0% (Exempt)</option>
@@ -1642,7 +1642,7 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
   return (
     <div className="p-3 sm:p-5 space-y-5" data-testid="consumption-tab">
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+        <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] flex items-center gap-2">
           <Zap className="w-4 h-4 text-white" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Consumption</h3>
           <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{meters.length} meter{meters.length !== 1 ? 's' : ''}</Badge>
@@ -1654,24 +1654,24 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
               <div
                 key={i}
                 onClick={() => loadHistory(meter)}
-                className={`border rounded-lg p-3 space-y-2 cursor-pointer active:scale-[0.99] transition-all ${isSelected ? 'border-blue-400 bg-blue-50 shadow-sm' : 'border-slate-200 bg-white'}`}
+                className={`border rounded-lg p-3 space-y-2 cursor-pointer active:scale-[0.99] transition-all ${isSelected ? 'border-[#E6A57E] bg-[#F0C3A7]/20 shadow-sm' : 'border-slate-200 bg-white'}`}
                 data-testid={`row-meter-${i}`}
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-slate-800">{meter.serviceDesc || meter.serviceDescription || '-'}</span>
-                  <div className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 ${isSelected ? 'border-blue-600 bg-blue-600' : 'border-slate-300'}`}>
+                  <div className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 ${isSelected ? 'border-[#E6A57E] bg-[#E6A57E]' : 'border-slate-300'}`}>
                     {isSelected && <div className="w-full h-full flex items-center justify-center"><div className="w-1.5 h-1.5 bg-white rounded-full" /></div>}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-semibold text-blue-700">{meter.meterNo || '-'}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-semibold text-[#E6A57E]">{meter.meterNo || '-'}</span></div>
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">Physical</span><span className="font-mono text-slate-700">{meter.physicalMeterNo || '-'}</span></div>
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">Tariff</span><span className="text-slate-700 truncate ml-1">{meter.tariff || '-'}</span></div>
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">Classification</span><span className="text-slate-700">{meter.meterClassificationDesc || '-'}</span></div>
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">Status</span><span className="text-slate-700">{meter.serviceStatus || '-'}</span></div>
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">Factor</span><span className="font-mono text-slate-700">{meter.tarifffactor ?? '-'}</span></div>
                 </div>
-                <div className="text-center text-[10px] text-blue-600 font-semibold pt-1">Tap to view readings</div>
+                <div className="text-center text-[10px] text-[#E6A57E] font-semibold pt-1">Tap to view readings</div>
               </div>
             );
           })}
@@ -1693,11 +1693,11 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
                   <tr
                     key={i}
                     onClick={() => loadHistory(meter)}
-                    className={`border-b border-slate-100 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 ring-1 ring-blue-300' : 'hover:bg-slate-50'}`}
+                    className={`border-b border-slate-100 cursor-pointer transition-colors ${isSelected ? 'bg-[#F0C3A7]/20 ring-1 ring-[#E6A57E]' : 'hover:bg-slate-50'}`}
                     data-testid={`row-meter-${i}`}
                   >
                     <td className="py-2 px-2 text-center">
-                      <div className={`w-3.5 h-3.5 rounded-full border-2 ${isSelected ? 'border-blue-600 bg-blue-600' : 'border-slate-300'}`}>
+                      <div className={`w-3.5 h-3.5 rounded-full border-2 ${isSelected ? 'border-[#E6A57E] bg-[#E6A57E]' : 'border-slate-300'}`}>
                         {isSelected && <div className="w-full h-full flex items-center justify-center"><div className="w-1.5 h-1.5 bg-white rounded-full" /></div>}
                       </div>
                     </td>
@@ -1729,7 +1729,7 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
             </div>
 
             {historyLoading ? (
-              <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-500" /><span className="ml-2 text-sm text-slate-500">Loading meter reading history...</span></div>
+              <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-[#E6A57E]" /><span className="ml-2 text-sm text-slate-500">Loading meter reading history...</span></div>
             ) : readingHistory.length > 0 ? (
               <ConsumptionChart readings={filteredHistory} />
             ) : (
@@ -1831,7 +1831,7 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
                     <div className="flex justify-between text-[11px]"><span className="text-slate-500">New Date</span><span className="font-mono text-slate-700">{item.reading2Date || '-'}</span></div>
                     <div className="flex justify-between text-[11px]"><span className="text-slate-500">Old Reading</span><span className="font-mono font-semibold">{item.reading1 ?? '-'}</span></div>
                     <div className="flex justify-between text-[11px]"><span className="text-slate-500">New Reading</span><span className="font-mono font-semibold">{item.reading2 ?? '-'}</span></div>
-                    <div className="flex justify-between text-[11px]"><span className="text-slate-500">Consumption</span><span className="font-mono font-bold text-blue-700">{item.consumption ?? '-'}</span></div>
+                    <div className="flex justify-between text-[11px]"><span className="text-slate-500">Consumption</span><span className="font-mono font-bold text-[#E6A57E]">{item.consumption ?? '-'}</span></div>
                     <div className="flex justify-between text-[11px]"><span className="text-slate-500">Days</span><span className="font-mono text-slate-700">{item.readingdays ?? '-'}</span></div>
                     <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter Status</span><span className="text-slate-700">{item.meterStatus || '-'}</span></div>
                     <div className="flex justify-between text-[11px]"><span className="text-slate-500">Reading Status</span><span className="text-slate-700">{item.readingStatus || '-'}</span></div>
@@ -1863,12 +1863,12 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
                     </td>
                   </tr>
                 ) : filteredHistory.map((item: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
+                  <tr key={i} className="border-b border-slate-100 hover:bg-[#F0C3A7]/20/30 transition-colors">
                     {historyCols.map(col => {
                       let val = item[col.key];
                       if ((val === undefined || val === null || val === '') && (col as any).fallback) val = (col as any).fallback();
                       if (col.key === 'consumption') {
-                        return <td key={col.key} className="py-1.5 px-2 text-[12px] font-mono font-bold text-blue-700 whitespace-nowrap">{val ?? '-'}</td>;
+                        return <td key={col.key} className="py-1.5 px-2 text-[12px] font-mono font-bold text-[#E6A57E] whitespace-nowrap">{val ?? '-'}</td>;
                       }
                       if (col.key === 'flag') {
                         const f = String(val || '').toLowerCase();
@@ -2068,11 +2068,11 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
         };
         const getServiceIcon = (s: any) => {
           const desc = getServiceTypeDesc(s).toLowerCase();
-          if (desc.includes('water')) return { icon: '💧', color: 'text-blue-600' };
+          if (desc.includes('water')) return { icon: '💧', color: 'text-[#E6A57E]' };
           if (desc.includes('electric') || desc.includes('elec')) return { icon: '⚡', color: 'text-amber-500' };
           if (desc.includes('sewer') || desc.includes('sanit') || desc.includes('efflu')) return { icon: '🔧', color: 'text-purple-600' };
           if (desc.includes('refuse') || desc.includes('waste') || desc.includes('solid')) return { icon: '🗑️', color: 'text-green-600' };
-          if (desc.includes('rate') || desc.includes('property') || desc.includes('valuation')) return { icon: '🏠', color: 'text-indigo-600' };
+          if (desc.includes('rate') || desc.includes('property') || desc.includes('valuation')) return { icon: '🏠', color: 'text-[#E6A57E]' };
           return { icon: '⚙️', color: 'text-slate-500' };
         };
         const isBasicOrFixedCharge = (s: any) => {
@@ -2098,7 +2098,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
         if (meteredServices.length === 0) return null;
         return (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] flex items-center gap-2">
             <Zap className="w-4 h-4 text-white" />
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Conventional Meters</h3>
             <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{meteredServices.length}</Badge>
@@ -2124,7 +2124,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                       {isPrepaid ? (
                         <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">⚡ Prepaid</span>
                       ) : (s.meterNo || s.meterNumber) ? (
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-800 border border-blue-200">📊 Conventional</span>
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[#F0C3A7]/30 text-[#2E2E2E] border border-[#D6D6D6]">📊 Conventional</span>
                       ) : null}
                     </div>
                     <span className="text-[10px] text-slate-500">{getMeterClassificationDesc(s)}</span>
@@ -2141,7 +2141,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Service ID</span><span className="font-mono font-semibold text-blue-700">{s.services_ID || s.serviceId || s.service_ID || s.serviceID || s.serviceType_ID || s.tariffTypeID || '-'}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Service ID</span><span className="font-mono font-semibold text-[#E6A57E]">{s.services_ID || s.serviceId || s.service_ID || s.serviceID || s.serviceType_ID || s.tariffTypeID || '-'}</span></div>
                   {(s.meterNo || s.meterNumber) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-semibold text-teal-700">{s.meterNo || s.meterNumber || '-'}</span></div>}
                   {(s.physicalMeterNo || s.physicalMeterNumber) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Physical Meter</span><span className="font-mono text-slate-700">{s.physicalMeterNo || s.physicalMeterNumber || '-'}</span></div>}
                   <div className="col-span-2 flex justify-between text-[11px]"><span className="text-slate-500">Tariff</span><span className="text-slate-700 text-right truncate ml-2 max-w-[70%]">{s.tariff || s.tariffCode || s.tariffDescription || s.tariffDesc || '-'}</span></div>
@@ -2184,7 +2184,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                   const isSvcActive = svcStatusVal === 'active';
                   const hasMeter = !!(s.meterNo || s.meterNumber || s.physicalMeterNo || s.physicalMeterNumber);
                   return (
-                  <tr key={i} className={`border-b border-slate-100 transition-colors ${hasMeter ? 'cursor-pointer hover:bg-cyan-50/40' : 'hover:bg-blue-50/30'} ${consumptionMeter === s ? 'bg-cyan-50 ring-1 ring-cyan-300' : ''}`}
+                  <tr key={i} className={`border-b border-slate-100 transition-colors ${hasMeter ? 'cursor-pointer hover:bg-cyan-50/40' : 'hover:bg-[#F0C3A7]/20/30'} ${consumptionMeter === s ? 'bg-cyan-50 ring-1 ring-cyan-300' : ''}`}
                     onClick={hasMeter ? () => viewConsumption(s) : undefined}
                   >
                     <td className="py-2 px-3">
@@ -2202,12 +2202,12 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                       {isPrepaid ? (
                         <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">⚡ Prepaid</span>
                       ) : (s.meterNo || s.meterNumber) ? (
-                        <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">📊 Conventional</span>
+                        <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#F0C3A7]/30 text-[#2E2E2E] border border-[#D6D6D6]">📊 Conventional</span>
                       ) : (
                         <span className="text-[10px] text-slate-400">Metered</span>
                       )}
                     </td>
-                    <td className="py-2 px-3 font-mono text-blue-700">{s.services_ID || s.serviceId || s.service_ID || s.serviceID || s.serviceType_ID || s.tariffTypeID || '-'}</td>
+                    <td className="py-2 px-3 font-mono text-[#E6A57E]">{s.services_ID || s.serviceId || s.service_ID || s.serviceID || s.serviceType_ID || s.tariffTypeID || '-'}</td>
                     <td className="py-2 px-3 font-mono text-teal-700 font-semibold">{s.meterNo || s.meterNumber || '-'}</td>
                     <td className="py-2 px-3 text-slate-500 text-xs max-w-[200px] truncate">{s.tariff || s.tariffCode || s.tariffDescription || s.tariffDesc || '-'}</td>
                     <td className="py-2 px-3">
@@ -2315,8 +2315,8 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                 onClick={() => viewConsumption(m)}
               >
                 <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-blue-100 border border-blue-200">
-                    <Gauge className="w-4 h-4 text-blue-600" />
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-[#F0C3A7]/30 border border-[#D6D6D6]">
+                    <Gauge className="w-4 h-4 text-[#E6A57E]" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <span className="text-xs font-bold text-slate-800 truncate block">{getServiceTypeDesc(m) || '-'}</span>
@@ -2332,7 +2332,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-bold text-blue-700">{m.meterNo || m.meterNumber || '-'}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-bold text-[#E6A57E]">{m.meterNo || m.meterNumber || '-'}</span></div>
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">Physical</span><span className="font-mono text-slate-700">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</span></div>
                   <div className="col-span-2 flex justify-between text-[11px]"><span className="text-slate-500">Tariff</span><span className="text-slate-700 text-right truncate ml-2 max-w-[70%]">{m.tariffCode || m.tariff || m.tariffDescription || '-'}</span></div>
                   {(m.installDate || m.dateInstalled) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Installed</span><span className="text-slate-700">{m.installDate || m.dateInstalled || '-'}</span></div>}
@@ -2368,7 +2368,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                   >
                     <td className="py-2 px-3 font-medium">{getServiceTypeDesc(m) || '-'}</td>
                     <td className="py-2 px-3 text-xs">{getMeterClassificationDesc(m) || '-'}</td>
-                    <td className="py-2 px-3 font-mono font-semibold text-blue-700">{m.meterNo || m.meterNumber || '-'}</td>
+                    <td className="py-2 px-3 font-mono font-semibold text-[#E6A57E]">{m.meterNo || m.meterNumber || '-'}</td>
                     <td className="py-2 px-3 font-mono text-sm">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</td>
                     <td className="py-2 px-3 text-xs max-w-[150px] truncate">{m.tariffCode || m.tariff || m.tariffDescription || '-'}</td>
                     <td className="py-2 px-3">
@@ -2425,7 +2425,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                 </div>
                 <div>
                   <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Meter No</span>
-                  <p className="font-mono font-bold text-blue-700 mt-0.5">{consumptionMeter.meterNo || consumptionMeter.meterNumber || '-'}</p>
+                  <p className="font-mono font-bold text-[#E6A57E] mt-0.5">{consumptionMeter.meterNo || consumptionMeter.meterNumber || '-'}</p>
                 </div>
                 <div>
                   <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Physical Meter</span>
@@ -2578,7 +2578,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-bold text-blue-700">{m.prepaidMeterNo || m.meterNumber || m.meterNo || '-'}</span></div>
+                  <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-bold text-[#E6A57E]">{m.prepaidMeterNo || m.meterNumber || m.meterNo || '-'}</span></div>
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">Physical</span><span className="font-mono text-slate-700">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</span></div>
                   <div className="col-span-2 flex justify-between text-[11px]"><span className="text-slate-500">Tariff</span><span className="text-slate-700 text-right truncate ml-2 max-w-[70%]">{m.tariff || m.tariffDescription || m.tariffDesc || '-'}</span></div>
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">Last Recharge</span><span className="font-mono text-slate-700">{m.lastRechargeDate ? (() => { const d = m.lastRechargeDate; if (d.includes('/')) { const p = d.split('/'); return `${p[0]}/${p[1]}/${p[2]}`; } return new Date(d).toLocaleDateString('en-ZA'); })() : '-'}</span></div>
@@ -2612,7 +2612,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                     onClick={() => loadPrepaidHistory(m)}
                   >
                     <td className="py-2 px-3 font-medium">{m.prepaidServiceDesc || m.serviceType || m.serviceDescription || m.serviceDesc || 'Prepaid'}</td>
-                    <td className="py-2 px-3 font-mono font-semibold text-blue-700">{m.prepaidMeterNo || m.meterNumber || m.meterNo || '-'}</td>
+                    <td className="py-2 px-3 font-mono font-semibold text-[#E6A57E]">{m.prepaidMeterNo || m.meterNumber || m.meterNo || '-'}</td>
                     <td className="py-2 px-3 font-mono text-sm">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</td>
                     <td className="py-2 px-3 text-xs max-w-[150px] truncate">{m.tariff || m.tariffDescription || m.tariffDesc || '-'}</td>
                     <td className="py-2 px-3">
@@ -2706,7 +2706,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                             </span>
                           </div>
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                            <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-semibold text-blue-700">{m.meterNumber || m.meterNo || '-'}</span></div>
+                            <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter No</span><span className="font-mono font-semibold text-[#E6A57E]">{m.meterNumber || m.meterNo || '-'}</span></div>
                             <div className="flex justify-between text-[11px]"><span className="text-slate-500">Physical</span><span className="font-mono text-slate-700">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</span></div>
                             <div className="flex justify-between text-[11px]"><span className="text-slate-500">Tariff</span><span className="text-slate-700 truncate ml-1">{m.tariff || m.tariffDescription || m.tariffDesc || '-'}</span></div>
                             <div className="flex justify-between text-[11px]"><span className="text-slate-500">Phase</span><span className="text-slate-700">{m.meterPhase || m.phase || '-'}</span></div>
@@ -2761,7 +2761,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                             data-testid={`prepaid-sales-row-${i}`}
                           >
                             <td className="py-2.5 px-3 font-medium">{m.serviceType || m.serviceDescription || m.prepaidServiceDesc || 'Electricity Pre-Paid'}</td>
-                            <td className="py-2.5 px-3 font-mono text-blue-700 font-semibold">{m.meterNumber || m.meterNo || m.prepaidMeterNo || '-'}</td>
+                            <td className="py-2.5 px-3 font-mono text-[#E6A57E] font-semibold">{m.meterNumber || m.meterNo || m.prepaidMeterNo || '-'}</td>
                             <td className="py-2.5 px-3">{m.meterPhase || m.phase || '-'}</td>
                             <td className="py-2.5 px-3 text-xs">{m.tariff || m.tariffDescription || m.tariffDesc || '-'}</td>
                             <td className="py-2.5 px-3 font-mono text-xs">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</td>
@@ -2791,7 +2791,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                       </div>
                       <div>
                         <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Meter No</span>
-                        <p className="font-mono font-bold text-blue-700 mt-0.5">{selectedPrepaidMeter.meterNumber || selectedPrepaidMeter.meterNo || '-'}</p>
+                        <p className="font-mono font-bold text-[#E6A57E] mt-0.5">{selectedPrepaidMeter.meterNumber || selectedPrepaidMeter.meterNo || '-'}</p>
                       </div>
                       <div>
                         <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Physical Meter</span>
@@ -2820,7 +2820,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                                 <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">Active</span>
                               )}
                             </div>
-                            <div className="flex justify-between text-[11px]"><span className="text-slate-500">Receipt No</span><span className="font-mono font-semibold text-blue-700">{r.receiptNo || r.receiptNumber || '-'}</span></div>
+                            <div className="flex justify-between text-[11px]"><span className="text-slate-500">Receipt No</span><span className="font-mono font-semibold text-[#E6A57E]">{r.receiptNo || r.receiptNumber || '-'}</span></div>
                             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                               <div className="flex justify-between text-[11px]"><span className="text-slate-500">Amount</span><span className="font-mono font-semibold">{(r.amount ?? r.rechargeAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span></div>
                               <div className="flex justify-between text-[11px]"><span className="text-slate-500">VAT</span><span className="font-mono">{(r.vatAmount ?? r.vat ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span></div>
@@ -2865,7 +2865,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                             ) : prepaidRechargeDetails.map((r: any, i: number) => (
                               <tr key={i} className="border-b border-slate-100 hover:bg-emerald-50/30 transition-colors" data-testid={`recharge-detail-row-${i}`}>
                                 <td className="py-2.5 px-3 text-slate-600">{(() => { const d = r.dateCaptured || r.receiptDate || r.rechargeDate; if (!d) return '-'; if (typeof d === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(d)) { const [dd,mm,yy] = d.split('/'); return `${dd}/${mm}/${yy}`; } return new Date(d).toLocaleDateString('en-ZA'); })()}</td>
-                                <td className="py-2.5 px-3 font-mono text-blue-700 font-semibold text-xs">{r.receiptNo || r.receiptNumber || '-'}</td>
+                                <td className="py-2.5 px-3 font-mono text-[#E6A57E] font-semibold text-xs">{r.receiptNo || r.receiptNumber || '-'}</td>
                                 <td className="py-2.5 px-3 text-right font-mono">{(r.amount ?? r.rechargeAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
                                 <td className="py-2.5 px-3 text-right font-mono">{(r.vatAmount ?? r.vat ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
                                 <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">{(r.total ?? r.totalAmount ?? ((r.amount ?? 0) + (r.vatAmount ?? 0))).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>

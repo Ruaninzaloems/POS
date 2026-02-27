@@ -317,10 +317,10 @@ export default function BulkAllocationProgress() {
   }
 
   const statusCards = [
-    { key: 'all', label: 'Total Jobs', count: allocationData.length, icon: Activity, color: 'blue', textColor: 'text-blue-700' },
+    { key: 'all', label: 'Total Jobs', count: allocationData.length, icon: Activity, color: 'blue', textColor: 'text-[#E6A57E]' },
     { key: 'rebuilds', label: 'Performing Rebuilds', count: statusCounts.rebuilds || 0, icon: RotateCcw, color: 'orange', textColor: 'text-orange-700' },
     { key: 'recon', label: 'Completing Recon', count: statusCounts.recon || 0, icon: Activity, color: 'purple', textColor: 'text-purple-700' },
-    { key: 'in_progress', label: 'In Progress', count: statusCounts.in_progress || 0, icon: Clock, color: 'blue', textColor: 'text-blue-700' },
+    { key: 'in_progress', label: 'In Progress', count: statusCounts.in_progress || 0, icon: Clock, color: 'blue', textColor: 'text-[#E6A57E]' },
     { key: 'completed', label: 'Completed', count: statusCounts.completed || 0, icon: CheckCircle2, color: 'green', textColor: 'text-green-700' },
     { key: 'pending', label: 'Pending', count: statusCounts.pending || 0, icon: Clock, color: 'yellow', textColor: 'text-yellow-700' },
     { key: 'failed', label: 'Failed', count: statusCounts.failed || 0, icon: XCircle, color: 'red', textColor: 'text-red-700' },
@@ -365,8 +365,8 @@ export default function BulkAllocationProgress() {
       <div className="flex-1 overflow-y-auto w-full">
       <div className="p-3 sm:p-4 md:p-6 space-y-3 sm:space-y-4 max-w-[1400px] mx-auto" data-testid="bulk-allocation-progress-page">
         <div className="flex items-center gap-2 sm:gap-3 mb-2">
-          <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg">
-            <FileBarChart className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+          <div className="p-1.5 sm:p-2 bg-[#F0C3A7]/30 rounded-lg">
+            <FileBarChart className="w-4 h-4 sm:w-5 sm:h-5 text-[#E6A57E]" />
           </div>
           <div>
             <h1 className="text-lg sm:text-xl font-bold text-gray-900" data-testid="text-page-title">Bulk Allocation Progress</h1>
@@ -482,7 +482,7 @@ export default function BulkAllocationProgress() {
                 const IconComp = card.icon;
                 const isActive = (card.key === 'all' && statusFilter === null) || statusFilter === card.key;
                 const colorMap: Record<string, string> = {
-                  blue: 'bg-blue-50 border-blue-200 text-blue-500',
+                  blue: 'bg-[#F0C3A7]/20 border-[#D6D6D6] text-[#E6A57E]',
                   green: 'bg-green-50 border-green-200 text-green-500',
                   red: 'bg-red-50 border-red-200 text-red-500',
                   orange: 'bg-orange-50 border-orange-200 text-orange-500',
@@ -491,7 +491,7 @@ export default function BulkAllocationProgress() {
                   gray: 'bg-gray-50 border-gray-200 text-gray-500',
                 };
                 const ringMap: Record<string, string> = {
-                  blue: 'ring-blue-400', green: 'ring-green-400', red: 'ring-red-400',
+                  blue: 'ring-[#E6A57E]', green: 'ring-green-400', red: 'ring-red-400',
                   orange: 'ring-orange-400', purple: 'ring-purple-400', yellow: 'ring-yellow-400', gray: 'ring-gray-400',
                 };
                 return (
@@ -534,13 +534,13 @@ export default function BulkAllocationProgress() {
           <CardContent className="p-0">
             {loading ? (
               <div className="flex flex-col items-center justify-center py-16">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-3" />
+                <Loader2 className="w-8 h-8 animate-spin text-[#E6A57E] mb-3" />
                 <p className="text-sm text-muted-foreground">Searching bulk allocations...</p>
               </div>
             ) : !hasSearched ? (
               <div className="flex flex-col items-center justify-center py-16">
-                <div className="p-3 bg-blue-50 rounded-full mb-3">
-                  <FileBarChart className="w-8 h-8 text-blue-400" />
+                <div className="p-3 bg-[#F0C3A7]/20 rounded-full mb-3">
+                  <FileBarChart className="w-8 h-8 text-[#E6A57E]" />
                 </div>
                 <p className="font-semibold text-gray-700">Bulk Allocation Progress</p>
                 <p className="text-sm text-muted-foreground mt-1">Select filters and click Search to view allocation jobs</p>
@@ -786,8 +786,8 @@ export default function BulkAllocationProgress() {
           <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0" data-testid="dialog-job-detail">
             {detailLoading ? (
               <div className="flex flex-col items-center justify-center py-16">
-                <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mb-3">
-                  <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                <div className="w-12 h-12 rounded-full bg-[#F0C3A7]/20 flex items-center justify-center mb-3">
+                  <Loader2 className="w-6 h-6 animate-spin text-[#E6A57E]" />
                 </div>
                 <p className="text-sm font-medium text-slate-600">Loading job details...</p>
                 <p className="text-xs text-slate-400 mt-1">Fetching allocation information</p>
@@ -825,10 +825,10 @@ export default function BulkAllocationProgress() {
 
                   return (
                     <>
-                      <div className={`px-5 sm:px-6 pt-5 sm:pt-6 pb-4 ${isComplete ? 'bg-gradient-to-br from-emerald-50 to-green-50/50' : isError ? 'bg-gradient-to-br from-red-50 to-rose-50/50' : isInProgress ? 'bg-gradient-to-br from-blue-50 to-indigo-50/50' : 'bg-gradient-to-br from-slate-50 to-blue-50/30'}`}>
+                      <div className={`px-5 sm:px-6 pt-5 sm:pt-6 pb-4 ${isComplete ? 'bg-gradient-to-br from-emerald-50 to-green-50/50' : isError ? 'bg-gradient-to-br from-red-50 to-rose-50/50' : isInProgress ? 'bg-gradient-to-br from-[#F0C3A7]/15 to-[#F0C3A7]/10' : 'bg-gradient-to-br from-slate-50 to-[#F0C3A7]/10'}`}>
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${isComplete ? 'bg-emerald-100 text-emerald-600' : isError ? 'bg-red-100 text-red-600' : isInProgress ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-600'}`}>
+                            <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${isComplete ? 'bg-emerald-100 text-emerald-600' : isError ? 'bg-red-100 text-red-600' : isInProgress ? 'bg-[#F0C3A7]/30 text-[#E6A57E]' : 'bg-slate-100 text-slate-600'}`}>
                               {isComplete ? <CheckCircle2 className="w-5 h-5" /> : isError ? <XCircle className="w-5 h-5" /> : isInProgress ? <Activity className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                             </div>
                             <div className="min-w-0">
@@ -858,7 +858,7 @@ export default function BulkAllocationProgress() {
                             {recordCount != null && (
                               <div className="bg-white/80 backdrop-blur-sm rounded-lg border border-white/60 shadow-sm px-3 py-2.5" data-testid="detail-records">
                                 <p className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Records</p>
-                                <p className="text-lg sm:text-xl font-bold text-blue-700 font-mono mt-0.5">
+                                <p className="text-lg sm:text-xl font-bold text-[#E6A57E] font-mono mt-0.5">
                                   {formatNumber(recordCount)}
                                 </p>
                               </div>
@@ -990,14 +990,14 @@ export default function BulkAllocationProgress() {
                         )}
 
                         {posItemDisplay && (
-                          <div className="rounded-lg border border-indigo-200 bg-indigo-50/50 overflow-hidden">
-                            <div className="bg-indigo-50 px-3 py-2 border-b border-indigo-200">
-                              <h3 className="text-[11px] uppercase tracking-wider font-bold text-indigo-600 flex items-center gap-1.5">
+                          <div className="rounded-lg border border-[#D6D6D6] bg-[#F0C3A7]/15 overflow-hidden">
+                            <div className="bg-[#F0C3A7]/20 px-3 py-2 border-b border-[#D6D6D6]">
+                              <h3 className="text-[11px] uppercase tracking-wider font-bold text-[#E6A57E] flex items-center gap-1.5">
                                 <Package className="w-3.5 h-3.5" /> POS Item
                               </h3>
                             </div>
                             <div className="px-3 py-3">
-                              <p className="text-sm font-mono text-indigo-800 break-words" data-testid="detail-pos-item">{posItemDisplay}</p>
+                              <p className="text-sm font-mono text-[#2E2E2E] break-words" data-testid="detail-pos-item">{posItemDisplay}</p>
                             </div>
                           </div>
                         )}

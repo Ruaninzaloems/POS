@@ -72,7 +72,7 @@ function matchStatusBadge(status: MatchStatus) {
     case 'Auto-Matched':
       return <Badge className="text-[10px] bg-green-100 text-green-800 hover:bg-green-100" data-testid="badge-auto-matched">Auto-Matched</Badge>;
     case 'Manually Matched':
-      return <Badge className="text-[10px] bg-blue-100 text-blue-800 hover:bg-blue-100" data-testid="badge-manually-matched">Manually Matched</Badge>;
+      return <Badge className="text-[10px] bg-[#F0C3A7]/20 text-[#6B6B6B] hover:bg-[#F0C3A7]/20" data-testid="badge-manually-matched">Manually Matched</Badge>;
     case 'Needs Review':
       return <Badge className="text-[10px] bg-amber-100 text-amber-800 hover:bg-amber-100" data-testid="badge-needs-review">Needs Review</Badge>;
     case 'Unmatched':
@@ -616,10 +616,10 @@ export default function ThirdPartyPaymentProcessing() {
           </div>
 
           {step === 'import' && (
-            <Card className="border-t-4 border-t-blue-600 shadow-sm">
+            <Card className="border-t-4 border-t-[#E6A57E] shadow-sm">
               <CardHeader className="bg-slate-100/50 pb-4 border-b">
                 <div className="flex items-center gap-2">
-                  <div className="h-6 w-1 bg-blue-600 rounded-full"></div>
+                  <div className="h-6 w-1 bg-[#E6A57E] rounded-full"></div>
                   <CardTitle className="text-lg font-medium text-slate-800">
                     Third Party Payments - Import
                   </CardTitle>
@@ -707,7 +707,7 @@ export default function ThirdPartyPaymentProcessing() {
                       type="file"
                       onChange={handleFileChange}
                       accept=".csv,.txt,.xml"
-                      className="cursor-pointer bg-white file:mr-4 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      className="cursor-pointer bg-white file:mr-4 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#F0C3A7]/20 file:text-[#6B6B6B] hover:file:bg-[#F0C3A7]/30"
                       data-testid="input-file-upload"
                     />
                     <p className="text-xs text-muted-foreground mt-1">
@@ -720,7 +720,7 @@ export default function ThirdPartyPaymentProcessing() {
                   <Button
                     onClick={handleImport}
                     disabled={isProcessing || !selectedTypeId || !file}
-                    className="bg-blue-600 hover:bg-blue-700 gap-2 min-w-[150px] w-full sm:w-auto"
+                    className="bg-[#E6A57E] hover:bg-[#D18E65] gap-2 min-w-[150px] w-full sm:w-auto"
                     data-testid="button-import"
                   >
                     {isProcessing ? (
@@ -745,9 +745,9 @@ export default function ThirdPartyPaymentProcessing() {
                   <p className="text-xs text-muted-foreground">Auto-Matched</p>
                   <p className="text-xl font-bold text-green-600" data-testid="text-auto-matched-count">{counts.autoMatched}</p>
                 </Card>
-                <Card className="p-3 border-blue-200 bg-blue-50/50">
+                <Card className="p-3 border-[#D6D6D6] bg-[#F0C3A7]/10">
                   <p className="text-xs text-muted-foreground">Manually Matched</p>
-                  <p className="text-xl font-bold text-blue-600" data-testid="text-manual-matched-count">{counts.manuallyMatched}</p>
+                  <p className="text-xl font-bold text-[#E6A57E]" data-testid="text-manual-matched-count">{counts.manuallyMatched}</p>
                 </Card>
                 <Card className="p-3 border-amber-200 bg-amber-50/50">
                   <p className="text-xs text-muted-foreground">Needs Review</p>
@@ -759,7 +759,7 @@ export default function ThirdPartyPaymentProcessing() {
                 </Card>
                 <Card className="p-3">
                   <p className="text-xs text-muted-foreground">Total Amount</p>
-                  <p className="text-xl font-bold text-blue-600" data-testid="text-total-amount">R {counts.totalAmount.toFixed(2)}</p>
+                  <p className="text-xl font-bold text-[#2E2E2E]" data-testid="text-total-amount">R {counts.totalAmount.toFixed(2)}</p>
                 </Card>
               </div>
 
@@ -847,12 +847,12 @@ export default function ThirdPartyPaymentProcessing() {
                 </Alert>
               )}
 
-              <Card className="border-t-4 border-t-blue-600 shadow-sm">
+              <Card className="border-t-4 border-t-[#E6A57E] shadow-sm">
                 <CardHeader className="bg-slate-100/50 pb-3 border-b">
                   <div className="flex flex-col gap-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="h-6 w-1 bg-blue-600 rounded-full"></div>
+                        <div className="h-6 w-1 bg-[#E6A57E] rounded-full"></div>
                         <CardTitle className="text-lg font-medium text-slate-800">
                           Imported Transactions
                           {importId && <span className="text-sm font-normal text-muted-foreground ml-2">(Import: {importId})</span>}
@@ -867,7 +867,7 @@ export default function ThirdPartyPaymentProcessing() {
                           size="sm"
                           onClick={handleValidateForReconcile}
                           disabled={validating || transactions.length === 0}
-                          className="gap-1 text-blue-700 border-blue-200 hover:bg-blue-50"
+                          className="gap-1 text-[#E6A57E] border-[#D6D6D6] hover:bg-[#F0C3A7]/20"
                           data-testid="button-validate"
                         >
                           {validating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileCheck className="h-3.5 w-3.5" />}
@@ -912,12 +912,12 @@ export default function ThirdPartyPaymentProcessing() {
                 <CardContent className="p-0">
                   {loadingTxns ? (
                     <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-3 px-8">
-                      <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                      <Loader2 className="h-6 w-6 animate-spin text-[#E6A57E]" />
                       <div className="text-sm font-medium">{loadProgress.step || 'Loading...'}</div>
                       <div className="w-full max-w-md">
                         <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-blue-500 rounded-full transition-all duration-300 ease-out"
+                            className="h-full bg-[#E6A57E] rounded-full transition-all duration-300 ease-out"
                             style={{ width: `${loadProgress.percent}%` }}
                           />
                         </div>
@@ -950,7 +950,7 @@ export default function ThirdPartyPaymentProcessing() {
                           {filteredTransactions.map((txn) => (
                             <TableRow
                               key={txn.index}
-                              className={`${!txn.validated ? 'bg-red-50/30' : txn.matchStatus === 'Auto-Matched' && txn.importedAccountNumber !== txn.resolvedAccountId ? 'bg-blue-50/30' : ''}`}
+                              className={`${!txn.validated ? 'bg-red-50/30' : txn.matchStatus === 'Auto-Matched' && txn.importedAccountNumber !== txn.resolvedAccountId ? 'bg-[#F0C3A7]/10' : ''}`}
                               data-testid={`row-txn-${txn.index}`}
                             >
                               <TableCell className="text-xs text-muted-foreground font-mono">{txn.index + 1}</TableCell>
@@ -979,7 +979,7 @@ export default function ThirdPartyPaymentProcessing() {
                                         </div>
                                       </>
                                     ) : txn.resolvedAccountId ? (
-                                      <span className="font-mono text-sm text-blue-700 font-medium">{txn.resolvedAccountId}</span>
+                                      <span className="font-mono text-sm text-[#E6A57E] font-medium">{txn.resolvedAccountId}</span>
                                     ) : (
                                       <div className="space-y-0.5">
                                         <span className="font-mono text-sm text-red-600">{txn.importedAccountNumber}</span>
@@ -1023,7 +1023,7 @@ export default function ThirdPartyPaymentProcessing() {
                                       <Eye className="h-3.5 w-3.5 text-slate-500" />
                                     </Button>
                                     <Button size="sm" variant="ghost" onClick={() => openAccountSearch(txn.index)} className="h-7 w-7 p-0" title="Search & Link" data-testid={`button-search-${txn.index}`}>
-                                      <Search className="h-3.5 w-3.5 text-blue-600" />
+                                      <Search className="h-3.5 w-3.5 text-[#E6A57E]" />
                                     </Button>
                                     <Button size="sm" variant="ghost" onClick={() => handleStartEdit(txn)} className="h-7 w-7 p-0" title="Override Link" data-testid={`button-edit-${txn.index}`}>
                                       <Edit2 className="h-3.5 w-3.5 text-amber-600" />
@@ -1060,7 +1060,7 @@ export default function ThirdPartyPaymentProcessing() {
                     Master ID: <span className="font-mono bg-slate-100 px-2 py-0.5 rounded">{commitResult.masterId}</span>
                   </p>
                 )}
-                <Button onClick={handleNewImport} className="gap-2 bg-blue-600 hover:bg-blue-700 mt-4" data-testid="button-start-new">
+                <Button onClick={handleNewImport} className="gap-2 bg-[#E6A57E] hover:bg-[#D18E65] mt-4" data-testid="button-start-new">
                   <Upload className="h-4 w-4" /> Start New Import
                 </Button>
               </CardContent>
@@ -1116,7 +1116,7 @@ export default function ThirdPartyPaymentProcessing() {
                 </TableHeader>
                 <TableBody>
                   {searchResults.map((acc, i) => (
-                    <TableRow key={i} className="text-xs cursor-pointer hover:bg-blue-50" onClick={() => handleSelectAccount(acc)}>
+                    <TableRow key={i} className="text-xs cursor-pointer hover:bg-[#F0C3A7]/20" onClick={() => handleSelectAccount(acc)}>
                       <TableCell className="font-mono font-medium">{acc.accountNumber || acc.accountNo || acc.account_Number || '-'}</TableCell>
                       <TableCell>{acc.ownerName || acc.name || acc.owner || '-'}</TableCell>
                       <TableCell className="truncate max-w-[200px]">{acc.propertyAddress || acc.address || acc.street || '-'}</TableCell>

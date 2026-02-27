@@ -66,7 +66,7 @@ function BasketPayAmountInput({ value, onChange, className = '' }: { value: numb
             type="text"
             inputMode="decimal"
             tabIndex={1}
-            className={`h-9 pl-6 text-right font-mono rounded-lg focus:ring-2 focus:ring-blue-200 ${className}`}
+            className={`h-9 pl-6 text-right font-mono rounded-lg focus:ring-2 focus:ring-[#E6A57E]/30 ${className}`}
             value={text}
             onChange={handleChange}
             onBlur={handleBlur}
@@ -530,7 +530,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
       if (item) {
           // Wrap in a container to maintain layout
           return (
-              <div className="flex-1 p-3 sm:p-6 bg-gradient-to-br from-slate-50 to-blue-50/30">
+              <div className="flex-1 p-3 sm:p-6 bg-gradient-to-br from-slate-50 to-[#F7F7F7]">
                   <div className="max-w-[1200px] mx-auto space-y-4 sm:space-y-6">
                       <AccountEnquiryView item={item} />
                   </div>
@@ -543,9 +543,9 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
     if (isSearchActive) {
       return (
         <div className="flex-1 flex flex-col items-center justify-start pt-16 sm:pt-24 p-4 sm:p-8 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50/30" />
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-[#F7F7F7] to-[#F7F7F7]" />
           <div className="relative z-10 flex flex-col items-center">
-            <Loader2 className="w-6 h-6 text-blue-400 animate-spin mb-3" />
+            <Loader2 className="w-6 h-6 text-[#6B6B6B] animate-spin mb-3" />
             <p className="text-sm text-slate-400">Searching...</p>
           </div>
         </div>
@@ -554,13 +554,13 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
 
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50/30" />
-        <div className="absolute top-1/4 -left-32 w-64 h-64 bg-blue-200/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 -right-32 w-64 h-64 bg-indigo-200/20 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-[#F7F7F7] to-[#F7F7F7]" />
+        <div className="absolute top-1/4 -left-32 w-64 h-64 bg-[#F0C3A7]/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 -right-32 w-64 h-64 bg-[#F0C3A7]/20 rounded-full blur-3xl" />
         
         <div className="relative z-10 flex flex-col items-center max-w-lg w-full">
           <div className="relative mb-6">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-blue-500/20 rotate-3 transition-transform hover:rotate-0">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-r from-[#E6A57E] to-[#D18E65] flex items-center justify-center shadow-xl shadow-[0_1px_3px_rgba(0,0,0,0.15)] rotate-3 transition-transform hover:rotate-0">
               <Search className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
             </div>
             <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center shadow-lg">
@@ -573,8 +573,8 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
 
           <div className="grid grid-cols-2 gap-2 w-full max-w-xs mb-6">
             <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white border border-slate-100 shadow-sm" data-testid="hint-accounts">
-              <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                <User className="w-3.5 h-3.5 text-blue-500" />
+              <div className="w-7 h-7 rounded-lg bg-[#F0C3A7]/20 flex items-center justify-center shrink-0">
+                <User className="w-3.5 h-3.5 text-[#E6A57E]" />
               </div>
               <span className="text-[11px] font-medium text-slate-600 leading-tight">Consumer Accounts</span>
             </div>
@@ -600,7 +600,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
 
           <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
               <DialogTrigger asChild>
-                <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-100 transition-colors" data-testid="button-import-csv">
+                <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium text-[#E6A57E] bg-[#F0C3A7]/20 hover:bg-[#F0C3A7]/30 border border-[#D6D6D6] transition-colors" data-testid="button-import-csv">
                     <Upload className="w-3.5 h-3.5" />
                     Import CSV Batch
                 </button>
@@ -613,9 +613,9 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                         </DialogDescription>
                     </DialogHeader>
                     
-                    <div className="bg-blue-50/50 border-blue-100 p-4 rounded-md border text-sm space-y-3">
+                    <div className="bg-[#F0C3A7]/20 border-[#D6D6D6] p-4 rounded-md border text-sm space-y-3">
                         <div className="font-semibold text-slate-700 flex items-center gap-1">Required CSV Format: <HelpTip text="Your CSV file must have 3 columns in this exact order. The first row (header) is automatically skipped." /></div>
-                        <div className="bg-white rounded-xl border border-blue-200 p-2 font-mono text-xs text-slate-600">
+                        <div className="bg-white rounded-xl border border-[#D6D6D6] p-2 font-mono text-xs text-slate-600">
                             Receipt Date, Account Number, Amount
                         </div>
                         <div className="text-xs text-muted-foreground">
@@ -623,18 +623,18 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                             2023-10-25, 000000000030, 150.00<br/>
                             2023-10-25, ACC-1002, 200.50
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-100">
+                        <div className="flex items-center gap-2 text-xs text-[#E6A57E] bg-[#F0C3A7]/20 p-2 rounded border border-[#D6D6D6]">
                             <Info className="w-4 h-4" />
                             Duplicate accounts allowed (e.g. multiple receipts for same account). <HelpTip text="Each row creates a separate transaction. You can import multiple payments for the same account number." icon="info" />
                         </div>
                     </div>
 
                     <DialogFooter className="sm:justify-between gap-2">
-                         <Button variant="ghost" size="sm" onClick={handleDownloadTemplate} className="gap-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                         <Button variant="ghost" size="sm" onClick={handleDownloadTemplate} className="gap-2 text-[#E6A57E] hover:text-[#D18E65] hover:bg-[#F0C3A7]/20">
                              <Download className="w-4 h-4" />
                              Download Template
                          </Button>
-                         <Button onClick={() => fileInputRef.current?.click()} className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700" disabled={importingCSV}>
+                         <Button onClick={() => fileInputRef.current?.click()} className="gap-2 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] hover:from-[#D18E65] hover:to-[#C07D55]" disabled={importingCSV}>
                              {importingCSV ? (
                                <><Loader2 className="w-4 h-4 animate-spin" /> Importing...</>
                              ) : (
@@ -687,9 +687,9 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                                     </DialogDescription>
                                 </DialogHeader>
                                 
-                                <div className="bg-blue-50/50 border-blue-100 p-4 rounded-md border text-sm space-y-3">
+                                <div className="bg-[#F0C3A7]/20 border-[#D6D6D6] p-4 rounded-md border text-sm space-y-3">
                                     <div className="font-semibold text-slate-700 flex items-center gap-1">Required CSV Format: <HelpTip text="Your CSV file must have 3 columns in this exact order. The first row (header) is automatically skipped." /></div>
-                                    <div className="bg-white rounded-xl border border-blue-200 p-2 font-mono text-xs text-slate-600">
+                                    <div className="bg-white rounded-xl border border-[#D6D6D6] p-2 font-mono text-xs text-slate-600">
                                         Receipt Date, Account Number, Amount
                                     </div>
                                     <div className="text-xs text-muted-foreground">
@@ -697,18 +697,18 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                                         2023-10-25, 000000000030, 150.00<br/>
                                         2023-10-25, ACC-1002, 200.50
                                     </div>
-                                    <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-100">
+                                    <div className="flex items-center gap-2 text-xs text-[#E6A57E] bg-[#F0C3A7]/20 p-2 rounded border border-[#D6D6D6]">
                                         <Info className="w-4 h-4" />
                                         Duplicate accounts allowed (e.g. multiple receipts for same account). <HelpTip text="Each row creates a separate transaction. You can import multiple payments for the same account number." icon="info" />
                                     </div>
                                 </div>
 
                                 <DialogFooter className="sm:justify-between gap-2">
-                                     <Button variant="ghost" size="sm" onClick={handleDownloadTemplate} className="gap-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                                     <Button variant="ghost" size="sm" onClick={handleDownloadTemplate} className="gap-2 text-[#E6A57E] hover:text-[#D18E65] hover:bg-[#F0C3A7]/20">
                                          <Download className="w-4 h-4" />
                                          Download Template
                                      </Button>
-                                     <Button onClick={() => fileInputRef.current?.click()} className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700" disabled={importingCSV}>
+                                     <Button onClick={() => fileInputRef.current?.click()} className="gap-2 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] hover:from-[#D18E65] hover:to-[#C07D55]" disabled={importingCSV}>
                                          {importingCSV ? (
                                            <><Loader2 className="w-4 h-4 animate-spin" /> Importing...</>
                                          ) : (
@@ -733,7 +733,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                     <div className={`rounded-xl border shadow-sm p-3 sm:p-4 ${allReady ? 'bg-emerald-50/80 border-emerald-200' : 'bg-white border-slate-200'}`}>
                       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${allReady ? 'bg-emerald-500 text-white' : 'bg-blue-500 text-white'}`}>
+                          <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${allReady ? 'bg-emerald-500 text-white' : 'bg-[#E6A57E] text-white'}`}>
                             <Package className="w-5 h-5" />
                           </div>
                           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
@@ -846,7 +846,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                                   <div className="sm:grid sm:grid-cols-[1fr_2fr_1fr_1fr_auto] sm:gap-4 sm:items-center p-3 sm:p-4">
                                       <div className="flex items-center justify-between sm:justify-start gap-2 mb-2 sm:mb-0">
                                           <div className="flex items-center gap-2">
-                                              {item.type === 'CONSUMER_SERVICES' && <Badge variant="secondary" className="font-mono text-xs bg-blue-50 text-blue-700 border-blue-200">ACC</Badge>}
+                                              {item.type === 'CONSUMER_SERVICES' && <Badge variant="secondary" className="font-mono text-xs bg-[#F0C3A7]/20 text-[#E6A57E] border-[#D6D6D6]">ACC</Badge>}
                                               {item.type === 'PREPAID' && (
                                                  <Badge variant="outline" className={`font-mono text-xs ${
                                                      (item.originalData as Account).prepaidType === 'Water' 
@@ -873,7 +873,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
                                                     variant="ghost" 
                                                     size="icon" 
                                                     tabIndex={-1}
-                                                    className="h-6 w-6 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                                    className="h-6 w-6 text-[#E6A57E] hover:text-[#D18E65] hover:bg-[#F0C3A7]/20"
                                                     title="View Account Enquiry"
                                                     onClick={() => setViewingItem(item.id)}
                                                   >
@@ -886,7 +886,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
 
                                       <div className="flex items-center justify-between sm:block sm:text-right gap-2 mb-2 sm:mb-0">
                                           <span className="text-xs text-muted-foreground sm:hidden">Due:</span>
-                                          <span className="font-mono text-blue-700 font-bold text-sm">
+                                          <span className="font-mono text-[#E6A57E] font-bold text-sm">
                                               {item.amountDue > 0 ? `R ${item.amountDue.toFixed(2)}` : '-'}
                                           </span>
                                       </div>
@@ -978,7 +978,7 @@ export function TransactionPanels({ isSearchActive = false }: { isSearchActive?:
 
   // Single Item Views
   return (
-    <div className="flex-1 p-3 sm:p-6 bg-gradient-to-br from-slate-50 to-blue-50/30"> 
+    <div className="flex-1 p-3 sm:p-6 bg-gradient-to-br from-slate-50 to-[#F7F7F7]"> 
       <div className="max-w-[1200px] mx-auto space-y-4 sm:space-y-6"> 
         
         {/* Header Badge */}
@@ -1019,15 +1019,15 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
 
         return (
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className={`px-3 sm:px-4 py-2.5 border-b ${isWater ? 'bg-gradient-to-r from-blue-50 to-cyan-50/50 border-blue-100' : 'bg-gradient-to-r from-amber-50 to-yellow-50/50 border-amber-100'}`}>
+            <div className={`px-3 sm:px-4 py-2.5 border-b ${isWater ? 'bg-gradient-to-r from-[#F7F7F7] to-[#F7F7F7] border-[#D6D6D6]' : 'bg-gradient-to-r from-amber-50 to-yellow-50/50 border-amber-100'}`}>
               <div className="flex items-center gap-2.5">
-                <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${isWater ? 'bg-blue-500 text-white' : 'bg-amber-500 text-white'}`}>
+                <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${isWater ? 'bg-[#E6A57E] text-white' : 'bg-amber-500 text-white'}`}>
                   {isWater ? <Droplets className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
-                    <h3 className="text-sm font-bold text-slate-900">Prepaid {isWater ? 'Water' : 'Electricity'}</h3>
-                    <Badge variant="outline" className={`text-[9px] px-1 py-0 ${isWater ? 'border-blue-300 text-blue-700 bg-blue-50' : 'border-amber-300 text-amber-700 bg-amber-50'}`}>
+                    <h3 className="text-sm font-bold text-[#2E2E2E]">Prepaid {isWater ? 'Water' : 'Electricity'}</h3>
+                    <Badge variant="outline" className={`text-[9px] px-1 py-0 ${isWater ? 'border-[#D6D6D6] text-[#E6A57E] bg-[#F0C3A7]/20' : 'border-amber-300 text-amber-700 bg-amber-50'}`}>
                       {isWater ? 'H2O' : 'ELEC'}
                     </Badge>
                   </div>
@@ -1051,17 +1051,17 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                 </div>
               </div>
 
-              <div className={`rounded-xl p-3 border ${isWater ? 'bg-blue-50/50 border-blue-100' : 'bg-amber-50/50 border-amber-100'}`}>
-                <Label htmlFor={`amount-${item.id}`} className={`text-[10px] uppercase tracking-wider font-semibold mb-1.5 block ${isWater ? 'text-blue-600' : 'text-amber-600'}`}>
+              <div className={`rounded-xl p-3 border ${isWater ? 'bg-[#F0C3A7]/20 border-[#D6D6D6]' : 'bg-amber-50/50 border-amber-100'}`}>
+                <Label htmlFor={`amount-${item.id}`} className={`text-[10px] uppercase tracking-wider font-semibold mb-1.5 block ${isWater ? 'text-[#E6A57E]' : 'text-amber-600'}`}>
                   Recharge Amount
                 </Label>
                 <div className="relative mb-2">
-                  <span className={`absolute left-3 top-1/2 -translate-y-1/2 font-mono text-lg font-bold ${isWater ? 'text-blue-600' : 'text-amber-600'}`}>R</span>
+                  <span className={`absolute left-3 top-1/2 -translate-y-1/2 font-mono text-lg font-bold ${isWater ? 'text-[#E6A57E]' : 'text-amber-600'}`}>R</span>
                   <Input 
                     id={`amount-${item.id}`}
                     type="text"
                     inputMode="decimal"
-                    className={`pl-10 h-12 text-xl font-mono font-bold bg-white ${isWater ? 'border-blue-200 focus:border-blue-400 focus:ring-blue-200' : 'border-amber-200 focus:border-amber-400 focus:ring-amber-200'}`}
+                    className={`pl-10 h-12 text-xl font-mono font-bold bg-white ${isWater ? 'border-[#D6D6D6] focus:border-[#E6A57E] focus:ring-[#E6A57E]/30' : 'border-amber-200 focus:border-amber-400 focus:ring-amber-200'}`}
                     value={stagedAmount || ''}
                     placeholder="0.00"
                     onChange={(e) => {
@@ -1080,7 +1080,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                   {[50, 100, 200, 500].map(amt => (
                     <button
                       key={amt}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors ${isWater ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 active:bg-blue-300' : 'bg-amber-100 text-amber-700 hover:bg-amber-200 active:bg-amber-300'}`}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors ${isWater ? 'bg-[#F0C3A7]/30 text-[#E6A57E] hover:bg-[#F0C3A7]/30 active:bg-[#E6A57E]' : 'bg-amber-100 text-amber-700 hover:bg-amber-200 active:bg-amber-300'}`}
                       onClick={() => { setStagedAmount(amt); updateItemAmount(item.id, amt); }}
                       data-testid={`button-quick-${amt}-${item.id}`}
                     >
@@ -1139,7 +1139,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
-                    <h3 className="text-sm font-bold text-slate-900">Clearance Application</h3>
+                    <h3 className="text-sm font-bold text-[#2E2E2E]">Clearance Application</h3>
                     {clr.status && (
                       <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold ${clr.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-slate-100 text-slate-600 ring-1 ring-slate-200'}`}>
                         {clr.status}
@@ -1280,13 +1280,13 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                   />
                   <Label htmlFor={`pay1181-${item.id}`} className="text-xs cursor-pointer font-medium text-slate-700">Pay Section 118(1) Only</Label>
                 </div>
-                <div className="bg-blue-50 rounded-lg p-2 border border-blue-100">
-                  <div className="text-[10px] text-blue-500 font-semibold uppercase">Sec 118(1)</div>
-                  <div className="text-sm font-mono font-bold text-blue-800">R {Number(section1181Amount).toFixed(2)}</div>
+                <div className="bg-[#F0C3A7]/20 rounded-lg p-2 border border-[#D6D6D6]">
+                  <div className="text-[10px] text-[#E6A57E] font-semibold uppercase">Sec 118(1)</div>
+                  <div className="text-sm font-mono font-bold text-[#2E2E2E]">R {Number(section1181Amount).toFixed(2)}</div>
                 </div>
-                <div className="bg-blue-50 rounded-lg p-2 border border-blue-100">
-                  <div className="text-[10px] text-blue-500 font-semibold uppercase">Sec 118(3)</div>
-                  <div className="text-sm font-mono font-bold text-blue-800">R {Number(section1183Amount).toFixed(2)}</div>
+                <div className="bg-[#F0C3A7]/20 rounded-lg p-2 border border-[#D6D6D6]">
+                  <div className="text-[10px] text-[#E6A57E] font-semibold uppercase">Sec 118(3)</div>
+                  <div className="text-sm font-mono font-bold text-[#2E2E2E]">R {Number(section1183Amount).toFixed(2)}</div>
                 </div>
               </div>
 
@@ -1314,7 +1314,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                   INC
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 className="text-sm font-bold text-slate-900 truncate">{item.description}</h3>
+                  <h3 className="text-sm font-bold text-[#2E2E2E] truncate">{item.description}</h3>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="text-[9px] font-mono px-1 py-0 rounded bg-slate-100 text-slate-600 ring-1 ring-slate-200">
                       SCOA: {incomeItem.scoaItem}
@@ -1447,7 +1447,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-3 sm:px-4 py-2.5 border-b bg-slate-50">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-900">{item.description}</h3>
+            <h3 className="text-sm font-bold text-[#2E2E2E]">{item.description}</h3>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50" onClick={() => removeItem(item.id)}>
               <Trash2 className="w-3.5 h-3.5" />
             </Button>

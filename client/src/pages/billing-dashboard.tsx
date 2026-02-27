@@ -43,14 +43,14 @@ interface CategoryConfig {
 }
 
 const CATEGORIES: CategoryConfig[] = [
-    { key: 'account', label: 'Account', icon: <Users className="w-4 h-4" />, gradient: 'from-blue-500 to-blue-600', badgeColor: 'bg-blue-500', itemCountFn: platinumGetNotificationAccountItemCounts },
+    { key: 'account', label: 'Account', icon: <Users className="w-4 h-4" />, gradient: 'from-[#E6A57E] to-[#D18E65]', badgeColor: 'bg-[#E6A57E]', itemCountFn: platinumGetNotificationAccountItemCounts },
     { key: 'indigentsubsidy', label: 'Indigent Subsidy', icon: <ShieldCheck className="w-4 h-4" />, gradient: 'from-teal-500 to-teal-600', badgeColor: 'bg-teal-500', itemCountFn: platinumGetSubsidyItemCounts },
     { key: 'consumption', label: 'Consumption', icon: <Droplets className="w-4 h-4" />, gradient: 'from-cyan-500 to-cyan-600', badgeColor: 'bg-cyan-500', itemCountFn: platinumGetNotificationConsumptionItemCounts },
     { key: 'journal', label: 'Journal', icon: <BookOpen className="w-4 h-4" />, gradient: 'from-violet-500 to-violet-600', badgeColor: 'bg-violet-500' },
     { key: 'debt', label: 'Debt', icon: <Wallet className="w-4 h-4" />, gradient: 'from-red-500 to-red-600', badgeColor: 'bg-red-500', itemCountFn: platinumGetNotificationDebtItemCounts },
     { key: 'billing', label: 'Billing', icon: <Landmark className="w-4 h-4" />, gradient: 'from-amber-500 to-amber-600', badgeColor: 'bg-amber-500', itemCountFn: platinumGetBillingTabItemDetailsCount },
     { key: 'property', label: 'Property', icon: <Home className="w-4 h-4" />, gradient: 'from-emerald-500 to-emerald-600', badgeColor: 'bg-emerald-500', itemCountFn: platinumGetPropertyTabItemDetailsCount },
-    { key: 'pos', label: 'POS', icon: <Receipt className="w-4 h-4" />, gradient: 'from-indigo-500 to-indigo-600', badgeColor: 'bg-indigo-500', itemCountFn: platinumGetPosTabItemDetailsCount },
+    { key: 'pos', label: 'POS', icon: <Receipt className="w-4 h-4" />, gradient: 'from-[#8C8C8C] to-[#6F6F6F]', badgeColor: 'bg-[#6B6B6B]', itemCountFn: platinumGetPosTabItemDetailsCount },
     { key: 'rebate', label: 'Rebate', icon: <Building2 className="w-4 h-4" />, gradient: 'from-pink-500 to-pink-600', badgeColor: 'bg-pink-500', itemCountFn: platinumGetRebateTabItemDetailsCount },
     { key: 'graphs', label: 'Graphs', icon: <BarChart3 className="w-4 h-4" />, gradient: 'from-purple-500 to-purple-600', badgeColor: 'bg-purple-500' },
     { key: 'assets', label: 'Assets', icon: <Package className="w-4 h-4" />, gradient: 'from-slate-500 to-slate-600', badgeColor: 'bg-slate-500' },
@@ -306,7 +306,7 @@ function AnimatedCounter({ value }: { value: number }) {
 const SEVERITY_STYLES = {
     critical: { dot: 'bg-red-500', text: 'text-red-700 font-semibold', badge: 'bg-red-100 text-red-700 border-red-200' },
     warning: { dot: 'bg-amber-500', text: 'text-amber-700 font-medium', badge: 'bg-amber-100 text-amber-700 border-amber-200' },
-    info: { dot: 'bg-blue-500', text: 'text-slate-700', badge: 'bg-slate-100 text-slate-600 border-slate-200' },
+    info: { dot: 'bg-[#E6A57E]', text: 'text-slate-700', badge: 'bg-slate-100 text-slate-600 border-slate-200' },
     neutral: { dot: 'bg-slate-300', text: 'text-slate-400', badge: 'bg-slate-50 text-slate-400 border-slate-100' },
 };
 
@@ -401,7 +401,7 @@ function DetailTable({ endpoint, label }: { endpoint: string; label?: string }) 
     if (loading) {
         return (
             <div className="flex items-center gap-2 py-6 justify-center">
-                <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                <Loader2 className="w-4 h-4 animate-spin text-[#E6A57E]" />
                 <span className="text-sm text-muted-foreground">Loading details...</span>
             </div>
         );
@@ -467,7 +467,7 @@ function DetailTable({ endpoint, label }: { endpoint: string; label?: string }) 
                     </TableHeader>
                     <TableBody>
                         {items.map((row, idx) => (
-                            <TableRow key={idx} className="hover:bg-blue-50/30">
+                            <TableRow key={idx} className="hover:bg-[#F0C3A7]/20">
                                 {columns.map(col => {
                                     const val = row[col];
                                     const isAmount = typeof val === 'number' && /amount|balance|total|value/i.test(col);
@@ -611,7 +611,7 @@ function CategoryPanel({ category, subItems, isLoading }: { category: CategoryCo
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-10">
-                <Loader2 className="w-5 h-5 animate-spin text-blue-500 mr-2" />
+                <Loader2 className="w-5 h-5 animate-spin text-[#E6A57E] mr-2" />
                 <span className="text-sm text-muted-foreground">Loading {category.label} details...</span>
             </div>
         );
@@ -667,7 +667,7 @@ function CategoryPanel({ category, subItems, isLoading }: { category: CategoryCo
                     <div key={item.key}>
                         <button
                             className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group ${
-                                isExpanded ? 'bg-blue-50/80 ring-1 ring-blue-200' : 'hover:bg-slate-50'
+                                isExpanded ? 'bg-[#F0C3A7]/20 ring-1 ring-[#E6A57E]/30' : 'hover:bg-slate-50'
                             }`}
                             onClick={() => setExpandedItem(isExpanded ? null : item.key)}
                             data-testid={`btn-subitem-${item.key}`}
@@ -679,12 +679,12 @@ function CategoryPanel({ category, subItems, isLoading }: { category: CategoryCo
                             </span>
                             {item.endpoint && (
                                 isExpanded
-                                    ? <ChevronDown className="w-4 h-4 text-blue-500 shrink-0" />
-                                    : <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-400 shrink-0 transition-colors" />
+                                    ? <ChevronDown className="w-4 h-4 text-[#E6A57E] shrink-0" />
+                                    : <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#E6A57E] shrink-0 transition-colors" />
                             )}
                         </button>
                         {isExpanded && item.endpoint && (
-                            <div className="ml-5 mt-1.5 mb-2 pl-3 border-l-2 border-blue-200">
+                            <div className="ml-5 mt-1.5 mb-2 pl-3 border-l-2 border-[#E6A57E]/30">
                                 <DetailTable endpoint={item.endpoint} label={item.label} />
                             </div>
                         )}
@@ -806,12 +806,12 @@ export default function BillingDashboard() {
 
     return (
         <PosLayout>
-            <div className="h-full overflow-y-auto bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20" data-testid="page-billing-dashboard">
+            <div className="h-full overflow-y-auto bg-[#F2F4F7]" data-testid="page-billing-dashboard">
                 <div className="w-full px-3 sm:px-5 py-4 sm:py-6 space-y-5">
 
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
-                            <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-700 to-indigo-600 bg-clip-text text-transparent flex items-center gap-2">
+                            <h1 className="text-xl sm:text-2xl font-bold text-[#2E2E2E] flex items-center gap-2">
                                 Billing Dashboard
                                 <HelpTip text="Central overview of all billing notifications, alerts, and system status across all municipal services." />
                             </h1>
@@ -839,29 +839,29 @@ export default function BillingDashboard() {
                                 </div>
                             </div>
                         </div>
-                        <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 shadow-sm">
+                        <div className="rounded-xl border border-[#D6D6D6] bg-gradient-to-br from-[#F0C3A7]/20 to-[#F7F7F7] p-4 shadow-sm">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 text-white flex items-center justify-center shadow-lg shadow-blue-500/20">
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#E6A57E] to-[#D18E65] text-white flex items-center justify-center shadow-lg shadow-[#E6A57E]/20">
                                     <Bell className="w-5 h-5" />
                                 </div>
                                 <div className="flex-1">
-                                    <div className="text-2xl font-bold text-blue-900" data-testid="text-config-count">
+                                    <div className="text-2xl font-bold text-[#2E2E2E]" data-testid="text-config-count">
                                         {loading ? '...' : <AnimatedCounter value={alertData.config} />}
                                     </div>
-                                    <div className="text-xs text-blue-700/70">Config Alerts</div>
+                                    <div className="text-xs text-[#6B6B6B]">Config Alerts</div>
                                 </div>
                             </div>
                         </div>
-                        <div className="rounded-xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-purple-50 p-4 shadow-sm">
+                        <div className="rounded-xl border border-[#D6D6D6] bg-gradient-to-br from-[#F7F7F7] to-white p-4 shadow-sm">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 text-white flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                                <div className="w-10 h-10 rounded-xl bg-[linear-gradient(180deg,#8C8C8C_0%,#6F6F6F_100%)] text-white flex items-center justify-center shadow-lg shadow-[#6B6B6B]/20">
                                     <BarChart3 className="w-5 h-5" />
                                 </div>
                                 <div className="flex-1">
-                                    <div className="text-2xl font-bold text-indigo-900" data-testid="text-total-notifications">
+                                    <div className="text-2xl font-bold text-[#2E2E2E]" data-testid="text-total-notifications">
                                         {loading ? '...' : <AnimatedCounter value={totalNotifications} />}
                                     </div>
-                                    <div className="text-xs text-indigo-700/70">Total Notifications</div>
+                                    <div className="text-xs text-[#6B6B6B]">Total Notifications</div>
                                 </div>
                             </div>
                         </div>
@@ -884,7 +884,7 @@ export default function BillingDashboard() {
                                         onClick={() => setActiveCategory(cat.key)}
                                         className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${
                                             isActive
-                                                ? `bg-gradient-to-r ${cat.gradient} text-white shadow-lg shadow-${cat.key === 'debt' ? 'red' : 'blue'}-500/20 scale-[1.02]`
+                                                ? `bg-gradient-to-r ${cat.gradient} text-white shadow-lg scale-[1.02]`
                                                 : `bg-white border ${hasData ? 'border-slate-200 text-slate-700' : 'border-slate-100 text-slate-400'} hover:border-slate-300 hover:shadow-sm`
                                         }`}
                                         data-testid={`pill-${cat.key}`}

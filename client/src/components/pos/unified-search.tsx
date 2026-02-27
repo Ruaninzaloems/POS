@@ -331,12 +331,12 @@ export function UnifiedSearch({ onSearchActiveChange }: { onSearchActiveChange?:
               />
               {advancedResults.length > 0 && (
                   <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
-                      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 text-sm font-medium">
+                      <div className="bg-gradient-to-r from-[#E6A57E] to-[#D18E65] text-white px-4 py-2 text-sm font-medium">
                           Search Results ({advancedResults.length})
                       </div>
                       <div className="max-h-80 overflow-y-auto overflow-x-auto">
                           <table className="w-full text-sm min-w-[540px]" data-testid="table-advanced-results">
-                              <thead className="bg-gradient-to-r from-blue-600 to-indigo-600 sticky top-0">
+                              <thead className="bg-gradient-to-r from-[#E6A57E] to-[#D18E65] sticky top-0">
                                   <tr>
                                       <th className="text-left px-3 py-2 font-medium text-xs text-white">Account</th>
                                       <th className="text-left px-3 py-2 font-medium text-xs text-white">Name</th>
@@ -349,7 +349,7 @@ export function UnifiedSearch({ onSearchActiveChange }: { onSearchActiveChange?:
                                   {advancedResults.map((acc: any, idx: number) => (
                                       <tr 
                                           key={acc.accountID || idx} 
-                                          className="border-t hover:bg-blue-50 cursor-pointer transition-colors"
+                                          className="border-t hover:bg-[#F0C3A7]/20 cursor-pointer transition-colors"
                                           onClick={() => handlePickAdvancedResult(acc)}
                                           data-testid={`row-result-${acc.accountID || idx}`}
                                       >
@@ -380,11 +380,11 @@ export function UnifiedSearch({ onSearchActiveChange }: { onSearchActiveChange?:
           <Button 
             variant="outline" 
             size="icon" 
-            className="h-10 w-10 sm:h-12 sm:w-12 shrink-0 rounded-xl border-blue-200 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all"
+            className="h-10 w-10 sm:h-12 sm:w-12 shrink-0 rounded-xl border-[#D6D6D6] bg-white hover:bg-[#F0C3A7]/20 hover:border-[#E6A57E] transition-all"
             onClick={() => setShowAdvanced(true)}
             title="Advanced Search"
           >
-            <Filter className="h-5 w-5 text-blue-500" />
+            <Filter className="h-5 w-5 text-[#E6A57E]" />
           </Button>
       </div>
       <AlertDialog open={!!inactiveConfirm} onOpenChange={(open) => { if (!open) setInactiveConfirm(null); }}>

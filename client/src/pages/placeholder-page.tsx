@@ -14,8 +14,8 @@ export default function PlaceholderPage({ title, description }: PlaceholderPageP
       <div className="flex-1 p-4 sm:p-8 flex items-center justify-center bg-slate-50 overflow-y-auto">
         <Card className="w-full max-w-md text-center">
           <CardHeader>
-            <div className="mx-auto bg-blue-100 p-4 rounded-full mb-4">
-              <Construction className="h-8 w-8 text-blue-600" />
+            <div className="mx-auto bg-[#F0C3A7]/20 p-4 rounded-full mb-4">
+              <Construction className="h-8 w-8 text-[#E6A57E]" />
             </div>
             <CardTitle>{title}</CardTitle>
             <CardDescription>

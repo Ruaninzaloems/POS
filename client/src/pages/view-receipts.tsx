@@ -695,7 +695,7 @@ export default function ViewReceipts() {
 
     const SortIcon = ({ field }: { field: SortField }) => {
         if (sortField !== field) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-30" />;
-        return sortDir === 'asc' ? <ArrowUp className="w-3 h-3 ml-1 text-blue-600" /> : <ArrowDown className="w-3 h-3 ml-1 text-blue-600" />;
+        return sortDir === 'asc' ? <ArrowUp className="w-3 h-3 ml-1 text-[#E6A57E]" /> : <ArrowDown className="w-3 h-3 ml-1 text-[#E6A57E]" />;
     };
 
     const filteredTotal = useMemo(() => {
@@ -714,7 +714,7 @@ export default function ViewReceipts() {
                         <CardContent className="p-0">
                             <Tabs defaultValue="receipt-search" className="w-full">
                                 <TabsList className="w-full justify-start rounded-none border-b bg-slate-50 h-auto p-0 gap-0">
-                                    <TabsTrigger value="receipt-search" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-white data-[state=active]:shadow-none data-[state=active]:text-blue-700 px-4 sm:px-6 py-2.5 text-xs sm:text-sm font-medium gap-1.5" data-testid="tab-receipt-search">
+                                    <TabsTrigger value="receipt-search" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#E6A57E] data-[state=active]:bg-white data-[state=active]:shadow-none data-[state=active]:text-[#2E2E2E] px-4 sm:px-6 py-2.5 text-xs sm:text-sm font-medium gap-1.5" data-testid="tab-receipt-search">
                                         <FileText className="w-3.5 h-3.5" />
                                         Receipt Search
                                     </TabsTrigger>
@@ -778,7 +778,7 @@ export default function ViewReceipts() {
                                                     {showAccountDropdown && accountSuggestions.length > 0 && (
                                                         <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto">
                                                             {accountSuggestions.map((acct, i) => (
-                                                                <button key={i} className="w-full text-left px-3 py-3 sm:py-2 text-sm hover:bg-blue-50 font-mono" onMouseDown={() => { setAccountFilter(String(acct)); setShowAccountDropdown(false); }} data-testid={`suggestion-account-${i}`}>
+                                                                <button key={i} className="w-full text-left px-3 py-3 sm:py-2 text-sm hover:bg-[#F0C3A7]/20 font-mono" onMouseDown={() => { setAccountFilter(String(acct)); setShowAccountDropdown(false); }} data-testid={`suggestion-account-${i}`}>
                                                                     {String(acct)}
                                                                 </button>
                                                             ))}
@@ -807,7 +807,7 @@ export default function ViewReceipts() {
                                                     {showReceiptDropdown && receiptSuggestions.length > 0 && (
                                                         <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto">
                                                             {receiptSuggestions.map((rn, i) => (
-                                                                <button key={i} className="w-full text-left px-3 py-3 sm:py-2 text-sm hover:bg-blue-50 font-mono" onMouseDown={() => { setReceiptFilter(String(rn)); setShowReceiptDropdown(false); }} data-testid={`suggestion-receipt-${i}`}>
+                                                                <button key={i} className="w-full text-left px-3 py-3 sm:py-2 text-sm hover:bg-[#F0C3A7]/20 font-mono" onMouseDown={() => { setReceiptFilter(String(rn)); setShowReceiptDropdown(false); }} data-testid={`suggestion-receipt-${i}`}>
                                                                     {String(rn)}
                                                                 </button>
                                                             ))}
@@ -820,7 +820,7 @@ export default function ViewReceipts() {
                                             <Button variant="outline" className="h-9 px-4 text-sm" onClick={handleClear} data-testid="button-cancel">
                                                 <X className="w-4 h-4 mr-1.5" /> Clear
                                             </Button>
-                                            <Button className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-sm" onClick={() => handleSearch(1)} disabled={isLoading} data-testid="button-load">
+                                            <Button className="h-9 px-4 bg-[#C9D6E2] hover:bg-[#B7C7D6] border border-[#A9B8C7] text-[#2E2E2E] text-sm" onClick={() => handleSearch(1)} disabled={isLoading} data-testid="button-load">
                                                 {isLoading ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Search className="w-4 h-4 mr-1.5" />} Load
                                             </Button>
                                         </div>
@@ -895,7 +895,7 @@ export default function ViewReceipts() {
                                                                         {receiptNo ? `Receipt: ${receiptNo}` : '-'}
                                                                     </span>
                                                                     <span className="font-mono text-sm font-bold text-right" data-testid={`mobile-banknote-amount-${idx}`}>
-                                                                        {paidAmount > 0 ? <span className="text-emerald-700">R {paidAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span> : bankAmount > 0 ? <span className="text-blue-700">R {bankAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span> : '-'}
+                                                                        {paidAmount > 0 ? <span className="text-emerald-700">R {paidAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span> : bankAmount > 0 ? <span className="text-[#6B6B6B]">R {bankAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span> : '-'}
                                                                     </span>
                                                                 </div>
                                                                 {accountId > 0 && <div className="text-xs text-slate-600">Account: {accountId}</div>}
@@ -905,7 +905,7 @@ export default function ViewReceipts() {
                                                                     {payTypeLabel && <span>Type: {payTypeLabel}</span>}
                                                                 </div>
                                                                 {status && (
-                                                                    <div className={`text-[10px] font-semibold px-2 py-0.5 rounded-full inline-block ${status.includes('Not Allocated') ? 'bg-orange-100 text-orange-700' : status.includes('Account') ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                                    <div className={`text-[10px] font-semibold px-2 py-0.5 rounded-full inline-block ${status.includes('Not Allocated') ? 'bg-orange-100 text-orange-700' : status.includes('Account') ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
                                                                         {status}
                                                                     </div>
                                                                 )}
@@ -963,7 +963,7 @@ export default function ViewReceipts() {
                                                                         <TableCell className="text-[11px] font-mono font-bold text-right text-emerald-700">
                                                                             {paidAmount > 0 ? `R ${paidAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
                                                                         </TableCell>
-                                                                        <TableCell className="text-[11px] font-mono font-bold text-right text-blue-700">
+                                                                        <TableCell className="text-[11px] font-mono font-bold text-right text-[#6B6B6B]">
                                                                             {bankAmount > 0 ? `R ${bankAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
                                                                         </TableCell>
                                                                         <TableCell className="text-[10px] text-slate-600">
@@ -975,7 +975,7 @@ export default function ViewReceipts() {
                                                                         <TableCell className="text-[11px] text-slate-600">{payTypeLabel || '-'}</TableCell>
                                                                         <TableCell className="text-[10px]">
                                                                             {status ? (
-                                                                                <span className={`px-1.5 py-0.5 rounded-full font-semibold ${status.includes('Not Allocated') ? 'bg-orange-100 text-orange-700' : status.includes('Account') ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                                                <span className={`px-1.5 py-0.5 rounded-full font-semibold ${status.includes('Not Allocated') ? 'bg-orange-100 text-orange-700' : status.includes('Account') ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
                                                                                     {status}
                                                                                 </span>
                                                                             ) : '-'}
@@ -1046,7 +1046,7 @@ export default function ViewReceipts() {
                                                                     <h3 className="text-lg font-bold text-emerald-800">{muniInfo?.name || ''}</h3>
                                                                     <p className="text-xs text-emerald-600">EFT / Bank Statement Receipt</p>
                                                                 </div>
-                                                                <div className={`px-3 py-1 rounded-full text-xs font-semibold ${status.includes('Not Allocated') ? 'bg-orange-100 text-orange-700 border border-orange-300' : status.includes('Account') ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-blue-100 text-blue-700 border border-blue-300'}`}>
+                                                                <div className={`px-3 py-1 rounded-full text-xs font-semibold ${status.includes('Not Allocated') ? 'bg-orange-100 text-orange-700 border border-orange-300' : status.includes('Account') ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-slate-100 text-slate-700 border border-slate-300'}`}>
                                                                     {billingAllocated ? 'Allocated' : 'Not Allocated'} - {status || 'Unknown'}
                                                                 </div>
                                                             </div>
@@ -1065,7 +1065,7 @@ export default function ViewReceipts() {
                                                                 </div>
                                                                 <div>
                                                                     <span className="text-[10px] uppercase text-slate-500 font-semibold">Bank Amount</span>
-                                                                    <p className="font-mono font-bold text-blue-700 text-lg">R {bankAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</p>
+                                                                    <p className="font-mono font-bold text-[#6B6B6B] text-lg">R {bankAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</p>
                                                                 </div>
                                                                 <div>
                                                                     <span className="text-[10px] uppercase text-slate-500 font-semibold">Date Allocated</span>
@@ -1198,7 +1198,7 @@ export default function ViewReceipts() {
                                                                         <span className="text-slate-400">Account:</span> {accountNo || '-'}
                                                                     </div>
                                                                     <div>
-                                                                        <span className="text-slate-400">Type:</span> <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700">EFT</span>
+                                                                        <span className="text-slate-400">Type:</span> <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700">EFT</span>
                                                                     </div>
                                                                     <div>
                                                                         <span className="text-slate-400">Bank Date:</span> {bankDate ? new Date(bankDate).toLocaleDateString('en-ZA') : '-'}
@@ -1254,7 +1254,7 @@ export default function ViewReceipts() {
                                                                             {allocDate ? new Date(allocDate).toLocaleDateString('en-ZA', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : '-'}
                                                                         </TableCell>
                                                                         <TableCell className="text-[11px]">
-                                                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700">EFT</span>
+                                                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700">EFT</span>
                                                                         </TableCell>
                                                                         <TableCell className="text-center">
                                                                             {receiptNo ? (
@@ -1287,7 +1287,7 @@ export default function ViewReceipts() {
                                     Receipt Information
                                     {totalCount > 0 && <Badge variant="secondary" className="text-xs font-normal">{totalCount} records</Badge>}
                                     {dataSource === 'platinum' && totalCount > 0 && (
-                                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-blue-700 border-blue-300 bg-blue-50 font-normal" data-testid="badge-source-platinum">Platinum</Badge>
+                                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-[#6B6B6B] border-[#D6D6D6] bg-[#F7F7F7] font-normal" data-testid="badge-source-platinum">Platinum</Badge>
                                     )}
                                 </h2>
                             </div>
@@ -1319,11 +1319,11 @@ export default function ViewReceipts() {
                                         )}
                                     </div>
 
-                                    <Button variant={showFilters ? "default" : "outline"} size="sm" className={cn("h-10 sm:h-8 text-xs gap-1.5", showFilters && "bg-blue-600 hover:bg-blue-700")} onClick={() => setShowFilters(!showFilters)} data-testid="button-toggle-filters">
+                                    <Button variant={showFilters ? "default" : "outline"} size="sm" className={cn("h-10 sm:h-8 text-xs gap-1.5", showFilters && "bg-[#E6A57E] hover:bg-[#D18E65]")} onClick={() => setShowFilters(!showFilters)} data-testid="button-toggle-filters">
                                         <SlidersHorizontal className="w-3.5 h-3.5" />
                                         <span className="hidden sm:inline">Filters</span>
                                         {activeFilterCount > 0 && (
-                                            <span className={cn("inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold", showFilters ? "bg-white text-blue-600" : "bg-blue-600 text-white")}>
+                                            <span className={cn("inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold", showFilters ? "bg-white text-[#E6A57E]" : "bg-[#E6A57E] text-white")}>
                                                 {activeFilterCount}
                                             </span>
                                         )}
@@ -1337,7 +1337,7 @@ export default function ViewReceipts() {
 
                                     <div className="hidden sm:flex items-center gap-3 ml-auto text-xs text-slate-500">
                                         {activeFilterCount > 0 && filteredReceipts.length !== receipts.length && (
-                                            <span className="font-medium text-blue-600">{filteredReceipts.length} of {receipts.length} shown</span>
+                                            <span className="font-medium text-[#E6A57E]">{filteredReceipts.length} of {receipts.length} shown</span>
                                         )}
                                         <span className="font-mono font-medium text-slate-700">
                                             Total: R {filteredTotal.toFixed(2)}
@@ -1346,7 +1346,7 @@ export default function ViewReceipts() {
                                 </div>
 
                                 {showFilters && (
-                                    <div className="p-2 sm:p-3 bg-blue-50/30 border-b">
+                                    <div className="p-2 sm:p-3 bg-[#F7F7F7] border-b">
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
                                             <div>
                                                 <label className="text-[11px] font-medium text-slate-500 uppercase tracking-wider mb-1 block">Payment Method</label>
@@ -1397,7 +1397,7 @@ export default function ViewReceipts() {
                                     <div className="flex flex-wrap items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-slate-50/50 border-b">
                                         <span className="text-[10px] text-slate-400 uppercase font-medium mr-1">Active:</span>
                                         {quickSearch.trim() && (
-                                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 gap-1 bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200 cursor-pointer" onClick={() => setQuickSearch('')}>
+                                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 gap-1 bg-[#F0C3A7]/20 text-[#2E2E2E] border-[#E6A57E]/30 hover:bg-[#F0C3A7]/40 cursor-pointer" onClick={() => setQuickSearch('')}>
                                                 Search: "{quickSearch}" <X className="w-2.5 h-2.5" />
                                             </Badge>
                                         )}
@@ -1426,7 +1426,7 @@ export default function ViewReceipts() {
 
                                 <div className="flex sm:hidden items-center justify-between px-2 py-1.5 bg-slate-50/50 border-b text-xs text-slate-500">
                                     {activeFilterCount > 0 && filteredReceipts.length !== receipts.length && (
-                                        <span className="font-medium text-blue-600">{filteredReceipts.length} of {receipts.length} shown</span>
+                                        <span className="font-medium text-[#E6A57E]">{filteredReceipts.length} of {receipts.length} shown</span>
                                     )}
                                     <span className="font-mono font-medium text-slate-700 ml-auto">
                                         Total: R {filteredTotal.toFixed(2)}
@@ -1463,7 +1463,7 @@ export default function ViewReceipts() {
                                     <Card key={serialNo || idx} className={cn("p-3", isCancelled && "border-red-200 bg-red-50/30")} data-testid={`card-receipt-${idx}`}>
                                         <div className="flex justify-between items-start gap-2 mb-1.5">
                                             <div className="min-w-0">
-                                                <div className="font-mono text-sm font-medium text-blue-700">{receiptNo || '-'}</div>
+                                                <div className="font-mono text-sm font-medium text-[#E6A57E]">{receiptNo || '-'}</div>
                                                 <div className="text-xs text-muted-foreground font-mono">{acctNo || '-'}</div>
                                             </div>
                                             <div className="text-right shrink-0">
@@ -1497,31 +1497,31 @@ export default function ViewReceipts() {
                                 <TableHeader className="bg-slate-100 sticky top-0 z-10">
                                     <TableRow>
                                         <TableHead className="w-[50px] font-bold text-slate-700">No</TableHead>
-                                        <TableHead className="min-w-[120px] font-bold text-slate-700 cursor-pointer select-none hover:text-blue-700" onClick={() => handleSort('accountNumber')}>
+                                        <TableHead className="min-w-[120px] font-bold text-slate-700 cursor-pointer select-none hover:text-[#E6A57E]" onClick={() => handleSort('accountNumber')}>
                                             <span className="inline-flex items-center">Account ID <HelpTip text="The municipal account number linked to this receipt." size="sm" /> <SortIcon field="accountNumber" /></span>
                                         </TableHead>
-                                        <TableHead className="min-w-[140px] font-bold text-slate-700 cursor-pointer select-none hover:text-blue-700" onClick={() => handleSort('receiptNo')}>
+                                        <TableHead className="min-w-[140px] font-bold text-slate-700 cursor-pointer select-none hover:text-[#E6A57E]" onClick={() => handleSort('receiptNo')}>
                                             <span className="inline-flex items-center">Receipt No <HelpTip text="The unique receipt number issued for this transaction." size="sm" /> <SortIcon field="receiptNo" /></span>
                                         </TableHead>
                                         <TableHead className="min-w-[100px] font-bold text-slate-700">
                                             <span className="inline-flex items-center">Method <HelpTip text="The payment method used (Cash, Credit Card, EFT, Cheque, etc.)." size="sm" /></span>
                                         </TableHead>
-                                        <TableHead className="min-w-[100px] font-bold text-slate-700 cursor-pointer select-none hover:text-blue-700" onClick={() => handleSort('paymentType')}>
+                                        <TableHead className="min-w-[100px] font-bold text-slate-700 cursor-pointer select-none hover:text-[#E6A57E]" onClick={() => handleSort('paymentType')}>
                                             <span className="inline-flex items-center">Payment Type <HelpTip text="The type of payment classification for this transaction." size="sm" /> <SortIcon field="paymentType" /></span>
                                         </TableHead>
-                                        <TableHead className="min-w-[150px] font-bold text-slate-700 cursor-pointer select-none hover:text-blue-700" onClick={() => handleSort('paymentOption')}>
+                                        <TableHead className="min-w-[150px] font-bold text-slate-700 cursor-pointer select-none hover:text-[#E6A57E]" onClick={() => handleSort('paymentOption')}>
                                             <span className="inline-flex items-center">Payment Option <SortIcon field="paymentOption" /></span>
                                         </TableHead>
-                                        <TableHead className="min-w-[140px] font-bold text-slate-700 cursor-pointer select-none hover:text-blue-700" onClick={() => handleSort('receiptDate')}>
+                                        <TableHead className="min-w-[140px] font-bold text-slate-700 cursor-pointer select-none hover:text-[#E6A57E]" onClick={() => handleSort('receiptDate')}>
                                             <span className="inline-flex items-center">Date/Time <SortIcon field="receiptDate" /></span>
                                         </TableHead>
                                         <TableHead className="min-w-[80px] font-bold text-slate-700">Staged</TableHead>
-                                        <TableHead className="min-w-[100px] text-right font-bold text-slate-700 cursor-pointer select-none hover:text-blue-700" onClick={() => handleSort('amount')}>
+                                        <TableHead className="min-w-[100px] text-right font-bold text-slate-700 cursor-pointer select-none hover:text-[#E6A57E]" onClick={() => handleSort('amount')}>
                                             <span className="inline-flex items-center justify-end w-full">Amount <HelpTip text="The total amount paid on this receipt." size="sm" /> <SortIcon field="amount" /></span>
                                         </TableHead>
                                         <TableHead className="min-w-[100px] text-right font-bold text-slate-700">Tender</TableHead>
                                         <TableHead className="min-w-[100px] text-right font-bold text-slate-700">Change</TableHead>
-                                        <TableHead className="min-w-[150px] font-bold text-slate-700 cursor-pointer select-none hover:text-blue-700" onClick={() => handleSort('cashierName')}>
+                                        <TableHead className="min-w-[150px] font-bold text-slate-700 cursor-pointer select-none hover:text-[#E6A57E]" onClick={() => handleSort('cashierName')}>
                                             <span className="inline-flex items-center">Cashier <SortIcon field="cashierName" /></span>
                                         </TableHead>
                                         <TableHead className="min-w-[200px] font-bold text-slate-700">Cash Book</TableHead>
@@ -1583,11 +1583,11 @@ export default function ViewReceipts() {
                                                 >
                                                     <TableCell className="text-xs">{(currentPage - 1) * pageSize + idx + 1}</TableCell>
                                                     <TableCell className="font-mono text-xs">{acctNo}</TableCell>
-                                                    <TableCell className="font-mono text-xs font-medium text-blue-700">{receiptNo}</TableCell>
+                                                    <TableCell className="font-mono text-xs font-medium text-[#E6A57E]">{receiptNo}</TableCell>
                                                     <TableCell className="text-xs">
                                                         <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 font-medium",
                                                             payMethod === 'Cash' && "text-green-700 border-green-300 bg-green-50",
-                                                            payMethod === 'Credit Card' && "text-blue-700 border-blue-300 bg-blue-50",
+                                                            payMethod === 'Credit Card' && "text-sky-700 border-sky-300 bg-sky-50",
                                                             payMethod === 'EFT' && "text-purple-700 border-purple-300 bg-purple-50",
                                                             payMethod === 'Cheque' && "text-amber-700 border-amber-300 bg-amber-50",
                                                             payMethod === 'Postal Order' && "text-orange-700 border-orange-300 bg-orange-50",

@@ -152,7 +152,7 @@ export function PaymentDrawer() {
   return (
     <>
     {/* Mobile Bottom Bar (collapsed state) */}
-    <div className={`${viewMode === 'desktop' ? 'lg:hidden' : ''} fixed bottom-0 left-0 right-0 z-40 bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 text-white shadow-[0_-4px_20px_rgba(0,0,0,0.15)] transition-transform duration-300 ${isMobileExpanded ? 'translate-y-full' : 'translate-y-0'}`}>
+    <div className={`${viewMode === 'desktop' ? 'lg:hidden' : ''} fixed bottom-0 left-0 right-0 z-40 bg-[linear-gradient(180deg,#8C8C8C_0%,#6F6F6F_100%)] text-white shadow-[0_-4px_20px_rgba(0,0,0,0.15)] transition-transform duration-300 ${isMobileExpanded ? 'translate-y-full' : 'translate-y-0'}`}>
         <div className="px-3 py-2.5 flex items-center justify-between gap-2" onClick={() => setIsMobileExpanded(true)}>
              <div className="flex items-center gap-2.5 min-w-0 flex-1">
                 <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-white/10 shrink-0">
@@ -169,7 +169,7 @@ export function PaymentDrawer() {
                     {transactionItems.length}
                   </span>
                 )}
-                <Button size="default" className="bg-white text-blue-900 hover:bg-white/90 shadow-lg font-bold rounded-xl h-9 px-4 text-sm active:scale-95 transition-transform touch-manipulation" onClick={(e) => { e.stopPropagation(); setIsMobileExpanded(true); }}>
+                <Button size="default" className="bg-white text-[#2E2E2E] hover:bg-white/90 shadow-lg font-bold rounded-xl h-9 px-4 text-sm active:scale-95 transition-transform touch-manipulation" onClick={(e) => { e.stopPropagation(); setIsMobileExpanded(true); }}>
                     Pay <ChevronUp className="ml-1 w-3.5 h-3.5" />
                 </Button>
              </div>
@@ -192,19 +192,19 @@ export function PaymentDrawer() {
             <div className="flex bg-slate-100 rounded-lg p-0.5">
               <button
                 onClick={() => setMobileView('payment')}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${mobileView === 'payment' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500'}`}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${mobileView === 'payment' ? 'bg-white shadow-sm text-[#E6A57E]' : 'text-slate-500'}`}
                 data-testid="tab-mobile-payment"
               >
                 Payment
               </button>
               <button
                 onClick={() => setMobileView('items')}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all relative ${mobileView === 'items' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500'}`}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all relative ${mobileView === 'items' ? 'bg-white shadow-sm text-[#E6A57E]' : 'text-slate-500'}`}
                 data-testid="tab-mobile-items"
               >
                 Items
                 {transactionItems.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-[8px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{transactionItems.length}</span>
+                  <span className="absolute -top-1 -right-1 bg-[#E6A57E] text-white text-[8px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{transactionItems.length}</span>
                 )}
               </button>
             </div>
@@ -232,7 +232,7 @@ export function PaymentDrawer() {
       </div>
 
       {/* Desktop Header */}
-      <div className={`${viewMode === 'desktop' ? 'hidden lg:flex' : 'hidden'} p-4 lg:p-5 bg-gradient-to-br from-blue-50 to-indigo-50/50 border-b border-blue-100/50 justify-between items-center shrink-0`}>
+      <div className={`${viewMode === 'desktop' ? 'hidden lg:flex' : 'hidden'} p-4 lg:p-5 bg-[#F7F7F7] border-b border-[#D6D6D6]/50 justify-between items-center shrink-0`}>
         <div>
            <h2 className="text-lg lg:text-xl font-bold tracking-tight text-slate-800 flex items-center gap-1.5">Payment Drawer <HelpTip text="Enter cash and/or card amounts to pay for items in your basket. The system calculates change automatically." /></h2>
            <p className="text-sm text-muted-foreground">Touch-enabled checkout</p>
@@ -362,7 +362,7 @@ export function PaymentDrawer() {
         )}
 
         <Button 
-          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25 h-12 lg:h-14 text-base lg:text-lg font-bold rounded-xl disabled:from-slate-300 disabled:to-slate-400 disabled:shadow-none active:scale-[0.98] transition-all touch-manipulation" 
+          className="w-full bg-gradient-to-r from-[#E6A57E] to-[#D18E65] hover:from-[#D18E65] hover:to-[#C07D55] shadow-lg shadow-[0_1px_3px_rgba(0,0,0,0.15)] h-12 lg:h-14 text-base lg:text-lg font-bold rounded-xl disabled:from-slate-300 disabled:to-slate-400 disabled:shadow-none active:scale-[0.98] transition-all touch-manipulation" 
           size="lg"
           tabIndex={90}
           disabled={!isCompleteEnabled}
@@ -407,7 +407,7 @@ function getItemSummaryLine(item: TransactionItem, od: any): { label: string; va
   
   if (item.type === 'CONSUMER_SERVICES' || item.type === 'ACCOUNT_GROUP') {
     const accNo = od.accountNumber || od.accountNo || od.accountID;
-    if (accNo) info.push({ label: 'Acc', value: String(accNo), highlight: 'text-blue-600 font-mono' });
+    if (accNo) info.push({ label: 'Acc', value: String(accNo), highlight: 'text-[#E6A57E] font-mono' });
     if (od.name) info.push({ label: 'Owner', value: od.name.length > 25 ? od.name.substring(0, 25) + '...' : od.name });
     const outstanding = od.outStandingAmount ?? od.outstandingAmt ?? od.outStandingAmt;
     if (outstanding != null && Number(outstanding) > 0) {
@@ -416,8 +416,8 @@ function getItemSummaryLine(item: TransactionItem, od: any): { label: string; va
     if (od.address) info.push({ label: 'Addr', value: od.address.length > 30 ? od.address.substring(0, 30) + '...' : od.address });
   } else if (item.type === 'PREPAID') {
     const isWater = od.prepaidType === 'Water';
-    if (od.prepaidMeterNo) info.push({ label: 'Meter', value: od.prepaidMeterNo, highlight: isWater ? 'text-blue-600 font-mono' : 'text-amber-600 font-mono' });
-    info.push({ label: 'Type', value: isWater ? 'Water' : 'Electricity', highlight: isWater ? 'text-blue-600' : 'text-amber-600' });
+    if (od.prepaidMeterNo) info.push({ label: 'Meter', value: od.prepaidMeterNo, highlight: isWater ? 'text-[#E6A57E] font-mono' : 'text-amber-600 font-mono' });
+    info.push({ label: 'Type', value: isWater ? 'Water' : 'Electricity', highlight: isWater ? 'text-[#E6A57E]' : 'text-amber-600' });
     if (od.name) info.push({ label: 'Owner', value: od.name.length > 20 ? od.name.substring(0, 20) + '...' : od.name });
     if (od.accountNo || od.accountNumber) info.push({ label: 'Acc', value: od.accountNo || od.accountNumber });
   } else if (item.type === 'CLEARANCE') {
@@ -437,7 +437,7 @@ function getItemSummaryLine(item: TransactionItem, od: any): { label: string; va
 function getTypeBadge(type: string, originalData?: any) {
   switch (type) {
     case 'CONSUMER_SERVICES':
-      return { label: 'Account', color: 'bg-blue-50 text-blue-700 border-blue-200', icon: User };
+      return { label: 'Account', color: 'bg-[#F0C3A7]/20 text-[#E6A57E] border-[#D6D6D6]', icon: User };
     case 'PREPAID': {
       const isWater = originalData?.prepaidType === 'Water';
       return { label: isWater ? 'Prepaid Water' : 'Prepaid Elec', color: isWater ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200', icon: isWater ? Droplets : Zap };
@@ -527,13 +527,13 @@ function MobileItemCard({ item, removeItem, updateItemAmount, updateItemDetails 
               </div>
             )}
             <div>
-              <div className="text-[9px] text-blue-500 uppercase font-semibold tracking-wider">Pay</div>
-              <div className="text-sm font-mono font-bold text-blue-700">R {item.amountToPay.toFixed(2)}</div>
+              <div className="text-[9px] text-[#E6A57E] uppercase font-semibold tracking-wider">Pay</div>
+              <div className="text-sm font-mono font-bold text-[#E6A57E]">R {item.amountToPay.toFixed(2)}</div>
             </div>
           </div>
           <button
             onClick={() => setExpanded(!expanded)}
-            className="flex items-center gap-1 text-[10px] text-blue-600 font-semibold px-2 py-1 rounded-lg bg-blue-50 active:bg-blue-100 touch-manipulation"
+            className="flex items-center gap-1 text-[10px] text-[#E6A57E] font-semibold px-2 py-1 rounded-lg bg-[#F0C3A7]/20 active:bg-[#F0C3A7]/30 touch-manipulation"
           >
             {expanded ? 'Less' : 'Details'}
             <ChevronDown className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} />
@@ -600,7 +600,7 @@ function ConsumerDetailsSection({ item, od, updateItemAmount }: { item: Transact
         )}
       </div>
       <div>
-        <Label className="text-[9px] text-blue-600 uppercase font-semibold tracking-wider">Pay Amount (R)</Label>
+        <Label className="text-[9px] text-[#E6A57E] uppercase font-semibold tracking-wider">Pay Amount (R)</Label>
         <div className="relative mt-0.5">
           <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-mono">R</span>
           <Input
@@ -646,7 +646,7 @@ function PrepaidDetailsSection({ item, od, updateItemAmount }: { item: Transacti
         <div>
           <div className="text-[9px] text-slate-400 uppercase font-semibold">Type</div>
           <div className="text-xs flex items-center gap-1">
-            {isWater ? <Droplets className="w-3 h-3 text-blue-500" /> : <Zap className="w-3 h-3 text-yellow-500" />}
+            {isWater ? <Droplets className="w-3 h-3 text-[#E6A57E]" /> : <Zap className="w-3 h-3 text-yellow-500" />}
             {isWater ? 'Water' : 'Electricity'}
           </div>
         </div>
@@ -658,7 +658,7 @@ function PrepaidDetailsSection({ item, od, updateItemAmount }: { item: Transacti
         )}
       </div>
       <div>
-        <Label className={`text-[9px] uppercase font-semibold tracking-wider ${isWater ? 'text-blue-600' : 'text-yellow-600'}`}>Recharge Amount (R)</Label>
+        <Label className={`text-[9px] uppercase font-semibold tracking-wider ${isWater ? 'text-[#E6A57E]' : 'text-yellow-600'}`}>Recharge Amount (R)</Label>
         <div className="relative mt-0.5">
           <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-mono">R</span>
           <Input
@@ -679,7 +679,7 @@ function PrepaidDetailsSection({ item, od, updateItemAmount }: { item: Transacti
             <button
               key={amt}
               onClick={() => updateItemAmount(item.id, amt)}
-              className={`flex-1 text-xs font-bold py-1.5 rounded-lg border transition-colors active:scale-95 touch-manipulation ${isWater ? 'bg-blue-50 border-blue-200 text-blue-700 active:bg-blue-100' : 'bg-yellow-50 border-yellow-200 text-yellow-700 active:bg-yellow-100'}`}
+              className={`flex-1 text-xs font-bold py-1.5 rounded-lg border transition-colors active:scale-95 touch-manipulation ${isWater ? 'bg-[#F0C3A7]/20 border-[#D6D6D6] text-[#E6A57E] active:bg-[#F0C3A7]/30' : 'bg-yellow-50 border-yellow-200 text-yellow-700 active:bg-yellow-100'}`}
             >
               R{amt}
             </button>
@@ -830,8 +830,8 @@ function MobileItemsList({ items, removeItem, updateItemAmount, updateItemDetail
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4 text-slate-400">
-        <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mb-3">
-          <Banknote className="w-7 h-7 text-blue-300" />
+        <div className="w-14 h-14 rounded-2xl bg-[#F0C3A7]/20 flex items-center justify-center mb-3">
+          <Banknote className="w-7 h-7 text-[#D6D6D6]" />
         </div>
         <p className="text-sm font-semibold text-slate-600">No items in basket</p>
         <p className="text-xs text-slate-400 mt-0.5">Search for an account to add items</p>
@@ -886,7 +886,7 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
   return (
     <div className="flex flex-col px-3 pt-2 pb-1 gap-2">
       {/* Total Due - compact */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-3 text-center text-white">
+      <div className="bg-gradient-to-r from-[#E6A57E] to-[#D18E65] rounded-xl p-3 text-center text-white">
         <div className="text-[9px] uppercase tracking-widest font-bold text-white/60 mb-0.5">Total Due</div>
         <div className="text-3xl font-mono font-bold leading-none">R {totalDue.toFixed(2)}</div>
       </div>
@@ -926,17 +926,17 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
               cardOverAmount
                 ? 'border-red-500 bg-red-50 shadow-sm'
                 : activeInput === 'card'
-                  ? 'border-blue-500 bg-blue-50 shadow-sm'
+                  ? 'border-[#E6A57E] bg-[#F0C3A7]/20 shadow-sm'
                   : 'border-slate-200 bg-white'
             }`}
             data-testid="toggle-card"
           >
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${cardOverAmount ? 'bg-red-500 text-white' : activeInput === 'card' ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${cardOverAmount ? 'bg-red-500 text-white' : activeInput === 'card' ? 'bg-[#E6A57E] text-white' : 'bg-slate-100 text-slate-400'}`}>
               <CreditCard className="w-4 h-4" />
             </div>
             <div className="text-left">
-              <div className={`text-[10px] uppercase font-bold tracking-wider ${cardOverAmount ? 'text-red-600' : activeInput === 'card' ? 'text-blue-600' : 'text-slate-400'}`}>Card</div>
-              <div className={`text-sm font-mono font-bold ${cardOverAmount ? 'text-red-700' : activeInput === 'card' ? 'text-blue-700' : 'text-slate-600'}`}>
+              <div className={`text-[10px] uppercase font-bold tracking-wider ${cardOverAmount ? 'text-red-600' : activeInput === 'card' ? 'text-[#E6A57E]' : 'text-slate-400'}`}>Card</div>
+              <div className={`text-sm font-mono font-bold ${cardOverAmount ? 'text-red-700' : activeInput === 'card' ? 'text-[#E6A57E]' : 'text-slate-600'}`}>
                 {payment.cardAmount > 0 ? `R ${payment.cardAmount.toFixed(2)}` : 'R 0.00'}
               </div>
             </div>
@@ -960,13 +960,13 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
       )}
 
       {!cashAllowed && cardAllowed && (
-        <div className="flex items-center gap-2 p-2.5 rounded-xl border-2 border-blue-500 bg-blue-50">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-500 text-white">
+        <div className="flex items-center gap-2 p-2.5 rounded-xl border-2 border-[#E6A57E] bg-[#F0C3A7]/20">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#E6A57E] text-white">
             <CreditCard className="w-4 h-4" />
           </div>
           <div>
-            <div className="text-[10px] uppercase font-bold tracking-wider text-blue-600">Card Only</div>
-            <div className="text-sm font-mono font-bold text-blue-700">
+            <div className="text-[10px] uppercase font-bold tracking-wider text-[#E6A57E]">Card Only</div>
+            <div className="text-sm font-mono font-bold text-[#E6A57E]">
               {payment.cardAmount > 0 ? `R ${payment.cardAmount.toFixed(2)}` : 'R 0.00'}
             </div>
           </div>
@@ -976,9 +976,9 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
       {/* Active Input Display + Pay Exact */}
       <div className="flex items-center gap-1.5">
         <div className={`flex-1 rounded-xl border-2 p-2 flex items-center gap-2 ${
-          activeInput === 'cash' ? 'border-emerald-300 bg-emerald-50/30' : 'border-blue-300 bg-blue-50/30'
+          activeInput === 'cash' ? 'border-emerald-300 bg-emerald-50/30' : 'border-[#D6D6D6] bg-[#F0C3A7]/20'
         }`}>
-          <span className={`text-xs font-bold uppercase ${activeInput === 'cash' ? 'text-emerald-500' : 'text-blue-500'}`}>R</span>
+          <span className={`text-xs font-bold uppercase ${activeInput === 'cash' ? 'text-emerald-500' : 'text-[#E6A57E]'}`}>R</span>
           <input
             type="text"
             inputMode="decimal"
@@ -997,7 +997,7 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
           className={`h-11 px-3 rounded-xl font-bold text-xs transition-all active:scale-95 touch-manipulation flex items-center gap-1 shrink-0 ${
             activeInput === 'cash'
               ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-              : 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'bg-[#E6A57E] text-white hover:bg-[#D18E65]'
           }`}
           data-testid="button-pay-exact"
         >
@@ -1116,7 +1116,7 @@ function DesktopItemCard({ item, removeItem, updateItemAmount, updateItemDetails
   const summaryLine = getItemSummaryLine(item, od);
 
   return (
-    <div className={`bg-white rounded-xl border shadow-sm overflow-hidden transition-all group ${hasRequiredFieldsMissing ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-200/80 hover:border-blue-200/50 hover:shadow-md'}`}>
+    <div className={`bg-white rounded-xl border shadow-sm overflow-hidden transition-all group ${hasRequiredFieldsMissing ? 'border-amber-300 ring-1 ring-amber-200' : 'border-slate-200/80 hover:border-[#D6D6D6]/50 hover:shadow-md'}`}>
       <div className="p-3.5 flex items-start gap-3">
         <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${badge.color}`}>
           {categoryIcon || <BadgeIcon className="w-5 h-5" />}
@@ -1150,7 +1150,7 @@ function DesktopItemCard({ item, removeItem, updateItemAmount, updateItemDetails
         <div className="flex flex-col gap-1 shrink-0">
           <button
             onClick={() => setExpanded(!expanded)}
-            className="w-7 h-7 flex items-center justify-center text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+            className="w-7 h-7 flex items-center justify-center text-[#E6A57E] hover:bg-[#F0C3A7]/20 rounded-lg transition-colors"
           >
             <ChevronDown className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
           </button>
@@ -1190,7 +1190,7 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
         <div className="flex bg-slate-100/80 rounded-xl p-1 h-11">
           <button
             onClick={() => setDesktopTab('items')}
-            className={`flex-1 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 relative ${desktopTab === 'items' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`flex-1 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 relative ${desktopTab === 'items' ? 'bg-white shadow-sm text-[#E6A57E]' : 'text-slate-500 hover:text-slate-700'}`}
           >
             Items ({transactionItems.length})
             {hasDirectIncomeIssues && <span className="w-2 h-2 bg-amber-400 rounded-full absolute -top-0.5 -right-0.5" />}
@@ -1198,7 +1198,7 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
           </button>
           <button
             onClick={() => setDesktopTab('payment')}
-            className={`flex-1 rounded-lg text-sm font-medium transition-all ${desktopTab === 'payment' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`flex-1 rounded-lg text-sm font-medium transition-all ${desktopTab === 'payment' ? 'bg-white shadow-sm text-[#E6A57E]' : 'text-slate-500 hover:text-slate-700'}`}
           >
             Payment
           </button>
@@ -1209,8 +1209,8 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
         {desktopTab === 'items' ? (
           <>
             {transactionItems.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-48 text-muted-foreground border-2 border-dashed border-blue-200/50 rounded-2xl bg-blue-50/20">
-                <Banknote className="w-8 h-8 text-blue-300 mb-2" />
+              <div className="flex flex-col items-center justify-center h-48 text-muted-foreground border-2 border-dashed border-[#D6D6D6]/50 rounded-2xl bg-[#F0C3A7]/10">
+                <Banknote className="w-8 h-8 text-[#D6D6D6] mb-2" />
                 <p className="text-sm font-medium">No items added</p>
                 <p className="text-xs mt-0.5 text-slate-400">Search to add items to basket</p>
               </div>
@@ -1235,9 +1235,9 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
         ) : (
           <div className="space-y-4">
             {/* Total Display */}
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-5 border border-blue-100/50 text-center">
-              <div className="text-blue-600/80 uppercase tracking-widest font-bold text-xs mb-1 flex items-center justify-center gap-1">TOTAL DUE <HelpTip text="The sum of all items in your basket, rounded to the nearest 10 cents." /></div>
-              <div className="text-5xl font-mono font-bold text-blue-700">R {totalDue.toFixed(2)}</div>
+            <div className="bg-[#F7F7F7] rounded-2xl p-5 border border-[#D6D6D6]/50 text-center">
+              <div className="text-[#E6A57E]/80 uppercase tracking-widest font-bold text-xs mb-1 flex items-center justify-center gap-1">TOTAL DUE <HelpTip text="The sum of all items in your basket, rounded to the nearest 10 cents." /></div>
+              <div className="text-5xl font-mono font-bold text-[#E6A57E]">R {totalDue.toFixed(2)}</div>
             </div>
 
             {dayEndStatus === 'RECONCILED' ? (
@@ -1292,9 +1292,9 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                   {cardAllowed && (
                     <div 
                       onClick={() => !perItemSplitMode && setActiveInput('card')}
-                      className={`p-4 rounded-xl border-2 text-left transition-all ${perItemSplitMode ? 'border-slate-200 bg-slate-50 opacity-70' : 'cursor-pointer'} ${!perItemSplitMode && cardOverAmount ? 'border-red-500 bg-red-50/40 ring-2 ring-red-200/50 shadow-sm' : !perItemSplitMode && activeInput === 'card' ? 'border-blue-500 bg-blue-50/40 ring-2 ring-blue-200/50 shadow-sm' : !perItemSplitMode ? 'border-slate-200 bg-slate-50 hover:bg-slate-100/80' : ''}`}
+                      className={`p-4 rounded-xl border-2 text-left transition-all ${perItemSplitMode ? 'border-slate-200 bg-slate-50 opacity-70' : 'cursor-pointer'} ${!perItemSplitMode && cardOverAmount ? 'border-red-500 bg-red-50/40 ring-2 ring-red-200/50 shadow-sm' : !perItemSplitMode && activeInput === 'card' ? 'border-[#E6A57E] bg-[#F0C3A7]/20 ring-2 ring-[#E6A57E]/30 shadow-sm' : !perItemSplitMode ? 'border-slate-200 bg-slate-50 hover:bg-slate-100/80' : ''}`}
                     >
-                      <div className={`flex items-center gap-1.5 mb-1 ${!perItemSplitMode && cardOverAmount ? 'text-red-600' : !perItemSplitMode && activeInput === 'card' ? 'text-blue-600' : 'text-muted-foreground'}`}>
+                      <div className={`flex items-center gap-1.5 mb-1 ${!perItemSplitMode && cardOverAmount ? 'text-red-600' : !perItemSplitMode && activeInput === 'card' ? 'text-[#E6A57E]' : 'text-muted-foreground'}`}>
                         <CreditCard className="w-4 h-4" />
                         <span className="font-semibold text-xs uppercase tracking-wide">{!perItemSplitMode && cardOverAmount ? 'Card — exceeds balance' : 'Card'}</span>
                       </div>
@@ -1371,11 +1371,11 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-[9px] text-blue-600 font-bold uppercase">Card</label>
+                                  <label className="text-[9px] text-[#E6A57E] font-bold uppercase">Card</label>
                                   <input
                                     type="text"
                                     inputMode="decimal"
-                                    className="w-full h-7 px-2 text-xs font-mono border border-blue-200 rounded bg-blue-50/50 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                    className="w-full h-7 px-2 text-xs font-mono border border-[#D6D6D6] rounded bg-[#F0C3A7]/20 focus:outline-none focus:ring-1 focus:ring-[#E6A57E]"
                                     value={itemCard || ''}
                                     placeholder="0.00"
                                     onChange={(e) => {
@@ -1393,7 +1393,7 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                                   data-testid={`button-item-all-cash-${item.id}`}
                                 >All Cash</button>
                                 <button
-                                  className="text-[9px] text-blue-600 font-medium hover:underline"
+                                  className="text-[9px] text-[#E6A57E] font-medium hover:underline"
                                   onClick={() => updateItemSplit(item.id, 0, item.amountToPay)}
                                   data-testid={`button-item-all-card-${item.id}`}
                                 >All Card</button>
@@ -1406,7 +1406,7 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                         })}
                         <div className="flex justify-between items-center pt-1 px-1 text-[10px]">
                           <span className="text-green-600 font-bold">Cash: R {payment.cashAmount.toFixed(2)}</span>
-                          <span className="text-blue-600 font-bold">Card: R {payment.cardAmount.toFixed(2)}</span>
+                          <span className="text-[#E6A57E] font-bold">Card: R {payment.cardAmount.toFixed(2)}</span>
                         </div>
                       </div>
                     )}
