@@ -20,8 +20,7 @@ export const ReceiptTemplate = React.forwardRef<HTMLDivElement, ReceiptTemplateP
   const primaryLine = allocation.lines[0];
   const primaryAccount = primaryLine ? { accountNo: primaryLine.accountNo, name: primaryLine.description || '', address: '' } as Account : undefined;
 
-  // Mock receipt number based on transaction ID
-  const receiptNo = transaction.id.replace('TXN-', 'REC');
+  const receiptNo = transaction.receiptNumber || transaction.id;
   
   // Calculate totals
   const totalAllocated = allocation.lines.reduce((sum, line) => sum + line.amount, 0);

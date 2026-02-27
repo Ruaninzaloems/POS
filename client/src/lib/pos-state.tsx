@@ -1255,6 +1255,23 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
         return [];
     };
 
+    const lookupReceiptNoById = async (receiptId: number): Promise<string | null> => {
+        const lookupId = sessionCashierId || sessionUserId;
+        try {
+            const unreconciledList = await platinumGetDayEndUnreconciledList(lookupId);
+            if (Array.isArray(unreconciledList)) {
+                const match = unreconciledList.find((r: any) => r.id === receiptId || r.receiptId === receiptId);
+                if (match?.receiptNo) {
+                    console.log(`[ReceiptNoLookup] Found receiptNo "${match.receiptNo}" for id ${receiptId} from unreconciled list (lookupId=${lookupId})`);
+                    return match.receiptNo;
+                }
+            }
+        } catch (e) {
+            console.warn(`[ReceiptNoLookup] Failed to lookup receiptNo for id ${receiptId}`, e);
+        }
+        return null;
+    };
+
     const serviceBalanceMap = new Map<string, ServiceBalance[]>();
     const startBalanceFetch = () => {
         const promises: Promise<void>[] = [];
@@ -1388,7 +1405,23 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
                 const matchedAcct = perAccountAmounts?.[rIdx];
                 acctId = String(matchedAcct?.accountId || accountItems[rIdx]?.originalData?.account_ID || accountItems[rIdx]?.reference || '');
                 acctName = matchedAcct?.accountName || accountItems[rIdx]?.originalData?.name || accountItems[rIdx]?.description || '';
-                console.warn(`[Priority 1 ${paymentLabel}] Receipt ${rid} — API returned no receipt data. Receipt detail will be unavailable for reprint.`);
+                console.warn(`[Priority 1 ${paymentLabel}] Receipt ${rid} — API returned no receipt data. Looking up receiptNo from unreconciled list...`);
+                const lookedUpNo = await lookupReceiptNoById(rid);
+                if (lookedUpNo) {
+                    receiptNo = lookedUpNo;
+                    receiptDetail = {
+                        receiptNo: lookedUpNo,
+                        receiptId: rid,
+                        cashierName: currentUser.name,
+                        cashOffice: sessionDetails?.officeDesc || '',
+                        tenderAmount: paymentAmount,
+                        changeAmount: 0,
+                        paymentType: paymentType === 'cash' ? 'Cash' : 'Credit Card',
+                        paymentOption: 'Consumer Services',
+                        accountId: acctId,
+                        accName: acctName,
+                    };
+                }
             }
 
             if (!finalReceiptNumber) {
@@ -2082,7 +2115,24 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
                     }
 
                     if (!clrReceiptDetail) {
-                        console.warn(`[Priority 1B ${label}] API returned no receipt data for clearance ${clearanceStagingId}. Receipt detail will be unavailable for reprint.`);
+                        console.warn(`[Priority 1B ${label}] API returned no receipt data for clearance ${clearanceStagingId}. Looking up receiptNo from unreconciled list...`);
+                        const lookedUpNo = await lookupReceiptNoById(clrReceiptIds[0]);
+                        if (lookedUpNo) {
+                            receiptNo = lookedUpNo;
+                            clrReceiptDetail = {
+                                receiptNo: lookedUpNo,
+                                receiptId: clrReceiptIds[0],
+                                cashierName: currentUser.name,
+                                cashOffice: sessionDetails?.officeDesc || '',
+                                tenderAmount: tender,
+                                changeAmount: change,
+                                paymentType: splitType === 'cash' ? 'Cash' : 'Credit Card',
+                                paymentOption: 'Clearance',
+                                accountId: item.reference || '',
+                                accName: accountHolderName,
+                                receiptDate: formattedReceiptDate,
+                            };
+                        }
                     }
 
                     if (!finalReceiptNumber) {
@@ -2279,6 +2329,10 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
                     }
 
                     if (!miscReceiptDetail) {
+                        if (receiptNo.startsWith('REC-')) {
+                            const lookedUpNo = await lookupReceiptNoById(miscReceiptId);
+                            if (lookedUpNo) receiptNo = lookedUpNo;
+                        }
                         miscReceiptDetail = {
                             receiptNo,
                             cashierName: sessionCashierName,

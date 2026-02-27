@@ -49,6 +49,9 @@ The application is designed to support multiple EMS sites, each with its own API
 ### External APIs
 -   **Platinum Inzalo EMS API** (multi-site): This is the central dependency, providing all core POS operations such as payments, prepaid services, clearance, day-end processes, and direct deposits. It handles authentication via JWT tokens and integrates key modules like `ReceiptPrepaid`, `billing-payment`, `auth-day-end-reconcile`, `billing-direct-deposit-allocation`, `BillingEnquiry`, and `BillingDashboard`.
 
+### Receipt Number Resolution
+When a payment is submitted, the Platinum API returns a receipt ID (e.g., `1239092`). The real EMS receipt number (e.g., `27022026/460001`) is fetched via `pos-multi-receipt-print`. If that API returns a 500 error (known Platinum bug), the system falls back to querying the unreconciled list (`cashier-receipt-unreconciled-list`) to find the correct `receiptNo` for that receipt ID. This fallback is applied in all three payment paths: consumer services, clearance, and miscellaneous/direct income. The `receipt-template.tsx` also uses `transaction.receiptNumber` directly instead of fabricating a number.
+
 ### Frontend Libraries
 -   `shadcn/ui` + `Radix UI`: For robust and customizable UI components.
 -   `TanStack React Query`: For efficient server state management.
