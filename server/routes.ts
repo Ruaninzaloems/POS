@@ -1856,6 +1856,8 @@ export async function registerRoutes(
         vatPercentage: Number(miscBody.vatPercentage ?? 0),
         isVatable: Boolean(miscBody.isVatable),
         userId: Number(miscBody.userId),
+        cashierId: Number(miscBody.cashierId ?? 0),
+        cashOfficeId: Number(miscBody.cashOfficeId ?? 0),
         finYear: miscBody.finYear || '2025/2026',
         cardNo: miscBody.cardNo || null,
         expiryDate: miscBody.expiryDate || null,

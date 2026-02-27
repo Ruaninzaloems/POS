@@ -2127,6 +2127,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     vatPercentage: vatRate,
                     isVatable,
                     userId: sessionUserId,
+                    cashierId: platinumCashierId || 0,
+                    cashOfficeId: sessionDetails?.officeId ? Number(sessionDetails.officeId) : 0,
                     finYear,
                     cardNo: paymentTypeId === 3 ? (record.payment.cardReference || '') : '',
                     expiryDate: paymentTypeId === 3 ? formatCardExpiryAsDate(record.payment.cardExpiry) : '',
