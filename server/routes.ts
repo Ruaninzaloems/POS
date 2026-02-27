@@ -4706,8 +4706,41 @@ export async function registerRoutes(
   app.get("/api/platinum/receipting-account-group-payment/search-accounts-by-group", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
-      const data = await platinumGet(session, "/api/receipting-account-group-payment/search-accounts-by-group", req.query as Record<string, string>);
-      handlePlatinumResult(res, data);
+      const institutionId = req.query.institutionId as string;
+      const instIdNum = Number(institutionId);
+      console.log(`[search-accounts-by-group] institutionId=${institutionId}`);
+
+      const strategies: Array<{ label: string; fn: () => Promise<any> }> = [
+        {
+          label: `POST EnquiryResults {accountGroup: ${instIdNum}}`,
+          fn: () => platinumPost(session, "/api/BillingEnquiry/EnquiryResults", { accountGroup: instIdNum }),
+        },
+        {
+          label: `GET billing-enquiry-search?accountGroup=${instIdNum}`,
+          fn: () => platinumGet(session, "/api/billing-enquiry-search", { accountGroup: String(instIdNum) }),
+        },
+        {
+          label: `POST EnquiryResults {instituationID: ${instIdNum}}`,
+          fn: () => platinumPost(session, "/api/BillingEnquiry/EnquiryResults", { instituationID: instIdNum }),
+        },
+      ];
+
+      for (const s of strategies) {
+        try {
+          const data = await s.fn();
+          const isErr = data?._error;
+          const count = Array.isArray(data) ? data.length : 'non-array';
+          console.log(`[search-accounts-by-group] ${s.label} → ${isErr ? `error ${data.status}` : `${count} results`}`);
+          if (!isErr && Array.isArray(data) && data.length > 0) {
+            return res.json(data);
+          }
+        } catch (e: any) {
+          console.log(`[search-accounts-by-group] ${s.label} threw: ${e.message}`);
+        }
+      }
+
+      console.log(`[search-accounts-by-group] All strategies exhausted for institutionId=${institutionId}`);
+      res.json([]);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }

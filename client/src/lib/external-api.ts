@@ -652,21 +652,10 @@ export async function fetchAccountsByGroup(institutionId: number): Promise<any[]
         if (res.ok) {
             const data = await res.json();
             const arr = Array.isArray(data) ? data : (data?.value && Array.isArray(data.value) ? data.value : []);
-            if (arr.length > 0) return arr;
+            return arr;
         }
     } catch (e) {
-        console.warn("[fetchAccountsByGroup] receipting-account-group-payment failed, trying billing-enquiry-search", e);
-    }
-    try {
-        const res = await apiFetch(`/api/platinum/billing-enquiry-search?accountGroup=${institutionId}`);
-        if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data)) return data;
-            if (data?.value && Array.isArray(data.value)) return data.value;
-            return [];
-        }
-    } catch (e) {
-        console.error("Failed to fetch accounts by group", e);
+        console.error("[fetchAccountsByGroup] Failed to fetch accounts for institution", institutionId, e);
     }
     return [];
 }

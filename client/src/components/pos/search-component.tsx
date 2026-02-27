@@ -118,7 +118,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
           inst.Description && inst.Description.toLowerCase().includes(q) && inst.IsEnabled
           && !/^\d+$/.test(inst.Description.trim())
         ).slice(0, 5).map((inst: any) => {
-            const acctCount = inst.activeServiceCount || inst.account_ID || 0;
+            const acctCount = inst.account_ID || 0;
             const totalOuts = inst.outStandingAmt || 0;
             return {
                 type: 'GROUP' as const,
@@ -286,7 +286,7 @@ export function UnifiedSearch({ onSelect, placeholder, autoFocus, className, sco
 
           const groupResults: SearchResult[] = Array.from(groupedInstitutions.entries()).slice(0, 5).map(([instId, group]) => {
               const summary = group.members[0];
-              const accountCount = summary?.activeServiceCount || summary?.account_ID || group.members.length;
+              const accountCount = summary?.account_ID || group.members.length;
               const totalOuts = summary?.outStandingAmt || group.members.reduce((sum, m) => sum + (m.outStandingAmt || 0), 0);
               return {
                   type: 'GROUP' as const,
