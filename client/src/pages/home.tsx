@@ -17,9 +17,11 @@ import {
   Smartphone,
   ChevronDown,
   MessageSquareMore,
+  Power,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HelpTip } from '@/components/ui/help-tip';
+import { logoutUser } from '@/lib/external-api';
 
 const menuItems = [
   { label: 'POS', href: '/pos', icon: Layers, description: 'Point of sale receipting and payments', helpTip: 'Process payments for consumer accounts, prepaid, clearance, and direct income' },
@@ -81,6 +83,19 @@ export default function HomePage() {
               </Button>
             </>
           )}
+          <div className="h-6 w-px bg-white/20 hidden sm:block" />
+          <HelpTip text="Sign out and return to the login screen" side="bottom">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-white/70 hover:text-red-300 hover:bg-white/10"
+              onClick={async () => { await logoutUser(); window.location.reload(); }}
+              title="Sign Out"
+              data-testid="button-sign-out-home"
+            >
+              <Power className="w-4 h-4" />
+            </Button>
+          </HelpTip>
         </div>
       </header>
 
