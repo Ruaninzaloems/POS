@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { platinumGet, platinumPost, platinumPut, platinumDelete, loginWithCredentials, logoutSession, isSessionAuthenticated, refreshSessionToken, getSessionPosCashierId, getPlatinumApiUrl, getPlatinumDbName, createEmptySession, clearLockoutCache, type UserSession } from "./platinum-auth";
+import { platinumGet, platinumPost, platinumPut, platinumDelete, loginWithCredentials, logoutSession, isSessionAuthenticated, refreshSessionToken, getSessionPosCashierId, getPlatinumApiUrl, getPlatinumDbName, createEmptySession, clearLockoutCache, SITE_CONFIGS, getSiteConfig, type UserSession, type SiteConfig } from "./platinum-auth";
 import { execSync } from "child_process";
 import { writeFileSync, unlinkSync, existsSync } from "fs";
 import type { Request } from "express";
@@ -188,17 +188,22 @@ export async function registerRoutes(
   // LOGIN / LOGOUT / AUTH STATUS
   // =====================================================
 
+  app.get("/api/sites", (_req, res) => {
+    res.json(SITE_CONFIGS.map(s => ({ id: s.id, name: s.name, logo: s.logo, themeClass: s.themeClass })));
+  });
+
   app.post("/api/auth/login", async (req, res) => {
     try {
-      const { username, password, dbName } = req.body;
+      const { username, password, dbName, siteId } = req.body;
       if (!username) {
         return res.status(400).json({ success: false, error: "Username is required" });
       }
       clearLockoutCache(username);
-      const result = await loginWithCredentials(username, password, dbName);
+      const result = await loginWithCredentials(username, password, dbName, siteId);
       if (result.success) {
         req.session.platinumAuth = result.session!;
-        res.json({ success: true, user: result.session!.userData });
+        const site = getSiteConfig(result.session!.siteId);
+        res.json({ success: true, user: result.session!.userData, site: { id: site.id, name: site.name, logo: site.logo, themeClass: site.themeClass } });
       } else {
         res.status(401).json({ success: false, error: result.error });
       }
@@ -218,10 +223,17 @@ export async function registerRoutes(
     const session = getSession(req);
     const authenticated = isSessionAuthenticated(session);
     if (authenticated) {
-      res.json({ authenticated: true, user: session.userData });
+      const site = getSiteConfig(session.siteId || 'george');
+      res.json({ authenticated: true, user: session.userData, site: { id: site.id, name: site.name, logo: site.logo, themeClass: site.themeClass } });
     } else {
       res.json({ authenticated: false });
     }
+  });
+
+  app.get("/api/auth/site-info", async (req, res) => {
+    const session = getSession(req);
+    const site = getSiteConfig(session.siteId || 'george');
+    res.json({ id: site.id, name: site.name, logo: site.logo, themeClass: site.themeClass });
   });
 
   // =====================================================
@@ -853,7 +865,8 @@ export async function registerRoutes(
       const token = await refreshSessionToken(session);
       const userId = session.userData?.user_ID || 213;
 
-      const userListRes = await fetch(`${process.env.PLATINUM_API_URL || 'https://georgeplatinumuatapi.azurewebsites.net'}/api/User`, {
+      const sessionApiUrl = getPlatinumApiUrl(session);
+      const userListRes = await fetch(`${sessionApiUrl}/api/User`, {
         headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       });
       if (!userListRes.ok) {
@@ -867,8 +880,8 @@ export async function registerRoutes(
       console.log(`[debug-auth] User ${userId} data:`, JSON.stringify(target, null, 2));
 
       const password = process.env.PLATINUM_API_PASSWORD || '';
-      const dbName = process.env.PLATINUM_API_DBNAME || 'George';
-      const apiUrl = process.env.PLATINUM_API_URL || 'https://georgeplatinumuatapi.azurewebsites.net';
+      const dbName = getPlatinumDbName(session);
+      const apiUrl = sessionApiUrl;
 
       const candidates = new Set<string>();
       if (target) {
@@ -2250,7 +2263,7 @@ export async function registerRoutes(
       if (Object.keys(settings).length === 0) {
         console.log('[Receipt Info] No settings from GetAppSetting or ConfigSetting. Trying PDF receipt header extraction...');
         try {
-          const apiUrl = process.env.PLATINUM_API_URL || 'https://georgeplatinumuatapi.azurewebsites.net';
+          const apiUrl = getPlatinumApiUrl(session);
           const token = session.token;
 
           const probeIds = [312979, 312980, 312978, 313000, 312950, 312900];

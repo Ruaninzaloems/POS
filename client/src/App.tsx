@@ -101,10 +101,19 @@ function Router() {
   );
 }
 
+function applyThemeClass(themeClass: string) {
+  const root = document.documentElement;
+  root.classList.remove('theme-site02');
+  if (themeClass) {
+    root.classList.add(themeClass);
+  }
+}
+
 function App() {
   const [authChecked, setAuthChecked] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [authKey, setAuthKey] = useState(0);
+  const [siteInfo, setSiteInfo] = useState<any>(null);
 
   useEffect(() => {
     fetch(resolveApiUrl('/api/auth/status'), {
@@ -114,6 +123,10 @@ function App() {
       .then(res => res.json())
       .then(data => {
         setAuthenticated(data.authenticated === true);
+        if (data.authenticated && data.site) {
+          setSiteInfo(data.site);
+          applyThemeClass(data.site.themeClass || '');
+        }
         setAuthChecked(true);
       })
       .catch(() => {
@@ -124,9 +137,13 @@ function App() {
 
   const [, setLocation] = useLocation();
 
-  const handleLoginSuccess = (_user: any) => {
+  const handleLoginSuccess = (_user: any, site?: any) => {
     setAuthenticated(true);
     setAuthKey(prev => prev + 1);
+    if (site) {
+      setSiteInfo(site);
+      applyThemeClass(site.themeClass || '');
+    }
     setLocation('/');
   };
 
@@ -139,6 +156,7 @@ function App() {
   }
 
   if (!authenticated) {
+    applyThemeClass('');
     return (
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
@@ -156,7 +174,7 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Toaster />
-          <PosProvider key={authKey}>
+          <PosProvider key={authKey} siteInfo={siteInfo}>
             <Router />
           </PosProvider>
         </TooltipProvider>

@@ -170,6 +170,7 @@ interface PosState {
   apiSessionActive: boolean | null;
   receiptDate: string;
   perItemSplitMode: boolean;
+  siteInfo: { id: string; name: string; logo: string; themeClass: string } | null;
 }
 
 interface PosActions {
@@ -240,7 +241,7 @@ function formatCardExpiryAsDate(exp: string): string {
   return '';
 }
 
-export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }> = ({ children, siteInfo: siteInfoProp }) => {
   const { toast } = useToast();
   const [currentUser, setCurrentUser] = useState<CashierProfile>({
     id: "CSH-00",
@@ -2623,7 +2624,8 @@ export const PosProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setReceiptDate,
       perItemSplitMode,
       setPerItemSplitMode: handleSetPerItemSplitMode,
-      updateItemSplit
+      updateItemSplit,
+      siteInfo: siteInfoProp || null
     }}>
       {children}
     </PosContext.Provider>

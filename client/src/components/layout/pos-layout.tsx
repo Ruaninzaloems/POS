@@ -46,7 +46,9 @@ interface PosLayoutProps {
 
 export function PosLayout({ children }: PosLayoutProps) {
   const [location, setLocation] = useLocation();
-  const { currentUser, activeSession, sessionLoading, endSession, viewMode, toggleViewMode, sessionDetails, dayEndStatus, platinumUser, cashierRegistered, apiSessionActive, clearTransaction } = usePos();
+  const { currentUser, activeSession, sessionLoading, endSession, viewMode, toggleViewMode, sessionDetails, dayEndStatus, platinumUser, cashierRegistered, apiSessionActive, clearTransaction, siteInfo } = usePos();
+  const isSite02 = siteInfo?.id === 'site02';
+  const headerLogo = siteInfo?.logo || '/images/platinum-logo.png';
 
   const isPosPage = location === '/pos';
   const isReceiptingPage = isPosPage;
@@ -226,14 +228,14 @@ export function PosLayout({ children }: PosLayoutProps) {
   const sessionPulse = apiSessionActive === false ? 'animate-pulse' : '';
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50 overflow-x-hidden overflow-y-auto lg:overflow-hidden">
-      <header className="h-11 sm:h-12 bg-gradient-to-r from-slate-900 via-[#1e293b] to-slate-900 text-white flex items-center px-2 sm:px-3 justify-between shrink-0 z-20 relative border-b border-white/[0.06]">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/[0.08] via-transparent to-indigo-600/[0.08]" />
+    <div className="flex flex-col h-screen bg-background overflow-x-hidden overflow-y-auto lg:overflow-hidden">
+      <header className={`h-11 sm:h-12 text-white flex items-center px-2 sm:px-3 justify-between shrink-0 z-20 relative border-b border-white/[0.06] ${isSite02 ? 'bg-gradient-to-r from-[#1d3347] via-[#243A53] to-[#1d3347]' : 'bg-gradient-to-r from-slate-900 via-[#1e293b] to-slate-900'}`}>
+        <div className={`absolute inset-0 bg-gradient-to-r ${isSite02 ? 'from-[#2BB3A6]/[0.08] via-transparent to-[#6EC6C0]/[0.08]' : 'from-blue-600/[0.08] via-transparent to-indigo-600/[0.08]'}`} />
         
         <div className="flex items-center gap-1.5 sm:gap-2 relative z-10">
           <Link href="/">
             <div className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity">
-              <img src="/images/platinum-logo.png" alt="Platinum" className="w-6 h-6 sm:w-7 sm:h-7 object-contain" />
+              <img src={headerLogo} alt="Logo" className="w-6 h-6 sm:w-7 sm:h-7 object-contain" />
             </div>
           </Link>
           

@@ -3,6 +3,54 @@ const PLATINUM_USERNAME = process.env.PLATINUM_API_USERNAME || "Francois";
 const PLATINUM_PASSWORD = process.env.PLATINUM_API_PASSWORD || "";
 const PLATINUM_DBNAME = process.env.PLATINUM_API_DBNAME || "George";
 
+export interface SiteConfig {
+  id: string;
+  name: string;
+  apiUrl: string;
+  dbName: string;
+  logo: string;
+  themeClass: string;
+}
+
+export const SITE_CONFIGS: SiteConfig[] = [
+  {
+    id: 'george',
+    name: 'George Municipality',
+    apiUrl: 'https://georgeplatinumuatapi.azurewebsites.net',
+    dbName: 'George',
+    logo: '/images/platinum-logo.png',
+    themeClass: '',
+  },
+  {
+    id: 'site02',
+    name: 'Inzalo EMS (Site02)',
+    apiUrl: 'https://test-ems-site02-token-api.azurewebsites.net',
+    dbName: 'Site02',
+    logo: '/images/inzalo-ems-logo.png',
+    themeClass: 'theme-site02',
+  },
+];
+
+export function getSiteConfig(siteId: string): SiteConfig {
+  return SITE_CONFIGS.find(s => s.id === siteId) || SITE_CONFIGS[0];
+}
+
+function getApiUrlForSession(session: UserSession): string {
+  if (session.siteId) {
+    const config = getSiteConfig(session.siteId);
+    return config.apiUrl;
+  }
+  return PLATINUM_API_URL;
+}
+
+function getDbNameForSession(session: UserSession): string {
+  if (session.siteId) {
+    const config = getSiteConfig(session.siteId);
+    return config.dbName;
+  }
+  return PLATINUM_DBNAME;
+}
+
 export interface UserSession {
   token: string;
   tokenExpiry: number;
@@ -10,10 +58,11 @@ export interface UserSession {
   posCashierId: number | null;
   authMode: 'direct' | 'azure' | 'override';
   loggedIn: boolean;
+  siteId: string;
 }
 
 export function createEmptySession(): UserSession {
-  return { token: '', tokenExpiry: 0, userData: null, posCashierId: null, authMode: 'override', loggedIn: false };
+  return { token: '', tokenExpiry: 0, userData: null, posCashierId: null, authMode: 'override', loggedIn: false, siteId: 'george' };
 }
 
 const resolvedUserCache = new Map<string, { userData: any; ts: number }>();
@@ -124,8 +173,9 @@ const tokenRefreshPromises = new Map<string, Promise<{ token: string; userData: 
 const lockoutCache = new Map<string, { until: number; message: string }>();
 const LOCKOUT_BACKOFF_MS = 10 * 60 * 1000;
 
-async function fetchTokenForUser(username: string, password: string, dbName: string): Promise<{ token: string; userData: any; authMode: 'direct' | 'azure' | 'override' }> {
-  console.log(`[PlatinumAuth] Attempting login for username: ${username} on DB: ${dbName}`);
+async function fetchTokenForUser(username: string, password: string, dbName: string, apiUrl?: string): Promise<{ token: string; userData: any; authMode: 'direct' | 'azure' | 'override' }> {
+  const baseUrl = apiUrl || PLATINUM_API_URL;
+  console.log(`[PlatinumAuth] Attempting login for username: ${username} on DB: ${dbName} via ${baseUrl}`);
 
   if (password) {
     const lockoutKey = `${username}:${dbName}`;
@@ -135,7 +185,7 @@ async function fetchTokenForUser(username: string, password: string, dbName: str
       console.log(`[PlatinumAuth] Skipping createToken for ${username} — lockout backoff active (${minsLeft}min remaining). Falling back to Azure.`);
     } else {
       try {
-        const res = await fetch(`${PLATINUM_API_URL}/auth/createToken`, {
+        const res = await fetch(`${baseUrl}/auth/createToken`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userName: username, password, dbName }),
@@ -182,7 +232,7 @@ async function fetchTokenForUser(username: string, password: string, dbName: str
     }
   }
 
-  const res = await fetch(`${PLATINUM_API_URL}/auth/createTokenAzure`, {
+  const res = await fetch(`${baseUrl}/auth/createTokenAzure`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -221,9 +271,9 @@ async function fetchTokenForUser(username: string, password: string, dbName: str
       let matchedUser: any = null;
 
       const searchEndpoints = [
-        `${PLATINUM_API_URL}/api/User/search?name=${searchName}`,
-        `${PLATINUM_API_URL}/api/User?$filter=contains(userName,'${username.split(' ')[0]}')`,
-        `${PLATINUM_API_URL}/api/User/by-name?userName=${searchName}`,
+        `${baseUrl}/api/User/search?name=${searchName}`,
+        `${baseUrl}/api/User?$filter=contains(userName,'${username.split(' ')[0]}')`,
+        `${baseUrl}/api/User/by-name?userName=${searchName}`,
       ];
 
       for (const searchUrl of searchEndpoints) {
@@ -250,7 +300,7 @@ async function fetchTokenForUser(username: string, password: string, dbName: str
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 15000);
         try {
-          const userListRes = await fetch(`${PLATINUM_API_URL}/api/User`, {
+          const userListRes = await fetch(`${baseUrl}/api/User`, {
             headers: { Authorization: `Bearer ${data.token}`, Accept: "application/json" },
             signal: controller.signal,
           });
@@ -386,7 +436,9 @@ export async function refreshSessionToken(session: UserSession): Promise<string>
   }
 
   const username = session.userData?.userName || PLATINUM_USERNAME;
-  const mutexKey = `refresh-${username}`;
+  const sessionApiUrl = getApiUrlForSession(session);
+  const sessionDbName = getDbNameForSession(session);
+  const mutexKey = `refresh-${username}-${session.siteId || 'george'}`;
 
   const existing = tokenRefreshPromises.get(mutexKey);
   if (existing) {
@@ -396,7 +448,7 @@ export async function refreshSessionToken(session: UserSession): Promise<string>
     return result.token;
   }
 
-  const promise = fetchTokenForUser(username, PLATINUM_PASSWORD, PLATINUM_DBNAME);
+  const promise = fetchTokenForUser(username, PLATINUM_PASSWORD, sessionDbName, sessionApiUrl);
   tokenRefreshPromises.set(mutexKey, promise);
   try {
     const result = await promise;
@@ -408,10 +460,11 @@ export async function refreshSessionToken(session: UserSession): Promise<string>
   }
 }
 
-export async function loginWithCredentials(username: string, password: string, dbName?: string): Promise<{ success: boolean; session?: UserSession; error?: string }> {
-  const db = dbName || PLATINUM_DBNAME;
+export async function loginWithCredentials(username: string, password: string, dbName?: string, siteId?: string): Promise<{ success: boolean; session?: UserSession; error?: string }> {
+  const site = getSiteConfig(siteId || 'george');
+  const db = dbName || site.dbName;
   try {
-    const result = await fetchTokenForUser(username, password, db);
+    const result = await fetchTokenForUser(username, password, db, site.apiUrl);
     const session: UserSession = {
       token: result.token,
       tokenExpiry: Date.now() + 7 * 60 * 60 * 1000,
@@ -419,11 +472,12 @@ export async function loginWithCredentials(username: string, password: string, d
       posCashierId: null,
       authMode: result.authMode,
       loggedIn: true,
+      siteId: site.id,
     };
-    console.log(`[PlatinumAuth] Login successful: ${result.userData.firstName} ${result.userData.lastName} (user_ID: ${result.userData.user_ID})`);
+    console.log(`[PlatinumAuth] Login successful: ${result.userData.firstName} ${result.userData.lastName} (user_ID: ${result.userData.user_ID}) on site: ${site.name}`);
     return { success: true, session };
   } catch (e: any) {
-    console.log(`[PlatinumAuth] Login failed for ${username}: ${e.message}`);
+    console.log(`[PlatinumAuth] Login failed for ${username} on ${site.name}: ${e.message}`);
     return { success: false, error: e.message || "Could not connect to the billing system" };
   }
 }
@@ -465,7 +519,8 @@ export async function getSessionPosCashierId(session: UserSession): Promise<numb
   }
   const userId = session.userData.user_ID;
   try {
-    const res = await fetch(`${PLATINUM_API_URL}/api/billing/auth-day-end-reconcile/pos-cashier?cashierId=${userId}`, {
+    const sessionApiUrl = getApiUrlForSession(session);
+    const res = await fetch(`${sessionApiUrl}/api/billing/auth-day-end-reconcile/pos-cashier?cashierId=${userId}`, {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
     });
     if (res.ok) {
@@ -491,8 +546,9 @@ function buildCacheKey(url: string, session: UserSession, path: string): string 
 
 export async function platinumGet(session: UserSession, path: string, params?: Record<string, string>, options?: { timeoutMs?: number }): Promise<any> {
   const timeoutMs = options?.timeoutMs || 30000;
+  const sessionApiUrl = getApiUrlForSession(session);
 
-  let url = `${PLATINUM_API_URL}${path}`;
+  let url = `${sessionApiUrl}${path}`;
   if (params) {
     const qs = new URLSearchParams(params).toString();
     if (qs) url += `?${qs}`;
@@ -573,7 +629,8 @@ export async function platinumGet(session: UserSession, path: string, params?: R
 }
 
 export async function platinumPost(session: UserSession, path: string, body: any, params?: Record<string, string>, options?: { timeout?: number }): Promise<any> {
-  let url = `${PLATINUM_API_URL}${path}`;
+  const sessionApiUrl = getApiUrlForSession(session);
+  let url = `${sessionApiUrl}${path}`;
   if (params) {
     const qs = new URLSearchParams(params).toString();
     if (qs) url += `?${qs}`;
@@ -632,7 +689,8 @@ export async function platinumPost(session: UserSession, path: string, body: any
 
 export async function platinumPut(session: UserSession, path: string, body: any, params?: Record<string, string>): Promise<any> {
   const token = await refreshSessionToken(session);
-  let url = `${PLATINUM_API_URL}${path}`;
+  const sessionApiUrl = getApiUrlForSession(session);
+  let url = `${sessionApiUrl}${path}`;
   if (params) {
     const qs = new URLSearchParams(params).toString();
     if (qs) url += `?${qs}`;
@@ -666,7 +724,8 @@ export async function platinumPut(session: UserSession, path: string, body: any,
 
 export async function platinumDelete(session: UserSession, path: string, params?: Record<string, string>): Promise<any> {
   const token = await refreshSessionToken(session);
-  let url = `${PLATINUM_API_URL}${path}`;
+  const sessionApiUrl = getApiUrlForSession(session);
+  let url = `${sessionApiUrl}${path}`;
   if (params) {
     const qs = new URLSearchParams(params).toString();
     if (qs) url += `?${qs}`;
@@ -694,10 +753,12 @@ export async function platinumDelete(session: UserSession, path: string, params?
   } finally { clearTimeout(timeoutId); }
 }
 
-export function getPlatinumApiUrl(): string {
+export function getPlatinumApiUrl(session?: UserSession): string {
+  if (session) return getApiUrlForSession(session);
   return PLATINUM_API_URL;
 }
 
-export function getPlatinumDbName(): string {
+export function getPlatinumDbName(session?: UserSession): string {
+  if (session) return getDbNameForSession(session);
   return PLATINUM_DBNAME;
 }

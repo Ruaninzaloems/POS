@@ -2508,11 +2508,17 @@ export async function fetchEnquiryResults(payload: any): Promise<any> {
     return res.json();
 }
 
-export async function loginUser(username: string, password: string, dbName: string): Promise<{ success: boolean; user?: any; error?: string }> {
+export async function fetchSites(): Promise<any[]> {
+    const res = await apiFetch('/api/sites');
+    if (!res.ok) return [];
+    return res.json();
+}
+
+export async function loginUser(username: string, password: string, dbName: string, siteId?: string): Promise<{ success: boolean; user?: any; site?: any; error?: string }> {
     const res = await apiFetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, dbName }),
+        body: JSON.stringify({ username, password, dbName, siteId }),
     });
     return res.json();
 }

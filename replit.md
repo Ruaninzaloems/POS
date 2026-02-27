@@ -56,8 +56,23 @@ Preferred communication style: Simple, everyday language.
 
 ## External Dependencies
 
+### Multi-Site Support
+- The application supports multiple EMS sites, each with its own API endpoint and visual branding.
+- Site selection happens at the login screen — the user picks which EMS site to connect to before entering credentials.
+- The API base URL is stored per-session (`UserSession.siteId`), so all `platinumGet`/`platinumPost`/`platinumPut`/`platinumDelete` calls use the correct site URL.
+- Site configuration is defined in `server/platinum-auth.ts` (`SITE_CONFIGS` array).
+- Each site has: `id`, `name`, `apiUrl`, `dbName`, `logo`, `themeClass`.
+- Currently configured sites:
+  - **George Municipality** (`george`): `georgeplatinumuatapi.azurewebsites.net` — default blue theme
+  - **Inzalo EMS (Site02)** (`site02`): `test-ems-site02-token-api.azurewebsites.net` — teal `#2BB3A6` theme
+- Theme switching uses CSS classes on `<html>` root (e.g., `.theme-site02` in `client/src/index.css`).
+- The header, logo, and gradient colors in `pos-layout.tsx` adapt dynamically based on the active site.
+- Adding a new site requires: adding an entry to `SITE_CONFIGS`, a CSS theme class, and site styles in `login.tsx`.
+
 ### External APIs
--   **Platinum Inzalo EMS API** (`georgeplatinumuatapi.azurewebsites.net`):
+-   **Platinum Inzalo EMS API** (multi-site, per-session URL):
+    -   George: `georgeplatinumuatapi.azurewebsites.net`
+    -   Site02: `test-ems-site02-token-api.azurewebsites.net`
     -   Central to all core POS operations: payments, prepaid services, clearance, day-end processes, and direct deposits.
     -   Authentication via JWT tokens, with token refresh managed server-side.
     -   Key modules integrated: `ReceiptPrepaid`, `billing-payment`, `auth-day-end-reconcile`, `billing-direct-deposit-allocation`, `BillingEnquiry`, `BillingDashboard`.
