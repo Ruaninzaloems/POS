@@ -216,18 +216,21 @@ export default function AllocationHistory() {
 
   return (
     <PosLayout>
-       <div className="flex-1 flex flex-col h-full bg-slate-50/50 overflow-y-auto">
-        <div className="p-3 sm:p-6 border-b bg-white flex flex-col gap-3 sm:gap-4">
-             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                 <div className="flex items-center gap-3 sm:gap-4">
+       <div className="flex flex-col h-full overflow-hidden">
+        <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
+             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4">
+                 <div className="flex items-center gap-3">
                      <Link href="/direct-deposits/manual">
                         <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10">
                             <ArrowLeft className="w-4 h-4" />
                         </Button>
                      </Link>
+                     <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+                         <FileText className="w-5 h-5 text-white" />
+                     </div>
                      <div>
-                         <h1 className="text-base sm:text-xl font-bold">Allocation History <HelpTip text="View previously completed deposit allocations and their status." side="right" /></h1>
-                         <p className="text-xs sm:text-sm text-muted-foreground">
+                         <h1 className="text-base sm:text-xl font-bold text-[#2E2E2E]">Allocation History <HelpTip text="View previously completed deposit allocations and their status." side="right" /></h1>
+                         <p className="text-xs sm:text-sm text-[#6B6B6B] mt-0.5">
                            {totalCount > 0 ? `${totalCount.toLocaleString()} allocations found` : 'Processed allocations (Manual & Bulk)'}
                          </p>
                      </div>
@@ -243,7 +246,7 @@ export default function AllocationHistory() {
                  </div>
              </div>
 
-             <div className="bg-slate-50 p-3 sm:p-4 rounded-lg border border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 items-end">
+             <div className="bg-[#F7F7F7] rounded-xl p-4 border border-[#D6D6D6] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 items-end">
                 <div className="space-y-2">
                     <Label className="text-xs text-muted-foreground">Search <HelpTip text="Filter by date, status, or cashier to find specific allocations." side="right" /></Label>
                     <div className="relative">
@@ -322,7 +325,7 @@ export default function AllocationHistory() {
              </div>
         </div>
 
-        <div className="p-3 sm:p-6">
+        <div className="flex-1 overflow-auto bg-[#F2F4F7] p-4 sm:p-6">
             {loading ? (
                 <div className="flex items-center justify-center py-20">
                     <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />

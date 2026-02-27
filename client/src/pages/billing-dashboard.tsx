@@ -806,16 +806,18 @@ export default function BillingDashboard() {
 
     return (
         <PosLayout>
-            <div className="h-full overflow-y-auto bg-[#F2F4F7]" data-testid="page-billing-dashboard">
-                <div className="w-full px-3 sm:px-5 py-4 sm:py-6 space-y-5">
-
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div>
-                            <h1 className="text-xl sm:text-2xl font-bold text-[#2E2E2E] flex items-center gap-2">
+            <div className="flex flex-col h-full overflow-hidden" data-testid="page-billing-dashboard">
+                <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+                            <BarChart3 className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="flex-1">
+                            <h1 className="text-base sm:text-xl font-bold text-[#2E2E2E] flex items-center gap-2">
                                 Billing Dashboard
                                 <HelpTip text="Central overview of all billing notifications, alerts, and system status across all municipal services." />
                             </h1>
-                            <p className="text-sm text-muted-foreground mt-0.5">
+                            <p className="text-xs sm:text-sm text-[#6B6B6B] mt-0.5">
                                 {!platinumUser ? 'Waiting for authentication...' : loading ? 'Loading notification data...' : `${totalNotifications.toLocaleString()} total notifications across ${Object.keys(counts).length} categories`}
                             </p>
                         </div>
@@ -824,6 +826,10 @@ export default function BillingDashboard() {
                             Refresh
                         </Button>
                     </div>
+                </div>
+
+                <div className="flex-1 overflow-auto bg-[#F2F4F7] p-4 sm:p-6">
+                    <div className="space-y-5">
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-4 shadow-sm">
@@ -932,6 +938,7 @@ export default function BillingDashboard() {
                                 />
                             </CardContent>
                         </Card>
+                    </div>
                     </div>
                 </div>
             </div>

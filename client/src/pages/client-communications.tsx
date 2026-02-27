@@ -496,43 +496,45 @@ export default function ClientCommunications() {
 
   return (
     <PosLayout>
-      <div className="flex flex-col h-full bg-slate-50/70 overflow-hidden">
-        <div className="flex-1 overflow-auto p-3 sm:p-4 lg:p-6">
-          <div className="max-w-6xl mx-auto space-y-3 sm:space-y-4">
-
-            <div className="bg-white rounded-xl border shadow-sm px-4 sm:px-5 py-3 sm:py-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                  <h1 className="text-base sm:text-xl font-bold text-slate-900 flex items-center gap-2" data-testid="text-page-title">
-                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#E6A57E] flex items-center justify-center shadow-sm shrink-0">
-                      <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
-                    </div>
-                    Client Communications
-                    <HelpTip text="Send custom emails and SMS messages to account holders. Messages are queued for delivery." side="right" />
-                  </h1>
-                  <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1 ml-9 sm:ml-[42px]">Send custom emails and SMS to account holders</p>
-                </div>
-                <div className="flex items-center gap-1.5 bg-slate-100 rounded-lg p-0.5 self-start sm:self-auto shrink-0">
-                  <HelpTip text="Choose whether to send via email (Mimecast) or SMS gateway." side="bottom" />
-                  <button
-                    onClick={() => setMode('email')}
-                    className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${mode === 'email' ? 'bg-white text-[#E6A57E] shadow-sm border border-[#D6D6D6]' : 'text-slate-500 hover:text-slate-700 active:bg-slate-200'}`}
-                    data-testid="button-mode-email"
-                  >
-                    <Mail className="w-3.5 h-3.5" />
-                    Email
-                  </button>
-                  <button
-                    onClick={() => setMode('sms')}
-                    className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${mode === 'sms' ? 'bg-white text-green-700 shadow-sm border border-green-200' : 'text-slate-500 hover:text-slate-700 active:bg-slate-200'}`}
-                    data-testid="button-mode-sms"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    SMS
-                  </button>
-                </div>
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+                <Mail className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-base sm:text-xl font-bold text-[#2E2E2E] flex items-center gap-2" data-testid="text-page-title">
+                  Client Communications
+                  <HelpTip text="Send custom emails and SMS messages to account holders. Messages are queued for delivery." side="right" />
+                </h1>
+                <p className="text-xs sm:text-sm text-[#6B6B6B] mt-0.5">Send custom emails and SMS to account holders</p>
               </div>
             </div>
+            <div className="flex items-center gap-1.5 bg-slate-100 rounded-lg p-0.5 self-start sm:self-auto shrink-0">
+              <HelpTip text="Choose whether to send via email (Mimecast) or SMS gateway." side="bottom" />
+              <button
+                onClick={() => setMode('email')}
+                className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${mode === 'email' ? 'bg-white text-[#E6A57E] shadow-sm border border-[#D6D6D6]' : 'text-slate-500 hover:text-slate-700 active:bg-slate-200'}`}
+                data-testid="button-mode-email"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                Email
+              </button>
+              <button
+                onClick={() => setMode('sms')}
+                className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${mode === 'sms' ? 'bg-white text-green-700 shadow-sm border border-green-200' : 'text-slate-500 hover:text-slate-700 active:bg-slate-200'}`}
+                data-testid="button-mode-sms"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                SMS
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-auto bg-[#F2F4F7] p-4 sm:p-6">
+          <div className="space-y-3 sm:space-y-4">
 
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
               <div className="lg:col-span-2 space-y-3 sm:space-y-4">

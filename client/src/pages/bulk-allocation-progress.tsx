@@ -362,25 +362,23 @@ export default function BulkAllocationProgress() {
 
   return (
     <PosLayout>
-      <div className="flex-1 overflow-y-auto w-full">
-      <div className="p-3 sm:p-4 md:p-6 space-y-3 sm:space-y-4 max-w-[1400px] mx-auto" data-testid="bulk-allocation-progress-page">
-        <div className="flex items-center gap-2 sm:gap-3 mb-2">
-          <div className="p-1.5 sm:p-2 bg-[#F0C3A7]/30 rounded-lg">
-            <FileBarChart className="w-4 h-4 sm:w-5 sm:h-5 text-[#E6A57E]" />
+      <div className="flex flex-col h-full overflow-hidden" data-testid="bulk-allocation-progress-page">
+        <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+              <FileBarChart className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-base sm:text-xl font-bold text-[#2E2E2E]" data-testid="text-page-title">Bulk Allocation Progress</h1>
+              <p className="text-xs sm:text-sm text-[#6B6B6B] mt-0.5">Monitor and track bulk allocation jobs, progress, and errors</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-lg sm:text-xl font-bold text-gray-900" data-testid="text-page-title">Bulk Allocation Progress</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">Monitor and track bulk allocation jobs, progress, and errors</p>
-          </div>
-        </div>
 
-        <Card data-testid="card-filters">
-          <CardHeader className="pb-3 pt-4">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <div className="bg-[#F7F7F7] rounded-xl p-4 border border-[#D6D6D6]" data-testid="card-filters">
+            <div className="text-sm font-medium flex items-center gap-2 mb-3">
               <Filter className="w-4 h-4" /> Search Filters
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            </div>
+            <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Financial Year</Label>
@@ -468,8 +466,11 @@ export default function BulkAllocationProgress() {
                 </Select>
               </div>
             </div>
-          </CardContent>
-        </Card>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-auto bg-[#F2F4F7] p-4 sm:p-6 space-y-3 sm:space-y-4">
 
         {hasSearched && allocationData.length > 0 && (
           <div data-testid="summary-cards">

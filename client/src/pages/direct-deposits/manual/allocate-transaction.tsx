@@ -1180,16 +1180,19 @@ export default function AllocateTransaction() {
 
   return (
     <PosLayout>
-      <div className="flex-1 flex flex-col h-full bg-gradient-to-br from-slate-50 to-slate-100/80 overflow-hidden">
-        <div className="px-3 sm:px-8 py-3 sm:py-5 border-b bg-white/80 backdrop-blur-sm flex items-center gap-2 sm:gap-4 sticky top-0 z-20">
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5 flex items-center gap-2 sm:gap-4">
              <Link href="/direct-deposits/manual">
                 <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9 rounded-full hover:bg-slate-100" data-testid="button-back">
                     <ArrowLeft className="w-4 h-4" />
                 </Button>
              </Link>
+             <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+                 <Banknote className="w-5 h-5 text-white" />
+             </div>
              <div className="flex-1 min-w-0">
-                 <h1 className="text-base sm:text-xl font-semibold tracking-tight truncate">Allocate Transaction</h1>
-                 <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">POS Item <span className="font-mono font-medium">#{transaction.posItem_ID}</span></p>
+                 <h1 className="text-base sm:text-xl font-bold text-[#2E2E2E] truncate">Allocate Transaction</h1>
+                 <p className="text-xs sm:text-sm text-[#6B6B6B] mt-0.5">POS Item <span className="font-mono font-medium">#{transaction.posItem_ID}</span></p>
              </div>
              <Badge variant={isFullyAllocated ? "default" : "secondary"} className={`hidden sm:flex items-center gap-1.5 px-3 py-1 text-xs ${isFullyAllocated ? 'bg-emerald-500 hover:bg-emerald-500' : ''}`}>
                 {isFullyAllocated ? <CheckCircle className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
@@ -1197,7 +1200,7 @@ export default function AllocateTransaction() {
              </Badge>
         </div>
 
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto bg-[#F2F4F7]">
           <div className="lg:hidden px-3 py-2.5 bg-white border-b z-10 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
@@ -1224,7 +1227,7 @@ export default function AllocateTransaction() {
             </div>
           </div>
 
-          <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6">
+          <div className="p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6">
 
             <div className="hidden lg:block lg:col-span-4 xl:col-span-3 space-y-5">
               <div className="rounded-xl border bg-white shadow-sm overflow-hidden">

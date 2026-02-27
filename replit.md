@@ -122,6 +122,39 @@ Preferred communication style: Simple, everyday language.
 -   `date-fns`: A utility library for date manipulation.
 -   `react-to-print`: Facilitates client-side printing functionality.
 
+## Page Layout Standards — MANDATORY
+
+**CRITICAL: Every page MUST follow this consistent layout pattern. Always verify new pages match this standard before delivering.**
+
+### Standard Page Structure
+```
+<div className="flex flex-col h-full overflow-hidden">
+  {/* HEADER — sticky, white bg, bottom border */}
+  <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
+    {/* Title row: icon + title + description */}
+    {/* Filter/action bar (if applicable): wrapped in bg-[#F7F7F7] rounded-xl p-4 border */}
+  </div>
+  
+  {/* CONTENT — fills remaining height, scrollable, full width */}
+  <div className="flex-1 overflow-auto bg-[#F2F4F7] p-4 sm:p-6">
+    {/* Content fills full width — NO max-w-* mx-auto constraints */}
+    {/* Use grid/flex to arrange cards/tables */}
+  </div>
+</div>
+```
+
+### Rules
+1. **Full-width content**: Never use `max-w-*xl mx-auto` to center-constrain page content. Content should fill the available width with padding only.
+2. **Full-height layout**: Always use `flex flex-col h-full overflow-hidden` as the outer wrapper so the page fills the PosLayout viewport.
+3. **Consistent header**: Every page has a white header bar with `border-b border-[#D6D6D6]`, containing an icon (gradient `from-[#E6A57E] to-[#D18E65]`), title, and subtitle.
+4. **Filter/search areas**: Wrap in `bg-[#F7F7F7] rounded-xl p-4 border border-[#D6D6D6]` inside the header section.
+5. **Content background**: Always `bg-[#F2F4F7]` for the scrollable content area.
+6. **Empty states**: Use a centered card with icon, title, description, and optional step cards — never just a plain icon floating in space.
+7. **Tabs/view toggles**: Use pill-style toggles inside a `bg-[#F2F4F7] rounded-xl p-1 border` container.
+8. **Cards**: White bg, `border border-[#D6D6D6]`, `rounded-xl`, `shadow-[0_1px_3px_rgba(0,0,0,0.08)]`.
+9. **Stat cards**: Use the `StatCard` component pattern with gradient icon, label, value, sub-value.
+10. **Test every new page** against this checklist before delivering.
+
 ### Build Tools
 -   `Vite`: Frontend bundler, optimized for speed and efficiency.
 -   `esbuild`: Used for efficient server-side bundling.

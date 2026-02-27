@@ -603,17 +603,28 @@ export default function ThirdPartyPaymentProcessing() {
 
   return (
     <PosLayout>
-      <div className="flex-1 overflow-auto bg-slate-50 p-3 sm:p-6">
-        <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
-
-          <div className="flex justify-between items-center">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2" data-testid="text-page-title">Third Party Payment Processing <HelpTip text="Import and process bulk payment files from banks and external payment providers. The system automatically resolves old account numbers to current EMS accounts." /></h1>
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+                <ExternalLink className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-base sm:text-xl font-bold text-[#2E2E2E] flex items-center gap-2" data-testid="text-page-title">Third Party Payment Processing <HelpTip text="Import and process bulk payment files from banks and external payment providers. The system automatically resolves old account numbers to current EMS accounts." /></h1>
+                <p className="text-xs sm:text-sm text-[#6B6B6B] mt-0.5">Import and process bulk payment files from banks and external payment providers</p>
+              </div>
+            </div>
             {step !== 'import' && (
               <Button variant="outline" onClick={handleNewImport} className="gap-2" data-testid="button-new-import">
                 <ChevronLeft className="h-4 w-4" /> New Import
               </Button>
             )}
           </div>
+        </div>
+
+        <div className="flex-1 overflow-auto bg-[#F2F4F7] p-4 sm:p-6">
+          <div className="space-y-4 sm:space-y-6">
 
           {step === 'import' && (
             <Card className="border-t-4 border-t-[#E6A57E] shadow-sm">
@@ -1066,6 +1077,7 @@ export default function ThirdPartyPaymentProcessing() {
               </CardContent>
             </Card>
           )}
+          </div>
         </div>
       </div>
 

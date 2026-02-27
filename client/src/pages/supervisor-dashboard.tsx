@@ -1026,65 +1026,69 @@ export default function SupervisorDashboard() {
 
   return (
     <PosLayout>
-    <div className="h-full overflow-y-auto bg-slate-50 p-3 sm:p-6 space-y-4 sm:space-y-6">
-      <div className="flex flex-col gap-3 sm:gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">Supervisor Dashboard <HelpTip text="Monitor cashier activities, review day-end submissions, and approve cancellation requests." side="right" /></h1>
-              <p className="text-xs sm:text-sm text-muted-foreground">Reconciliation & Approvals</p>
-            </div>
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border shadow-sm">
-                <div className="text-xs font-medium text-muted-foreground">Administrator</div>
-                <div className="w-6 h-6 rounded-full bg-[#2E2E2E] text-white flex items-center justify-center text-xs">AD</div>
-            </div>
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+            <LayoutDashboard className="w-5 h-5 text-white" />
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-              <Button 
-                variant="outline" 
-                className="gap-2 bg-white text-xs sm:text-sm"
-                size="sm"
-                onClick={() => setShowVarianceHistory(true)}
-              >
-                  <BarChart3 className="w-4 h-4" />
-                  <span className="hidden sm:inline">Cashier </span>Statistics
-              </Button>
-              <Button
-                variant="outline"
-                className="gap-2 bg-white text-xs sm:text-sm"
-                size="sm"
-                onClick={loadCashierList}
-                disabled={isLoadingShifts}
-              >
-                  {isLoadingShifts ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCcw className="w-4 h-4" />}
-                  Refresh
-              </Button>
-              <div className="bg-white rounded-lg border p-1 flex items-center shadow-sm">
-                  <Button 
-                      variant={reconMode === 'PER_CASHIER' ? 'secondary' : 'ghost'} 
-                      size="sm"
-                      className="text-xs sm:text-sm px-2 sm:px-3"
-                      onClick={() => setReconMode('PER_CASHIER')}
-                  >
-                      Per Cashier
-                  </Button>
-                  <Switch 
-                    checked={reconMode === 'CASH_OFFICE'} 
-                    onCheckedChange={(c) => setReconMode(c ? 'CASH_OFFICE' : 'PER_CASHIER')}
-                    className="mx-1 sm:mx-2"
-                  />
-                  <Button 
-                      variant={reconMode === 'CASH_OFFICE' ? 'secondary' : 'ghost'} 
-                      size="sm"
-                      className="text-xs sm:text-sm px-2 sm:px-3"
-                      onClick={() => setReconMode('CASH_OFFICE')}
-                  >
-                      Per Cash Office
-                  </Button>
-                  <HelpTip text="Cash offices with 'Group Cashiers' enabled require all cashiers to be reconciled together as a group. Offices without grouping allow individual cashier reconciliation. This toggle switches between the two views." className="ml-1" />
-              </div>
+          <div className="flex-1">
+            <h1 className="text-base sm:text-xl font-bold text-[#2E2E2E] flex items-center gap-2">Supervisor Dashboard <HelpTip text="Monitor cashier activities, review day-end submissions, and approve cancellation requests." side="right" /></h1>
+            <p className="text-xs sm:text-sm text-[#6B6B6B] mt-0.5">Reconciliation & Approvals</p>
           </div>
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border shadow-sm">
+              <div className="text-xs font-medium text-muted-foreground">Administrator</div>
+              <div className="w-6 h-6 rounded-full bg-[#2E2E2E] text-white flex items-center justify-center text-xs">AD</div>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+            <Button 
+              variant="outline" 
+              className="gap-2 bg-white text-xs sm:text-sm"
+              size="sm"
+              onClick={() => setShowVarianceHistory(true)}
+            >
+                <BarChart3 className="w-4 h-4" />
+                <span className="hidden sm:inline">Cashier </span>Statistics
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-2 bg-white text-xs sm:text-sm"
+              size="sm"
+              onClick={loadCashierList}
+              disabled={isLoadingShifts}
+            >
+                {isLoadingShifts ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCcw className="w-4 h-4" />}
+                Refresh
+            </Button>
+            <div className="bg-white rounded-lg border p-1 flex items-center shadow-sm">
+                <Button 
+                    variant={reconMode === 'PER_CASHIER' ? 'secondary' : 'ghost'} 
+                    size="sm"
+                    className="text-xs sm:text-sm px-2 sm:px-3"
+                    onClick={() => setReconMode('PER_CASHIER')}
+                >
+                    Per Cashier
+                </Button>
+                <Switch 
+                  checked={reconMode === 'CASH_OFFICE'} 
+                  onCheckedChange={(c) => setReconMode(c ? 'CASH_OFFICE' : 'PER_CASHIER')}
+                  className="mx-1 sm:mx-2"
+                />
+                <Button 
+                    variant={reconMode === 'CASH_OFFICE' ? 'secondary' : 'ghost'} 
+                    size="sm"
+                    className="text-xs sm:text-sm px-2 sm:px-3"
+                    onClick={() => setReconMode('CASH_OFFICE')}
+                >
+                    Per Cash Office
+                </Button>
+                <HelpTip text="Cash offices with 'Group Cashiers' enabled require all cashiers to be reconciled together as a group. Offices without grouping allow individual cashier reconciliation. This toggle switches between the two views." className="ml-1" />
+            </div>
+        </div>
       </div>
 
+      <div className="flex-1 overflow-auto bg-[#F2F4F7] p-4 sm:p-6 space-y-4 sm:space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card className="border-l-4 border-l-[#E6A57E]">
           <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
@@ -1803,6 +1807,7 @@ export default function SupervisorDashboard() {
                                                           onClick={() => {
                                                               const fakeShift: CashierShift = {
                                                                   id: String(cId),
+                                                                  userId: null,
                                                                   cashierName: cName,
                                                                   cashOffice: perOfficeList.find(o => (o.cashOffice_ID || o.id) === perOfficeSelectedId)?.cashOfficeDesc || '',
                                                                   cashOfficeId: perOfficeSelectedId,
@@ -1812,6 +1817,7 @@ export default function SupervisorDashboard() {
                                                                   systemTotals: { cash: 0, card: 0, total: 0 },
                                                                   variance: { cash: 0, card: 0, total: 0 },
                                                                   transactionCount: 0,
+                                                                  reconcileId: null,
                                                               };
                                                               handleReview(fakeShift);
                                                           }}
@@ -2341,6 +2347,7 @@ export default function SupervisorDashboard() {
               </DialogContent>
           </Dialog>
       )}
+    </div>
     </div>
     </PosLayout>
   );

@@ -472,12 +472,17 @@ export default function UnmatchedQueue() {
 
   return (
     <PosLayout>
-      <div className="flex-1 flex flex-col h-full bg-gradient-to-br from-slate-50 to-slate-100/80 overflow-hidden">
-        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3">
-            <div>
-              <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-slate-900" data-testid="text-page-title">Direct Deposits: Manual Allocation <HelpTip text="Unallocated EFT and direct deposits awaiting manual allocation to consumer accounts." side="right" /></h1>
-              <p className="text-xs text-muted-foreground mt-0.5">Bank Recon POS Items <span className="font-mono font-medium">({totalCount.toLocaleString()} total)</span></p>
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+                <Banknote className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-base sm:text-xl font-bold text-[#2E2E2E]" data-testid="text-page-title">Direct Deposits: Manual Allocation <HelpTip text="Unallocated EFT and direct deposits awaiting manual allocation to consumer accounts." side="right" /></h1>
+                <p className="text-xs sm:text-sm text-[#6B6B6B] mt-0.5">Bank Recon POS Items <span className="font-mono font-medium">({totalCount.toLocaleString()} total)</span></p>
+              </div>
             </div>
             <div className="flex items-center gap-2">
                 <Button variant="ghost" size="sm" className="text-xs text-slate-500 gap-1.5" onClick={() => setShowHelp(!showHelp)}>
@@ -602,7 +607,7 @@ export default function UnmatchedQueue() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto px-4 sm:px-6 py-3">
+        <div className="flex-1 overflow-auto bg-[#F2F4F7] px-4 sm:px-6 py-3">
           {error && (
             <Alert variant="destructive" className="mb-3 rounded-xl">
               <AlertTitle>Error loading data</AlertTitle>
