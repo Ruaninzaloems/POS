@@ -314,6 +314,10 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
       if (typeof (window as any).__posEndSessionAfterDayEnd === 'function') {
         (window as any).__posEndSessionAfterDayEnd();
       }
+      setTimeout(() => {
+        onClose();
+        setLocation('/');
+      }, 1500);
     } catch (e: any) {
       console.error('[DayEndModal] API error:', e);
       setErrorMessage(e?.message || 'Failed to save reconciliation data. Please check your connection and try again.');

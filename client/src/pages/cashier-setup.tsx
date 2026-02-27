@@ -390,6 +390,35 @@ export default function CashierSetup() {
         return null;
     }
 
+    if (dayEndPending) {
+        return (
+            <div className="min-h-screen bg-[#F2F4F7] flex items-center justify-center p-4" data-testid="cashier-setup-pending">
+                <Card className="w-full max-w-lg rounded-2xl shadow-xl shadow-black/5 border-slate-200/80 bg-white overflow-hidden">
+                    <CardContent className="p-8 sm:p-10 text-center space-y-5">
+                        <div className="mx-auto w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">
+                            <AlertTriangle className="h-8 w-8 text-amber-600" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-[#2E2E2E]">Day-End Pending Supervisor Approval</h2>
+                            <p className="text-sm text-[#6B6B6B] mt-3 leading-relaxed">
+                                Your day-end reconciliation has been submitted and is waiting for supervisor review.
+                                You cannot start or resume a session until the supervisor approves or returns your submission.
+                            </p>
+                        </div>
+                        <Button
+                            variant="outline"
+                            className="gap-2"
+                            onClick={() => setLocation('/')}
+                            data-testid="button-back-dashboard"
+                        >
+                            Back to Dashboard
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-[#F2F4F7] flex items-start sm:items-center justify-center p-4 py-6 overflow-y-auto" data-testid="cashier-setup-page">
             <Card className="w-full max-w-4xl rounded-2xl shadow-xl shadow-black/5 border-slate-200/80 bg-white overflow-hidden my-auto sm:my-0">
