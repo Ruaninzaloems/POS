@@ -130,8 +130,8 @@ export default function HomePage() {
 
         <main className="hidden md:flex flex-1 items-center justify-center bg-white overflow-auto">
           <div className="text-center max-w-md px-6">
-            <div className="w-20 h-20 rounded-2xl bg-[#E6A57E]/15 flex items-center justify-center mx-auto mb-6 shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
-              <Layers className="w-10 h-10 text-[#E6A57E]" />
+            <div className="w-24 h-24 flex items-center justify-center mx-auto mb-6">
+              <img src={siteInfo?.logo || '/images/platinum-logo.png'} alt="Logo" className="w-full h-full object-contain" />
             </div>
             <h2 className="text-2xl font-semibold text-[#2E2E2E] mb-2 inline-flex items-center gap-2 justify-center">{isSite02 ? 'Inzalo EMS' : 'SAMRAS Platinum'} <HelpTip text="Your central dashboard for municipal receipting, payments, and account management. Select a module from the sidebar to begin." side="bottom" icon="info" size="md" /></h2>
             <p className="text-[#6B6B6B] mb-6">
