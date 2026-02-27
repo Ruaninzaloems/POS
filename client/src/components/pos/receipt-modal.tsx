@@ -6,8 +6,84 @@ import { CheckCircle2, XCircle, Printer, Mail, MessageSquare, Check, Loader2 } f
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { platinumPrintReceiptRaw } from '@/lib/external-api';
+import { platinumPrintReceiptRaw, fetchMunicipalityInfo, type MunicipalityInfo } from '@/lib/external-api';
 import { Progress } from '@/components/ui/progress';
+
+function generateLocalReceiptHtml(
+  muniInfo: MunicipalityInfo | null,
+  receiptNumber: string,
+  items: TransactionItem[],
+  payment: { tenderTotal: number; changeDue: number; cashAmount: number; cardAmount: number },
+  cashierName: string,
+  officeName: string,
+  receiptDate?: string
+): string {
+  const now = new Date();
+  const dateStr = receiptDate || now.toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(',', '');
+
+  const consumerItems = items.filter(i => i.type === 'CONSUMER_SERVICES' || i.type === 'MULTI_ACCOUNT' || i.type === 'ACCOUNT_GROUP');
+  const clearanceItems = items.filter(i => i.type === 'CLEARANCE');
+  const directIncomeItems = items.filter(i => i.type === 'DIRECT_INCOME');
+  const totalPaid = payment.tenderTotal - payment.changeDue;
+
+  let paymentMethod = 'Cash';
+  if (payment.cashAmount > 0 && payment.cardAmount > 0) paymentMethod = 'Split (Cash + Card)';
+  else if (payment.cardAmount > 0) paymentMethod = 'Credit Card';
+
+  let lineItemsHtml = '';
+  for (const item of consumerItems) {
+    const name = item.originalData?.accountName || item.originalData?.name || item.description || '';
+    lineItemsHtml += `<tr><td style="padding:2px 0;font-size:10px;">${item.reference} ${name}</td><td style="padding:2px 0;font-size:10px;text-align:right;">R ${item.amountToPay.toFixed(2)}</td></tr>`;
+  }
+  for (const item of clearanceItems) {
+    const name = item.originalData?.accountName || item.originalData?.name || item.description || '';
+    lineItemsHtml += `<tr><td style="padding:2px 0;font-size:10px;">[CLR] ${item.reference} ${name}</td><td style="padding:2px 0;font-size:10px;text-align:right;">R ${item.amountToPay.toFixed(2)}</td></tr>`;
+  }
+  for (const item of directIncomeItems) {
+    lineItemsHtml += `<tr><td style="padding:2px 0;font-size:10px;">[MISC] ${item.description}</td><td style="padding:2px 0;font-size:10px;text-align:right;">R ${item.amountToPay.toFixed(2)}</td></tr>`;
+  }
+
+  return `<!DOCTYPE html><html><head><title>Receipt ${receiptNumber}</title>
+<style>
+  @page { size: 80mm auto; margin: 5mm; }
+  body { font-family: 'Courier New', monospace; font-size: 11px; width: 280px; margin: 0 auto; padding: 10px; }
+  .center { text-align: center; }
+  .bold { font-weight: bold; }
+  .line { border-top: 1px dashed #000; margin: 6px 0; }
+  table { width: 100%; border-collapse: collapse; }
+  td { vertical-align: top; }
+  .right { text-align: right; }
+  @media print { body { margin: 0; padding: 5px; } }
+</style></head><body>
+<div class="center bold" style="font-size:13px;margin-bottom:4px;">${muniInfo?.name || 'Municipality'}</div>
+<div class="center" style="font-size:10px;">${muniInfo?.address1 || ''}</div>
+<div class="center" style="font-size:10px;">${muniInfo?.address2 || ''}</div>
+${muniInfo?.vatNo ? `<div class="center" style="font-size:10px;">VAT: ${muniInfo.vatNo}</div>` : ''}
+<div class="line"></div>
+<table>
+  <tr><td style="font-size:10px;">Receipt No:</td><td class="right bold" style="font-size:11px;">${receiptNumber}</td></tr>
+  <tr><td style="font-size:10px;">Date:</td><td class="right" style="font-size:10px;">${dateStr}</td></tr>
+  <tr><td style="font-size:10px;">Cashier:</td><td class="right" style="font-size:10px;">${cashierName}</td></tr>
+  <tr><td style="font-size:10px;">Office:</td><td class="right" style="font-size:10px;">${officeName}</td></tr>
+</table>
+<div class="line"></div>
+<table>${lineItemsHtml}</table>
+<div class="line"></div>
+<table>
+  <tr class="bold"><td style="font-size:12px;">TOTAL</td><td class="right" style="font-size:12px;">R ${totalPaid.toFixed(2)}</td></tr>
+  ${payment.cashAmount > 0 && payment.cardAmount > 0 ? `
+  <tr><td style="font-size:10px;">Cash:</td><td class="right" style="font-size:10px;">R ${payment.cashAmount.toFixed(2)}</td></tr>
+  <tr><td style="font-size:10px;">Card:</td><td class="right" style="font-size:10px;">R ${payment.cardAmount.toFixed(2)}</td></tr>` : ''}
+  <tr><td style="font-size:10px;">Tender:</td><td class="right" style="font-size:10px;">R ${payment.tenderTotal.toFixed(2)}</td></tr>
+  ${payment.changeDue > 0 ? `<tr><td style="font-size:10px;">Change:</td><td class="right" style="font-size:10px;">R ${payment.changeDue.toFixed(2)}</td></tr>` : ''}
+  <tr><td style="font-size:10px;">Payment:</td><td class="right" style="font-size:10px;">${paymentMethod}</td></tr>
+</table>
+<div class="line"></div>
+<div class="center" style="font-size:9px;margin-top:8px;">${muniInfo?.receiptFooter || 'Thank you'}</div>
+<div class="center" style="font-size:8px;color:#999;margin-top:4px;">Generated: ${now.toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg' })}</div>
+<script>window.onload=function(){window.print();}</script>
+</body></html>`;
+}
 
 export function ReceiptModal() {
   const { isReceiptModalOpen, closeReceiptModal, payment, transactionItems, recentTransactions, transactionProcessing, processingStep, currentTransactionId, processingRecord } = usePos();
@@ -46,6 +122,40 @@ export function ReceiptModal() {
   const [emailAddress, setEmailAddress] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
 
+  const printLocalReceipt = useCallback(async () => {
+    if (!currentTransaction) return;
+    console.log('[ReceiptModal] Falling back to local receipt generation');
+    try {
+      const muniInfo = await fetchMunicipalityInfo().catch(() => null);
+      const items = currentTransaction.items || transactionItems;
+      const html = generateLocalReceiptHtml(
+        muniInfo,
+        currentTransaction.receiptNumber || 'N/A',
+        items,
+        payment,
+        currentTransaction.cashierName || '',
+        currentTransaction.officeName || '',
+      );
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(html);
+        printWindow.document.close();
+      } else {
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Receipt_${currentTransaction.receiptNumber || 'print'}.html`;
+        link.click();
+        URL.revokeObjectURL(url);
+      }
+      closeReceiptModal();
+    } catch (err: any) {
+      console.error('[ReceiptModal] Local receipt generation failed:', err);
+      alert('Failed to generate receipt. Please try reprinting from View Receipts.');
+    }
+  }, [currentTransaction, transactionItems, payment, closeReceiptModal]);
+
   const handlePrint = useCallback(async () => {
     if (!currentTransaction) return;
 
@@ -67,8 +177,8 @@ export function ReceiptModal() {
     }
 
     if (receiptIds.length === 0) {
-      console.warn('[ReceiptModal] No receipt IDs available for PDF print');
-      alert('No receipt serial number available for printing. The payment was recorded but the receipt PDF cannot be retrieved.');
+      console.warn('[ReceiptModal] No receipt IDs available for PDF print — using local receipt');
+      await printLocalReceipt();
       return;
     }
 
@@ -81,13 +191,17 @@ export function ReceiptModal() {
     try {
       const res = await platinumPrintReceiptRaw(receiptIds);
       if (!res.ok) {
-        const errText = await res.text().catch(() => '');
-        console.error('[ReceiptModal] print-receipt failed:', res.status, errText);
-        alert('Could not fetch receipt PDF from billing system. Please try reprinting from View Receipts.');
+        console.warn('[ReceiptModal] print-receipt API failed:', res.status, '— falling back to local receipt');
+        await printLocalReceipt();
         return;
       }
 
       const blob = await res.blob();
+      if (blob.size < 100) {
+        console.warn('[ReceiptModal] print-receipt returned tiny response — falling back to local receipt');
+        await printLocalReceipt();
+        return;
+      }
       const pdfUrl = URL.createObjectURL(blob);
       const pdfTab = window.open(pdfUrl, '_blank');
       if (!pdfTab) {
@@ -98,12 +212,12 @@ export function ReceiptModal() {
       }
       closeReceiptModal();
     } catch (err: any) {
-      console.error('[ReceiptModal] PDF print error:', err);
-      alert('Failed to open receipt PDF. Please try reprinting from View Receipts.');
+      console.error('[ReceiptModal] PDF print error, falling back to local receipt:', err);
+      await printLocalReceipt();
     } finally {
       setIsPrinting(false);
     }
-  }, [currentTransaction, closeReceiptModal]);
+  }, [currentTransaction, closeReceiptModal, printLocalReceipt]);
 
   useEffect(() => {
     if (isReceiptModalOpen && transactionItems.length > 0) {

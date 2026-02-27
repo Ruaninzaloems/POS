@@ -146,6 +146,10 @@ export default function ViewReceipts() {
     const [eftSearching, setEftSearching] = useState(false);
     const [eftResults, setEftResults] = useState<any[] | null>(null);
 
+    const [bankNotePage, setBankNotePage] = useState(1);
+    const [eftPage, setEftPage] = useState(1);
+    const SUB_PAGE_SIZE = 25;
+
     useEffect(() => {
         const loadCashiers = async () => {
             setLoadingCashiers(true);
@@ -388,6 +392,7 @@ export default function ViewReceipts() {
         }
         setBankNoteSearching(true);
         setBankNoteResults([]);
+        setBankNotePage(1);
         setReceipts([]);
         setTotalCount(0);
         setDataSource('none');
@@ -457,6 +462,7 @@ export default function ViewReceipts() {
         }
         setEftSearching(true);
         setEftResults([]);
+        setEftPage(1);
         setReceipts([]);
         setTotalCount(0);
         setDataSource('none');
@@ -524,6 +530,61 @@ export default function ViewReceipts() {
         setSortField(null);
     };
 
+    const generateViewReceiptHtml = (receipt: ViewReceiptItem): string => {
+        const receiptNo = getReceiptField(receipt, 'receiptNo');
+        const acctNo = getReceiptField(receipt, 'accountNumber');
+        const amount = Number(getReceiptField(receipt, 'amount')) || 0;
+        const tender = Number(getReceiptField(receipt, 'tenderAmount')) || amount;
+        const change = Number(getReceiptField(receipt, 'changeAmount')) || 0;
+        const cashier = getReceiptField(receipt, 'cashierName');
+        const office = getReceiptField(receipt, 'cashOffice');
+        const dateStr = getReceiptField(receipt, 'receiptDate');
+        const payMethod = getReceiptField(receipt, 'paymentMethod');
+        const payOption = getReceiptField(receipt, 'paymentOption');
+        const now = new Date();
+        return `<!DOCTYPE html><html><head><title>Receipt ${receiptNo}</title>
+<style>
+  @page { size: 80mm auto; margin: 5mm; }
+  body { font-family: 'Courier New', monospace; font-size: 11px; width: 280px; margin: 0 auto; padding: 10px; }
+  .center { text-align: center; }
+  .bold { font-weight: bold; }
+  .line { border-top: 1px dashed #000; margin: 6px 0; }
+  table { width: 100%; border-collapse: collapse; }
+  .right { text-align: right; }
+  td { vertical-align: top; font-size: 10px; padding: 2px 0; }
+  @media print { body { margin: 0; padding: 5px; } }
+</style></head><body>
+<div class="center bold" style="font-size:13px;margin-bottom:4px;">${muniInfo?.name || 'Municipality'}</div>
+<div class="center" style="font-size:10px;">${muniInfo?.address1 || ''}</div>
+<div class="center" style="font-size:10px;">${muniInfo?.address2 || ''}</div>
+${muniInfo?.vatNo ? `<div class="center" style="font-size:10px;">VAT: ${muniInfo.vatNo}</div>` : ''}
+<div class="center bold" style="font-size:10px;margin-top:4px;">** REPRINT **</div>
+<div class="line"></div>
+<table>
+  <tr><td>Receipt No:</td><td class="right bold" style="font-size:11px;">${receiptNo}</td></tr>
+  <tr><td>Date:</td><td class="right">${dateStr ? new Date(dateStr).toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '') : '-'}</td></tr>
+  <tr><td>Account:</td><td class="right">${acctNo}</td></tr>
+  ${payOption ? `<tr><td>Option:</td><td class="right">${payOption}</td></tr>` : ''}
+</table>
+<div class="line"></div>
+<table>
+  <tr class="bold"><td style="font-size:12px;">TOTAL</td><td class="right" style="font-size:12px;">R ${amount.toFixed(2)}</td></tr>
+  <tr><td>Tender:</td><td class="right">R ${tender.toFixed(2)}</td></tr>
+  ${change > 0 ? `<tr><td>Change:</td><td class="right">R ${change.toFixed(2)}</td></tr>` : ''}
+  <tr><td>Payment:</td><td class="right">${payMethod}</td></tr>
+</table>
+<div class="line"></div>
+<table>
+  <tr><td>Cashier:</td><td class="right">${cashier}</td></tr>
+  <tr><td>Office:</td><td class="right">${office}</td></tr>
+</table>
+<div class="line"></div>
+<div class="center" style="font-size:9px;margin-top:8px;">${muniInfo?.receiptFooter || 'Thank you'}</div>
+<div class="center" style="font-size:8px;color:#999;margin-top:4px;">Reprinted: ${now.toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg' })}</div>
+<script>window.onload=function(){window.print();}</script>
+</body></html>`;
+    };
+
     const handlePrintReceipt = async (receipt: ViewReceiptItem) => {
         const serialNo = getReceiptField(receipt, 'serialNo');
         if (!serialNo) {
@@ -534,12 +595,22 @@ export default function ViewReceipts() {
         try {
             const res = await platinumPrintReceiptRaw([Number(serialNo)]);
             if (!res.ok) {
-                const errText = await res.text().catch(() => '');
-                console.error('[ViewReceipts] print-receipt failed:', res.status, errText);
-                toast({ title: "Print Failed", description: "Could not fetch receipt PDF from billing system.", variant: "destructive" });
+                console.warn('[ViewReceipts] print-receipt API failed:', res.status, '— generating local receipt');
+                const html = generateViewReceiptHtml(receipt);
+                const printWindow = window.open('', '_blank');
+                if (printWindow) { printWindow.document.write(html); printWindow.document.close(); }
+                toast({ title: "Receipt Ready", description: `Receipt ${getReceiptField(receipt, 'receiptNo') || serialNo} generated for printing.` });
                 return;
             }
             const blob = await res.blob();
+            if (blob.size < 100) {
+                console.warn('[ViewReceipts] print-receipt returned tiny response — generating local receipt');
+                const html = generateViewReceiptHtml(receipt);
+                const printWindow = window.open('', '_blank');
+                if (printWindow) { printWindow.document.write(html); printWindow.document.close(); }
+                toast({ title: "Receipt Ready", description: `Receipt ${getReceiptField(receipt, 'receiptNo') || serialNo} generated for printing.` });
+                return;
+            }
             const pdfUrl = URL.createObjectURL(blob);
             const pdfTab = window.open(pdfUrl, '_blank');
             if (!pdfTab) {
@@ -550,8 +621,11 @@ export default function ViewReceipts() {
             }
             toast({ title: "Receipt Ready", description: `Receipt ${getReceiptField(receipt, 'receiptNo') || serialNo} opened for printing.` });
         } catch (e: any) {
-            console.error('Receipt fetch failed:', e);
-            toast({ title: "Print Failed", description: "Could not retrieve receipt PDF from the API.", variant: "destructive" });
+            console.error('Receipt fetch failed, generating local receipt:', e);
+            const html = generateViewReceiptHtml(receipt);
+            const printWindow = window.open('', '_blank');
+            if (printWindow) { printWindow.document.write(html); printWindow.document.close(); }
+            toast({ title: "Receipt Ready", description: `Receipt ${getReceiptField(receipt, 'receiptNo') || serialNo} generated for printing.` });
         } finally {
             setPrintingReceiptId(null);
         }
@@ -876,11 +950,27 @@ export default function ViewReceipts() {
                                             </div>
                                         )}
 
-                                        {!bankNoteSearching && bankNoteResults && bankNoteResults.length > 0 && (
+                                        {!bankNoteSearching && bankNoteResults && bankNoteResults.length > 0 && (() => {
+                                            const bankNoteTotalPages = Math.ceil(bankNoteResults.length / SUB_PAGE_SIZE);
+                                            const bankNotePagedResults = bankNoteResults.slice((bankNotePage - 1) * SUB_PAGE_SIZE, bankNotePage * SUB_PAGE_SIZE);
+                                            return (
                                             <>
-                                                <div className="text-xs text-emerald-600 font-medium">{bankNoteResults.length} result{bankNoteResults.length !== 1 ? 's' : ''} found</div>
+                                                <div className="flex items-center justify-between">
+                                                    <div className="text-xs text-emerald-600 font-medium">{bankNoteResults.length} result{bankNoteResults.length !== 1 ? 's' : ''} found{bankNoteTotalPages > 1 ? ` — page ${bankNotePage} of ${bankNoteTotalPages}` : ''}</div>
+                                                    {bankNoteTotalPages > 1 && (
+                                                        <div className="flex items-center gap-1">
+                                                            <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={bankNotePage <= 1} onClick={() => setBankNotePage(p => p - 1)} data-testid="button-banknote-prev">
+                                                                <ChevronLeft className="w-4 h-4" />
+                                                            </Button>
+                                                            <span className="text-xs text-slate-600 px-2">{bankNotePage}/{bankNoteTotalPages}</span>
+                                                            <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={bankNotePage >= bankNoteTotalPages} onClick={() => setBankNotePage(p => p + 1)} data-testid="button-banknote-next">
+                                                                <ChevronRight className="w-4 h-4" />
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </div>
                                                 <div className="sm:hidden space-y-2">
-                                                    {bankNoteResults.map((item, idx) => {
+                                                    {bankNotePagedResults.map((item, idx) => {
                                                         const r = item as any;
                                                         const receiptNo = r.receiptNo ?? r.ReceiptNo ?? '';
                                                         const accountId = Number(r.accountId ?? r.AccountId ?? 0);
@@ -949,7 +1039,7 @@ export default function ViewReceipts() {
                                                             </TableRow>
                                                         </TableHeader>
                                                         <TableBody>
-                                                            {bankNoteResults.map((item, idx) => {
+                                                            {bankNotePagedResults.map((item, idx) => {
                                                                 const r = item as any;
                                                                 const receiptNo = r.receiptNo ?? r.ReceiptNo ?? '';
                                                                 const accountId = Number(r.accountId ?? r.AccountId ?? 0);
@@ -1017,7 +1107,8 @@ export default function ViewReceipts() {
                                                     </Table>
                                                 </div>
                                             </>
-                                        )}
+                                            );
+                                        })()}
 
                                         {selectedBankNoteItem && (
                                             <div data-testid="bank-note-receipt-detail">
@@ -1179,11 +1270,27 @@ export default function ViewReceipts() {
                                             </div>
                                         )}
 
-                                        {!eftSearching && eftResults && eftResults.length > 0 && (
+                                        {!eftSearching && eftResults && eftResults.length > 0 && (() => {
+                                            const eftTotalPages = Math.ceil(eftResults.length / SUB_PAGE_SIZE);
+                                            const eftPagedResults = eftResults.slice((eftPage - 1) * SUB_PAGE_SIZE, eftPage * SUB_PAGE_SIZE);
+                                            return (
                                             <>
-                                                <div className="text-xs text-teal-600 font-medium">{eftResults.length} result{eftResults.length !== 1 ? 's' : ''} found</div>
+                                                <div className="flex items-center justify-between">
+                                                    <div className="text-xs text-teal-600 font-medium">{eftResults.length} result{eftResults.length !== 1 ? 's' : ''} found{eftTotalPages > 1 ? ` — page ${eftPage} of ${eftTotalPages}` : ''}</div>
+                                                    {eftTotalPages > 1 && (
+                                                        <div className="flex items-center gap-1">
+                                                            <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={eftPage <= 1} onClick={() => setEftPage(p => p - 1)} data-testid="button-eft-prev">
+                                                                <ChevronLeft className="w-4 h-4" />
+                                                            </Button>
+                                                            <span className="text-xs text-slate-600 px-2">{eftPage}/{eftTotalPages}</span>
+                                                            <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={eftPage >= eftTotalPages} onClick={() => setEftPage(p => p + 1)} data-testid="button-eft-next">
+                                                                <ChevronRight className="w-4 h-4" />
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </div>
                                                 <div className="sm:hidden space-y-2">
-                                                    {eftResults.map((item, idx) => {
+                                                    {eftPagedResults.map((item, idx) => {
                                                         const receiptNo = item?.receiptNo ?? '';
                                                         const accountNo = item?._searchAccountId ?? '';
                                                         const amount = Number(item?.amount) || 0;
@@ -1281,7 +1388,8 @@ export default function ViewReceipts() {
                                                     </Table>
                                                 </div>
                                             </>
-                                        )}
+                                        );
+                                    })()}
                                     </div>
                                 </TabsContent>
                             </Tabs>
