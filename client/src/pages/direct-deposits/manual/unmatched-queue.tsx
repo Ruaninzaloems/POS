@@ -607,7 +607,7 @@ export default function UnmatchedQueue() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto bg-[#F2F4F7] px-4 sm:px-6 py-3">
+        <div className="flex-1 overflow-auto bg-[#F2F4F7] p-4 sm:p-6">
           {error && (
             <Alert variant="destructive" className="mb-3 rounded-xl">
               <AlertTitle>Error loading data</AlertTitle>

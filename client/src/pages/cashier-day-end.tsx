@@ -655,7 +655,7 @@ export default function CashierDayEnd() {
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="max-w-md mx-auto">
+                                        <div>
                                             <Label className="text-sm font-semibold text-slate-700">Total Cash on Hand (R)</Label>
                                             <Input
                                                 type="number"
@@ -683,7 +683,7 @@ export default function CashierDayEnd() {
 
                             <Card className="shadow-sm border-2 border-slate-300">
                                 <CardContent className="py-5">
-                                    <div className="max-w-lg mx-auto px-1 sm:px-0 space-y-3">
+                                    <div className="px-1 sm:px-0 space-y-3">
                                         <div className="flex justify-between items-center py-2 border-b">
                                             <span className="text-sm font-semibold text-slate-700 flex items-center gap-1">Total Cash on Hand + Drop Box (R) <HelpTip text="The starting cash amount in your drawer at the beginning of your shift." /></span>
                                             <span className="font-mono font-bold text-sm bg-slate-50 border px-4 py-1.5 rounded min-w-[120px] text-right">

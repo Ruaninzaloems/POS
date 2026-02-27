@@ -530,61 +530,6 @@ export default function ViewReceipts() {
         setSortField(null);
     };
 
-    const generateViewReceiptHtml = (receipt: ViewReceiptItem): string => {
-        const receiptNo = getReceiptField(receipt, 'receiptNo');
-        const acctNo = getReceiptField(receipt, 'accountNumber');
-        const amount = Number(getReceiptField(receipt, 'amount')) || 0;
-        const tender = Number(getReceiptField(receipt, 'tenderAmount')) || amount;
-        const change = Number(getReceiptField(receipt, 'changeAmount')) || 0;
-        const cashier = getReceiptField(receipt, 'cashierName');
-        const office = getReceiptField(receipt, 'cashOffice');
-        const dateStr = getReceiptField(receipt, 'receiptDate');
-        const payMethod = getReceiptField(receipt, 'paymentMethod');
-        const payOption = getReceiptField(receipt, 'paymentOption');
-        const now = new Date();
-        return `<!DOCTYPE html><html><head><title>Receipt ${receiptNo}</title>
-<style>
-  @page { size: 80mm auto; margin: 5mm; }
-  body { font-family: 'Courier New', monospace; font-size: 11px; width: 280px; margin: 0 auto; padding: 10px; }
-  .center { text-align: center; }
-  .bold { font-weight: bold; }
-  .line { border-top: 1px dashed #000; margin: 6px 0; }
-  table { width: 100%; border-collapse: collapse; }
-  .right { text-align: right; }
-  td { vertical-align: top; font-size: 10px; padding: 2px 0; }
-  @media print { body { margin: 0; padding: 5px; } }
-</style></head><body>
-<div class="center bold" style="font-size:13px;margin-bottom:4px;">${muniInfo?.name || 'Municipality'}</div>
-<div class="center" style="font-size:10px;">${muniInfo?.address1 || ''}</div>
-<div class="center" style="font-size:10px;">${muniInfo?.address2 || ''}</div>
-${muniInfo?.vatNo ? `<div class="center" style="font-size:10px;">VAT: ${muniInfo.vatNo}</div>` : ''}
-<div class="center bold" style="font-size:10px;margin-top:4px;">** REPRINT **</div>
-<div class="line"></div>
-<table>
-  <tr><td>Receipt No:</td><td class="right bold" style="font-size:11px;">${receiptNo}</td></tr>
-  <tr><td>Date:</td><td class="right">${dateStr ? new Date(dateStr).toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '') : '-'}</td></tr>
-  <tr><td>Account:</td><td class="right">${acctNo}</td></tr>
-  ${payOption ? `<tr><td>Option:</td><td class="right">${payOption}</td></tr>` : ''}
-</table>
-<div class="line"></div>
-<table>
-  <tr class="bold"><td style="font-size:12px;">TOTAL</td><td class="right" style="font-size:12px;">R ${amount.toFixed(2)}</td></tr>
-  <tr><td>Tender:</td><td class="right">R ${tender.toFixed(2)}</td></tr>
-  ${change > 0 ? `<tr><td>Change:</td><td class="right">R ${change.toFixed(2)}</td></tr>` : ''}
-  <tr><td>Payment:</td><td class="right">${payMethod}</td></tr>
-</table>
-<div class="line"></div>
-<table>
-  <tr><td>Cashier:</td><td class="right">${cashier}</td></tr>
-  <tr><td>Office:</td><td class="right">${office}</td></tr>
-</table>
-<div class="line"></div>
-<div class="center" style="font-size:9px;margin-top:8px;">${muniInfo?.receiptFooter || 'Thank you'}</div>
-<div class="center" style="font-size:8px;color:#999;margin-top:4px;">Reprinted: ${now.toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg' })}</div>
-<script>window.onload=function(){window.print();}</script>
-</body></html>`;
-    };
-
     const handlePrintReceipt = async (receipt: ViewReceiptItem) => {
         const serialNo = getReceiptField(receipt, 'serialNo');
         if (!serialNo) {
@@ -595,20 +540,16 @@ ${muniInfo?.vatNo ? `<div class="center" style="font-size:10px;">VAT: ${muniInfo
         try {
             const res = await platinumPrintReceiptRaw([Number(serialNo)]);
             if (!res.ok) {
-                console.warn('[ViewReceipts] print-receipt API failed:', res.status, '— generating local receipt');
-                const html = generateViewReceiptHtml(receipt);
-                const printWindow = window.open('', '_blank');
-                if (printWindow) { printWindow.document.write(html); printWindow.document.close(); }
-                toast({ title: "Receipt Ready", description: `Receipt ${getReceiptField(receipt, 'receiptNo') || serialNo} generated for printing.` });
+                let detail = '';
+                try { const errJson = await res.json(); detail = errJson.detail || errJson.message || ''; } catch { detail = `HTTP ${res.status}`; }
+                console.error('[ViewReceipts] print-receipt API failed:', res.status, detail);
+                toast({ title: "Print Failed", description: `The billing system returned an error: ${detail || `HTTP ${res.status}`}`, variant: "destructive" });
                 return;
             }
             const blob = await res.blob();
             if (blob.size < 100) {
-                console.warn('[ViewReceipts] print-receipt returned tiny response — generating local receipt');
-                const html = generateViewReceiptHtml(receipt);
-                const printWindow = window.open('', '_blank');
-                if (printWindow) { printWindow.document.write(html); printWindow.document.close(); }
-                toast({ title: "Receipt Ready", description: `Receipt ${getReceiptField(receipt, 'receiptNo') || serialNo} generated for printing.` });
+                console.error('[ViewReceipts] print-receipt returned empty PDF:', blob.size, 'bytes');
+                toast({ title: "Print Failed", description: "The billing system returned an empty PDF.", variant: "destructive" });
                 return;
             }
             const pdfUrl = URL.createObjectURL(blob);
@@ -621,11 +562,8 @@ ${muniInfo?.vatNo ? `<div class="center" style="font-size:10px;">VAT: ${muniInfo
             }
             toast({ title: "Receipt Ready", description: `Receipt ${getReceiptField(receipt, 'receiptNo') || serialNo} opened for printing.` });
         } catch (e: any) {
-            console.error('Receipt fetch failed, generating local receipt:', e);
-            const html = generateViewReceiptHtml(receipt);
-            const printWindow = window.open('', '_blank');
-            if (printWindow) { printWindow.document.write(html); printWindow.document.close(); }
-            toast({ title: "Receipt Ready", description: `Receipt ${getReceiptField(receipt, 'receiptNo') || serialNo} generated for printing.` });
+            console.error('[ViewReceipts] Receipt print failed:', e);
+            toast({ title: "Print Failed", description: `Failed to fetch receipt PDF: ${e.message || 'Unknown error'}`, variant: "destructive" });
         } finally {
             setPrintingReceiptId(null);
         }
