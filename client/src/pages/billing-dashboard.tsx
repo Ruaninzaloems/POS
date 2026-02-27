@@ -43,7 +43,7 @@ interface CategoryConfig {
 }
 
 const CATEGORIES: CategoryConfig[] = [
-    { key: 'account', label: 'Account', icon: <Users className="w-4 h-4" />, gradient: 'from-[#E6A57E] to-[#D18E65]', badgeColor: 'bg-[#E6A57E]', itemCountFn: platinumGetNotificationAccountItemCounts },
+    { key: 'account', label: 'Account', icon: <Users className="w-4 h-4" />, gradient: 'from-[var(--pos-accent)] to-[var(--pos-accent-dark)]', badgeColor: 'bg-[var(--pos-accent)]', itemCountFn: platinumGetNotificationAccountItemCounts },
     { key: 'indigentsubsidy', label: 'Indigent Subsidy', icon: <ShieldCheck className="w-4 h-4" />, gradient: 'from-teal-500 to-teal-600', badgeColor: 'bg-teal-500', itemCountFn: platinumGetSubsidyItemCounts },
     { key: 'consumption', label: 'Consumption', icon: <Droplets className="w-4 h-4" />, gradient: 'from-cyan-500 to-cyan-600', badgeColor: 'bg-cyan-500', itemCountFn: platinumGetNotificationConsumptionItemCounts },
     { key: 'journal', label: 'Journal', icon: <BookOpen className="w-4 h-4" />, gradient: 'from-violet-500 to-violet-600', badgeColor: 'bg-violet-500' },
@@ -306,7 +306,7 @@ function AnimatedCounter({ value }: { value: number }) {
 const SEVERITY_STYLES = {
     critical: { dot: 'bg-red-500', text: 'text-red-700 font-semibold', badge: 'bg-red-100 text-red-700 border-red-200' },
     warning: { dot: 'bg-amber-500', text: 'text-amber-700 font-medium', badge: 'bg-amber-100 text-amber-700 border-amber-200' },
-    info: { dot: 'bg-[#E6A57E]', text: 'text-slate-700', badge: 'bg-slate-100 text-slate-600 border-slate-200' },
+    info: { dot: 'bg-[var(--pos-accent)]', text: 'text-slate-700', badge: 'bg-slate-100 text-slate-600 border-slate-200' },
     neutral: { dot: 'bg-slate-300', text: 'text-slate-400', badge: 'bg-slate-50 text-slate-400 border-slate-100' },
 };
 
@@ -401,7 +401,7 @@ function DetailTable({ endpoint, label }: { endpoint: string; label?: string }) 
     if (loading) {
         return (
             <div className="flex items-center gap-2 py-6 justify-center">
-                <Loader2 className="w-4 h-4 animate-spin text-[#E6A57E]" />
+                <Loader2 className="w-4 h-4 animate-spin text-[var(--pos-accent)]" />
                 <span className="text-sm text-muted-foreground">Loading details...</span>
             </div>
         );
@@ -467,7 +467,7 @@ function DetailTable({ endpoint, label }: { endpoint: string; label?: string }) 
                     </TableHeader>
                     <TableBody>
                         {items.map((row, idx) => (
-                            <TableRow key={idx} className="hover:bg-[#F0C3A7]/20">
+                            <TableRow key={idx} className="hover:bg-[var(--pos-accent-tint)]">
                                 {columns.map(col => {
                                     const val = row[col];
                                     const isAmount = typeof val === 'number' && /amount|balance|total|value/i.test(col);
@@ -611,7 +611,7 @@ function CategoryPanel({ category, subItems, isLoading }: { category: CategoryCo
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-10">
-                <Loader2 className="w-5 h-5 animate-spin text-[#E6A57E] mr-2" />
+                <Loader2 className="w-5 h-5 animate-spin text-[var(--pos-accent)] mr-2" />
                 <span className="text-sm text-muted-foreground">Loading {category.label} details...</span>
             </div>
         );
@@ -667,7 +667,7 @@ function CategoryPanel({ category, subItems, isLoading }: { category: CategoryCo
                     <div key={item.key}>
                         <button
                             className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group ${
-                                isExpanded ? 'bg-[#F0C3A7]/20 ring-1 ring-[#E6A57E]/30' : 'hover:bg-slate-50'
+                                isExpanded ? 'bg-[var(--pos-accent-tint)] ring-1 ring-[var(--pos-accent-shadow)]' : 'hover:bg-slate-50'
                             }`}
                             onClick={() => setExpandedItem(isExpanded ? null : item.key)}
                             data-testid={`btn-subitem-${item.key}`}
@@ -679,12 +679,12 @@ function CategoryPanel({ category, subItems, isLoading }: { category: CategoryCo
                             </span>
                             {item.endpoint && (
                                 isExpanded
-                                    ? <ChevronDown className="w-4 h-4 text-[#E6A57E] shrink-0" />
-                                    : <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#E6A57E] shrink-0 transition-colors" />
+                                    ? <ChevronDown className="w-4 h-4 text-[var(--pos-accent)] shrink-0" />
+                                    : <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[var(--pos-accent)] shrink-0 transition-colors" />
                             )}
                         </button>
                         {isExpanded && item.endpoint && (
-                            <div className="ml-5 mt-1.5 mb-2 pl-3 border-l-2 border-[#E6A57E]/30">
+                            <div className="ml-5 mt-1.5 mb-2 pl-3 border-l-2 border-[var(--pos-accent-shadow)]">
                                 <DetailTable endpoint={item.endpoint} label={item.label} />
                             </div>
                         )}
@@ -809,7 +809,7 @@ export default function BillingDashboard() {
             <div className="flex flex-col h-full overflow-hidden" data-testid="page-billing-dashboard">
                 <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
                     <div className="flex items-center gap-3 mb-4">
-                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
                             <BarChart3 className="w-5 h-5 text-white" />
                         </div>
                         <div className="flex-1">
@@ -845,9 +845,9 @@ export default function BillingDashboard() {
                                 </div>
                             </div>
                         </div>
-                        <div className="rounded-xl border border-[#D6D6D6] bg-gradient-to-br from-[#F0C3A7]/20 to-[#F7F7F7] p-4 shadow-sm">
+                        <div className="rounded-xl border border-[#D6D6D6] bg-gradient-to-br from-[var(--pos-accent-tint)] to-[#F7F7F7] p-4 shadow-sm">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#E6A57E] to-[#D18E65] text-white flex items-center justify-center shadow-lg shadow-[#E6A57E]/20">
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] text-white flex items-center justify-center shadow-lg shadow-[var(--pos-accent-shadow)]">
                                     <Bell className="w-5 h-5" />
                                 </div>
                                 <div className="flex-1">

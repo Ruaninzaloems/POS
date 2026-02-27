@@ -515,12 +515,12 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
 
             <div className="rounded-xl border border-[#D6D6D6] bg-[#F7F7F7] p-5">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-lg bg-[#E6A57E] text-white flex items-center justify-center shadow-sm">
+                <div className="w-9 h-9 rounded-lg bg-[var(--pos-accent)] text-white flex items-center justify-center shadow-sm">
                   <CreditCard className="w-5 h-5" />
                 </div>
                 <div>
                   <div className="text-sm font-bold text-[#2E2E2E]">Credit Card Total</div>
-                  <div className="text-[11px] text-[#E6A57E]">Sum of all merchant slips for this shift</div>
+                  <div className="text-[11px] text-[var(--pos-accent)]">Sum of all merchant slips for this shift</div>
                 </div>
               </div>
               <div className="relative">
@@ -528,7 +528,7 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                 <Input
                   type="number"
                   step="0.01"
-                  className="pl-9 text-xl font-mono font-bold h-12 bg-white border-[#D6D6D6] focus-visible:ring-[#E6A57E]"
+                  className="pl-9 text-xl font-mono font-bold h-12 bg-white border-[#D6D6D6] focus-visible:ring-[var(--pos-accent)]"
                   placeholder="0.00"
                   value={totalCreditAmt}
                   onChange={(e) => setTotalCreditAmt(e.target.value)}
@@ -671,7 +671,7 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                 data-testid="button-toggle-history"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-[#E6A57E] text-white flex items-center justify-center shadow-sm">
+                  <div className="w-9 h-9 rounded-lg bg-[var(--pos-accent)] text-white flex items-center justify-center shadow-sm">
                     <Receipt className="w-5 h-5" />
                   </div>
                   <div className="text-left">
@@ -683,7 +683,7 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                 </div>
                 <div className="flex items-center gap-2">
                   {receiptHistory.length > 0 && !isLoadingHistory && (
-                    <span className="text-sm font-mono font-bold text-[#E6A57E]">
+                    <span className="text-sm font-mono font-bold text-[var(--pos-accent)]">
                       R {systemTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
                     </span>
                   )}
@@ -734,47 +734,47 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                         ))}
                       </div>
 
-                      <div className="border-t border-[#D6D6D6] bg-[#F0C3A7]/20 px-5 py-2.5 space-y-1.5">
+                      <div className="border-t border-[#D6D6D6] bg-[var(--pos-accent-tint)] px-5 py-2.5 space-y-1.5">
                         <div className="text-[9px] uppercase tracking-wider text-[#6B6B6B] font-bold mb-1">System Totals</div>
                         <div className="flex justify-between text-xs">
-                          <span className="text-[#E6A57E]">Total Cash on Hand + Drop Box</span>
+                          <span className="text-[var(--pos-accent)]">Total Cash on Hand + Drop Box</span>
                           <span className="font-mono font-bold text-[#2E2E2E]">R {(systemCashTotal + systemDropBoxTotal).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
                         </div>
                         <div className="flex justify-between text-xs">
-                          <span className="text-[#E6A57E]">Total Debit/Credit Card Receipts</span>
+                          <span className="text-[var(--pos-accent)]">Total Debit/Credit Card Receipts</span>
                           <span className="font-mono font-bold text-[#2E2E2E]">R {systemCardTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
                         </div>
                         <div className="flex justify-between text-xs">
-                          <span className="text-[#E6A57E]">Total Cheque Receipts</span>
+                          <span className="text-[var(--pos-accent)]">Total Cheque Receipts</span>
                           <span className="font-mono font-bold text-[#2E2E2E]">R {systemChequeTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
                         </div>
                         <div className="flex justify-between text-xs">
-                          <span className="text-[#E6A57E]">Total Postal Order Receipts</span>
+                          <span className="text-[var(--pos-accent)]">Total Postal Order Receipts</span>
                           <span className="font-mono font-bold text-[#2E2E2E]">R {systemPostalTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
                         </div>
                         <div className="border-t border-[#D6D6D6] pt-1.5 mt-1.5 space-y-1">
                           <div className="text-[9px] uppercase tracking-wider text-[#6B6B6B] font-bold">By Category</div>
                           {consumerServicesTotal > 0 && (
                             <div className="flex justify-between text-xs">
-                              <span className="text-[#E6A57E]">Consumer Services</span>
+                              <span className="text-[var(--pos-accent)]">Consumer Services</span>
                               <span className="font-mono font-bold text-[#2E2E2E]">R {consumerServicesTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
                             </div>
                           )}
                           {miscTotal > 0 && (
                             <div className="flex justify-between text-xs">
-                              <span className="text-[#E6A57E]">Direct Income (Misc)</span>
+                              <span className="text-[var(--pos-accent)]">Direct Income (Misc)</span>
                               <span className="font-mono font-bold text-[#2E2E2E]">R {miscTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
                             </div>
                           )}
                           {clearanceTotal > 0 && (
                             <div className="flex justify-between text-xs">
-                              <span className="text-[#E6A57E]">Clearance</span>
+                              <span className="text-[var(--pos-accent)]">Clearance</span>
                               <span className="font-mono font-bold text-[#2E2E2E]">R {clearanceTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
                             </div>
                           )}
                           {prepaidTotal > 0 && (
                             <div className="flex justify-between text-xs">
-                              <span className="text-[#E6A57E]">Prepaid Recharge</span>
+                              <span className="text-[var(--pos-accent)]">Prepaid Recharge</span>
                               <span className="font-mono font-bold text-[#2E2E2E]">R {prepaidTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
                             </div>
                           )}
@@ -803,7 +803,7 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
               />
             </div>
 
-            <div className="bg-gradient-to-r from-[#E6A57E] to-[#D18E65] rounded-xl p-4 shadow-lg space-y-2">
+            <div className="bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] rounded-xl p-4 shadow-lg space-y-2">
               <div className="flex justify-between items-center text-sm text-white/70">
                 <span>Total Cash on Hand + Drop Box</span>
                 <span className="font-mono font-bold text-white">R {(totalCashAmt + dropBoxAmt).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
@@ -864,10 +864,10 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
                 </div>
                 <div className="flex justify-between items-center p-3 bg-white rounded-lg border">
                   <div className="flex items-center gap-2">
-                    <CreditCard className="w-4 h-4 text-[#E6A57E]" />
+                    <CreditCard className="w-4 h-4 text-[var(--pos-accent)]" />
                     <span className="text-sm text-slate-700 font-medium">Total Debit/Credit Card Receipts (R)</span>
                   </div>
-                  <span className="text-base font-mono font-bold text-[#E6A57E]" data-testid="text-confirm-card">
+                  <span className="text-base font-mono font-bold text-[var(--pos-accent)]" data-testid="text-confirm-card">
                     {creditAmt.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
@@ -898,7 +898,7 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
               )}
             </div>
 
-            <div className="bg-gradient-to-r from-[#E6A57E] to-[#D18E65] rounded-xl p-4 text-center shadow-lg">
+            <div className="bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] rounded-xl p-4 text-center shadow-lg">
               <div className="text-[10px] uppercase tracking-widest font-medium text-white/70">Grand Total</div>
               <div className="text-3xl font-mono font-black text-white mt-1" data-testid="text-confirm-total">
                 R {grandTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -909,8 +909,8 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
 
         {step === 'submitting' && (
           <div className="px-6 py-16 flex flex-col items-center text-center space-y-4">
-            <div className="w-16 h-16 rounded-full bg-[#F0C3A7]/30 flex items-center justify-center">
-              <Loader2 className="w-8 h-8 animate-spin text-[#E6A57E]" />
+            <div className="w-16 h-16 rounded-full bg-[var(--pos-accent-tint-strong)] flex items-center justify-center">
+              <Loader2 className="w-8 h-8 animate-spin text-[var(--pos-accent)]" />
             </div>
             <div>
               <p className="font-semibold text-slate-800">Submitting Reconciliation</p>
@@ -951,7 +951,7 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
               <Button variant="ghost" onClick={onClose} className="text-slate-500" data-testid="button-cancel">Cancel</Button>
               <Button
                 onClick={handleNext}
-                className="bg-gradient-to-r from-[#E6A57E] to-[#D18E65] hover:from-[#D18E65] hover:to-[#C07D55] text-white font-bold px-6 shadow-md"
+                className="bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)] text-white font-bold px-6 shadow-md"
                 data-testid="button-next"
               >
                 Review & Confirm
@@ -984,7 +984,7 @@ export function DayEndModal({ isOpen, onClose }: DayEndModalProps) {
           {step === 'error' && (
             <>
               <Button variant="ghost" onClick={() => setStep('capture')} className="text-slate-500" data-testid="button-retry-back">Back to Edit</Button>
-              <Button onClick={handleSubmit} className="bg-gradient-to-r from-[#E6A57E] to-[#D18E65] text-white font-bold px-6" data-testid="button-retry">Retry Submission</Button>
+              <Button onClick={handleSubmit} className="bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] text-white font-bold px-6" data-testid="button-retry">Retry Submission</Button>
             </>
           )}
         </DialogFooter>

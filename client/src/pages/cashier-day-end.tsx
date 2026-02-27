@@ -297,7 +297,7 @@ export default function CashierDayEnd() {
             <div className="flex flex-col h-full overflow-hidden">
                 <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
                     <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
                             <Coins className="w-5 h-5 text-white" />
                         </div>
                         <div>
@@ -704,7 +704,7 @@ export default function CashierDayEnd() {
                                         </div>
                                         <div className="flex justify-between items-center py-2 border-b-2 border-slate-400">
                                             <span className="text-sm font-bold text-slate-800 flex items-center gap-1">Grand Total (R) <HelpTip text="The difference between your counted cash and the system's expected amount. A zero variance is ideal." /></span>
-                                            <span className="font-mono font-bold text-base bg-[#F0C3A7]/20 border-2 border-[#E6A57E] px-4 py-1.5 rounded min-w-[120px] text-right text-[#2E2E2E]">
+                                            <span className="font-mono font-bold text-base bg-[var(--pos-accent-tint)] border-2 border-[var(--pos-accent)] px-4 py-1.5 rounded min-w-[120px] text-right text-[#2E2E2E]">
                                                 {grandTotal.toFixed(2)}
                                             </span>
                                         </div>

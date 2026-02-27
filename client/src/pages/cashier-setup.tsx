@@ -343,8 +343,8 @@ export default function CashierSetup() {
 
     const StepIndicator = ({ step, label, status }: { step: number; label: string; status: StepStatus }) => (
         <div className="flex items-center gap-3 text-sm" data-testid={`step-${step}-indicator`}>
-            <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${status === 'loading' ? 'bg-[#F0C3A7]/20 border-[#E6A57E]' : status === 'success' ? 'bg-emerald-100 border-emerald-300' : status === 'error' ? 'bg-red-100 border-red-300' : 'bg-slate-100 border-slate-200'}`}>
-                {status === 'loading' && <Loader2 className="h-4 w-4 animate-spin text-[#E6A57E]" />}
+            <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${status === 'loading' ? 'bg-[var(--pos-accent-tint)] border-[var(--pos-accent)]' : status === 'success' ? 'bg-emerald-100 border-emerald-300' : status === 'error' ? 'bg-red-100 border-red-300' : 'bg-slate-100 border-slate-200'}`}>
+                {status === 'loading' && <Loader2 className="h-4 w-4 animate-spin text-[var(--pos-accent)]" />}
                 {status === 'success' && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
                 {status === 'error' && <AlertTriangle className="h-4 w-4 text-red-500" />}
                 {status === 'pending' && <Circle className="h-4 w-4 text-slate-300" />}
@@ -352,7 +352,7 @@ export default function CashierSetup() {
             <span className="font-semibold text-sm text-slate-700">
                 Step {step}: {label}
             </span>
-            {status === 'loading' && <Badge variant="outline" className="text-xs text-[#E6A57E] border-[#E6A57E]/30">In Progress</Badge>}
+            {status === 'loading' && <Badge variant="outline" className="text-xs text-[var(--pos-accent)] border-[var(--pos-accent-shadow)]">In Progress</Badge>}
             {status === 'success' && <Badge variant="outline" className="text-xs text-emerald-500 border-emerald-200">Done</Badge>}
             {status === 'error' && <Badge variant="outline" className="text-xs text-red-500 border-red-200">Failed</Badge>}
         </div>
@@ -376,7 +376,7 @@ export default function CashierSetup() {
             <div className="min-h-screen bg-[#F2F4F7] flex items-center justify-center p-4" data-testid="cashier-setup-loading">
                 <Card className="w-full max-w-4xl rounded-2xl shadow-xl shadow-black/5 border-slate-200/80 bg-white overflow-hidden">
                     <CardContent className="p-12 flex flex-col items-center gap-4">
-                        <Loader2 className="h-8 w-8 animate-spin text-[#E6A57E]" />
+                        <Loader2 className="h-8 w-8 animate-spin text-[var(--pos-accent)]" />
                         <p className="text-slate-600">
                             {sessionLoading ? 'Checking session status...' : 'Validating cashier registration...'}
                         </p>
@@ -482,7 +482,7 @@ export default function CashierSetup() {
                                         <Button
                                             type="button"
                                             onClick={handleResumeSession}
-                                            className="bg-gradient-to-r from-[#E6A57E] to-[#D18E65] hover:from-[#D18E65] hover:to-[#C07A52] shadow-lg shadow-[#E6A57E]/25 text-white font-bold rounded-xl"
+                                            className="bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)] shadow-lg shadow-[var(--pos-accent-shadow)] text-white font-bold rounded-xl"
                                             data-testid="button-resume-session"
                                         >
                                             Resume Session
@@ -541,7 +541,7 @@ export default function CashierSetup() {
                         <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-start sm:items-center gap-1 sm:gap-4">
                             <Label className="text-left sm:text-right text-sm font-semibold text-slate-600">Cashier Office <span className="text-red-500">*</span></Label>
                             <Select value={selectedOfficeId} onValueChange={setSelectedOfficeId} disabled={isCashierRegistered !== true || cashOffices.length === 0} data-testid="select-cash-office">
-                                <SelectTrigger className="h-11 rounded-xl border-slate-200 focus:border-[#E6A57E] focus:ring-2 focus:ring-[#E6A57E]/20 text-slate-600" data-testid="select-cash-office-trigger">
+                                <SelectTrigger className="h-11 rounded-xl border-slate-200 focus:border-[var(--pos-accent)] focus:ring-2 focus:ring-[var(--pos-accent-tint)] text-slate-600" data-testid="select-cash-office-trigger">
                                     <SelectValue placeholder={step2Status === 'loading' ? 'Loading offices...' : '-- Select Cash Office --'} />
                                 </SelectTrigger>
                                 <SelectContent className="max-h-[300px]">
@@ -584,13 +584,13 @@ export default function CashierSetup() {
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Cashier Configuration</h3>
                                     <div className="flex items-center gap-2">
-                                        {configLoading && <Loader2 className="h-4 w-4 animate-spin text-[#E6A57E]" />}
+                                        {configLoading && <Loader2 className="h-4 w-4 animate-spin text-[var(--pos-accent)]" />}
                                         {configError && !configLoading && (
                                             <Button
                                                 type="button"
                                                 variant="ghost"
                                                 size="sm"
-                                                className="h-7 px-2 text-xs text-[#E6A57E] hover:text-[#D18E65]"
+                                                className="h-7 px-2 text-xs text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)]"
                                                 onClick={() => {
                                                     setConfigError('');
                                                     setPaymentOptions([]);
@@ -631,8 +631,8 @@ export default function CashierSetup() {
                                     <div className="bg-[#F7F7F7] border border-[#D6D6D6] rounded-xl p-4" data-testid="card-payment-options">
                                         <div className="flex items-center justify-between mb-3">
                                             <div className="flex items-center gap-2">
-                                                <div className="w-8 h-8 rounded-lg bg-[#E6A57E]/10 flex items-center justify-center">
-                                                    <ShieldCheck className="h-4 w-4 text-[#E6A57E]" />
+                                                <div className="w-8 h-8 rounded-lg bg-[var(--pos-accent)]/10 flex items-center justify-center">
+                                                    <ShieldCheck className="h-4 w-4 text-[var(--pos-accent)]" />
                                                 </div>
                                                 <div>
                                                     <p className="text-xs font-semibold text-[#2E2E2E]">Payment Functions</p>
@@ -645,7 +645,7 @@ export default function CashierSetup() {
                                         </div>
                                         {configLoading ? (
                                             <div className="flex items-center gap-2 py-2">
-                                                <Loader2 className="h-3 w-3 animate-spin text-[#E6A57E]" />
+                                                <Loader2 className="h-3 w-3 animate-spin text-[var(--pos-accent)]" />
                                                 <span className="text-xs text-[#6B6B6B]">Loading...</span>
                                             </div>
                                         ) : paymentOptions.length === 0 ? (
@@ -656,7 +656,7 @@ export default function CashierSetup() {
                                                     <div key={opt.posPaymentOption_ID} className="flex items-center justify-between" data-testid={`payment-option-${opt.posPaymentOption_ID}`}>
                                                         <span className="text-xs text-slate-700 mr-2">{opt.posPaymentOptionDesc}</span>
                                                         {opt.isTicked && opt.enabled ? (
-                                                            <Badge className="text-[10px] px-1.5 py-0 bg-[#F0C3A7]/20 text-[#2E2E2E] border-[#E6A57E]/30 hover:bg-[#F0C3A7]/20" data-testid={`option-status-${opt.posPaymentOption_ID}`}>Enabled</Badge>
+                                                            <Badge className="text-[10px] px-1.5 py-0 bg-[var(--pos-accent-tint)] text-[#2E2E2E] border-[var(--pos-accent-shadow)] hover:bg-[var(--pos-accent-tint)]" data-testid={`option-status-${opt.posPaymentOption_ID}`}>Enabled</Badge>
                                                         ) : (
                                                             <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-slate-50 text-slate-400 border-slate-200" data-testid={`option-status-${opt.posPaymentOption_ID}`}>Disabled</Badge>
                                                         )}
@@ -703,7 +703,7 @@ export default function CashierSetup() {
                                                             <span className="text-xs text-slate-700">{t.posPaymentTypeDesc}</span>
                                                         </div>
                                                         {t.isTicked && t.enabled ? (
-                                                            <Badge className="text-[10px] px-1.5 py-0 bg-[#F0C3A7]/20 text-[#2E2E2E] border-[#E6A57E]/30 hover:bg-[#F0C3A7]/20" data-testid={`type-status-${t.posPaymentType_ID}`}>Enabled</Badge>
+                                                            <Badge className="text-[10px] px-1.5 py-0 bg-[var(--pos-accent-tint)] text-[#2E2E2E] border-[var(--pos-accent-shadow)] hover:bg-[var(--pos-accent-tint)]" data-testid={`type-status-${t.posPaymentType_ID}`}>Enabled</Badge>
                                                         ) : (
                                                             <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-slate-50 text-slate-400 border-slate-200" data-testid={`type-status-${t.posPaymentType_ID}`}>Disabled</Badge>
                                                         )}
@@ -769,7 +769,7 @@ export default function CashierSetup() {
                         <div className="space-y-3">
                             <Button
                                 type="submit"
-                                className="bg-gradient-to-r from-[#E6A57E] to-[#D18E65] hover:from-[#D18E65] hover:to-[#C07A52] shadow-lg shadow-[#E6A57E]/25 h-12 text-base font-bold rounded-xl w-full"
+                                className="bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)] shadow-lg shadow-[var(--pos-accent-shadow)] h-12 text-base font-bold rounded-xl w-full"
                                 disabled={!selectedOffice || submitting || isCashierRegistered !== true || dayEndPending || resumingSession}
                                 data-testid="button-submit"
                             >

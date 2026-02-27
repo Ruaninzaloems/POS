@@ -56,7 +56,7 @@ export function EasyPayModal({ open, onOpenChange, onAddToTransaction }: EasyPay
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-[#E6A57E]" />
+            <Building2 className="h-5 w-5 text-[var(--pos-accent)]" />
             EasyPay Bill Payment
           </DialogTitle>
         </DialogHeader>
@@ -86,7 +86,7 @@ export function EasyPayModal({ open, onOpenChange, onAddToTransaction }: EasyPay
           )}
 
           {result && (
-            <Card className="border-[#D6D6D6] bg-[#F0C3A7]/20">
+            <Card className="border-[#D6D6D6] bg-[var(--pos-accent-tint)]">
               <CardContent className="pt-4 space-y-3">
                 <div className="flex justify-between items-start">
                   <div>
@@ -94,7 +94,7 @@ export function EasyPayModal({ open, onOpenChange, onAddToTransaction }: EasyPay
                     <p className="text-sm text-slate-500">{result.accountName}</p>
                   </div>
                   <div className="text-right">
-                    <span className="block font-bold text-lg text-[#E6A57E]">
+                    <span className="block font-bold text-lg text-[var(--pos-accent)]">
                       R {result.amount.toFixed(2)}
                     </span>
                     <span className="text-xs text-slate-500">Due Date: {result.dueDate}</span>
@@ -120,7 +120,7 @@ export function EasyPayModal({ open, onOpenChange, onAddToTransaction }: EasyPay
           <Button 
             onClick={handleAdd} 
             disabled={!result}
-            className="bg-[#E6A57E] hover:bg-[#D18E65]"
+            className="bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)]"
           >
             Add to Transaction
           </Button>

@@ -96,7 +96,7 @@ function StatCard({ label, value, subValue, icon, color, tip }: {
   label: string; value: string | number; subValue?: string; icon: React.ReactNode; color: string; tip?: string;
 }) {
   const colorMap: Record<string, string> = {
-    blue: 'from-[#E6A57E] to-[#D18E65] text-white',
+    blue: 'from-[var(--pos-accent)] to-[var(--pos-accent-dark)] text-white',
     green: 'from-emerald-500 to-emerald-600 text-white',
     amber: 'from-amber-500 to-amber-600 text-white',
     red: 'from-red-500 to-red-600 text-white',
@@ -259,7 +259,7 @@ function AutoAllocationContent() {
       <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
               <RefreshCw className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -294,7 +294,7 @@ function AutoAllocationContent() {
           <div className="flex-1 grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs font-semibold text-[#2E2E2E] mb-1.5 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-[#E6A57E]" />
+                <Calendar className="w-3.5 h-3.5 text-[var(--pos-accent)]" />
                 From Date
                 <HelpTip text="Start date for the deposit search range" side="top" />
               </Label>
@@ -305,7 +305,7 @@ function AutoAllocationContent() {
             </div>
             <div>
               <Label className="text-xs font-semibold text-[#2E2E2E] mb-1.5 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-[#E6A57E]" />
+                <Calendar className="w-3.5 h-3.5 text-[var(--pos-accent)]" />
                 To Date
                 <HelpTip text="End date for the deposit search range" side="top" />
               </Label>
@@ -319,7 +319,7 @@ function AutoAllocationContent() {
             <Button
               onClick={handleFetchUnprocessed}
               disabled={loading}
-              className="h-10 gap-2.5 px-5 bg-[#E6A57E] hover:bg-[#D18E65] shadow-[0_1px_3px_rgba(0,0,0,0.15)] text-white font-semibold text-sm flex-1 sm:flex-none rounded-lg"
+              className="h-10 gap-2.5 px-5 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] shadow-[0_1px_3px_rgba(0,0,0,0.15)] text-white font-semibold text-sm flex-1 sm:flex-none rounded-lg"
               data-testid="button-fetch-unprocessed"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
@@ -330,7 +330,7 @@ function AutoAllocationContent() {
                 onClick={handleFetchUnprocessed}
                 variant="outline"
                 size="icon"
-                className="h-10 w-10 border-[#D6D6D6] hover:bg-[#F0C3A7]/20 rounded-lg"
+                className="h-10 w-10 border-[#D6D6D6] hover:bg-[var(--pos-accent-tint)] rounded-lg"
                 disabled={loading}
                 data-testid="button-refresh"
               >
@@ -354,7 +354,7 @@ function AutoAllocationContent() {
           <div className="flex flex-col items-center justify-center h-full px-4">
             <div className="max-w-lg w-full">
               <div className="text-center mb-8">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center mx-auto mb-5 shadow-[0_4px_16px_rgba(230,165,126,0.3)]">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-center mx-auto mb-5 shadow-[0_4px_16px_rgba(230,165,126,0.3)]">
                   <Package className="w-10 h-10 text-white" />
                 </div>
                 <h2 className="text-xl font-bold text-[#2E2E2E] mb-2">Fetch Unprocessed Deposits</h2>
@@ -368,10 +368,10 @@ function AutoAllocationContent() {
                   { step: '3', icon: <CheckCheck className="w-5 h-5" />, title: 'Process', desc: 'Reconcile and confirm deposits' },
                 ].map((s) => (
                   <div key={s.step} className="bg-white rounded-xl border border-[#D6D6D6] p-4 text-center shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] transition-shadow">
-                    <div className="w-10 h-10 rounded-full bg-[#F0C3A7]/25 flex items-center justify-center mx-auto mb-3 text-[#E6A57E]">
+                    <div className="w-10 h-10 rounded-full bg-[var(--pos-accent-tint-strong)] flex items-center justify-center mx-auto mb-3 text-[var(--pos-accent)]">
                       {s.icon}
                     </div>
-                    <div className="text-[10px] font-bold text-[#E6A57E] uppercase tracking-widest mb-1">Step {s.step}</div>
+                    <div className="text-[10px] font-bold text-[var(--pos-accent)] uppercase tracking-widest mb-1">Step {s.step}</div>
                     <div className="text-sm font-semibold text-[#2E2E2E] mb-1">{s.title}</div>
                     <div className="text-xs text-[#6B6B6B] leading-relaxed">{s.desc}</div>
                   </div>
@@ -384,7 +384,7 @@ function AutoAllocationContent() {
         {loading && (
           <div className="flex flex-col items-center justify-center py-20 text-[#6B6B6B]">
             <div className="w-16 h-16 rounded-2xl bg-white border border-[#D6D6D6] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.08)] mb-4">
-              <Loader2 className="w-8 h-8 animate-spin text-[#E6A57E]" />
+              <Loader2 className="w-8 h-8 animate-spin text-[var(--pos-accent)]" />
             </div>
             <p className="text-sm font-semibold text-[#2E2E2E] mb-1">Loading deposits...</p>
             <p className="text-xs text-[#6B6B6B]">Fetching data from the server</p>
@@ -453,7 +453,7 @@ function AutoAllocationContent() {
                       data-testid={`button-expand-batch-${batch.num}`}
                     >
                       <div className="flex items-center gap-2 sm:gap-3">
-                        <div className="shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center text-white text-xs sm:text-sm font-bold shadow-sm">
+                        <div className="shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-center text-white text-xs sm:text-sm font-bold shadow-sm">
                           {batch.num}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -564,8 +564,8 @@ function AutoAllocationContent() {
                                 </thead>
                                 <tbody>
                                   {batch.items.map((item, idx) => (
-                                    <tr key={item.posItem_ID || idx} className="border-t border-slate-100 hover:bg-[#F0C3A7]/10 transition-colors" data-testid={`item-row-${item.posItem_ID}`}>
-                                      <td className="px-2 py-2 font-mono text-[#E6A57E] font-medium">{item.posItem_ID}</td>
+                                    <tr key={item.posItem_ID || idx} className="border-t border-slate-100 hover:bg-[var(--pos-accent-tint)] transition-colors" data-testid={`item-row-${item.posItem_ID}`}>
+                                      <td className="px-2 py-2 font-mono text-[var(--pos-accent)] font-medium">{item.posItem_ID}</td>
                                       <td className="px-2 py-2 whitespace-nowrap">{formatDate(item.dateOfTransaction)}</td>
                                       <td className="px-2 py-2 max-w-[150px] truncate" title={item.reference}>{item.reference || '-'}</td>
                                       <td className="px-2 py-2 max-w-[150px] truncate text-slate-500" title={item.note || ''}>{item.note || '-'}</td>

@@ -74,7 +74,7 @@ export function PosLayout({ children }: PosLayoutProps) {
         <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="flex flex-col items-center gap-4">
             <div className="relative">
-              <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-[#D6D6D6] border-t-[#E6A57E]" />
+              <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-[#D6D6D6] border-t-[var(--pos-accent)]" />
             </div>
             <p className="text-muted-foreground text-sm font-medium">Checking session...</p>
           </div>
@@ -149,7 +149,7 @@ export function PosLayout({ children }: PosLayoutProps) {
         <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="flex flex-col items-center gap-4">
             <div className="relative">
-              <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-[#D6D6D6] border-t-[#E6A57E]" />
+              <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-[#D6D6D6] border-t-[var(--pos-accent)]" />
             </div>
             <p className="text-muted-foreground text-sm font-medium">Verifying authentication...</p>
           </div>
@@ -316,7 +316,7 @@ export function PosLayout({ children }: PosLayoutProps) {
 
                <HelpTip text="Logged in as this cashier. Your permissions determine available payment types." side="bottom">
                  <div className="flex items-center gap-1.5">
-                   <div className="h-6 w-6 rounded-full bg-[#E6A57E]/30 flex items-center justify-center text-[10px] font-bold text-white/90 border border-white/10 shrink-0">
+                   <div className="h-6 w-6 rounded-full bg-[var(--pos-accent)]/30 flex items-center justify-center text-[10px] font-bold text-white/90 border border-white/10 shrink-0">
                      {currentUser.name?.charAt(0) || 'C'}
                    </div>
                    <div className="hidden sm:flex flex-col items-start leading-none">
@@ -362,7 +362,7 @@ export function PosLayout({ children }: PosLayoutProps) {
                <HelpTip text="Begin a new cashier session to start processing receipts." side="bottom">
                  <button 
                    onClick={() => setLocation('/cashier-setup')} 
-                   className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-[#E6A57E]/20 text-[#F0C3A7] hover:bg-[#E6A57E]/30 border border-[#E6A57E]/20 transition-colors"
+                   className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-[var(--pos-accent)]/20 text-[var(--pos-accent-light)] hover:bg-[var(--pos-accent)]/30 border border-[var(--pos-accent)]/20 transition-colors"
                    data-testid="button-start-session"
                  >
                    <Layers className="w-3.5 h-3.5" />

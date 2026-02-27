@@ -66,7 +66,7 @@ export default function HomePage() {
               <div className="h-6 w-px bg-white/20 hidden sm:block" />
               <HelpTip text="You have an active cashier session. All transactions will be recorded under your user profile until you end the session." side="bottom" className="text-white/60 hover:text-white/80">
                 <div className="flex items-center gap-2 sm:gap-3 px-1 sm:px-2 cursor-help">
-                  <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-[#E6A57E]/30 flex items-center justify-center text-white text-xs font-mono border border-white/30 shrink-0">
+                  <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-[var(--pos-accent)]/30 flex items-center justify-center text-white text-xs font-mono border border-white/30 shrink-0">
                     {currentUser.name?.charAt(0) || 'C'}
                   </div>
                   <div className="hidden sm:flex flex-col items-start text-sm leading-tight">
@@ -91,12 +91,12 @@ export default function HomePage() {
             {menuItems.map((item, idx) => (
               <Link key={idx} href={item.href}>
                 <button
-                  className="w-full flex flex-col items-center gap-2 p-3.5 rounded-lg text-center hover:bg-[#F0C3A7]/20 active:scale-[0.97] transition-all group border border-[#D6D6D6] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.15)] relative overflow-hidden touch-manipulation"
+                  className="w-full flex flex-col items-center gap-2 p-3.5 rounded-lg text-center hover:bg-[var(--pos-accent-tint)] active:scale-[0.97] transition-all group border border-[#D6D6D6] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.15)] relative overflow-hidden touch-manipulation"
                   data-testid={`menu-item-${item.href.replace(/\//g, '-').slice(1) || 'home'}`}
                 >
-                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#E6A57E] opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="w-11 h-11 rounded-lg bg-[#F7F7F7] flex items-center justify-center shrink-0 group-hover:bg-[#F0C3A7]/20 transition-colors">
-                    <item.icon className="w-5 h-5 text-[#6B6B6B] group-hover:text-[#E6A57E]" />
+                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-[var(--pos-accent)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="w-11 h-11 rounded-lg bg-[#F7F7F7] flex items-center justify-center shrink-0 group-hover:bg-[var(--pos-accent-tint)] transition-colors">
+                    <item.icon className="w-5 h-5 text-[#6B6B6B] group-hover:text-[var(--pos-accent)]" />
                   </div>
                   <div className="text-[11px] font-medium text-[#2E2E2E] leading-tight inline-flex items-center gap-0.5">{item.label} <HelpTip text={item.helpTip} side="bottom" /></div>
                 </button>
@@ -106,17 +106,17 @@ export default function HomePage() {
         </div>
 
         <aside className="hidden md:block w-64 border-r border-[#D6D6D6] bg-[#F7F7F7] overflow-y-auto shrink-0" data-testid="sidebar-menu">
-          <div className="bg-[#E6A57E] text-white px-5 py-4">
+          <div className="bg-[var(--pos-accent)] text-white px-5 py-4">
             <h2 className="text-sm font-semibold uppercase tracking-wider">Modules</h2>
           </div>
           <nav className="py-1">
             {menuItems.map((item, idx) => (
               <Link key={idx} href={item.href}>
                 <button
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#F0C3A7]/30 transition-colors group border-l-3 border-transparent hover:border-[#E6A57E]"
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[var(--pos-accent-tint-strong)] transition-colors group border-l-3 border-transparent hover:border-[var(--pos-accent)]"
                   data-testid={`menu-item-desktop-${item.href.replace(/\//g, '-').slice(1) || 'home'}`}
                 >
-                  <item.icon className="w-[18px] h-[18px] text-[#6B6B6B] group-hover:text-[#E6A57E] shrink-0" />
+                  <item.icon className="w-[18px] h-[18px] text-[#6B6B6B] group-hover:text-[var(--pos-accent)] shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-[#2E2E2E] inline-flex items-center gap-1">{item.label} <HelpTip text={item.helpTip} side="right" /></div>
                     <div className="text-xs text-[#6B6B6B] truncate">{item.description}</div>

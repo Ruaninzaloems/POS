@@ -44,6 +44,16 @@
 }
 
 :root {
+  /* POS Accent Color Tokens — auto-switch with .theme-site02 */
+  --pos-accent: #E6A57E;
+  --pos-accent-dark: #D18E65;
+  --pos-accent-light: #F0C3A7;
+  --pos-accent-gradient: linear-gradient(to bottom right, #E6A57E, #D18E65);
+  --pos-accent-shadow: rgba(230, 165, 126, 0.20);
+  --pos-accent-tint: rgba(240, 195, 167, 0.20);
+  --pos-accent-tint-strong: rgba(240, 195, 167, 0.30);
+  --pos-accent-hover-row: rgba(240, 195, 167, 0.20);
+
   /* SAMRAS Billing Theme — warm neutral, professional */
   --background: 216 28% 96%;       /* #F2F4F7 */
   --foreground: 0 0% 18%;          /* #2E2E2E */
@@ -86,6 +96,15 @@
 }
 
 .theme-site02 {
+  --pos-accent: #2FB5AD;
+  --pos-accent-dark: #249E97;
+  --pos-accent-light: #8DD8D3;
+  --pos-accent-gradient: linear-gradient(to bottom right, #2FB5AD, #249E97);
+  --pos-accent-shadow: rgba(47, 181, 173, 0.20);
+  --pos-accent-tint: rgba(47, 181, 173, 0.15);
+  --pos-accent-tint-strong: rgba(47, 181, 173, 0.25);
+  --pos-accent-hover-row: rgba(47, 181, 173, 0.12);
+
   --background: 214 33% 97%;       /* #F4F7FB */
   --foreground: 207 28% 16%;       /* #1F2933 */
 
@@ -233,7 +252,7 @@
 }
 
 .platinum-detail-html tbody tr:hover {
-  background-color: rgba(230, 165, 126, 0.08);
+  background-color: var(--pos-accent-hover-row);
 }
 
 .platinum-detail-html .detail-header {
@@ -248,7 +267,7 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   padding-bottom: 0.25rem;
-  border-bottom: 2px solid #E6A57E;
+  border-bottom: 2px solid var(--pos-accent);
   display: inline-block;
 }
 
@@ -302,7 +321,7 @@ button, a, input, select, textarea {
 
 /* Modern focus styles */
 :focus-visible {
-  outline: 2px solid hsl(23 68% 70%);
+  outline: 2px solid var(--pos-accent);
   outline-offset: 2px;
   border-radius: 4px;
 }

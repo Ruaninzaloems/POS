@@ -26,7 +26,7 @@ export default function SettingsPage() {
       <div className="flex flex-col h-full overflow-hidden">
         <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
               <Settings className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -69,7 +69,7 @@ export default function SettingsPage() {
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
-                    <div className="p-2 bg-[#F0C3A7]/20 rounded-lg text-[#6B6B6B]">
+                    <div className="p-2 bg-[var(--pos-accent-tint)] rounded-lg text-[#6B6B6B]">
                         <ShieldAlert className="w-5 h-5" />
                     </div>
                     <div>

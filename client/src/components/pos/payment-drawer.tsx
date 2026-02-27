@@ -192,19 +192,19 @@ export function PaymentDrawer() {
             <div className="flex bg-slate-100 rounded-lg p-0.5">
               <button
                 onClick={() => setMobileView('payment')}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${mobileView === 'payment' ? 'bg-white shadow-sm text-[#E6A57E]' : 'text-slate-500'}`}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${mobileView === 'payment' ? 'bg-white shadow-sm text-[var(--pos-accent)]' : 'text-slate-500'}`}
                 data-testid="tab-mobile-payment"
               >
                 Payment
               </button>
               <button
                 onClick={() => setMobileView('items')}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all relative ${mobileView === 'items' ? 'bg-white shadow-sm text-[#E6A57E]' : 'text-slate-500'}`}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all relative ${mobileView === 'items' ? 'bg-white shadow-sm text-[var(--pos-accent)]' : 'text-slate-500'}`}
                 data-testid="tab-mobile-items"
               >
                 Items
                 {transactionItems.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-[#E6A57E] text-white text-[8px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{transactionItems.length}</span>
+                  <span className="absolute -top-1 -right-1 bg-[var(--pos-accent)] text-white text-[8px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{transactionItems.length}</span>
                 )}
               </button>
             </div>
@@ -362,7 +362,7 @@ export function PaymentDrawer() {
         )}
 
         <Button 
-          className="w-full bg-gradient-to-r from-[#E6A57E] to-[#D18E65] hover:from-[#D18E65] hover:to-[#C07D55] shadow-lg shadow-[0_1px_3px_rgba(0,0,0,0.15)] h-12 lg:h-14 text-base lg:text-lg font-bold rounded-xl disabled:from-slate-300 disabled:to-slate-400 disabled:shadow-none active:scale-[0.98] transition-all touch-manipulation" 
+          className="w-full bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)] shadow-lg shadow-[0_1px_3px_rgba(0,0,0,0.15)] h-12 lg:h-14 text-base lg:text-lg font-bold rounded-xl disabled:from-slate-300 disabled:to-slate-400 disabled:shadow-none active:scale-[0.98] transition-all touch-manipulation" 
           size="lg"
           tabIndex={90}
           disabled={!isCompleteEnabled}
@@ -407,7 +407,7 @@ function getItemSummaryLine(item: TransactionItem, od: any): { label: string; va
   
   if (item.type === 'CONSUMER_SERVICES' || item.type === 'ACCOUNT_GROUP') {
     const accNo = od.accountNumber || od.accountNo || od.accountID;
-    if (accNo) info.push({ label: 'Acc', value: String(accNo), highlight: 'text-[#E6A57E] font-mono' });
+    if (accNo) info.push({ label: 'Acc', value: String(accNo), highlight: 'text-[var(--pos-accent)] font-mono' });
     if (od.name) info.push({ label: 'Owner', value: od.name.length > 25 ? od.name.substring(0, 25) + '...' : od.name });
     const outstanding = od.outStandingAmount ?? od.outstandingAmt ?? od.outStandingAmt;
     if (outstanding != null && Number(outstanding) > 0) {
@@ -416,8 +416,8 @@ function getItemSummaryLine(item: TransactionItem, od: any): { label: string; va
     if (od.address) info.push({ label: 'Addr', value: od.address.length > 30 ? od.address.substring(0, 30) + '...' : od.address });
   } else if (item.type === 'PREPAID') {
     const isWater = od.prepaidType === 'Water';
-    if (od.prepaidMeterNo) info.push({ label: 'Meter', value: od.prepaidMeterNo, highlight: isWater ? 'text-[#E6A57E] font-mono' : 'text-amber-600 font-mono' });
-    info.push({ label: 'Type', value: isWater ? 'Water' : 'Electricity', highlight: isWater ? 'text-[#E6A57E]' : 'text-amber-600' });
+    if (od.prepaidMeterNo) info.push({ label: 'Meter', value: od.prepaidMeterNo, highlight: isWater ? 'text-[var(--pos-accent)] font-mono' : 'text-amber-600 font-mono' });
+    info.push({ label: 'Type', value: isWater ? 'Water' : 'Electricity', highlight: isWater ? 'text-[var(--pos-accent)]' : 'text-amber-600' });
     if (od.name) info.push({ label: 'Owner', value: od.name.length > 20 ? od.name.substring(0, 20) + '...' : od.name });
     if (od.accountNo || od.accountNumber) info.push({ label: 'Acc', value: od.accountNo || od.accountNumber });
   } else if (item.type === 'CLEARANCE') {
@@ -437,7 +437,7 @@ function getItemSummaryLine(item: TransactionItem, od: any): { label: string; va
 function getTypeBadge(type: string, originalData?: any) {
   switch (type) {
     case 'CONSUMER_SERVICES':
-      return { label: 'Account', color: 'bg-[#F0C3A7]/20 text-[#E6A57E] border-[#D6D6D6]', icon: User };
+      return { label: 'Account', color: 'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] border-[#D6D6D6]', icon: User };
     case 'PREPAID': {
       const isWater = originalData?.prepaidType === 'Water';
       return { label: isWater ? 'Prepaid Water' : 'Prepaid Elec', color: isWater ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200', icon: isWater ? Droplets : Zap };
@@ -527,13 +527,13 @@ function MobileItemCard({ item, removeItem, updateItemAmount, updateItemDetails 
               </div>
             )}
             <div>
-              <div className="text-[9px] text-[#E6A57E] uppercase font-semibold tracking-wider">Pay</div>
-              <div className="text-sm font-mono font-bold text-[#E6A57E]">R {item.amountToPay.toFixed(2)}</div>
+              <div className="text-[9px] text-[var(--pos-accent)] uppercase font-semibold tracking-wider">Pay</div>
+              <div className="text-sm font-mono font-bold text-[var(--pos-accent)]">R {item.amountToPay.toFixed(2)}</div>
             </div>
           </div>
           <button
             onClick={() => setExpanded(!expanded)}
-            className="flex items-center gap-1 text-[10px] text-[#E6A57E] font-semibold px-2 py-1 rounded-lg bg-[#F0C3A7]/20 active:bg-[#F0C3A7]/30 touch-manipulation"
+            className="flex items-center gap-1 text-[10px] text-[var(--pos-accent)] font-semibold px-2 py-1 rounded-lg bg-[var(--pos-accent-tint)] active:bg-[var(--pos-accent-tint-strong)] touch-manipulation"
           >
             {expanded ? 'Less' : 'Details'}
             <ChevronDown className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} />
@@ -600,7 +600,7 @@ function ConsumerDetailsSection({ item, od, updateItemAmount }: { item: Transact
         )}
       </div>
       <div>
-        <Label className="text-[9px] text-[#E6A57E] uppercase font-semibold tracking-wider">Pay Amount (R)</Label>
+        <Label className="text-[9px] text-[var(--pos-accent)] uppercase font-semibold tracking-wider">Pay Amount (R)</Label>
         <div className="relative mt-0.5">
           <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-mono">R</span>
           <Input
@@ -646,7 +646,7 @@ function PrepaidDetailsSection({ item, od, updateItemAmount }: { item: Transacti
         <div>
           <div className="text-[9px] text-slate-400 uppercase font-semibold">Type</div>
           <div className="text-xs flex items-center gap-1">
-            {isWater ? <Droplets className="w-3 h-3 text-[#E6A57E]" /> : <Zap className="w-3 h-3 text-yellow-500" />}
+            {isWater ? <Droplets className="w-3 h-3 text-[var(--pos-accent)]" /> : <Zap className="w-3 h-3 text-yellow-500" />}
             {isWater ? 'Water' : 'Electricity'}
           </div>
         </div>
@@ -658,7 +658,7 @@ function PrepaidDetailsSection({ item, od, updateItemAmount }: { item: Transacti
         )}
       </div>
       <div>
-        <Label className={`text-[9px] uppercase font-semibold tracking-wider ${isWater ? 'text-[#E6A57E]' : 'text-yellow-600'}`}>Recharge Amount (R)</Label>
+        <Label className={`text-[9px] uppercase font-semibold tracking-wider ${isWater ? 'text-[var(--pos-accent)]' : 'text-yellow-600'}`}>Recharge Amount (R)</Label>
         <div className="relative mt-0.5">
           <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-mono">R</span>
           <Input
@@ -679,7 +679,7 @@ function PrepaidDetailsSection({ item, od, updateItemAmount }: { item: Transacti
             <button
               key={amt}
               onClick={() => updateItemAmount(item.id, amt)}
-              className={`flex-1 text-xs font-bold py-1.5 rounded-lg border transition-colors active:scale-95 touch-manipulation ${isWater ? 'bg-[#F0C3A7]/20 border-[#D6D6D6] text-[#E6A57E] active:bg-[#F0C3A7]/30' : 'bg-yellow-50 border-yellow-200 text-yellow-700 active:bg-yellow-100'}`}
+              className={`flex-1 text-xs font-bold py-1.5 rounded-lg border transition-colors active:scale-95 touch-manipulation ${isWater ? 'bg-[var(--pos-accent-tint)] border-[#D6D6D6] text-[var(--pos-accent)] active:bg-[var(--pos-accent-tint-strong)]' : 'bg-yellow-50 border-yellow-200 text-yellow-700 active:bg-yellow-100'}`}
             >
               R{amt}
             </button>
@@ -830,7 +830,7 @@ function MobileItemsList({ items, removeItem, updateItemAmount, updateItemDetail
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4 text-slate-400">
-        <div className="w-14 h-14 rounded-2xl bg-[#F0C3A7]/20 flex items-center justify-center mb-3">
+        <div className="w-14 h-14 rounded-2xl bg-[var(--pos-accent-tint)] flex items-center justify-center mb-3">
           <Banknote className="w-7 h-7 text-[#D6D6D6]" />
         </div>
         <p className="text-sm font-semibold text-slate-600">No items in basket</p>
@@ -886,7 +886,7 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
   return (
     <div className="flex flex-col px-3 pt-2 pb-1 gap-2">
       {/* Total Due - compact */}
-      <div className="bg-gradient-to-r from-[#E6A57E] to-[#D18E65] rounded-xl p-3 text-center text-white">
+      <div className="bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] rounded-xl p-3 text-center text-white">
         <div className="text-[9px] uppercase tracking-widest font-bold text-white/60 mb-0.5">Total Due</div>
         <div className="text-3xl font-mono font-bold leading-none">R {totalDue.toFixed(2)}</div>
       </div>
@@ -926,17 +926,17 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
               cardOverAmount
                 ? 'border-red-500 bg-red-50 shadow-sm'
                 : activeInput === 'card'
-                  ? 'border-[#E6A57E] bg-[#F0C3A7]/20 shadow-sm'
+                  ? 'border-[var(--pos-accent)] bg-[var(--pos-accent-tint)] shadow-sm'
                   : 'border-slate-200 bg-white'
             }`}
             data-testid="toggle-card"
           >
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${cardOverAmount ? 'bg-red-500 text-white' : activeInput === 'card' ? 'bg-[#E6A57E] text-white' : 'bg-slate-100 text-slate-400'}`}>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${cardOverAmount ? 'bg-red-500 text-white' : activeInput === 'card' ? 'bg-[var(--pos-accent)] text-white' : 'bg-slate-100 text-slate-400'}`}>
               <CreditCard className="w-4 h-4" />
             </div>
             <div className="text-left">
-              <div className={`text-[10px] uppercase font-bold tracking-wider ${cardOverAmount ? 'text-red-600' : activeInput === 'card' ? 'text-[#E6A57E]' : 'text-slate-400'}`}>Card</div>
-              <div className={`text-sm font-mono font-bold ${cardOverAmount ? 'text-red-700' : activeInput === 'card' ? 'text-[#E6A57E]' : 'text-slate-600'}`}>
+              <div className={`text-[10px] uppercase font-bold tracking-wider ${cardOverAmount ? 'text-red-600' : activeInput === 'card' ? 'text-[var(--pos-accent)]' : 'text-slate-400'}`}>Card</div>
+              <div className={`text-sm font-mono font-bold ${cardOverAmount ? 'text-red-700' : activeInput === 'card' ? 'text-[var(--pos-accent)]' : 'text-slate-600'}`}>
                 {payment.cardAmount > 0 ? `R ${payment.cardAmount.toFixed(2)}` : 'R 0.00'}
               </div>
             </div>
@@ -960,13 +960,13 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
       )}
 
       {!cashAllowed && cardAllowed && (
-        <div className="flex items-center gap-2 p-2.5 rounded-xl border-2 border-[#E6A57E] bg-[#F0C3A7]/20">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#E6A57E] text-white">
+        <div className="flex items-center gap-2 p-2.5 rounded-xl border-2 border-[var(--pos-accent)] bg-[var(--pos-accent-tint)]">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[var(--pos-accent)] text-white">
             <CreditCard className="w-4 h-4" />
           </div>
           <div>
-            <div className="text-[10px] uppercase font-bold tracking-wider text-[#E6A57E]">Card Only</div>
-            <div className="text-sm font-mono font-bold text-[#E6A57E]">
+            <div className="text-[10px] uppercase font-bold tracking-wider text-[var(--pos-accent)]">Card Only</div>
+            <div className="text-sm font-mono font-bold text-[var(--pos-accent)]">
               {payment.cardAmount > 0 ? `R ${payment.cardAmount.toFixed(2)}` : 'R 0.00'}
             </div>
           </div>
@@ -976,9 +976,9 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
       {/* Active Input Display + Pay Exact */}
       <div className="flex items-center gap-1.5">
         <div className={`flex-1 rounded-xl border-2 p-2 flex items-center gap-2 ${
-          activeInput === 'cash' ? 'border-emerald-300 bg-emerald-50/30' : 'border-[#D6D6D6] bg-[#F0C3A7]/20'
+          activeInput === 'cash' ? 'border-emerald-300 bg-emerald-50/30' : 'border-[#D6D6D6] bg-[var(--pos-accent-tint)]'
         }`}>
-          <span className={`text-xs font-bold uppercase ${activeInput === 'cash' ? 'text-emerald-500' : 'text-[#E6A57E]'}`}>R</span>
+          <span className={`text-xs font-bold uppercase ${activeInput === 'cash' ? 'text-emerald-500' : 'text-[var(--pos-accent)]'}`}>R</span>
           <input
             type="text"
             inputMode="decimal"
@@ -997,7 +997,7 @@ function MobilePaymentView({ totalDue, dayEndStatus, cashAllowed, cardAllowed, a
           className={`h-11 px-3 rounded-xl font-bold text-xs transition-all active:scale-95 touch-manipulation flex items-center gap-1 shrink-0 ${
             activeInput === 'cash'
               ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-              : 'bg-[#E6A57E] text-white hover:bg-[#D18E65]'
+              : 'bg-[var(--pos-accent)] text-white hover:bg-[var(--pos-accent-dark)]'
           }`}
           data-testid="button-pay-exact"
         >
@@ -1150,7 +1150,7 @@ function DesktopItemCard({ item, removeItem, updateItemAmount, updateItemDetails
         <div className="flex flex-col gap-1 shrink-0">
           <button
             onClick={() => setExpanded(!expanded)}
-            className="w-7 h-7 flex items-center justify-center text-[#E6A57E] hover:bg-[#F0C3A7]/20 rounded-lg transition-colors"
+            className="w-7 h-7 flex items-center justify-center text-[var(--pos-accent)] hover:bg-[var(--pos-accent-tint)] rounded-lg transition-colors"
           >
             <ChevronDown className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
           </button>
@@ -1190,7 +1190,7 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
         <div className="flex bg-slate-100/80 rounded-xl p-1 h-11">
           <button
             onClick={() => setDesktopTab('items')}
-            className={`flex-1 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 relative ${desktopTab === 'items' ? 'bg-white shadow-sm text-[#E6A57E]' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`flex-1 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 relative ${desktopTab === 'items' ? 'bg-white shadow-sm text-[var(--pos-accent)]' : 'text-slate-500 hover:text-slate-700'}`}
           >
             Items ({transactionItems.length})
             {hasDirectIncomeIssues && <span className="w-2 h-2 bg-amber-400 rounded-full absolute -top-0.5 -right-0.5" />}
@@ -1198,7 +1198,7 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
           </button>
           <button
             onClick={() => setDesktopTab('payment')}
-            className={`flex-1 rounded-lg text-sm font-medium transition-all ${desktopTab === 'payment' ? 'bg-white shadow-sm text-[#E6A57E]' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`flex-1 rounded-lg text-sm font-medium transition-all ${desktopTab === 'payment' ? 'bg-white shadow-sm text-[var(--pos-accent)]' : 'text-slate-500 hover:text-slate-700'}`}
           >
             Payment
           </button>
@@ -1209,7 +1209,7 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
         {desktopTab === 'items' ? (
           <>
             {transactionItems.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-48 text-muted-foreground border-2 border-dashed border-[#D6D6D6]/50 rounded-2xl bg-[#F0C3A7]/10">
+              <div className="flex flex-col items-center justify-center h-48 text-muted-foreground border-2 border-dashed border-[#D6D6D6]/50 rounded-2xl bg-[var(--pos-accent-tint)]">
                 <Banknote className="w-8 h-8 text-[#D6D6D6] mb-2" />
                 <p className="text-sm font-medium">No items added</p>
                 <p className="text-xs mt-0.5 text-slate-400">Search to add items to basket</p>
@@ -1236,8 +1236,8 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
           <div className="space-y-4">
             {/* Total Display */}
             <div className="bg-[#F7F7F7] rounded-2xl p-5 border border-[#D6D6D6]/50 text-center">
-              <div className="text-[#E6A57E]/80 uppercase tracking-widest font-bold text-xs mb-1 flex items-center justify-center gap-1">TOTAL DUE <HelpTip text="The sum of all items in your basket, rounded to the nearest 10 cents." /></div>
-              <div className="text-5xl font-mono font-bold text-[#E6A57E]">R {totalDue.toFixed(2)}</div>
+              <div className="text-[var(--pos-accent)]/80 uppercase tracking-widest font-bold text-xs mb-1 flex items-center justify-center gap-1">TOTAL DUE <HelpTip text="The sum of all items in your basket, rounded to the nearest 10 cents." /></div>
+              <div className="text-5xl font-mono font-bold text-[var(--pos-accent)]">R {totalDue.toFixed(2)}</div>
             </div>
 
             {dayEndStatus === 'RECONCILED' ? (
@@ -1292,9 +1292,9 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                   {cardAllowed && (
                     <div 
                       onClick={() => !perItemSplitMode && setActiveInput('card')}
-                      className={`p-4 rounded-xl border-2 text-left transition-all ${perItemSplitMode ? 'border-slate-200 bg-slate-50 opacity-70' : 'cursor-pointer'} ${!perItemSplitMode && cardOverAmount ? 'border-red-500 bg-red-50/40 ring-2 ring-red-200/50 shadow-sm' : !perItemSplitMode && activeInput === 'card' ? 'border-[#E6A57E] bg-[#F0C3A7]/20 ring-2 ring-[#E6A57E]/30 shadow-sm' : !perItemSplitMode ? 'border-slate-200 bg-slate-50 hover:bg-slate-100/80' : ''}`}
+                      className={`p-4 rounded-xl border-2 text-left transition-all ${perItemSplitMode ? 'border-slate-200 bg-slate-50 opacity-70' : 'cursor-pointer'} ${!perItemSplitMode && cardOverAmount ? 'border-red-500 bg-red-50/40 ring-2 ring-red-200/50 shadow-sm' : !perItemSplitMode && activeInput === 'card' ? 'border-[var(--pos-accent)] bg-[var(--pos-accent-tint)] ring-2 ring-[var(--pos-accent-shadow)] shadow-sm' : !perItemSplitMode ? 'border-slate-200 bg-slate-50 hover:bg-slate-100/80' : ''}`}
                     >
-                      <div className={`flex items-center gap-1.5 mb-1 ${!perItemSplitMode && cardOverAmount ? 'text-red-600' : !perItemSplitMode && activeInput === 'card' ? 'text-[#E6A57E]' : 'text-muted-foreground'}`}>
+                      <div className={`flex items-center gap-1.5 mb-1 ${!perItemSplitMode && cardOverAmount ? 'text-red-600' : !perItemSplitMode && activeInput === 'card' ? 'text-[var(--pos-accent)]' : 'text-muted-foreground'}`}>
                         <CreditCard className="w-4 h-4" />
                         <span className="font-semibold text-xs uppercase tracking-wide">{!perItemSplitMode && cardOverAmount ? 'Card — exceeds balance' : 'Card'}</span>
                       </div>
@@ -1371,11 +1371,11 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-[9px] text-[#E6A57E] font-bold uppercase">Card</label>
+                                  <label className="text-[9px] text-[var(--pos-accent)] font-bold uppercase">Card</label>
                                   <input
                                     type="text"
                                     inputMode="decimal"
-                                    className="w-full h-7 px-2 text-xs font-mono border border-[#D6D6D6] rounded bg-[#F0C3A7]/20 focus:outline-none focus:ring-1 focus:ring-[#E6A57E]"
+                                    className="w-full h-7 px-2 text-xs font-mono border border-[#D6D6D6] rounded bg-[var(--pos-accent-tint)] focus:outline-none focus:ring-1 focus:ring-[var(--pos-accent)]"
                                     value={itemCard || ''}
                                     placeholder="0.00"
                                     onChange={(e) => {
@@ -1393,7 +1393,7 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                                   data-testid={`button-item-all-cash-${item.id}`}
                                 >All Cash</button>
                                 <button
-                                  className="text-[9px] text-[#E6A57E] font-medium hover:underline"
+                                  className="text-[9px] text-[var(--pos-accent)] font-medium hover:underline"
                                   onClick={() => updateItemSplit(item.id, 0, item.amountToPay)}
                                   data-testid={`button-item-all-card-${item.id}`}
                                 >All Card</button>
@@ -1406,7 +1406,7 @@ function DesktopPaymentContent({ transactionItems, removeItem, updateItemAmount,
                         })}
                         <div className="flex justify-between items-center pt-1 px-1 text-[10px]">
                           <span className="text-green-600 font-bold">Cash: R {payment.cashAmount.toFixed(2)}</span>
-                          <span className="text-[#E6A57E] font-bold">Card: R {payment.cardAmount.toFixed(2)}</span>
+                          <span className="text-[var(--pos-accent)] font-bold">Card: R {payment.cardAmount.toFixed(2)}</span>
                         </div>
                       </div>
                     )}

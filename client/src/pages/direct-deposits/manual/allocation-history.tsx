@@ -162,7 +162,7 @@ export default function AllocationHistory() {
       switch(process) {
           case 'Consumer Services': return 'bg-sky-100 text-sky-700 border-sky-200';
           case 'Direct Deposits': return 'bg-cyan-100 text-cyan-700 border-cyan-200';
-          case 'Clearances': return 'bg-[#F0C3A7]/20 text-[#6B6B6B] border-[#D6D6D6]';
+          case 'Clearances': return 'bg-[var(--pos-accent-tint)] text-[#6B6B6B] border-[#D6D6D6]';
           case 'Miscellaneous Payment': return 'bg-amber-100 text-amber-700 border-amber-200';
           case 'Third Party Payments': return 'bg-purple-100 text-purple-700 border-purple-200';
           default: return 'bg-gray-100 text-gray-700 border-gray-200';
@@ -175,7 +175,7 @@ export default function AllocationHistory() {
       } else if (status === 'Error') {
           return 'bg-red-100 text-red-700 border-red-200';
       } else if (status === 'Processing' || status === 'Performing rebuilds' || status === 'Completing reconciliation') {
-          return 'bg-[#F0C3A7]/20 text-[#6B6B6B] border-[#D6D6D6]';
+          return 'bg-[var(--pos-accent-tint)] text-[#6B6B6B] border-[#D6D6D6]';
       }
       return 'bg-gray-100 text-gray-700 border-gray-200';
   };
@@ -225,7 +225,7 @@ export default function AllocationHistory() {
                             <ArrowLeft className="w-4 h-4" />
                         </Button>
                      </Link>
-                     <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+                     <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
                          <FileText className="w-5 h-5 text-white" />
                      </div>
                      <div>
@@ -351,7 +351,7 @@ export default function AllocationHistory() {
                     <Badge variant="secondary" className={`border text-xs ${getProcessBadgeColor(tx.process)} shadow-none font-normal`}>
                       {tx.process}
                     </Badge>
-                    <Badge variant="secondary" className={`text-xs ${isManual(tx) ? 'bg-[#F0C3A7]/20 text-[#6B6B6B] border-[#D6D6D6]' : 'bg-purple-100 text-purple-700 border-purple-200'}`}>
+                    <Badge variant="secondary" className={`text-xs ${isManual(tx) ? 'bg-[var(--pos-accent-tint)] text-[#6B6B6B] border-[#D6D6D6]' : 'bg-purple-100 text-purple-700 border-purple-200'}`}>
                       {isManual(tx) ? 'Manual' : 'Bulk'}
                     </Badge>
                     <Badge className={`shadow-none border text-xs ${getStatusBadge(tx.job_Status)}`}>
@@ -408,7 +408,7 @@ export default function AllocationHistory() {
                                     </Badge>
                                 </TableCell>
                                 <TableCell>
-                                    <Badge variant="secondary" className={isManual(tx) ? 'bg-[#F0C3A7]/20 text-[#6B6B6B] border-[#D6D6D6]' : 'bg-purple-100 text-purple-700 border-purple-200'}>
+                                    <Badge variant="secondary" className={isManual(tx) ? 'bg-[var(--pos-accent-tint)] text-[#6B6B6B] border-[#D6D6D6]' : 'bg-purple-100 text-purple-700 border-purple-200'}>
                                         {isManual(tx) ? 'Manual' : 'Bulk'}
                                     </Badge>
                                 </TableCell>
@@ -487,7 +487,7 @@ export default function AllocationHistory() {
                 <div className="space-y-6 overflow-y-auto p-4 flex-1" ref={receiptRef}>
                     <div className="flex justify-between items-start border-b pb-4">
                         <div className="flex gap-4">
-                           <div className="h-12 w-12 bg-[#E6A57E] rounded flex items-center justify-center text-white font-bold text-xl">
+                           <div className="h-12 w-12 bg-[var(--pos-accent)] rounded flex items-center justify-center text-white font-bold text-xl">
                                 M
                            </div>
                            <div>
@@ -547,7 +547,7 @@ export default function AllocationHistory() {
                                 <div className="grid grid-cols-3">
                                     <dt className="text-muted-foreground">Method:</dt>
                                     <dd className="col-span-2">
-                                        <Badge variant="secondary" className={isManual(selectedTx) ? 'bg-[#F0C3A7]/20 text-[#6B6B6B] border-[#D6D6D6]' : 'bg-purple-100 text-purple-700 border-purple-200'}>
+                                        <Badge variant="secondary" className={isManual(selectedTx) ? 'bg-[var(--pos-accent-tint)] text-[#6B6B6B] border-[#D6D6D6]' : 'bg-purple-100 text-purple-700 border-purple-200'}>
                                             {isManual(selectedTx) ? 'Manual' : 'Bulk'}
                                         </Badge>
                                     </dd>

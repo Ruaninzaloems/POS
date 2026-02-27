@@ -1030,7 +1030,7 @@ export default function SupervisorDashboard() {
     <div className="flex flex-col h-full overflow-hidden">
       <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
         <div className="flex items-center gap-3 mb-4">
-          <div className={`w-11 h-11 rounded-xl bg-gradient-to-br flex items-center justify-center ${isSite02 ? 'from-[#2FB5AD] to-[#249E97] shadow-[0_2px_8px_rgba(33,58,83,0.08)]' : 'from-[#E6A57E] to-[#D18E65] shadow-[0_1px_3px_rgba(0,0,0,0.15)]'}`}>
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
             <LayoutDashboard className="w-5 h-5 text-white" />
           </div>
           <div className="flex-1">
@@ -1094,7 +1094,7 @@ export default function SupervisorDashboard() {
         <Card className="border border-[#D6D6D6] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
           <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium text-[#6B6B6B] flex items-center gap-1">
-              <div className={`w-6 h-6 rounded-lg bg-gradient-to-br flex items-center justify-center mr-1 ${isSite02 ? 'from-[#2FB5AD] to-[#249E97]' : 'from-[#E6A57E] to-[#D18E65]'}`}>
+              <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-center mr-1">
                 <RefreshCcw className="w-3 h-3 text-white" />
               </div>
               Pending Approvals <HelpTip text="Total number of cashier day-end submissions and cancellation requests awaiting supervisor review." />
@@ -1111,7 +1111,7 @@ export default function SupervisorDashboard() {
         <Card className="border border-[#D6D6D6] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
           <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium text-[#6B6B6B] flex items-center gap-1">
-              <div className={`w-6 h-6 rounded-lg bg-gradient-to-br flex items-center justify-center mr-1 ${isSite02 ? 'from-[#D14343] to-[#B83030]' : 'from-[#D14343] to-[#B83030]'}`}>
+              <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#D14343] to-[#B83030] flex items-center justify-center mr-1">
                 <AlertTriangle className="w-3 h-3 text-white" />
               </div>
               Variances Detected <HelpTip text="Number of pending shifts where the cashier's declared amount differs from the system total." />
@@ -1146,7 +1146,7 @@ export default function SupervisorDashboard() {
         <Card className="border border-[#D6D6D6] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
           <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium text-[#6B6B6B] flex items-center gap-1">
-              <div className={`w-6 h-6 rounded-lg bg-gradient-to-br flex items-center justify-center mr-1 ${isSite02 ? 'from-[#2FB5AD] to-[#249E97]' : 'from-[#E6A57E] to-[#D18E65]'}`}>
+              <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-center mr-1">
                 <TrendingUp className="w-3 h-3 text-white" />
               </div>
               Total System Revenue <HelpTip text="Combined system-recorded revenue across all active cashier shifts, regardless of approval status." />
@@ -1166,7 +1166,7 @@ export default function SupervisorDashboard() {
           <Tabs defaultValue="pending" className="w-full">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 sm:mb-4">
                 <h3 className="font-semibold text-[#2E2E2E] flex items-center gap-2 text-sm sm:text-base">
-                    <div className={`w-7 h-7 rounded-lg bg-gradient-to-br flex items-center justify-center ${isSite02 ? 'from-[#2FB5AD] to-[#249E97]' : 'from-[#E6A57E] to-[#D18E65]'}`}>
+                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-center">
                       <AlertCircle className="h-3.5 w-3.5 text-white" />
                     </div>
                     Cancellation Requests
@@ -1632,9 +1632,9 @@ export default function SupervisorDashboard() {
             <TabsTrigger value="All" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:text-[#2E2E2E] data-[state=active]:shadow-sm">
                 All Active
             </TabsTrigger>
-            <TabsTrigger value="PENDING_APPROVAL" className={`text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm ${isSite02 ? 'data-[state=active]:text-[#2FB5AD]' : 'data-[state=active]:text-[#E6A57E]'}`}>
+            <TabsTrigger value="PENDING_APPROVAL" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[var(--pos-accent)]">
                 <span className="hidden sm:inline">Pending</span>Approval
-                {pendingCount > 0 && <Badge variant="secondary" className={`ml-1 sm:ml-2 h-4 px-1 text-[10px] ${isSite02 ? 'bg-[#2FB5AD]/15 text-[#2FB5AD]' : 'bg-[#F0C3A7]/30 text-[#E6A57E]'}`}>{pendingCount}</Badge>}
+                {pendingCount > 0 && <Badge variant="secondary" className="ml-1 sm:ml-2 h-4 px-1 text-[10px] bg-[var(--pos-accent-tint-strong)] text-[var(--pos-accent)]">{pendingCount}</Badge>}
             </TabsTrigger>
             <TabsTrigger value="NOT_SUBMITTED" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:text-[#2E2E2E] data-[state=active]:shadow-sm">Not<span className="hidden sm:inline">Submitted</span><span className="sm:hidden">Sub</span></TabsTrigger>
             <TabsTrigger value="RETURNED" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:text-[#D14343] data-[state=active]:shadow-sm">Returned</TabsTrigger>
@@ -1667,7 +1667,7 @@ export default function SupervisorDashboard() {
                                   {shift.cashOffice && (
                                       <p className="text-xs text-muted-foreground flex items-center gap-1">
                                           {shift.cashOffice}
-                                          {shift.groupCashiers && <Badge variant="outline" className="text-[8px] px-1 py-0 bg-[#F0C3A7]/20 text-[#E6A57E] border-[#D6D6D6]">Grouped</Badge>}
+                                          {shift.groupCashiers && <Badge variant="outline" className="text-[8px] px-1 py-0 bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] border-[#D6D6D6]">Grouped</Badge>}
                                       </p>
                                   )}
                               </div>
@@ -1721,7 +1721,7 @@ export default function SupervisorDashboard() {
                               <TableCell className="font-medium">{shift.cashierName}</TableCell>
                               <TableCell className="text-muted-foreground">
                                   <span>{shift.cashOffice || '-'}</span>
-                                  {shift.groupCashiers && <Badge variant="outline" className="ml-1 text-[8px] px-1 py-0 bg-[#F0C3A7]/20 text-[#E6A57E] border-[#D6D6D6]">Grouped</Badge>}
+                                  {shift.groupCashiers && <Badge variant="outline" className="ml-1 text-[8px] px-1 py-0 bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] border-[#D6D6D6]">Grouped</Badge>}
                               </TableCell>
                               <TableCell>{new Date(shift.startTime).toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' })}</TableCell>
                               <TableCell className="text-right">{shift.transactionCount}</TableCell>
@@ -1789,7 +1789,7 @@ export default function SupervisorDashboard() {
 
                   {perOfficeLoading && (
                       <div className="flex items-center justify-center py-12">
-                          <Loader2 className="w-6 h-6 animate-spin text-[#E6A57E]" />
+                          <Loader2 className="w-6 h-6 animate-spin text-[var(--pos-accent)]" />
                           <span className="ml-2 text-sm text-muted-foreground">Loading office data...</span>
                       </div>
                   )}
@@ -1820,7 +1820,7 @@ export default function SupervisorDashboard() {
                                                       'text-[10px]',
                                                       isVerified && 'bg-green-50 text-green-700 border-green-200',
                                                       isReturned && 'bg-amber-50 text-amber-700 border-amber-200',
-                                                      isPending && 'bg-[#F0C3A7]/20 text-[#E6A57E] border-[#D6D6D6]'
+                                                      isPending && 'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] border-[#D6D6D6]'
                                                   )}>
                                                       {cStatus}
                                                   </Badge>
@@ -1948,7 +1948,7 @@ export default function SupervisorDashboard() {
                           )}
 
                           {!perOfficeData.allVerified && (!perOfficeData.validationResult || perOfficeData.validationResult.isValid) && (
-                              <div className="p-3 border-t bg-[#F0C3A7]/15 text-xs text-[#6B6B6B] flex items-center gap-2">
+                              <div className="p-3 border-t bg-[var(--pos-accent-tint)] text-xs text-[#6B6B6B] flex items-center gap-2">
                                   <Info className="w-4 h-4 shrink-0" />
                                   Verify each cashier individually, then submit the office reconciliation once all are verified.
                               </div>
@@ -1975,7 +1975,7 @@ export default function SupervisorDashboard() {
         <DialogContent className="max-w-5xl h-[90vh] flex flex-col">
             <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-[#E6A57E]" />
+                    <TrendingUp className="w-5 h-5 text-[var(--pos-accent)]" />
                     Cashier Variance Statistics
                 </DialogTitle>
                 <DialogDescription>
@@ -2064,7 +2064,7 @@ export default function SupervisorDashboard() {
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-[#F0C3A7]/20 border-[#D6D6D6] shadow-sm">
+                    <Card className="bg-[var(--pos-accent-tint)] border-[#D6D6D6] shadow-sm">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-[#2E2E2E]">Net Variance</CardTitle>
                         </CardHeader>
@@ -2149,12 +2149,12 @@ export default function SupervisorDashboard() {
               <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[95vh] overflow-y-auto">
                   <DialogHeader>
                       <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
-                          Reconciliation Review: <span className="text-[#E6A57E]">{selectedShift.cashierName}</span>
+                          Reconciliation Review: <span className="text-[var(--pos-accent)]">{selectedShift.cashierName}</span>
                       </DialogTitle>
                       <DialogDescription className="text-xs sm:text-sm flex items-center gap-2 flex-wrap">
                           <span>Cashier ID: {selectedShift.id} | Office: {selectedShift.cashOffice || 'N/A'}</span>
                           {selectedShift.groupCashiers && (
-                              <Badge variant="outline" className="text-[9px] bg-[#F0C3A7]/20 text-[#E6A57E] border-[#D6D6D6]">
+                              <Badge variant="outline" className="text-[9px] bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] border-[#D6D6D6]">
                                   <Users className="w-3 h-3 mr-1" /> Grouped Office
                               </Badge>
                           )}
@@ -2213,23 +2213,23 @@ export default function SupervisorDashboard() {
                               <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground border-b pb-2">Cashier Declared Totals</h3>
                               {reviewData.reconcile ? (
                                 <>
-                                  <div className="flex justify-between items-center p-3 bg-[#F0C3A7]/15 rounded-lg border border-[#D6D6D6]">
+                                  <div className="flex justify-between items-center p-3 bg-[var(--pos-accent-tint)] rounded-lg border border-[#D6D6D6]">
                                       <span className="text-sm text-[#2E2E2E]">Total Cash on Hand + Drop Box (R)</span>
                                       <span className="font-mono font-bold">{formatCurrency(Number(reviewData.reconcile.totalCashAmt || reviewData.reconcile.cashDeclared || 0) + Number(reviewData.reconcile.totalDropBoxAmt || reviewData.reconcile.dropBoxDeclared || 0))}</span>
                                   </div>
-                                  <div className="flex justify-between items-center p-3 bg-[#F0C3A7]/15 rounded-lg border border-[#D6D6D6]">
+                                  <div className="flex justify-between items-center p-3 bg-[var(--pos-accent-tint)] rounded-lg border border-[#D6D6D6]">
                                       <span className="text-sm text-[#2E2E2E]">Total Debit/Credit Card Receipts (R)</span>
                                       <span className="font-mono font-bold">{formatCurrency(Number(reviewData.reconcile.totalCreditAmt || reviewData.reconcile.cardDeclared || 0))}</span>
                                   </div>
-                                  <div className="flex justify-between items-center p-3 bg-[#F0C3A7]/15 rounded-lg border border-[#D6D6D6]">
+                                  <div className="flex justify-between items-center p-3 bg-[var(--pos-accent-tint)] rounded-lg border border-[#D6D6D6]">
                                       <span className="text-sm text-[#2E2E2E]">Total Cheque Receipts (R)</span>
                                       <span className="font-mono font-bold">{formatCurrency(Number(reviewData.reconcile.totalChequeAmt || reviewData.reconcile.chequeDeclared || 0))}</span>
                                   </div>
-                                  <div className="flex justify-between items-center p-3 bg-[#F0C3A7]/15 rounded-lg border border-[#D6D6D6]">
+                                  <div className="flex justify-between items-center p-3 bg-[var(--pos-accent-tint)] rounded-lg border border-[#D6D6D6]">
                                       <span className="text-sm text-[#2E2E2E]">Total Postal Order Receipts (R)</span>
                                       <span className="font-mono font-bold">{formatCurrency(Number(reviewData.reconcile.totalPostalOrderAmt || reviewData.reconcile.postalOrderDeclared || 0))}</span>
                                   </div>
-                                  <div className="flex justify-between items-center p-3 bg-[#F0C3A7]/25 rounded-lg border border-[#D6D6D6]">
+                                  <div className="flex justify-between items-center p-3 bg-[var(--pos-accent-tint-strong)] rounded-lg border border-[#D6D6D6]">
                                       <span className="font-bold text-[#2E2E2E]">Grand Total (R)</span>
                                       <span className="font-mono font-bold text-lg">{formatCurrency(Number(reviewData.reconcile.totalAmt || reviewData.reconcile.totalDeclared || 0))}</span>
                                   </div>
@@ -2332,7 +2332,7 @@ export default function SupervisorDashboard() {
                   ) : null}
 
                   {selectedShift.groupCashiers && (
-                      <div className="text-xs text-[#6B6B6B] bg-[#F0C3A7]/15 border border-[#D6D6D6] rounded-lg px-3 py-2 flex items-center gap-1.5">
+                      <div className="text-xs text-[#6B6B6B] bg-[var(--pos-accent-tint)] border border-[#D6D6D6] rounded-lg px-3 py-2 flex items-center gap-1.5">
                           <Users className="w-3.5 h-3.5 shrink-0" />
                           This cashier belongs to a grouped office ({selectedShift.cashOffice}). All cashiers in this office must be reconciled together. Use the "Per Cash Office" view to approve the entire office at once.
                       </div>
@@ -2384,7 +2384,7 @@ function StatusBadge({ status }: { status: DayEndStatus }) {
         case 'NOT_SUBMITTED':
             return <Badge variant="outline" className="text-gray-500 border-gray-300">Open</Badge>;
         case 'PENDING_APPROVAL':
-            return <Badge variant="secondary" className="bg-[#F0C3A7]/30 text-[#E6A57E] hover:bg-[#F0C3A7]/40">Pending Approval</Badge>;
+            return <Badge variant="secondary" className="bg-[var(--pos-accent-tint-strong)] text-[var(--pos-accent)] hover:bg-[var(--pos-accent-tint-strong)]">Pending Approval</Badge>;
         case 'RETURNED':
             return <Badge variant="destructive">Returned</Badge>;
         case 'COMPLETED':

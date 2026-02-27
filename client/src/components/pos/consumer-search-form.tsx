@@ -64,7 +64,7 @@ export function ConsumerSearchForm({ onSearch, onCancel, isLoading }: ConsumerSe
 
   return (
     <div className="w-full bg-white rounded-xl shadow-lg border border-slate-200/80 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-        <div className="bg-gradient-to-r from-[#E6A57E] to-[#D18E65] text-white px-3 py-2 text-sm font-medium flex items-center justify-between">
+        <div className="bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] text-white px-3 py-2 text-sm font-medium flex items-center justify-between">
             <span className="flex items-center gap-1.5">
                 <Search className="w-3.5 h-3.5" />
                 Advanced Search
@@ -87,7 +87,7 @@ export function ConsumerSearchForm({ onSearch, onCancel, isLoading }: ConsumerSe
                         placeholder="Account ID"
                         value={criteria.accountNo}
                         onChange={(e) => handleChange('accountNo', e.target.value)}
-                        className="h-8 text-sm rounded-lg border-slate-200 focus:border-[#E6A57E]"
+                        className="h-8 text-sm rounded-lg border-slate-200 focus:border-[var(--pos-accent)]"
                         data-testid="input-accountNo"
                     />
                 </div>
@@ -97,7 +97,7 @@ export function ConsumerSearchForm({ onSearch, onCancel, isLoading }: ConsumerSe
                         placeholder="Old Code"
                         value={criteria.oldAccountCode}
                         onChange={(e) => handleChange('oldAccountCode', e.target.value)}
-                        className="h-8 text-sm rounded-lg border-slate-200 focus:border-[#E6A57E]"
+                        className="h-8 text-sm rounded-lg border-slate-200 focus:border-[var(--pos-accent)]"
                         data-testid="input-oldAccount"
                     />
                 </div>
@@ -107,7 +107,7 @@ export function ConsumerSearchForm({ onSearch, onCancel, isLoading }: ConsumerSe
                         placeholder="Company / Person"
                         value={criteria.name}
                         onChange={(e) => handleChange('name', e.target.value)}
-                        className="h-8 text-sm rounded-lg border-slate-200 focus:border-[#E6A57E]"
+                        className="h-8 text-sm rounded-lg border-slate-200 focus:border-[var(--pos-accent)]"
                         data-testid="input-name"
                     />
                 </div>
@@ -117,7 +117,7 @@ export function ConsumerSearchForm({ onSearch, onCancel, isLoading }: ConsumerSe
                         placeholder="ID / Reg No"
                         value={criteria.idNo}
                         onChange={(e) => handleChange('idNo', e.target.value)}
-                        className="h-8 text-sm rounded-lg border-slate-200 focus:border-[#E6A57E]"
+                        className="h-8 text-sm rounded-lg border-slate-200 focus:border-[var(--pos-accent)]"
                         data-testid="input-idNo"
                     />
                 </div>
@@ -127,7 +127,7 @@ export function ConsumerSearchForm({ onSearch, onCancel, isLoading }: ConsumerSe
                         placeholder="Meter Number"
                         value={criteria.physicalMeterNumber}
                         onChange={(e) => handleChange('physicalMeterNumber', e.target.value)}
-                        className="h-8 text-sm rounded-lg border-slate-200 focus:border-[#E6A57E]"
+                        className="h-8 text-sm rounded-lg border-slate-200 focus:border-[var(--pos-accent)]"
                         data-testid="input-meter"
                     />
                 </div>
@@ -137,7 +137,7 @@ export function ConsumerSearchForm({ onSearch, onCancel, isLoading }: ConsumerSe
                         placeholder="ERF No"
                         value={criteria.erfNumber}
                         onChange={(e) => handleChange('erfNumber', e.target.value)}
-                        className="h-8 text-sm rounded-lg border-slate-200 focus:border-[#E6A57E]"
+                        className="h-8 text-sm rounded-lg border-slate-200 focus:border-[var(--pos-accent)]"
                         data-testid="input-erf"
                     />
                 </div>
@@ -151,7 +151,7 @@ export function ConsumerSearchForm({ onSearch, onCancel, isLoading }: ConsumerSe
                             placeholder="Passport No"
                             value={criteria.passportNumber}
                             onChange={(e) => handleChange('passportNumber', e.target.value)}
-                            className="h-8 text-sm rounded-lg border-slate-200 focus:border-[#E6A57E]"
+                            className="h-8 text-sm rounded-lg border-slate-200 focus:border-[var(--pos-accent)]"
                             data-testid="input-passport"
                         />
                     </div>
@@ -161,7 +161,7 @@ export function ConsumerSearchForm({ onSearch, onCancel, isLoading }: ConsumerSe
                             placeholder="Delivery Address"
                             value={criteria.deliveryAddress}
                             onChange={(e) => handleChange('deliveryAddress', e.target.value)}
-                            className="h-8 text-sm rounded-lg border-slate-200 focus:border-[#E6A57E]"
+                            className="h-8 text-sm rounded-lg border-slate-200 focus:border-[var(--pos-accent)]"
                             data-testid="input-deliveryAddress"
                         />
                     </div>
@@ -171,7 +171,7 @@ export function ConsumerSearchForm({ onSearch, onCancel, isLoading }: ConsumerSe
                             placeholder="Location Address"
                             value={criteria.locationAddress}
                             onChange={(e) => handleChange('locationAddress', e.target.value)}
-                            className="h-8 text-sm rounded-lg border-slate-200 focus:border-[#E6A57E]"
+                            className="h-8 text-sm rounded-lg border-slate-200 focus:border-[var(--pos-accent)]"
                             data-testid="input-locationAddress"
                         />
                     </div>
@@ -181,7 +181,7 @@ export function ConsumerSearchForm({ onSearch, onCancel, isLoading }: ConsumerSe
                             placeholder="Allotment Area"
                             value={criteria.allotmentArea}
                             onChange={(e) => handleChange('allotmentArea', e.target.value)}
-                            className="h-8 text-sm rounded-lg border-slate-200 focus:border-[#E6A57E]"
+                            className="h-8 text-sm rounded-lg border-slate-200 focus:border-[var(--pos-accent)]"
                             data-testid="input-allotment"
                         />
                     </div>
@@ -191,7 +191,7 @@ export function ConsumerSearchForm({ onSearch, onCancel, isLoading }: ConsumerSe
                             placeholder="Trading"
                             value={criteria.trading}
                             onChange={(e) => handleChange('trading', e.target.value)}
-                            className="h-8 text-sm rounded-lg border-slate-200 focus:border-[#E6A57E]"
+                            className="h-8 text-sm rounded-lg border-slate-200 focus:border-[var(--pos-accent)]"
                             data-testid="input-trading"
                         />
                     </div>
@@ -201,7 +201,7 @@ export function ConsumerSearchForm({ onSearch, onCancel, isLoading }: ConsumerSe
                             placeholder="Email Address"
                             value={criteria.emailAddress}
                             onChange={(e) => handleChange('emailAddress', e.target.value)}
-                            className="h-8 text-sm rounded-lg border-slate-200 focus:border-[#E6A57E]"
+                            className="h-8 text-sm rounded-lg border-slate-200 focus:border-[var(--pos-accent)]"
                             data-testid="input-email"
                         />
                     </div>
@@ -211,7 +211,7 @@ export function ConsumerSearchForm({ onSearch, onCancel, isLoading }: ConsumerSe
                             placeholder="Mobile Number"
                             value={criteria.mobileNumber}
                             onChange={(e) => handleChange('mobileNumber', e.target.value)}
-                            className="h-8 text-sm rounded-lg border-slate-200 focus:border-[#E6A57E]"
+                            className="h-8 text-sm rounded-lg border-slate-200 focus:border-[var(--pos-accent)]"
                             data-testid="input-mobile"
                         />
                     </div>
@@ -219,7 +219,7 @@ export function ConsumerSearchForm({ onSearch, onCancel, isLoading }: ConsumerSe
             )}
 
             <div className="flex items-center gap-2 pt-1">
-                <Button onClick={handleSearch} disabled={isLoading} size="sm" className="bg-gradient-to-r from-[#E6A57E] to-[#D18E65] hover:from-[#D18E65] hover:to-[#C07D55] text-white shadow-sm rounded-lg h-8 px-4 text-xs" data-testid="button-search">
+                <Button onClick={handleSearch} disabled={isLoading} size="sm" className="bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)] text-white shadow-sm rounded-lg h-8 px-4 text-xs" data-testid="button-search">
                     {isLoading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Search className="w-3 h-3 mr-1" />}
                     Search
                 </Button>
@@ -228,7 +228,7 @@ export function ConsumerSearchForm({ onSearch, onCancel, isLoading }: ConsumerSe
                 <div className="flex-1" />
                 <button 
                     onClick={() => setShowMore(!showMore)}
-                    className="text-[11px] text-[#E6A57E] hover:text-[#D18E65] flex items-center gap-0.5 font-medium"
+                    className="text-[11px] text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)] flex items-center gap-0.5 font-medium"
                     data-testid="button-toggle-more-fields"
                 >
                     {showMore ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}

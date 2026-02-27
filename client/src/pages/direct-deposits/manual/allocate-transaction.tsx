@@ -1187,7 +1187,7 @@ export default function AllocateTransaction() {
                     <ArrowLeft className="w-4 h-4" />
                 </Button>
              </Link>
-             <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+             <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
                  <Banknote className="w-5 h-5 text-white" />
              </div>
              <div className="flex-1 min-w-0">
@@ -1221,7 +1221,7 @@ export default function AllocateTransaction() {
             </div>
             <div className="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all duration-500 ease-out ${isFullyAllocated ? 'bg-emerald-500' : allocationPercent > 0 ? 'bg-[#E6A57E]' : 'bg-slate-200'}`}
+                className={`h-full rounded-full transition-all duration-500 ease-out ${isFullyAllocated ? 'bg-emerald-500' : allocationPercent > 0 ? 'bg-[var(--pos-accent)]' : 'bg-slate-200'}`}
                 style={{ width: `${allocationPercent}%` }}
               />
             </div>
@@ -1233,8 +1233,8 @@ export default function AllocateTransaction() {
               <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
                 <div className="px-5 py-4 border-b bg-gradient-to-r from-slate-50 to-white">
                     <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-[#F0C3A7]/20 flex items-center justify-center">
-                            <CreditCard className="w-4 h-4 text-[#E6A57E]" />
+                        <div className="w-8 h-8 rounded-lg bg-[var(--pos-accent-tint)] flex items-center justify-center">
+                            <CreditCard className="w-4 h-4 text-[var(--pos-accent)]" />
                         </div>
                         <div>
                             <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Bank Deposit</h2>
@@ -1269,7 +1269,7 @@ export default function AllocateTransaction() {
                 <div className="space-y-3">
                     <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
                         <div
-                            className={`h-full rounded-full transition-all duration-500 ease-out ${isFullyAllocated ? 'bg-emerald-500' : allocationPercent > 0 ? 'bg-[#E6A57E]' : 'bg-slate-200'}`}
+                            className={`h-full rounded-full transition-all duration-500 ease-out ${isFullyAllocated ? 'bg-emerald-500' : allocationPercent > 0 ? 'bg-[var(--pos-accent)]' : 'bg-slate-200'}`}
                             style={{ width: `${allocationPercent}%` }}
                         />
                     </div>
@@ -1289,14 +1289,14 @@ export default function AllocateTransaction() {
 
               <div className="space-y-2">
                 {posting && (
-                  <div className="rounded-xl border border-[#D6D6D6] bg-[#F0C3A7]/10 p-4 space-y-3" data-testid="posting-progress-panel">
+                  <div className="rounded-xl border border-[#D6D6D6] bg-[var(--pos-accent-tint)] p-4 space-y-3" data-testid="posting-progress-panel">
                     <div className="flex items-center gap-2 text-sm font-medium text-[#2E2E2E]">
-                      <Loader2 className="w-4 h-4 animate-spin text-[#E6A57E]" />
+                      <Loader2 className="w-4 h-4 animate-spin text-[var(--pos-accent)]" />
                       Posting Allocation
                     </div>
                     <div className="h-2 bg-[#D6D6D6]/30 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-[#E6A57E] rounded-full transition-all duration-300 ease-out"
+                        className="h-full bg-[var(--pos-accent)] rounded-full transition-all duration-300 ease-out"
                         style={{ width: `${postingTotalSteps > 0 ? Math.round((postingStep / postingTotalSteps) * 100) : 0}%` }}
                       />
                     </div>
@@ -1382,7 +1382,7 @@ export default function AllocateTransaction() {
                             onChange={e => handleDDSearchInput(e.target.value)}
                             onFocus={() => { if (ddSearchResults.length > 0) setDdDropdownOpen(true); }}
                         />
-                        {ddSearching && <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-[#E6A57E]" />}
+                        {ddSearching && <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-[var(--pos-accent)]" />}
                         {ddSearchQuery && !ddSearching && (
                             <button className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors" onClick={() => { setDdSearchQuery(''); setDdSearchResults([]); setDdDropdownOpen(false); }}>
                                 <X className="w-4 h-4" />
@@ -1398,7 +1398,7 @@ export default function AllocateTransaction() {
                                         onClick={() => handleSelectDDResult(result)}
                                     >
                                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                                            result.type === 'ACCOUNT' ? 'bg-[#F0C3A7]/20 text-[#E6A57E]' :
+                                            result.type === 'ACCOUNT' ? 'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)]' :
                                             result.type === 'GROUP' ? 'bg-purple-50 text-purple-600' :
                                             result.type === 'CLEARANCE' ? 'bg-amber-50 text-amber-600' :
                                             'bg-emerald-50 text-emerald-600'
@@ -1437,14 +1437,14 @@ export default function AllocateTransaction() {
                 </div>
 
                 {selectedAccount && (
-                    <div className="px-3 sm:px-5 py-3 sm:py-4 bg-gradient-to-r from-[#F0C3A7]/15 to-[#F7F7F7] border-b border-[#D6D6D6] animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="px-3 sm:px-5 py-3 sm:py-4 bg-gradient-to-r from-[var(--pos-accent-tint)] to-[#F7F7F7] border-b border-[#D6D6D6] animate-in fade-in slide-in-from-top-2 duration-200">
                         <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-4">
                             <div className="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
                                 <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 ${
                                     selectedAccount.allocationType === 'CLEARANCE' ? 'bg-amber-100 text-amber-700' :
                                     selectedAccount.allocationType === 'DIRECT' ? 'bg-emerald-100 text-emerald-700' :
                                     selectedAccount.allocationType === 'GROUP' ? 'bg-purple-100 text-purple-700' :
-                                    'bg-[#F0C3A7]/20 text-[#E6A57E]'
+                                    'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)]'
                                 }`}>
                                     {selectedAccount.allocationType === 'CLEARANCE' ? <FileCheck className="w-4 h-4 sm:w-5 sm:h-5" /> :
                                      selectedAccount.allocationType === 'DIRECT' ? <Receipt className="w-4 h-4 sm:w-5 sm:h-5" /> :
@@ -1468,7 +1468,7 @@ export default function AllocateTransaction() {
                                         type="number"
                                         min="0"
                                         step="0.01"
-                                        className="h-9 sm:h-10 pl-7 font-mono font-bold text-right bg-white border-[#D6D6D6] focus:border-[#E6A57E] text-sm"
+                                        className="h-9 sm:h-10 pl-7 font-mono font-bold text-right bg-white border-[#D6D6D6] focus:border-[var(--pos-accent)] text-sm"
                                         value={newLineAmount}
                                         onChange={e => {
                                             const val = e.target.value;
@@ -1480,7 +1480,7 @@ export default function AllocateTransaction() {
                                         onKeyDown={e => e.key === 'Enter' && handleAddLine()}
                                     />
                                 </div>
-                                <Button onClick={handleAddLine} size="icon" className="h-9 sm:h-10 w-9 sm:w-10 bg-[#E6A57E] hover:bg-[#D18E65] rounded-lg shrink-0">
+                                <Button onClick={handleAddLine} size="icon" className="h-9 sm:h-10 w-9 sm:w-10 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] rounded-lg shrink-0">
                                     <Plus className="w-4 h-4" />
                                 </Button>
                                 <Button onClick={() => { setSelectedAccount(null); setNewLineAmount(''); }} size="icon" variant="ghost" className="hidden sm:flex h-10 w-10 text-slate-400 hover:text-slate-600 shrink-0">
@@ -1747,7 +1747,7 @@ export default function AllocateTransaction() {
                                             line.allocationType === 'CLEARANCE' ? 'bg-amber-50 text-amber-600' :
                                             line.allocationType === 'DIRECT' ? 'bg-emerald-50 text-emerald-600' :
                                             line.allocationType === 'GROUP' ? 'bg-purple-50 text-purple-600' :
-                                            'bg-[#F0C3A7]/20 text-[#E6A57E]'
+                                            'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)]'
                                         }`}>
                                             {startIdx + idx + 1}
                                         </div>
@@ -1792,7 +1792,7 @@ export default function AllocateTransaction() {
                                                     line.allocationType === 'CLEARANCE' ? 'bg-amber-50 text-amber-700' :
                                                     line.allocationType === 'DIRECT' ? 'bg-emerald-50 text-emerald-700' :
                                                     line.allocationType === 'GROUP' ? 'bg-purple-50 text-purple-700' :
-                                                    'bg-[#F0C3A7]/20 text-[#E6A57E]'
+                                                    'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)]'
                                                 }`}>
                                                     {line.allocationType === 'CASHBOOK' ? 'Return' :
                                                      line.allocationType === 'CLEARANCE' ? 'Clearance' :
@@ -1872,13 +1872,13 @@ export default function AllocateTransaction() {
           {posting ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm font-medium text-[#2E2E2E]">
-                <Loader2 className="w-4 h-4 animate-spin text-[#E6A57E]" />
+                <Loader2 className="w-4 h-4 animate-spin text-[var(--pos-accent)]" />
                 <span className="truncate flex-1">{postingStatus}</span>
                 <span className="text-[11px] text-[#6B6B6B] font-mono">{postingStep}/{postingTotalSteps}</span>
               </div>
               <div className="h-2 bg-[#D6D6D6]/30 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-[#E6A57E] rounded-full transition-all duration-300 ease-out"
+                  className="h-full bg-[var(--pos-accent)] rounded-full transition-all duration-300 ease-out"
                   style={{ width: `${postingTotalSteps > 0 ? Math.round((postingStep / postingTotalSteps) * 100) : 0}%` }}
                 />
               </div>
@@ -1907,7 +1907,7 @@ export default function AllocateTransaction() {
         <DialogContent className="max-w-2xl max-h-[85vh] sm:max-h-[85vh] h-[calc(100vh-2rem)] sm:h-auto overflow-hidden flex flex-col mx-2 sm:mx-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileSpreadsheet className="w-5 h-5 text-[#E6A57E]" />
+              <FileSpreadsheet className="w-5 h-5 text-[var(--pos-accent)]" />
               Import File
             </DialogTitle>
             <DialogDescription>
@@ -1930,7 +1930,7 @@ export default function AllocateTransaction() {
                   data-testid="input-csv-file"
                 />
                 <div
-                  className="w-full max-w-md border-2 border-dashed border-slate-200 rounded-xl p-10 text-center cursor-pointer hover:border-[#E6A57E] hover:bg-[#F0C3A7]/10 transition-all"
+                  className="w-full max-w-md border-2 border-dashed border-slate-200 rounded-xl p-10 text-center cursor-pointer hover:border-[var(--pos-accent)] hover:bg-[var(--pos-accent-tint)] transition-all"
                   onClick={() => csvFileInputRef.current?.click()}
                   data-testid="csv-dropzone"
                 >
@@ -1996,7 +1996,7 @@ export default function AllocateTransaction() {
                     </div>
                   );
                 })()}
-                <div className="bg-[#F0C3A7]/10 rounded-lg p-3 flex items-center gap-2 text-xs text-[#6B6B6B]">
+                <div className="bg-[var(--pos-accent-tint)] rounded-lg p-3 flex items-center gap-2 text-xs text-[#6B6B6B]">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>Total import amount: <span className="font-bold font-mono">R {csvParsedRows.reduce((s, r) => s + r.amount, 0).toFixed(2)}</span> | Remaining to allocate: <span className="font-bold font-mono">R {remaining.toFixed(2)}</span></span>
                 </div>
@@ -2010,7 +2010,7 @@ export default function AllocateTransaction() {
                   const total = csvLookupResults.length;
                   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
                   return (
-                    <div className="bg-[#F0C3A7]/10 rounded-lg p-4 space-y-2.5">
+                    <div className="bg-[var(--pos-accent-tint)] rounded-lg p-4 space-y-2.5">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 text-sm text-[#6B6B6B]">
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -2021,7 +2021,7 @@ export default function AllocateTransaction() {
                         </Button>
                       </div>
                       <div className="w-full bg-[#D6D6D6]/30 rounded-full h-3 overflow-hidden">
-                        <div className="bg-[#E6A57E] h-3 rounded-full transition-all duration-300 ease-out" style={{ width: `${pct}%` }} />
+                        <div className="bg-[var(--pos-accent)] h-3 rounded-full transition-all duration-300 ease-out" style={{ width: `${pct}%` }} />
                       </div>
                       <div className="text-right text-xs font-semibold text-[#6B6B6B]">{pct}%</div>
                     </div>
@@ -2067,7 +2067,7 @@ export default function AllocateTransaction() {
                             <td className="px-3 py-2 text-right font-mono text-xs font-medium">R {row.amount.toFixed(2)}</td>
                             <td className="px-3 py-2 text-center">
                               {row.status === 'pending' && <span className="text-xs text-slate-400">Pending</span>}
-                              {row.status === 'loading' && <Loader2 className="w-3.5 h-3.5 animate-spin text-[#E6A57E] mx-auto" />}
+                              {row.status === 'loading' && <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--pos-accent)] mx-auto" />}
                               {row.status === 'found' && <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" />}
                               {row.status === 'not_found' && <AlertTriangle className="w-4 h-4 text-red-400 mx-auto" />}
                               {row.status === 'error' && <AlertCircle className="w-4 h-4 text-amber-500 mx-auto" />}
@@ -2104,7 +2104,7 @@ export default function AllocateTransaction() {
             {csvStep === 'preview' && (
               <>
                 <Button variant="outline" onClick={handleCsvDialogClose}>Cancel</Button>
-                <Button onClick={handleCsvLookup} className="bg-[#E6A57E] hover:bg-[#D18E65] gap-1.5">
+                <Button onClick={handleCsvLookup} className="bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] gap-1.5">
                   <Search className="w-3.5 h-3.5" /> Look Up Accounts
                 </Button>
               </>

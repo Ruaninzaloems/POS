@@ -313,7 +313,7 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
                                              <Clock className="w-3 h-3 mr-1" /> Pending Approval
                                          </Badge>
                                      )}
-                                     {tx.status === 'RECONCILED' && <Badge variant="secondary" className="bg-[#F0C3A7]/30 text-[#E6A57E] border-[#D6D6D6] shadow-none"><CheckCircle2 className="w-3 h-3 mr-1" /> Reconciled</Badge>}
+                                     {tx.status === 'RECONCILED' && <Badge variant="secondary" className="bg-[var(--pos-accent-tint-strong)] text-[var(--pos-accent)] border-[#D6D6D6] shadow-none"><CheckCircle2 className="w-3 h-3 mr-1" /> Reconciled</Badge>}
                                      {tx.status === 'DECLINED' && (
                                          <div className="flex flex-col gap-0.5">
                                              <Badge variant="secondary" className="bg-amber-100 text-amber-700 border-amber-200 shadow-none">
@@ -333,7 +333,7 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
                                              <Button 
                                                 variant="ghost" 
                                                 size="sm" 
-                                                className="h-7 text-[#E6A57E] hover:text-[#D18E65] hover:bg-[#F0C3A7]/20"
+                                                className="h-7 text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)] hover:bg-[var(--pos-accent-tint)]"
                                                 onClick={() => triggerReprint(tx)}
                                                 disabled={printingReceiptId === (tx.id || tx.receiptNumber)}
                                                 title="Reprint Receipt"
@@ -424,8 +424,8 @@ export function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryM
                         </div>
                     </div>
                 )}
-                <div className="flex items-start gap-2 text-xs text-muted-foreground bg-[#F0C3A7]/20 border border-[#D6D6D6] rounded-lg p-2.5">
-                    <Info className="w-4 h-4 text-[#E6A57E] flex-shrink-0 mt-0.5" />
+                <div className="flex items-start gap-2 text-xs text-muted-foreground bg-[var(--pos-accent-tint)] border border-[#D6D6D6] rounded-lg p-2.5">
+                    <Info className="w-4 h-4 text-[var(--pos-accent)] flex-shrink-0 mt-0.5" />
                     <span>
                         This cancellation request will be sent to a supervisor for approval. 
                         If approved, the receipt amount will be deducted from your shift totals for the applicable payment method (Cash/Card). 

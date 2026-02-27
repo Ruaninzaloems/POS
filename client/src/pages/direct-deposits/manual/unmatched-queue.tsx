@@ -453,7 +453,7 @@ export default function UnmatchedQueue() {
 
   const getConfidenceColor = (confidence: number) => {
     if (confidence >= 80) return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-    if (confidence >= 60) return 'bg-[#F0C3A7]/20 text-[#6B6B6B] border-[#D6D6D6]';
+    if (confidence >= 60) return 'bg-[var(--pos-accent-tint)] text-[#6B6B6B] border-[#D6D6D6]';
     return 'bg-slate-100 text-slate-600 border-slate-200';
   };
 
@@ -476,7 +476,7 @@ export default function UnmatchedQueue() {
         <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
                 <Banknote className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -497,24 +497,24 @@ export default function UnmatchedQueue() {
           </div>
 
           {showHelp && (
-            <div className="mb-4 p-4 bg-[#F0C3A7]/10 border border-[#D6D6D6] rounded-xl animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="mb-4 p-4 bg-[var(--pos-accent-tint)] border border-[#D6D6D6] rounded-xl animate-in fade-in slide-in-from-top-2 duration-200">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-sm text-slate-600">
                 <div className="flex gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-[#E6A57E] text-white flex items-center justify-center text-xs font-bold shrink-0">1</div>
+                  <div className="w-7 h-7 rounded-lg bg-[var(--pos-accent)] text-white flex items-center justify-center text-xs font-bold shrink-0">1</div>
                   <div>
                     <h4 className="font-medium text-slate-800 text-sm">Review Items</h4>
                     <p className="text-xs mt-0.5 text-slate-500">Review bank deposits from Platinum. Click the suggestion icon to see smart account matches.</p>
                   </div>
                 </div>
                 <div className="flex gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-[#E6A57E] text-white flex items-center justify-center text-xs font-bold shrink-0">2</div>
+                  <div className="w-7 h-7 rounded-lg bg-[var(--pos-accent)] text-white flex items-center justify-center text-xs font-bold shrink-0">2</div>
                   <div>
                     <h4 className="font-medium text-slate-800 text-sm">Search & Filter</h4>
                     <p className="text-xs mt-0.5 text-slate-500">Search by amount, reference, or description. Use date filters to narrow results.</p>
                   </div>
                 </div>
                 <div className="flex gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-[#E6A57E] text-white flex items-center justify-center text-xs font-bold shrink-0">3</div>
+                  <div className="w-7 h-7 rounded-lg bg-[var(--pos-accent)] text-white flex items-center justify-center text-xs font-bold shrink-0">3</div>
                   <div>
                     <h4 className="font-medium text-slate-800 text-sm">Allocate Funds</h4>
                     <p className="text-xs mt-0.5 text-slate-500">Click <strong>Allocate</strong> to assign funds to the correct municipal account(s).</p>
@@ -544,7 +544,7 @@ export default function UnmatchedQueue() {
 
              <Popover>
                 <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className={`gap-1.5 h-10 px-3 ${activeFiltersCount > 0 ? 'bg-[#F0C3A7]/20 border-[#E6A57E] text-[#E6A57E]' : 'border-slate-200'}`} data-testid="button-filter">
+                    <Button variant="outline" size="sm" className={`gap-1.5 h-10 px-3 ${activeFiltersCount > 0 ? 'bg-[var(--pos-accent-tint)] border-[var(--pos-accent)] text-[var(--pos-accent)]' : 'border-slate-200'}`} data-testid="button-filter">
                         <Filter className="w-3.5 h-3.5" />
                         <span className="text-xs">{activeFiltersCount > 0 ? `${activeFiltersCount} Filter` : 'Filter'}</span>
                     </Button>
@@ -620,7 +620,7 @@ export default function UnmatchedQueue() {
             <div className="sm:hidden space-y-2">
               {loading ? (
                 <div className="flex flex-col items-center justify-center py-16">
-                  <Loader2 className="w-6 h-6 animate-spin text-[#E6A57E] mb-2" />
+                  <Loader2 className="w-6 h-6 animate-spin text-[var(--pos-accent)] mb-2" />
                   <span className="text-xs text-muted-foreground">Loading deposits...</span>
                 </div>
               ) : filtered.length === 0 ? (
@@ -655,7 +655,7 @@ export default function UnmatchedQueue() {
                             <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-amber-500" onClick={(e) => { e.stopPropagation(); toggleSuggestion(tx.posItem_ID, tx.note, tx.reference); }}>
                               <Sparkles className="w-3.5 h-3.5" />
                             </Button>
-                            <Button size="sm" className="h-7 text-[10px] bg-[#E6A57E] hover:bg-[#D18E65] px-2" disabled={checkingItemId === tx.posItem_ID} onClick={(e) => handleAllocateClick(tx.posItem_ID, e)} data-testid={`button-allocate-mobile-${tx.posItem_ID}`}>
+                            <Button size="sm" className="h-7 text-[10px] bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] px-2" disabled={checkingItemId === tx.posItem_ID} onClick={(e) => handleAllocateClick(tx.posItem_ID, e)} data-testid={`button-allocate-mobile-${tx.posItem_ID}`}>
                               {checkingItemId === tx.posItem_ID ? <Loader2 className="w-3 h-3 animate-spin" /> : <>Allocate <ArrowRight className="ml-1 w-3 h-3" /></>}
                             </Button>
                           </div>
@@ -696,7 +696,7 @@ export default function UnmatchedQueue() {
                   {loading ? (
                     <tr>
                       <td colSpan={7} className="py-16 text-center">
-                        <Loader2 className="w-6 h-6 animate-spin mx-auto text-[#E6A57E] mb-2" />
+                        <Loader2 className="w-6 h-6 animate-spin mx-auto text-[var(--pos-accent)] mb-2" />
                         <span className="text-xs text-muted-foreground">Loading deposits...</span>
                       </td>
                     </tr>
@@ -755,7 +755,7 @@ export default function UnmatchedQueue() {
                               </Button>
                               <Button
                                 size="sm"
-                                className="h-8 bg-[#E6A57E] hover:bg-[#D18E65] text-xs gap-1 px-3"
+                                className="h-8 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-xs gap-1 px-3"
                                 disabled={checkingItemId === tx.posItem_ID}
                                 onClick={(e) => handleAllocateClick(tx.posItem_ID, e)}
                                 data-testid={`button-allocate-${tx.posItem_ID}`}
@@ -879,7 +879,7 @@ function SuggestionPanel({ posItemId, suggestions, loading, getConfidenceColor, 
               )}
               <Button
                 size="sm"
-                className="h-7 text-[10px] bg-[#E6A57E] hover:bg-[#D18E65] text-white shrink-0 px-2.5 gap-1"
+                className="h-7 text-[10px] bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white shrink-0 px-2.5 gap-1"
                 onClick={(e) => { e.stopPropagation(); onAllocate(posItemId, s); }}
               >
                 Allocate <ArrowRight className="w-3 h-3" />

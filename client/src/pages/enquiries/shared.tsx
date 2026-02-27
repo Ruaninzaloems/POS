@@ -7,7 +7,7 @@ export function FieldRow({ label, value, icon }: { label: string; value: any; ic
   if (value === null || value === undefined || value === '') return null;
   return (
     <div className="group flex items-center gap-2 sm:gap-3 py-2 sm:py-2.5 px-2 sm:px-3 border-b border-slate-100/80 last:border-0 hover:bg-slate-50/50 transition-colors rounded-sm">
-      {icon && <div className="text-[#E6A57E]/70 shrink-0">{icon}</div>}
+      {icon && <div className="text-[var(--pos-accent)]/70 shrink-0">{icon}</div>}
       <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-0.5 sm:gap-4">
         <span className="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-400 font-semibold shrink-0">{label}</span>
         <span className="text-[12px] sm:text-[13px] text-slate-800 font-medium sm:text-right break-words">{typeof value === 'number' ? value.toLocaleString('en-ZA', { minimumFractionDigits: 2 }) : String(value)}</span>
@@ -80,7 +80,7 @@ export function TabCard({ children, title, icon, action }: { children: React.Rea
       {title && (
         <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {icon && <span className="text-[#E6A57E]">{icon}</span>}
+            {icon && <span className="text-[var(--pos-accent)]">{icon}</span>}
             <h3 className="text-xs sm:text-sm font-semibold text-slate-700">{title}</h3>
           </div>
           {action && <div>{action}</div>}
@@ -95,7 +95,7 @@ export function SectionHeader({ title }: { title: string }) {
   return (
     <div className="flex items-center gap-3 py-2 sm:py-2.5 mt-1">
       <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 to-slate-300" />
-      <span className="text-[10px] sm:text-[11px] font-bold text-[#E6A57E] uppercase tracking-[0.15em] whitespace-nowrap px-2">{title}</span>
+      <span className="text-[10px] sm:text-[11px] font-bold text-[var(--pos-accent)] uppercase tracking-[0.15em] whitespace-nowrap px-2">{title}</span>
       <div className="h-px flex-1 bg-gradient-to-l from-transparent via-slate-300 to-slate-300" />
     </div>
   );
@@ -115,7 +115,7 @@ export function InfoField({ label, value, isCurrency, highlight }: { label: stri
     <div className="flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-2 py-1.5 sm:py-1 group hover:bg-slate-50/50 rounded px-1 -mx-1 transition-colors">
       <span className="text-[10px] sm:text-[11px] text-slate-500 font-medium whitespace-nowrap sm:min-w-[155px]">{label}</span>
       <span className="hidden sm:inline text-[11px] text-slate-300 shrink-0">:</span>
-      <span className={`text-[11px] font-semibold break-words ${highlight ? 'text-[#E6A57E] underline cursor-pointer' : 'text-slate-800'}`}>{display}</span>
+      <span className={`text-[11px] font-semibold break-words ${highlight ? 'text-[var(--pos-accent)] underline cursor-pointer' : 'text-slate-800'}`}>{display}</span>
     </div>
   );
 }
@@ -190,7 +190,7 @@ export function PaginatedTable({ data, columns, itemsPerPage = 50, tableId, onRo
         ) : paged.map((row, i) => (
           <div
             key={i}
-            className={`bg-white border border-slate-200 rounded-lg p-3 space-y-1.5 ${onRowClick ? 'cursor-pointer active:bg-[#F0C3A7]/20' : ''}`}
+            className={`bg-white border border-slate-200 rounded-lg p-3 space-y-1.5 ${onRowClick ? 'cursor-pointer active:bg-[var(--pos-accent-tint)]' : ''}`}
             onClick={() => onRowClick?.(row)}
             data-testid={`${tid}-card-${i}`}
           >
@@ -219,7 +219,7 @@ export function PaginatedTable({ data, columns, itemsPerPage = 50, tableId, onRo
             {paged.length === 0 ? (
               <tr><td colSpan={columns.length} className="text-center text-slate-400 py-8" data-testid={`${tid}-empty`}>No records to display</td></tr>
             ) : paged.map((row, i) => (
-              <tr key={i} className={`border-b border-slate-100 hover:bg-[#F0C3A7]/20/30 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`} onClick={() => onRowClick?.(row)} data-testid={`${tid}-row-${i}`}>
+              <tr key={i} className={`border-b border-slate-100 hover:bg-[var(--pos-accent-tint)]/30 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`} onClick={() => onRowClick?.(row)} data-testid={`${tid}-row-${i}`}>
                 {columns.map((c) => (
                   <td key={c.key} className="px-3 py-2 text-slate-700 whitespace-nowrap" data-testid={`${tid}-cell-${c.key}-${i}`}>
                     {c.render ? c.render(row) : (row[c.key] ?? '')}
@@ -295,7 +295,7 @@ export function ResponsiveTable({ data, columns, testId, emptyMessage, headerGra
           </thead>
           <tbody>
             {data.map((row, i) => (
-              <tr key={i} className="border-b border-slate-100 hover:bg-[#F0C3A7]/20/30 transition-colors" data-testid={`${testId}-row-${i}`}>
+              <tr key={i} className="border-b border-slate-100 hover:bg-[var(--pos-accent-tint)]/30 transition-colors" data-testid={`${testId}-row-${i}`}>
                 {columns.map(col => {
                   const content = col.render ? col.render(row) : (row[col.key] ?? '-');
                   return (

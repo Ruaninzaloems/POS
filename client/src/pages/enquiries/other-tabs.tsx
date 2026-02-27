@@ -95,7 +95,7 @@ function TransferOfOwnershipSection({ transfers, fmt, fmtDate }: { transfers: an
             {pageItems.length === 0 ? (
               <tr><td colSpan={12} className="py-6 text-center text-slate-400 text-sm">No records to display.</td></tr>
             ) : pageItems.map((t: any, i: number) => (
-              <tr key={i} className="border-b border-slate-100 hover:bg-[#F0C3A7]/20/40 transition-colors" data-testid={`row-transfer-${i}`}>
+              <tr key={i} className="border-b border-slate-100 hover:bg-[var(--pos-accent-tint)]/40 transition-colors" data-testid={`row-transfer-${i}`}>
                 <td className="py-2 px-3 text-[13px] text-slate-700 border-r border-slate-100">{t.financialYear ?? t.financial_Year ?? '-'}</td>
                 <td className="py-2 px-3 text-[13px] border-r border-slate-100">
                   <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${
@@ -225,7 +225,7 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
   return (
     <div className="p-3 sm:p-5 space-y-4 sm:space-y-5" data-testid="property-details-tab">
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] flex items-center gap-2">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
           <Building2 className="w-4 h-4 text-white" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Property Information</h3>
         </div>
@@ -240,7 +240,7 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
             <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Suburb</span><div className="text-sm font-semibold text-slate-800">{prop.subSuburb || prop.suburb || cu.nonStandAddSuburb || '-'}</div></div>
             <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Town</span><div className="text-sm font-semibold text-slate-800">{prop.town || '-'}</div></div>
             <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Property Type / Zoning</span><div className="text-sm font-semibold text-slate-800">{prop.typeOfUse ?? prop.typeofUse ?? prop.townPlanningZoneType ?? prop.townPlanningZone ?? '-'}</div></div>
-            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Market Value</span><div className="text-sm font-bold text-[#E6A57E] font-mono">{fmt(prop.marketValue ?? cu.marketValue)}</div></div>
+            <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Market Value</span><div className="text-sm font-bold text-[var(--pos-accent)] font-mono">{fmt(prop.marketValue ?? cu.marketValue)}</div></div>
             <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Stand Size (m²)</span><div className="text-sm font-semibold text-slate-800">{fmtInt(prop.standSize ?? cu.standSize)}</div></div>
             <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Extent (m²)</span><div className="text-sm font-semibold text-slate-800">{fmtInt(prop.extentM2 ?? prop.extent_M2 ?? cu.extentM2 ?? cu.extent_M2)}</div></div>
             <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Land Size (ha)</span><div className="text-sm font-semibold text-slate-800">{prop.landSize ?? cu.landSize ?? '-'}</div></div>
@@ -364,7 +364,7 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
                       <Badge variant={v.valuationStatus === 'Active' ? 'default' : 'secondary'} className={`text-[10px] ${v.valuationStatus === 'Active' ? 'bg-green-100 text-green-800' : ''}`}>{v.valuationStatus || '-'}</Badge>
                     </td>
                     <td className="py-2 px-3 text-slate-600">{v.financialYear || '-'}</td>
-                    <td className="py-2 px-3 text-right font-mono font-semibold text-[#E6A57E]">{fmt(v.standMarketValue)}</td>
+                    <td className="py-2 px-3 text-right font-mono font-semibold text-[var(--pos-accent)]">{fmt(v.standMarketValue)}</td>
                     <td className="py-2 px-3 text-right font-mono">{fmt(v.improvementValue)}</td>
                     <td className="py-2 px-3 text-right font-mono">{fmtInt(v.standSize)}</td>
                     <td className="py-2 px-3 text-slate-600">{v.rollNumber || '-'}</td>
@@ -561,8 +561,8 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
   ];
 
   const ContactField = ({ icon, label, value, testId, highlight }: { icon: React.ReactNode; label: string; value: string; testId: string; highlight?: boolean }) => (
-    <div className={`flex items-start gap-3 p-3.5 rounded-xl border transition-all ${value ? (highlight ? 'bg-[#F0C3A7]/20/60 border-[#D6D6D6]' : 'bg-white border-slate-200 hover:border-slate-300') : 'bg-slate-50/50 border-slate-100'}`} data-testid={testId}>
-      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${value ? (highlight ? 'bg-[#E6A57E] text-white' : 'bg-slate-100 text-slate-500') : 'bg-slate-100 text-slate-300'}`}>
+    <div className={`flex items-start gap-3 p-3.5 rounded-xl border transition-all ${value ? (highlight ? 'bg-[var(--pos-accent-tint)]/60 border-[#D6D6D6]' : 'bg-white border-slate-200 hover:border-slate-300') : 'bg-slate-50/50 border-slate-100'}`} data-testid={testId}>
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${value ? (highlight ? 'bg-[var(--pos-accent)] text-white' : 'bg-slate-100 text-slate-500') : 'bg-slate-100 text-slate-300'}`}>
         {icon}
       </div>
       <div className="min-w-0 flex-1">
@@ -575,7 +575,7 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
   return (
     <div className="p-3 sm:p-5" data-testid="contact-info-panel">
       <div className="flex items-center gap-3 mb-4 sm:mb-5">
-        <div className="h-1 w-8 bg-[#E6A57E] rounded-full" />
+        <div className="h-1 w-8 bg-[var(--pos-accent)] rounded-full" />
         <h3 className="text-lg font-bold text-slate-800 tracking-tight">Contact & Delivery Information</h3>
       </div>
 
@@ -583,9 +583,9 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
         {navItems.map(item => {
           const isActive = activeSection === item.id;
           const colorMap: Record<string, { active: string; inactive: string }> = {
-            blue: { active: 'bg-[#E6A57E] text-white shadow-[0_1px_3px_rgba(0,0,0,0.15)]', inactive: 'bg-white text-slate-600 border-slate-200 hover:border-[#D6D6D6] hover:text-[#E6A57E]' },
+            blue: { active: 'bg-[var(--pos-accent)] text-white shadow-[0_1px_3px_rgba(0,0,0,0.15)]', inactive: 'bg-white text-slate-600 border-slate-200 hover:border-[#D6D6D6] hover:text-[var(--pos-accent)]' },
             emerald: { active: 'bg-emerald-600 text-white shadow-emerald-200', inactive: 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300 hover:text-emerald-700' },
-            indigo: { active: 'bg-[#E6A57E] text-white shadow-[0_1px_3px_rgba(0,0,0,0.15)]', inactive: 'bg-white text-slate-600 border-slate-200 hover:border-[#D6D6D6] hover:text-[#E6A57E]' },
+            indigo: { active: 'bg-[var(--pos-accent)] text-white shadow-[0_1px_3px_rgba(0,0,0,0.15)]', inactive: 'bg-white text-slate-600 border-slate-200 hover:border-[#D6D6D6] hover:text-[var(--pos-accent)]' },
             amber: { active: 'bg-amber-600 text-white shadow-amber-200', inactive: 'bg-white text-slate-600 border-slate-200 hover:border-amber-300 hover:text-amber-700' },
           };
           const colors = colorMap[item.color] || colorMap.blue;
@@ -611,7 +611,7 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
       {activeSection === 'contact' && (
         <div className="space-y-4 sm:space-y-5 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] flex items-center gap-2">
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
               <Phone className="w-4 h-4 text-white" />
               <h4 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Phone & Email</h4>
             </div>
@@ -628,7 +628,7 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] flex items-center gap-2">
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
               <Mail className="w-4 h-4 text-white" />
               <h4 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Additional Statement Emails</h4>
               {addEmails.length > 0 && <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{addEmails.length}</Badge>}
@@ -693,7 +693,7 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
       {activeSection === 'contact-history' && (
         <div className="animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] flex items-center gap-2">
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
               <Clock className="w-4 h-4 text-white" />
               <h4 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Contact Details Change History</h4>
               {contactHistory.length > 0 && <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{contactHistory.length}</Badge>}
@@ -725,7 +725,7 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
                   </thead>
                   <tbody>
                     {contactHistory.map((r: any, i: number) => (
-                      <tr key={i} className="border-b border-slate-100 hover:bg-[#F0C3A7]/20 transition-colors" data-testid={`contact-history-row-${i}`}>
+                      <tr key={i} className="border-b border-slate-100 hover:bg-[var(--pos-accent-tint)] transition-colors" data-testid={`contact-history-row-${i}`}>
                         <td className="py-2.5 px-4 text-slate-600 whitespace-nowrap">{(() => { try { return r.changeDate ? new Date(r.changeDate).toLocaleDateString('en-ZA') : r.date || '-'; } catch { return r.changeDate || '-'; } })()}</td>
                         <td className="py-2.5 px-4 font-medium text-slate-800">{r.fieldName || r.field || r.description || '-'}</td>
                         <td className="py-2.5 px-4 text-red-500 font-mono">{r.oldValue || r.previousValue || '-'}</td>
@@ -913,7 +913,7 @@ export function HandoverTab({ accountId }: { accountId: number }) {
           <select
             value={selectedYear}
             onChange={(e) => { setSelectedYear(e.target.value); setCurrentPage(1); }}
-            className="text-sm border border-slate-300 rounded px-4 py-1.5 bg-white focus:ring-2 focus:ring-[#E6A57E] focus:border-[#E6A57E] outline-none min-w-[160px] text-center"
+            className="text-sm border border-slate-300 rounded px-4 py-1.5 bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none min-w-[160px] text-center"
             data-testid="select-handover-year"
           >
             {getFinYearOptions().map(yr => <option key={yr} value={yr}>{yr}</option>)}
@@ -960,7 +960,7 @@ export function HandoverTab({ accountId }: { accountId: number }) {
               {pageItems.length === 0 ? (
                 <tr><td colSpan={15} className="py-6 text-center text-slate-400 text-sm">No records to display.</td></tr>
               ) : pageItems.map((h: any, i: number) => (
-                <tr key={i} className="border-b border-slate-100 hover:bg-[#F0C3A7]/20/40 transition-colors" data-testid={`row-handover-${i}`}>
+                <tr key={i} className="border-b border-slate-100 hover:bg-[var(--pos-accent-tint)]/40 transition-colors" data-testid={`row-handover-${i}`}>
                   <td className="py-2 px-3 text-[13px] text-slate-700 border-r border-slate-100">{h.runType ?? h.type ?? '-'}</td>
                   <td className="py-2 px-3 text-[13px] font-mono text-slate-700 border-r border-slate-100">{h.handoverAccount ?? h.accountNumber ?? h.account ?? '-'}</td>
                   <td className="py-2 px-3 text-right font-mono text-[13px] text-slate-700 border-r border-slate-100">{fmt(h.handoverAmount ?? h.amount ?? 0)}</td>
@@ -1043,7 +1043,7 @@ export function HandoverTab({ accountId }: { accountId: number }) {
               </thead>
               <tbody>
                 {transactions.map((tx: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-[#F0C3A7]/20/40 transition-colors">
+                  <tr key={i} className="border-b border-slate-100 hover:bg-[var(--pos-accent-tint)]/40 transition-colors">
                     <td className="py-2 px-3 text-slate-600 text-[13px]">{fmtDate(tx.transactionDate ?? tx.date)}</td>
                     <td className="py-2 px-3 text-[13px]">{tx.description || tx.transactionDescription || '-'}</td>
                     <td className="py-2 px-3 text-right font-mono font-semibold text-[13px]">{fmt(tx.amount ?? tx.transactionAmount ?? 0)}</td>
@@ -1154,7 +1154,7 @@ export function NotificationsTab({ accountId }: { accountId: number }) {
                 </thead>
                 <tbody>
                   {accountNotifs.map((n: any, i: number) => (
-                    <tr key={i} className="border-b border-slate-100 hover:bg-[#F0C3A7]/20/30 transition-colors">
+                    <tr key={i} className="border-b border-slate-100 hover:bg-[var(--pos-accent-tint)]/30 transition-colors">
                       <td className="py-2 px-3 text-slate-600">{n.notificationDate ? new Date(n.notificationDate).toLocaleDateString('en-ZA') : '-'}</td>
                       <td className="py-2 px-3 font-medium">{n.notificationType || n.type || '-'}</td>
                       <td className="py-2 px-3 max-w-[300px] truncate">{n.message || n.description || '-'}</td>
@@ -1254,7 +1254,7 @@ export function StatementsTab({ accountId }: { accountId: number }) {
   return (
     <div className="p-3 sm:p-5 space-y-4 sm:space-y-5" data-testid="statements-panel">
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] flex items-center justify-between">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-between">
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-white" />
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Generated Statements</h3>
@@ -1274,14 +1274,14 @@ export function StatementsTab({ accountId }: { accountId: number }) {
             <div className="py-8 flex flex-col items-center gap-2">
               <FileText className="w-8 h-8 text-slate-300" />
               <span className="text-sm text-slate-400">No generated statements available</span>
-              <button onClick={() => setShowModal(true)} className="text-xs text-[#E6A57E] hover:text-[#E6A57E] font-medium" data-testid="button-generate-first-mobile">Click here to generate a statement</button>
+              <button onClick={() => setShowModal(true)} className="text-xs text-[var(--pos-accent)] hover:text-[var(--pos-accent)] font-medium" data-testid="button-generate-first-mobile">Click here to generate a statement</button>
             </div>
           ) : data.map((s: any, i: number) => (
             <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`statement-card-${i}`}>
               <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Date</span><span className="text-slate-800 font-semibold text-right">{s.statementDate ? new Date(s.statementDate).toLocaleDateString('en-ZA') : '-'}</span></div>
               <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Period</span><span className="text-slate-800 font-semibold text-right">{s.month ? `${s.financialYear} - ${s.month}` : s.period || '-'}</span></div>
               <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Amount</span><span className="text-slate-800 font-semibold text-right font-mono">{(s.amount ?? s.totalAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span></div>
-              <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Type</span><span className="text-right"><span className="inline-flex px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#F0C3A7]/20 text-[#E6A57E] border border-[#D6D6D6]">{s.statementType || s.type || 'Standard'}</span></span></div>
+              <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Type</span><span className="text-right"><span className="inline-flex px-2 py-0.5 rounded-md text-[10px] font-medium bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] border border-[#D6D6D6]">{s.statementType || s.type || 'Standard'}</span></span></div>
               <div className="flex justify-end pt-1">
                 <button onClick={() => handleDownload(s)} disabled={downloading === s.accountstatement_id} className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white text-[10px] font-semibold rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all shadow-sm disabled:opacity-40" data-testid={`btn-download-stmt-mobile-${i}`}>
                   {downloading === s.accountstatement_id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />} PDF
@@ -1308,17 +1308,17 @@ export function StatementsTab({ accountId }: { accountId: number }) {
                   <div className="flex flex-col items-center gap-2">
                     <FileText className="w-8 h-8 text-slate-300" />
                     <span className="text-sm">No generated statements available</span>
-                    <button onClick={() => setShowModal(true)} className="text-xs text-[#E6A57E] hover:text-[#E6A57E] font-medium" data-testid="button-generate-first">Click here to generate a statement</button>
+                    <button onClick={() => setShowModal(true)} className="text-xs text-[var(--pos-accent)] hover:text-[var(--pos-accent)] font-medium" data-testid="button-generate-first">Click here to generate a statement</button>
                   </div>
                 </td></tr>
               ) : data.map((s: any, i: number) => (
-                <tr key={i} className="border-b border-slate-100 hover:bg-[#F0C3A7]/20/30 transition-colors" data-testid={`statement-row-${i}`}>
+                <tr key={i} className="border-b border-slate-100 hover:bg-[var(--pos-accent-tint)]/30 transition-colors" data-testid={`statement-row-${i}`}>
                   <td className="py-2.5 px-3 text-slate-600">{s.statementDate ? new Date(s.statementDate).toLocaleDateString('en-ZA') : '-'}</td>
                   <td className="py-2.5 px-3 font-medium">{s.month ? `${s.financialYear} - ${s.month}` : s.period || '-'}</td>
                   <td className="py-2.5 px-3">{s.description || s.statementDescription || 'Account Statement'}</td>
                   <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">{(s.amount ?? s.totalAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
                   <td className="py-2.5 px-3">
-                    <span className="inline-flex px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#F0C3A7]/20 text-[#E6A57E] border border-[#D6D6D6]">
+                    <span className="inline-flex px-2 py-0.5 rounded-md text-[10px] font-medium bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] border border-[#D6D6D6]">
                       {s.statementType || s.type || 'Standard'}
                     </span>
                   </td>
@@ -1360,25 +1360,25 @@ export function StatementsTab({ accountId }: { accountId: number }) {
             <div className="p-3 sm:p-6 space-y-3 sm:space-y-5">
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6 bg-slate-50 rounded-xl p-3 sm:p-4 border border-slate-200">
                 <label className="flex items-center gap-2.5 text-sm cursor-pointer group">
-                  <input type="radio" name="stmtType" checked={statementType === 'account'} onChange={() => setStatementType('account')} className="w-4 h-4 text-[#E6A57E]" data-testid="radio-account-statement" />
-                  <span className={`font-medium ${statementType === 'account' ? 'text-[#E6A57E]' : 'text-slate-600'}`}>Account Statement</span>
+                  <input type="radio" name="stmtType" checked={statementType === 'account'} onChange={() => setStatementType('account')} className="w-4 h-4 text-[var(--pos-accent)]" data-testid="radio-account-statement" />
+                  <span className={`font-medium ${statementType === 'account' ? 'text-[var(--pos-accent)]' : 'text-slate-600'}`}>Account Statement</span>
                 </label>
                 <label className="flex items-center gap-2.5 text-sm cursor-pointer group">
-                  <input type="radio" name="stmtType" checked={statementType === 'detailed'} onChange={() => setStatementType('detailed')} className="w-4 h-4 text-[#E6A57E]" data-testid="radio-detailed-statement" />
-                  <span className={`font-medium ${statementType === 'detailed' ? 'text-[#E6A57E]' : 'text-slate-600'}`}>Detailed Account Statement</span>
+                  <input type="radio" name="stmtType" checked={statementType === 'detailed'} onChange={() => setStatementType('detailed')} className="w-4 h-4 text-[var(--pos-accent)]" data-testid="radio-detailed-statement" />
+                  <span className={`font-medium ${statementType === 'detailed' ? 'text-[var(--pos-accent)]' : 'text-slate-600'}`}>Detailed Account Statement</span>
                 </label>
               </div>
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-                <div className="flex items-center gap-2 bg-[#F0C3A7]/20 border border-[#D6D6D6] rounded-lg px-3 py-2">
-                  <span className="text-xs font-semibold text-[#E6A57E] uppercase tracking-wider">Account</span>
+                <div className="flex items-center gap-2 bg-[var(--pos-accent-tint)] border border-[#D6D6D6] rounded-lg px-3 py-2">
+                  <span className="text-xs font-semibold text-[var(--pos-accent)] uppercase tracking-wider">Account</span>
                   <span className="text-sm font-mono font-bold text-[#2E2E2E]">{accountNumber}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-3">
-                  <select value={modalYear} onChange={e => setModalYear(e.target.value)} className="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[#E6A57E] focus:border-[#E6A57E] outline-none" data-testid="select-stmt-year">
+                  <select value={modalYear} onChange={e => setModalYear(e.target.value)} className="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none" data-testid="select-stmt-year">
                     {years.map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
-                  <select value={modalMonth} onChange={e => setModalMonth(e.target.value)} className="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[#E6A57E] focus:border-[#E6A57E] outline-none" data-testid="select-stmt-month">
+                  <select value={modalMonth} onChange={e => setModalMonth(e.target.value)} className="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none" data-testid="select-stmt-month">
                     <option value="">All Months</option>
                     {['January','February','March','April','May','June','July','August','September','October','November','December'].map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
@@ -1389,7 +1389,7 @@ export function StatementsTab({ accountId }: { accountId: number }) {
                 <button
                   onClick={handleGenerateStatement}
                   disabled={generating}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-2.5 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] text-white text-sm font-semibold rounded-lg hover:from-[#D18E65] hover:to-[#C47A52] transition-all shadow-md disabled:opacity-50"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-2.5 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] text-white text-sm font-semibold rounded-lg hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)] transition-all shadow-md disabled:opacity-50"
                   data-testid="button-submit-stmt"
                 >
                   {generating ? (
@@ -1451,7 +1451,7 @@ export function StatementsTab({ accountId }: { accountId: number }) {
                       {filteredData.length === 0 ? (
                         <tr><td colSpan={3} className="text-center text-slate-400 py-6 text-sm">No statements found for selected period</td></tr>
                       ) : filteredData.map((s: any, i: number) => (
-                        <tr key={i} className="border-b border-slate-100 hover:bg-[#F0C3A7]/20/30 transition-colors" data-testid={`stmt-download-row-${i}`}>
+                        <tr key={i} className="border-b border-slate-100 hover:bg-[var(--pos-accent-tint)]/30 transition-colors" data-testid={`stmt-download-row-${i}`}>
                           <td className="px-4 py-3 text-slate-700 font-medium">{s.financialYear}</td>
                           <td className="px-4 py-3 text-slate-700">{s.month}</td>
                           <td className="px-4 py-3 text-center">
@@ -1676,7 +1676,7 @@ export function ClearanceTab({ accountId, propertyId, currentAccountNumber, curr
                         {scheduleId ? (
                           <button
                             onClick={() => downloadClearanceDocument(scheduleId, 'clearance-certificate')}
-                            className="inline-flex items-center gap-1 text-[#E6A57E] hover:text-[#C47A52] transition-colors group"
+                            className="inline-flex items-center gap-1 text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)] transition-colors group"
                             title="Download Clearance Certificate"
                             data-testid={`btn-download-certificate-${i}`}
                           >
@@ -1765,7 +1765,7 @@ export function ClearanceTab({ accountId, propertyId, currentAccountNumber, curr
                               </div>
 
                               <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-                                <div className="px-4 py-2 bg-[#E6A57E] text-white text-xs font-semibold tracking-wide flex items-center gap-1.5">
+                                <div className="px-4 py-2 bg-[var(--pos-accent)] text-white text-xs font-semibold tracking-wide flex items-center gap-1.5">
                                   <FileText className="w-3.5 h-3.5" />
                                   Property & Parties
                                 </div>
@@ -2096,7 +2096,7 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
         {data.length === 0 ? (
           <p className="text-center text-slate-400 py-4 italic text-sm">No records to display.</p>
         ) : data.map((o: any, i: number) => (
-          <div key={i} className="bg-white border border-slate-200 rounded-lg p-3 cursor-pointer hover:bg-[#F0C3A7]/20 transition-colors" data-testid={`occupier-row-${i}`}>
+          <div key={i} className="bg-white border border-slate-200 rounded-lg p-3 cursor-pointer hover:bg-[var(--pos-accent-tint)] transition-colors" data-testid={`occupier-row-${i}`}>
             <div className="text-sm font-medium text-slate-800">{o.name || o.occupierName || o.surname || '-'}</div>
             <div className="text-xs font-mono text-slate-500 mt-0.5">{o.idNumber || o.idRegistrationNumber || o.idNo || '-'}</div>
           </div>
@@ -2114,7 +2114,7 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
             {data.length === 0 ? (
               <tr><td colSpan={2} className="text-center text-slate-400 py-4 italic">No records to display.</td></tr>
             ) : data.map((o: any, i: number) => (
-              <tr key={i} className={`border-b border-slate-100 hover:bg-[#F0C3A7]/20 cursor-pointer transition-colors ${selectedOccupierIdx === i ? 'bg-[#F0C3A7]/20' : ''}`} data-testid={`occupier-row-${i}`} onClick={() => {
+              <tr key={i} className={`border-b border-slate-100 hover:bg-[var(--pos-accent-tint)] cursor-pointer transition-colors ${selectedOccupierIdx === i ? 'bg-[var(--pos-accent-tint)]' : ''}`} data-testid={`occupier-row-${i}`} onClick={() => {
                 setSelectedOccupierIdx(selectedOccupierIdx === i ? null : i);
               }}>
                 <td className="py-2 px-3 font-medium">{o.name || o.occupierName || o.surname || '-'}</td>
@@ -2162,7 +2162,7 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
             <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
               <h4 className="text-sm font-bold text-slate-700">Proof of Residence</h4>
               <div className="flex gap-2">
-                <button onClick={handlePrintProof} className="px-3 py-1.5 bg-[#E6A57E] text-white text-xs rounded hover:bg-[#D18E65]" data-testid="button-print-proof">Print</button>
+                <button onClick={handlePrintProof} className="px-3 py-1.5 bg-[var(--pos-accent)] text-white text-xs rounded hover:bg-[var(--pos-accent-dark)]" data-testid="button-print-proof">Print</button>
                 <button onClick={() => setShowProofModal(false)} className="text-slate-400 hover:text-slate-700 text-lg">&times;</button>
               </div>
             </div>
@@ -2406,7 +2406,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
         <div className="flex bg-white rounded-lg border shadow-sm p-0.5">
           <button
             onClick={() => setMode('email')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${mode === 'email' ? 'bg-[#E6A57E] text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${mode === 'email' ? 'bg-[var(--pos-accent)] text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}
             data-testid="button-send-mode-email"
           >
             <Mail className="w-3.5 h-3.5" />
@@ -2433,8 +2433,8 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
             </div>
             <div className="p-3 sm:p-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
-                <div className="bg-[#F0C3A7]/20 border border-[#D6D6D6] rounded-lg px-3 py-2 flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-[#E6A57E] uppercase tracking-wider">Account</span>
+                <div className="bg-[var(--pos-accent-tint)] border border-[#D6D6D6] rounded-lg px-3 py-2 flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-[var(--pos-accent)] uppercase tracking-wider">Account</span>
                   <span className="text-sm font-mono font-bold text-[#2E2E2E]">{accountNumber}</span>
                 </div>
                 {accountHolder && (
@@ -2445,10 +2445,10 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                 <div>
                   <label className="text-xs font-semibold text-slate-600 block mb-1.5">From Period</label>
                   <div className="grid grid-cols-2 gap-2">
-                    <select value={fromYear} onChange={e => setFromYear(e.target.value)} className="w-full border border-slate-300 rounded-lg px-2.5 sm:px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[#E6A57E] focus:border-[#E6A57E] outline-none" data-testid="select-from-year">
+                    <select value={fromYear} onChange={e => setFromYear(e.target.value)} className="w-full border border-slate-300 rounded-lg px-2.5 sm:px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none" data-testid="select-from-year">
                       {years.map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
-                    <select value={fromMonth} onChange={e => setFromMonth(e.target.value)} className="w-full border border-slate-300 rounded-lg px-2.5 sm:px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[#E6A57E] focus:border-[#E6A57E] outline-none" data-testid="select-from-month">
+                    <select value={fromMonth} onChange={e => setFromMonth(e.target.value)} className="w-full border border-slate-300 rounded-lg px-2.5 sm:px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none" data-testid="select-from-month">
                       {months.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
                   </div>
@@ -2456,10 +2456,10 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                 <div>
                   <label className="text-xs font-semibold text-slate-600 block mb-1.5">To Period</label>
                   <div className="grid grid-cols-2 gap-2">
-                    <select value={toYear} onChange={e => setToYear(e.target.value)} className="w-full border border-slate-300 rounded-lg px-2.5 sm:px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[#E6A57E] focus:border-[#E6A57E] outline-none" data-testid="select-to-year">
+                    <select value={toYear} onChange={e => setToYear(e.target.value)} className="w-full border border-slate-300 rounded-lg px-2.5 sm:px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none" data-testid="select-to-year">
                       {years.map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
-                    <select value={toMonth} onChange={e => setToMonth(e.target.value)} className="w-full border border-slate-300 rounded-lg px-2.5 sm:px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[#E6A57E] focus:border-[#E6A57E] outline-none" data-testid="select-to-month">
+                    <select value={toMonth} onChange={e => setToMonth(e.target.value)} className="w-full border border-slate-300 rounded-lg px-2.5 sm:px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none" data-testid="select-to-month">
                       {months.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
                   </div>
@@ -2469,12 +2469,12 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                 <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Type:</span>
                 <div className="flex items-center gap-4 sm:gap-5">
                   <label className="flex items-center gap-2 text-sm cursor-pointer">
-                    <input type="radio" name="sendStmtType" checked={statementType === 'account'} onChange={() => setStatementType('account')} className="w-3.5 h-3.5 text-[#E6A57E]" data-testid="radio-send-account" />
-                    <span className={`font-medium ${statementType === 'account' ? 'text-[#E6A57E]' : 'text-slate-500'}`}>Account Statement</span>
+                    <input type="radio" name="sendStmtType" checked={statementType === 'account'} onChange={() => setStatementType('account')} className="w-3.5 h-3.5 text-[var(--pos-accent)]" data-testid="radio-send-account" />
+                    <span className={`font-medium ${statementType === 'account' ? 'text-[var(--pos-accent)]' : 'text-slate-500'}`}>Account Statement</span>
                   </label>
                   <label className="flex items-center gap-2 text-sm cursor-pointer">
-                    <input type="radio" name="sendStmtType" checked={statementType === 'detailed'} onChange={() => setStatementType('detailed')} className="w-3.5 h-3.5 text-[#E6A57E]" data-testid="radio-send-detailed" />
-                    <span className={`font-medium ${statementType === 'detailed' ? 'text-[#E6A57E]' : 'text-slate-500'}`}>Detailed Statement</span>
+                    <input type="radio" name="sendStmtType" checked={statementType === 'detailed'} onChange={() => setStatementType('detailed')} className="w-3.5 h-3.5 text-[var(--pos-accent)]" data-testid="radio-send-detailed" />
+                    <span className={`font-medium ${statementType === 'detailed' ? 'text-[var(--pos-accent)]' : 'text-slate-500'}`}>Detailed Statement</span>
                   </label>
                 </div>
               </div>
@@ -2483,17 +2483,17 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
 
           {mode === 'email' && (
             <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-              <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-[#E6A57E] to-[#D18E65] flex items-center gap-2">
+              <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
                 <Paperclip className="w-4 h-4 text-white" />
                 <h4 className="text-xs font-bold text-white uppercase tracking-wider">Delivery Options</h4>
               </div>
               <div className="p-3 sm:p-4 space-y-2 sm:space-y-3">
-                <label className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg border border-slate-200 hover:border-[#D6D6D6] hover:bg-[#F0C3A7]/20/30 cursor-pointer transition-all">
+                <label className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg border border-slate-200 hover:border-[#D6D6D6] hover:bg-[var(--pos-accent-tint)]/30 cursor-pointer transition-all">
                   <input
                     type="checkbox"
                     checked={includeStatementPdf}
                     onChange={e => setIncludeStatementPdf(e.target.checked)}
-                    className="mt-0.5 rounded border-slate-300 text-[#E6A57E] shrink-0"
+                    className="mt-0.5 rounded border-slate-300 text-[var(--pos-accent)] shrink-0"
                     data-testid="checkbox-include-pdf"
                   />
                   <div className="min-w-0">
@@ -2504,17 +2504,17 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                     <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Attach the statement as a PDF to the email.</p>
                   </div>
                 </label>
-                <label className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg border border-slate-200 hover:border-[#D6D6D6] hover:bg-[#F0C3A7]/20/30 cursor-pointer transition-all">
+                <label className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg border border-slate-200 hover:border-[#D6D6D6] hover:bg-[var(--pos-accent-tint)]/30 cursor-pointer transition-all">
                   <input
                     type="checkbox"
                     checked={includeTemplateLink}
                     onChange={e => setIncludeTemplateLink(e.target.checked)}
-                    className="mt-0.5 rounded border-slate-300 text-[#E6A57E] shrink-0"
+                    className="mt-0.5 rounded border-slate-300 text-[var(--pos-accent)] shrink-0"
                     data-testid="checkbox-include-link"
                   />
                   <div className="min-w-0">
                     <div className="text-xs sm:text-sm font-semibold text-slate-800 flex items-center gap-1.5 sm:gap-2">
-                      <ArrowRight className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-[#E6A57E] shrink-0" />
+                      <ArrowRight className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-[var(--pos-accent)] shrink-0" />
                       <span>Include Statement Link</span>
                     </div>
                     <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Secure link to view the statement in browser.</p>
@@ -2563,7 +2563,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                 value={customMessage}
                 onChange={e => setCustomMessage(e.target.value)}
                 placeholder={mode === 'email' ? "Add a custom message to include in the email body (optional)..." : "Add a custom message to include in the SMS (optional, keep it short)..."}
-                className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm resize-none focus:ring-2 focus:ring-[#E6A57E] focus:border-[#E6A57E] outline-none"
+                className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm resize-none focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none"
                 rows={mode === 'email' ? 3 : 2}
                 maxLength={mode === 'sms' ? 120 : undefined}
                 data-testid="textarea-custom-message"
@@ -2577,7 +2577,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
 
         <div className="space-y-3 sm:space-y-4">
           <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-            <div className={`px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between ${mode === 'email' ? 'bg-gradient-to-r from-[#E6A57E] to-[#D18E65]' : 'bg-gradient-to-r from-green-600 to-green-700'}`}>
+            <div className={`px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between ${mode === 'email' ? 'bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)]' : 'bg-gradient-to-r from-green-600 to-green-700'}`}>
               <div className="flex items-center gap-2">
                 {mode === 'email' ? <Mail className="w-4 h-4 text-white" /> : <Phone className="w-4 h-4 text-white" />}
                 <h4 className="text-xs font-bold text-white uppercase tracking-wider">
@@ -2608,7 +2608,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                       key={idx}
                       className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-all ${
                         target.selected
-                          ? 'border-[#D6D6D6] bg-[#F0C3A7]/20/50 shadow-sm'
+                          ? 'border-[#D6D6D6] bg-[var(--pos-accent-tint)]/50 shadow-sm'
                           : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                       }`}
                     >
@@ -2616,7 +2616,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                         type="checkbox"
                         checked={target.selected}
                         onChange={() => toggleEmailTarget(idx)}
-                        className="rounded border-slate-300 text-[#E6A57E]"
+                        className="rounded border-slate-300 text-[var(--pos-accent)]"
                         data-testid={`checkbox-email-${idx}`}
                       />
                       <div className="flex-1 min-w-0">
@@ -2624,14 +2624,14 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
                             target.type === 'primary'
-                              ? 'bg-[#F0C3A7]/30 text-[#E6A57E] border border-[#D6D6D6]'
+                              ? 'bg-[var(--pos-accent-tint-strong)] text-[var(--pos-accent)] border border-[#D6D6D6]'
                               : 'bg-slate-100 text-slate-600 border border-slate-200'
                           }`}>
                             {target.type === 'primary' ? 'Default' : 'Additional'}
                           </span>
                         </div>
                       </div>
-                      {target.selected && <CheckCircle2 className="w-4 h-4 text-[#E6A57E] shrink-0" />}
+                      {target.selected && <CheckCircle2 className="w-4 h-4 text-[var(--pos-accent)] shrink-0" />}
                     </label>
                   ))
                 )}
@@ -2640,7 +2640,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                     <span>{selectedEmails.length} of {emailTargets.length} selected</span>
                     <button
                       onClick={() => setEmailTargets(prev => prev.map(t => ({ ...t, selected: true })))}
-                      className="text-[#E6A57E] hover:underline text-xs"
+                      className="text-[var(--pos-accent)] hover:underline text-xs"
                     >
                       Select All
                     </button>
@@ -2702,14 +2702,14 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500">Channel</span>
-                  <Badge className={`text-[10px] sm:text-xs ${mode === 'email' ? 'bg-[#F0C3A7]/30 text-[#E6A57E] border-[#D6D6D6]' : 'bg-green-100 text-green-700 border-green-200'}`}>
+                  <Badge className={`text-[10px] sm:text-xs ${mode === 'email' ? 'bg-[var(--pos-accent-tint-strong)] text-[var(--pos-accent)] border-[#D6D6D6]' : 'bg-green-100 text-green-700 border-green-200'}`}>
                     {mode === 'email' ? 'Email (Mimecast)' : 'SMS Gateway'}
                   </Badge>
                 </div>
                 {mode === 'email' && (
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">Recipients</span>
-                    <span className="font-bold text-[#E6A57E]">{selectedEmails.length} address(es)</span>
+                    <span className="font-bold text-[var(--pos-accent)]">{selectedEmails.length} address(es)</span>
                   </div>
                 )}
                 {mode === 'email' && (
@@ -2736,7 +2736,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                   disabled={!canSend || sending}
                   className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 text-white text-sm font-bold rounded-lg transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed ${
                     mode === 'email'
-                      ? 'bg-gradient-to-r from-[#E6A57E] to-[#D18E65] hover:from-[#D18E65] hover:to-[#C47A52]'
+                      ? 'bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)]'
                       : 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800'
                   }`}
                   data-testid="button-send-statement"
@@ -2825,7 +2825,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                   {includeTemplateLink && (
                     <>
                       <br />
-                      <p className="text-[#E6A57E] underline">[View Statement Online →]</p>
+                      <p className="text-[var(--pos-accent)] underline">[View Statement Online →]</p>
                     </>
                   )}
                   <br />
@@ -2844,7 +2844,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                   <p>{muniInfo?.name || 'Municipality'}: Your {statementType === 'detailed' ? 'detailed ' : ''}account statement ({fromMonth} - {toMonth} {toYear}) is ready.</p>
                   {customMessage && <p className="mt-1">{customMessage}</p>}
                   {includeTemplateLink && (
-                    <p className="mt-1 text-[#E6A57E] underline">[{muniInfo?.website || 'View statement online'}]</p>
+                    <p className="mt-1 text-[var(--pos-accent)] underline">[{muniInfo?.website || 'View statement online'}]</p>
                   )}
                 </div>
                 <p className="text-[10px] text-slate-400">SMS will be delivered via SMS Gateway service (not yet connected)</p>

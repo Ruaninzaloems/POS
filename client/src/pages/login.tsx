@@ -31,13 +31,13 @@ const SITE_STYLES: Record<string, {
 }> = {
     george: {
         gradient: 'from-[#F2F4F7] via-[#E8ECF1] to-[#F2F4F7]',
-        overlayFrom: 'from-[#E6A57E]/10',
+        overlayFrom: 'from-[var(--pos-accent-tint)]',
         overlayTo: 'from-[#C9D6E2]/15',
-        accentBar: 'from-[#E6A57E] to-[#D18E65]',
+        accentBar: 'from-[var(--pos-accent)] to-[var(--pos-accent-dark)]',
         buttonGradient: 'from-[#C9D6E2] to-[#B7C7D6]',
         buttonHover: 'hover:from-[#B7C7D6] hover:to-[#A9B8C7]',
         buttonShadow: 'shadow-[0_1px_3px_rgba(0,0,0,0.15)]',
-        inputFocus: 'focus:ring-[#E6A57E]/20 focus:border-[#E6A57E]',
+        inputFocus: 'focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)]',
         title: 'SAMRAS Platinum',
         subtitle: 'George Municipality',
     },
@@ -154,7 +154,7 @@ export default function LoginPage({ onLoginSuccess }: LoginProps) {
                                         <button
                                             key={site.id}
                                             onClick={() => handleSelectSite(site)}
-                                            className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-[#D6D6D6] hover:border-[#E6A57E] bg-white hover:bg-[#F7F7F7] shadow-[0_1px_3px_rgba(0,0,0,0.15)] transition-all group cursor-pointer text-left"
+                                            className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-[#D6D6D6] hover:border-[var(--pos-accent)] bg-white hover:bg-[#F7F7F7] shadow-[0_1px_3px_rgba(0,0,0,0.15)] transition-all group cursor-pointer text-left"
                                             data-testid={`button-site-${site.id}`}
                                         >
                                             <div className="w-14 h-14 rounded-lg bg-[#F7F7F7] flex items-center justify-center shrink-0 overflow-hidden">

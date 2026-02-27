@@ -500,7 +500,7 @@ export default function ClientCommunications() {
         <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
                 <Mail className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -515,7 +515,7 @@ export default function ClientCommunications() {
               <HelpTip text="Choose whether to send via email (Mimecast) or SMS gateway." side="bottom" />
               <button
                 onClick={() => setMode('email')}
-                className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${mode === 'email' ? 'bg-white text-[#E6A57E] shadow-sm border border-[#D6D6D6]' : 'text-slate-500 hover:text-slate-700 active:bg-slate-200'}`}
+                className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${mode === 'email' ? 'bg-white text-[var(--pos-accent)] shadow-sm border border-[#D6D6D6]' : 'text-slate-500 hover:text-slate-700 active:bg-slate-200'}`}
                 data-testid="button-mode-email"
               >
                 <Mail className="w-3.5 h-3.5" />
@@ -542,20 +542,20 @@ export default function ClientCommunications() {
                   <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b bg-gradient-to-r from-slate-50 to-white shrink-0">
                     <div className="flex items-center justify-between">
                       <h2 className="font-semibold text-xs sm:text-sm text-slate-800 flex items-center gap-1.5 sm:gap-2">
-                        <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#E6A57E]" />
+                        <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[var(--pos-accent)]" />
                         Recipients
                         {recipients.length > 0 && (
-                          <span className="text-[9px] sm:text-[10px] bg-[#E6A57E] text-white px-1.5 py-0.5 rounded-full font-bold">
+                          <span className="text-[9px] sm:text-[10px] bg-[var(--pos-accent)] text-white px-1.5 py-0.5 rounded-full font-bold">
                             {recipients.length > 999 ? `${(recipients.length / 1000).toFixed(1)}k` : `${selectedRecipients.length}/${recipients.length}`}
                           </span>
                         )}
                       </h2>
                       <div className="flex items-center gap-0.5 sm:gap-1">
-                        <Button variant="ghost" size="sm" className="text-[10px] sm:text-xs h-7 sm:h-7 px-1.5 sm:px-2 text-slate-500 hover:text-[#E6A57E]" onClick={downloadCsvTemplate} data-testid="button-download-template" title="Download CSV template">
+                        <Button variant="ghost" size="sm" className="text-[10px] sm:text-xs h-7 sm:h-7 px-1.5 sm:px-2 text-slate-500 hover:text-[var(--pos-accent)]" onClick={downloadCsvTemplate} data-testid="button-download-template" title="Download CSV template">
                           <Download className="w-3 h-3 mr-0.5 sm:mr-1" />
                           <span className="hidden sm:inline">Template</span>
                         </Button>
-                        <Button variant="ghost" size="sm" className="text-[10px] sm:text-xs h-7 sm:h-7 px-1.5 sm:px-2 text-slate-500 hover:text-[#E6A57E]" onClick={() => csvInputRef.current?.click()} disabled={importing} data-testid="button-import-csv">
+                        <Button variant="ghost" size="sm" className="text-[10px] sm:text-xs h-7 sm:h-7 px-1.5 sm:px-2 text-slate-500 hover:text-[var(--pos-accent)]" onClick={() => csvInputRef.current?.click()} disabled={importing} data-testid="button-import-csv">
                           {importing ? <Loader2 className="w-3 h-3 animate-spin mr-0.5 sm:mr-1" /> : <Upload className="w-3 h-3 mr-0.5 sm:mr-1" />}
                           Import
                         </Button>
@@ -568,10 +568,10 @@ export default function ClientCommunications() {
                       <div className="mt-2">
                         <div className="flex items-center justify-between text-[10px] text-slate-500 mb-1">
                           <span>Importing {importProgress.current} of {importProgress.total}...</span>
-                          <span className="font-medium text-[#E6A57E]">{importProgress.added} added</span>
+                          <span className="font-medium text-[var(--pos-accent)]">{importProgress.added} added</span>
                         </div>
                         <div className="w-full bg-slate-200 rounded-full h-1.5">
-                          <div className="bg-[#E6A57E] h-1.5 rounded-full transition-all duration-300" style={{ width: `${Math.round((importProgress.current / importProgress.total) * 100)}%` }} />
+                          <div className="bg-[var(--pos-accent)] h-1.5 rounded-full transition-all duration-300" style={{ width: `${Math.round((importProgress.current / importProgress.total) * 100)}%` }} />
                         </div>
                       </div>
                     )}
@@ -599,7 +599,7 @@ export default function ClientCommunications() {
                           value={searchQuery}
                           onChange={e => handleSearchInput(e.target.value)}
                           placeholder="Search account number or name..."
-                          className="pl-9 pr-8 h-10 sm:h-8 text-sm sm:text-xs bg-white border-slate-200 focus:border-[#E6A57E] rounded-lg sm:rounded-md"
+                          className="pl-9 pr-8 h-10 sm:h-8 text-sm sm:text-xs bg-white border-slate-200 focus:border-[var(--pos-accent)] rounded-lg sm:rounded-md"
                           data-testid="input-search-recipient"
                         />
                         {searching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin text-slate-400" />}
@@ -616,7 +616,7 @@ export default function ClientCommunications() {
                             return (
                               <button
                                 key={idx}
-                                className={`w-full text-left px-3 py-3 sm:py-2.5 hover:bg-[#F0C3A7]/20 active:bg-[#F0C3A7]/30 transition-colors border-b border-slate-100 last:border-b-0 ${alreadyAdded ? 'opacity-40 bg-slate-50' : ''}`}
+                                className={`w-full text-left px-3 py-3 sm:py-2.5 hover:bg-[var(--pos-accent-tint)] active:bg-[var(--pos-accent-tint-strong)] transition-colors border-b border-slate-100 last:border-b-0 ${alreadyAdded ? 'opacity-40 bg-slate-50' : ''}`}
                                 onClick={() => !alreadyAdded && addRecipient(item)}
                                 disabled={alreadyAdded}
                                 data-testid={`button-add-recipient-${accId}`}
@@ -624,7 +624,7 @@ export default function ClientCommunications() {
                                 <div className="flex items-center justify-between gap-2">
                                   <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-1.5 flex-wrap">
-                                      <span className="font-mono text-[11px] text-[#E6A57E] bg-[#F0C3A7]/20 px-1.5 py-0.5 rounded">{accNo}</span>
+                                      <span className="font-mono text-[11px] text-[var(--pos-accent)] bg-[var(--pos-accent-tint)] px-1.5 py-0.5 rounded">{accNo}</span>
                                       <span className="text-xs font-medium text-slate-800 truncate">{name}</span>
                                     </div>
                                     {item.deliveryAddress && (
@@ -646,7 +646,7 @@ export default function ClientCommunications() {
                                     {alreadyAdded ? (
                                       <CheckCircle2 className="w-4 h-4 text-green-500" />
                                     ) : (
-                                      <Plus className="w-4 h-4 text-[#E6A57E]" />
+                                      <Plus className="w-4 h-4 text-[var(--pos-accent)]" />
                                     )}
                                   </div>
                                 </div>
@@ -662,7 +662,7 @@ export default function ClientCommunications() {
                     <div className="flex items-center justify-between px-3 py-1.5 border-b bg-slate-50/80 text-[11px] text-slate-500 shrink-0">
                       <span className="font-medium">{selectedRecipients.length} of {recipients.length} selected</span>
                       <div className="flex gap-2">
-                        <button onClick={selectAll} className="text-[#E6A57E] hover:underline font-medium active:text-[#D18E65]">All</button>
+                        <button onClick={selectAll} className="text-[var(--pos-accent)] hover:underline font-medium active:text-[var(--pos-accent-dark)]">All</button>
                         <button onClick={deselectAll} className="text-slate-400 hover:underline active:text-slate-600">None</button>
                         {recipients.length > 0 && (
                           <button onClick={clearAll} className="text-red-400 hover:text-red-600 hover:underline active:text-red-700">Clear</button>
@@ -679,7 +679,7 @@ export default function ClientCommunications() {
                         </div>
                         <p className="text-xs sm:text-sm font-medium text-slate-500">No recipients added</p>
                         <p className="text-[10px] sm:text-xs text-slate-400 mt-1">Search above or import from CSV</p>
-                        <button onClick={downloadCsvTemplate} className="mt-2.5 sm:mt-3 inline-flex items-center gap-1 text-[11px] sm:text-xs text-[#E6A57E] hover:text-[#D18E65] hover:underline active:text-[#D18E65]" data-testid="button-download-template-empty">
+                        <button onClick={downloadCsvTemplate} className="mt-2.5 sm:mt-3 inline-flex items-center gap-1 text-[11px] sm:text-xs text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)] hover:underline active:text-[var(--pos-accent-dark)]" data-testid="button-download-template-empty">
                           <Download className="w-3 h-3" />
                           Download import template
                         </button>
@@ -706,12 +706,12 @@ export default function ClientCommunications() {
                                   type="checkbox"
                                   checked={r.selected}
                                   onChange={() => toggleRecipient(r.id)}
-                                  className="mt-1 w-4 h-4 rounded border-slate-300 text-[#E6A57E] focus:ring-[#E6A57E]"
+                                  className="mt-1 w-4 h-4 rounded border-slate-300 text-[var(--pos-accent)] focus:ring-[var(--pos-accent)]"
                                   data-testid={`checkbox-recipient-${r.accountId}`}
                                 />
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="font-mono text-[10px] text-[#E6A57E] bg-[#F0C3A7]/20 px-1 py-0.5 rounded">{r.accountNo}</span>
+                                    <span className="font-mono text-[10px] text-[var(--pos-accent)] bg-[var(--pos-accent-tint)] px-1 py-0.5 rounded">{r.accountNo}</span>
                                     <span className="text-xs font-semibold text-slate-800 truncate">{r.name}</span>
                                     {r.contactLoading && <Loader2 className="w-3 h-3 animate-spin text-slate-400" />}
                                   </div>
@@ -785,7 +785,7 @@ export default function ClientCommunications() {
                 <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
                   <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b bg-gradient-to-r from-slate-50 to-white">
                     <h2 className="font-semibold text-xs sm:text-sm text-slate-800 flex items-center gap-2">
-                      {mode === 'email' ? <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#E6A57E]" /> : <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600" />}
+                      {mode === 'email' ? <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[var(--pos-accent)]" /> : <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600" />}
                       Compose {mode === 'email' ? 'Email' : 'SMS'}
                     </h2>
                   </div>
@@ -826,7 +826,7 @@ export default function ClientCommunications() {
                             <Paperclip className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                             Attachments
                             {attachments.length > 0 && (
-                              <span className="text-[9px] sm:text-[10px] bg-[#F0C3A7]/30 text-[#E6A57E] px-1.5 py-0.5 rounded-full font-bold">{attachments.length}</span>
+                              <span className="text-[9px] sm:text-[10px] bg-[var(--pos-accent-tint-strong)] text-[var(--pos-accent)] px-1.5 py-0.5 rounded-full font-bold">{attachments.length}</span>
                             )}
                             <HelpTip text="Attach files to email messages. Not available for SMS." />
                           </Label>
@@ -840,7 +840,7 @@ export default function ClientCommunications() {
                           <div className="space-y-1.5">
                             {attachments.map(att => (
                               <div key={att.id} className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2 border border-slate-200">
-                                <FileText className="w-4 h-4 text-[#E6A57E] shrink-0" />
+                                <FileText className="w-4 h-4 text-[var(--pos-accent)] shrink-0" />
                                 <span className="text-[11px] sm:text-xs text-slate-700 truncate flex-1">{att.name}</span>
                                 <span className="text-[10px] text-slate-400 shrink-0">{formatFileSize(att.size)}</span>
                                 <button onClick={() => removeAttachment(att.id)} className="text-slate-300 hover:text-red-500 active:text-red-600 transition-colors p-1" data-testid={`button-remove-attachment-${att.id}`}>
@@ -851,7 +851,7 @@ export default function ClientCommunications() {
                             <p className="text-[10px] text-slate-400 pl-1">Total: {formatFileSize(attachments.reduce((s, a) => s + a.size, 0))}</p>
                           </div>
                         ) : (
-                          <div className="border-2 border-dashed border-slate-200 rounded-lg p-4 sm:p-5 text-center cursor-pointer hover:border-[#E6A57E] hover:bg-[#F0C3A7]/10 active:bg-[#F0C3A7]/20 transition-all" onClick={() => fileInputRef.current?.click()}>
+                          <div className="border-2 border-dashed border-slate-200 rounded-lg p-4 sm:p-5 text-center cursor-pointer hover:border-[var(--pos-accent)] hover:bg-[var(--pos-accent-tint)] active:bg-[var(--pos-accent-tint)] transition-all" onClick={() => fileInputRef.current?.click()}>
                             <Upload className="w-5 h-5 mx-auto text-slate-300 mb-1.5" />
                             <p className="text-[11px] sm:text-xs text-slate-400">Tap to upload files</p>
                             <p className="text-[10px] text-slate-300 mt-0.5">PDF, DOCX, XLSX, images</p>
@@ -868,7 +868,7 @@ export default function ClientCommunications() {
                       {mode === 'email' ? (
                         <>
                           <p className="flex items-center gap-1.5">
-                            <Mail className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#E6A57E] shrink-0" />
+                            <Mail className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[var(--pos-accent)] shrink-0" />
                             <strong className="text-slate-700">{totalEmailAddresses}</strong> email(s) across <strong className="text-slate-700">{validEmailRecipients.length}</strong> account(s)
                           </p>
                           {attachments.length > 0 && (
@@ -896,7 +896,7 @@ export default function ClientCommunications() {
                         <Button
                           onClick={handleSend}
                           size="sm"
-                          className={`text-xs h-9 sm:h-8 rounded-lg sm:rounded-md ${mode === 'email' ? 'bg-[#E6A57E] hover:bg-[#D18E65] active:bg-[#D18E65]' : 'bg-green-600 hover:bg-green-700 active:bg-green-800'}`}
+                          className={`text-xs h-9 sm:h-8 rounded-lg sm:rounded-md ${mode === 'email' ? 'bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] active:bg-[var(--pos-accent-dark)]' : 'bg-green-600 hover:bg-green-700 active:bg-green-800'}`}
                           disabled={selectedRecipients.length === 0 || !messageBody.trim()}
                           data-testid="button-send"
                         >

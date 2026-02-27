@@ -24,8 +24,19 @@ A local PostgreSQL database is present but **explicitly not used** for any busin
 ### Web Component / Angular Integration
 The React application is designed as a self-contained Web Component (`<pos-app>`) for seamless embedding into existing Angular applications. It utilizes Shadow DOM for style isolation and routes all API calls through a centralized URL resolver. It adheres to strict guidelines for integration, including configuration via HTML attributes and generating a single ES module bundle.
 
-### Design System — Colour Palettes
-The application supports multi-site theming with distinct color palettes for "Platinum POS / SAMRAS Billing (George)" and "Inzalo EMS Site02". Theme switching is dynamic based on `siteInfo?.id`, applying specific CSS classes and corresponding color tokens for various UI elements like accents, backgrounds, text, and borders.
+### Design System — Colour Palettes & CSS Variables
+The application supports multi-site theming via CSS custom properties defined in `index.css`. The accent color system uses `--pos-accent`, `--pos-accent-dark`, `--pos-accent-light`, `--pos-accent-shadow`, `--pos-accent-tint`, and `--pos-accent-tint-strong` variables. These are set in `:root` for the Platinum/George theme (peach palette) and overridden in `.theme-site02` for Inzalo EMS (teal palette). All component files reference these variables (e.g., `from-[var(--pos-accent)]`, `text-[var(--pos-accent)]`) instead of hardcoded hex values, so theme switching is fully automatic via the CSS class on `<body>`.
+
+| Variable | George (default) | EMS Site02 |
+|---|---|---|
+| `--pos-accent` | `#E6A57E` | `#2FB5AD` |
+| `--pos-accent-dark` | `#D18E65` | `#249E97` |
+| `--pos-accent-light` | `#F0C3A7` | `#8DD8D3` |
+| `--pos-accent-shadow` | `rgba(230,165,126,0.20)` | `rgba(47,181,173,0.20)` |
+| `--pos-accent-tint` | `rgba(240,195,167,0.20)` | `rgba(47,181,173,0.15)` |
+| `--pos-accent-tint-strong` | `rgba(240,195,167,0.30)` | `rgba(47,181,173,0.25)` |
+
+**Important:** Do NOT hardcode `#E6A57E`, `#D18E65`, or `#F0C3A7` in component files. Always use the CSS variable equivalents. Only the login page's site-specific config and pos-layout's header overlay retain hardcoded Site02 teal values behind `isSite02` conditionals (structural, not color-only differences).
 
 ### Page Layout Standards
 All pages follow a mandatory, consistent layout comprising a sticky header with an icon, title, and description, and a scrollable content area. Key rules include full-width content (no `max-w-* mx-auto`), full-height layout, consistent header styling, specific background colors for content areas, and predefined styles for cards, stat cards, and empty states.

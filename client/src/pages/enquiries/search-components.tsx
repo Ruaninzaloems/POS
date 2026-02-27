@@ -95,7 +95,7 @@ export function SmartSearchDropdown({
     >
       {loading && results.length === 0 && (
         <div className="flex items-center gap-3 px-3 sm:px-4 py-3 text-sm text-slate-500 border-b border-slate-100">
-          <Loader2 className="w-4 h-4 animate-spin text-[#E6A57E]" />
+          <Loader2 className="w-4 h-4 animate-spin text-[var(--pos-accent)]" />
           <span className="text-xs sm:text-sm">Searching accounts...</span>
         </div>
       )}
@@ -137,20 +137,20 @@ export function SmartSearchDropdown({
                 <div
                   key={account.accountID || account.account_ID || i}
                   onClick={() => onSelect(account)}
-                  className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-2.5 cursor-pointer transition-all border-b border-slate-50 last:border-0 active:bg-[#F0C3A7]/30/60
-                    ${highlightIdx === i ? 'bg-[#F0C3A7]/20 border-l-3 border-l-[#E6A57E]' : 'hover:bg-slate-50 border-l-3 border-l-transparent'}`}
+                  className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-2.5 cursor-pointer transition-all border-b border-slate-50 last:border-0 active:bg-[var(--pos-accent-tint-strong)]/60
+                    ${highlightIdx === i ? 'bg-[var(--pos-accent-tint)] border-l-3 border-l-[var(--pos-accent)]' : 'hover:bg-slate-50 border-l-3 border-l-transparent'}`}
                   data-testid={`dropdown-account-${account.accountID || account.account_ID || i}`}
                   role="option"
                   aria-selected={highlightIdx === i}
                   tabIndex={-1}
                 >
                   <div className={`shrink-0 h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold
-                    ${isActive ? 'bg-[#F0C3A7]/30 text-[#E6A57E]' : 'bg-slate-100 text-slate-500'}`}>
+                    ${isActive ? 'bg-[var(--pos-accent-tint-strong)] text-[var(--pos-accent)]' : 'bg-slate-100 text-slate-500'}`}>
                     {name.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 sm:gap-2">
-                      <span className="text-[11px] sm:text-xs font-mono text-[#E6A57E] font-semibold"><HighlightMatch text={acctNum} query={query} /></span>
+                      <span className="text-[11px] sm:text-xs font-mono text-[var(--pos-accent)] font-semibold"><HighlightMatch text={acctNum} query={query} /></span>
                       <span className="text-[12px] sm:text-sm font-medium text-slate-800 truncate"><HighlightMatch text={name} query={query} /></span>
                       <Badge
                         variant={isActive ? 'default' : 'secondary'}
@@ -190,7 +190,7 @@ export function SmartSearchDropdown({
           {hasMore && onViewAll && (
             <button
               onClick={onViewAll}
-              className="w-full px-4 py-2.5 sm:py-2.5 text-xs text-[#E6A57E] hover:text-[#C47A52] hover:bg-[#F0C3A7]/20 active:bg-[#F0C3A7]/30 transition-colors border-t border-slate-100 font-medium text-center"
+              className="w-full px-4 py-2.5 sm:py-2.5 text-xs text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)] hover:bg-[var(--pos-accent-tint)] active:bg-[var(--pos-accent-tint-strong)] transition-colors border-t border-slate-100 font-medium text-center"
               data-testid="button-view-all-results"
             >
               View all {results.length} results
@@ -262,13 +262,13 @@ export function ExpandableResultRow({ account, onSelect, isExpanded, onToggleExp
   return (
     <>
       <tr
-        className={`border-b border-slate-100 transition-colors duration-150 cursor-pointer ${isExpanded ? 'bg-[#F0C3A7]/20/80' : 'hover:bg-[#F0C3A7]/20/60'}`}
+        className={`border-b border-slate-100 transition-colors duration-150 cursor-pointer ${isExpanded ? 'bg-[var(--pos-accent-tint)]/80' : 'hover:bg-[var(--pos-accent-tint)]/60'}`}
         data-testid={`expandable-row-${aid}`}
       >
         <td className="px-1 py-2.5 text-center w-8">
           <button
             onClick={onToggleExpand}
-            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[#F0C3A7]/30 transition-colors mx-auto"
+            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--pos-accent-tint-strong)] transition-colors mx-auto"
             data-testid={`btn-expand-${aid}`}
             aria-label={isExpanded ? 'Collapse details' : 'Expand details'}
           >
@@ -290,7 +290,7 @@ export function ExpandableResultRow({ account, onSelect, isExpanded, onToggleExp
         <td className="px-2 py-2.5 whitespace-nowrap">
           <button
             onClick={() => onSelect(account)}
-            className="font-mono text-[#E6A57E] font-semibold hover:text-[#C47A52] hover:underline text-[13px]"
+            className="font-mono text-[var(--pos-accent)] font-semibold hover:text-[var(--pos-accent-dark)] hover:underline text-[13px]"
             data-testid={`btn-account-${aid}`}
           >
             {searchQuery ? <HighlightMatch text={String(account.accountNumber || aid)} query={searchQuery} /> : (account.accountNumber || aid)}
@@ -336,7 +336,7 @@ export function ExpandableResultRow({ account, onSelect, isExpanded, onToggleExp
             variant="ghost"
             size="sm"
             onClick={() => onSelect(account)}
-            className="h-7 px-2 text-xs text-[#E6A57E] hover:text-[#C47A52] hover:bg-[#F0C3A7]/30"
+            className="h-7 px-2 text-xs text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)] hover:bg-[var(--pos-accent-tint-strong)]"
             data-testid={`btn-open-${aid}`}
           >
             <Eye className="w-3.5 h-3.5 mr-1" />
@@ -348,7 +348,7 @@ export function ExpandableResultRow({ account, onSelect, isExpanded, onToggleExp
       {isExpanded && (
         <tr>
           <td colSpan={11} className="p-0">
-            <div className="bg-gradient-to-b from-[#F0C3A7]/10 to-white border-b border-slate-200 border-l-2 border-l-[#E6A57E] px-2 sm:px-4 py-3 sm:py-4">
+            <div className="bg-gradient-to-b from-[var(--pos-accent-tint)] to-white border-b border-slate-200 border-l-2 border-l-[var(--pos-accent)] px-2 sm:px-4 py-3 sm:py-4">
           {loading && (
             <div className="flex items-center gap-3 py-8 justify-center text-slate-400">
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -360,14 +360,14 @@ export function ExpandableResultRow({ account, onSelect, isExpanded, onToggleExp
             <div className="flex flex-col items-center gap-2 py-6 text-slate-400">
               <AlertTriangle className="w-5 h-5 text-amber-500" />
               <span className="text-sm">Could not load enriched details</span>
-              <button onClick={() => { setLoaded(false); setFetchError(false); loadEnrichedData(); }} className="text-xs text-[#E6A57E] hover:text-[#C47A52] underline" data-testid={`button-retry-enrich-${aid}`}>Retry</button>
+              <button onClick={() => { setLoaded(false); setFetchError(false); loadEnrichedData(); }} className="text-xs text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)] underline" data-testid={`button-retry-enrich-${aid}`}>Retry</button>
             </div>
           )}
 
           {loaded && !fetchError && enrichedData && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/60 shadow-sm overflow-hidden" data-testid={`panel-account-details-${aid}`}>
-                <div className="bg-gradient-to-r from-[#E6A57E] to-[#D18E65] px-4 py-2.5 flex items-center gap-2">
+                <div className="bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] px-4 py-2.5 flex items-center gap-2">
                   <User className="w-4 h-4 text-white/80" />
                   <span className="text-xs font-semibold text-white uppercase tracking-wider">Account Details</span>
                 </div>
