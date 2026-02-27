@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { useLocation } from 'wouter';
-import { Loader2, AlertTriangle, CheckCircle2, Circle, ShieldCheck, CreditCard, Banknote, XCircle, RefreshCw } from 'lucide-react';
+import { Loader2, AlertTriangle, CheckCircle2, Circle, ShieldCheck, CreditCard, Banknote, XCircle, RefreshCw, Calendar, User } from 'lucide-react';
 import { platinumGetCashOffices, fetchCashierPaymentOptions, fetchCashierPaymentTypes, validateReceiptRange, CashierPaymentOption, CashierPaymentType, ReceiptRangeValidation, fetchActiveCashierByUserId, fetchPlatinumUserInfo, platinumSubmitCashierSetup } from '@/lib/external-api';
 
 interface CashOfficeViewModel {
@@ -404,6 +404,25 @@ export default function CashierSetup() {
                                 Your day-end reconciliation has been submitted and is waiting for supervisor review.
                                 You cannot start or resume a session until the supervisor approves or returns your submission.
                             </p>
+                        </div>
+                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-left space-y-2">
+                            <div className="flex items-center gap-2 text-sm">
+                                <User className="h-4 w-4 text-[#6B6B6B] shrink-0" />
+                                <span className="text-[#6B6B6B]">Cashier:</span>
+                                <span className="font-medium text-[#2E2E2E]">{`${firstName} ${lastName}`.trim() || currentUser.name}</span>
+                            </div>
+                            {cashierId && (
+                                <div className="flex items-center gap-2 text-sm">
+                                    <ShieldCheck className="h-4 w-4 text-[#6B6B6B] shrink-0" />
+                                    <span className="text-[#6B6B6B]">Cashier ID:</span>
+                                    <span className="font-medium text-[#2E2E2E]">{cashierId}</span>
+                                </div>
+                            )}
+                            <div className="flex items-center gap-2 text-sm">
+                                <Calendar className="h-4 w-4 text-[#6B6B6B] shrink-0" />
+                                <span className="text-[#6B6B6B]">Date:</span>
+                                <span className="font-medium text-[#2E2E2E]">{new Date().toLocaleDateString('en-ZA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                            </div>
                         </div>
                         <Button
                             variant="outline"
