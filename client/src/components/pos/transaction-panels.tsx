@@ -1314,12 +1314,25 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
             </div>
 
             <div className="px-3 sm:px-4 py-3 space-y-3">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-[120px_1fr] gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor={`initials-${item.id}`} className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Initials</Label>
+                  <Input 
+                    id={`initials-${item.id}`}
+                    tabIndex={10}
+                    autoFocus
+                    placeholder="e.g. JD"
+                    className="h-9 text-sm bg-slate-50 border-slate-200"
+                    value={item.additionalInfo || ''}
+                    onChange={(e) => updateItemDetails(item.id, { additionalInfo: e.target.value })}
+                    data-testid={`input-initials-${item.id}`}
+                  />
+                </div>
                 <div className="space-y-1">
                   <Label htmlFor={`lastName-${item.id}`} className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Last Name <span className="text-red-500">*</span></Label>
                   <Input 
                     id={`lastName-${item.id}`}
-                    tabIndex={1}
+                    tabIndex={20}
                     placeholder="Surname / Company"
                     className={`h-9 text-sm bg-slate-50 border-slate-200 ${(item as any).paidByError ? 'border-red-500 ring-1 ring-red-500' : ''}`}
                     value={item.paidBy || ''}
@@ -1328,25 +1341,13 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                   />
                   {(item as any).paidByError && <span className="text-[10px] text-red-500">Required</span>}
                 </div>
-                <div className="space-y-1">
-                  <Label htmlFor={`initials-${item.id}`} className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Initials</Label>
-                  <Input 
-                    id={`initials-${item.id}`}
-                    tabIndex={2}
-                    placeholder="e.g. JD"
-                    className="h-9 text-sm bg-slate-50 border-slate-200"
-                    value={item.additionalInfo || ''}
-                    onChange={(e) => updateItemDetails(item.id, { additionalInfo: e.target.value })}
-                    data-testid={`input-initials-${item.id}`}
-                  />
-                </div>
               </div>
 
               <div className="space-y-1">
                 <Label htmlFor={`desc-${item.id}`} className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Description <span className="text-red-500">*</span></Label>
                 <Textarea 
                   id={`desc-${item.id}`}
-                  tabIndex={3}
+                  tabIndex={30}
                   placeholder="Payment description..."
                   className={`resize-none h-16 text-sm bg-slate-50 border-slate-200 ${(item as any).notesError ? 'border-red-500 ring-1 ring-red-500' : ''}`}
                   value={item.notes || ''}
@@ -1375,7 +1376,7 @@ function TransactionItemCard({ item }: { item: TransactionItem }) {
                             id={`amount-${item.id}`}
                             type="text"
                             inputMode="decimal"
-                            tabIndex={4}
+                            tabIndex={40}
                             className="pl-10 h-12 text-xl font-mono font-bold bg-white border-emerald-200 focus:border-emerald-400 focus:ring-emerald-200"
                             value={item.amountToPay || ''} 
                             onChange={(e) => {
