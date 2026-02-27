@@ -38,7 +38,7 @@ const SITE_STYLES: Record<string, {
         buttonHover: 'hover:from-[#B7C7D6] hover:to-[#A9B8C7]',
         buttonShadow: 'shadow-[0_1px_3px_rgba(0,0,0,0.15)]',
         inputFocus: 'focus:ring-[#E6A57E]/20 focus:border-[#E6A57E]',
-        title: 'Platinum POS',
+        title: 'SAMRAS Platinum',
         subtitle: 'George Municipality',
     },
     site02: {
@@ -157,11 +157,11 @@ export default function LoginPage({ onLoginSuccess }: LoginProps) {
                                             className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-[#D6D6D6] hover:border-[#E6A57E] bg-white hover:bg-[#F7F7F7] shadow-[0_1px_3px_rgba(0,0,0,0.15)] transition-all group cursor-pointer text-left"
                                             data-testid={`button-site-${site.id}`}
                                         >
-                                            <div className="w-12 h-12 rounded-lg bg-[#F7F7F7] flex items-center justify-center shrink-0 overflow-hidden">
+                                            <div className="w-14 h-14 rounded-lg bg-[#F7F7F7] flex items-center justify-center shrink-0 overflow-hidden">
                                                 <img
                                                     src={site.logo}
                                                     alt={site.name}
-                                                    className="w-10 h-10 object-contain"
+                                                    className="w-12 h-12 object-contain"
                                                     onError={(e) => {
                                                         (e.target as HTMLImageElement).style.display = 'none';
                                                     }}
@@ -209,7 +209,7 @@ export default function LoginPage({ onLoginSuccess }: LoginProps) {
                         </button>
                     )}
                     <div className="flex justify-center mb-3">
-                        <img src={selectedSite.logo} alt={selectedSite.name} className="w-14 h-14 object-contain" />
+                        <img src={selectedSite.logo} alt={selectedSite.name} className="w-20 h-20 object-contain" />
                     </div>
                     <CardTitle className="text-2xl font-bold text-[#2E2E2E] tracking-tight">
                         {styles.title}

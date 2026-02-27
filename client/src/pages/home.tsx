@@ -43,9 +43,9 @@ export default function HomePage() {
   return (
     <div className="flex flex-col h-screen bg-[#F2F4F7] overflow-hidden">
       <header className={`h-14 text-white flex items-center px-3 sm:px-4 justify-between shrink-0 z-20 shadow-[0_1px_3px_rgba(0,0,0,0.15)] ${isSite02 ? 'bg-gradient-to-r from-[#1d3347] via-[#243A53] to-[#1d3347]' : 'bg-[linear-gradient(180deg,#8C8C8C_0%,#6F6F6F_100%)]'}`}>
-        <div className="flex items-center gap-2">
-          <img src={siteInfo?.logo || '/images/platinum-logo.png'} alt="Logo" className="w-7 h-7 sm:w-8 sm:h-8 object-contain" />
-          <h1 className="font-semibold text-base sm:text-lg tracking-tight text-white">Platinum POS <span className="bg-white/20 text-white/80 text-[10px] px-1.5 py-0.5 rounded-full font-normal ml-1">v2.0</span></h1>
+        <div className="flex items-center gap-2.5">
+          <img src={siteInfo?.logo || '/images/platinum-logo.png'} alt="Logo" className="w-9 h-9 sm:w-10 sm:h-10 object-contain" />
+          <h1 className="font-semibold text-base sm:text-lg tracking-tight text-white">{isSite02 ? 'Inzalo EMS' : 'SAMRAS Platinum'} <span className="bg-white/20 text-white/80 text-[10px] px-1.5 py-0.5 rounded-full font-normal ml-1">v2.0</span></h1>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4">
@@ -133,7 +133,7 @@ export default function HomePage() {
             <div className="w-20 h-20 rounded-2xl bg-[#E6A57E]/15 flex items-center justify-center mx-auto mb-6 shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
               <Layers className="w-10 h-10 text-[#E6A57E]" />
             </div>
-            <h2 className="text-2xl font-semibold text-[#2E2E2E] mb-2 inline-flex items-center gap-2 justify-center">Platinum POS System <HelpTip text="Your central dashboard for municipal receipting, payments, and account management. Select a module from the sidebar to begin." side="bottom" icon="info" size="md" /></h2>
+            <h2 className="text-2xl font-semibold text-[#2E2E2E] mb-2 inline-flex items-center gap-2 justify-center">{isSite02 ? 'Inzalo EMS' : 'SAMRAS Platinum'} <HelpTip text="Your central dashboard for municipal receipting, payments, and account management. Select a module from the sidebar to begin." side="bottom" icon="info" size="md" /></h2>
             <p className="text-[#6B6B6B] mb-6">
               Select a module from the menu to get started.
             </p>

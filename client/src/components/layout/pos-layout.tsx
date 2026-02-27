@@ -234,7 +234,8 @@ export function PosLayout({ children }: PosLayoutProps) {
         <div className="flex items-center gap-1.5 sm:gap-2 relative z-10">
           <Link href="/">
             <div className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity">
-              <img src={headerLogo} alt="Logo" className="w-6 h-6 sm:w-7 sm:h-7 object-contain" />
+              <img src={headerLogo} alt="Logo" className="w-8 h-8 sm:w-9 sm:h-9 object-contain" />
+              <span className="hidden sm:inline text-sm font-semibold text-white/90 tracking-tight">{isSite02 ? 'Inzalo EMS' : 'SAMRAS Platinum'}</span>
             </div>
           </Link>
           
