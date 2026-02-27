@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input';
 import { usePos } from '@/lib/pos-state';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Save, ShieldAlert, AlertTriangle, Calculator, Check } from 'lucide-react';
+import { Save, ShieldAlert, AlertTriangle, Calculator, Check, Settings } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { HelpTip } from '@/components/ui/help-tip';
 
 export default function SettingsPage() {
   const { officeLimits, updateOfficeLimit, systemSettings, updateSystemSettings, referenceData } = usePos();
@@ -22,13 +23,20 @@ export default function SettingsPage() {
 
   return (
     <PosLayout>
-      <div className="flex-1 bg-gray-50/50 p-3 sm:p-6 md:p-8 overflow-y-auto">
-        <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">System Settings</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">Manage POS configuration and security limits.</p>
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-4 sm:px-6 py-4 sm:py-5">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#E6A57E] to-[#D18E65] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+              <Settings className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-base sm:text-xl font-bold text-[#2E2E2E] flex items-center gap-2">System Settings <HelpTip text="Manage POS configuration, security limits, and reconciliation features." /></h1>
+              <p className="text-xs sm:text-sm text-[#6B6B6B] mt-0.5">Manage POS configuration and security limits</p>
+            </div>
           </div>
+        </div>
 
+        <div className="flex-1 overflow-auto bg-[#F2F4F7] p-4 sm:p-6">
           <div className="grid gap-6">
             <Card>
                 <CardHeader>
