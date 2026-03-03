@@ -2263,7 +2263,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
                 console.log(`[Priority 2 ${label}] Extracted receiptId=${miscReceiptId} from response keys: ${miscResult ? Object.keys(miscResult).join(', ') : 'null'}`);
 
                 if (miscReceiptId) {
-                    let receiptNo = `REC-${miscReceiptId}`;
+                    let receiptNo: string | null = null;
                     let miscReceiptDetail: any = null;
                     const miscItemDesc = item.description || origData?.description || 'Direct Income';
                     const miscReference = item.notes || item.reference || origData?.reference || '';
@@ -2273,6 +2273,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
                     const apiReceiptNo = miscResult?.receiptNo || miscResult?.receipt_no || miscResult?.receiptNumber || null;
                     if (apiReceiptNo) {
                         receiptNo = apiReceiptNo;
+                        console.log(`[Priority 2 ${label}] Receipt number from submit response: ${receiptNo}`);
                     }
 
                     try {
@@ -2281,7 +2282,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
                             if (miscReceiptData[0].receiptNo) receiptNo = miscReceiptData[0].receiptNo;
                             const rd = miscReceiptData[0];
                             miscReceiptDetail = {
-                                receiptNo: rd.receiptNo || receiptNo,
+                                receiptNo: rd.receiptNo || receiptNo || '',
                                 cashierName: rd.cashierName || currentUser.name,
                                 cashOffice: rd.cashOfficeName || sessionDetails?.officeDesc || '',
                                 tenderAmount: rd.tenderAmount ?? tender,
@@ -2302,16 +2303,63 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
                                     vatAmount: rd.vatAmount ?? miscVatAmt,
                                 }],
                             };
+                            console.log(`[Priority 2 ${label}] Receipt data resolved via pos-multi-receipt-print: ${receiptNo}`);
                         }
                     } catch (e) {
                         console.warn(`[Priority 2 ${label}] Could not fetch receipt data from Platinum`, e);
                     }
 
-                    if (!miscReceiptDetail) {
-                        if (receiptNo.startsWith('REC-')) {
-                            const lookedUpNo = await lookupReceiptNoById(miscReceiptId);
-                            if (lookedUpNo) receiptNo = lookedUpNo;
+                    if (!receiptNo) {
+                        const lookedUpNo = await lookupReceiptNoById(miscReceiptId);
+                        if (lookedUpNo) {
+                            receiptNo = lookedUpNo;
+                            console.log(`[Priority 2 ${label}] Receipt number resolved from unreconciled list: ${receiptNo}`);
                         }
+                    }
+
+                    if (!receiptNo) {
+                        await new Promise(r => setTimeout(r, 2000));
+                        const retryLookup = await lookupReceiptNoById(miscReceiptId);
+                        if (retryLookup) {
+                            receiptNo = retryLookup;
+                            console.log(`[Priority 2 ${label}] Receipt number resolved from unreconciled list (retry): ${receiptNo}`);
+                        }
+                    }
+
+                    if (!receiptNo) {
+                        const failMsg = `Direct income payment for "${miscItemDesc}" was submitted to Platinum (ID: ${miscReceiptId}) but the API did not return a receipt number. The payment was processed — check the Platinum system for receipt ID ${miscReceiptId}. This is a Platinum API issue with the miscellaneous receipt number resolution.`;
+                        console.error(`[Priority 2 ${label}] RECEIPT NUMBER RESOLUTION FAILED — ${failMsg}`);
+                        toast({ title: "Receipt Number Not Resolved", description: failMsg, variant: "destructive" });
+                        record.splitReceipts!.push({
+                            receiptNumber: `UNRESOLVED-${miscReceiptId}`,
+                            receiptId: miscReceiptId,
+                            paymentType: splitType,
+                            amount,
+                            receiptDetail: {
+                                receiptNo: `UNRESOLVED-${miscReceiptId}`,
+                                cashierName: sessionCashierName,
+                                cashOffice: sessionOfficeDesc,
+                                tenderAmount: tender,
+                                changeAmount: change,
+                                outstandingAmount: null,
+                                paymentType: splitType === 'cash' ? 'Cash' : 'Credit Card',
+                                paymentOption: 'Miscellaneous Payment',
+                                accountId: '',
+                                accName: paidByName,
+                                receiptDate: formattedReceiptDate,
+                                miscDescription: miscItemDesc,
+                                miscReference: miscReference,
+                                miscInitials: initials,
+                                miscSurname: lastName,
+                                lineItems: [{ description: miscItemDesc, amount: miscAmtExVat, vatAmount: miscVatAmt }],
+                                error: failMsg,
+                            },
+                        });
+                        console.log(`[Priority 2 ${label}] Receipt UNRESOLVED-${miscReceiptId} added (payment processed, receipt number unavailable)`);
+                        return;
+                    }
+
+                    if (!miscReceiptDetail) {
                         miscReceiptDetail = {
                             receiptNo,
                             cashierName: sessionCashierName,
@@ -2330,7 +2378,7 @@ export const PosProvider: React.FC<{ children: React.ReactNode; siteInfo?: any }
                             miscSurname: lastName,
                             lineItems: [{ description: miscItemDesc, amount: miscAmtExVat, vatAmount: miscVatAmt }],
                         };
-                        console.log(`[Priority 2 ${label}] Using fallback receipt data for misc item ${scoaItemId}`);
+                        console.log(`[Priority 2 ${label}] Using local receipt detail for misc item ${scoaItemId} (receipt number: ${receiptNo})`);
                     }
 
                     if (!finalReceiptNumber) {
