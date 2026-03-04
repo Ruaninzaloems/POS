@@ -54,7 +54,7 @@ function HtmlDetailMobileCards({ html }: { html: string }) {
       {tables.map((table, ti) => (
         <div key={ti} className="space-y-2">
           {table.rows.map((row, ri) => (
-              <div key={ri} className="bg-white border border-slate-200 rounded-lg p-3 space-y-1.5">
+              <div key={ri} className="bg-white border border-[#D6D6D6] rounded-lg p-3 space-y-1.5">
                 {table.headers.length > 0 ? (
                   table.headers.map((header, ci) => {
                     const val = row[ci] ?? '';
@@ -154,7 +154,7 @@ function SummaryTable({ pivotData, year, hasData }: { pivotData: any[]; year: st
         {!hasData ? (
           <div className="text-center text-slate-400 py-4 text-sm">No records to display</div>
         ) : pivotData.map((row: any, i: number) => (
-            <div key={i} className={`border rounded-lg p-3 ${row.isBold ? 'bg-slate-50 border-slate-300' : row.isSpecial ? 'bg-slate-50/50 border-slate-200' : 'bg-white border-slate-200'}`}>
+            <div key={i} className={`border rounded-lg p-3 ${row.isBold ? 'bg-[#F7F7F7] border-[#BFBFBF]' : row.isSpecial ? 'bg-[#F7F7F7]/50 border-[#D6D6D6]' : 'bg-white border-[#D6D6D6]'}`}>
               <div className={`text-xs mb-1.5 ${row.isBold ? 'font-bold text-[#2E2E2E]' : row.isSpecial ? 'italic text-slate-600' : 'font-semibold text-slate-800'}`}>{row.description}</div>
               <div className="text-[10px] text-slate-400 mb-1.5">{year}</div>
               <div className="grid grid-cols-3 gap-x-3 gap-y-1">
@@ -168,11 +168,11 @@ function SummaryTable({ pivotData, year, hasData }: { pivotData: any[]; year: st
             </div>
         ))}
       </div>
-      <div className="hidden sm:block overflow-x-auto border border-slate-200 rounded">
+      <div className="hidden sm:block overflow-x-auto border border-[#D6D6D6] rounded">
         <table className="w-full text-xs" data-testid={`transaction-summary-grid-${year}`}>
           <thead>
-            <tr className="bg-slate-100 border-b border-slate-200">
-              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap sticky left-0 bg-slate-100 min-w-[180px]">Description</th>
+            <tr className="bg-[#F2F4F7] border-b border-[#D6D6D6]">
+              <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap sticky left-0 bg-[#F2F4F7] min-w-[180px]">Description</th>
               <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap">Financial Year</th>
               {MONTHS.map(m => (
                 <th key={m} className="text-right px-3 py-2 font-semibold text-slate-700 whitespace-nowrap">{m}</th>
@@ -183,8 +183,8 @@ function SummaryTable({ pivotData, year, hasData }: { pivotData: any[]; year: st
             {!hasData ? (
               <tr><td colSpan={14} className="text-center text-slate-400 py-4">No records to display</td></tr>
             ) : pivotData.map((row: any, i: number) => (
-              <tr key={i} className={`border-b border-slate-100 hover:bg-slate-50 ${row.isBold ? 'bg-slate-50 font-bold' : ''} ${row.isSpecial ? 'border-t border-slate-200' : ''}`}>
-                <td className={`px-3 py-2 whitespace-nowrap sticky left-0 ${row.isBold ? 'bg-slate-50 font-bold text-[#2E2E2E]' : row.isSpecial ? 'bg-white text-slate-600 italic' : 'bg-white text-slate-700'}`}>{row.description}</td>
+              <tr key={i} className={`border-b border-[#E5E5E5] hover:bg-[#F7F7F7] ${row.isBold ? 'bg-[#F7F7F7] font-bold' : ''} ${row.isSpecial ? 'border-t border-[#D6D6D6]' : ''}`}>
+                <td className={`px-3 py-2 whitespace-nowrap sticky left-0 ${row.isBold ? 'bg-[#F7F7F7] font-bold text-[#2E2E2E]' : row.isSpecial ? 'bg-white text-slate-600 italic' : 'bg-white text-slate-700'}`}>{row.description}</td>
                 <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{year}</td>
                 {MONTHS.map(m => (
                   <td key={m} className={`px-3 py-2 text-right whitespace-nowrap font-mono ${row.isBold ? 'font-bold text-[#2E2E2E]' : 'text-slate-700'} ${(row[m] || 0) < 0 ? 'text-red-600' : ''}`}>{fmtAmount(row[m])}</td>
@@ -205,10 +205,10 @@ function PeriodSection({ period, expanded, onToggle }: { period: PeriodData; exp
   const chargesTotal = totalChargesRow ? MONTHS.reduce((s, m) => s + (totalChargesRow[m] || 0), 0) : 0;
 
   return (
-    <div className="border border-slate-200 rounded-lg overflow-hidden" data-testid={`period-section-${period.year}`}>
+    <div className="border border-[#D6D6D6] rounded-lg overflow-hidden" data-testid={`period-section-${period.year}`}>
       <button
         onClick={onToggle}
-        className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-slate-50 to-white hover:from-slate-100 hover:to-slate-50 transition-colors gap-1 sm:gap-3"
+        className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 bg-[#F7F7F7] hover:bg-[#F2F4F7] transition-colors gap-1 sm:gap-3"
         data-testid={`toggle-period-${period.year}`}
       >
         <div className="flex items-center gap-2 sm:gap-3">
@@ -226,7 +226,7 @@ function PeriodSection({ period, expanded, onToggle }: { period: PeriodData; exp
         )}
       </button>
       {expanded && (
-        <div className="p-3 border-t border-slate-200">
+        <div className="p-3 border-t border-[#D6D6D6]">
           <SummaryTable pivotData={period.pivotData} year={period.year} hasData={period.hasData} />
         </div>
       )}
@@ -345,7 +345,7 @@ export function TransactionSummaryTab({ accountId, accountNumber }: { accountId:
       <div className="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
         <h3 className="text-sm sm:text-base font-bold text-slate-800">Transaction Summary List per Fin-Year/Billing Period</h3>
         <div className="flex items-center gap-2">
-          <div className="flex items-center bg-slate-100 rounded-lg p-0.5" data-testid="view-toggle">
+          <div className="flex items-center bg-[#F2F4F7] rounded-lg p-0.5" data-testid="view-toggle">
             <button
               onClick={() => setMultiView(false)}
               className={`px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium rounded-md transition-all ${!multiView ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
@@ -373,7 +373,7 @@ export function TransactionSummaryTab({ accountId, accountNumber }: { accountId:
           <select
             value={selectedYear}
             onChange={e => setSelectedYear(e.target.value)}
-            className="border border-slate-300 rounded px-3 py-1.5 text-sm bg-white"
+            className="border border-[#BFBFBF] rounded px-3 py-1.5 text-sm bg-white"
             data-testid="select-financial-year"
           >
             {years.map(y => <option key={y} value={y}>{y}</option>)}
@@ -388,7 +388,7 @@ export function TransactionSummaryTab({ accountId, accountNumber }: { accountId:
                 className={`px-2.5 py-1 text-xs rounded-full border transition-all ${
                   selectedYears.includes(y)
                     ? 'bg-[var(--pos-accent-tint)] border-[#D6D6D6] text-[var(--pos-accent)] font-semibold'
-                    : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700'
+                    : 'bg-white border-[#D6D6D6] text-slate-500 hover:border-[#BFBFBF] hover:text-slate-700'
                 }`}
                 data-testid={`chip-year-${y}`}
               >
@@ -445,7 +445,7 @@ export function TransactionSummaryTab({ accountId, accountNumber }: { accountId:
           {selectedYears.map(year => {
             if (loadingYears.has(year)) {
               return (
-                <div key={year} className="border border-slate-200 rounded-lg p-4">
+                <div key={year} className="border border-[#D6D6D6] rounded-lg p-4">
                   <div className="flex items-center gap-2 text-sm text-slate-500">
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Loading {year}...
@@ -793,11 +793,11 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
           <span className="hidden sm:inline">Show Credit Meter Consumption Journal only</span>
           <span className="sm:hidden">Credit Meter only</span>
         </label>
-        <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)} className="border border-slate-300 rounded px-2 sm:px-3 py-1.5 text-xs sm:text-sm bg-white" data-testid="select-detail-year">
+        <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)} className="border border-[#BFBFBF] rounded px-2 sm:px-3 py-1.5 text-xs sm:text-sm bg-white" data-testid="select-detail-year">
           {years.map(y => <option key={y} value={y}>{y}</option>)}
           {years.length === 0 && <option value="">No data</option>}
         </select>
-        <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="border border-slate-300 rounded px-2 sm:px-3 py-1.5 text-xs sm:text-sm bg-white" data-testid="select-detail-month">
+        <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="border border-[#BFBFBF] rounded px-2 sm:px-3 py-1.5 text-xs sm:text-sm bg-white" data-testid="select-detail-month">
           {finYearMonths.map(m => <option key={m} value={m}>{m}</option>)}
         </select>
         {loading && <Loader2 className="w-4 h-4 animate-spin text-[var(--pos-accent)]" />}
@@ -810,14 +810,14 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
         ) : detailedRows.map((row: any, i: number) => {
           if (row._dimmed) {
             return (
-              <div key={i} className="text-center text-[10px] italic text-slate-400 py-1.5 border-b border-dashed border-slate-200" data-testid={`detail-card-${i}`}>{row.description}</div>
+              <div key={i} className="text-center text-[10px] italic text-slate-400 py-1.5 border-b border-dashed border-[#D6D6D6]" data-testid={`detail-card-${i}`}>{row.description}</div>
             );
           }
           return (
             <div
               key={i}
               onClick={() => handleRowClick(row)}
-              className={`border rounded-lg p-3 cursor-pointer transition-colors ${row.isBold ? 'bg-amber-50/50 border-amber-200' : row.isOpenBalance ? 'bg-[var(--pos-accent-tint)]/30 border-[#D6D6D6]' : row.isCloseBalance ? 'bg-amber-50/50 border-amber-200' : row.isPayment ? 'border-red-200 bg-red-50/30' : 'border-slate-200 bg-white'}`}
+              className={`border rounded-lg p-3 cursor-pointer transition-colors ${row.isBold ? 'bg-amber-50/50 border-amber-200' : row.isOpenBalance ? 'bg-[var(--pos-accent-tint)]/30 border-[#D6D6D6]' : row.isCloseBalance ? 'bg-amber-50/50 border-amber-200' : row.isPayment ? 'border-red-200 bg-red-50/30' : 'border-[#D6D6D6] bg-white'}`}
               data-testid={`detail-card-${i}`}
             >
               <div className="flex items-start justify-between gap-2 mb-1.5">
@@ -844,10 +844,10 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
       </div>
 
       {/* Desktop table view */}
-      <div className="hidden sm:block overflow-x-auto border border-slate-200 rounded">
+      <div className="hidden sm:block overflow-x-auto border border-[#D6D6D6] rounded">
         <table className="w-full text-xs" data-testid="detailed-transactions-table">
           <thead>
-            <tr className="bg-slate-100 border-b border-slate-200">
+            <tr className="bg-[#F2F4F7] border-b border-[#D6D6D6]">
               <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-[#2E2E2E]">Transaction Date &#x25B4;</th>
               <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-[#2E2E2E]">Transaction Description &#x25B4;</th>
               <th className="text-left px-3 py-2 font-semibold text-slate-700 whitespace-nowrap cursor-pointer hover:text-[#2E2E2E]">Receipt ID/ Doc Transaction ID &#x25B4;</th>
@@ -865,7 +865,7 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
             ) : detailedRows.map((row: any, i: number) => {
               if (row._dimmed) {
                 return (
-                  <tr key={i} className="border-b border-dashed border-slate-200 bg-slate-50/50" data-testid={`detail-row-${i}`}>
+                  <tr key={i} className="border-b border-dashed border-[#D6D6D6] bg-[#F7F7F7]/50" data-testid={`detail-row-${i}`}>
                     <td colSpan={9} className="px-3 py-1.5 text-center text-[10px] italic text-slate-400">{row.description}</td>
                   </tr>
                 );
@@ -873,7 +873,7 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
               return (
               <tr
                 key={i}
-                className={`border-b border-slate-100 cursor-pointer ${row.isBold ? 'bg-amber-50/50 font-bold border-t border-amber-200' : ''} ${row.isOpenBalance ? 'bg-[var(--pos-accent-tint)]/30' : ''} ${row.isCloseBalance ? 'bg-amber-50/50 border-t border-amber-200' : ''} ${row.isPayment ? 'hover:bg-[var(--pos-accent-tint)] text-red-600' : 'hover:bg-slate-50'}`}
+                className={`border-b border-[#E5E5E5] cursor-pointer ${row.isBold ? 'bg-amber-50/50 font-bold border-t border-amber-200' : ''} ${row.isOpenBalance ? 'bg-[var(--pos-accent-tint)]/30' : ''} ${row.isCloseBalance ? 'bg-amber-50/50 border-t border-amber-200' : ''} ${row.isPayment ? 'hover:bg-[var(--pos-accent-tint)] text-red-600' : 'hover:bg-[#F7F7F7]'}`}
                 onClick={() => handleRowClick(row)}
                 data-testid={`detail-row-${i}`}
               >
@@ -919,7 +919,7 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
             <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
               <div>
                 <label className="block text-[10px] sm:text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5 sm:mb-2">Financial Year</label>
-                <select value={downloadYear} onChange={e => setDownloadYear(e.target.value)} disabled={downloading} className="w-full border border-slate-300 rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm bg-white disabled:opacity-50" data-testid="select-download-year">
+                <select value={downloadYear} onChange={e => setDownloadYear(e.target.value)} disabled={downloading} className="w-full border border-[#BFBFBF] rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm bg-white disabled:opacity-50" data-testid="select-download-year">
                   {years.map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
               </div>
@@ -927,13 +927,13 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] sm:text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5 sm:mb-2">From Period</label>
-                  <select value={downloadFromMonth} onChange={e => { setDownloadFromMonth(e.target.value); if (finYearMonths.indexOf(e.target.value) > finYearMonths.indexOf(downloadToMonth)) setDownloadToMonth(e.target.value); }} disabled={downloading} className="w-full border border-slate-300 rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm bg-white disabled:opacity-50" data-testid="select-download-from">
+                  <select value={downloadFromMonth} onChange={e => { setDownloadFromMonth(e.target.value); if (finYearMonths.indexOf(e.target.value) > finYearMonths.indexOf(downloadToMonth)) setDownloadToMonth(e.target.value); }} disabled={downloading} className="w-full border border-[#BFBFBF] rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm bg-white disabled:opacity-50" data-testid="select-download-from">
                     {finYearMonths.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-[10px] sm:text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5 sm:mb-2">To Period</label>
-                  <select value={downloadToMonth} onChange={e => setDownloadToMonth(e.target.value)} disabled={downloading} className="w-full border border-slate-300 rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm bg-white disabled:opacity-50" data-testid="select-download-to">
+                  <select value={downloadToMonth} onChange={e => setDownloadToMonth(e.target.value)} disabled={downloading} className="w-full border border-[#BFBFBF] rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm bg-white disabled:opacity-50" data-testid="select-download-to">
                     {finYearMonths.filter(m => finYearMonths.indexOf(m) >= finYearMonths.indexOf(downloadFromMonth)).map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </div>
@@ -957,7 +957,7 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
                     <Loader2 className="w-4 h-4 animate-spin" />
                     <span>{downloadProgress}</span>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-1.5">
+                  <div className="w-full bg-[#F2F4F7] rounded-full h-1.5">
                     <div className="bg-[var(--pos-accent)] h-1.5 rounded-full transition-all" style={{
                       width: downloadProgress.includes('Error') ? '100%' :
                         downloadProgress.includes('Preparing') ? '95%' :
@@ -994,8 +994,8 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
             </div>
 
             <div className="p-3 sm:p-5 space-y-3 sm:space-y-4">
-              <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-                <div className="px-3 sm:px-4 py-2 bg-slate-50 border-b border-slate-200">
+              <div className="bg-white rounded-lg border border-[#D6D6D6] overflow-hidden">
+                <div className="px-3 sm:px-4 py-2 bg-[#F7F7F7] border-b border-[#D6D6D6]">
                   <h5 className="text-[10px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider">Transaction Summary</h5>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 p-3 sm:p-4">
@@ -1016,8 +1016,8 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
                     <div className="text-sm text-slate-700 mt-0.5">{selectedTxn.tariff || '-'}</div>
                   </div>
                 </div>
-                <div className="border-t border-slate-100">
-                  <div className="sm:hidden grid grid-cols-2 gap-px bg-slate-200">
+                <div className="border-t border-[#E5E5E5]">
+                  <div className="sm:hidden grid grid-cols-2 gap-px bg-[#D6D6D6]">
                     {[
                       { label: 'Amount', value: fmt(selectedTxn.amount), color: (selectedTxn.amount || 0) < 0 ? 'text-red-600' : 'text-slate-800', bold: true },
                       { label: 'Interest', value: fmt(selectedTxn.interest ?? 0), color: 'text-slate-700', bold: false },
@@ -1033,7 +1033,7 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
                   <div className="hidden sm:block">
                     <table className="w-full text-xs">
                       <thead>
-                        <tr className="bg-gradient-to-r from-teal-600 to-teal-700 text-white">
+                        <tr className="bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] text-white">
                           <th className="px-3 py-2 text-right font-semibold">Amount</th>
                           <th className="px-3 py-2 text-right font-semibold">Interest</th>
                           <th className="px-3 py-2 text-right font-semibold">VAT</th>
@@ -1041,7 +1041,7 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
                         </tr>
                       </thead>
                       <tbody>
-                        <tr className="border-b border-slate-100">
+                        <tr className="border-b border-[#E5E5E5]">
                           <td className={`px-3 py-2.5 text-right font-mono font-semibold ${(selectedTxn.amount || 0) < 0 ? 'text-red-600' : 'text-slate-800'}`}>{fmt(selectedTxn.amount)}</td>
                           <td className="px-3 py-2.5 text-right font-mono text-slate-700">{fmt(selectedTxn.interest ?? 0)}</td>
                           <td className="px-3 py-2.5 text-right font-mono text-slate-700">{fmt(selectedTxn.vat ?? 0)}</td>
@@ -1053,8 +1053,8 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-                <div className="px-3 sm:px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center gap-1.5 sm:gap-2">
+              <div className="bg-white rounded-lg border border-[#D6D6D6] overflow-hidden">
+                <div className="px-3 sm:px-4 py-2 bg-[#F7F7F7] border-b border-[#D6D6D6] flex items-center gap-1.5 sm:gap-2">
                   <Layers className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-500 shrink-0" />
                   <h5 className="text-[10px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider">Detail & Ledger Postings</h5>
                 </div>
@@ -1076,7 +1076,7 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
                       {txnDetailData.map((row: any, ri: number) => {
                         const keys = Object.keys(row).filter(k => !k.startsWith('_') && k !== 'id').slice(0, 12);
                         return (
-                          <div key={ri} className="bg-white border border-slate-200 rounded-lg p-3 space-y-1.5">
+                          <div key={ri} className="bg-white border border-[#D6D6D6] rounded-lg p-3 space-y-1.5">
                             {keys.map(key => {
                               const val = row[key];
                               const isNum = typeof val === 'number';
@@ -1098,7 +1098,7 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
                     <div className="hidden sm:block overflow-x-auto">
                       <table className="w-full text-xs">
                         <thead>
-                          <tr className="bg-slate-100 border-b border-slate-200">
+                          <tr className="bg-[#F2F4F7] border-b border-[#D6D6D6]">
                             {Object.keys(txnDetailData[0]).filter(k => !k.startsWith('_') && k !== 'id').slice(0, 12).map(key => (
                               <th key={key} className="text-left px-3 py-2 font-semibold text-slate-600 whitespace-nowrap text-[10px] uppercase tracking-wider">
                                 {key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim()}
@@ -1110,7 +1110,7 @@ export function DetailedTransactionListTab({ accountId, accountNumber }: { accou
                           {txnDetailData.map((row: any, ri: number) => {
                             const keys = Object.keys(row).filter(k => !k.startsWith('_') && k !== 'id').slice(0, 12);
                             return (
-                              <tr key={ri} className="border-b border-slate-100 hover:bg-[var(--pos-accent-tint)]/30">
+                              <tr key={ri} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)]/30">
                                 {keys.map(key => {
                                   const val = row[key];
                                   const isNum = typeof val === 'number';
@@ -1309,14 +1309,14 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                 <h3 className="font-bold text-slate-800">{receiptPreview.municipalityName || ''}</h3>
                 <p className="text-xs text-slate-500">{receiptPreview.address || ''}</p>
               </div>
-              <div className="border-t border-dashed border-slate-300 my-2" />
+              <div className="border-t border-dashed border-[#BFBFBF] my-2" />
               <div className="grid grid-cols-2 gap-1 text-xs">
                 <span className="text-slate-500">Receipt:</span><span className="font-semibold text-slate-800">{receiptPreview.receiptNo || receiptPreview.receiptNumber || '-'}</span>
                 <span className="text-slate-500">Date:</span><span className="text-slate-700">{receiptPreview.receiptDate || '-'}</span>
                 <span className="text-slate-500">Account:</span><span className="text-slate-700">{receiptPreview.accountNumber || accountNumber}</span>
                 <span className="text-slate-500">Consumer:</span><span className="text-slate-700">{receiptPreview.consumerName || '-'}</span>
               </div>
-              <div className="border-t border-dashed border-slate-300 my-2" />
+              <div className="border-t border-dashed border-[#BFBFBF] my-2" />
               {receiptPreview.services && Array.isArray(receiptPreview.services) && receiptPreview.services.length > 0 && (
                 <div className="space-y-1">
                   {receiptPreview.services.map((s: any, si: number) => (
@@ -1327,7 +1327,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                   ))}
                 </div>
               )}
-              <div className="border-t border-dashed border-slate-300 my-2" />
+              <div className="border-t border-dashed border-[#BFBFBF] my-2" />
               <div className="flex justify-between font-bold text-sm">
                 <span>Total</span>
                 <span className="text-[var(--pos-accent)]">R {(receiptPreview.totalAmount ?? receiptPreview.amount ?? 0).toFixed(2)}</span>
@@ -1337,8 +1337,8 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                 <span className="text-slate-500">Cashier:</span><span className="text-slate-700">{receiptPreview.cashierName || '-'}</span>
               </div>
             </div>
-            <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-t border-slate-200 flex items-center justify-end gap-2">
-              <button onClick={() => setReceiptPreview(null)} className="px-3 sm:px-4 py-1.5 sm:py-2 border border-slate-300 text-slate-600 text-[10px] sm:text-xs font-semibold rounded-lg hover:bg-slate-50" data-testid="button-close-receipt">Close</button>
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-t border-[#D6D6D6] flex items-center justify-end gap-2">
+              <button onClick={() => setReceiptPreview(null)} className="px-3 sm:px-4 py-1.5 sm:py-2 border border-[#BFBFBF] text-slate-600 text-[10px] sm:text-xs font-semibold rounded-lg hover:bg-[#F7F7F7]" data-testid="button-close-receipt">Close</button>
               <button onClick={handlePrintWindow} className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] text-white text-[10px] sm:text-xs font-semibold rounded-lg hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)] flex items-center gap-1.5 shadow-sm" data-testid="button-print-receipt-confirm">
                 <FileText className="w-3.5 h-3.5" />
                 Print Receipt
@@ -1352,7 +1352,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
 
       {(eftBankNotes.length > 0 || eftNotesLoading) && (
         <div className="bg-white rounded-xl border border-teal-200 shadow-sm overflow-hidden mb-4">
-          <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-teal-600 to-teal-700">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)]">
             <div className="flex items-center gap-2">
               <CreditCard className="w-4 h-4 text-white" />
               <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">EFT Bank Statement Notes</h3>
@@ -1424,7 +1424,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                       const bankDate = note.bankStatementDate ?? '';
                       const allocDate = note.billingAllocationDate ?? '';
                       return (
-                        <tr key={idx} className="border-b border-slate-100 hover:bg-teal-50/30" data-testid={`eft-note-row-${idx}`}>
+                        <tr key={idx} className="border-b border-[#E5E5E5] hover:bg-teal-50/30" data-testid={`eft-note-row-${idx}`}>
                           <td className="px-3 py-2 max-w-[280px]">
                             {bankNote ? (
                               <span className="text-teal-800 font-medium bg-teal-50 px-1.5 py-0.5 rounded text-[11px]" title={bankNote}>{bankNote}</span>
@@ -1455,7 +1455,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
 
       {data.length === 0 ? <EmptyState message="No receipt history found" /> : (
           <div className="space-y-4">
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
               <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)]">
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <div className="flex items-center gap-1.5 sm:gap-2">
@@ -1488,7 +1488,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
               </div>
 
               {receiptView === 'timeline' && (
-                <div className="px-2.5 sm:px-5 py-2 sm:py-2.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <div className="px-2.5 sm:px-5 py-2 sm:py-2.5 bg-[#F7F7F7] border-b border-[#D6D6D6] flex flex-wrap items-center gap-1.5 sm:gap-2">
                   <div className="flex items-center gap-1.5">
                     <Filter className="w-3 h-3 text-slate-400" />
                     <span className="text-[9px] sm:text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Filter:</span>
@@ -1505,7 +1505,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                         <button
                           key={f.key}
                           onClick={() => setTimelineFilter(f.key)}
-                          className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 text-[9px] sm:text-[10px] font-semibold rounded-md transition-all ${timelineFilter === f.key ? 'bg-[var(--pos-accent)] text-white shadow-sm' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}`}
+                          className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 text-[9px] sm:text-[10px] font-semibold rounded-md transition-all ${timelineFilter === f.key ? 'bg-[var(--pos-accent)] text-white shadow-sm' : 'bg-white text-slate-600 border border-[#D6D6D6] hover:bg-[#F2F4F7]'}`}
                           data-testid={`button-filter-${f.key}`}
                         >
                           {Icon && <Icon className="w-3 h-3" />}
@@ -1516,7 +1516,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                   </div>
                   <button
                     onClick={() => setTimelineSortAsc(prev => !prev)}
-                    className="ml-auto flex items-center gap-1 px-2 sm:px-2.5 py-1 text-[9px] sm:text-[10px] font-semibold rounded-md bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition-all"
+                    className="ml-auto flex items-center gap-1 px-2 sm:px-2.5 py-1 text-[9px] sm:text-[10px] font-semibold rounded-md bg-white text-slate-600 border border-[#D6D6D6] hover:bg-[#F2F4F7] transition-all"
                     data-testid="button-sort-timeline"
                   >
                     {timelineSortAsc ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
@@ -1531,12 +1531,12 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                     <div className="py-8 text-center text-slate-400 text-sm italic">No receipts match the selected filter.</div>
                   ) : groupedByMonth.map(group => (
                     <div key={group.key} className="relative">
-                      <div className="sticky top-0 z-10 flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3 bg-white py-1.5 sm:py-1 border-b border-slate-100 sm:border-0">
+                      <div className="sticky top-0 z-10 flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3 bg-white py-1.5 sm:py-1 border-b border-[#E5E5E5] sm:border-0">
                         <div className="flex items-center gap-1.5 sm:gap-2 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] text-white px-2.5 sm:px-3 py-1.5 rounded-lg shadow-sm shrink-0">
                           <CalendarDays className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
                           <span className="text-[11px] sm:text-xs font-bold tracking-wide">{group.label}</span>
                         </div>
-                        <div className="hidden sm:block flex-1 h-px bg-slate-200" />
+                        <div className="hidden sm:block flex-1 h-px bg-[#D6D6D6]" />
                         <div className="flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0">
                           <span className="text-[9px] sm:text-[10px] text-slate-400 font-medium">{group.items.length} receipt{group.items.length !== 1 ? 's' : ''}</span>
                           <span className="text-[11px] sm:text-xs font-mono font-bold text-slate-700">R {group.total.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
@@ -1558,7 +1558,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                             isEft ? 'bg-[var(--pos-accent)]' : 'bg-slate-400';
 
                           const cardBg = isCancelled ? 'bg-red-50/50 border-red-200 hover:border-red-300' :
-                            'bg-white border-slate-200 hover:border-[#D6D6D6] hover:shadow-md';
+                            'bg-white border-[#D6D6D6] hover:border-[#D6D6D6] hover:shadow-md';
 
                           return (
                             <div key={item.receiptId || i} className="relative group" data-testid={`timeline-receipt-${i}`}>
@@ -1572,7 +1572,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                                       isCash ? 'bg-green-100 text-green-700' :
                                       isCard ? 'bg-purple-100 text-purple-700' :
                                       isEft ? 'bg-[var(--pos-accent-tint-strong)] text-[var(--pos-accent)]' :
-                                      'bg-slate-100 text-slate-600'
+                                      'bg-[#F2F4F7] text-slate-600'
                                     }`}>
                                       {isCash ? <Banknote className="w-4 h-4" /> :
                                        isCard ? <CreditCard className="w-4 h-4" /> :
@@ -1606,7 +1606,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                                           isCash ? 'bg-green-50 text-green-700 border border-green-200' :
                                           isCard ? 'bg-purple-50 text-purple-700 border border-purple-200' :
                                           isEft ? 'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] border border-[#D6D6D6]' :
-                                          'bg-slate-50 text-slate-600 border border-slate-200'
+                                          'bg-[#F7F7F7] text-slate-600 border border-[#D6D6D6]'
                                         }`}>
                                           {item.paymentType || 'Unknown'}
                                         </span>
@@ -1636,7 +1636,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                                   </div>
                                 </div>
 
-                                <div className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-slate-50/70 rounded-b-lg sm:rounded-b-xl border-t border-slate-100 flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1 text-[9px] sm:text-[11px] text-slate-500">
+                                <div className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-[#F7F7F7] rounded-b-lg sm:rounded-b-xl border-t border-[#E5E5E5] flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1 text-[9px] sm:text-[11px] text-slate-500">
                                   {item.cashierName && (
                                     <span><span className="font-semibold text-slate-600">Cashier:</span> {item.cashierName}</span>
                                   )}
@@ -1663,7 +1663,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                 {/* Mobile card view for receipt table */}
                 <div className="sm:hidden p-2 space-y-2">
                   {sortedReceipts.map((item: any, i: number) => (
-                    <div key={item.receiptId || i} className={`border rounded-lg p-3 ${item.isCancelled ? 'bg-red-50/30 border-red-200' : 'bg-white border-slate-200'}`} data-testid={`receipt-card-${i}`}>
+                    <div key={item.receiptId || i} className={`border rounded-lg p-3 ${item.isCancelled ? 'bg-red-50/30 border-red-200' : 'bg-white border-[#D6D6D6]'}`} data-testid={`receipt-card-${i}`}>
                       <div className="flex items-start justify-between gap-2 mb-1.5">
                         <div>
                           <div className="font-mono text-xs font-bold text-[var(--pos-accent)]">{item.receiptNo || '-'}</div>
@@ -1683,7 +1683,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                           <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md font-medium ${
                             (item.paymentType || '').toLowerCase().includes('cash') ? 'bg-green-50 text-green-700' :
                             (item.paymentType || '').toLowerCase().includes('card') ? 'bg-purple-50 text-purple-700' :
-                            'bg-slate-50 text-slate-600'
+                            'bg-[#F7F7F7] text-slate-600'
                           }`}>{item.paymentType || '-'}</span>
                           {item.cashierName && <span>• {item.cashierName}</span>}
                           {(bankNotes[item.receiptNo] || item.bankStatementNote) && (
@@ -1707,7 +1707,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                 <div className="hidden sm:block overflow-x-auto">
                   <table className="w-full text-sm" data-testid="table-transaction-history">
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200">
+                      <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                         <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Receipt No.</th>
                         <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Date</th>
                         <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Payment Type</th>
@@ -1722,7 +1722,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                     </thead>
                     <tbody>
                       {sortedReceipts.map((item: any, i: number) => (
-                        <tr key={item.receiptId || i} className={`border-b border-slate-100 hover:bg-[var(--pos-accent-tint)]/30 transition-colors ${item.isCancelled ? 'bg-red-50/30' : ''}`}>
+                        <tr key={item.receiptId || i} className={`border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)]/30 transition-colors ${item.isCancelled ? 'bg-red-50/30' : ''}`}>
                           <td className="py-2.5 px-3 font-mono text-[var(--pos-accent)] font-semibold whitespace-nowrap text-xs">{item.receiptNo || '-'}</td>
                           <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{item.receiptDate ? new Date(item.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
                           <td className="py-2.5 px-3">
@@ -1730,7 +1730,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
                               (item.paymentType || '').toLowerCase().includes('cash') ? 'bg-green-50 text-green-700 border border-green-200' :
                               (item.paymentType || '').toLowerCase().includes('eft') ? 'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] border border-[#D6D6D6]' :
                               (item.paymentType || '').toLowerCase().includes('card') ? 'bg-purple-50 text-purple-700 border border-purple-200' :
-                              'bg-slate-50 text-slate-600 border border-slate-200'
+                              'bg-[#F7F7F7] text-slate-600 border border-[#D6D6D6]'
                             }`}>
                               {(item.paymentType || '').toLowerCase().includes('cash') && <Banknote className="w-3 h-3" />}
                               {(item.paymentType || '').toLowerCase().includes('card') && <CreditCard className="w-3 h-3" />}
@@ -2437,7 +2437,7 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
   const categoryColors: Record<string, string> = {
     'Metered Services': 'from-[var(--pos-accent)] to-[var(--pos-accent-dark)]',
     'Property Rates': 'from-orange-500 to-orange-600',
-    'Fixed Charges': 'from-emerald-600 to-emerald-700',
+    'Fixed Charges': 'from-[var(--pos-accent)] to-[var(--pos-accent-dark)]',
     'Additional Billing': 'from-[var(--pos-accent)] to-[var(--pos-accent-dark)]',
   };
 
@@ -2520,11 +2520,11 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
         const catSubtotal = items.reduce((s, i) => s + i.amount, 0);
         const catVat = items.reduce((s, i) => s + i.vatAmount, 0);
         const catTotal = items.reduce((s, i) => s + i.total, 0);
-        const gradient = categoryColors[category] || 'from-slate-600 to-slate-700';
+        const gradient = categoryColors[category] || 'from-[var(--pos-accent)] to-[var(--pos-accent-dark)]';
         const icon = categoryIcons[category] || <Layers className="w-4 h-4 text-slate-600" />;
 
         return (
-          <div key={category} className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+          <div key={category} className="bg-white border border-[#D6D6D6] rounded-xl shadow-sm overflow-hidden">
             <div className={`px-4 py-2.5 bg-gradient-to-r ${gradient} flex items-center justify-between`}>
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 bg-white/15 rounded-lg flex items-center justify-center">
@@ -2574,8 +2574,8 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
 
                     {hasTiers && (
                       <div className="px-4 pb-3">
-                        <div className="bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
-                          <div className="px-3 py-1.5 bg-gradient-to-r from-[var(--pos-accent-tint)] to-[#F7F7F7] border-b border-slate-200 flex items-center justify-between">
+                        <div className="bg-[#F7F7F7] rounded-lg border border-[#D6D6D6] overflow-hidden">
+                          <div className="px-3 py-1.5 bg-gradient-to-r from-[var(--pos-accent-tint)] to-[#F7F7F7] border-b border-[#D6D6D6] flex items-center justify-between">
                             <div className="flex items-center gap-1.5">
                               <Layers className="w-3 h-3 text-[var(--pos-accent)]" />
                               <span className="text-[10px] uppercase tracking-wider text-[var(--pos-accent)] font-bold">Tariff Tier Breakdown</span>
@@ -2589,7 +2589,7 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
                           </div>
                           <table className="w-full text-[11px]">
                             <thead>
-                              <tr className="bg-slate-100/80">
+                              <tr className="bg-[#F2F4F7]/80">
                                 <th className="text-left py-1.5 px-3 text-[9px] uppercase tracking-wider text-slate-500 font-bold">Tier</th>
                                 {item.isProRated && <th className="text-left py-1.5 px-3 text-[9px] uppercase tracking-wider text-slate-500 font-bold">Pro-Rated</th>}
                                 <th className="text-right py-1.5 px-3 text-[9px] uppercase tracking-wider text-slate-500 font-bold">Units</th>
@@ -2599,7 +2599,7 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
                             </thead>
                             <tbody>
                               {item.tierBreakdown!.map((tier, ti) => (
-                                <tr key={ti} className={`border-t border-slate-100 ${ti % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                                <tr key={ti} className={`border-t border-[#E5E5E5] ${ti % 2 === 0 ? 'bg-white' : 'bg-[#F7F7F7]/50'}`}>
                                   <td className="py-1.5 px-3 text-slate-700 font-medium">{tier.label}</td>
                                   {item.isProRated && (
                                     <td className="py-1.5 px-3 text-slate-500 text-[10px] font-mono">
@@ -2613,7 +2613,7 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
                               ))}
                             </tbody>
                           </table>
-                          <div className="px-3 py-2 bg-gradient-to-r from-slate-100 to-slate-50 border-t border-slate-200 flex justify-between items-center text-[11px]">
+                          <div className="px-3 py-2 bg-[#F7F7F7] border-t border-[#D6D6D6] flex justify-between items-center text-[11px]">
                             <span className="text-slate-500 font-semibold">
                               {item.consumption} units × {item.readingDays ?? STANDARD_MONTH_DAYS} days
                             </span>
@@ -2627,7 +2627,7 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
               })}
             </div>
 
-            <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 grid grid-cols-3 gap-2 text-[10px]">
+            <div className="px-4 py-2 bg-[#F7F7F7] border-t border-[#D6D6D6] grid grid-cols-3 gap-2 text-[10px]">
               <div className="text-center"><span className="text-slate-400 uppercase tracking-wider font-semibold block">Subtotal</span><span className="font-mono font-bold text-slate-700">R {fmt(catSubtotal)}</span></div>
               <div className="text-center"><span className="text-slate-400 uppercase tracking-wider font-semibold block">VAT</span><span className="font-mono font-bold text-slate-700">R {fmt(catVat)}</span></div>
               <div className="text-center"><span className="text-slate-400 uppercase tracking-wider font-semibold block">Total</span><span className="font-mono font-bold text-slate-800">R {fmt(catTotal)}</span></div>

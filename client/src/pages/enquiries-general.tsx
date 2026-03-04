@@ -212,7 +212,7 @@ function RiskFlagsBanner({ accountId }: { accountId: number }) {
       <div className="px-3 sm:px-6 py-1.5">
         <div className="flex gap-2">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-8 w-32 bg-slate-100 rounded-lg animate-pulse" />
+            <div key={i} className="h-8 w-32 bg-[#F2F4F7] rounded-lg animate-pulse" />
           ))}
         </div>
       </div>
@@ -356,12 +356,12 @@ function FieldAutocompleteInput({ fieldKey, placeholder, value, onChange, onSele
       />
       {loading && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--pos-accent)] animate-spin" />}
       {open && suggestions.length > 0 && (
-        <div className="absolute left-0 right-0 top-full mt-0.5 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-[200px] overflow-y-auto overscroll-contain">
+        <div className="absolute left-0 right-0 top-full mt-0.5 bg-white border border-[#D6D6D6] rounded-lg shadow-lg z-50 max-h-[200px] overflow-y-auto overscroll-contain">
           {suggestions.map((s, i) => (
             <button
               key={`${s.accountId}-${i}`}
               onClick={() => handleSelect(s)}
-              className="w-full text-left px-2.5 py-2 sm:py-1.5 text-xs text-slate-700 hover:bg-[var(--pos-accent-tint)] active:bg-[var(--pos-accent-tint-strong)] transition-colors border-b border-slate-100 last:border-0"
+              className="w-full text-left px-2.5 py-2 sm:py-1.5 text-xs text-slate-700 hover:bg-[var(--pos-accent-tint)] active:bg-[var(--pos-accent-tint-strong)] transition-colors border-b border-[#E5E5E5] last:border-0"
               data-testid={`suggestion-${fieldKey}-${i}`}
             >
               {s.displayItem}
@@ -841,21 +841,21 @@ function GeneralEnquiriesContent() {
     ];
 
     const tabColorMap: Record<string, { bg: string; border: string; text: string; iconBg: string; activeBg: string; activeBorder: string; activeText: string; activeIconBg: string }> = {
-      blue: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)]', activeBg: 'bg-[var(--pos-accent-tint)]', activeBorder: 'border-[var(--pos-accent)] ring-1 ring-[var(--pos-accent-light)]', activeText: 'text-[#2E2E2E]', activeIconBg: 'bg-[var(--pos-accent)] text-white' },
-      indigo: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)]', activeBg: 'bg-[var(--pos-accent-tint)]', activeBorder: 'border-[var(--pos-accent)] ring-1 ring-[var(--pos-accent-light)]', activeText: 'text-[#2E2E2E]', activeIconBg: 'bg-[var(--pos-accent)] text-white' },
-      red: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-red-50 text-red-500', activeBg: 'bg-red-50', activeBorder: 'border-red-400 ring-1 ring-red-200', activeText: 'text-red-800', activeIconBg: 'bg-red-500 text-white' },
-      emerald: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-emerald-50 text-emerald-500', activeBg: 'bg-emerald-50', activeBorder: 'border-emerald-400 ring-1 ring-emerald-200', activeText: 'text-emerald-800', activeIconBg: 'bg-emerald-500 text-white' },
-      amber: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-amber-50 text-amber-600', activeBg: 'bg-amber-50', activeBorder: 'border-amber-400 ring-1 ring-amber-200', activeText: 'text-amber-800', activeIconBg: 'bg-amber-500 text-white' },
-      cyan: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-cyan-50 text-cyan-500', activeBg: 'bg-cyan-50', activeBorder: 'border-cyan-400 ring-1 ring-cyan-200', activeText: 'text-cyan-800', activeIconBg: 'bg-cyan-500 text-white' },
-      violet: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-violet-50 text-violet-500', activeBg: 'bg-violet-50', activeBorder: 'border-violet-400 ring-1 ring-violet-200', activeText: 'text-violet-800', activeIconBg: 'bg-violet-500 text-white' },
-      orange: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-orange-50 text-orange-500', activeBg: 'bg-orange-50', activeBorder: 'border-orange-400 ring-1 ring-orange-200', activeText: 'text-orange-800', activeIconBg: 'bg-orange-500 text-white' },
-      pink: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-pink-50 text-pink-500', activeBg: 'bg-pink-50', activeBorder: 'border-pink-400 ring-1 ring-pink-200', activeText: 'text-pink-800', activeIconBg: 'bg-pink-500 text-white' },
-      lime: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-lime-50 text-lime-600', activeBg: 'bg-lime-50', activeBorder: 'border-lime-400 ring-1 ring-lime-200', activeText: 'text-lime-800', activeIconBg: 'bg-lime-500 text-white' },
-      slate: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-slate-100 text-slate-500', activeBg: 'bg-slate-100', activeBorder: 'border-slate-400 ring-1 ring-slate-300', activeText: 'text-slate-800', activeIconBg: 'bg-slate-600 text-white' },
-      purple: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-purple-50 text-purple-500', activeBg: 'bg-purple-50', activeBorder: 'border-purple-400 ring-1 ring-purple-200', activeText: 'text-purple-800', activeIconBg: 'bg-purple-500 text-white' },
-      teal: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-teal-50 text-teal-500', activeBg: 'bg-teal-50', activeBorder: 'border-teal-400 ring-1 ring-teal-200', activeText: 'text-teal-800', activeIconBg: 'bg-teal-500 text-white' },
-      yellow: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-yellow-50 text-yellow-600', activeBg: 'bg-yellow-50', activeBorder: 'border-yellow-400 ring-1 ring-yellow-200', activeText: 'text-yellow-800', activeIconBg: 'bg-yellow-500 text-white' },
-      rose: { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-600', iconBg: 'bg-rose-50 text-rose-500', activeBg: 'bg-rose-50', activeBorder: 'border-rose-400 ring-1 ring-rose-200', activeText: 'text-rose-800', activeIconBg: 'bg-rose-500 text-white' },
+      blue: { bg: 'bg-white', border: 'border-[#D6D6D6]', text: 'text-slate-600', iconBg: 'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)]', activeBg: 'bg-[var(--pos-accent-tint)]', activeBorder: 'border-[var(--pos-accent)] ring-1 ring-[var(--pos-accent-light)]', activeText: 'text-[#2E2E2E]', activeIconBg: 'bg-[var(--pos-accent)] text-white' },
+      indigo: { bg: 'bg-white', border: 'border-[#D6D6D6]', text: 'text-slate-600', iconBg: 'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)]', activeBg: 'bg-[var(--pos-accent-tint)]', activeBorder: 'border-[var(--pos-accent)] ring-1 ring-[var(--pos-accent-light)]', activeText: 'text-[#2E2E2E]', activeIconBg: 'bg-[var(--pos-accent)] text-white' },
+      red: { bg: 'bg-white', border: 'border-[#D6D6D6]', text: 'text-slate-600', iconBg: 'bg-red-50 text-red-500', activeBg: 'bg-red-50', activeBorder: 'border-red-400 ring-1 ring-red-200', activeText: 'text-red-800', activeIconBg: 'bg-red-500 text-white' },
+      emerald: { bg: 'bg-white', border: 'border-[#D6D6D6]', text: 'text-slate-600', iconBg: 'bg-emerald-50 text-emerald-500', activeBg: 'bg-emerald-50', activeBorder: 'border-emerald-400 ring-1 ring-emerald-200', activeText: 'text-emerald-800', activeIconBg: 'bg-emerald-500 text-white' },
+      amber: { bg: 'bg-white', border: 'border-[#D6D6D6]', text: 'text-slate-600', iconBg: 'bg-amber-50 text-amber-600', activeBg: 'bg-amber-50', activeBorder: 'border-amber-400 ring-1 ring-amber-200', activeText: 'text-amber-800', activeIconBg: 'bg-amber-500 text-white' },
+      cyan: { bg: 'bg-white', border: 'border-[#D6D6D6]', text: 'text-slate-600', iconBg: 'bg-cyan-50 text-cyan-500', activeBg: 'bg-cyan-50', activeBorder: 'border-cyan-400 ring-1 ring-cyan-200', activeText: 'text-cyan-800', activeIconBg: 'bg-cyan-500 text-white' },
+      violet: { bg: 'bg-white', border: 'border-[#D6D6D6]', text: 'text-slate-600', iconBg: 'bg-violet-50 text-violet-500', activeBg: 'bg-violet-50', activeBorder: 'border-violet-400 ring-1 ring-violet-200', activeText: 'text-violet-800', activeIconBg: 'bg-violet-500 text-white' },
+      orange: { bg: 'bg-white', border: 'border-[#D6D6D6]', text: 'text-slate-600', iconBg: 'bg-orange-50 text-orange-500', activeBg: 'bg-orange-50', activeBorder: 'border-orange-400 ring-1 ring-orange-200', activeText: 'text-orange-800', activeIconBg: 'bg-orange-500 text-white' },
+      pink: { bg: 'bg-white', border: 'border-[#D6D6D6]', text: 'text-slate-600', iconBg: 'bg-pink-50 text-pink-500', activeBg: 'bg-pink-50', activeBorder: 'border-pink-400 ring-1 ring-pink-200', activeText: 'text-pink-800', activeIconBg: 'bg-pink-500 text-white' },
+      lime: { bg: 'bg-white', border: 'border-[#D6D6D6]', text: 'text-slate-600', iconBg: 'bg-lime-50 text-lime-600', activeBg: 'bg-lime-50', activeBorder: 'border-lime-400 ring-1 ring-lime-200', activeText: 'text-lime-800', activeIconBg: 'bg-lime-500 text-white' },
+      slate: { bg: 'bg-white', border: 'border-[#D6D6D6]', text: 'text-slate-600', iconBg: 'bg-[#F2F4F7] text-slate-500', activeBg: 'bg-[#F2F4F7]', activeBorder: 'border-slate-400 ring-1 ring-slate-300', activeText: 'text-slate-800', activeIconBg: 'bg-slate-600 text-white' },
+      purple: { bg: 'bg-white', border: 'border-[#D6D6D6]', text: 'text-slate-600', iconBg: 'bg-purple-50 text-purple-500', activeBg: 'bg-purple-50', activeBorder: 'border-purple-400 ring-1 ring-purple-200', activeText: 'text-purple-800', activeIconBg: 'bg-purple-500 text-white' },
+      teal: { bg: 'bg-white', border: 'border-[#D6D6D6]', text: 'text-slate-600', iconBg: 'bg-teal-50 text-teal-500', activeBg: 'bg-teal-50', activeBorder: 'border-teal-400 ring-1 ring-teal-200', activeText: 'text-teal-800', activeIconBg: 'bg-teal-500 text-white' },
+      yellow: { bg: 'bg-white', border: 'border-[#D6D6D6]', text: 'text-slate-600', iconBg: 'bg-yellow-50 text-yellow-600', activeBg: 'bg-yellow-50', activeBorder: 'border-yellow-400 ring-1 ring-yellow-200', activeText: 'text-yellow-800', activeIconBg: 'bg-yellow-500 text-white' },
+      rose: { bg: 'bg-white', border: 'border-[#D6D6D6]', text: 'text-slate-600', iconBg: 'bg-rose-50 text-rose-500', activeBg: 'bg-rose-50', activeBorder: 'border-rose-400 ring-1 ring-rose-200', activeText: 'text-rose-800', activeIconBg: 'bg-rose-500 text-white' },
     };
 
     return (
@@ -884,7 +884,7 @@ function GeneralEnquiriesContent() {
                     {accountName}
                   </h2>
                   <HelpTip text="Current status of this municipal account — Active, Inactive, or Closed." side="bottom">
-                    <span className={`inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold cursor-help ${isActive ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200'}`}>
+                    <span className={`inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold cursor-help ${isActive ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-[#F2F4F7] text-slate-500 ring-1 ring-[#D6D6D6]'}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                       {selectedAccount.accountStatus || selectedAccount.statusDesc || 'Unknown'}
                     </span>
@@ -903,7 +903,7 @@ function GeneralEnquiriesContent() {
                     R {headerBalance.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                 ) : (
-                  <div className="h-5 w-16 sm:h-6 sm:w-24 bg-slate-100 rounded animate-pulse" />
+                  <div className="h-5 w-16 sm:h-6 sm:w-24 bg-[#F2F4F7] rounded animate-pulse" />
                 )}
               </div>
             </div>
@@ -947,7 +947,7 @@ function GeneralEnquiriesContent() {
                                     transition-all duration-150 cursor-pointer
                                     ${isTabActive
                                       ? `${colors.activeBg} ${colors.activeBorder} ${colors.activeText} shadow-sm font-semibold`
-                                      : `${colors.bg} ${colors.border} ${colors.text} hover:border-slate-300 hover:bg-slate-50`
+                                      : `${colors.bg} ${colors.border} ${colors.text} hover:border-[#BFBFBF] hover:bg-[#F7F7F7]`
                                     }
                                   `}
                                   data-testid={`tab-${tab.value}`}
@@ -991,7 +991,7 @@ function GeneralEnquiriesContent() {
                           {mobileTabMenuOpen && (
                             <>
                               <div className="fixed inset-0 z-30 bg-black/20" onClick={() => setMobileTabMenuOpen(false)} />
-                              <div className="fixed left-2 right-2 z-40 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-y-auto overscroll-contain p-2" style={{ top: '140px', maxHeight: 'calc(100vh - 160px)' }}>
+                              <div className="fixed left-2 right-2 z-40 bg-white rounded-xl shadow-2xl border border-[#D6D6D6] overflow-y-auto overscroll-contain p-2" style={{ top: '140px', maxHeight: 'calc(100vh - 160px)' }}>
                                 {tabGroups.map((group) => (
                                   <div key={group.heading} className="mb-1.5">
                                     <div className="px-1 py-0.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest">{group.heading}</div>
@@ -1008,7 +1008,7 @@ function GeneralEnquiriesContent() {
                                               flex flex-col items-center gap-0.5 px-1 py-2 rounded-lg border text-[10px] font-medium cursor-pointer transition-all active:scale-[0.97]
                                               ${isTabActive
                                                 ? `${colors.activeBg} ${colors.activeBorder} ${colors.activeText} font-semibold shadow-sm`
-                                                : `bg-white border-slate-200 text-slate-600 hover:bg-slate-50`
+                                                : `bg-white border-[#D6D6D6] text-slate-600 hover:bg-[#F7F7F7]`
                                               }
                                             `}
                                             data-testid={`tab-mobile-${tab.value}`}
@@ -1091,7 +1091,7 @@ function GeneralEnquiriesContent() {
             {recentSearches.length > 0 && (
               <button
                 onClick={() => { setShowDropdown(true); inputRef.current?.focus(); }}
-                className="sm:hidden p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                className="sm:hidden p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-[#F2F4F7] transition-colors"
                 aria-label="Recent searches"
                 data-testid="button-recent-mobile"
               >
@@ -1149,7 +1149,7 @@ function GeneralEnquiriesContent() {
               {quickQuery && (
                 <button
                   onClick={handleClear}
-                  className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 active:bg-slate-200 transition-colors"
+                  className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-[#F2F4F7] active:bg-[#E5E5E5] transition-colors"
                   data-testid="button-clear-quick"
                   aria-label="Clear search"
                   tabIndex={0}
@@ -1160,7 +1160,7 @@ function GeneralEnquiriesContent() {
 
               <HelpTip text="Scan a barcode or ID document to auto-fill the search field." side="bottom">
                 <button
-                  className="hidden sm:flex p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                  className="hidden sm:flex p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-[#F2F4F7] transition-colors"
                   title="Scan ID / Barcode"
                   data-testid="button-scan-barcode"
                   aria-label="Scan ID or barcode"
@@ -1205,13 +1205,13 @@ function GeneralEnquiriesContent() {
             </div>
           )}
 
-          <div className="mt-2 border border-slate-200 rounded-xl sm:rounded-lg bg-slate-50/50 overflow-hidden">
+          <div className="mt-2 border border-[#D6D6D6] rounded-xl sm:rounded-lg bg-[#F7F7F7]/50 overflow-hidden">
             <button
               onClick={() => {
                 setFieldSearchOpen(prev => !prev);
                 setMobileFormCollapsed(prev => !prev);
               }}
-              className="w-full flex items-center justify-between gap-1.5 px-3 py-2.5 sm:px-2.5 sm:py-2 hover:bg-slate-100/70 active:bg-slate-100 transition-colors"
+              className="w-full flex items-center justify-between gap-1.5 px-3 py-2.5 sm:px-2.5 sm:py-2 hover:bg-[#F2F4F7]/70 active:bg-[#F2F4F7] transition-colors"
               data-testid="button-toggle-filters"
             >
               <div className="flex items-center gap-1.5">
@@ -1243,7 +1243,7 @@ function GeneralEnquiriesContent() {
                 <ChevronDown className={`w-4 h-4 sm:w-3.5 sm:h-3.5 text-slate-400 transition-transform duration-200 ${fieldSearchOpen ? 'rotate-180' : ''}`} />
               </div>
             </button>
-            <div className={`${fieldSearchOpen ? 'block animate-in fade-in slide-in-from-top-2 duration-200' : 'hidden'} px-2 sm:px-2.5 pt-2 pb-2 border-t border-slate-200/60`}>
+            <div className={`${fieldSearchOpen ? 'block animate-in fade-in slide-in-from-top-2 duration-200' : 'hidden'} px-2 sm:px-2.5 pt-2 pb-2 border-t border-[#D6D6D6]/60`}>
               {(() => {
                 const allFields = [
                   { key: 'accountNo', placeholder: 'Account No.' },
@@ -1303,7 +1303,7 @@ function GeneralEnquiriesContent() {
                 </button>
                 <button
                   onClick={() => setShowFiltersPanel(prev => !prev)}
-                  className="sm:hidden h-8 px-3 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 active:bg-slate-100 text-[10px] font-medium flex items-center gap-1 transition-colors ml-auto"
+                  className="sm:hidden h-8 px-3 rounded-lg border border-[#D6D6D6] bg-white text-slate-600 hover:bg-[#F7F7F7] active:bg-[#F2F4F7] text-[10px] font-medium flex items-center gap-1 transition-colors ml-auto"
                   data-testid="button-toggle-advanced-mobile"
                 >
                   <SlidersHorizontal className="w-3 h-3" />
@@ -1327,7 +1327,7 @@ function GeneralEnquiriesContent() {
                 className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 sm:py-1 rounded-full text-[11px] font-medium border transition-all whitespace-nowrap active:scale-95
                   ${quickFilters.has(chip.key)
                     ? 'bg-[var(--pos-accent)] text-white border-[var(--pos-accent)] shadow-sm'
-                    : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:border-slate-300'}`}
+                    : 'bg-white text-slate-500 border-[#D6D6D6] hover:bg-[#F7F7F7] hover:border-[#BFBFBF]'}`}
                 data-testid={`chip-filter-${chip.key}`}
                 aria-pressed={quickFilters.has(chip.key)}
                 tabIndex={0}
@@ -1363,10 +1363,10 @@ function GeneralEnquiriesContent() {
           )}
 
           {quickQuery.trim().length < 2 && showDropdown && (recentSearches.length > 0 || pinnedAccounts.length > 0) && (
-            <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-slate-200 z-50 py-1 max-h-[400px] overflow-y-auto" id="search-dropdown" role="listbox">
+            <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-[#D6D6D6] z-50 py-1 max-h-[400px] overflow-y-auto" id="search-dropdown" role="listbox">
               {pinnedAccounts.length > 0 && (
                 <>
-                  <div className="px-4 py-1.5 flex items-center gap-2 border-b border-slate-100">
+                  <div className="px-4 py-1.5 flex items-center gap-2 border-b border-[#E5E5E5]">
                     <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
                     <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Pinned Accounts</span>
                     <HelpTip text="Quick access to frequently viewed accounts. Pin accounts for easy reference." side="right" />
@@ -1398,7 +1398,7 @@ function GeneralEnquiriesContent() {
 
               {recentSearches.length > 0 && (
                 <>
-                  <div className="px-4 py-1.5 flex items-center gap-2 border-b border-slate-100 mt-0.5">
+                  <div className="px-4 py-1.5 flex items-center gap-2 border-b border-[#E5E5E5] mt-0.5">
                     <Clock className="w-3 h-3 text-slate-400" />
                     <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Recent Searches</span>
                   </div>
@@ -1406,7 +1406,7 @@ function GeneralEnquiriesContent() {
                     <button
                       key={i}
                       onClick={() => { setQuickQuery(term); handleQuickQueryChange(term); }}
-                      className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2"
+                      className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-[#F7F7F7] transition-colors flex items-center gap-2"
                       data-testid={`recent-search-${i}`}
                       role="option"
                     >
@@ -1448,7 +1448,7 @@ function GeneralEnquiriesContent() {
                   <button
                     key={i}
                     onClick={() => { setQuickQuery(example.value); handleQuickQueryChange(example.value); inputRef.current?.focus(); }}
-                    className="group flex flex-col sm:flex-row items-start sm:items-center gap-0.5 sm:gap-2 text-[11px] sm:text-xs px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl sm:rounded-lg border border-slate-200 text-slate-500
+                    className="group flex flex-col sm:flex-row items-start sm:items-center gap-0.5 sm:gap-2 text-[11px] sm:text-xs px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl sm:rounded-lg border border-[#D6D6D6] text-slate-500
                       hover:bg-[var(--pos-accent-tint)] hover:text-[var(--pos-accent)] hover:border-[#D6D6D6] active:bg-[var(--pos-accent-tint-strong)] transition-all shadow-sm bg-white"
                     data-testid={`example-search-${i}`}
                   >
@@ -1470,7 +1470,7 @@ function GeneralEnquiriesContent() {
                     <button
                       key={i}
                       onClick={() => { setQuickQuery(term); handleQuickQueryChange(term); inputRef.current?.focus(); }}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-slate-200 text-[11px] text-slate-600 hover:bg-[var(--pos-accent-tint)] hover:border-[#D6D6D6] active:bg-[var(--pos-accent-tint-strong)] transition-all"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-[#D6D6D6] text-[11px] text-slate-600 hover:bg-[var(--pos-accent-tint)] hover:border-[#D6D6D6] active:bg-[var(--pos-accent-tint-strong)] transition-all"
                       data-testid={`recent-chip-${i}`}
                     >
                       <Clock className="w-2.5 h-2.5 text-slate-300" />
@@ -1496,7 +1496,7 @@ function GeneralEnquiriesContent() {
                       <button
                         key={i}
                         onClick={() => handleSelectAccount(acct)}
-                        className="flex items-center gap-2.5 sm:gap-3 px-3 py-2 rounded-xl sm:rounded-lg border border-slate-200 bg-white hover:bg-[var(--pos-accent-tint)] hover:border-[#D6D6D6] active:bg-[var(--pos-accent-tint-strong)] transition-all text-left shadow-sm"
+                        className="flex items-center gap-2.5 sm:gap-3 px-3 py-2 rounded-xl sm:rounded-lg border border-[#D6D6D6] bg-white hover:bg-[var(--pos-accent-tint)] hover:border-[#D6D6D6] active:bg-[var(--pos-accent-tint-strong)] transition-all text-left shadow-sm"
                         data-testid={`pinned-home-${i}`}
                       >
                         <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 text-xs sm:text-sm font-bold ring-1 ring-amber-200">
@@ -1595,12 +1595,12 @@ function GeneralEnquiriesContent() {
                   <button
                     key={aid}
                     onClick={() => handleSelectAccount(account)}
-                    className={`w-full text-left bg-white border border-slate-200 ${borderColor} border-l-[3px] rounded-lg p-2.5 hover:bg-[var(--pos-accent-tint)] hover:border-[#D6D6D6] transition-all shadow-sm active:scale-[0.99] active:shadow-none`}
+                    className={`w-full text-left bg-white border border-[#D6D6D6] ${borderColor} border-l-[3px] rounded-lg p-2.5 hover:bg-[var(--pos-accent-tint)] hover:border-[#D6D6D6] transition-all shadow-sm active:scale-[0.99] active:shadow-none`}
                     data-testid={`mobile-result-${i}`}
                   >
                     <div className="flex items-start gap-2.5">
                       <div className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold mt-0.5 ${
-                        isActive ? 'bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] text-white' : 'bg-slate-200 text-slate-500'
+                        isActive ? 'bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] text-white' : 'bg-[#D6D6D6] text-slate-500'
                       }`}>
                         {name.charAt(0).toUpperCase()}
                       </div>
@@ -1610,7 +1610,7 @@ function GeneralEnquiriesContent() {
                         </div>
                         <div className="flex items-center gap-2 mb-0.5">
                           <span className="text-[11px] font-mono text-[var(--pos-accent)] font-medium">{acctNum}</span>
-                          <span className={`shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wide ${isActive ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200'}`}>
+                          <span className={`shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wide ${isActive ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-[#F2F4F7] text-slate-500 ring-1 ring-[#D6D6D6]'}`}>
                             <span className={`w-1 h-1 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                             {status}
                           </span>
@@ -1635,7 +1635,7 @@ function GeneralEnquiriesContent() {
             <div className="hidden sm:block overflow-x-auto" data-testid="table-search-results">
               <table className="w-full text-xs border-collapse min-w-[1100px]">
                 <thead className="sticky top-0 z-10">
-                  <tr className="bg-slate-100 border-b-2 border-slate-200 text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
+                  <tr className="bg-[#F2F4F7] border-b-2 border-[#D6D6D6] text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
                     <th className="w-8 px-1 py-2.5"></th>
                     <th className="w-8 px-1 py-2.5"></th>
                     <th className="text-left px-2 py-2.5 whitespace-nowrap w-[140px]">Account No.</th>
@@ -1678,9 +1678,9 @@ function GeneralEnquiriesContent() {
             className="fixed inset-0 bg-black/30 sm:bg-black/20 z-40 backdrop-blur-[1px] sm:backdrop-blur-none"
             onClick={() => setShowFiltersPanel(false)}
           />
-          <div className="fixed inset-x-0 bottom-0 sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[380px] sm:max-w-[90vw] max-h-[85vh] sm:max-h-none bg-white shadow-2xl border-t sm:border-t-0 sm:border-l border-slate-200 z-50 flex flex-col rounded-t-2xl sm:rounded-none animate-in slide-in-from-bottom sm:slide-in-from-right duration-200" role="dialog" aria-label="Advanced Filters">
+          <div className="fixed inset-x-0 bottom-0 sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[380px] sm:max-w-[90vw] max-h-[85vh] sm:max-h-none bg-white shadow-2xl border-t sm:border-t-0 sm:border-l border-[#D6D6D6] z-50 flex flex-col rounded-t-2xl sm:rounded-none animate-in slide-in-from-bottom sm:slide-in-from-right duration-200" role="dialog" aria-label="Advanced Filters">
             <div className="sm:hidden w-10 h-1 bg-slate-300 rounded-full mx-auto mt-2 mb-1" />
-            <div className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 border-b border-slate-200">
+            <div className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 border-b border-[#D6D6D6]">
               <div className="flex items-center gap-2">
                 <SlidersHorizontal className="w-4 h-4 text-slate-500" />
                 <h3 className="text-sm font-semibold text-slate-800">All Search Fields</h3>
@@ -1690,7 +1690,7 @@ function GeneralEnquiriesContent() {
               </div>
               <button
                 onClick={() => setShowFiltersPanel(false)}
-                className="p-2 sm:p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 active:bg-slate-200 transition-colors"
+                className="p-2 sm:p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-[#F2F4F7] active:bg-[#E5E5E5] transition-colors"
                 aria-label="Close filters panel"
               >
                 <X className="w-4 h-4" />
@@ -1715,7 +1715,7 @@ function GeneralEnquiriesContent() {
                 </div>
               ))}
             </div>
-            <div className="shrink-0 border-t border-slate-200 px-4 sm:px-5 py-3 sm:py-3 flex items-center gap-2 pb-safe">
+            <div className="shrink-0 border-t border-[#D6D6D6] px-4 sm:px-5 py-3 sm:py-3 flex items-center gap-2 pb-safe">
               {activeFilterCount > 0 && (
                 <Button variant="ghost" size="sm" onClick={() => setCriteria({})} className="text-xs h-10 sm:h-8" data-testid="button-clear-filters">
                   Clear All

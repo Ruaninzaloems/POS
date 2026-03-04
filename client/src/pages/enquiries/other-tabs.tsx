@@ -38,12 +38,12 @@ function TransferOfOwnershipSection({ transfers, fmt, fmtDate }: { transfers: an
   const startIdx = (safePage - 1) * itemsPerPage;
   const pageItems = transfers.slice(startIdx, startIdx + itemsPerPage);
 
-  const thCls = "text-left py-2.5 px-3 text-[11px] font-semibold text-slate-600 whitespace-nowrap border-r border-slate-200 last:border-r-0 cursor-pointer hover:bg-slate-100 select-none";
+  const thCls = "text-left py-2.5 px-3 text-[11px] font-semibold text-slate-600 whitespace-nowrap border-r border-[#D6D6D6] last:border-r-0 cursor-pointer hover:bg-[#F2F4F7] select-none";
   const sortIcon = <span className="inline-block ml-0.5 text-slate-400">&#x21C5;</span>;
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-4 py-2.5 bg-slate-100 border-b border-slate-200 text-center">
+    <div className="bg-white rounded-lg border border-[#D6D6D6] shadow-sm overflow-hidden">
+      <div className="px-4 py-2.5 bg-[#F2F4F7] border-b border-[#D6D6D6] text-center">
         <h3 className="text-sm font-semibold text-slate-800" data-testid="text-transfer-title">Transfer of Ownership History:</h3>
       </div>
 
@@ -56,7 +56,7 @@ function TransferOfOwnershipSection({ transfers, fmt, fmtDate }: { transfers: an
             : statusVal === 'Rejected' || statusVal === 'Cancelled' ? 'bg-red-100 text-red-700'
             : statusVal === 'Pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600';
           return (
-            <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`mobile-transfer-${i}`}>
+            <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5" data-testid={`mobile-transfer-${i}`}>
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-700">{t.financialYear ?? t.financial_Year ?? '-'}</span>
                 <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium ${statusColor}`}>{statusVal}</span>
@@ -76,7 +76,7 @@ function TransferOfOwnershipSection({ transfers, fmt, fmtDate }: { transfers: an
       <div className="hidden sm:block overflow-x-auto">
         <table className="w-full text-sm border-collapse" data-testid="table-transfer-ownership">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200">
+            <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
               <th className={thCls} style={{ minWidth: 100 }}>Financial Year {sortIcon}</th>
               <th className={thCls} style={{ minWidth: 80 }}>Status {sortIcon}</th>
               <th className={thCls} style={{ minWidth: 140 }}>Transfer of Ownership Date {sortIcon}</th>
@@ -95,9 +95,9 @@ function TransferOfOwnershipSection({ transfers, fmt, fmtDate }: { transfers: an
             {pageItems.length === 0 ? (
               <tr><td colSpan={12} className="py-6 text-center text-slate-400 text-sm">No records to display.</td></tr>
             ) : pageItems.map((t: any, i: number) => (
-              <tr key={i} className="border-b border-slate-100 hover:bg-[var(--pos-accent-tint)]/40 transition-colors" data-testid={`row-transfer-${i}`}>
-                <td className="py-2 px-3 text-[13px] text-slate-700 border-r border-slate-100">{t.financialYear ?? t.financial_Year ?? '-'}</td>
-                <td className="py-2 px-3 text-[13px] border-r border-slate-100">
+              <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)]/40 transition-colors" data-testid={`row-transfer-${i}`}>
+                <td className="py-2 px-3 text-[13px] text-slate-700 border-r border-[#E5E5E5]">{t.financialYear ?? t.financial_Year ?? '-'}</td>
+                <td className="py-2 px-3 text-[13px] border-r border-[#E5E5E5]">
                   <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${
                     (t.status ?? t.transferStatus ?? '') === 'Approve' || (t.status ?? t.transferStatus ?? '') === 'Approved'
                       ? 'bg-green-100 text-green-700'
@@ -110,15 +110,15 @@ function TransferOfOwnershipSection({ transfers, fmt, fmtDate }: { transfers: an
                     {t.status ?? t.transferStatus ?? '-'}
                   </span>
                 </td>
-                <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-slate-100">{fmtDate(t.transferOfOwnershipDate ?? t.transferDate ?? t.dateOfTransfer ?? t.date)}</td>
-                <td className="py-2 px-3 text-[13px] text-slate-700 border-r border-slate-100">{t.oldOwner ?? t.previousOwner ?? t.fromOwner ?? t.from ?? '-'}</td>
-                <td className="py-2 px-3 text-[13px] font-mono text-slate-700 border-r border-slate-100">{t.oldAccountNumber ?? t.oldAccount ?? t.previousAccountNumber ?? '-'}</td>
-                <td className="py-2 px-3 text-[13px] font-mono text-slate-700 border-r border-slate-100">{t.titleDeedNumber ?? t.titleDeed ?? t.deedNumber ?? '-'}</td>
-                <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-slate-100">{fmtDate(t.registrationDate ?? t.registerDate)}</td>
-                <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-slate-100">{fmtDate(t.rdpLandReformDate ?? t.rdpDate ?? t.landReformDate)}</td>
-                <td className="py-2 px-3 text-right font-mono text-[13px] text-slate-700 border-r border-slate-100">{fmt(t.journalAmountServices ?? t.journalAmount_Services ?? t.journalAmountService ?? 0)}</td>
-                <td className="py-2 px-3 text-right font-mono text-[13px] text-slate-700 border-r border-slate-100">{fmt(t.journalAmountAdditionalBilling ?? t.journalAmount_AdditionalBilling ?? t.journalAmountAddBilling ?? 0)}</td>
-                <td className="py-2 px-3 text-right font-mono text-[13px] text-slate-700 border-r border-slate-100">{fmt(t.purchasePrice ?? t.purchase_Price ?? 0)}</td>
+                <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-[#E5E5E5]">{fmtDate(t.transferOfOwnershipDate ?? t.transferDate ?? t.dateOfTransfer ?? t.date)}</td>
+                <td className="py-2 px-3 text-[13px] text-slate-700 border-r border-[#E5E5E5]">{t.oldOwner ?? t.previousOwner ?? t.fromOwner ?? t.from ?? '-'}</td>
+                <td className="py-2 px-3 text-[13px] font-mono text-slate-700 border-r border-[#E5E5E5]">{t.oldAccountNumber ?? t.oldAccount ?? t.previousAccountNumber ?? '-'}</td>
+                <td className="py-2 px-3 text-[13px] font-mono text-slate-700 border-r border-[#E5E5E5]">{t.titleDeedNumber ?? t.titleDeed ?? t.deedNumber ?? '-'}</td>
+                <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-[#E5E5E5]">{fmtDate(t.registrationDate ?? t.registerDate)}</td>
+                <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-[#E5E5E5]">{fmtDate(t.rdpLandReformDate ?? t.rdpDate ?? t.landReformDate)}</td>
+                <td className="py-2 px-3 text-right font-mono text-[13px] text-slate-700 border-r border-[#E5E5E5]">{fmt(t.journalAmountServices ?? t.journalAmount_Services ?? t.journalAmountService ?? 0)}</td>
+                <td className="py-2 px-3 text-right font-mono text-[13px] text-slate-700 border-r border-[#E5E5E5]">{fmt(t.journalAmountAdditionalBilling ?? t.journalAmount_AdditionalBilling ?? t.journalAmountAddBilling ?? 0)}</td>
+                <td className="py-2 px-3 text-right font-mono text-[13px] text-slate-700 border-r border-[#E5E5E5]">{fmt(t.purchasePrice ?? t.purchase_Price ?? 0)}</td>
                 <td className="py-2 px-3 text-[13px] text-slate-600">{fmtDate(t.purchaseDate ?? t.purchase_Date)}</td>
               </tr>
             ))}
@@ -126,13 +126,13 @@ function TransferOfOwnershipSection({ transfers, fmt, fmtDate }: { transfers: an
         </table>
       </div>
 
-      <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-4">
+      <div className="px-4 py-2.5 bg-[#F7F7F7] border-t border-[#D6D6D6] flex items-center justify-end gap-4">
         <div className="flex items-center gap-2 text-xs text-slate-500">
           <span>Items per page:</span>
           <select
             value={itemsPerPage}
             onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
-            className="border border-slate-300 rounded px-1.5 py-0.5 text-xs bg-white"
+            className="border border-[#BFBFBF] rounded px-1.5 py-0.5 text-xs bg-white"
             data-testid="select-transfer-pagesize"
           >
             {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
@@ -224,7 +224,7 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
 
   return (
     <div className="p-3 sm:p-5 space-y-4 sm:space-y-5" data-testid="property-details-tab">
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
         <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
           <Building2 className="w-4 h-4 text-white" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Property Information</h3>
@@ -253,7 +253,7 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
             {prop.rdpOrReform && <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">RDP / Reform</span><div className="text-sm font-semibold text-slate-800">{prop.rdpOrReform}</div></div>}
             {prop.complexName && <div className="space-y-0.5"><span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Complex</span><div className="text-sm font-semibold text-slate-800">{prop.complexName}</div></div>}
           </div>
-          <div className="mt-5 pt-4 border-t border-slate-100">
+          <div className="mt-5 pt-4 border-t border-[#E5E5E5]">
             <div className="flex items-center gap-2 mb-3">
               <Shield className="w-3.5 h-3.5 text-slate-500" />
               <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Electoral & Classification Details</span>
@@ -269,8 +269,8 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
+      <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
           <FileText className="w-4 h-4 text-white" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Property Letters & Certificates</h3>
         </div>
@@ -283,7 +283,7 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
                 setGeneratingPdf('section49');
                 try { await generateSection49Letter(accountId); } catch (e: any) { alert('Failed to generate Section 49 Letter: ' + (e.message || 'Unknown error')); } finally { setGeneratingPdf(null); }
               }}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all text-sm font-medium text-slate-700 shadow-sm"
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#D6D6D6] rounded-lg hover:bg-[#F7F7F7] hover:border-[#BFBFBF] transition-all text-sm font-medium text-slate-700 shadow-sm"
             >
               {generatingPdf === 'section49' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-slate-500" />}
               View Section 49 Letter
@@ -295,7 +295,7 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
                 setGeneratingPdf('section78');
                 try { await generateSection78Letter(accountId); } catch (e: any) { alert('Failed to generate Section 78 Letter: ' + (e.message || 'Unknown error')); } finally { setGeneratingPdf(null); }
               }}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all text-sm font-medium text-slate-700 shadow-sm"
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#D6D6D6] rounded-lg hover:bg-[#F7F7F7] hover:border-[#BFBFBF] transition-all text-sm font-medium text-slate-700 shadow-sm"
             >
               {generatingPdf === 'section78' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-slate-500" />}
               View Section 78 Letter
@@ -307,7 +307,7 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
                 setGeneratingPdf('valcert');
                 try { await generateValuationCertificate(accountId); } catch (e: any) { alert('Failed to generate Valuation Certificate: ' + (e.message || 'Unknown error')); } finally { setGeneratingPdf(null); }
               }}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all text-sm font-medium text-slate-700 shadow-sm"
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#D6D6D6] rounded-lg hover:bg-[#F7F7F7] hover:border-[#BFBFBF] transition-all text-sm font-medium text-slate-700 shadow-sm"
             >
               {generatingPdf === 'valcert' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-slate-500" />}
               View Valuation Certificate
@@ -316,8 +316,8 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
+      <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
           <Landmark className="w-4 h-4 text-white" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">General Valuations</h3>
           <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{valuations.length}</Badge>
@@ -328,7 +328,7 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
           <>
           <div className="sm:hidden p-2 space-y-2">
             {valuations.map((v: any, i: number) => (
-              <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5">
+              <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5">
                 <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Type</span><span className="text-slate-800 font-semibold text-right">{v.type || '-'}</span></div>
                 <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Status</span><span className="text-right"><Badge variant={v.valuationStatus === 'Active' ? 'default' : 'secondary'} className={`text-[10px] ${v.valuationStatus === 'Active' ? 'bg-green-100 text-green-800' : ''}`}>{v.valuationStatus || '-'}</Badge></span></div>
                 <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Fin Year</span><span className="text-slate-800 font-semibold text-right">{v.financialYear || '-'}</span></div>
@@ -342,7 +342,7 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
+                <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Type</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Fin Year</th>
@@ -358,7 +358,7 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
               </thead>
               <tbody>
                 {valuations.map((v: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-emerald-50/30 transition-colors">
+                  <tr key={i} className="border-b border-[#E5E5E5] hover:bg-emerald-50/30 transition-colors">
                     <td className="py-2 px-3 font-medium text-slate-800">{v.type || '-'}</td>
                     <td className="py-2 px-3">
                       <Badge variant={v.valuationStatus === 'Active' ? 'default' : 'secondary'} className={`text-[10px] ${v.valuationStatus === 'Active' ? 'bg-green-100 text-green-800' : ''}`}>{v.valuationStatus || '-'}</Badge>
@@ -381,8 +381,8 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
         )}
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
+      <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
           <Gift className="w-4 h-4 text-white" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Rebates & Levies</h3>
         </div>
@@ -420,8 +420,8 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-cyan-600 to-cyan-700 flex items-center gap-2">
+      <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
           <Zap className="w-4 h-4 text-white" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Meters</h3>
           <Badge variant="outline" className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{meters.length}</Badge>
@@ -439,7 +439,7 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
               const lastReading = m.lastReading ?? m.currentReading ?? '-';
               const readDate = m.readDate || m.lastReadDate;
               return (
-                <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5">
+                <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5">
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Meter Number</span><span className="text-slate-800 font-semibold text-right font-mono">{meterNum}</span></div>
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Service</span><span className="text-slate-800 font-semibold text-right">{service}</span></div>
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Status</span><span className="text-right"><Badge variant={isActiveStatus ? 'default' : 'secondary'} className={`text-[10px] ${isActiveStatus ? 'bg-green-100 text-green-800' : ''}`}>{status}</Badge></span></div>
@@ -452,7 +452,7 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
+                <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Number</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Status</th>
@@ -471,7 +471,7 @@ export function PropertyDetailsTab({ accountId }: { accountId: number }) {
                   const lastReading = m.lastReading ?? m.currentReading ?? '-';
                   const readDate = m.readDate || m.lastReadDate;
                   return (
-                    <tr key={i} className="border-b border-slate-100 hover:bg-cyan-50/30 transition-colors">
+                    <tr key={i} className="border-b border-[#E5E5E5] hover:bg-cyan-50/30 transition-colors">
                       <td className="py-2 px-3 font-mono font-medium text-slate-800">{meterNum}</td>
                       <td className="py-2 px-3 text-slate-600">{service}</td>
                       <td className="py-2 px-3">
@@ -561,8 +561,8 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
   ];
 
   const ContactField = ({ icon, label, value, testId, highlight }: { icon: React.ReactNode; label: string; value: string; testId: string; highlight?: boolean }) => (
-    <div className={`flex items-start gap-3 p-3.5 rounded-xl border transition-all ${value ? (highlight ? 'bg-[var(--pos-accent-tint)]/60 border-[#D6D6D6]' : 'bg-white border-slate-200 hover:border-slate-300') : 'bg-slate-50/50 border-slate-100'}`} data-testid={testId}>
-      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${value ? (highlight ? 'bg-[var(--pos-accent)] text-white' : 'bg-slate-100 text-slate-500') : 'bg-slate-100 text-slate-300'}`}>
+    <div className={`flex items-start gap-3 p-3.5 rounded-xl border transition-all ${value ? (highlight ? 'bg-[var(--pos-accent-tint)]/60 border-[#D6D6D6]' : 'bg-white border-[#D6D6D6] hover:border-[#BFBFBF]') : 'bg-[#F7F7F7]/50 border-[#E5E5E5]'}`} data-testid={testId}>
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${value ? (highlight ? 'bg-[var(--pos-accent)] text-white' : 'bg-[#F2F4F7] text-slate-500') : 'bg-[#F2F4F7] text-slate-300'}`}>
         {icon}
       </div>
       <div className="min-w-0 flex-1">
@@ -583,10 +583,10 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
         {navItems.map(item => {
           const isActive = activeSection === item.id;
           const colorMap: Record<string, { active: string; inactive: string }> = {
-            blue: { active: 'bg-[var(--pos-accent)] text-white shadow-[0_1px_3px_rgba(0,0,0,0.15)]', inactive: 'bg-white text-slate-600 border-slate-200 hover:border-[#D6D6D6] hover:text-[var(--pos-accent)]' },
-            emerald: { active: 'bg-emerald-600 text-white shadow-emerald-200', inactive: 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300 hover:text-emerald-700' },
-            indigo: { active: 'bg-[var(--pos-accent)] text-white shadow-[0_1px_3px_rgba(0,0,0,0.15)]', inactive: 'bg-white text-slate-600 border-slate-200 hover:border-[#D6D6D6] hover:text-[var(--pos-accent)]' },
-            amber: { active: 'bg-amber-600 text-white shadow-amber-200', inactive: 'bg-white text-slate-600 border-slate-200 hover:border-amber-300 hover:text-amber-700' },
+            blue: { active: 'bg-[var(--pos-accent)] text-white shadow-[0_1px_3px_rgba(0,0,0,0.15)]', inactive: 'bg-white text-slate-600 border-[#D6D6D6] hover:border-[#D6D6D6] hover:text-[var(--pos-accent)]' },
+            emerald: { active: 'bg-emerald-600 text-white shadow-emerald-200', inactive: 'bg-white text-slate-600 border-[#D6D6D6] hover:border-emerald-300 hover:text-emerald-700' },
+            indigo: { active: 'bg-[var(--pos-accent)] text-white shadow-[0_1px_3px_rgba(0,0,0,0.15)]', inactive: 'bg-white text-slate-600 border-[#D6D6D6] hover:border-[#D6D6D6] hover:text-[var(--pos-accent)]' },
+            amber: { active: 'bg-amber-600 text-white shadow-amber-200', inactive: 'bg-white text-slate-600 border-[#D6D6D6] hover:border-amber-300 hover:text-amber-700' },
           };
           const colors = colorMap[item.color] || colorMap.blue;
           return (
@@ -599,7 +599,7 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
               {item.icon}
               <span>{item.label}</span>
               {item.badge != null && item.badge > 0 && (
-                <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isActive ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isActive ? 'bg-white/25 text-white' : 'bg-[#F2F4F7] text-slate-500'}`}>
                   {item.badge}
                 </span>
               )}
@@ -610,7 +610,7 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
 
       {activeSection === 'contact' && (
         <div className="space-y-4 sm:space-y-5 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-[#D6D6D6] shadow-sm overflow-hidden">
             <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
               <Phone className="w-4 h-4 text-white" />
               <h4 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Phone & Email</h4>
@@ -627,7 +627,7 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-[#D6D6D6] shadow-sm overflow-hidden">
             <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
               <Mail className="w-4 h-4 text-white" />
               <h4 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Additional Statement Emails</h4>
@@ -654,7 +654,7 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
       {activeSection === 'delivery' && (
         <div className="space-y-5 animate-in fade-in duration-200">
           {fullAddr && (
-            <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border border-emerald-200 p-3 sm:p-5 flex items-start gap-4">
+            <div className="bg-gradient-to-br from-[#F7F7F7] to-[#F7F7F7] rounded-2xl border border-[#D6D6D6] p-3 sm:p-5 flex items-start gap-4">
               <div className="w-12 h-12 rounded-xl bg-emerald-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-emerald-200">
                 <MapPin className="w-6 h-6 text-white" />
               </div>
@@ -666,8 +666,8 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
             </div>
           )}
 
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2" data-testid="section-delivery-address">
+          <div className="bg-white rounded-2xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2" data-testid="section-delivery-address">
               <MapPin className="w-4 h-4 text-white" />
               <h4 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Address Breakdown</h4>
             </div>
@@ -692,7 +692,7 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
 
       {activeSection === 'contact-history' && (
         <div className="animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-[#D6D6D6] shadow-sm overflow-hidden">
             <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
               <Clock className="w-4 h-4 text-white" />
               <h4 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Contact Details Change History</h4>
@@ -703,7 +703,7 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
               <>
               <div className="sm:hidden p-2 space-y-2">
                 {contactHistory.map((r: any, i: number) => (
-                  <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`contact-history-card-${i}`}>
+                  <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5" data-testid={`contact-history-card-${i}`}>
                     <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Date</span><span className="text-slate-800 font-semibold text-right">{(() => { try { return r.changeDate ? new Date(r.changeDate).toLocaleDateString('en-ZA') : r.date || '-'; } catch { return r.changeDate || '-'; } })()}</span></div>
                     <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Field</span><span className="text-slate-800 font-semibold text-right">{r.fieldName || r.field || r.description || '-'}</span></div>
                     <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Old Value</span><span className="text-red-500 font-semibold text-right font-mono">{r.oldValue || r.previousValue || '-'}</span></div>
@@ -715,7 +715,7 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
               <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full text-xs" data-testid="table-contact-history">
                   <thead>
-                    <tr className="bg-slate-100 border-b-2 border-slate-200">
+                    <tr className="bg-[#F2F4F7] border-b-2 border-[#D6D6D6]">
                       <th className="text-left py-2.5 px-4 font-bold text-slate-700 whitespace-nowrap">Date</th>
                       <th className="text-left py-2.5 px-4 font-bold text-slate-700 whitespace-nowrap">Field</th>
                       <th className="text-left py-2.5 px-4 font-bold text-slate-700 whitespace-nowrap">Old Value</th>
@@ -725,7 +725,7 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
                   </thead>
                   <tbody>
                     {contactHistory.map((r: any, i: number) => (
-                      <tr key={i} className="border-b border-slate-100 hover:bg-[var(--pos-accent-tint)] transition-colors" data-testid={`contact-history-row-${i}`}>
+                      <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)] transition-colors" data-testid={`contact-history-row-${i}`}>
                         <td className="py-2.5 px-4 text-slate-600 whitespace-nowrap">{(() => { try { return r.changeDate ? new Date(r.changeDate).toLocaleDateString('en-ZA') : r.date || '-'; } catch { return r.changeDate || '-'; } })()}</td>
                         <td className="py-2.5 px-4 font-medium text-slate-800">{r.fieldName || r.field || r.description || '-'}</td>
                         <td className="py-2.5 px-4 text-red-500 font-mono">{r.oldValue || r.previousValue || '-'}</td>
@@ -749,7 +749,7 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
             )}
 
             {contactHistory.length > 0 && (
-              <div className="flex items-center justify-end gap-2 px-4 py-2 bg-slate-50 border-t border-slate-200 text-xs text-slate-500">
+              <div className="flex items-center justify-end gap-2 px-4 py-2 bg-[#F7F7F7] border-t border-[#D6D6D6] text-xs text-slate-500">
                 <span>Items per page: <span className="border rounded px-2 py-0.5 bg-white">50</span></span>
                 <span>{`1 - ${contactHistory.length} of ${contactHistory.length}`}</span>
               </div>
@@ -760,8 +760,8 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
 
       {activeSection === 'address-history' && (
         <div className="animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
+          <div className="bg-white rounded-2xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
               <Clock className="w-4 h-4 text-white" />
               <h4 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Delivery Address Change History</h4>
               {addressHistory.length > 0 && <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{addressHistory.length}</Badge>}
@@ -771,7 +771,7 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
               <>
                 <div className="sm:hidden p-2 space-y-2" data-testid="table-address-history-mobile">
                   {addressHistory.map((r: any, i: number) => (
-                    <div key={i} className="bg-white border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`address-history-row-${i}`}>
+                    <div key={i} className="bg-white border border-[#D6D6D6] rounded-lg p-3 space-y-1.5" data-testid={`address-history-row-${i}`}>
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold text-slate-600">{(() => { try { return r.changeDate ? new Date(r.changeDate).toLocaleDateString('en-ZA') : r.date || '-'; } catch { return r.changeDate || '-'; } })()}</span>
                         <span className="text-[10px] text-slate-400">{r.changedBy || r.user || '-'}</span>
@@ -783,7 +783,7 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
                 <div className="hidden sm:block overflow-x-auto">
                   <table className="w-full text-xs" data-testid="table-address-history">
                     <thead>
-                      <tr className="bg-slate-100 border-b-2 border-slate-200">
+                      <tr className="bg-[#F2F4F7] border-b-2 border-[#D6D6D6]">
                         <th className="text-left py-2.5 px-4 font-bold text-slate-700 whitespace-nowrap">Date</th>
                         <th className="text-left py-2.5 px-4 font-bold text-slate-700 whitespace-nowrap">Address</th>
                         <th className="text-left py-2.5 px-4 font-bold text-slate-700 whitespace-nowrap">Changed By</th>
@@ -791,7 +791,7 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
                     </thead>
                     <tbody>
                       {addressHistory.map((r: any, i: number) => (
-                        <tr key={i} className="border-b border-slate-100 hover:bg-amber-50/30 transition-colors" data-testid={`address-history-row-${i}`}>
+                        <tr key={i} className="border-b border-[#E5E5E5] hover:bg-amber-50/30 transition-colors" data-testid={`address-history-row-${i}`}>
                           <td className="py-2.5 px-4 text-slate-600 whitespace-nowrap">{(() => { try { return r.changeDate ? new Date(r.changeDate).toLocaleDateString('en-ZA') : r.date || '-'; } catch { return r.changeDate || '-'; } })()}</td>
                           <td className="py-2.5 px-4 text-slate-800">{(r.address || r.deliveryAddress || '-').replace(/\r\n/g, ', ')}</td>
                           <td className="py-2.5 px-4 text-slate-500">{r.changedBy || r.user || '-'}</td>
@@ -812,7 +812,7 @@ export function ContactInfoTab({ accountId }: { accountId: number }) {
             )}
 
             {addressHistory.length > 0 && (
-              <div className="flex items-center justify-end gap-2 px-4 py-2 bg-slate-50 border-t border-slate-200 text-xs text-slate-500">
+              <div className="flex items-center justify-end gap-2 px-4 py-2 bg-[#F7F7F7] border-t border-[#D6D6D6] text-xs text-slate-500">
                 <span>Items per page: <span className="border rounded px-2 py-0.5 bg-white">50</span></span>
                 <span>{`1 - ${addressHistory.length} of ${addressHistory.length}`}</span>
               </div>
@@ -900,20 +900,20 @@ export function HandoverTab({ accountId }: { accountId: number }) {
   const startIdx = (safePage - 1) * itemsPerPage;
   const pageItems = allHandovers.slice(startIdx, startIdx + itemsPerPage);
 
-  const thCls = "text-left py-2.5 px-3 text-[11px] font-semibold text-slate-600 whitespace-nowrap border-r border-slate-200 last:border-r-0 cursor-pointer hover:bg-slate-100 select-none";
+  const thCls = "text-left py-2.5 px-3 text-[11px] font-semibold text-slate-600 whitespace-nowrap border-r border-[#D6D6D6] last:border-r-0 cursor-pointer hover:bg-[#F2F4F7] select-none";
 
   return (
     <div className="p-3 sm:p-4 space-y-4 sm:space-y-4">
-      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-3 sm:px-4 py-2.5 bg-slate-100 border-b border-slate-200">
+      <div className="bg-white rounded-lg border border-[#D6D6D6] shadow-sm overflow-hidden">
+        <div className="px-3 sm:px-4 py-2.5 bg-[#F2F4F7] border-b border-[#D6D6D6]">
           <h3 className="text-xs sm:text-sm font-semibold text-slate-800" data-testid="text-handover-title">Handover List per Billing Period</h3>
         </div>
 
-        <div className="flex justify-center py-3 border-b border-slate-200 bg-white">
+        <div className="flex justify-center py-3 border-b border-[#D6D6D6] bg-white">
           <select
             value={selectedYear}
             onChange={(e) => { setSelectedYear(e.target.value); setCurrentPage(1); }}
-            className="text-sm border border-slate-300 rounded px-4 py-1.5 bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none min-w-[160px] text-center"
+            className="text-sm border border-[#BFBFBF] rounded px-4 py-1.5 bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none min-w-[160px] text-center"
             data-testid="select-handover-year"
           >
             {getFinYearOptions().map(yr => <option key={yr} value={yr}>{yr}</option>)}
@@ -924,7 +924,7 @@ export function HandoverTab({ accountId }: { accountId: number }) {
           {pageItems.length === 0 ? (
             <div className="py-6 text-center text-slate-400 text-sm">No records to display.</div>
           ) : pageItems.map((h: any, i: number) => (
-            <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`card-handover-${i}`}>
+            <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5" data-testid={`card-handover-${i}`}>
               <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Run Type</span><span className="text-slate-800 font-semibold text-right">{h.runType ?? h.type ?? '-'}</span></div>
               <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Account</span><span className="text-slate-800 font-semibold text-right font-mono">{h.handoverAccount ?? h.accountNumber ?? h.account ?? '-'}</span></div>
               <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Amount</span><span className="text-slate-800 font-semibold text-right font-mono">{fmt(h.handoverAmount ?? h.amount ?? 0)}</span></div>
@@ -938,7 +938,7 @@ export function HandoverTab({ accountId }: { accountId: number }) {
         <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm border-collapse" data-testid="table-handover-list">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
+              <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                 <th className={thCls} style={{ minWidth: 90 }}>Run Type <span className="inline-block ml-0.5 text-slate-400">&#x21C5;</span></th>
                 <th className={thCls} style={{ minWidth: 140 }}>Handover Account <span className="inline-block ml-0.5 text-slate-400">&#x21C5;</span></th>
                 <th className={`${thCls} text-right`} style={{ minWidth: 130 }}>Handover Amount <span className="inline-block ml-0.5 text-slate-400">&#x21C5;</span></th>
@@ -960,15 +960,15 @@ export function HandoverTab({ accountId }: { accountId: number }) {
               {pageItems.length === 0 ? (
                 <tr><td colSpan={15} className="py-6 text-center text-slate-400 text-sm">No records to display.</td></tr>
               ) : pageItems.map((h: any, i: number) => (
-                <tr key={i} className="border-b border-slate-100 hover:bg-[var(--pos-accent-tint)]/40 transition-colors" data-testid={`row-handover-${i}`}>
-                  <td className="py-2 px-3 text-[13px] text-slate-700 border-r border-slate-100">{h.runType ?? h.type ?? '-'}</td>
-                  <td className="py-2 px-3 text-[13px] font-mono text-slate-700 border-r border-slate-100">{h.handoverAccount ?? h.accountNumber ?? h.account ?? '-'}</td>
-                  <td className="py-2 px-3 text-right font-mono text-[13px] text-slate-700 border-r border-slate-100">{fmt(h.handoverAmount ?? h.amount ?? 0)}</td>
-                  <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-slate-100">{fmtDate(h.handedOverDate ?? h.handoverDate)}</td>
-                  <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-slate-100">{h.outstandingDays ?? h.daysOutstanding ?? '-'}</td>
-                  <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-slate-100">{h.outstandingMonth ?? h.monthsOutstanding ?? '-'}</td>
-                  <td className="py-2 px-3 text-[13px] text-slate-700 border-r border-slate-100">{h.attorney ?? h.attorneyName ?? '-'}</td>
-                  <td className="py-2 px-3 text-[13px] border-r border-slate-100">
+                <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)]/40 transition-colors" data-testid={`row-handover-${i}`}>
+                  <td className="py-2 px-3 text-[13px] text-slate-700 border-r border-[#E5E5E5]">{h.runType ?? h.type ?? '-'}</td>
+                  <td className="py-2 px-3 text-[13px] font-mono text-slate-700 border-r border-[#E5E5E5]">{h.handoverAccount ?? h.accountNumber ?? h.account ?? '-'}</td>
+                  <td className="py-2 px-3 text-right font-mono text-[13px] text-slate-700 border-r border-[#E5E5E5]">{fmt(h.handoverAmount ?? h.amount ?? 0)}</td>
+                  <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-[#E5E5E5]">{fmtDate(h.handedOverDate ?? h.handoverDate)}</td>
+                  <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-[#E5E5E5]">{h.outstandingDays ?? h.daysOutstanding ?? '-'}</td>
+                  <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-[#E5E5E5]">{h.outstandingMonth ?? h.monthsOutstanding ?? '-'}</td>
+                  <td className="py-2 px-3 text-[13px] text-slate-700 border-r border-[#E5E5E5]">{h.attorney ?? h.attorneyName ?? '-'}</td>
+                  <td className="py-2 px-3 text-[13px] border-r border-[#E5E5E5]">
                     <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${
                       (h.status ?? h.handoverStatus) === 'Active' ? 'bg-green-100 text-green-700' :
                       (h.status ?? h.handoverStatus) === 'Terminated' ? 'bg-red-100 text-red-700' :
@@ -977,12 +977,12 @@ export function HandoverTab({ accountId }: { accountId: number }) {
                       {h.status ?? h.handoverStatus ?? '-'}
                     </span>
                   </td>
-                  <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-slate-100">{h.capturer ?? h.capturedBy ?? h.createdBy ?? '-'}</td>
-                  <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-slate-100">{fmtDate(h.dateCreated ?? h.createdDate ?? h.capturedDate)}</td>
-                  <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-slate-100">{h.reviewedBy ?? '-'}</td>
-                  <td className="py-2 px-3 text-[13px] text-slate-500 border-r border-slate-100">{h.terminationReason ?? '-'}</td>
-                  <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-slate-100">{fmtDate(h.terminationDate)}</td>
-                  <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-slate-100">{h.terminatedReviewedBy ?? h.reviewedBy2 ?? '-'}</td>
+                  <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-[#E5E5E5]">{h.capturer ?? h.capturedBy ?? h.createdBy ?? '-'}</td>
+                  <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-[#E5E5E5]">{fmtDate(h.dateCreated ?? h.createdDate ?? h.capturedDate)}</td>
+                  <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-[#E5E5E5]">{h.reviewedBy ?? '-'}</td>
+                  <td className="py-2 px-3 text-[13px] text-slate-500 border-r border-[#E5E5E5]">{h.terminationReason ?? '-'}</td>
+                  <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-[#E5E5E5]">{fmtDate(h.terminationDate)}</td>
+                  <td className="py-2 px-3 text-[13px] text-slate-600 border-r border-[#E5E5E5]">{h.terminatedReviewedBy ?? h.reviewedBy2 ?? '-'}</td>
                   <td className="py-2 px-3 text-[13px] text-slate-600">{fmtDate(h.reviewDate ?? h.reviewedDate)}</td>
                 </tr>
               ))}
@@ -990,13 +990,13 @@ export function HandoverTab({ accountId }: { accountId: number }) {
           </table>
         </div>
 
-        <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-4">
+        <div className="px-4 py-2.5 bg-[#F7F7F7] border-t border-[#D6D6D6] flex items-center justify-end gap-4">
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <span>Items per page:</span>
             <select
               value={itemsPerPage}
               onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
-              className="border border-slate-300 rounded px-1.5 py-0.5 text-xs bg-white"
+              className="border border-[#BFBFBF] rounded px-1.5 py-0.5 text-xs bg-white"
               data-testid="select-handover-pagesize"
             >
               {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
@@ -1013,15 +1013,15 @@ export function HandoverTab({ accountId }: { accountId: number }) {
       </div>
 
       {transactions.length > 0 && (
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-4 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center gap-2">
+        <div className="bg-white rounded-lg border border-[#D6D6D6] shadow-sm overflow-hidden">
+          <div className="px-3 sm:px-4 py-2.5 bg-[#F2F4F7] border-b border-[#D6D6D6] flex items-center gap-2">
             <Receipt className="w-4 h-4 text-slate-600" />
             <h3 className="text-xs sm:text-sm font-semibold text-slate-800">Handover Transaction Detail</h3>
             <Badge variant="secondary" className="ml-auto text-[10px]">{transactions.length}</Badge>
           </div>
           <div className="sm:hidden p-2 space-y-2">
             {transactions.map((tx: any, i: number) => (
-              <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5">
+              <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5">
                 <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Date</span><span className="text-slate-800 font-semibold text-right">{fmtDate(tx.transactionDate ?? tx.date)}</span></div>
                 <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Description</span><span className="text-slate-800 font-semibold text-right">{tx.description || tx.transactionDescription || '-'}</span></div>
                 <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Amount</span><span className="text-slate-800 font-semibold text-right font-mono">{fmt(tx.amount ?? tx.transactionAmount ?? 0)}</span></div>
@@ -1033,7 +1033,7 @@ export function HandoverTab({ accountId }: { accountId: number }) {
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-handover-transactions">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
+                <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                   <th className={thCls}>Date</th>
                   <th className={thCls}>Description</th>
                   <th className={`${thCls} text-right`}>Amount</th>
@@ -1043,7 +1043,7 @@ export function HandoverTab({ accountId }: { accountId: number }) {
               </thead>
               <tbody>
                 {transactions.map((tx: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-[var(--pos-accent-tint)]/40 transition-colors">
+                  <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)]/40 transition-colors">
                     <td className="py-2 px-3 text-slate-600 text-[13px]">{fmtDate(tx.transactionDate ?? tx.date)}</td>
                     <td className="py-2 px-3 text-[13px]">{tx.description || tx.transactionDescription || '-'}</td>
                     <td className="py-2 px-3 text-right font-mono font-semibold text-[13px]">{fmt(tx.amount ?? tx.transactionAmount ?? 0)}</td>
@@ -1114,8 +1114,8 @@ export function NotificationsTab({ accountId }: { accountId: number }) {
       )}
 
       {accountNotifs.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-orange-600 to-orange-700 flex items-center gap-2">
+        <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-white" />
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Account Notifications</h3>
             <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{accountNotifs.length}</Badge>
@@ -1133,7 +1133,7 @@ export function NotificationsTab({ accountId }: { accountId: number }) {
             <>
             <div className="sm:hidden p-2 space-y-2">
               {accountNotifs.map((n: any, i: number) => (
-                <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5">
+                <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5">
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Date</span><span className="text-slate-800 font-semibold text-right">{n.notificationDate ? new Date(n.notificationDate).toLocaleDateString('en-ZA') : '-'}</span></div>
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Type</span><span className="text-slate-800 font-semibold text-right">{n.notificationType || n.type || '-'}</span></div>
                   <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Message</span><span className="text-slate-800 font-semibold text-right max-w-[180px] truncate">{n.message || n.description || '-'}</span></div>
@@ -1144,7 +1144,7 @@ export function NotificationsTab({ accountId }: { accountId: number }) {
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-sm" data-testid="table-account-notifications">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
+                  <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                     <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Date</th>
                     <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Type</th>
                     <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Message</th>
@@ -1154,7 +1154,7 @@ export function NotificationsTab({ accountId }: { accountId: number }) {
                 </thead>
                 <tbody>
                   {accountNotifs.map((n: any, i: number) => (
-                    <tr key={i} className="border-b border-slate-100 hover:bg-[var(--pos-accent-tint)]/30 transition-colors">
+                    <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)]/30 transition-colors">
                       <td className="py-2 px-3 text-slate-600">{n.notificationDate ? new Date(n.notificationDate).toLocaleDateString('en-ZA') : '-'}</td>
                       <td className="py-2 px-3 font-medium">{n.notificationType || n.type || '-'}</td>
                       <td className="py-2 px-3 max-w-[300px] truncate">{n.message || n.description || '-'}</td>
@@ -1253,7 +1253,7 @@ export function StatementsTab({ accountId }: { accountId: number }) {
 
   return (
     <div className="p-3 sm:p-5 space-y-4 sm:space-y-5" data-testid="statements-panel">
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
         <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-between">
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-white" />
@@ -1277,7 +1277,7 @@ export function StatementsTab({ accountId }: { accountId: number }) {
               <button onClick={() => setShowModal(true)} className="text-xs text-[var(--pos-accent)] hover:text-[var(--pos-accent)] font-medium" data-testid="button-generate-first-mobile">Click here to generate a statement</button>
             </div>
           ) : data.map((s: any, i: number) => (
-            <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`statement-card-${i}`}>
+            <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5" data-testid={`statement-card-${i}`}>
               <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Date</span><span className="text-slate-800 font-semibold text-right">{s.statementDate ? new Date(s.statementDate).toLocaleDateString('en-ZA') : '-'}</span></div>
               <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Period</span><span className="text-slate-800 font-semibold text-right">{s.month ? `${s.financialYear} - ${s.month}` : s.period || '-'}</span></div>
               <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Amount</span><span className="text-slate-800 font-semibold text-right font-mono">{(s.amount ?? s.totalAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span></div>
@@ -1293,7 +1293,7 @@ export function StatementsTab({ accountId }: { accountId: number }) {
         <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm" data-testid="table-statements">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
+              <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                 <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Statement Date</th>
                 <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Period</th>
                 <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Description</th>
@@ -1312,7 +1312,7 @@ export function StatementsTab({ accountId }: { accountId: number }) {
                   </div>
                 </td></tr>
               ) : data.map((s: any, i: number) => (
-                <tr key={i} className="border-b border-slate-100 hover:bg-[var(--pos-accent-tint)]/30 transition-colors" data-testid={`statement-row-${i}`}>
+                <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)]/30 transition-colors" data-testid={`statement-row-${i}`}>
                   <td className="py-2.5 px-3 text-slate-600">{s.statementDate ? new Date(s.statementDate).toLocaleDateString('en-ZA') : '-'}</td>
                   <td className="py-2.5 px-3 font-medium">{s.month ? `${s.financialYear} - ${s.month}` : s.period || '-'}</td>
                   <td className="py-2.5 px-3">{s.description || s.statementDescription || 'Account Statement'}</td>
@@ -1348,7 +1348,7 @@ export function StatementsTab({ accountId }: { accountId: number }) {
       {showModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" onClick={() => setShowModal(false)} data-testid="statement-modal-overlay">
           <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-w-3xl w-full max-h-[92vh] sm:max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
-            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 bg-gradient-to-r from-slate-700 to-slate-800 rounded-t-2xl flex items-center justify-between sticky top-0 z-10">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-[#D6D6D6] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] rounded-t-2xl flex items-center justify-between sticky top-0 z-10">
               <div className="flex items-center gap-2">
                 <FileText className="w-4 sm:w-5 h-4 sm:h-5 text-white" />
                 <h4 className="text-sm sm:text-base font-bold text-white">Account Summary</h4>
@@ -1358,7 +1358,7 @@ export function StatementsTab({ accountId }: { accountId: number }) {
               </button>
             </div>
             <div className="p-3 sm:p-6 space-y-3 sm:space-y-5">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6 bg-slate-50 rounded-xl p-3 sm:p-4 border border-slate-200">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6 bg-[#F7F7F7] rounded-xl p-3 sm:p-4 border border-[#D6D6D6]">
                 <label className="flex items-center gap-2.5 text-sm cursor-pointer group">
                   <input type="radio" name="stmtType" checked={statementType === 'account'} onChange={() => setStatementType('account')} className="w-4 h-4 text-[var(--pos-accent)]" data-testid="radio-account-statement" />
                   <span className={`font-medium ${statementType === 'account' ? 'text-[var(--pos-accent)]' : 'text-slate-600'}`}>Account Statement</span>
@@ -1375,10 +1375,10 @@ export function StatementsTab({ accountId }: { accountId: number }) {
                   <span className="text-sm font-mono font-bold text-[#2E2E2E]">{accountNumber}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-3">
-                  <select value={modalYear} onChange={e => setModalYear(e.target.value)} className="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none" data-testid="select-stmt-year">
+                  <select value={modalYear} onChange={e => setModalYear(e.target.value)} className="border border-[#BFBFBF] rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none" data-testid="select-stmt-year">
                     {years.map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
-                  <select value={modalMonth} onChange={e => setModalMonth(e.target.value)} className="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none" data-testid="select-stmt-month">
+                  <select value={modalMonth} onChange={e => setModalMonth(e.target.value)} className="border border-[#BFBFBF] rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none" data-testid="select-stmt-month">
                     <option value="">All Months</option>
                     {['January','February','March','April','May','June','July','August','September','October','November','December'].map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
@@ -1412,12 +1412,12 @@ export function StatementsTab({ accountId }: { accountId: number }) {
                 </div>
               )}
 
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
                 <div className="sm:hidden p-2 space-y-2">
                   {filteredData.length === 0 ? (
                     <div className="py-6 text-center text-slate-400 text-sm">No statements found for selected period</div>
                   ) : filteredData.map((s: any, i: number) => (
-                    <div key={i} className="border border-slate-200 rounded-lg p-3 flex items-center justify-between gap-3" data-testid={`stmt-download-card-${i}`}>
+                    <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 flex items-center justify-between gap-3" data-testid={`stmt-download-card-${i}`}>
                       <div className="min-w-0">
                         <div className="text-sm font-semibold text-slate-800">{s.financialYear}</div>
                         <div className="text-xs text-slate-500">{s.month}</div>
@@ -1441,7 +1441,7 @@ export function StatementsTab({ accountId }: { accountId: number }) {
                 <div className="hidden sm:block overflow-x-auto">
                   <table className="w-full text-sm" data-testid="table-stmt-download">
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200">
+                      <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                         <th className="text-left px-4 py-2.5 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Financial Year</th>
                         <th className="text-left px-4 py-2.5 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Month</th>
                         <th className="text-center px-4 py-2.5 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Download</th>
@@ -1451,7 +1451,7 @@ export function StatementsTab({ accountId }: { accountId: number }) {
                       {filteredData.length === 0 ? (
                         <tr><td colSpan={3} className="text-center text-slate-400 py-6 text-sm">No statements found for selected period</td></tr>
                       ) : filteredData.map((s: any, i: number) => (
-                        <tr key={i} className="border-b border-slate-100 hover:bg-[var(--pos-accent-tint)]/30 transition-colors" data-testid={`stmt-download-row-${i}`}>
+                        <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)]/30 transition-colors" data-testid={`stmt-download-row-${i}`}>
                           <td className="px-4 py-3 text-slate-700 font-medium">{s.financialYear}</td>
                           <td className="px-4 py-3 text-slate-700">{s.month}</td>
                           <td className="px-4 py-3 text-center">
@@ -1481,7 +1481,7 @@ export function StatementsTab({ accountId }: { accountId: number }) {
                 <div className="text-xs text-slate-500">
                   {filteredData.length === 0 ? '0 of 0' : `1 – ${filteredData.length} of ${filteredData.length}`} statements
                 </div>
-                <button onClick={() => setShowModal(false)} className="inline-flex items-center gap-1.5 px-4 sm:px-6 py-2 sm:py-2.5 bg-gradient-to-r from-slate-700 to-slate-800 text-white text-sm font-semibold rounded-lg hover:from-slate-800 hover:to-slate-900 transition-all shadow-md" data-testid="button-close-stmt-modal">
+                <button onClick={() => setShowModal(false)} className="inline-flex items-center gap-1.5 px-4 sm:px-6 py-2 sm:py-2.5 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] text-white text-sm font-semibold rounded-lg hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)] transition-all shadow-md" data-testid="button-close-stmt-modal">
                   Close
                 </button>
               </div>
@@ -1535,8 +1535,8 @@ export function ClearanceTab({ accountId, propertyId, currentAccountNumber, curr
 
   return (
     <div className="p-3 sm:p-5 space-y-4 sm:space-y-5">
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
+      <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
           <Shield className="w-4 h-4 text-white" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Clearance</h3>
           {data.length > 0 && (
@@ -1552,7 +1552,7 @@ export function ClearanceTab({ accountId, propertyId, currentAccountNumber, curr
             const isForThisAccount = isSameAccount(clearanceAccountName);
             const cleanAddr = (c.address || c.propertyAddress || '-').replace(/\r\n/g, ', ');
             return (
-              <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`card-clearance-${i}`}>
+              <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5" data-testid={`card-clearance-${i}`}>
                 {isForThisAccount && <div className="flex items-center gap-1 text-[10px] text-green-700 font-medium"><CheckCircle2 className="w-3 h-3" />This account</div>}
                 <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Schedule ID</span><span className="text-slate-800 font-semibold text-right font-mono">{scheduleId ?? '-'}</span></div>
                 <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Buyer</span><span className="text-slate-800 font-semibold text-right">{c.buyername ?? c.buyerName ?? c.accountName ?? '-'}</span></div>
@@ -1568,7 +1568,7 @@ export function ClearanceTab({ accountId, propertyId, currentAccountNumber, curr
         <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm" data-testid="table-clearance">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
+              <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                 <th className="w-8 py-2.5 px-1"></th>
                 <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Cost Schedule ID</th>
                 <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Account Type</th>
@@ -1635,7 +1635,7 @@ export function ClearanceTab({ accountId, propertyId, currentAccountNumber, curr
                       </tr>
                     )}
                     <tr
-                      className={`border-b border-slate-100 hover:bg-emerald-50/30 transition-colors cursor-pointer ${isExpanded ? 'bg-emerald-50/40' : ''} ${!isForThisAccount ? 'opacity-80' : ''}`}
+                      className={`border-b border-[#E5E5E5] hover:bg-emerald-50/30 transition-colors cursor-pointer ${isExpanded ? 'bg-emerald-50/40' : ''} ${!isForThisAccount ? 'opacity-80' : ''}`}
                       onClick={() => setExpandedRow(isExpanded ? null : i)}
                       data-testid={`row-clearance-${i}`}
                     >
@@ -1688,9 +1688,9 @@ export function ClearanceTab({ accountId, propertyId, currentAccountNumber, curr
                     {isExpanded && (
                       <tr className="bg-emerald-50/20">
                         <td colSpan={15} className="p-0">
-                          <div className="px-6 py-4 border-b border-emerald-200/50">
+                          <div className="px-6 py-4 border-b border-[#D6D6D6]/50">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
-                              <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+                              <div className="bg-white rounded-lg border border-[#D6D6D6] shadow-sm overflow-hidden">
                                 <div className="px-4 py-2 bg-emerald-600 text-white text-xs font-semibold tracking-wide flex items-center gap-1.5">
                                   <Scale className="w-3.5 h-3.5" />
                                   Financial Breakdown
@@ -1724,15 +1724,15 @@ export function ClearanceTab({ accountId, propertyId, currentAccountNumber, curr
                                     <span className="text-[12px] text-slate-600">Clearance Cost</span>
                                     <span className="font-mono text-[13px] font-medium text-slate-800">{fmtR(clrCost)}</span>
                                   </div>
-                                  <div className="flex justify-between items-center px-4 py-2.5 bg-emerald-50 border-t-2 border-emerald-200">
+                                  <div className="flex justify-between items-center px-4 py-2.5 bg-emerald-50 border-t-2 border-[#D6D6D6]">
                                     <span className="text-[12px] font-bold text-emerald-800">TOTAL</span>
                                     <span className="font-mono text-[14px] font-bold text-emerald-800">{fmtR(totalClearance)}</span>
                                   </div>
                                 </div>
                               </div>
 
-                              <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-                                <div className="px-4 py-2 bg-slate-600 text-white text-xs font-semibold tracking-wide flex items-center gap-1.5">
+                              <div className="bg-white rounded-lg border border-[#D6D6D6] shadow-sm overflow-hidden">
+                                <div className="px-4 py-2 bg-slate-700 text-white text-xs font-semibold tracking-wide flex items-center gap-1.5">
                                   <Building2 className="w-3.5 h-3.5" />
                                   Sale Details
                                 </div>
@@ -1764,7 +1764,7 @@ export function ClearanceTab({ accountId, propertyId, currentAccountNumber, curr
                                 </div>
                               </div>
 
-                              <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+                              <div className="bg-white rounded-lg border border-[#D6D6D6] shadow-sm overflow-hidden">
                                 <div className="px-4 py-2 bg-[var(--pos-accent)] text-white text-xs font-semibold tracking-wide flex items-center gap-1.5">
                                   <FileText className="w-3.5 h-3.5" />
                                   Property & Parties
@@ -1847,7 +1847,7 @@ export function ClearanceTab({ accountId, propertyId, currentAccountNumber, curr
             </tbody>
           </table>
         </div>
-        <div className="px-3 sm:px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+        <div className="px-3 sm:px-5 py-2.5 bg-[#F7F7F7] border-t border-[#D6D6D6] flex items-center justify-between">
           <span className="text-xs text-slate-500 hidden sm:inline">Click a row to view financial breakdown</span>
           <span className="text-xs text-slate-500">{data.length} of {data.length} records</span>
         </div>
@@ -1886,7 +1886,7 @@ export function DebtorNotesTab({ accountId }: { accountId: number }) {
     <div className="p-3 sm:p-4">
       <div className="sm:hidden space-y-2">
         {data.map((n: any, i: number) => (
-          <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5">
+          <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5">
             <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Date</span><span className="text-slate-800 font-semibold text-right">{n.noteDate ? new Date(n.noteDate).toLocaleDateString('en-ZA') : n.date || n.createdDate || '-'}</span></div>
             <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Note Type</span><span className="text-slate-800 font-semibold text-right">{n.noteType || n.type || '-'}</span></div>
             <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Description</span><span className="text-slate-800 font-semibold text-right max-w-[180px] truncate">{n.description || n.noteDescription || n.notes || '-'}</span></div>
@@ -1898,7 +1898,7 @@ export function DebtorNotesTab({ accountId }: { accountId: number }) {
       <div className="hidden sm:block overflow-x-auto">
         <table className="w-full text-sm" data-testid="table-debtor-notes">
           <thead>
-            <tr className="border-b-2 border-slate-200">
+            <tr className="border-b-2 border-[#D6D6D6]">
               <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Date</th>
               <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Note Type</th>
               <th className="text-left py-2 px-3 text-xs uppercase tracking-wider text-slate-500 font-semibold">Description</th>
@@ -1909,7 +1909,7 @@ export function DebtorNotesTab({ accountId }: { accountId: number }) {
           </thead>
           <tbody>
             {data.map((n: any, i: number) => (
-              <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+              <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[#F7F7F7] transition-colors">
                 <td className="py-2 px-3 text-slate-600">{n.noteDate ? new Date(n.noteDate).toLocaleDateString('en-ZA') : n.date || n.createdDate || '-'}</td>
                 <td className="py-2 px-3 font-medium">{n.noteType || n.type || '-'}</td>
                 <td className="py-2 px-3 max-w-[300px] truncate">{n.description || n.noteDescription || n.notes || '-'}</td>
@@ -2096,16 +2096,16 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
         {data.length === 0 ? (
           <p className="text-center text-slate-400 py-4 italic text-sm">No records to display.</p>
         ) : data.map((o: any, i: number) => (
-          <div key={i} className="bg-white border border-slate-200 rounded-lg p-3 cursor-pointer hover:bg-[var(--pos-accent-tint)] transition-colors" data-testid={`occupier-row-${i}`}>
+          <div key={i} className="bg-white border border-[#D6D6D6] rounded-lg p-3 cursor-pointer hover:bg-[var(--pos-accent-tint)] transition-colors" data-testid={`occupier-row-${i}`}>
             <div className="text-sm font-medium text-slate-800">{o.name || o.occupierName || o.surname || '-'}</div>
             <div className="text-xs font-mono text-slate-500 mt-0.5">{o.idNumber || o.idRegistrationNumber || o.idNo || '-'}</div>
           </div>
         ))}
       </div>
-      <div className="hidden sm:block overflow-x-auto border border-slate-200 rounded">
+      <div className="hidden sm:block overflow-x-auto border border-[#D6D6D6] rounded">
         <table className="w-full text-sm" data-testid="table-occupiers">
           <thead>
-            <tr className="bg-slate-100 border-b border-slate-200">
+            <tr className="bg-[#F2F4F7] border-b border-[#D6D6D6]">
               <th className="text-left py-2 px-3 font-semibold text-slate-700">Name</th>
               <th className="text-left py-2 px-3 font-semibold text-slate-700">ID Number</th>
             </tr>
@@ -2114,7 +2114,7 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
             {data.length === 0 ? (
               <tr><td colSpan={2} className="text-center text-slate-400 py-4 italic">No records to display.</td></tr>
             ) : data.map((o: any, i: number) => (
-              <tr key={i} className={`border-b border-slate-100 hover:bg-[var(--pos-accent-tint)] cursor-pointer transition-colors ${selectedOccupierIdx === i ? 'bg-[var(--pos-accent-tint)]' : ''}`} data-testid={`occupier-row-${i}`} onClick={() => {
+              <tr key={i} className={`border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)] cursor-pointer transition-colors ${selectedOccupierIdx === i ? 'bg-[var(--pos-accent-tint)]' : ''}`} data-testid={`occupier-row-${i}`} onClick={() => {
                 setSelectedOccupierIdx(selectedOccupierIdx === i ? null : i);
               }}>
                 <td className="py-2 px-3 font-medium">{o.name || o.occupierName || o.surname || '-'}</td>
@@ -2133,20 +2133,20 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
       {showAddModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowAddModal(false)} data-testid="add-occupier-modal">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full" onClick={e => e.stopPropagation()}>
-            <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-200 bg-slate-50">
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#D6D6D6] bg-[#F7F7F7]">
               <h4 className="text-sm font-bold text-slate-700">Add Occupier</h4>
             </div>
             <div className="p-3 sm:p-5 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
-                <input type="text" value={addName} onChange={e => setAddName(e.target.value)} className="w-full border border-slate-300 rounded px-3 py-2 text-sm" placeholder="Full name" data-testid="input-occupier-name" />
+                <input type="text" value={addName} onChange={e => setAddName(e.target.value)} className="w-full border border-[#BFBFBF] rounded px-3 py-2 text-sm" placeholder="Full name" data-testid="input-occupier-name" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">SA ID Number</label>
-                <input type="text" value={addIdNumber} onChange={e => setAddIdNumber(e.target.value)} className="w-full border border-slate-300 rounded px-3 py-2 text-sm" placeholder="ID Number" data-testid="input-occupier-id" />
+                <input type="text" value={addIdNumber} onChange={e => setAddIdNumber(e.target.value)} className="w-full border border-[#BFBFBF] rounded px-3 py-2 text-sm" placeholder="ID Number" data-testid="input-occupier-id" />
               </div>
               <div className="flex justify-end gap-3 pt-2">
-                <button onClick={() => setShowAddModal(false)} className="px-4 py-2 border border-slate-300 text-sm rounded hover:bg-slate-50" data-testid="button-cancel-add">Cancel</button>
+                <button onClick={() => setShowAddModal(false)} className="px-4 py-2 border border-[#BFBFBF] text-sm rounded hover:bg-[#F7F7F7]" data-testid="button-cancel-add">Cancel</button>
                 <button onClick={handleAdd} disabled={addLoading || !addName.trim()} className="px-4 py-2 bg-slate-800 text-white text-sm rounded hover:bg-slate-700 disabled:opacity-50" data-testid="button-confirm-add">
                   {addLoading ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : null}Add
                 </button>
@@ -2159,7 +2159,7 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
       {showProofModal && proofData && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowProofModal(false)} data-testid="proof-of-residence-modal">
           <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
-            <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#D6D6D6] bg-[#F7F7F7] flex items-center justify-between">
               <h4 className="text-sm font-bold text-slate-700">Proof of Residence</h4>
               <div className="flex gap-2">
                 <button onClick={handlePrintProof} className="px-3 py-1.5 bg-[var(--pos-accent)] text-white text-xs rounded hover:bg-[var(--pos-accent-dark)]" data-testid="button-print-proof">Print</button>
@@ -2168,7 +2168,7 @@ export function OccupiersTab({ accountId }: { accountId: number }) {
             </div>
             <div className="p-3 sm:p-5">
               <div ref={printRef}>
-                <div className="proof-container border border-slate-300 p-8 max-w-[700px] mx-auto bg-white" style={{ fontFamily: 'Arial, sans-serif' }}>
+                <div className="proof-container border border-[#BFBFBF] p-8 max-w-[700px] mx-auto bg-white" style={{ fontFamily: 'Arial, sans-serif' }}>
                   <div className="flex items-start justify-between border-b-2 border-slate-800 pb-4 mb-5">
                     <div className="text-xs leading-relaxed">
                       {muniInfo?.address1 && <div>{muniInfo.address1}</div>}
@@ -2406,7 +2406,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
         <div className="flex bg-white rounded-lg border shadow-sm p-0.5">
           <button
             onClick={() => setMode('email')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${mode === 'email' ? 'bg-[var(--pos-accent)] text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${mode === 'email' ? 'bg-[var(--pos-accent)] text-white shadow-sm' : 'text-slate-500 hover:bg-[#F2F4F7]'}`}
             data-testid="button-send-mode-email"
           >
             <Mail className="w-3.5 h-3.5" />
@@ -2414,7 +2414,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
           </button>
           <button
             onClick={() => setMode('sms')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${mode === 'sms' ? 'bg-green-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${mode === 'sms' ? 'bg-green-600 text-white shadow-sm' : 'text-slate-500 hover:bg-[#F2F4F7]'}`}
             data-testid="button-send-mode-sms"
           >
             <MessageSquare className="w-3.5 h-3.5" />
@@ -2427,7 +2427,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
         <div className="lg:col-span-2 space-y-3 sm:space-y-4">
 
           <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-            <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-slate-700 to-slate-800 flex items-center gap-2">
+            <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
               <CalendarDays className="w-4 h-4 text-white" />
               <h4 className="text-xs font-bold text-white uppercase tracking-wider">Statement Period & Type</h4>
             </div>
@@ -2445,10 +2445,10 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                 <div>
                   <label className="text-xs font-semibold text-slate-600 block mb-1.5">From Period</label>
                   <div className="grid grid-cols-2 gap-2">
-                    <select value={fromYear} onChange={e => setFromYear(e.target.value)} className="w-full border border-slate-300 rounded-lg px-2.5 sm:px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none" data-testid="select-from-year">
+                    <select value={fromYear} onChange={e => setFromYear(e.target.value)} className="w-full border border-[#BFBFBF] rounded-lg px-2.5 sm:px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none" data-testid="select-from-year">
                       {years.map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
-                    <select value={fromMonth} onChange={e => setFromMonth(e.target.value)} className="w-full border border-slate-300 rounded-lg px-2.5 sm:px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none" data-testid="select-from-month">
+                    <select value={fromMonth} onChange={e => setFromMonth(e.target.value)} className="w-full border border-[#BFBFBF] rounded-lg px-2.5 sm:px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none" data-testid="select-from-month">
                       {months.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
                   </div>
@@ -2456,16 +2456,16 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                 <div>
                   <label className="text-xs font-semibold text-slate-600 block mb-1.5">To Period</label>
                   <div className="grid grid-cols-2 gap-2">
-                    <select value={toYear} onChange={e => setToYear(e.target.value)} className="w-full border border-slate-300 rounded-lg px-2.5 sm:px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none" data-testid="select-to-year">
+                    <select value={toYear} onChange={e => setToYear(e.target.value)} className="w-full border border-[#BFBFBF] rounded-lg px-2.5 sm:px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none" data-testid="select-to-year">
                       {years.map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
-                    <select value={toMonth} onChange={e => setToMonth(e.target.value)} className="w-full border border-slate-300 rounded-lg px-2.5 sm:px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none" data-testid="select-to-month">
+                    <select value={toMonth} onChange={e => setToMonth(e.target.value)} className="w-full border border-[#BFBFBF] rounded-lg px-2.5 sm:px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none" data-testid="select-to-month">
                       {months.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
                   </div>
                 </div>
               </div>
-              <div className="mt-3 sm:mt-4 flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-5 bg-slate-50 rounded-lg p-3 border border-slate-200">
+              <div className="mt-3 sm:mt-4 flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-5 bg-[#F7F7F7] rounded-lg p-3 border border-[#D6D6D6]">
                 <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Type:</span>
                 <div className="flex items-center gap-4 sm:gap-5">
                   <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -2488,12 +2488,12 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                 <h4 className="text-xs font-bold text-white uppercase tracking-wider">Delivery Options</h4>
               </div>
               <div className="p-3 sm:p-4 space-y-2 sm:space-y-3">
-                <label className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg border border-slate-200 hover:border-[#D6D6D6] hover:bg-[var(--pos-accent-tint)]/30 cursor-pointer transition-all">
+                <label className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg border border-[#D6D6D6] hover:border-[#D6D6D6] hover:bg-[var(--pos-accent-tint)]/30 cursor-pointer transition-all">
                   <input
                     type="checkbox"
                     checked={includeStatementPdf}
                     onChange={e => setIncludeStatementPdf(e.target.checked)}
-                    className="mt-0.5 rounded border-slate-300 text-[var(--pos-accent)] shrink-0"
+                    className="mt-0.5 rounded border-[#BFBFBF] text-[var(--pos-accent)] shrink-0"
                     data-testid="checkbox-include-pdf"
                   />
                   <div className="min-w-0">
@@ -2504,12 +2504,12 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                     <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Attach the statement as a PDF to the email.</p>
                   </div>
                 </label>
-                <label className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg border border-slate-200 hover:border-[#D6D6D6] hover:bg-[var(--pos-accent-tint)]/30 cursor-pointer transition-all">
+                <label className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg border border-[#D6D6D6] hover:border-[#D6D6D6] hover:bg-[var(--pos-accent-tint)]/30 cursor-pointer transition-all">
                   <input
                     type="checkbox"
                     checked={includeTemplateLink}
                     onChange={e => setIncludeTemplateLink(e.target.checked)}
-                    className="mt-0.5 rounded border-slate-300 text-[var(--pos-accent)] shrink-0"
+                    className="mt-0.5 rounded border-[#BFBFBF] text-[var(--pos-accent)] shrink-0"
                     data-testid="checkbox-include-link"
                   />
                   <div className="min-w-0">
@@ -2526,7 +2526,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
 
           {mode === 'sms' && (
             <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-              <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-green-600 to-green-700 flex items-center gap-2">
+              <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
                 <MessageSquare className="w-4 h-4 text-white" />
                 <h4 className="text-xs font-bold text-white uppercase tracking-wider">SMS Delivery</h4>
               </div>
@@ -2536,12 +2536,12 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                     A secure template link will be sent via SMS. The recipient can view their statement in the browser.
                   </p>
                 </div>
-                <label className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg border border-slate-200 hover:border-green-300 hover:bg-green-50/30 cursor-pointer transition-all">
+                <label className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg border border-[#D6D6D6] hover:border-green-300 hover:bg-green-50/30 cursor-pointer transition-all">
                   <input
                     type="checkbox"
                     checked={includeTemplateLink}
                     onChange={e => setIncludeTemplateLink(e.target.checked)}
-                    className="mt-0.5 rounded border-slate-300 text-green-600 shrink-0"
+                    className="mt-0.5 rounded border-[#BFBFBF] text-green-600 shrink-0"
                     data-testid="checkbox-sms-link"
                   />
                   <div className="min-w-0">
@@ -2554,7 +2554,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
           )}
 
           <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-            <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-slate-600 to-slate-700 flex items-center gap-2">
+            <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
               <FileText className="w-4 h-4 text-white" />
               <h4 className="text-xs font-bold text-white uppercase tracking-wider">Custom Message (Optional)</h4>
             </div>
@@ -2563,7 +2563,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                 value={customMessage}
                 onChange={e => setCustomMessage(e.target.value)}
                 placeholder={mode === 'email' ? "Add a custom message to include in the email body (optional)..." : "Add a custom message to include in the SMS (optional, keep it short)..."}
-                className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm resize-none focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none"
+                className="w-full border border-[#BFBFBF] rounded-lg px-3 py-2.5 text-sm resize-none focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none"
                 rows={mode === 'email' ? 3 : 2}
                 maxLength={mode === 'sms' ? 120 : undefined}
                 data-testid="textarea-custom-message"
@@ -2577,7 +2577,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
 
         <div className="space-y-3 sm:space-y-4">
           <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-            <div className={`px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between ${mode === 'email' ? 'bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)]' : 'bg-gradient-to-r from-green-600 to-green-700'}`}>
+            <div className={`px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between ${mode === 'email' ? 'bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)]' : 'bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)]'}`}>
               <div className="flex items-center gap-2">
                 {mode === 'email' ? <Mail className="w-4 h-4 text-white" /> : <Phone className="w-4 h-4 text-white" />}
                 <h4 className="text-xs font-bold text-white uppercase tracking-wider">
@@ -2609,14 +2609,14 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                       className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-all ${
                         target.selected
                           ? 'border-[#D6D6D6] bg-[var(--pos-accent-tint)]/50 shadow-sm'
-                          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                          : 'border-[#D6D6D6] hover:border-[#BFBFBF] hover:bg-[#F7F7F7]'
                       }`}
                     >
                       <input
                         type="checkbox"
                         checked={target.selected}
                         onChange={() => toggleEmailTarget(idx)}
-                        className="rounded border-slate-300 text-[var(--pos-accent)]"
+                        className="rounded border-[#BFBFBF] text-[var(--pos-accent)]"
                         data-testid={`checkbox-email-${idx}`}
                       />
                       <div className="flex-1 min-w-0">
@@ -2625,7 +2625,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                           <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
                             target.type === 'primary'
                               ? 'bg-[var(--pos-accent-tint-strong)] text-[var(--pos-accent)] border border-[#D6D6D6]'
-                              : 'bg-slate-100 text-slate-600 border border-slate-200'
+                              : 'bg-[#F2F4F7] text-slate-600 border border-[#D6D6D6]'
                           }`}>
                             {target.type === 'primary' ? 'Default' : 'Additional'}
                           </span>
@@ -2635,7 +2635,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                     </label>
                   ))
                 )}
-                <div className="pt-2 border-t border-slate-100 mt-2">
+                <div className="pt-2 border-t border-[#E5E5E5] mt-2">
                   <div className="flex items-center justify-between text-xs text-slate-500">
                     <span>{selectedEmails.length} of {emailTargets.length} selected</span>
                     <button
@@ -2653,13 +2653,13 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                   <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
                     smsSelected
                       ? 'border-green-300 bg-green-50/50 shadow-sm'
-                      : 'border-slate-200 hover:border-slate-300'
+                      : 'border-[#D6D6D6] hover:border-[#BFBFBF]'
                   }`}>
                     <input
                       type="checkbox"
                       checked={smsSelected}
                       onChange={e => setSmsSelected(e.target.checked)}
-                      className="rounded border-slate-300 text-green-600"
+                      className="rounded border-[#BFBFBF] text-green-600"
                       data-testid="checkbox-sms-mobile"
                     />
                     <div className="flex-1">
@@ -2682,7 +2682,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
           </div>
 
           <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-            <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-slate-500 to-slate-600 flex items-center gap-2">
+            <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
               <Eye className="w-4 h-4 text-white" />
               <h4 className="text-xs font-bold text-white uppercase tracking-wider">Delivery Summary</h4>
             </div>
@@ -2722,10 +2722,10 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                 )}
               </div>
 
-              <div className="pt-3 border-t border-slate-100 space-y-2">
+              <div className="pt-3 border-t border-[#E5E5E5] space-y-2">
                 <button
                   onClick={() => setShowPreview(!showPreview)}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition-all"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-[#BFBFBF] text-slate-700 text-sm font-medium rounded-lg hover:bg-[#F7F7F7] transition-all"
                   data-testid="button-stmt-preview"
                 >
                   <Eye className="w-4 h-4" />
@@ -2737,7 +2737,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                   className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 text-white text-sm font-bold rounded-lg transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed ${
                     mode === 'email'
                       ? 'bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)]'
-                      : 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800'
+                      : 'bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] hover:from-green-700 hover:to-green-800'
                   }`}
                   data-testid="button-send-statement"
                 >
@@ -2781,7 +2781,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
 
       {showPreview && (
         <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-slate-700 to-slate-800 flex items-center justify-between">
+          <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Eye className="w-4 h-4 text-white" />
               <h4 className="text-xs font-bold text-white uppercase tracking-wider">Message Preview</h4>
@@ -2812,7 +2812,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                     </span>
                   </div>
                 )}
-                <div className="mt-2 sm:mt-3 bg-slate-50 rounded-lg p-3 sm:p-4 border whitespace-pre-wrap text-slate-700 text-xs sm:text-sm">
+                <div className="mt-2 sm:mt-3 bg-[#F7F7F7] rounded-lg p-3 sm:p-4 border whitespace-pre-wrap text-slate-700 text-xs sm:text-sm">
                   <p>Dear {accountHolder || 'Account Holder'},</p>
                   <br />
                   <p>Please find your {statementType === 'detailed' ? 'detailed ' : ''}account statement for the period {fromMonth} {fromYear} to {toMonth} {toYear}.</p>
@@ -2890,8 +2890,8 @@ export function IndigentHistoryTab({ accountId }: { accountId: number }) {
 
   return (
     <div className="p-3 sm:p-5 space-y-4 sm:space-y-5" data-testid="indigent-history-panel">
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-teal-700 to-teal-800 flex items-center gap-2">
+      <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
           <Shield className="w-4 h-4 text-white" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Indigent History</h3>
           {data.length > 0 && (
@@ -2907,8 +2907,8 @@ export function IndigentHistoryTab({ accountId }: { accountId: number }) {
             const isActive = statusText.toLowerCase().includes('active') || statusText.toLowerCase().includes('approved');
             const isTerminated = statusText.toLowerCase().includes('terminat') || statusText.toLowerCase().includes('disqualif') || statusText.toLowerCase().includes('cancel');
             return (
-              <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`indigent-card-${i}`}>
-                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Status</span><span className="text-right"><Badge variant="outline" className={`text-[10px] whitespace-nowrap ${isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : isTerminated ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>{statusText}</Badge></span></div>
+              <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5" data-testid={`indigent-card-${i}`}>
+                <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Status</span><span className="text-right"><Badge variant="outline" className={`text-[10px] whitespace-nowrap ${isActive ? 'bg-emerald-50 text-emerald-700 border-[#D6D6D6]' : isTerminated ? 'bg-red-50 text-red-700 border-red-200' : 'bg-[#F7F7F7] text-slate-600 border-[#D6D6D6]'}`}>{statusText}</Badge></span></div>
                 <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Indigent Type</span><span className="text-slate-800 font-semibold text-right">{row.indigentType || row.attpType || row.type || '-'}</span></div>
                 <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Application Date</span><span className="text-slate-800 font-semibold text-right">{fmtDate(row.applicationDate || row.appDate)}</span></div>
                 <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Write Off</span><span className="text-slate-800 font-semibold text-right font-mono">{fmtAmt(row.applicationWriteOffAmount || row.appWriteOffAmount || row.writeOffAmount)}</span></div>
@@ -2921,7 +2921,7 @@ export function IndigentHistoryTab({ accountId }: { accountId: number }) {
         <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-xs" data-testid="table-indigent-history">
             <thead>
-              <tr className="bg-slate-100 border-b-2 border-slate-200">
+              <tr className="bg-[#F2F4F7] border-b-2 border-[#D6D6D6]">
                 <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">ATTP Status</th>
                 <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Indigent Type</th>
                 <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Application Date</th>
@@ -2947,9 +2947,9 @@ export function IndigentHistoryTab({ accountId }: { accountId: number }) {
                 const isActive = statusText.toLowerCase().includes('active') || statusText.toLowerCase().includes('approved');
                 const isTerminated = statusText.toLowerCase().includes('terminat') || statusText.toLowerCase().includes('disqualif') || statusText.toLowerCase().includes('cancel');
                 return (
-                  <tr key={i} className={`border-b border-slate-100 hover:bg-teal-50/30 transition-colors ${isTerminated ? 'bg-red-50/20' : ''}`} data-testid={`indigent-row-${i}`}>
+                  <tr key={i} className={`border-b border-[#E5E5E5] hover:bg-teal-50/30 transition-colors ${isTerminated ? 'bg-red-50/20' : ''}`} data-testid={`indigent-row-${i}`}>
                     <td className="py-2.5 px-3">
-                      <Badge variant="outline" className={`text-[10px] whitespace-nowrap ${isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : isTerminated ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                      <Badge variant="outline" className={`text-[10px] whitespace-nowrap ${isActive ? 'bg-emerald-50 text-emerald-700 border-[#D6D6D6]' : isTerminated ? 'bg-red-50 text-red-700 border-red-200' : 'bg-[#F7F7F7] text-slate-600 border-[#D6D6D6]'}`}>
                         {statusText}
                       </Badge>
                     </td>
@@ -2978,7 +2978,7 @@ export function IndigentHistoryTab({ accountId }: { accountId: number }) {
           </table>
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-4 py-2 bg-slate-50 border-t border-slate-200 text-xs text-slate-500">
+        <div className="flex items-center justify-end gap-2 px-4 py-2 bg-[#F7F7F7] border-t border-[#D6D6D6] text-xs text-slate-500">
           <span>Items per page: <span className="border rounded px-2 py-0.5 bg-white">50</span></span>
           <span>{data.length > 0 ? `1 - ${data.length} of ${data.length}` : '0 of 0'}</span>
         </div>

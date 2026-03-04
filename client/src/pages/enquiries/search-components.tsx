@@ -88,13 +88,13 @@ export function SmartSearchDropdown({
 
   return (
     <div
-      className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-slate-200 z-50 max-h-[60vh] sm:max-h-[420px] overflow-hidden flex flex-col"
+      className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-[#D6D6D6] z-50 max-h-[60vh] sm:max-h-[420px] overflow-hidden flex flex-col"
       data-testid="smart-search-dropdown"
       role="listbox"
       id="search-dropdown"
     >
       {loading && results.length === 0 && (
-        <div className="flex items-center gap-3 px-3 sm:px-4 py-3 text-sm text-slate-500 border-b border-slate-100">
+        <div className="flex items-center gap-3 px-3 sm:px-4 py-3 text-sm text-slate-500 border-b border-[#E5E5E5]">
           <Loader2 className="w-4 h-4 animate-spin text-[var(--pos-accent)]" />
           <span className="text-xs sm:text-sm">Searching accounts...</span>
         </div>
@@ -114,15 +114,15 @@ export function SmartSearchDropdown({
 
       {capped.length > 0 && (
         <>
-          <div className="px-3 sm:px-4 py-1.5 sm:py-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+          <div className="px-3 sm:px-4 py-1.5 sm:py-2 bg-[#F7F7F7] border-b border-[#E5E5E5] flex items-center justify-between">
             <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
               {results.length} account{results.length !== 1 ? 's' : ''}
               {hasMore && <span className="text-slate-400 normal-case font-normal"> (top {maxResults})</span>}
             </span>
             <span className="text-[10px] text-slate-400 hidden sm:inline">
-              <kbd className="px-1 py-0.5 bg-slate-200 rounded text-[9px] font-mono">↑↓</kbd> navigate
-              <kbd className="px-1 py-0.5 bg-slate-200 rounded text-[9px] font-mono ml-1">Enter</kbd> select
-              <kbd className="px-1 py-0.5 bg-slate-200 rounded text-[9px] font-mono ml-1">Esc</kbd> close
+              <kbd className="px-1 py-0.5 bg-[#F2F4F7] rounded text-[9px] font-mono">↑↓</kbd> navigate
+              <kbd className="px-1 py-0.5 bg-[#F2F4F7] rounded text-[9px] font-mono ml-1">Enter</kbd> select
+              <kbd className="px-1 py-0.5 bg-[#F2F4F7] rounded text-[9px] font-mono ml-1">Esc</kbd> close
             </span>
           </div>
           <div ref={listRef} className="overflow-y-auto flex-1 overscroll-contain" role="listbox">
@@ -137,15 +137,15 @@ export function SmartSearchDropdown({
                 <div
                   key={account.accountID || account.account_ID || i}
                   onClick={() => onSelect(account)}
-                  className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-2.5 cursor-pointer transition-all border-b border-slate-50 last:border-0 active:bg-[var(--pos-accent-tint-strong)]/60
-                    ${highlightIdx === i ? 'bg-[var(--pos-accent-tint)] border-l-3 border-l-[var(--pos-accent)]' : 'hover:bg-slate-50 border-l-3 border-l-transparent'}`}
+                  className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-2.5 cursor-pointer transition-all border-b border-[#F0F0F0] last:border-0 active:bg-[var(--pos-accent-tint-strong)]/60
+                    ${highlightIdx === i ? 'bg-[var(--pos-accent-tint)] border-l-3 border-l-[var(--pos-accent)]' : 'hover:bg-[#F7F7F7] border-l-3 border-l-transparent'}`}
                   data-testid={`dropdown-account-${account.accountID || account.account_ID || i}`}
                   role="option"
                   aria-selected={highlightIdx === i}
                   tabIndex={-1}
                 >
                   <div className={`shrink-0 h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold
-                    ${isActive ? 'bg-[var(--pos-accent-tint-strong)] text-[var(--pos-accent)]' : 'bg-slate-100 text-slate-500'}`}>
+                    ${isActive ? 'bg-[var(--pos-accent-tint-strong)] text-[var(--pos-accent)]' : 'bg-[#F2F4F7] text-slate-500'}`}>
                     {name.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -190,7 +190,7 @@ export function SmartSearchDropdown({
           {hasMore && onViewAll && (
             <button
               onClick={onViewAll}
-              className="w-full px-4 py-2.5 sm:py-2.5 text-xs text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)] hover:bg-[var(--pos-accent-tint)] active:bg-[var(--pos-accent-tint-strong)] transition-colors border-t border-slate-100 font-medium text-center"
+              className="w-full px-4 py-2.5 sm:py-2.5 text-xs text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)] hover:bg-[var(--pos-accent-tint)] active:bg-[var(--pos-accent-tint-strong)] transition-colors border-t border-[#E5E5E5] font-medium text-center"
               data-testid="button-view-all-results"
             >
               View all {results.length} results
@@ -262,7 +262,7 @@ export function ExpandableResultRow({ account, onSelect, isExpanded, onToggleExp
   return (
     <>
       <tr
-        className={`border-b border-slate-100 transition-colors duration-150 cursor-pointer ${isExpanded ? 'bg-[var(--pos-accent-tint)]/80' : 'hover:bg-[var(--pos-accent-tint)]/60'}`}
+        className={`border-b border-[#E5E5E5] transition-colors duration-150 cursor-pointer ${isExpanded ? 'bg-[var(--pos-accent-tint)]/80' : 'hover:bg-[var(--pos-accent-tint)]/60'}`}
         data-testid={`expandable-row-${aid}`}
       >
         <td className="px-1 py-2.5 text-center w-8">
@@ -348,7 +348,7 @@ export function ExpandableResultRow({ account, onSelect, isExpanded, onToggleExp
       {isExpanded && (
         <tr>
           <td colSpan={11} className="p-0">
-            <div className="bg-gradient-to-b from-[var(--pos-accent-tint)] to-white border-b border-slate-200 border-l-2 border-l-[var(--pos-accent)] px-2 sm:px-4 py-3 sm:py-4">
+            <div className="bg-gradient-to-b from-[var(--pos-accent-tint)] to-white border-b border-[#D6D6D6] border-l-2 border-l-[var(--pos-accent)] px-2 sm:px-4 py-3 sm:py-4">
           {loading && (
             <div className="flex items-center gap-3 py-8 justify-center text-slate-400">
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -366,7 +366,7 @@ export function ExpandableResultRow({ account, onSelect, isExpanded, onToggleExp
 
           {loaded && !fetchError && enrichedData && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/60 shadow-sm overflow-hidden" data-testid={`panel-account-details-${aid}`}>
+              <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-[#D6D6D6]/60 shadow-sm overflow-hidden" data-testid={`panel-account-details-${aid}`}>
                 <div className="bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] px-4 py-2.5 flex items-center gap-2">
                   <User className="w-4 h-4 text-white/80" />
                   <span className="text-xs font-semibold text-white uppercase tracking-wider">Account Details</span>
@@ -392,8 +392,8 @@ export function ExpandableResultRow({ account, onSelect, isExpanded, onToggleExp
                 </div>
               </div>
 
-              <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/60 shadow-sm overflow-hidden" data-testid={`panel-property-${aid}`}>
-                <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 px-4 py-2.5 flex items-center gap-2">
+              <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-[#D6D6D6]/60 shadow-sm overflow-hidden" data-testid={`panel-property-${aid}`}>
+                <div className="bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] px-4 py-2.5 flex items-center gap-2">
                   <Home className="w-4 h-4 text-white/80" />
                   <span className="text-xs font-semibold text-white uppercase tracking-wider">Property Information</span>
                 </div>
@@ -422,8 +422,8 @@ export function ExpandableResultRow({ account, onSelect, isExpanded, onToggleExp
                 </div>
               </div>
 
-              <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/60 shadow-sm overflow-hidden" data-testid={`panel-services-${aid}`}>
-                <div className="bg-gradient-to-r from-violet-600 to-violet-700 px-4 py-2.5 flex items-center gap-2">
+              <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-[#D6D6D6]/60 shadow-sm overflow-hidden" data-testid={`panel-services-${aid}`}>
+                <div className="bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] px-4 py-2.5 flex items-center gap-2">
                   <Activity className="w-4 h-4 text-white/80" />
                   <span className="text-xs font-semibold text-white uppercase tracking-wider">Active Services</span>
                   <Badge className="ml-auto bg-white/20 text-white text-[10px] border-0">{activeServices.length} active</Badge>
@@ -437,7 +437,7 @@ export function ExpandableResultRow({ account, onSelect, isExpanded, onToggleExp
                         const svcStatus = (svc.statusDesc || svc.status || '-').toLowerCase().trim();
                         const isActive = svcStatus === 'active';
                         return (
-                          <div key={si} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl ${isActive ? 'bg-green-50/60 border border-green-100' : 'bg-slate-50 border border-slate-100'}`} data-testid={`service-item-${aid}-${si}`}>
+                          <div key={si} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl ${isActive ? 'bg-green-50/60 border border-green-100' : 'bg-[#F7F7F7] border border-[#E5E5E5]'}`} data-testid={`service-item-${aid}-${si}`}>
                             <Layers className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                             <div className="min-w-0 flex-1">
                               <span className="font-medium text-slate-700">{svc.serviceDesc || svc.serviceDescription || svc.serviceType || `Service ${si + 1}`}</span>

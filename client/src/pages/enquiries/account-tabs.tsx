@@ -262,13 +262,13 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
     if (sl === 'active' || sl === 'approved' || sl === 'registered') return 'bg-green-100 text-green-800 border-green-200';
     if (sl === 'inactive' || sl === 'cancelled' || sl === 'closed') return 'bg-red-100 text-red-800 border-red-200';
     if (sl === 'pending' || sl === 'in progress') return 'bg-amber-100 text-amber-800 border-amber-200';
-    return 'bg-slate-100 text-slate-700 border-slate-200';
+    return 'bg-[#F2F4F7] text-slate-700 border-[#D6D6D6]';
   };
 
   const DetailItem = ({ label, value, icon, mono, accent }: { label: string; value: any; icon?: React.ReactNode; mono?: boolean; accent?: boolean }) => {
     const display = safeStr(value);
     return (
-      <div className="group flex items-start gap-2 sm:gap-3 py-2 sm:py-2.5 px-2 sm:px-3 rounded-lg hover:bg-slate-50/80 transition-all duration-200 cursor-default" data-testid={`field-${label.toLowerCase().replace(/\s+/g, '-')}`}>
+      <div className="group flex items-start gap-2 sm:gap-3 py-2 sm:py-2.5 px-2 sm:px-3 rounded-lg hover:bg-[#F7F7F7] transition-all duration-200 cursor-default" data-testid={`field-${label.toLowerCase().replace(/\s+/g, '-')}`}>
         {icon && <span className="mt-0.5 text-slate-400 group-hover:text-[var(--pos-accent)] transition-colors shrink-0 hidden sm:block">{icon}</span>}
         <div className="flex-1 min-w-0">
           <div className="text-[9px] sm:text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-0.5">{label}</div>
@@ -279,10 +279,10 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
   };
 
   const CollapsibleSection = ({ id, title, icon, color, badge, children }: { id: string; title: string; icon: React.ReactNode; color: string; badge?: React.ReactNode; children: React.ReactNode }) => (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden transition-shadow hover:shadow-md" data-testid={`section-${id}`}>
+    <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden transition-shadow hover:shadow-md" data-testid={`section-${id}`}>
       <button
         onClick={() => toggle(id)}
-        className={`w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-3.5 transition-all duration-200 ${openSections[id] ? `bg-gradient-to-r ${color} text-white` : 'bg-white hover:bg-slate-50 text-slate-700'}`}
+        className={`w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-3.5 transition-all duration-200 ${openSections[id] ? `bg-gradient-to-r ${color} text-white` : 'bg-white hover:bg-[#F7F7F7] text-slate-700'}`}
         data-testid={`btn-toggle-${id}`}
       >
         <span className={`${openSections[id] ? 'text-white/90' : 'text-slate-400'}`}>{icon}</span>
@@ -292,7 +292,7 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
           {openSections[id] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </span>
       </button>
-      {openSections[id] && <div className="border-t border-slate-100">{children}</div>}
+      {openSections[id] && <div className="border-t border-[#E5E5E5]">{children}</div>}
     </div>
   );
 
@@ -367,7 +367,7 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
           <CollapsibleSection id="account" title="Account Details" icon={<CreditCard className="w-4 h-4" />} color="from-[var(--pos-accent)] to-[var(--pos-accent-dark)]">
             {!coreLoaded ? (
               <div className="p-4 space-y-2">
-                {[...Array(6)].map((_, i) => <div key={i} className="h-5 bg-slate-100 rounded animate-pulse" style={{ width: `${60 + Math.random() * 30}%` }} />)}
+                {[...Array(6)].map((_, i) => <div key={i} className="h-5 bg-[#F2F4F7] rounded animate-pulse" style={{ width: `${60 + Math.random() * 30}%` }} />)}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0">
@@ -392,7 +392,7 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
             id="additional"
             title="Account Status & Flags"
             icon={<Shield className="w-4 h-4" />}
-            color="from-emerald-600 to-emerald-700"
+            color="from-[var(--pos-accent)] to-[var(--pos-accent-dark)]"
             badge={
               <div className="flex gap-1.5">
                 {safeStr(interestWaiver).toLowerCase().includes('waiver applied') && <span className="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-bold text-white">Interest Waiver</span>}
@@ -402,7 +402,7 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
           >
             {!secondaryLoaded && !incentive && !handover ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4">
-                {[...Array(9)].map((_, i) => <div key={i} className="rounded-xl border border-slate-100 p-3 bg-slate-50 animate-pulse h-[60px]" />)}
+                {[...Array(9)].map((_, i) => <div key={i} className="rounded-xl border border-[#E5E5E5] p-3 bg-[#F7F7F7] animate-pulse h-[60px]" />)}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4">
@@ -422,7 +422,7 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
                   const isNegative = sv.includes('handed over') || sv.includes('cancelled') || sv.includes('inactive');
                   const isNA = sv === 'n/a' || sv === '-';
                   return (
-                    <div key={item.label} className={`rounded-xl border p-3 transition-all duration-200 hover:shadow-md cursor-default ${isPositive ? 'bg-green-50 border-green-200' : isNegative ? 'bg-red-50 border-red-200' : isNA ? 'bg-slate-50 border-slate-200' : 'bg-white border-slate-200'}`}>
+                    <div key={item.label} className={`rounded-xl border p-3 transition-all duration-200 hover:shadow-md cursor-default ${isPositive ? 'bg-green-50 border-green-200' : isNegative ? 'bg-red-50 border-red-200' : isNA ? 'bg-[#F7F7F7] border-[#D6D6D6]' : 'bg-white border-[#D6D6D6]'}`}>
                       <div className="flex items-center gap-2 mb-1.5">
                         <span className={`${isPositive ? 'text-green-500' : isNegative ? 'text-red-500' : 'text-slate-400'}`}>{item.icon}</span>
                         <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">{item.label}</span>
@@ -435,10 +435,10 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
             )}
           </CollapsibleSection>
 
-          <CollapsibleSection id="property" title="Property Information" icon={<Home className="w-4 h-4" />} color="from-violet-600 to-violet-700">
+          <CollapsibleSection id="property" title="Property Information" icon={<Home className="w-4 h-4" />} color="from-[var(--pos-accent)] to-[var(--pos-accent-dark)]">
             {!coreLoaded ? (
               <div className="p-4 space-y-2">
-                {[...Array(5)].map((_, i) => <div key={i} className="h-5 bg-slate-100 rounded animate-pulse" style={{ width: `${50 + Math.random() * 40}%` }} />)}
+                {[...Array(5)].map((_, i) => <div key={i} className="h-5 bg-[#F2F4F7] rounded animate-pulse" style={{ width: `${50 + Math.random() * 40}%` }} />)}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0">
@@ -475,7 +475,7 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
             )}
           </CollapsibleSection>
 
-          <CollapsibleSection id="partition" title="Partition & Valuation" icon={<Scale className="w-4 h-4" />} color="from-amber-600 to-amber-700">
+          <CollapsibleSection id="partition" title="Partition & Valuation" icon={<Scale className="w-4 h-4" />} color="from-[var(--pos-accent)] to-[var(--pos-accent-dark)]">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-0">
               <DetailItem label="Valuation Category" value={valuationCategory} icon={<Layers className="w-4 h-4" />} />
               <DetailItem label="Partition Description" value={partitionDesc} icon={<FileText className="w-4 h-4" />} />
@@ -483,7 +483,7 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
             </div>
           </CollapsibleSection>
 
-          <CollapsibleSection id="delivery" title="Delivery Addresses" icon={<MapPin className="w-4 h-4" />} color="from-teal-600 to-teal-700"
+          <CollapsibleSection id="delivery" title="Delivery Addresses" icon={<MapPin className="w-4 h-4" />} color="from-[var(--pos-accent)] to-[var(--pos-accent-dark)]"
             badge={deliveryAddresses.length > 0 ? <span className="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-bold text-white">{deliveryAddresses.length}</span> : undefined}
           >
             <div className="p-4">
@@ -507,7 +507,7 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
             </div>
           </CollapsibleSection>
 
-          <CollapsibleSection id="services" title="Services" icon={<Gauge className="w-4 h-4" />} color="from-cyan-600 to-cyan-700"
+          <CollapsibleSection id="services" title="Services" icon={<Gauge className="w-4 h-4" />} color="from-[var(--pos-accent)] to-[var(--pos-accent-dark)]"
             badge={services.length > 0 ? <span className="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-bold text-white">{services.length}</span> : undefined}
           >
             <div className="p-4">
@@ -541,7 +541,7 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
             </div>
           </CollapsibleSection>
 
-          <CollapsibleSection id="addBilling" title="Additional Billing" icon={<Receipt className="w-4 h-4" />} color="from-orange-600 to-orange-700"
+          <CollapsibleSection id="addBilling" title="Additional Billing" icon={<Receipt className="w-4 h-4" />} color="from-[var(--pos-accent)] to-[var(--pos-accent-dark)]"
             badge={additionalBilling.length > 0 ? <span className="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-bold text-white">{additionalBilling.length}</span> : undefined}
           >
             <div className="p-4">
@@ -562,7 +562,7 @@ export function AccountInfoTab({ account }: { account: EnquirySearchResult }) {
             </div>
           </CollapsibleSection>
 
-          <CollapsibleSection id="addInfo" title="Additional Information" icon={<FileText className="w-4 h-4" />} color="from-slate-600 to-slate-700"
+          <CollapsibleSection id="addInfo" title="Additional Information" icon={<FileText className="w-4 h-4" />} color="from-[var(--pos-accent)] to-[var(--pos-accent-dark)]"
             badge={additionalInfo.length > 0 ? <span className="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-bold text-white">{additionalInfo.length}</span> : undefined}
           >
             <div className="p-4">
@@ -658,8 +658,8 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
 
   return (
     <div className="p-3 sm:p-5 space-y-4 sm:space-y-5" data-testid="name-info-panel">
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
+      <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
           <User className="w-4 h-4 text-white" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Person Details</h3>
         </div>
@@ -688,8 +688,8 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
+        <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
             <Briefcase className="w-4 h-4 text-white" />
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Employer Details</h3>
           </div>
@@ -702,8 +702,8 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
+        <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
             <Heart className="w-4 h-4 text-white" />
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Marital Details</h3>
           </div>
@@ -713,8 +713,8 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
+      <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
           <Users className="w-4 h-4 text-white" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Next of Kin</h3>
         </div>
@@ -737,8 +737,8 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2 justify-between">
+      <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2 justify-between">
           <div className="flex items-center gap-2 min-w-0">
             <Layers className="w-4 h-4 text-white shrink-0" />
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide truncate">All Accounts for This Person</h3>
@@ -786,9 +786,9 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
                   const aid = acc.account_ID || acc.accountID;
                   const statusClass = acc.accountStatus?.toLowerCase() === 'active' ? 'bg-green-50 text-green-700' :
                     acc.accountStatus?.toLowerCase() === 'closed' || acc.accountStatus?.toLowerCase() === 'inactive' ? 'bg-red-50 text-red-700' :
-                    'bg-slate-100 text-slate-600';
+                    'bg-[#F2F4F7] text-slate-600';
                   return (
-                    <div key={`${aid}-${idx}`} className="border border-slate-200 rounded-lg p-3 space-y-1.5 active:bg-[var(--pos-accent-tint)]" onClick={() => onNavigateToAccount?.(acc)}>
+                    <div key={`${aid}-${idx}`} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5 active:bg-[var(--pos-accent-tint)]" onClick={() => onNavigateToAccount?.(acc)}>
                       <div className="flex items-center justify-between">
                         <span className="font-mono text-xs font-semibold text-[var(--pos-accent)]">{acc.accountNumber || acc.oldAccountCode || String(aid)}</span>
                         <Badge variant="secondary" className={`text-[9px] ${statusClass}`}>{acc.accountStatus || '-'}</Badge>
@@ -804,7 +804,7 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
               <div className="hidden sm:block border rounded-lg overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-slate-50 border-b">
+                    <tr className="bg-[#F7F7F7] border-b">
                       <th className="text-left px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Account No</th>
                       <th className="text-left px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Name</th>
                       <th className="text-left px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">ID Number</th>
@@ -817,7 +817,7 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
                     {relatedAccounts.map((acc, idx) => {
                       const aid = acc.account_ID || acc.accountID;
                       return (
-                        <tr key={`${aid}-${idx}`} className="hover:bg-slate-50 transition-colors">
+                        <tr key={`${aid}-${idx}`} className="hover:bg-[#F7F7F7] transition-colors">
                           <td className="px-4 py-2.5 font-mono text-xs font-medium text-slate-700">{acc.accountNumber || acc.oldAccountCode || String(aid)}</td>
                           <td className="px-4 py-2.5 text-xs text-slate-700">{acc.name || [acc.initials, acc.surname_Company].filter(Boolean).join(' ') || '-'}</td>
                           <td className="px-4 py-2.5 font-mono text-xs text-slate-500">{acc.idRegistrationNumber || '-'}</td>
@@ -826,7 +826,7 @@ export function NameTab({ accountId, onNavigateToAccount }: { accountId: number;
                             <Badge variant="secondary" className={`text-[10px] ${
                               acc.accountStatus?.toLowerCase() === 'active' ? 'bg-green-50 text-green-700' :
                               acc.accountStatus?.toLowerCase() === 'closed' || acc.accountStatus?.toLowerCase() === 'inactive' ? 'bg-red-50 text-red-700' :
-                              'bg-slate-100 text-slate-600'
+                              'bg-[#F2F4F7] text-slate-600'
                             }`}>
                               {acc.accountStatus || '-'}
                             </Badge>
@@ -1221,14 +1221,14 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
                 <h3 className="font-bold text-slate-800">{receiptPreview.municipalityName || ''}</h3>
                 <p className="text-xs text-slate-500">{receiptPreview.address || ''}</p>
               </div>
-              <div className="border-t border-dashed border-slate-300 my-2" />
+              <div className="border-t border-dashed border-[#BFBFBF] my-2" />
               <div className="grid grid-cols-2 gap-1 text-xs">
                 <span className="text-slate-500">Receipt:</span><span className="font-semibold text-slate-800">{receiptPreview.receiptNo || '-'}</span>
                 <span className="text-slate-500">Date:</span><span className="text-slate-700">{receiptPreview.receiptDate || '-'}</span>
                 <span className="text-slate-500">Account:</span><span className="text-slate-700">{receiptPreview.accountNumber || accountNumber || '-'}</span>
                 <span className="text-slate-500">Consumer:</span><span className="text-slate-700">{receiptPreview.consumerName || '-'}</span>
               </div>
-              <div className="border-t border-dashed border-slate-300 my-2" />
+              <div className="border-t border-dashed border-[#BFBFBF] my-2" />
               {receiptPreview.services && Array.isArray(receiptPreview.services) && receiptPreview.services.length > 0 && (
                 <div className="space-y-1">
                   {receiptPreview.services.map((s: any, si: number) => (
@@ -1239,7 +1239,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
                   ))}
                 </div>
               )}
-              <div className="border-t border-dashed border-slate-300 my-2" />
+              <div className="border-t border-dashed border-[#BFBFBF] my-2" />
               <div className="flex justify-between font-bold text-sm">
                 <span>Total</span>
                 <span className="text-[var(--pos-accent)]">R {(receiptPreview.totalAmount ?? 0).toFixed(2)}</span>
@@ -1249,8 +1249,8 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
                 <span className="text-slate-500">Cashier:</span><span className="text-slate-700">{receiptPreview.cashierName || '-'}</span>
               </div>
             </div>
-            <div className="px-5 py-3 border-t border-slate-200 flex items-center justify-end gap-2">
-              <button onClick={() => setReceiptPreview(null)} className="px-4 py-2 border border-slate-300 text-slate-600 text-xs font-semibold rounded-lg hover:bg-slate-50" data-testid="button-close-receipt">Close</button>
+            <div className="px-5 py-3 border-t border-[#D6D6D6] flex items-center justify-end gap-2">
+              <button onClick={() => setReceiptPreview(null)} className="px-4 py-2 border border-[#BFBFBF] text-slate-600 text-xs font-semibold rounded-lg hover:bg-[#F7F7F7]" data-testid="button-close-receipt">Close</button>
               <button onClick={handlePrintWindow} className="px-4 py-2 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] text-white text-xs font-semibold rounded-lg hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)] flex items-center gap-1.5 shadow-sm" data-testid="button-print-receipt-confirm">
                 <Printer className="w-3.5 h-3.5" />
                 Print Receipt
@@ -1269,7 +1269,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
         </button>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
         <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
           <Landmark className="w-4 h-4 text-white shrink-0" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide truncate">Total Balance / Debt</h3>
@@ -1315,12 +1315,12 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
           ) : (
             <>
               {balanceData.map((item: any, i: number) => (
-                <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5">
+                <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-semibold text-slate-800">{item.serviceDescription || `Service ${i + 1}`}</span>
                     <span className="text-[12px] font-bold font-mono text-red-600">{fmt(item.totalOutStanding ?? item.totalOutstandingAmount ?? 0)}</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 pt-1 border-t border-slate-100">
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 pt-1 border-t border-[#E5E5E5]">
                     {agingCols.map(col => {
                       const v = getVal(item, col.keys);
                       if (v === 0 || v === null || v === undefined) return null;
@@ -1346,7 +1346,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
         <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm" data-testid="table-balance-debt">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
+              <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                 <th className="text-left py-2.5 px-3 text-[11px] uppercase tracking-wider text-slate-600 font-bold w-[220px] min-w-[180px]">Service</th>
                 <th className="text-right py-2.5 px-3 text-[11px] uppercase tracking-wider text-red-600 font-bold min-w-[120px]">Total Outstanding</th>
                 {agingCols.map(col => (
@@ -1358,7 +1358,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
               {balanceData.length === 0 ? (
                 <tr><td colSpan={agingCols.length + 2} className="py-6 text-center text-slate-400 text-sm">No balance data available</td></tr>
               ) : balanceData.map((item: any, i: number) => (
-                <tr key={i} className="border-b border-slate-100 hover:bg-[var(--pos-accent-tint)]/30 transition-colors group">
+                <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)]/30 transition-colors group">
                   <td className="py-2.5 px-3 font-medium text-slate-800 text-[13px]">{item.serviceDescription || `Service ${i + 1}`}</td>
                   <td className="py-2.5 px-3 text-right font-mono text-red-600 font-bold text-[13px]">{fmt(item.totalOutStanding ?? item.totalOutstandingAmount ?? 0)}</td>
                   {agingCols.map(col => {
@@ -1383,8 +1383,8 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden" data-testid="debtors-remaining-capital">
-        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
+      <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden" data-testid="debtors-remaining-capital">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
           <Layers className="w-4 h-4 text-white shrink-0" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide truncate">Remaining Capital</h3>
           <div className="ml-auto flex items-center gap-1 sm:gap-2 shrink-0">
@@ -1426,7 +1426,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
           ) : (
             <>
               {capitalPlans.map((plan: any, i: number) => (
-                <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`card-capital-${i}`}>
+                <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5" data-testid={`card-capital-${i}`}>
                   <div className="text-[11px] font-semibold text-slate-800 mb-1">{plan.serviceDescription || plan.description || plan.capitalCostType || plan.serviceType || `Service ${i + 1}`}</div>
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1">
                     <div className="flex justify-between text-[10px]"><span className="text-slate-500">Capital</span><span className="font-mono font-medium text-slate-700">{fmt(plan.capitalAmount ?? plan.originalCapital ?? 0)}</span></div>
@@ -1448,7 +1448,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
         <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm" data-testid="table-remaining-capital">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
+              <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                 <th className="text-left py-2.5 px-3 text-[11px] uppercase tracking-wider text-slate-600 font-bold min-w-[180px]">Service Description</th>
                 <th className="text-right py-2.5 px-3 text-[11px] uppercase tracking-wider text-slate-600 font-bold min-w-[120px]">Capital Amount</th>
                 <th className="text-right py-2.5 px-3 text-[11px] uppercase tracking-wider text-slate-600 font-bold min-w-[150px]">Remaining Capital Amount</th>
@@ -1463,7 +1463,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
                   <td colSpan={6} className="py-6 text-center text-slate-400 text-sm italic">No records to display.</td>
                 </tr>
               ) : capitalPlans.map((plan: any, i: number) => (
-                <tr key={i} className="border-b border-slate-100 hover:bg-purple-50/30 transition-colors" data-testid={`row-capital-${i}`}>
+                <tr key={i} className="border-b border-[#E5E5E5] hover:bg-purple-50/30 transition-colors" data-testid={`row-capital-${i}`}>
                   <td className="py-2.5 px-3 font-medium text-slate-800 text-[13px]">{plan.serviceDescription || plan.description || plan.capitalCostType || plan.serviceType || `Service ${i + 1}`}</td>
                   <td className="py-2.5 px-3 text-right font-mono text-slate-700 text-[13px]">{fmt(plan.capitalAmount ?? plan.originalCapital ?? 0)}</td>
                   <td className="py-2.5 px-3 text-right font-mono text-purple-700 font-semibold text-[13px]">{fmt(plan.remainingCapitalAmount ?? plan.remainingCapital ?? plan.capitalRemaining ?? 0)}</td>
@@ -1490,8 +1490,8 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
       </div>
 
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-green-600 to-green-700 flex items-center gap-2">
+      <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+        <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
           <CreditCard className="w-4 h-4 text-white shrink-0" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Payments Received</h3>
           <div className="ml-auto flex items-center gap-1 sm:gap-2 shrink-0">
@@ -1530,7 +1530,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
           {payments.length === 0 ? (
             <div className="py-6 text-center text-slate-400 text-xs">No payments found</div>
           ) : payments.map((p: any, i: number) => (
-            <div key={i} className="border border-slate-200 rounded-lg p-2.5 space-y-1.5" data-testid={`card-payment-${i}`}>
+            <div key={i} className="border border-[#D6D6D6] rounded-lg p-2.5 space-y-1.5" data-testid={`card-payment-${i}`}>
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-mono font-semibold text-slate-800">{p.receiptNumber || p.receiptNo || '-'}</span>
                 <span className="text-[12px] font-bold font-mono text-green-700">{fmt(p.amount || p.receiptAmount || 0)}</span>
@@ -1540,7 +1540,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
                 <span className="text-slate-500">Date</span><span className="text-slate-700 text-right">{p.receiptDate ? new Date(p.receiptDate).toLocaleDateString('en-ZA') : '-'}</span>
                 <span className="text-slate-500">Cashier</span><span className="text-slate-700 text-right truncate">{p.cashierName || p.cashier || '-'}</span>
               </div>
-              <div className="flex justify-end pt-1 border-t border-slate-100">
+              <div className="flex justify-end pt-1 border-t border-[#E5E5E5]">
                 <button
                   onClick={() => handlePrintReceipt(p)}
                   disabled={printingId === String(p.receiptId || p.receipt_ID || p.id)}
@@ -1562,8 +1562,8 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
             <div className="p-6 text-center text-slate-400 text-sm">No payments found in recent history</div>
           ) : (
             <table className="w-full text-xs" data-testid="table-payments-received">
-              <thead className="sticky top-0 bg-slate-50 z-10">
-                <tr className="border-b border-slate-200">
+              <thead className="sticky top-0 bg-[#F7F7F7] z-10">
+                <tr className="border-b border-[#D6D6D6]">
                   <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold whitespace-nowrap">Receipt No</th>
                   <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold whitespace-nowrap">Payment Type</th>
                   <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold whitespace-nowrap">Receipt Date and Time</th>
@@ -1576,7 +1576,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
               </thead>
               <tbody>
                 {payments.map((p: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-50 hover:bg-green-50/50" data-testid={`row-payment-${i}`}>
+                  <tr key={i} className="border-b border-[#F7F7F7] hover:bg-green-50/50" data-testid={`row-payment-${i}`}>
                     <td className="py-1.5 px-3 font-mono text-slate-700 whitespace-nowrap">{p.receiptNumber || p.receiptNo || '-'}</td>
                     <td className="py-1.5 px-3 text-slate-600 whitespace-nowrap">{p.paymentType || p.receiptType || p.transactionType || '-'}</td>
                     <td className="py-1.5 px-3 text-slate-600 whitespace-nowrap">{p.receiptDate ? new Date(p.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
@@ -1606,8 +1606,8 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-red-600 to-red-700 flex items-center gap-2">
+      <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+        <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-white shrink-0" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Payment Reversals</h3>
           <div className="ml-auto flex items-center gap-1 sm:gap-2 shrink-0">
@@ -1643,7 +1643,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
           {reversals.length === 0 ? (
             <div className="py-6 text-center text-slate-400 text-xs">No reversals found</div>
           ) : reversals.slice(0, 20).map((rv: any, i: number) => (
-            <div key={i} className="border border-slate-200 rounded-lg p-2.5 flex items-center justify-between">
+            <div key={i} className="border border-[#D6D6D6] rounded-lg p-2.5 flex items-center justify-between">
               <div className="min-w-0">
                 <div className="text-[11px] font-mono font-semibold text-slate-800">{rv.receiptNumber || rv.receiptNo || '-'}</div>
                 <div className="text-[10px] text-slate-500">{rv.receiptDate ? new Date(rv.receiptDate).toLocaleDateString('en-ZA') : '-'} &middot; {rv.receiptType || rv.transactionType || '-'}</div>
@@ -1657,8 +1657,8 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
             <div className="p-6 text-center text-slate-400 text-sm">No payment reversals found in recent history</div>
           ) : (
             <table className="w-full text-xs">
-              <thead className="sticky top-0 bg-slate-50 z-10">
-                <tr className="border-b border-slate-200">
+              <thead className="sticky top-0 bg-[#F7F7F7] z-10">
+                <tr className="border-b border-[#D6D6D6]">
                   <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Date</th>
                   <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Receipt #</th>
                   <th className="text-left py-2 px-3 text-[10px] uppercase text-slate-500 font-semibold">Type</th>
@@ -1667,7 +1667,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
               </thead>
               <tbody>
                 {reversals.slice(0, 20).map((rv: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-50 hover:bg-red-50/50">
+                  <tr key={i} className="border-b border-[#F7F7F7] hover:bg-red-50/50">
                     <td className="py-1.5 px-3 text-slate-600">{rv.receiptDate ? new Date(rv.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
                     <td className="py-1.5 px-3 font-mono text-slate-700">{rv.receiptNumber || rv.receiptNo || '-'}</td>
                     <td className="py-1.5 px-3 text-slate-500">{rv.receiptType || rv.transactionType || '-'}</td>
@@ -1730,8 +1730,8 @@ export function LinkedAccountsTab({ accountId, onSelectAccount }: { accountId: n
 
   return (
     <div className="p-3 sm:p-5 space-y-4" data-testid="linked-accounts-tab">
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-purple-600 to-purple-700">
+      <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+        <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)]">
           <div className="flex items-center gap-2">
             <Building2 className="w-4 h-4 text-white shrink-0" />
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Linked Accounts on Same Property</h3>
@@ -1770,7 +1770,7 @@ export function LinkedAccountsTab({ accountId, onSelectAccount }: { accountId: n
             return (
               <div key={aId || idx}>
                 <div
-                  className={`px-3 sm:px-4 py-3 cursor-pointer transition-colors ${isExpanded ? 'bg-purple-50/50' : 'hover:bg-slate-50'}`}
+                  className={`px-3 sm:px-4 py-3 cursor-pointer transition-colors ${isExpanded ? 'bg-purple-50/50' : 'hover:bg-[#F7F7F7]'}`}
                   onClick={() => setExpandedRow(isExpanded ? null : idx)}
                   data-testid={`linked-account-row-${aId}`}
                 >
@@ -1790,7 +1790,7 @@ export function LinkedAccountsTab({ accountId, onSelectAccount }: { accountId: n
                       </div>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-xs text-slate-700 font-medium truncate">{name}</span>
-                        <Badge variant="outline" className={`text-[10px] shrink-0 ${status.toLowerCase() === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                        <Badge variant="outline" className={`text-[10px] shrink-0 ${status.toLowerCase() === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-[#F2F4F7] text-slate-500 border-[#D6D6D6]'}`}>
                           {status}
                         </Badge>
                       </div>
@@ -1812,7 +1812,7 @@ export function LinkedAccountsTab({ accountId, onSelectAccount }: { accountId: n
                     <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 mt-1">Balance Breakdown</div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                       {balanceDetails.map((b: any, bi: number) => (
-                        <div key={bi} className="flex items-center justify-between bg-white rounded-md border border-slate-100 px-3 py-1.5">
+                        <div key={bi} className="flex items-center justify-between bg-white rounded-md border border-[#E5E5E5] px-3 py-1.5">
                           <span className="text-[11px] text-slate-600 truncate mr-2">{b.serviceDescription || 'Unknown Service'}</span>
                           <span className={`text-[11px] font-semibold shrink-0 ${(b.totalOutStanding || 0) > 0 ? 'text-red-600' : 'text-green-600'}`}>
                             {formatCurrency(b.totalOutStanding)}

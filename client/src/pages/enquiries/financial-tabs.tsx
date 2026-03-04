@@ -62,8 +62,8 @@ export function IncentivesTab({ accountId }: { accountId: number }) {
   if (!hasIncentive) {
     return (
       <div className="p-3 sm:p-5">
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
+        <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
             <Gift className="w-4 h-4 text-white" />
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Payment Incentive</h3>
           </div>
@@ -82,8 +82,8 @@ export function IncentivesTab({ accountId }: { accountId: number }) {
   return (
     <div className="p-3 sm:p-5 space-y-4 sm:space-y-5">
       {items.filter((item: any) => item.description || item.incentiveType || item.code || item.incentive || item.incentiveAmount || item.enable).map((item: any, i: number) => (
-        <div key={i} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
+        <div key={i} className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
             <Gift className="w-4 h-4 text-white" />
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Payment Incentive</h3>
             {item.enable && (
@@ -104,15 +104,15 @@ export function IncentivesTab({ accountId }: { accountId: number }) {
       ))}
 
       {journals.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-purple-500 to-purple-600 flex items-center gap-2">
+        <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
             <FileText className="w-4 h-4 text-white" />
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Incentive Journals</h3>
             <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{journals.length}</Badge>
           </div>
           <div className="sm:hidden p-2 space-y-2" data-testid="table-incentive-journals-mobile">
             {journals.map((j: any, i: number) => (
-              <div key={i} className="bg-white border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`row-journal-${i}`}>
+              <div key={i} className="bg-white border border-[#D6D6D6] rounded-lg p-3 space-y-1.5" data-testid={`row-journal-${i}`}>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-slate-600">{j.journalDate || j.date || j.transactionDate ? new Date(j.journalDate || j.date || j.transactionDate).toLocaleDateString('en-ZA') : '-'}</span>
                   <Badge variant="outline" className="text-[10px]">{j.status || j.journalStatus || '-'}</Badge>
@@ -132,7 +132,7 @@ export function IncentivesTab({ accountId }: { accountId: number }) {
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-xs" data-testid="table-incentive-journals">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
+                <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                   <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Date</th>
                   <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Description</th>
                   <th className="text-right py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Journal Amount</th>
@@ -142,7 +142,7 @@ export function IncentivesTab({ accountId }: { accountId: number }) {
               </thead>
               <tbody>
                 {journals.map((j: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-purple-50/30 transition-colors" data-testid={`row-journal-${i}`}>
+                  <tr key={i} className="border-b border-[#E5E5E5] hover:bg-purple-50/30 transition-colors" data-testid={`row-journal-${i}`}>
                     <td className="py-2 px-3 text-slate-600 whitespace-nowrap">{j.journalDate || j.date || j.transactionDate ? new Date(j.journalDate || j.date || j.transactionDate).toLocaleDateString('en-ZA') : '-'}</td>
                     <td className="py-2 px-3 text-slate-700">{j.description || j.journalDescription || '-'}</td>
                     <td className="py-2 px-3 text-right font-mono font-semibold">{fmtAmt(j.journalAmount ?? j.amount ?? j.incentiveAmount ?? 0)}</td>
@@ -214,15 +214,15 @@ export function DepositsTab({ accountId }: { accountId: number }) {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-slate-50/50">
+      <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-[#F7F7F7]/50">
           <h3 className="text-xs sm:text-sm font-bold text-slate-700">Deposit:</h3>
         </div>
         {deposits.length > 0 ? (
           <>
             <div className="sm:hidden p-2 space-y-2">
               {deposits.map((dep: any, i: number) => (
-                <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`row-deposit-mobile-${i}`}>
+                <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5" data-testid={`row-deposit-mobile-${i}`}>
                   <div className="flex justify-between text-[11px]">
                     <span className="text-slate-500 font-medium">Service Type</span>
                     <span className="text-slate-800 font-semibold text-right">{dep.serviceDesc || dep.serviceDescription || dep.description || '-'}</span>
@@ -253,7 +253,7 @@ export function DepositsTab({ accountId }: { accountId: number }) {
                   </div>
                 </div>
               ))}
-              <div className="border-t-2 border-slate-300 pt-2 px-1 flex justify-between text-xs font-bold text-[#2E2E2E]">
+              <div className="border-t-2 border-[#BFBFBF] pt-2 px-1 flex justify-between text-xs font-bold text-[#2E2E2E]">
                 <span>Total</span>
                 <div className="flex gap-4 font-mono">
                   <span>{fmt(totalDeposit)}</span>
@@ -264,7 +264,7 @@ export function DepositsTab({ accountId }: { accountId: number }) {
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-sm" data-testid="table-deposits">
                 <thead>
-                  <tr className="border-b border-slate-200 bg-white">
+                  <tr className="border-b border-[#D6D6D6] bg-white">
                     <th className="text-left py-3 px-5 text-[11px] uppercase tracking-wider text-[var(--pos-accent)] font-bold">Service Type</th>
                     <th className="text-left py-3 px-5 text-[11px] uppercase tracking-wider text-[var(--pos-accent)] font-bold">Receipt No</th>
                     <th className="text-left py-3 px-5 text-[11px] uppercase tracking-wider text-[var(--pos-accent)] font-bold">Receipt Date</th>
@@ -276,7 +276,7 @@ export function DepositsTab({ accountId }: { accountId: number }) {
                 </thead>
                 <tbody>
                   {deposits.map((dep: any, i: number) => (
-                    <tr key={i} className="border-b border-slate-100 hover:bg-[var(--pos-accent-tint)]/40 transition-colors" data-testid={`row-deposit-${i}`}>
+                    <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)]/40 transition-colors" data-testid={`row-deposit-${i}`}>
                       <td className="py-3 px-5 text-slate-700 font-medium">{dep.serviceDesc || dep.serviceDescription || dep.description || '-'}</td>
                       <td className="py-3 px-5 text-slate-600 font-mono text-[13px]">{dep.receiptNo || dep.docNumber || dep.reference || ''}</td>
                       <td className="py-3 px-5 text-slate-600">{dep.receiptDate || dep.dateCaptured || dep.depositDate ? new Date(dep.receiptDate || dep.dateCaptured || dep.depositDate).toLocaleDateString('en-ZA') : '-'}</td>
@@ -288,7 +288,7 @@ export function DepositsTab({ accountId }: { accountId: number }) {
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="border-t-2 border-slate-300 bg-slate-50/80">
+                  <tr className="border-t-2 border-[#BFBFBF] bg-[#F7F7F7]">
                     <td colSpan={4} className="py-3 px-5"></td>
                     <td className="py-3 px-5 text-right font-mono font-bold text-[#2E2E2E] text-[14px]">{fmt(totalDeposit)}</td>
                     <td className="py-3 px-5"></td>
@@ -364,14 +364,14 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
 
   return (
     <div className="p-3 sm:p-5 space-y-4 sm:space-y-5">
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-slate-700 to-slate-800 flex items-center gap-2">
+      <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
           <CreditCard className="w-4 h-4 text-white" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Payment Plans - Capital Cost</h3>
           {hasPlans && <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{plans.length}</Badge>}
         </div>
 
-        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-slate-50 border-b border-slate-200">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-[#F7F7F7] border-b border-[#D6D6D6]">
           <p className="text-xs sm:text-sm text-slate-700">
             <span className="font-semibold">Initial Down Payment That Was Required:</span>{' '}
             <span className="font-mono font-bold text-[#2E2E2E]">{initialDownPayment}</span>
@@ -382,10 +382,10 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
           {hasPlans ? plans.map((p: any, i: number) => {
             const isActive = p.status === 'Active' || p.isActive;
             return (
-              <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`plan-card-${i}`}>
+              <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5" data-testid={`plan-card-${i}`}>
                 <div className="flex justify-between text-[11px]">
                   <span className="text-slate-500 font-medium">Status</span>
-                  <Badge variant={isActive ? 'default' : 'secondary'} className={`text-[10px] ${isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                  <Badge variant={isActive ? 'default' : 'secondary'} className={`text-[10px] ${isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-[#F2F4F7] text-slate-500 border-[#D6D6D6]'}`}>
                     {p.status || p.planStatus || (p.isActive ? 'Active' : 'Inactive')}
                   </Badge>
                 </div>
@@ -446,7 +446,7 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
         <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-xs" data-testid="table-payment-plans">
             <thead>
-              <tr className="bg-slate-100 border-b-2 border-slate-200">
+              <tr className="bg-[#F2F4F7] border-b-2 border-[#D6D6D6]">
                 <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Status</th>
                 <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Capital Cost Type</th>
                 <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Service Type / Additional Billing Type</th>
@@ -466,9 +466,9 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
               {hasPlans ? plans.map((p: any, i: number) => {
                 const isActive = p.status === 'Active' || p.isActive;
                 return (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-[var(--pos-accent-tint)]/30 transition-colors" data-testid={`plan-row-${i}`}>
+                  <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)]/30 transition-colors" data-testid={`plan-row-${i}`}>
                     <td className="py-2.5 px-3">
-                      <Badge variant={isActive ? 'default' : 'secondary'} className={`text-[10px] ${isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                      <Badge variant={isActive ? 'default' : 'secondary'} className={`text-[10px] ${isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-[#F2F4F7] text-slate-500 border-[#D6D6D6]'}`}>
                         {p.status || p.planStatus || (p.isActive ? 'Active' : 'Inactive')}
                       </Badge>
                     </td>
@@ -495,15 +495,15 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
           </table>
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-4 py-2 bg-slate-50 border-t border-slate-200 text-xs text-slate-500">
+        <div className="flex items-center justify-end gap-2 px-4 py-2 bg-[#F7F7F7] border-t border-[#D6D6D6] text-xs text-slate-500">
           <span>Items per page: <span className="border rounded px-2 py-0.5 bg-white">50</span></span>
           <span>{hasPlans ? `1 - ${plans.length} of ${plans.length}` : '0 of 0'}</span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-5">
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center gap-2">
+        <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
             <Shield className="w-4 h-4 text-white" />
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Repayment Plan Status</h3>
           </div>
@@ -515,12 +515,12 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
                   const value = typeof item === 'string' ? item : item?.status || item?.description || JSON.stringify(item);
                   const isActive = value && value !== 'N/A' && value !== 'None' && value !== '';
                   return (
-                    <div key={i} className="flex items-center justify-between py-2.5 px-4 rounded-lg bg-slate-50 border border-slate-100">
+                    <div key={i} className="flex items-center justify-between py-2.5 px-4 rounded-lg bg-[#F7F7F7] border border-[#E5E5E5]">
                       <div className="flex items-center gap-3">
                         <div className={`w-2.5 h-2.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-300'}`} />
                         <span className="text-sm font-medium text-slate-700">{label}</span>
                       </div>
-                      <Badge variant={isActive ? 'default' : 'secondary'} className={`text-[11px] ${isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>{value}</Badge>
+                      <Badge variant={isActive ? 'default' : 'secondary'} className={`text-[11px] ${isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-[#F2F4F7] text-slate-500 border-[#D6D6D6]'}`}>{value}</Badge>
                     </div>
                   );
                 })}
@@ -534,8 +534,8 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
+        <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
             <Banknote className="w-4 h-4 text-white" />
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Remaining Capital</h3>
           </div>
@@ -562,15 +562,15 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
       </div>
 
       {hasExtensions && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
+        <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
             <CalendarDays className="w-4 h-4 text-white" />
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Payment Extensions</h3>
             <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{extensions.length}</Badge>
           </div>
           <div className="sm:hidden p-2 space-y-2" data-testid="table-payment-extensions-mobile">
             {extensions.map((ext: any, i: number) => (
-              <div key={i} className="bg-white border border-slate-200 rounded-lg p-3 space-y-1.5">
+              <div key={i} className="bg-white border border-[#D6D6D6] rounded-lg p-3 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-slate-600">{fmtDate(ext.extensionDate ?? ext.date)}</span>
                   <Badge variant="outline" className="text-[10px]">{ext.status || '-'}</Badge>
@@ -586,7 +586,7 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-xs" data-testid="table-payment-extensions">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
+                <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                   <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Date</th>
                   <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Extension Type</th>
                   <th className="text-right py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Amount</th>
@@ -595,7 +595,7 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
               </thead>
               <tbody>
                 {extensions.map((ext: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-amber-50/30 transition-colors">
+                  <tr key={i} className="border-b border-[#E5E5E5] hover:bg-amber-50/30 transition-colors">
                     <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{fmtDate(ext.extensionDate ?? ext.date)}</td>
                     <td className="py-2.5 px-3 text-slate-700">{ext.extensionType || ext.type || ext.description || '-'}</td>
                     <td className="py-2.5 px-3 text-right font-mono">{fmtAmt(ext.amount ?? ext.extensionAmount)}</td>
@@ -608,8 +608,8 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
+      <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
           <Banknote className="w-4 h-4 text-white" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Payment History</h3>
           {hasPaymentAmounts && <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{paymentAmounts.length}</Badge>}
@@ -618,7 +618,7 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
           <>
             <div className="sm:hidden p-2 space-y-2">
               {paymentAmounts.map((pa: any, i: number) => (
-                <div key={i} className={`border border-slate-200 rounded-lg p-3 space-y-1.5 ${pa.cancelReson ? 'bg-red-50/30' : ''}`}>
+                <div key={i} className={`border border-[#D6D6D6] rounded-lg p-3 space-y-1.5 ${pa.cancelReson ? 'bg-red-50/30' : ''}`}>
                   <div className="flex justify-between text-[11px]">
                     <span className="text-slate-500 font-medium">Receipt No</span>
                     <span className="text-slate-800 font-semibold text-right font-mono">{pa.receiptNo || '-'}</span>
@@ -629,7 +629,7 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
                   </div>
                   <div className="flex justify-between text-[11px]">
                     <span className="text-slate-500 font-medium">Payment Type</span>
-                    <Badge variant="outline" className={`text-[10px] ${pa.paymentType === 'Cash' ? 'bg-green-50 text-green-700 border-green-200' : pa.paymentType === 'Credit Card' ? 'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] border-[#D6D6D6]' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                    <Badge variant="outline" className={`text-[10px] ${pa.paymentType === 'Cash' ? 'bg-green-50 text-green-700 border-green-200' : pa.paymentType === 'Credit Card' ? 'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] border-[#D6D6D6]' : 'bg-[#F7F7F7] text-slate-600 border-[#D6D6D6]'}`}>
                       {pa.paymentType || '-'}
                     </Badge>
                   </div>
@@ -661,7 +661,7 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-xs" data-testid="table-payment-amounts">
                 <thead>
-                  <tr className="bg-slate-100 border-b border-slate-200">
+                  <tr className="bg-[#F2F4F7] border-b border-[#D6D6D6]">
                     <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Receipt No</th>
                     <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Date</th>
                     <th className="text-left py-2.5 px-3 font-bold text-slate-700 whitespace-nowrap">Payment Type</th>
@@ -674,11 +674,11 @@ export function PaymentPlansTab({ accountId }: { accountId: number }) {
                 </thead>
                 <tbody>
                   {paymentAmounts.map((pa: any, i: number) => (
-                    <tr key={i} className={`border-b border-slate-100 hover:bg-[var(--pos-accent-tint)] transition-colors ${pa.cancelReson ? 'bg-red-50/30' : ''}`}>
+                    <tr key={i} className={`border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)] transition-colors ${pa.cancelReson ? 'bg-red-50/30' : ''}`}>
                       <td className="py-2.5 px-3 font-mono font-medium">{pa.receiptNo || '-'}</td>
                       <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{pa.receiptDate ? new Date(pa.receiptDate).toLocaleDateString('en-ZA') : '-'}</td>
                       <td className="py-2.5 px-3">
-                        <Badge variant="outline" className={`text-[10px] ${pa.paymentType === 'Cash' ? 'bg-green-50 text-green-700 border-green-200' : pa.paymentType === 'Credit Card' ? 'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] border-[#D6D6D6]' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                        <Badge variant="outline" className={`text-[10px] ${pa.paymentType === 'Cash' ? 'bg-green-50 text-green-700 border-green-200' : pa.paymentType === 'Credit Card' ? 'bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] border-[#D6D6D6]' : 'bg-[#F7F7F7] text-slate-600 border-[#D6D6D6]'}`}>
                           {pa.paymentType || '-'}
                         </Badge>
                       </td>
@@ -795,8 +795,8 @@ export function DebitOrdersTab({ accountId }: { accountId: number }) {
 
   return (
     <div className="p-3 sm:p-5 space-y-4 sm:space-y-5">
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-teal-600 to-teal-700 flex items-center gap-2">
+      <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
           <Landmark className="w-4 h-4 text-white" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Debit Order Deduction List</h3>
           {(deductions.length + debitOrders.length) > 0 && (
@@ -807,7 +807,7 @@ export function DebitOrdersTab({ accountId }: { accountId: number }) {
           {(deductions.length + debitOrders.length) === 0 ? (
             <div className="py-8 text-center text-slate-400 text-sm italic">No records to display.</div>
           ) : [...deductions, ...debitOrders].map((d: any, i: number) => (
-            <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`row-debit-mobile-${i}`}>
+            <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5" data-testid={`row-debit-mobile-${i}`}>
               <div className="flex justify-between text-[11px]">
                 <span className="text-slate-500 font-medium">Nr</span>
                 <span className="text-slate-800 font-semibold text-right">{d.nr ?? d.number ?? i + 1}</span>
@@ -884,7 +884,7 @@ export function DebitOrdersTab({ accountId }: { accountId: number }) {
         <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm" data-testid="table-debit-order-deductions">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
+              <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                 <th className="text-center py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold w-[40px]">Nr</th>
                 <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[80px]">Status</th>
                 <th className="text-left py-2.5 px-2 text-[10px] uppercase tracking-wider text-slate-600 font-bold min-w-[100px]">Bank Name</th>
@@ -908,7 +908,7 @@ export function DebitOrdersTab({ accountId }: { accountId: number }) {
               {(deductions.length + debitOrders.length) === 0 ? (
                 <tr><td colSpan={17} className="py-8 text-center text-slate-400 text-sm italic">No records to display.</td></tr>
               ) : [...deductions, ...debitOrders].map((d: any, i: number) => (
-                <tr key={i} className="border-b border-slate-100 hover:bg-teal-50/30 transition-colors" data-testid={`row-debit-${i}`}>
+                <tr key={i} className="border-b border-[#E5E5E5] hover:bg-teal-50/30 transition-colors" data-testid={`row-debit-${i}`}>
                   <td className="py-2 px-2 text-center text-slate-500 text-[13px]">{d.nr ?? d.number ?? i + 1}</td>
                   <td className="py-2 px-2">
                     <Badge variant={d.status === 'Active' || d.status === 'Successful' ? 'default' : 'secondary'} className="text-[10px]">
@@ -935,7 +935,7 @@ export function DebitOrdersTab({ accountId }: { accountId: number }) {
             </tbody>
           </table>
         </div>
-        <div className="px-3 sm:px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end">
+        <div className="px-3 sm:px-5 py-2.5 bg-[#F7F7F7] border-t border-[#D6D6D6] flex items-center justify-end">
           <span className="text-xs text-slate-500">{deductions.length + debitOrders.length} record{(deductions.length + debitOrders.length) !== 1 ? 's' : ''}</span>
         </div>
       </div>
@@ -982,16 +982,16 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
 
   return (
     <div className="p-3 sm:p-5 space-y-4 sm:space-y-5">
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
         <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
           <BarChart3 className="w-4 h-4 text-white" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Billed vs Paid Amounts</h3>
         </div>
-        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-slate-50 border-b border-slate-200 flex items-center gap-3">
+        <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-[#F7F7F7] border-b border-[#D6D6D6] flex items-center gap-3">
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
-            className="text-sm border border-slate-300 rounded-lg px-3 py-1.5 bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none"
+            className="text-sm border border-[#BFBFBF] rounded-lg px-3 py-1.5 bg-white focus:ring-2 focus:ring-[var(--pos-accent-tint)] focus:border-[var(--pos-accent)] outline-none"
             data-testid="select-billed-year"
           >
             {getFinYearOptions().map(yr => <option key={yr} value={yr}>{yr}</option>)}
@@ -1005,7 +1005,7 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
             const billed = getBilled(d);
             const paid = getPaid(d);
             return (
-              <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`row-billed-mobile-${i}`}>
+              <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5" data-testid={`row-billed-mobile-${i}`}>
                 <div className="flex justify-between text-[11px]">
                   <span className="text-slate-500 font-medium">Financial Year</span>
                   <span className="text-slate-800 font-semibold text-right">{d.financialYear || selectedYear}</span>
@@ -1041,7 +1041,7 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
         <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm" data-testid="table-billed-vs-paid">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
+              <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                 <th className="text-left py-2.5 px-4 text-[11px] uppercase tracking-wider text-slate-600 font-bold min-w-[140px]">Financial Year</th>
                 <th className="text-left py-2.5 px-4 text-[11px] uppercase tracking-wider text-slate-600 font-bold min-w-[120px]">Month</th>
                 <th className="text-right py-2.5 px-4 text-[11px] uppercase tracking-wider text-[var(--pos-accent)] font-bold min-w-[140px]">Billing Amount</th>
@@ -1055,7 +1055,7 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
                 const billed = getBilled(d);
                 const paid = getPaid(d);
                 return (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-[var(--pos-accent-tint)] transition-colors" data-testid={`row-billed-${i}`}>
+                  <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)] transition-colors" data-testid={`row-billed-${i}`}>
                     <td className="py-2.5 px-4 text-[13px] text-slate-700">{d.financialYear || selectedYear}</td>
                     <td className="py-2.5 px-4 text-[13px] font-medium text-slate-800">{getMonth(d)}</td>
                     <td className="py-2.5 px-4 text-right font-mono text-[13px] text-[var(--pos-accent)] font-semibold">{fmt(billed)}</td>
@@ -1075,7 +1075,7 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
             )}
           </table>
         </div>
-        <div className="px-3 sm:px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end">
+        <div className="px-3 sm:px-5 py-2.5 bg-[#F7F7F7] border-t border-[#D6D6D6] flex items-center justify-end">
           <span className="text-xs text-slate-500">{data.length} of {data.length} records</span>
         </div>
       </div>
@@ -1097,8 +1097,8 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
         const chartHeight = 280;
 
         return (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-slate-700 to-slate-800 flex items-center justify-between">
+          <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+            <div className="px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-white" />
                 <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Monthly Billing vs Payments</h3>
@@ -1128,7 +1128,7 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
                     {gridLines.map((val, gi) => (
                       <div
                         key={gi}
-                        className="absolute left-0 right-0 border-t border-slate-100"
+                        className="absolute left-0 right-0 border-t border-[#E5E5E5]"
                         style={{ bottom: `${(val / niceMax) * 100}%` }}
                       />
                     ))}
@@ -1177,7 +1177,7 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
                       );
                     })}
                   </div>
-                  <div className="flex justify-around mt-2 border-t border-slate-200 pt-2">
+                  <div className="flex justify-around mt-2 border-t border-[#D6D6D6] pt-2">
                     {chartData.map((c, i) => (
                       <div key={i} className="flex-1 max-w-[80px] text-center">
                         <div className="text-[11px] font-semibold text-slate-700 truncate">{c.month.substring(0, 3)}</div>
@@ -1192,7 +1192,7 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
       })()}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+        <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm p-4">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-8 h-8 rounded-lg bg-[#F7F7F7] flex items-center justify-center">
               <TrendingUp className="w-4 h-4 text-[var(--pos-accent)]" />
@@ -1201,7 +1201,7 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
           </div>
           <div className="text-lg font-bold text-[var(--pos-accent)] font-mono mt-1">R {fmt(totalBilled)}</div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+        <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm p-4">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center">
               <TrendingDown className="w-4 h-4 text-rose-600" />
@@ -1210,7 +1210,7 @@ export function BilledVsPaidTab({ accountId }: { accountId: number }) {
           </div>
           <div className={`text-lg font-bold font-mono mt-1 ${totalPaid < 0 ? 'text-red-600' : 'text-rose-600'}`}>R {fmt(totalPaid)}</div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+        <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm p-4">
           <div className="flex items-center gap-2 mb-1">
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${totalBilled - totalPaid > 0 ? 'bg-amber-50' : 'bg-emerald-50'}`}>
               <Banknote className={`w-4 h-4 ${totalBilled - totalPaid > 0 ? 'text-amber-600' : 'text-emerald-600'}`} />
@@ -1279,7 +1279,7 @@ export function RatesValuationsTab({ accountId, propertyId }: { accountId: numbe
         <select
           value={selectedFinYear}
           onChange={(e) => { setSelectedFinYear(e.target.value); loaded.current = false; }}
-          className="text-xs border border-slate-300 rounded px-2 py-1.5 bg-white"
+          className="text-xs border border-[#BFBFBF] rounded px-2 py-1.5 bg-white"
           data-testid="select-rates-finyear"
         >
           {getFinYearOptions().map(y => <option key={y} value={y}>{y}</option>)}
@@ -1287,8 +1287,8 @@ export function RatesValuationsTab({ accountId, propertyId }: { accountId: numbe
       </div>
 
       {valuations.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
+        <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
             <Landmark className="w-4 h-4 text-white" />
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Property Valuations</h3>
             <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{valuations.length}</Badge>
@@ -1350,7 +1350,7 @@ export function RatesValuationsTab({ accountId, propertyId }: { accountId: numbe
                     <div className="text-slate-800 text-xs">{v.ratesTariffCode || '-'}</div>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 pt-2 border-t border-slate-100 text-[10px] text-slate-500">
+                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 pt-2 border-t border-[#E5E5E5] text-[10px] text-slate-500">
                   <span>Roll No: {v.rollNumber || '-'}</span>
                   <span>Roll Date: {fmtDate(v.rollDate)}</span>
                   <span>Expected Expiry: {fmtDate(v.expectedExpiryDate)}</span>
@@ -1363,30 +1363,30 @@ export function RatesValuationsTab({ accountId, propertyId }: { accountId: numbe
       )}
 
       {hasRatesObj && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
+        <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
             <Scale className="w-4 h-4 text-white" />
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Rates Summary ({selectedFinYear})</h3>
           </div>
           <div className="p-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+              <div className="bg-[#F7F7F7] rounded-lg p-3 border border-[#D6D6D6]">
                 <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Annual Property Rates</div>
                 <div className="text-lg font-bold font-mono text-slate-800">R {fmt(ratesDetails.annualPropertyRates)}</div>
               </div>
-              <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+              <div className="bg-[#F7F7F7] rounded-lg p-3 border border-[#D6D6D6]">
                 <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Instalment</div>
                 <div className="text-lg font-bold font-mono text-slate-800">R {fmt(ratesDetails.installment)}</div>
               </div>
-              <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+              <div className="bg-[#F7F7F7] rounded-lg p-3 border border-[#D6D6D6]">
                 <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Frequency</div>
                 <div className="text-lg font-bold text-slate-800">{ratesDetails.frequency || 'Monthly'}</div>
               </div>
-              <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+              <div className="bg-[#F7F7F7] rounded-lg p-3 border border-[#D6D6D6]">
                 <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Remaining Instalments</div>
                 <div className="text-lg font-bold font-mono text-slate-800">{ratesDetails.remainingInstallments ?? '-'}</div>
               </div>
-              <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+              <div className="bg-[#F7F7F7] rounded-lg p-3 border border-[#D6D6D6]">
                 <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Remaining Amount</div>
                 <div className="text-lg font-bold font-mono text-slate-800">R {fmt(ratesDetails.remaingAmount ?? ratesDetails.remainingAmount)}</div>
               </div>
@@ -1400,8 +1400,8 @@ export function RatesValuationsTab({ accountId, propertyId }: { accountId: numbe
       )}
 
       {valuationData && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-teal-600 to-teal-700 flex items-center gap-2">
+        <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
             <FileText className="w-4 h-4 text-white" />
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Valuation Roll Data</h3>
           </div>
@@ -1419,8 +1419,8 @@ export function RatesValuationsTab({ accountId, propertyId }: { accountId: numbe
       )}
 
       {valuationImport && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
+        <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
             <FileText className="w-4 h-4 text-white" />
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Valuation Import Data</h3>
           </div>
@@ -1438,15 +1438,15 @@ export function RatesValuationsTab({ accountId, propertyId }: { accountId: numbe
       )}
 
       {ratesHistory.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-purple-600 to-purple-700 flex items-center gap-2">
+        <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
             <Clock className="w-4 h-4 text-white" />
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Rates Run History</h3>
             <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{ratesHistory.length}</Badge>
           </div>
           <div className="sm:hidden p-2 space-y-2">
             {ratesHistory.map((r: any, i: number) => (
-              <div key={i} className="border border-slate-200 rounded-lg p-3 space-y-1.5">
+              <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5">
                 <div className="flex justify-between text-[11px]">
                   <span className="text-slate-500 font-medium">Run Date</span>
                   <span className="text-slate-800 font-semibold text-right">{fmtDate(r.runDate || r.date)}</span>
@@ -1473,7 +1473,7 @@ export function RatesValuationsTab({ accountId, propertyId }: { accountId: numbe
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-rates-run-history">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
+                <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Run Date</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Period</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Description</th>
@@ -1483,7 +1483,7 @@ export function RatesValuationsTab({ accountId, propertyId }: { accountId: numbe
               </thead>
               <tbody>
                 {ratesHistory.map((r: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-[var(--pos-accent-tint)]/30 transition-colors">
+                  <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)]/30 transition-colors">
                     <td className="py-2 px-3 text-slate-600">{fmtDate(r.runDate || r.date)}</td>
                     <td className="py-2 px-3">{r.period || r.billingPeriod || '-'}</td>
                     <td className="py-2 px-3">{r.description || '-'}</td>

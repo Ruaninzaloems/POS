@@ -166,7 +166,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
 
     return (
       <div className="p-3 sm:p-4 space-y-6" data-testid="service-balance-detail">
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
           <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-3">
             <button onClick={() => setSelectedService(null)} className="text-white hover:text-[var(--pos-accent-light)] transition-colors" data-testid="button-back-services">
               <ChevronLeft className="w-5 h-5" />
@@ -185,7 +185,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
             <>
               <div className="sm:hidden p-2 space-y-2" data-testid="table-service-detail-mobile">
                 {sorted.map((r: any, i: number) => (
-                  <div key={i} className="bg-white border border-slate-200 rounded-lg p-3 space-y-2">
+                  <div key={i} className="bg-white border border-[#D6D6D6] rounded-lg p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-slate-800">{r.serviceDescription || svcDesc}</span>
                       <span className="text-[10px] text-slate-400">{r.month || '-'} · {r.financialYear || '-'}</span>
@@ -200,7 +200,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
                     </div>
                   </div>
                 ))}
-                <div className="bg-slate-100 border border-slate-300 rounded-lg p-3">
+                <div className="bg-[#F2F4F7] border border-[#BFBFBF] rounded-lg p-3">
                   <div className="text-xs font-bold text-slate-800 mb-1.5">Total</div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                     <div className="flex justify-between text-[11px]"><span className="text-slate-500">Opening</span><span className="font-mono font-bold">{fmt(totals.openingBalance)}</span></div>
@@ -213,7 +213,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
               <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full text-sm" data-testid="table-service-detail">
                   <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200">
+                    <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                       <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service Description</th>
                       <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Opening Balance</th>
                       <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
@@ -229,7 +229,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
                   </thead>
                   <tbody>
                     {sorted.map((r: any, i: number) => (
-                      <tr key={i} className="border-b border-slate-100 hover:bg-[var(--pos-accent-tint)]/30 transition-colors">
+                      <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)]/30 transition-colors">
                         <td className="py-2 px-3 text-slate-700">{r.serviceDescription || svcDesc}</td>
                         <td className="py-2 px-3 text-right font-mono">{fmt(r.openingBalance)}</td>
                         <td className="py-2 px-3 text-right font-mono">{fmt(r.amount)}</td>
@@ -243,7 +243,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
                         <td className="py-2 px-3 text-slate-600">{r.financialYear || '-'}</td>
                       </tr>
                     ))}
-                    <tr className="bg-slate-100 border-t-2 border-slate-300 font-bold">
+                    <tr className="bg-[#F2F4F7] border-t-2 border-[#BFBFBF] font-bold">
                       <td className="py-2.5 px-3 text-slate-800">Total</td>
                       <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.openingBalance)}</td>
                       <td className="py-2.5 px-3 text-right font-mono text-slate-800">{fmt(totals.amount)}</td>
@@ -263,7 +263,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
         </div>
 
         {chartData.length > 0 && (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
             <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)]">
               <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Service Type Balance</h3>
             </div>
@@ -352,7 +352,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
       ? new Date(svc.serviceCommencementDate || svc.commencementDate).toLocaleDateString('en-ZA')
       : svc.startDate || '-';
     return (
-      <div key={globalIdx} className="bg-slate-50 rounded-lg border border-slate-200 p-3 space-y-2">
+      <div key={globalIdx} className="bg-[#F7F7F7] rounded-lg border border-[#D6D6D6] p-3 space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <button onClick={() => setSelectedService(svc)} className="text-[12px] font-semibold text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)] truncate text-left" data-testid={`btn-service-detail-${globalIdx}`}>
@@ -373,7 +373,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
           {serviceMode && <div><div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Mode</div><div className="text-[11px] text-slate-700 mt-0.5">{serviceMode}</div></div>}
         </div>
         {tariffInfo.blocks.length > 0 && (
-          <div className="pt-2 border-t border-slate-200">
+          <div className="pt-2 border-t border-[#D6D6D6]">
             <button onClick={(e) => { e.stopPropagation(); toggleRate(globalIdx); }} className="flex items-center gap-1 text-[10px] font-semibold text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)]" data-testid={`btn-tariff-rate-${globalIdx}`}>
               {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
               Tariff Rates ({tariffInfo.blocks.reduce((sum, b) => sum + b.intervals.length, 0)} entries)
@@ -381,12 +381,12 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
             {isExpanded && (
               <div className="mt-1.5 space-y-1.5">
                 {tariffInfo.blocks.map((block, bi) => (
-                  <div key={bi} className="rounded border border-slate-200 overflow-hidden">
-                    {(block.startDate || block.endDate) && <div className="px-2.5 py-1 bg-white border-b border-slate-100 text-[10px] text-slate-500">Period: {block.startDate || '—'} to {block.endDate || '—'}</div>}
+                  <div key={bi} className="rounded border border-[#D6D6D6] overflow-hidden">
+                    {(block.startDate || block.endDate) && <div className="px-2.5 py-1 bg-white border-b border-[#E5E5E5] text-[10px] text-slate-500">Period: {block.startDate || '—'} to {block.endDate || '—'}</div>}
                     <table className="w-full text-[11px]">
                       <tbody>
                         {block.intervals.map((iv, idx) => (
-                          <tr key={idx} className="border-t border-slate-100 first:border-t-0">
+                          <tr key={idx} className="border-t border-[#E5E5E5] first:border-t-0">
                             <td className="py-1 px-2.5 text-slate-600">{iv.interval}</td>
                             <td className="py-1 px-2.5 text-right font-mono font-semibold text-[var(--pos-accent)]">R {iv.cost}</td>
                           </tr>
@@ -416,7 +416,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
       </div>
 
       {displayData.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center">
+        <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm p-8 text-center">
           <Layers className="w-10 h-10 text-slate-200 mx-auto mb-3" />
           <p className="text-slate-400 text-sm">No services found for this account</p>
         </div>
@@ -436,7 +436,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
             }).length;
 
             return (
-              <div key={group.name} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow" data-testid={`row-service-group-${group.name.toLowerCase().replace(/\s+/g, '-')}`}>
+              <div key={group.name} className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden hover:shadow-md transition-shadow" data-testid={`row-service-group-${group.name.toLowerCase().replace(/\s+/g, '-')}`}>
                 <div
                   className={`px-4 py-3 bg-gradient-to-r ${colors.bg} flex items-center gap-3 cursor-pointer active:opacity-90 transition-opacity`}
                   onClick={() => group.totalCount > 1 ? toggleGroup(group.name) : setSelectedService(group.services[0])}
@@ -473,17 +473,17 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
                       <div><div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Factor / Qty</div><div className="text-[12px] text-slate-700 font-mono mt-0.5">{group.services[0].factorQuantity ?? group.services[0].tarifffactor ?? '-'}</div></div>
                     </div>
                     {(() => { const ti = parseTariffRateData(group.services[0]); return ti.blocks.length > 0 ? (
-                      <div className="mt-3 pt-3 border-t border-slate-100">
+                      <div className="mt-3 pt-3 border-t border-[#E5E5E5]">
                         <button onClick={(e) => { e.stopPropagation(); toggleRate(startIdx); }} className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--pos-accent)] hover:text-[var(--pos-accent-dark)] mb-2" data-testid={`btn-tariff-rate-${startIdx}`}>
                           {expandedRates.has(startIdx) ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                           Tariff Rates ({ti.blocks.reduce((sum, b) => sum + b.intervals.length, 0)} entries)
                         </button>
                         {expandedRates.has(startIdx) && ti.blocks.map((block, bi) => (
-                          <div key={bi} className="rounded-lg border border-slate-200 overflow-hidden mb-1.5">
-                            {(block.startDate || block.endDate) && <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200 text-[11px] text-slate-500 font-medium">Period: {block.startDate || '—'} to {block.endDate || '—'}</div>}
+                          <div key={bi} className="rounded-lg border border-[#D6D6D6] overflow-hidden mb-1.5">
+                            {(block.startDate || block.endDate) && <div className="px-3 py-1.5 bg-[#F7F7F7] border-b border-[#D6D6D6] text-[11px] text-slate-500 font-medium">Period: {block.startDate || '—'} to {block.endDate || '—'}</div>}
                             <table className="w-full text-[12px]"><tbody>
                               {block.intervals.map((iv, idx) => (
-                                <tr key={idx} className="border-t border-slate-100 first:border-t-0 hover:bg-[var(--pos-accent-tint)]/30"><td className="py-1.5 px-3 text-slate-700">{iv.interval}</td><td className="py-1.5 px-3 text-right font-mono font-semibold text-[var(--pos-accent)]">{iv.cost}</td></tr>
+                                <tr key={idx} className="border-t border-[#E5E5E5] first:border-t-0 hover:bg-[var(--pos-accent-tint)]/30"><td className="py-1.5 px-3 text-slate-700">{iv.interval}</td><td className="py-1.5 px-3 text-right font-mono font-semibold text-[var(--pos-accent)]">{iv.cost}</td></tr>
                               ))}
                             </tbody></table>
                           </div>
@@ -503,7 +503,7 @@ export function ServiceBalanceTab({ accountId }: { accountId: number }) {
                   </div>
                 ) : (
                   <>
-                    <div className="px-3 sm:px-4 py-2 border-b border-slate-100 bg-slate-50/50">
+                    <div className="px-3 sm:px-4 py-2 border-b border-[#E5E5E5] bg-[#F7F7F7]/50">
                       <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
                         {uniqueTariffs.length > 0 && <span className="truncate max-w-[300px]">Tariffs: {uniqueTariffs.join(', ')}</span>}
                         {uniqueMeters > 0 && <span className="font-mono">· {uniqueMeters} meter{uniqueMeters > 1 ? 's' : ''}</span>}
@@ -553,7 +553,7 @@ export function ServiceBalanceChart({ data }: { data: { month: string; amount: n
             <span key={i} className="text-[10px] text-slate-400 font-mono leading-none">{tick.toLocaleString('en-ZA')}</span>
           ))}
         </div>
-        <div className="flex-1 border-l border-b border-slate-200 relative flex items-end justify-around px-1 sm:px-2 gap-0.5 sm:gap-1">
+        <div className="flex-1 border-l border-b border-[#D6D6D6] relative flex items-end justify-around px-1 sm:px-2 gap-0.5 sm:gap-1">
           {data.map((d, i) => {
             const height = maxVal > 0 ? (d.amount / maxVal) * 100 : 0;
             return (
@@ -638,7 +638,7 @@ export function ConsumptionChart({ readings }: { readings: any[] }) {
         <div className="flex flex-col justify-between items-end pr-2 text-[10px] text-slate-400 font-mono" style={{ height: 200 }}>
           {[...yTicks].reverse().map((t, i) => <span key={i}>{t}</span>)}
         </div>
-        <div className="flex-1 relative border-l border-b border-slate-300" style={{ height: 200 }}>
+        <div className="flex-1 relative border-l border-b border-[#BFBFBF]" style={{ height: 200 }}>
           <div className="absolute inset-0 flex items-end justify-around px-1 gap-1">
             {recent.map((item, i) => {
               const consumptionVal = item.consumption ?? item.consumptionValue ?? item.units ?? 0;
@@ -944,7 +944,7 @@ function MeterIntelligence({ allReadings }: { allReadings: any[] }) {
                   className={`px-2 py-1 text-[11px] font-medium rounded-md border transition-all ${
                     selectedMonths === m
                       ? 'bg-amber-500 text-white border-amber-600 shadow-sm'
-                      : 'bg-white text-slate-600 border-slate-200 hover:bg-amber-50 hover:border-amber-300'
+                      : 'bg-white text-slate-600 border-[#D6D6D6] hover:bg-amber-50 hover:border-amber-300'
                   }`}
                   data-testid={`btn-months-${m}`}
                 >
@@ -956,7 +956,7 @@ function MeterIntelligence({ allReadings }: { allReadings: any[] }) {
           </div>
 
           {!analysis && (
-            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs text-slate-500 text-center">
+            <div className="bg-[#F7F7F7] border border-[#D6D6D6] rounded-lg p-3 text-xs text-slate-500 text-center">
               Not enough billed readings to calculate averages (minimum 2 required)
             </div>
           )}
@@ -986,7 +986,7 @@ function MeterIntelligence({ allReadings }: { allReadings: any[] }) {
                 </div>
               </div>
 
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5">
+              <div className="bg-[#F7F7F7] border border-[#D6D6D6] rounded-lg p-2.5">
                 <div className="flex items-center gap-1.5 mb-2">
                   <BarChart3 className="w-3.5 h-3.5 text-slate-500" />
                   <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Daily Consumption Trend</span>
@@ -1294,8 +1294,8 @@ function BillingEstimator({ readingHistory, selectedMeter, allReadings }: { read
               </div>
 
               {est.tierBreakdown.length > 0 && (
-                <div className="border border-slate-200 rounded-lg overflow-hidden">
-                  <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between flex-wrap gap-1">
+                <div className="border border-[#D6D6D6] rounded-lg overflow-hidden">
+                  <div className="px-3 py-1.5 bg-[#F7F7F7] border-b border-[#D6D6D6] flex items-center justify-between flex-wrap gap-1">
                     <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Per-Day Tariff Tier Calculation</span>
                     <span className="text-[10px] text-slate-400">
                       {est.factor !== 1 && <span className="text-[var(--pos-accent)] font-medium mr-2">Factor: {est.factor}</span>}
@@ -1304,7 +1304,7 @@ function BillingEstimator({ readingHistory, selectedMeter, allReadings }: { read
                   </div>
                   <table className="w-full text-[12px]">
                     <thead>
-                      <tr className="bg-slate-50/50">
+                      <tr className="bg-[#F7F7F7]/50">
                         <th className="text-left py-1.5 px-3 text-[10px] uppercase tracking-wider text-slate-500 font-bold">Tier (Std 30d)</th>
                         {est.isProRated && <th className="text-left py-1.5 px-3 text-[10px] uppercase tracking-wider text-slate-500 font-bold">Pro-Rated</th>}
                         <th className="text-right py-1.5 px-3 text-[10px] uppercase tracking-wider text-slate-500 font-bold">Units Used</th>
@@ -1314,7 +1314,7 @@ function BillingEstimator({ readingHistory, selectedMeter, allReadings }: { read
                     </thead>
                     <tbody>
                       {est.tierBreakdown.map((tier: any, ti: number) => (
-                        <tr key={ti} className="border-t border-slate-100">
+                        <tr key={ti} className="border-t border-[#E5E5E5]">
                           <td className="py-1.5 px-3 text-slate-700">{tier.label}</td>
                           {est.isProRated && (
                             <td className="py-1.5 px-3 text-slate-500 text-[10px] font-mono">
@@ -1332,11 +1332,11 @@ function BillingEstimator({ readingHistory, selectedMeter, allReadings }: { read
               )}
 
               <div className="grid grid-cols-3 gap-2">
-                <div className="bg-slate-50 rounded-lg px-3 py-2 border border-slate-200 text-center">
+                <div className="bg-[#F7F7F7] rounded-lg px-3 py-2 border border-[#D6D6D6] text-center">
                   <div className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Subtotal</div>
                   <div className="text-sm font-mono font-bold text-slate-800 mt-0.5">R {fmt(est.subtotal)}</div>
                 </div>
-                <div className="bg-slate-50 rounded-lg px-3 py-2 border border-slate-200 text-center">
+                <div className="bg-[#F7F7F7] rounded-lg px-3 py-2 border border-[#D6D6D6] text-center">
                   <div className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">VAT ({vatRate}%)</div>
                   <div className="text-sm font-mono font-bold text-slate-800 mt-0.5">R {fmt(est.vatAmount)}</div>
                 </div>
@@ -1369,7 +1369,7 @@ function BillingEstimator({ readingHistory, selectedMeter, allReadings }: { read
           )}
 
           {historicalAvg && estimateData && (
-            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mt-2">
+            <div className="bg-[#F7F7F7] border border-[#D6D6D6] rounded-lg p-3 mt-2">
               <p className="text-[11px] text-slate-600">
                 <span className="font-semibold">Historical comparison:</span> Average consumption over last {historicalAvg.months} months was <span className="font-mono font-bold text-[var(--pos-accent)]">{fmt(historicalAvg.avg)}</span> units/month.
                 {estimateData[0] && (
@@ -1385,12 +1385,12 @@ function BillingEstimator({ readingHistory, selectedMeter, allReadings }: { read
             </div>
           )}
 
-          <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+          <div className="flex items-center gap-3 pt-2 border-t border-[#E5E5E5]">
             <label className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">VAT Rate:</label>
             <select
               value={vatRate}
               onChange={e => setVatRate(Number(e.target.value))}
-              className="text-xs border border-slate-200 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-[var(--pos-accent)]"
+              className="text-xs border border-[#D6D6D6] rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-[var(--pos-accent)]"
               data-testid="select-vat-rate"
             >
               <option value={0}>0% (Exempt)</option>
@@ -1641,7 +1641,7 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
 
   return (
     <div className="p-3 sm:p-5 space-y-5" data-testid="consumption-tab">
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
         <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
           <Zap className="w-4 h-4 text-white" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Consumption</h3>
@@ -1654,12 +1654,12 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
               <div
                 key={i}
                 onClick={() => loadHistory(meter)}
-                className={`border rounded-lg p-3 space-y-2 cursor-pointer active:scale-[0.99] transition-all ${isSelected ? 'border-[var(--pos-accent)] bg-[var(--pos-accent-tint)] shadow-sm' : 'border-slate-200 bg-white'}`}
+                className={`border rounded-lg p-3 space-y-2 cursor-pointer active:scale-[0.99] transition-all ${isSelected ? 'border-[var(--pos-accent)] bg-[var(--pos-accent-tint)] shadow-sm' : 'border-[#D6D6D6] bg-white'}`}
                 data-testid={`row-meter-${i}`}
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-slate-800">{meter.serviceDesc || meter.serviceDescription || '-'}</span>
-                  <div className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 ${isSelected ? 'border-[var(--pos-accent)] bg-[var(--pos-accent)]' : 'border-slate-300'}`}>
+                  <div className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 ${isSelected ? 'border-[var(--pos-accent)] bg-[var(--pos-accent)]' : 'border-[#BFBFBF]'}`}>
                     {isSelected && <div className="w-full h-full flex items-center justify-center"><div className="w-1.5 h-1.5 bg-white rounded-full" /></div>}
                   </div>
                 </div>
@@ -1679,7 +1679,7 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
         <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm" data-testid="table-consumption-meters">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
+              <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                 <th className="w-8 py-2 px-2"></th>
                 {meterCols.map(col => (
                   <th key={col.key} className="text-left py-2 px-2 text-[10px] uppercase tracking-wider text-slate-500 font-semibold whitespace-nowrap">{col.label}</th>
@@ -1693,11 +1693,11 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
                   <tr
                     key={i}
                     onClick={() => loadHistory(meter)}
-                    className={`border-b border-slate-100 cursor-pointer transition-colors ${isSelected ? 'bg-[var(--pos-accent-tint)] ring-1 ring-[var(--pos-accent)]' : 'hover:bg-slate-50'}`}
+                    className={`border-b border-[#E5E5E5] cursor-pointer transition-colors ${isSelected ? 'bg-[var(--pos-accent-tint)] ring-1 ring-[var(--pos-accent)]' : 'hover:bg-[#F7F7F7]'}`}
                     data-testid={`row-meter-${i}`}
                   >
                     <td className="py-2 px-2 text-center">
-                      <div className={`w-3.5 h-3.5 rounded-full border-2 ${isSelected ? 'border-[var(--pos-accent)] bg-[var(--pos-accent)]' : 'border-slate-300'}`}>
+                      <div className={`w-3.5 h-3.5 rounded-full border-2 ${isSelected ? 'border-[var(--pos-accent)] bg-[var(--pos-accent)]' : 'border-[#BFBFBF]'}`}>
                         {isSelected && <div className="w-full h-full flex items-center justify-center"><div className="w-1.5 h-1.5 bg-white rounded-full" /></div>}
                       </div>
                     </td>
@@ -1713,13 +1713,13 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
       </div>
 
       {selectedMeter && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-slate-100 to-white border-b border-slate-200 flex items-center justify-between">
+        <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+          <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-[#F7F7F7] border-b border-[#D6D6D6] flex items-center justify-between">
             <h3 className="text-xs sm:text-sm font-bold text-slate-800">Meter Reading History Chart</h3>
             <span className="text-xs text-slate-500 font-medium">{selectedFinYear} ({filteredHistory.length} of {openMonthsCount} months)</span>
           </div>
           <div className="p-3 sm:p-4">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-4 gap-y-2 mb-4 border border-slate-200 rounded-xl p-2.5 sm:p-3 bg-slate-50">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-4 gap-y-2 mb-4 border border-[#D6D6D6] rounded-xl p-2.5 sm:p-3 bg-[#F7F7F7]">
               <div><span className="text-[10px] text-slate-400 block">Service Type</span><span className="text-xs font-medium text-slate-700">{getServiceTypeDesc(selectedMeter) || '-'}</span></div>
               <div><span className="text-[10px] text-slate-400 block">Meter Classification</span><span className="text-xs font-medium text-slate-700">{getMeterClassificationDesc(selectedMeter) || '-'}</span></div>
               <div><span className="text-[10px] text-slate-400 block">Tariff</span><span className="text-xs font-medium text-slate-700 break-words">{selectedMeter.tariff || '-'}</span></div>
@@ -1752,8 +1752,8 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
       )}
 
       {selectedMeter && !historyLoading && readingHistory.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-slate-600 to-slate-700">
+        <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+          <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)]">
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-white shrink-0" />
               <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Meter Reading History</h3>
@@ -1821,7 +1821,7 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
               const flag = String(item.flag || '').toLowerCase();
               const flagColor = flag.includes('reversed') || flag.includes('cancel') ? 'bg-red-100 text-red-700 border-red-200' : flag.includes('estimate') || flag.includes('levy') ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-green-100 text-green-700 border-green-200';
               return (
-                <div key={i} className="bg-white border border-slate-200 rounded-lg p-3 space-y-2">
+                <div key={i} className="bg-white border border-[#D6D6D6] rounded-lg p-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-slate-800">{item.billingmonth || item.billingMonth || '-'}</span>
                     {item.flag && <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${flagColor}`}>{item.flag}</span>}
@@ -1837,7 +1837,7 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
                     <div className="flex justify-between text-[11px]"><span className="text-slate-500">Reading Status</span><span className="text-slate-700">{item.readingStatus || '-'}</span></div>
                   </div>
                   {(item.meterChange || item.disconnectionStatus) && (
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 pt-1 border-t border-slate-100">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 pt-1 border-t border-[#E5E5E5]">
                       {item.meterChange && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Meter Change</span><span className="text-slate-700">{item.meterChange}</span></div>}
                       {item.disconnectionStatus && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Disconnection</span><span className="text-slate-700">{item.disconnectionStatus}</span></div>}
                     </div>
@@ -1849,7 +1849,7 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
           <div className="hidden sm:block overflow-x-auto max-h-[500px] overflow-y-auto">
             <table className="w-full text-sm" data-testid="table-meter-reading-history">
               <thead className="sticky top-0 z-10">
-                <tr className="bg-slate-50 border-b border-slate-200">
+                <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                   {historyCols.map(col => (
                     <th key={col.key} className="text-left py-2 px-2 text-[10px] uppercase tracking-wider text-slate-500 font-semibold whitespace-nowrap">{col.label}</th>
                   ))}
@@ -1863,7 +1863,7 @@ export function ConsumptionTab({ accountId, accountNumber }: { accountId: number
                     </td>
                   </tr>
                 ) : filteredHistory.map((item: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-[var(--pos-accent-tint)]/30 transition-colors">
+                  <tr key={i} className="border-b border-[#E5E5E5] hover:bg-[var(--pos-accent-tint)]/30 transition-colors">
                     {historyCols.map(col => {
                       let val = item[col.key];
                       if ((val === undefined || val === null || val === '') && (col as any).fallback) val = (col as any).fallback();
@@ -2097,8 +2097,8 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
         });
         if (meteredServices.length === 0) return null;
         return (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
+        <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
             <Zap className="w-4 h-4 text-white" />
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Conventional Meters</h3>
             <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{meteredServices.length}</Badge>
@@ -2113,7 +2113,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
               const isSvcActive = svcStatusVal === 'active';
               const hasMeter = !!(s.meterNo || s.meterNumber || s.physicalMeterNo || s.physicalMeterNumber);
               return (
-              <div key={i} className={`bg-white border rounded-xl p-3 space-y-2 ${hasMeter ? 'cursor-pointer active:scale-[0.99] transition-all' : ''} ${hasMeter && consumptionMeter === s ? 'border-cyan-400 bg-cyan-50 shadow-sm' : 'border-slate-200'}`}
+              <div key={i} className={`bg-white border rounded-xl p-3 space-y-2 ${hasMeter ? 'cursor-pointer active:scale-[0.99] transition-all' : ''} ${hasMeter && consumptionMeter === s ? 'border-cyan-400 bg-cyan-50 shadow-sm' : 'border-[#D6D6D6]'}`}
                 onClick={hasMeter ? () => viewConsumption(s) : undefined}
               >
                 <div className="flex items-center gap-2">
@@ -2135,7 +2135,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                         Mtr: {s.meterStatus || s.statusDesc}
                       </span>
                     )}
-                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-semibold border ${isSvcActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-semibold border ${isSvcActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-[#F2F4F7] text-slate-600 border-[#D6D6D6]'}`}>
                       Svc: {s.status || s.serviceStatus || s.statusDesc || '-'}
                     </span>
                   </div>
@@ -2151,7 +2151,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                   {(s.routeFileName || s.routeFile) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Route</span><span className="text-slate-700 truncate ml-1">{s.routeFileName || s.routeFile || '-'}</span></div>}
                 </div>
                 {hasMeter && (
-                  <div className="text-center text-[10px] text-cyan-600 font-semibold pt-1 border-t border-slate-100">
+                  <div className="text-center text-[10px] text-cyan-600 font-semibold pt-1 border-t border-[#E5E5E5]">
                     <Activity className="w-3 h-3 inline mr-1" />
                     Tap to view consumption history
                   </div>
@@ -2163,7 +2163,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-all-services">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
+                <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Type</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service ID</th>
@@ -2184,7 +2184,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                   const isSvcActive = svcStatusVal === 'active';
                   const hasMeter = !!(s.meterNo || s.meterNumber || s.physicalMeterNo || s.physicalMeterNumber);
                   return (
-                  <tr key={i} className={`border-b border-slate-100 transition-colors ${hasMeter ? 'cursor-pointer hover:bg-cyan-50/40' : 'hover:bg-[var(--pos-accent-tint)]/30'} ${consumptionMeter === s ? 'bg-cyan-50 ring-1 ring-cyan-300' : ''}`}
+                  <tr key={i} className={`border-b border-[#E5E5E5] transition-colors ${hasMeter ? 'cursor-pointer hover:bg-cyan-50/40' : 'hover:bg-[var(--pos-accent-tint)]/30'} ${consumptionMeter === s ? 'bg-cyan-50 ring-1 ring-cyan-300' : ''}`}
                     onClick={hasMeter ? () => viewConsumption(s) : undefined}
                   >
                     <td className="py-2 px-3">
@@ -2211,12 +2211,12 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                     <td className="py-2 px-3 font-mono text-teal-700 font-semibold">{s.meterNo || s.meterNumber || '-'}</td>
                     <td className="py-2 px-3 text-slate-500 text-xs max-w-[200px] truncate">{s.tariff || s.tariffCode || s.tariffDescription || s.tariffDesc || '-'}</td>
                     <td className="py-2 px-3">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${isMeterActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : (s.meterStatus || s.statusDesc) ? 'bg-red-100 text-red-600 border-red-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${isMeterActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : (s.meterStatus || s.statusDesc) ? 'bg-red-100 text-red-600 border-red-200' : 'bg-[#F2F4F7] text-slate-500 border-[#D6D6D6]'}`}>
                         {s.meterStatus || s.statusDesc || '-'}
                       </span>
                     </td>
                     <td className="py-2 px-3">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${isSvcActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${isSvcActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-[#F2F4F7] text-slate-600 border-[#D6D6D6]'}`}>
                         {s.status || s.serviceStatus || s.statusDesc || '-'}
                       </span>
                     </td>
@@ -2297,8 +2297,8 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
         return (
         <>
         {convMeters.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-teal-600 to-teal-700 flex items-center gap-2">
+        <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
             <Gauge className="w-4 h-4 text-white" />
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Conventional Meters</h3>
             <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{convMeters.length}</Badge>
@@ -2311,7 +2311,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
               const isSvcActive = svcStatus === 'active';
               const isSelected = consumptionMeter && (consumptionMeter.meterNo || consumptionMeter.meterNumber) === (m.meterNo || m.meterNumber);
               return (
-              <div key={i} className={`bg-white border rounded-xl p-3 space-y-2 cursor-pointer active:scale-[0.99] transition-all ${isSelected ? 'border-teal-400 bg-teal-50 shadow-sm' : 'border-slate-200'}`}
+              <div key={i} className={`bg-white border rounded-xl p-3 space-y-2 cursor-pointer active:scale-[0.99] transition-all ${isSelected ? 'border-teal-400 bg-teal-50 shadow-sm' : 'border-[#D6D6D6]'}`}
                 onClick={() => viewConsumption(m)}
               >
                 <div className="flex items-center gap-2">
@@ -2326,7 +2326,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                     <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-semibold border ${isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-red-100 text-red-600 border-red-200'}`}>
                       Mtr: {m.status || m.statusDesc || m.meterStatus || '-'}
                     </span>
-                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-semibold border ${isSvcActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-semibold border ${isSvcActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-[#F2F4F7] text-slate-600 border-[#D6D6D6]'}`}>
                       Svc: {m.serviceStatus || m.serviceStatusDesc || '-'}
                     </span>
                   </div>
@@ -2338,7 +2338,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                   {(m.installDate || m.dateInstalled) && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Installed</span><span className="text-slate-700">{m.installDate || m.dateInstalled || '-'}</span></div>}
                   {(m.replace !== undefined || m.isReplaced !== undefined) && (m.replace || m.isReplaced) && <div className="col-span-2 flex justify-between text-[11px]"><span className="text-slate-500">Replaced</span><span className="text-red-600 font-semibold">Yes{m.reason || m.replaceReason ? ` — ${m.reason || m.replaceReason}` : ''}</span></div>}
                 </div>
-                <div className="flex items-center justify-center gap-1 text-[10px] text-cyan-600 font-semibold pt-1.5 border-t border-slate-100">
+                <div className="flex items-center justify-center gap-1 text-[10px] text-cyan-600 font-semibold pt-1.5 border-t border-[#E5E5E5]">
                   <Activity className="w-3 h-3" /> Tap to view consumption history
                 </div>
               </div>
@@ -2348,7 +2348,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-conv-meters">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
+                <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Classification</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter No</th>
@@ -2363,7 +2363,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                 {convMeters.map((m: any, i: number) => {
                   const isSelected = consumptionMeter && (consumptionMeter.meterNo || consumptionMeter.meterNumber) === (m.meterNo || m.meterNumber);
                   return (
-                  <tr key={i} className={`border-b border-slate-100 cursor-pointer transition-colors ${isSelected ? 'bg-teal-50 ring-1 ring-teal-300' : 'hover:bg-teal-50/30'}`}
+                  <tr key={i} className={`border-b border-[#E5E5E5] cursor-pointer transition-colors ${isSelected ? 'bg-teal-50 ring-1 ring-teal-300' : 'hover:bg-teal-50/30'}`}
                     onClick={() => viewConsumption(m)}
                   >
                     <td className="py-2 px-3 font-medium">{getServiceTypeDesc(m) || '-'}</td>
@@ -2372,12 +2372,12 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                     <td className="py-2 px-3 font-mono text-sm">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</td>
                     <td className="py-2 px-3 text-xs max-w-[150px] truncate">{m.tariffCode || m.tariff || m.tariffDescription || '-'}</td>
                     <td className="py-2 px-3">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.statusDesc || m.meterStatus || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.statusDesc || m.meterStatus || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-[#F2F4F7] text-slate-600 border border-[#D6D6D6]'}`}>
                         {m.status || m.statusDesc || m.meterStatus || '-'}
                       </span>
                     </td>
                     <td className="py-2 px-3">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.serviceStatus || m.serviceStatusDesc || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.serviceStatus || m.serviceStatusDesc || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-[#F2F4F7] text-slate-600 border border-[#D6D6D6]'}`}>
                         {m.serviceStatus || m.serviceStatusDesc || '-'}
                       </span>
                     </td>
@@ -2401,7 +2401,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
 
         {consumptionMeter && (
         <div className="bg-white rounded-xl border border-cyan-200 shadow-sm overflow-hidden" data-testid="consumption-detail-panel">
-          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-cyan-100 bg-gradient-to-r from-cyan-600 to-cyan-700 flex items-center justify-between">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-cyan-100 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">
               <Activity className="w-4 h-4 text-white shrink-0" />
               <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide truncate">
@@ -2443,7 +2443,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                 <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mr-1">Financial Year:</span>
                 <button
                   onClick={() => setSelectedFinYears([])}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all ${selectedFinYears.length === 0 ? 'bg-cyan-600 text-white border-cyan-600 shadow-sm' : 'bg-white text-slate-600 border-slate-300 hover:border-cyan-400 hover:text-cyan-700'}`}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all ${selectedFinYears.length === 0 ? 'bg-cyan-600 text-white border-cyan-600 shadow-sm' : 'bg-white text-slate-600 border-[#BFBFBF] hover:border-cyan-400 hover:text-cyan-700'}`}
                   data-testid="fin-year-all"
                 >
                   All
@@ -2458,7 +2458,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                           prev.includes(fy) ? prev.filter(y => y !== fy) : [...prev, fy]
                         );
                       }}
-                      className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all ${isActive ? 'bg-cyan-600 text-white border-cyan-600 shadow-sm' : 'bg-white text-slate-600 border-slate-300 hover:border-cyan-400 hover:text-cyan-700'}`}
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all ${isActive ? 'bg-cyan-600 text-white border-cyan-600 shadow-sm' : 'bg-white text-slate-600 border-[#BFBFBF] hover:border-cyan-400 hover:text-cyan-700'}`}
                       data-testid={`fin-year-${fy}`}
                     >
                       {fy}
@@ -2482,7 +2482,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                     const flagVal = (h.flag || '').toLowerCase();
                     const flagColor = flagVal.includes('reversed') || flagVal.includes('cancel') ? 'bg-red-100 text-red-700 border-red-200' : flagVal.includes('estimate') || flagVal.includes('levy') ? 'bg-amber-100 text-amber-700 border-amber-200' : flagVal.includes('import') ? 'bg-green-100 text-green-700 border-green-200' : '';
                     return (
-                    <div key={i} className="bg-white border border-slate-200 rounded-lg p-3 space-y-1.5" data-testid={`consumption-row-${i}`}>
+                    <div key={i} className="bg-white border border-[#D6D6D6] rounded-lg p-3 space-y-1.5" data-testid={`consumption-row-${i}`}>
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-slate-800">{h.billingmonth || h.billingMonth || '-'}</span>
                         <div className="flex items-center gap-1">
@@ -2507,7 +2507,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                 <div className="hidden sm:block overflow-x-auto">
                   <table className="w-full text-sm" data-testid="table-meter-consumption">
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200">
+                      <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                         <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Billing Month</th>
                         <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Old Date</th>
                         <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">New Date</th>
@@ -2526,7 +2526,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                         const flagVal = (h.flag || '').toLowerCase();
                         const flagColor = flagVal.includes('reversed') || flagVal.includes('cancel') ? 'text-red-600' : flagVal.includes('estimate') || flagVal.includes('levy') ? 'text-amber-600' : 'text-green-700';
                         return (
-                        <tr key={i} className="border-b border-slate-100 hover:bg-cyan-50/30 transition-colors" data-testid={`consumption-row-${i}`}>
+                        <tr key={i} className="border-b border-[#E5E5E5] hover:bg-cyan-50/30 transition-colors" data-testid={`consumption-row-${i}`}>
                           <td className="py-2 px-3 font-semibold text-slate-800">{h.billingmonth || h.billingMonth || '-'}</td>
                           <td className="py-2 px-3 font-mono text-slate-600">{h.reading1Date || '-'}</td>
                           <td className="py-2 px-3 font-mono text-slate-600">{h.reading2Date || '-'}</td>
@@ -2551,8 +2551,8 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
         )}
 
         {prepaidMeters.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-gradient-to-r from-amber-600 to-amber-700 flex items-center gap-2">
+        <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden">
+          <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-[#E5E5E5] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center gap-2">
             <Zap className="w-4 h-4 text-white" />
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Prepaid Meters</h3>
             <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{prepaidMeters.length}</Badge>
@@ -2562,7 +2562,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
               const mStatus = (m.status || m.meterStatus || m.statusDesc || '').toLowerCase();
               const isActive = mStatus === 'active';
               return (
-              <div key={i} className={`bg-white border rounded-xl p-3 space-y-2 cursor-pointer active:scale-[0.99] transition-all border-slate-200`}
+              <div key={i} className={`bg-white border rounded-xl p-3 space-y-2 cursor-pointer active:scale-[0.99] transition-all border-[#D6D6D6]`}
                 onClick={() => loadPrepaidHistory(m)}
               >
                 <div className="flex items-center gap-2">
@@ -2585,7 +2585,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                   {m.lastRechargeAmount !== undefined && m.lastRechargeAmount !== null && <div className="flex justify-between text-[11px]"><span className="text-slate-500">Last Amount</span><span className="font-mono text-emerald-700 font-semibold">R {Number(m.lastRechargeAmount).toFixed(2)}</span></div>}
                   {m.lastReceiptNo && <div className="col-span-2 flex justify-between text-[11px]"><span className="text-slate-500">Receipt</span><span className="font-mono text-slate-700 text-right truncate ml-2 max-w-[65%]">{m.lastReceiptNo}</span></div>}
                 </div>
-                <div className="flex items-center justify-center gap-1 text-[10px] text-amber-600 font-semibold pt-1.5 border-t border-slate-100">
+                <div className="flex items-center justify-center gap-1 text-[10px] text-amber-600 font-semibold pt-1.5 border-t border-[#E5E5E5]">
                   <Eye className="w-3 h-3" /> Tap to view purchase history
                 </div>
               </div>
@@ -2595,7 +2595,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm" data-testid="table-prepaid-meters">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
+                <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter No</th>
                   <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Physical No</th>
@@ -2608,7 +2608,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
               </thead>
               <tbody>
                 {prepaidMeters.map((m: any, i: number) => (
-                  <tr key={i} className="border-b border-slate-100 cursor-pointer hover:bg-amber-50/30 transition-colors"
+                  <tr key={i} className="border-b border-[#E5E5E5] cursor-pointer hover:bg-amber-50/30 transition-colors"
                     onClick={() => loadPrepaidHistory(m)}
                   >
                     <td className="py-2 px-3 font-medium">{m.prepaidServiceDesc || m.serviceType || m.serviceDescription || m.serviceDesc || 'Prepaid'}</td>
@@ -2616,7 +2616,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                     <td className="py-2 px-3 font-mono text-sm">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</td>
                     <td className="py-2 px-3 text-xs max-w-[150px] truncate">{m.tariff || m.tariffDescription || m.tariffDesc || '-'}</td>
                     <td className="py-2 px-3">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.meterStatus || m.statusDesc || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.meterStatus || m.statusDesc || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-[#F2F4F7] text-slate-600 border border-[#D6D6D6]'}`}>
                         {m.status || m.meterStatus || m.statusDesc || '-'}
                       </span>
                     </td>
@@ -2649,7 +2649,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
       {showPrepaidSales && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-2 sm:p-4" onClick={() => setShowPrepaidSales(false)} data-testid="prepaid-sales-modal-overlay">
           <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
-            <div className="px-3 sm:px-6 py-2.5 sm:py-4 border-b border-slate-200 bg-gradient-to-r from-emerald-700 to-emerald-800 rounded-t-2xl flex items-center justify-between">
+            <div className="px-3 sm:px-6 py-2.5 sm:py-4 border-b border-[#D6D6D6] bg-gradient-to-r from-emerald-700 to-emerald-800 rounded-t-2xl flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Zap className="w-5 h-5 text-white" />
                 <h4 className="text-sm sm:text-base font-bold text-white">Prepaid Sales</h4>
@@ -2698,10 +2698,10 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                         }
                       };
                       return (
-                        <div key={i} onClick={handleClick} className="bg-white border border-slate-200 rounded-lg p-3 space-y-2 cursor-pointer active:bg-emerald-50" data-testid={`prepaid-sales-row-${i}`}>
+                        <div key={i} onClick={handleClick} className="bg-white border border-[#D6D6D6] rounded-lg p-3 space-y-2 cursor-pointer active:bg-emerald-50" data-testid={`prepaid-sales-row-${i}`}>
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-semibold text-slate-800">{m.serviceType || m.serviceDescription || 'Electricity Pre-Paid'}</span>
-                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.meterStatus || m.statusDesc || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.meterStatus || m.statusDesc || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-[#F2F4F7] text-slate-600 border border-[#D6D6D6]'}`}>
                               {m.status || m.meterStatus || m.statusDesc || '-'}
                             </span>
                           </div>
@@ -2721,7 +2721,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                   <div className="hidden sm:block overflow-x-auto">
                     <table className="w-full text-sm" data-testid="table-prepaid-sales">
                       <thead>
-                        <tr className="bg-slate-50 border-b border-slate-200">
+                        <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                           <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Service Type</th>
                           <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter No</th>
                           <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Meter Phase</th>
@@ -2741,7 +2741,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                         ) : prepaidMeters.map((m: any, i: number) => (
                           <tr
                             key={i}
-                            className="border-b border-slate-100 hover:bg-emerald-50/40 transition-colors cursor-pointer"
+                            className="border-b border-[#E5E5E5] hover:bg-emerald-50/40 transition-colors cursor-pointer"
                             onClick={async () => {
                               setSelectedPrepaidMeter(m);
                               setLoadingRecharge(true);
@@ -2767,7 +2767,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                             <td className="py-2.5 px-3 font-mono text-xs">{m.physicalMeterNumber || m.physicalMeterNo || '-'}</td>
                             <td className="py-2.5 px-3">{m.meterConnectionSize || m.connectionSize || '-'}</td>
                             <td className="py-2.5 px-3">
-                              <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.meterStatus || m.statusDesc || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                              <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${(m.status || m.meterStatus || m.statusDesc || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-[#F2F4F7] text-slate-600 border border-[#D6D6D6]'}`}>
                                 {m.status || m.meterStatus || m.statusDesc || '-'}
                               </span>
                             </td>
@@ -2811,7 +2811,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                         {prepaidRechargeDetails.length === 0 ? (
                           <div className="text-center text-slate-400 py-6">No recharge details found for this meter</div>
                         ) : prepaidRechargeDetails.map((r: any, i: number) => (
-                          <div key={i} className="bg-white border border-slate-200 rounded-lg p-3 space-y-2" data-testid={`recharge-detail-row-${i}`}>
+                          <div key={i} className="bg-white border border-[#D6D6D6] rounded-lg p-3 space-y-2" data-testid={`recharge-detail-row-${i}`}>
                             <div className="flex items-center justify-between">
                               <span className="text-xs text-slate-600">{(() => { const d = r.dateCaptured || r.receiptDate || r.rechargeDate; if (!d) return '-'; if (typeof d === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(d)) { const [dd,mm,yy] = d.split('/'); return `${dd}/${mm}/${yy}`; } return new Date(d).toLocaleDateString('en-ZA'); })()}</span>
                               {r.isCancelled || r.canceledStatus === 'Yes' || r.cancelledStatus === 'Yes' ? (
@@ -2846,7 +2846,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                       <div className="hidden sm:block overflow-x-auto">
                         <table className="w-full text-sm" data-testid="table-prepaid-recharge-details">
                           <thead>
-                            <tr className="bg-slate-50 border-b border-slate-200">
+                            <tr className="bg-[#F7F7F7] border-b border-[#D6D6D6]">
                               <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Purchase Date</th>
                               <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Receipt No</th>
                               <th className="text-right py-2.5 px-3 text-[10px] uppercase tracking-wider text-slate-600 font-bold">Amount</th>
@@ -2863,7 +2863,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
                             {prepaidRechargeDetails.length === 0 ? (
                               <tr><td colSpan={10} className="text-center text-slate-400 py-6">No recharge details found for this meter</td></tr>
                             ) : prepaidRechargeDetails.map((r: any, i: number) => (
-                              <tr key={i} className="border-b border-slate-100 hover:bg-emerald-50/30 transition-colors" data-testid={`recharge-detail-row-${i}`}>
+                              <tr key={i} className="border-b border-[#E5E5E5] hover:bg-emerald-50/30 transition-colors" data-testid={`recharge-detail-row-${i}`}>
                                 <td className="py-2.5 px-3 text-slate-600">{(() => { const d = r.dateCaptured || r.receiptDate || r.rechargeDate; if (!d) return '-'; if (typeof d === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(d)) { const [dd,mm,yy] = d.split('/'); return `${dd}/${mm}/${yy}`; } return new Date(d).toLocaleDateString('en-ZA'); })()}</td>
                                 <td className="py-2.5 px-3 font-mono text-[var(--pos-accent)] font-semibold text-xs">{r.receiptNo || r.receiptNumber || '-'}</td>
                                 <td className="py-2.5 px-3 text-right font-mono">{(r.amount ?? r.rechargeAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
