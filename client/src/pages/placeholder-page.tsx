@@ -11,7 +11,7 @@ interface PlaceholderPageProps {
 export default function PlaceholderPage({ title, description }: PlaceholderPageProps) {
   return (
     <PosLayout>
-      <div className="flex-1 p-4 sm:p-8 flex items-center justify-center bg-slate-50 overflow-y-auto">
+      <div className="flex-1 min-h-0 p-4 sm:p-8 flex items-center justify-center bg-[#F2F4F7] overflow-y-auto">
         <Card className="w-full max-w-md text-center">
           <CardHeader>
             <div className="mx-auto bg-[var(--pos-accent-tint)] p-4 rounded-full mb-4">
