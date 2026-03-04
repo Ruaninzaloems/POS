@@ -859,8 +859,8 @@ function GeneralEnquiriesContent() {
     };
 
     return (
-      <div className="flex flex-col h-full overflow-hidden bg-slate-50/80">
-        <div className="shrink-0 bg-white border-b border-slate-200 shadow-sm">
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="shrink-0 bg-white border-b border-[#D6D6D6] shadow-sm">
           <div className="px-3 sm:px-6 py-2 sm:py-3">
             <div className="flex items-center gap-2 sm:gap-3">
               <button
@@ -927,7 +927,7 @@ function GeneralEnquiriesContent() {
 
         <div className="flex-1 overflow-auto">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <div className="shrink-0 bg-white border-b border-slate-200 sticky top-0 z-20 relative">
+            <div className="shrink-0 bg-white border-b border-[#D6D6D6] sticky top-0 z-20 relative">
               <div className="px-3 sm:px-5 py-2 sm:py-3">
                 <TabsList className="h-auto bg-transparent p-0 w-full block">
                   <div className="hidden sm:grid sm:grid-cols-3 gap-x-6 gap-y-3">
@@ -1033,7 +1033,7 @@ function GeneralEnquiriesContent() {
                 </TabsList>
               </div>
             </div>
-            <div className="flex-1 overflow-auto bg-gradient-to-b from-slate-50/80 to-slate-100/50">
+            <div className="flex-1 overflow-auto bg-[#F2F4F7]">
               <TabsContent value="account" className="m-0"><AccountInfoTab account={selectedAccount} /></TabsContent>
               <TabsContent value="name" className="m-0"><NameTab accountId={accountId} onNavigateToAccount={(acct) => { setSelectedAccount(acct); setActiveTab('account'); }} /></TabsContent>
               <TabsContent value="balance" className="m-0"><BalanceDebtTab accountId={accountId} accountNumber={selectedAccount.accountNumber || selectedAccount.oldAccountCode || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabsContent>
@@ -1072,9 +1072,15 @@ function GeneralEnquiriesContent() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden relative">
-      <div className="shrink-0 bg-white border-b border-slate-200 px-3 sm:px-6 py-1.5 sm:py-3">
-        <div className="flex items-center justify-between mb-1 sm:mb-2">
-          <h2 className="text-xs sm:text-sm font-semibold text-slate-700 flex items-center gap-1" data-testid="text-page-title">General Enquiries <HelpTip text="Look up consumer account details, balances, transaction history, and billing information." side="bottom" /></h2>
+      <div className="shrink-0 bg-white border-b border-[#D6D6D6] px-3 sm:px-6 py-2 sm:py-3">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
+            <Search className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-base sm:text-xl font-bold text-[#2E2E2E] flex items-center gap-2" data-testid="text-page-title">General Enquiries <HelpTip text="Look up consumer account details, balances, transaction history, and billing information." side="bottom" /></h1>
+            <p className="text-xs sm:text-sm text-[#6B6B6B] mt-0.5">Search and view municipal account details</p>
+          </div>
           <div className="flex items-center gap-1.5 sm:gap-2">
             {hasSearched && (
               <Badge variant="outline" className="text-[9px] sm:text-[10px] h-5" data-testid="text-result-count">
@@ -1415,7 +1421,7 @@ function GeneralEnquiriesContent() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto bg-slate-50">
+      <div className="flex-1 overflow-auto bg-[#F2F4F7]">
         {searchError && (
           <div className="p-4">
             <ErrorState message={searchError} onRetry={handleFullSearch} />
@@ -1735,7 +1741,7 @@ function GeneralEnquiriesContent() {
 export default function GeneralEnquiries() {
   return (
     <PosLayout>
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex flex-col h-full overflow-hidden">
         <GeneralEnquiriesContent />
       </div>
     </PosLayout>
