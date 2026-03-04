@@ -1121,7 +1121,7 @@ export function NotificationsTab({ accountId }: { accountId: number }) {
             <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{accountNotifs.length}</Badge>
           </div>
           {accountNotifs.every((n: any) => typeof n === 'string') ? (
-            <div className="divide-y divide-slate-100" data-testid="table-account-notifications">
+            <div className="divide-y divide-[#E5E5E5]" data-testid="table-account-notifications">
               {accountNotifs.map((n: any, i: number) => (
                 <div key={i} className="flex items-center gap-3 px-3 sm:px-5 py-2.5 sm:py-3 hover:bg-orange-50/30 transition-colors">
                   <div className="w-2 h-2 rounded-full bg-orange-400 flex-shrink-0" />
@@ -1283,7 +1283,7 @@ export function StatementsTab({ accountId }: { accountId: number }) {
               <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Amount</span><span className="text-slate-800 font-semibold text-right font-mono">{(s.amount ?? s.totalAmount ?? 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span></div>
               <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Type</span><span className="text-right"><span className="inline-flex px-2 py-0.5 rounded-md text-[10px] font-medium bg-[var(--pos-accent-tint)] text-[var(--pos-accent)] border border-[#D6D6D6]">{s.statementType || s.type || 'Standard'}</span></span></div>
               <div className="flex justify-end pt-1">
-                <button onClick={() => handleDownload(s)} disabled={downloading === s.accountstatement_id} className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white text-[10px] font-semibold rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all shadow-sm disabled:opacity-40" data-testid={`btn-download-stmt-mobile-${i}`}>
+                <button onClick={() => handleDownload(s)} disabled={downloading === s.accountstatement_id} className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] text-white text-[10px] font-semibold rounded-lg hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)] transition-all shadow-sm disabled:opacity-40" data-testid={`btn-download-stmt-mobile-${i}`}>
                   {downloading === s.accountstatement_id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />} PDF
                 </button>
               </div>
@@ -1326,7 +1326,7 @@ export function StatementsTab({ accountId }: { accountId: number }) {
                     <button
                       onClick={() => handleDownload(s)}
                       disabled={downloading === s.accountstatement_id}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white text-[10px] font-semibold rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all shadow-sm disabled:opacity-40"
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] text-white text-[10px] font-semibold rounded-lg hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)] transition-all shadow-sm disabled:opacity-40"
                       title="Download Statement PDF"
                       data-testid={`btn-download-stmt-${i}`}
                     >
@@ -1425,7 +1425,7 @@ export function StatementsTab({ accountId }: { accountId: number }) {
                       <button
                         onClick={() => handleDownload(s)}
                         disabled={downloading === s.accountstatement_id}
-                        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs font-semibold rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all shadow-sm disabled:opacity-40"
+                        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] text-white text-xs font-semibold rounded-lg hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)] transition-all shadow-sm disabled:opacity-40"
                         data-testid={`btn-download-stmt-mobile-modal-${i}`}
                       >
                         {downloading === s.accountstatement_id ? (
@@ -1458,7 +1458,7 @@ export function StatementsTab({ accountId }: { accountId: number }) {
                             <button
                               onClick={() => handleDownload(s)}
                               disabled={downloading === s.accountstatement_id}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs font-semibold rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all shadow-sm disabled:opacity-40"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] text-white text-xs font-semibold rounded-lg hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)] transition-all shadow-sm disabled:opacity-40"
                               title="Download Statement PDF"
                               data-testid={`btn-download-stmt-${i}`}
                             >
@@ -1691,11 +1691,11 @@ export function ClearanceTab({ accountId, propertyId, currentAccountNumber, curr
                           <div className="px-6 py-4 border-b border-[#D6D6D6]/50">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
                               <div className="bg-white rounded-lg border border-[#D6D6D6] shadow-sm overflow-hidden">
-                                <div className="px-4 py-2 bg-emerald-600 text-white text-xs font-semibold tracking-wide flex items-center gap-1.5">
+                                <div className="px-4 py-2 bg-[var(--pos-accent)] text-white text-xs font-semibold tracking-wide flex items-center gap-1.5">
                                   <Scale className="w-3.5 h-3.5" />
                                   Financial Breakdown
                                 </div>
-                                <div className="divide-y divide-slate-100">
+                                <div className="divide-y divide-[#E5E5E5]">
                                   <div className="flex justify-between items-center px-4 py-2">
                                     <span className="text-[12px] text-slate-600">Section 118(1)</span>
                                     <span className="font-mono text-[13px] font-medium text-slate-800">{fmtR(s1181)}</span>
@@ -1736,7 +1736,7 @@ export function ClearanceTab({ accountId, propertyId, currentAccountNumber, curr
                                   <Building2 className="w-3.5 h-3.5" />
                                   Sale Details
                                 </div>
-                                <div className="divide-y divide-slate-100">
+                                <div className="divide-y divide-[#E5E5E5]">
                                   <div className="flex justify-between items-center px-4 py-2">
                                     <span className="text-[12px] text-slate-600">Sell Price</span>
                                     <span className="font-mono text-[13px] font-medium text-slate-800">{fmtR(c.sellPrice)}</span>
@@ -1769,7 +1769,7 @@ export function ClearanceTab({ accountId, propertyId, currentAccountNumber, curr
                                   <FileText className="w-3.5 h-3.5" />
                                   Property & Parties
                                 </div>
-                                <div className="divide-y divide-slate-100">
+                                <div className="divide-y divide-[#E5E5E5]">
                                   <div className="flex justify-between items-center px-4 py-2">
                                     <span className="text-[12px] text-slate-600">Clearance Account</span>
                                     <span className="flex items-center gap-1.5">
@@ -2737,7 +2737,7 @@ export function SendStatementsTab({ accountId }: { accountId: number }) {
                   className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 text-white text-sm font-bold rounded-lg transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed ${
                     mode === 'email'
                       ? 'bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)]'
-                      : 'bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] hover:from-green-700 hover:to-green-800'
+                      : 'bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] hover:from-[var(--pos-accent-dark)] hover:to-[var(--pos-accent-dark)]'
                   }`}
                   data-testid="button-send-statement"
                 >

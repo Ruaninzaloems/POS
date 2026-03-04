@@ -2436,7 +2436,7 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
 
   const categoryColors: Record<string, string> = {
     'Metered Services': 'from-[var(--pos-accent)] to-[var(--pos-accent-dark)]',
-    'Property Rates': 'from-orange-500 to-orange-600',
+    'Property Rates': 'from-[var(--pos-accent)] to-[var(--pos-accent-dark)]',
     'Fixed Charges': 'from-[var(--pos-accent)] to-[var(--pos-accent-dark)]',
     'Additional Billing': 'from-[var(--pos-accent)] to-[var(--pos-accent-dark)]',
   };
@@ -2541,7 +2541,7 @@ export function NextBillEstimateTab({ accountId, accountNumber }: { accountId: n
               </div>
             </div>
 
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-[#E5E5E5]">
               {items.map((item, idx) => {
                 const globalIdx = lineItems.indexOf(item);
                 const hasTiers = item.tierBreakdown && item.tierBreakdown.length > 0;

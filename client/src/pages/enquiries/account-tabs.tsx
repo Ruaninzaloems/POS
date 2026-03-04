@@ -1755,7 +1755,7 @@ export function LinkedAccountsTab({ accountId, onSelectAccount }: { accountId: n
           </div>
         </div>
 
-        <div className="divide-y divide-slate-100">
+        <div className="divide-y divide-[#E5E5E5]">
           {linkedAccounts.map((acct, idx) => {
             const aId = acct.account_ID || acct.accountID;
             const accNum = acct.accountNumber || String(aId).padStart(12, '0');

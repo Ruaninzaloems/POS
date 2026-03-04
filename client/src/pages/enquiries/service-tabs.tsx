@@ -910,8 +910,8 @@ function MeterIntelligence({ allReadings }: { allReadings: any[] }) {
   const fmt1 = (v: number) => v.toLocaleString('en-ZA', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
   return (
-    <div className="bg-white rounded-xl border border-amber-200 shadow-sm overflow-hidden" data-testid="meter-intelligence">
-      <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-amber-500 to-orange-500 flex items-center justify-between">
+    <div className="bg-white rounded-xl border border-[#D6D6D6] shadow-sm overflow-hidden" data-testid="meter-intelligence">
+      <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Brain className="w-4 h-4 text-white" />
           <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Meter Intelligence</h3>
@@ -2649,7 +2649,7 @@ export function ServicesMetersTab({ accountId, unitId, accountNumber }: { accoun
       {showPrepaidSales && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-2 sm:p-4" onClick={() => setShowPrepaidSales(false)} data-testid="prepaid-sales-modal-overlay">
           <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[85vh] overflow-auto" onClick={e => e.stopPropagation()}>
-            <div className="px-3 sm:px-6 py-2.5 sm:py-4 border-b border-[#D6D6D6] bg-gradient-to-r from-emerald-700 to-emerald-800 rounded-t-2xl flex items-center justify-between">
+            <div className="px-3 sm:px-6 py-2.5 sm:py-4 border-b border-[#D6D6D6] bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] rounded-t-2xl flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Zap className="w-5 h-5 text-white" />
                 <h4 className="text-sm sm:text-base font-bold text-white">Prepaid Sales</h4>

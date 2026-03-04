@@ -1293,7 +1293,7 @@ export function RatesValuationsTab({ accountId, propertyId }: { accountId: numbe
             <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide">Property Valuations</h3>
             <Badge className="ml-auto bg-white/20 text-white border-white/30 text-[10px]">{valuations.length}</Badge>
           </div>
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-[#E5E5E5]">
             {valuations.map((v: any, i: number) => (
               <div key={i} className="p-4 hover:bg-[var(--pos-accent-tint)]/30 transition-colors" data-testid={`valuation-item-${i}`}>
                 <div className="flex flex-wrap items-center gap-2 mb-3">
