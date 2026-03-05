@@ -23,7 +23,7 @@ import {
   type EnquirySearchCriteria, type EnquirySearchResult,
 } from '@/lib/enquiries-service';
 
-import { ErrorState } from './enquiries/shared';
+import { ErrorState, TabErrorBoundary } from './enquiries/shared';
 import { AccountInfoTab, NameTab, BalanceDebtTab, LinkedAccountsTab } from './enquiries/account-tabs';
 import { ServiceBalanceTab, ConsumptionTab, ServicesMetersTab } from './enquiries/service-tabs';
 import { TransactionSummaryTab, DetailedTransactionListTab, TransactionHistoryTab, NextBillEstimateTab } from './enquiries/transaction-tabs';
@@ -1034,35 +1034,35 @@ function GeneralEnquiriesContent() {
               </div>
             </div>
             <div className="flex-1 overflow-auto bg-[#F2F4F7]">
-              <TabsContent value="account" className="m-0"><AccountInfoTab account={selectedAccount} /></TabsContent>
-              <TabsContent value="name" className="m-0"><NameTab accountId={accountId} onNavigateToAccount={(acct) => { setSelectedAccount(acct); setActiveTab('account'); }} /></TabsContent>
-              <TabsContent value="balance" className="m-0"><BalanceDebtTab accountId={accountId} accountNumber={selectedAccount.accountNumber || selectedAccount.oldAccountCode || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabsContent>
-              <TabsContent value="services" className="m-0"><ServiceBalanceTab accountId={accountId} /></TabsContent>
-              <TabsContent value="property" className="m-0"><PropertyDetailsTab accountId={accountId} /></TabsContent>
-              <TabsContent value="consumption" className="m-0"><ConsumptionTab accountId={accountId} accountNumber={selectedAccount.accountNumber || selectedAccount.oldAccountCode || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabsContent>
-              <TabsContent value="contact" className="m-0"><ContactInfoTab accountId={accountId} /></TabsContent>
-              <TabsContent value="handover" className="m-0"><HandoverTab accountId={accountId} /></TabsContent>
-              <TabsContent value="incentives" className="m-0"><IncentivesTab accountId={accountId} /></TabsContent>
-              <TabsContent value="deposits" className="m-0"><DepositsTab accountId={accountId} /></TabsContent>
-              <TabsContent value="transactions" className="m-0"><TransactionHistoryTab accountId={accountId} accountNumber={selectedAccount.accountNumber || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabsContent>
-              <TabsContent value="txn-summary" className="m-0"><TransactionSummaryTab accountId={accountId} accountNumber={selectedAccount.accountNumber || selectedAccount.oldAccountCode || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabsContent>
-              <TabsContent value="txn-detailed" className="m-0"><DetailedTransactionListTab accountId={accountId} accountNumber={selectedAccount.accountNumber || selectedAccount.oldAccountCode || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabsContent>
-              <TabsContent value="services-meters" className="m-0"><ServicesMetersTab accountId={accountId} unitId={unitId} accountNumber={selectedAccount.accountNumber || selectedAccount.oldAccountCode || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabsContent>
-              <TabsContent value="payment-plans" className="m-0"><PaymentPlansTab accountId={accountId} /></TabsContent>
-              <TabsContent value="payment-extensions" className="m-0"><PaymentExtensionHistoryTab accountId={accountId} /></TabsContent>
-              <TabsContent value="debit-orders" className="m-0"><DebitOrdersTab accountId={accountId} /></TabsContent>
-              <TabsContent value="billed-vs-paid" className="m-0"><BilledVsPaidTab accountId={accountId} /></TabsContent>
-              <TabsContent value="next-bill" className="m-0"><NextBillEstimateTab accountId={accountId} accountNumber={selectedAccount.accountNumber || selectedAccount.oldAccountCode || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabsContent>
-              <TabsContent value="rates" className="m-0"><RatesValuationsTab accountId={accountId} propertyId={propertyId} /></TabsContent>
-              <TabsContent value="notifications" className="m-0"><NotificationsTab accountId={accountId} /></TabsContent>
-              <TabsContent value="statements" className="m-0"><StatementsTab accountId={accountId} /></TabsContent>
-              <TabsContent value="send-statements" className="m-0"><SendStatementsTab accountId={accountId} /></TabsContent>
-              <TabsContent value="clearance" className="m-0"><ClearanceTab accountId={accountId} propertyId={propertyId} currentAccountNumber={String(accountNum)} currentAccountName={accountName} /></TabsContent>
-              <TabsContent value="debtor-notes" className="m-0"><DebtorNotesTab accountId={accountId} /></TabsContent>
-              <TabsContent value="section129" className="m-0"><Section129Tab accountId={accountId} /></TabsContent>
-              <TabsContent value="linked-accounts" className="m-0"><LinkedAccountsTab accountId={accountId} onSelectAccount={(acct) => { setSelectedAccount(acct); setActiveTab('account'); }} /></TabsContent>
-              <TabsContent value="occupiers" className="m-0"><OccupiersTab accountId={accountId} /></TabsContent>
-              <TabsContent value="indigent" className="m-0"><IndigentHistoryTab accountId={accountId} /></TabsContent>
+              <TabsContent value="account" className="m-0"><TabErrorBoundary tabName="Account"><AccountInfoTab account={selectedAccount} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="name" className="m-0"><TabErrorBoundary tabName="Name"><NameTab accountId={accountId} onNavigateToAccount={(acct) => { setSelectedAccount(acct); setActiveTab('account'); }} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="balance" className="m-0"><TabErrorBoundary tabName="Balance"><BalanceDebtTab accountId={accountId} accountNumber={selectedAccount.accountNumber || selectedAccount.oldAccountCode || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="services" className="m-0"><TabErrorBoundary tabName="Services"><ServiceBalanceTab accountId={accountId} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="property" className="m-0"><TabErrorBoundary tabName="Property"><PropertyDetailsTab accountId={accountId} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="consumption" className="m-0"><TabErrorBoundary tabName="Consumption"><ConsumptionTab accountId={accountId} accountNumber={selectedAccount.accountNumber || selectedAccount.oldAccountCode || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="contact" className="m-0"><TabErrorBoundary tabName="Contact"><ContactInfoTab accountId={accountId} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="handover" className="m-0"><TabErrorBoundary tabName="Handover"><HandoverTab accountId={accountId} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="incentives" className="m-0"><TabErrorBoundary tabName="Incentives"><IncentivesTab accountId={accountId} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="deposits" className="m-0"><TabErrorBoundary tabName="Deposits"><DepositsTab accountId={accountId} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="transactions" className="m-0"><TabErrorBoundary tabName="Transactions"><TransactionHistoryTab accountId={accountId} accountNumber={selectedAccount.accountNumber || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="txn-summary" className="m-0"><TabErrorBoundary tabName="Transaction Summary"><TransactionSummaryTab accountId={accountId} accountNumber={selectedAccount.accountNumber || selectedAccount.oldAccountCode || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="txn-detailed" className="m-0"><TabErrorBoundary tabName="Detailed Transactions"><DetailedTransactionListTab accountId={accountId} accountNumber={selectedAccount.accountNumber || selectedAccount.oldAccountCode || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="services-meters" className="m-0"><TabErrorBoundary tabName="Meters"><ServicesMetersTab accountId={accountId} unitId={unitId} accountNumber={selectedAccount.accountNumber || selectedAccount.oldAccountCode || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="payment-plans" className="m-0"><TabErrorBoundary tabName="Payment Plans"><PaymentPlansTab accountId={accountId} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="payment-extensions" className="m-0"><TabErrorBoundary tabName="Payment Extensions"><PaymentExtensionHistoryTab accountId={accountId} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="debit-orders" className="m-0"><TabErrorBoundary tabName="Debit Orders"><DebitOrdersTab accountId={accountId} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="billed-vs-paid" className="m-0"><TabErrorBoundary tabName="Billed vs Paid"><BilledVsPaidTab accountId={accountId} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="next-bill" className="m-0"><TabErrorBoundary tabName="Next Bill"><NextBillEstimateTab accountId={accountId} accountNumber={selectedAccount.accountNumber || selectedAccount.oldAccountCode || String(selectedAccount.account_ID || selectedAccount.accountID)} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="rates" className="m-0"><TabErrorBoundary tabName="Rates"><RatesValuationsTab accountId={accountId} propertyId={propertyId} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="notifications" className="m-0"><TabErrorBoundary tabName="Notifications"><NotificationsTab accountId={accountId} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="statements" className="m-0"><TabErrorBoundary tabName="Statements"><StatementsTab accountId={accountId} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="send-statements" className="m-0"><TabErrorBoundary tabName="Send Statements"><SendStatementsTab accountId={accountId} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="clearance" className="m-0"><TabErrorBoundary tabName="Clearance"><ClearanceTab accountId={accountId} propertyId={propertyId} currentAccountNumber={String(accountNum)} currentAccountName={accountName} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="debtor-notes" className="m-0"><TabErrorBoundary tabName="Debtor Notes"><DebtorNotesTab accountId={accountId} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="section129" className="m-0"><TabErrorBoundary tabName="Section 129"><Section129Tab accountId={accountId} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="linked-accounts" className="m-0"><TabErrorBoundary tabName="Linked Accounts"><LinkedAccountsTab accountId={accountId} onSelectAccount={(acct) => { setSelectedAccount(acct); setActiveTab('account'); }} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="occupiers" className="m-0"><TabErrorBoundary tabName="Occupiers"><OccupiersTab accountId={accountId} /></TabErrorBoundary></TabsContent>
+              <TabsContent value="indigent" className="m-0"><TabErrorBoundary tabName="Indigent"><IndigentHistoryTab accountId={accountId} /></TabErrorBoundary></TabsContent>
             </div>
           </Tabs>
         </div>

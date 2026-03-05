@@ -1,7 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, Component, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FileText, AlertTriangle, RefreshCw } from 'lucide-react';
+
+export class TabErrorBoundary extends Component<{ children: ReactNode; tabName?: string }, { hasError: boolean; error: string }> {
+  constructor(props: { children: ReactNode; tabName?: string }) {
+    super(props);
+    this.state = { hasError: false, error: '' };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error: error.message || 'Unknown error' };
+  }
+  componentDidCatch(error: Error) {
+    console.error(`[TabErrorBoundary] ${this.props.tabName || 'Tab'} crashed:`, error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-3 sm:p-6">
+          <div className="bg-white rounded-xl border border-red-100 shadow-sm">
+            <div className="flex flex-col items-center justify-center py-8 sm:py-12 px-4 sm:px-6">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-red-50 flex items-center justify-center mb-3">
+                <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-red-400" />
+              </div>
+              <p className="text-sm font-medium text-red-600 mb-1">This tab encountered an error</p>
+              <p className="text-xs text-slate-500 mb-4 text-center max-w-sm">{this.state.error}</p>
+              <Button variant="outline" size="sm" onClick={() => this.setState({ hasError: false, error: '' })} className="gap-1.5 text-xs border-red-200 text-red-600 hover:bg-red-50">
+                <RefreshCw className="w-3 h-3" />
+                Try Again
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export function FieldRow({ label, value, icon }: { label: string; value: any; icon?: React.ReactNode }) {
   if (value === null || value === undefined || value === '') return null;
