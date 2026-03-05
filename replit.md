@@ -61,6 +61,9 @@ The post-payment receipt flow is optimized for speed:
 - **Session polling paused during payment**: The 30-second session enforcement polling is suppressed while `transactionProcessing` is true, preventing interference during active payments.
 - **Receipt numbers passed to print API**: The `print-receipt` endpoint now accepts `{ ids, receiptNos }` format, passing receipt numbers alongside IDs for better receipt matching (mitigates a known Platinum API bug where `billing-payment/print-receipt` returns wrong PDFs for given IDs).
 
+### Account Enquiry Dialog
+A reusable `AccountEnquiryDialog` component (`client/src/components/account-enquiry-dialog.tsx`) provides a pop-out dialog with the full account enquiry tab system (Account, Balance/Debt, Transactions, Services, Property, etc.). It accepts an account number/ID, searches for the account via `searchAccounts`, and renders all enquiry tabs inside a large modal. Currently integrated into `view-receipts.tsx` — Bank Statement and EFT by Account tabs show an "Enquiry" button on account allocation rows, and the Receipt Search tab has clickable account numbers. The dialog does not require an active cashier session.
+
 ### Frontend Libraries
 -   `shadcn/ui` + `Radix UI`: For robust and customizable UI components.
 -   `TanStack React Query`: For efficient server state management.

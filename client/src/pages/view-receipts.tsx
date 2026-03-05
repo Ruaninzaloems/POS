@@ -31,6 +31,7 @@ import {
     platinumPrintReceiptRaw,
 } from '@/lib/external-api';
 import { buildReceiptDataFromMultiPrint, openReceiptPrintWindow } from '@/lib/receipt-print';
+import { AccountEnquiryDialog } from '@/components/account-enquiry-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { usePos } from '@/lib/pos-state';
 
@@ -117,6 +118,7 @@ export default function ViewReceipts() {
     const [selectedReceipt, setSelectedReceipt] = useState<ViewReceiptItem | null>(null);
     const [printingReceiptId, setPrintingReceiptId] = useState<string | number | null>(null);
     const [printingBankNoteReceipt, setPrintingBankNoteReceipt] = useState<string | null>(null);
+    const [enquiryAccountId, setEnquiryAccountId] = useState<string | null>(null);
     const [dataSource, setDataSource] = useState<'none' | 'platinum'>('none');
 
     const [quickSearch, setQuickSearch] = useState('');
@@ -1029,6 +1031,12 @@ export default function ViewReceipts() {
                                                                             View Receipt
                                                                         </Button>
                                                                     )}
+                                                                    {accountId > 0 && status?.includes('Account') && (
+                                                                        <Button variant="outline" size="sm" className="flex-1 h-10 text-xs gap-1.5 text-[var(--pos-accent-dark)] border-[var(--pos-accent-light)] hover:bg-[var(--pos-accent-tint)] active:scale-[0.99]" onClick={() => setEnquiryAccountId(String(accountId))} data-testid={`mobile-banknote-enquiry-${idx}`}>
+                                                                            <Search className="w-3.5 h-3.5" />
+                                                                            Enquiry
+                                                                        </Button>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         );
@@ -1106,6 +1114,12 @@ export default function ViewReceipts() {
                                                                                     <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 gap-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50" onClick={() => handlePrintBankNoteReceipt(item)} disabled={printingBankNoteReceipt !== null} data-testid={`button-banknote-print-${idx}`}>
                                                                                         {printingBankNoteReceipt === receiptNo ? <Loader2 className="w-3 h-3 animate-spin" /> : <Printer className="w-3 h-3" />}
                                                                                         {printingBankNoteReceipt === receiptNo ? 'Printing...' : 'Print'}
+                                                                                    </Button>
+                                                                                )}
+                                                                                {accountId > 0 && status?.includes('Account') && (
+                                                                                    <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 gap-1 text-[var(--pos-accent-dark)] border-[var(--pos-accent-light)] hover:bg-[var(--pos-accent-tint)]" onClick={() => setEnquiryAccountId(String(accountId))} data-testid={`button-banknote-enquiry-${idx}`}>
+                                                                                        <Search className="w-3 h-3" />
+                                                                                        Enquiry
                                                                                     </Button>
                                                                                 )}
                                                                                 {!receiptNo && !(accountId > 0) && (
@@ -1342,12 +1356,20 @@ export default function ViewReceipts() {
                                                                         <span className="text-slate-400">Allocated:</span> {allocDate ? new Date(allocDate).toLocaleDateString('en-ZA') : '-'}
                                                                     </div>
                                                                 </div>
-                                                                {receiptNo && (
-                                                                    <Button variant="outline" size="sm" className="w-full h-10 text-xs gap-1.5 text-teal-700 border-teal-300 hover:bg-teal-50 active:scale-[0.99]" onClick={() => handleLoadReceiptFromEft(item)} data-testid={`mobile-eft-view-${idx}`}>
-                                                                        <FileText className="w-3.5 h-3.5" />
-                                                                        View Receipt
-                                                                    </Button>
-                                                                )}
+                                                                <div className="flex gap-2">
+                                                                    {receiptNo && (
+                                                                        <Button variant="outline" size="sm" className="flex-1 h-10 text-xs gap-1.5 text-teal-700 border-teal-300 hover:bg-teal-50 active:scale-[0.99]" onClick={() => handleLoadReceiptFromEft(item)} data-testid={`mobile-eft-view-${idx}`}>
+                                                                            <FileText className="w-3.5 h-3.5" />
+                                                                            View Receipt
+                                                                        </Button>
+                                                                    )}
+                                                                    {accountNo && (
+                                                                        <Button variant="outline" size="sm" className="flex-1 h-10 text-xs gap-1.5 text-[var(--pos-accent-dark)] border-[var(--pos-accent-light)] hover:bg-[var(--pos-accent-tint)] active:scale-[0.99]" onClick={() => setEnquiryAccountId(String(accountNo))} data-testid={`mobile-eft-enquiry-${idx}`}>
+                                                                            <Search className="w-3.5 h-3.5" />
+                                                                            Enquiry
+                                                                        </Button>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         );
                                                     })}
@@ -1392,14 +1414,22 @@ export default function ViewReceipts() {
                                                                             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700">EFT</span>
                                                                         </TableCell>
                                                                         <TableCell className="text-center">
-                                                                            {receiptNo ? (
-                                                                                <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 gap-1 text-teal-700 border-teal-300 hover:bg-teal-50" onClick={() => handleLoadReceiptFromEft(item)} data-testid={`button-eft-view-${idx}`}>
-                                                                                    <FileText className="w-3 h-3" />
-                                                                                    View Receipt
-                                                                                </Button>
-                                                                            ) : (
-                                                                                <span className="text-[10px] text-slate-400">-</span>
-                                                                            )}
+                                                                            <div className="flex gap-1 justify-center">
+                                                                                {receiptNo ? (
+                                                                                    <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 gap-1 text-teal-700 border-teal-300 hover:bg-teal-50" onClick={() => handleLoadReceiptFromEft(item)} data-testid={`button-eft-view-${idx}`}>
+                                                                                        <FileText className="w-3 h-3" />
+                                                                                        View
+                                                                                    </Button>
+                                                                                ) : (
+                                                                                    <span className="text-[10px] text-slate-400">-</span>
+                                                                                )}
+                                                                                {accountNo && (
+                                                                                    <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 gap-1 text-[var(--pos-accent-dark)] border-[var(--pos-accent-light)] hover:bg-[var(--pos-accent-tint)]" onClick={() => setEnquiryAccountId(String(accountNo))} data-testid={`button-eft-enquiry-${idx}`}>
+                                                                                        <Search className="w-3 h-3" />
+                                                                                        Enquiry
+                                                                                    </Button>
+                                                                                )}
+                                                                            </div>
                                                                         </TableCell>
                                                                     </TableRow>
                                                                 );
@@ -1718,7 +1748,16 @@ export default function ViewReceipts() {
                                                     data-testid={`row-receipt-${idx}`}
                                                 >
                                                     <TableCell className="text-xs">{(currentPage - 1) * pageSize + idx + 1}</TableCell>
-                                                    <TableCell className="font-mono text-xs">{acctNo}</TableCell>
+                                                    <TableCell className="font-mono text-xs">
+                                                        {acctNo && Number(acctNo) > 0 ? (
+                                                            <button
+                                                                className="text-[var(--pos-accent-dark)] hover:underline cursor-pointer font-medium"
+                                                                onClick={(e) => { e.stopPropagation(); setEnquiryAccountId(String(acctNo)); }}
+                                                                title="Open account enquiry"
+                                                                data-testid={`link-enquiry-${idx}`}
+                                                            >{acctNo}</button>
+                                                        ) : acctNo || '-'}
+                                                    </TableCell>
                                                     <TableCell className="font-mono text-xs font-medium text-[var(--pos-accent)]">{receiptNo}</TableCell>
                                                     <TableCell className="text-xs">
                                                         <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 font-medium",
@@ -1811,6 +1850,11 @@ export default function ViewReceipts() {
                     </div>
                 </div>
             </div>
+            <AccountEnquiryDialog
+                open={enquiryAccountId !== null}
+                onClose={() => setEnquiryAccountId(null)}
+                accountId={enquiryAccountId || ''}
+            />
         </PosLayout>
     );
 }
