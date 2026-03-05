@@ -1787,7 +1787,7 @@ export default function AllocateTransaction() {
                                         <th className="px-3 py-3 w-20"></th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100">
+                                <tbody className="divide-y divide-[#E5E5E5]">
                                     {pageLines.map((line, idx) => (
                                         <tr key={line.id} className="hover:bg-[#F7F7F7]/50 transition-colors group">
                                             <td className="px-5 py-3">

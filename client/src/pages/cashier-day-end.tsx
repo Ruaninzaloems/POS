@@ -357,7 +357,7 @@ export default function CashierDayEnd() {
 
                     {selectedCashierId && (
                         <>
-                            <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white px-4 py-2 text-sm font-semibold rounded-t-md flex items-center gap-2">
+                            <div className="bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] text-white px-4 py-2 text-sm font-semibold rounded-t-md flex items-center gap-2">
                                 <FileText className="w-4 h-4" /> Receipt Information
                             </div>
 
@@ -378,7 +378,7 @@ export default function CashierDayEnd() {
                                         </div>
                                         <div className="hidden sm:block border rounded-md overflow-auto max-h-[250px]">
                                             <Table>
-                                                <TableHeader className="bg-gradient-to-b from-slate-600 to-slate-700 sticky top-0">
+                                                <TableHeader className="bg-gradient-to-b from-[var(--pos-accent)] to-[var(--pos-accent-dark)] sticky top-0">
                                                     <TableRow className="hover:bg-transparent">
                                                         <TableHead className="text-white font-bold text-xs py-2">No</TableHead>
                                                         <TableHead className="text-white font-bold text-xs py-2">Account/Invoice Number</TableHead>
@@ -441,7 +441,7 @@ export default function CashierDayEnd() {
                                             ))}
                                         </div>
                                         <div className="flex justify-end mt-1 px-2">
-                                            <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white px-4 py-1 rounded text-xs font-bold">
+                                            <div className="bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] text-white px-4 py-1 rounded text-xs font-bold">
                                                 Total: R {totalCreditAmt.toFixed(2)}
                                             </div>
                                         </div>
@@ -456,7 +456,7 @@ export default function CashierDayEnd() {
                                         </div>
                                         <div className="hidden sm:block border rounded-md overflow-auto max-h-[250px]">
                                             <Table>
-                                                <TableHeader className="bg-gradient-to-b from-slate-600 to-slate-700 sticky top-0">
+                                                <TableHeader className="bg-gradient-to-b from-[var(--pos-accent)] to-[var(--pos-accent-dark)] sticky top-0">
                                                     <TableRow className="hover:bg-transparent">
                                                         <TableHead className="text-white font-bold text-xs py-2">No</TableHead>
                                                         <TableHead className="text-white font-bold text-xs py-2">Account/Invoice Number</TableHead>
@@ -517,7 +517,7 @@ export default function CashierDayEnd() {
                                             ))}
                                         </div>
                                         <div className="flex justify-end mt-1 px-2">
-                                            <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white px-4 py-1 rounded text-xs font-bold">
+                                            <div className="bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] text-white px-4 py-1 rounded text-xs font-bold">
                                                 Total: R {totalChequeAmt.toFixed(2)}
                                             </div>
                                         </div>
@@ -532,7 +532,7 @@ export default function CashierDayEnd() {
                                         </div>
                                         <div className="hidden sm:block border rounded-md overflow-auto max-h-[200px]">
                                             <Table>
-                                                <TableHeader className="bg-gradient-to-b from-slate-600 to-slate-700 sticky top-0">
+                                                <TableHeader className="bg-gradient-to-b from-[var(--pos-accent)] to-[var(--pos-accent-dark)] sticky top-0">
                                                     <TableRow className="hover:bg-transparent">
                                                         <TableHead className="text-white font-bold text-xs py-2">No</TableHead>
                                                         <TableHead className="text-white font-bold text-xs py-2">Description</TableHead>
@@ -585,7 +585,7 @@ export default function CashierDayEnd() {
                                             ))}
                                         </div>
                                         <div className="flex justify-end mt-1 px-2">
-                                            <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white px-4 py-1 rounded text-xs font-bold">
+                                            <div className="bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] text-white px-4 py-1 rounded text-xs font-bold">
                                                 Total: R {dropBoxTotal.toFixed(2)}
                                             </div>
                                         </div>
@@ -593,7 +593,7 @@ export default function CashierDayEnd() {
                                 </CardContent>
                             </Card>
 
-                            <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white px-4 py-2 text-sm font-semibold rounded-t-md flex items-center gap-2">
+                            <div className="bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] text-white px-4 py-2 text-sm font-semibold rounded-t-md flex items-center gap-2">
                                 <Banknote className="w-4 h-4" /> Cash Information <HelpTip text="Count each denomination of notes and coins in your cash drawer. The system calculates the total automatically." className="text-white/60 hover:text-white" />
                             </div>
 

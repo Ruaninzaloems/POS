@@ -520,7 +520,7 @@ export function AccountEnquiryView({ item }: { item: TransactionItem }) {
            </div>
          ) : (
            <>
-             <div className="sm:hidden divide-y divide-slate-100">
+             <div className="sm:hidden divide-y divide-[#E5E5E5]">
                {(account.agingBreakdown && account.agingBreakdown.length > 0 ? account.agingBreakdown : [{
                  serviceDescription: account.outstandingAmount < 0 ? 'Advance Payment' : 'Balance B/F',
                  totalOutstanding: account.outstandingAmount, newCharge: 0, currentAccount: account.outstandingAmount,

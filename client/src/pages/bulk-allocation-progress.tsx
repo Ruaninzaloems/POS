@@ -884,7 +884,7 @@ export default function BulkAllocationProgress() {
                               <Layers className="w-3.5 h-3.5" /> Job Information
                             </h3>
                           </div>
-                          <div className="divide-y divide-slate-100">
+                          <div className="divide-y divide-[#E5E5E5]">
                             {detailData.paymentReference && (
                               <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-center px-3 py-2.5">
                                 <span className="text-xs font-medium text-slate-500">Payment Reference</span>
@@ -919,7 +919,7 @@ export default function BulkAllocationProgress() {
                                 <FileText className="w-3.5 h-3.5" /> File & Dates
                               </h3>
                             </div>
-                            <div className="divide-y divide-slate-100">
+                            <div className="divide-y divide-[#E5E5E5]">
                               {detailData.fileName && (
                                 <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-center px-3 py-2.5">
                                   <span className="text-xs font-medium text-slate-500">File Name</span>
@@ -961,7 +961,7 @@ export default function BulkAllocationProgress() {
                                 <User className="w-3.5 h-3.5" /> People
                               </h3>
                             </div>
-                            <div className="divide-y divide-slate-100">
+                            <div className="divide-y divide-[#E5E5E5]">
                               {(cashierName || detailData.cashierID != null) && (
                                 <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] items-center px-3 py-2.5">
                                   <span className="text-xs font-medium text-slate-500">Cashier</span>
@@ -1010,7 +1010,7 @@ export default function BulkAllocationProgress() {
                                 <Hash className="w-3.5 h-3.5" /> Additional Details
                               </h3>
                             </div>
-                            <div className="divide-y divide-slate-100">
+                            <div className="divide-y divide-[#E5E5E5]">
                               {extraFields.map(([key, value]) => {
                                 const label = key
                                   .replace(/([A-Z])/g, ' $1')

@@ -692,7 +692,7 @@ export default function UnmatchedQueue() {
                     <th className="text-right text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-4 py-2.5 w-36">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-[#E5E5E5]">
                   {loading ? (
                     <tr>
                       <td colSpan={7} className="py-16 text-center">
