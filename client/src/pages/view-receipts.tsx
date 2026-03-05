@@ -114,6 +114,7 @@ export default function ViewReceipts() {
 
     const [selectedReceipt, setSelectedReceipt] = useState<ViewReceiptItem | null>(null);
     const [printingReceiptId, setPrintingReceiptId] = useState<string | number | null>(null);
+    const [printingBankNoteReceipt, setPrintingBankNoteReceipt] = useState<string | null>(null);
     const [dataSource, setDataSource] = useState<'none' | 'platinum'>('none');
 
     const [quickSearch, setQuickSearch] = useState('');
@@ -423,6 +424,7 @@ export default function ViewReceipts() {
             toast({ title: "Print Failed", description: "No receipt number found for this EFT entry.", variant: "destructive" });
             return;
         }
+        setPrintingBankNoteReceipt(receiptNo);
         try {
             let serialNo = 0;
 
@@ -484,6 +486,8 @@ export default function ViewReceipts() {
         } catch (e: any) {
             console.error('EFT receipt fetch failed:', e);
             toast({ title: "Print Failed", description: `Could not retrieve receipt PDF: ${e.message || 'Unknown error'}`, variant: "destructive" });
+        } finally {
+            setPrintingBankNoteReceipt(null);
         }
     };
 
@@ -1065,9 +1069,9 @@ export default function ViewReceipts() {
                                                                                     </Button>
                                                                                 )}
                                                                                 {receiptNo && (
-                                                                                    <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 gap-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50" onClick={() => handlePrintBankNoteReceipt(item)} data-testid={`button-banknote-print-${idx}`}>
-                                                                                        <Printer className="w-3 h-3" />
-                                                                                        Print
+                                                                                    <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 gap-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50" onClick={() => handlePrintBankNoteReceipt(item)} disabled={printingBankNoteReceipt !== null} data-testid={`button-banknote-print-${idx}`}>
+                                                                                        {printingBankNoteReceipt === receiptNo ? <Loader2 className="w-3 h-3 animate-spin" /> : <Printer className="w-3 h-3" />}
+                                                                                        {printingBankNoteReceipt === receiptNo ? 'Printing...' : 'Print'}
                                                                                     </Button>
                                                                                 )}
                                                                                 {!receiptNo && !(accountId > 0) && (
@@ -1194,9 +1198,9 @@ export default function ViewReceipts() {
                                                                 )}
                                                             </div>
                                                             <div className="px-4 py-2 bg-[#F7F7F7] border-t border-[#E5E5E5] flex items-center gap-2">
-                                                                <Button size="sm" className="gap-1.5 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white h-7 text-xs" onClick={() => handlePrintBankNoteReceipt(selectedBankNoteItem)} data-testid="button-print-banknote-receipt">
-                                                                    <Printer className="w-3 h-3" />
-                                                                    Print Receipt
+                                                                <Button size="sm" className="gap-1.5 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white h-7 text-xs" onClick={() => handlePrintBankNoteReceipt(selectedBankNoteItem)} disabled={printingBankNoteReceipt !== null} data-testid="button-print-banknote-receipt">
+                                                                    {printingBankNoteReceipt ? <Loader2 className="w-3 h-3 animate-spin" /> : <Printer className="w-3 h-3" />}
+                                                                    {printingBankNoteReceipt ? 'Fetching Receipt...' : 'Print Receipt'}
                                                                 </Button>
                                                                 <Button variant="outline" size="sm" className="gap-1.5 text-slate-500 h-7 text-xs border-[#D6D6D6]" onClick={() => setSelectedBankNoteItem(null)}>
                                                                     <X className="w-3 h-3" />
