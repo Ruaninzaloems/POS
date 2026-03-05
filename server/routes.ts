@@ -2670,8 +2670,16 @@ export async function registerRoutes(
         platinumGet(session, "/api/billing/auth-day-end-reconcile/cashier-list"),
         platinumGet(session, "/api/billing/auth-day-end-reconcile/cash-office-list").catch(() => null),
       ]);
-      console.log(`[auth-dayend-cashier-list] Cashier response:`, JSON.stringify(cashierData).substring(0, 1000));
+      console.log(`[auth-dayend-cashier-list] Cashier response (first 2000 chars):`, JSON.stringify(cashierData).substring(0, 2000));
       console.log(`[auth-dayend-cashier-list] Office response:`, JSON.stringify(officeData).substring(0, 500));
+
+      if (cashierData && !cashierData._error && Array.isArray(cashierData) && cashierData.length > 0) {
+        console.log(`[auth-dayend-cashier-list] FIRST CASHIER ALL KEYS:`, JSON.stringify(Object.keys(cashierData[0])));
+        console.log(`[auth-dayend-cashier-list] FIRST CASHIER FULL:`, JSON.stringify(cashierData[0]));
+        if (cashierData.length > 1) {
+          console.log(`[auth-dayend-cashier-list] SECOND CASHIER FULL:`, JSON.stringify(cashierData[1]));
+        }
+      }
 
       const officeMap = new Map<number, { groupCashiers: boolean; cashOfficeDesc: string; cashOnHandLimit: number | null }>();
       if (officeData && !officeData._error && Array.isArray(officeData)) {
@@ -2704,6 +2712,10 @@ export async function registerRoutes(
             const result = reconcileResults[i];
             if (result.status === 'fulfilled' && result.value && !result.value._error) {
               const rec = result.value;
+              if (i < 3) {
+                console.log(`[auth-dayend-cashier-list] Cashier #${i} reconcile RAW KEYS:`, JSON.stringify(Object.keys(rec)));
+                console.log(`[auth-dayend-cashier-list] Cashier #${i} reconcile RAW DATA:`, JSON.stringify(rec).substring(0, 1000));
+              }
               const hasReconcile = rec.id || rec.reconcileId || rec.cashierReconcile_ID;
               if (hasReconcile) {
                 cashiers[i].reconcileId = rec.id || rec.reconcileId || rec.cashierReconcile_ID;
@@ -2716,14 +2728,15 @@ export async function registerRoutes(
                 cashiers[i].cardAmount = rec.cardAmount || rec.totalCreditAmt || cashiers[i].cardAmount || 0;
                 cashiers[i].declaredTotal = rec.declaredTotal || rec.cashierTotal || rec.totalDeclared || 0;
                 cashiers[i].variance = rec.variance || rec.varianceAmount || rec.totalVariance || 0;
-                console.log(`[auth-dayend-cashier-list] Cashier ${cashiers[i].name || cashiers[i].id}: reconcileId=${hasReconcile}, status="${cashiers[i].reconcileStatus}", returnReason=${cashiers[i].returnReason || 'none'}`);
+                console.log(`[auth-dayend-cashier-list] Cashier ${cashiers[i].name || cashiers[i].id}: reconcileId=${hasReconcile}, status="${cashiers[i].reconcileStatus}", totalAmount=${cashiers[i].totalAmount}, txCount=${cashiers[i].transactionCount}`);
               } else {
                 cashiers[i].reconcileStatus = 'Not Submitted';
                 console.log(`[auth-dayend-cashier-list] Cashier ${cashiers[i].name || cashiers[i].id}: no reconcile record — Not Submitted`);
               }
             } else {
               cashiers[i].reconcileStatus = 'Not Submitted';
-              console.log(`[auth-dayend-cashier-list] Cashier ${cashiers[i].name || cashiers[i].id}: reconcile lookup failed/empty — Not Submitted`);
+              const errDetail = result.status === 'rejected' ? result.reason?.message : (result.value?._error || 'empty');
+              console.log(`[auth-dayend-cashier-list] Cashier ${cashiers[i].name || cashiers[i].id}: reconcile lookup failed (${errDetail}) — Not Submitted`);
             }
           }
         }
