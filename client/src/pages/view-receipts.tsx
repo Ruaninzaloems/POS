@@ -481,7 +481,7 @@ export default function ViewReceipts() {
                 console.warn('[EFT Print] HTML receipt generation failed, falling back to PDF:', e);
             }
             if (!usedHtmlReceipt) {
-                const res = await platinumPrintReceiptRaw([serialNo], [receiptNo]);
+                const res = await platinumPrintReceiptRaw([serialNo], [receiptNo], true);
                 if (!res.ok) {
                     let detail = '';
                     try { const errJson = await res.json(); detail = errJson.detail || errJson.message || ''; } catch { detail = `HTTP ${res.status}`; }
@@ -610,7 +610,7 @@ export default function ViewReceipts() {
                 console.warn('[ViewReceipts] HTML receipt failed, falling back to PDF:', e);
             }
             if (!usedHtmlReceipt) {
-                const res = await platinumPrintReceiptRaw([Number(serialNo)], receiptNo ? [receiptNo] : undefined);
+                const res = await platinumPrintReceiptRaw([Number(serialNo)], receiptNo ? [receiptNo] : undefined, true);
                 if (!res.ok) {
                     let detail = '';
                     let isWrongReceipt = false;

@@ -999,10 +999,9 @@ export async function platinumSearchAccountsPayment(data: any): Promise<any[]> {
     });
 }
 
-export async function platinumPrintReceiptRaw(data: any, receiptNos?: string[]): Promise<Response> {
-    const payload = receiptNos && receiptNos.length > 0
-        ? { ids: Array.isArray(data) ? data : [data], receiptNos }
-        : data;
+export async function platinumPrintReceiptRaw(data: any, receiptNos?: string[], isReprint?: boolean): Promise<Response> {
+    const ids = Array.isArray(data) ? data : [data];
+    const payload = { ids, receiptNos: receiptNos || [], isReprint: isReprint ?? false };
     return apiFetch(`/api/platinum/billing-payment/print-receipt`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1010,11 +1009,13 @@ export async function platinumPrintReceiptRaw(data: any, receiptNos?: string[]):
     });
 }
 
-export async function platinumPrintReceipt(data: any): Promise<any> {
+export async function platinumPrintReceipt(data: any, isReprint?: boolean): Promise<any> {
+    const ids = Array.isArray(data) ? data : [data];
+    const payload = { ids, receiptNos: [], isReprint: isReprint ?? false };
     return platinumFetch(`/api/platinum/billing-payment/print-receipt`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
     });
 }
 

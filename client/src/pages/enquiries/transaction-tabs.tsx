@@ -1253,7 +1253,7 @@ export function TransactionHistoryTab({ accountId, accountNumber }: { accountId:
   if (error) return <ErrorState message={error} onRetry={load} />;
 
   const openPdfReceipt = async (serialNo: number, label?: string) => {
-    const res = await platinumPrintReceiptRaw([serialNo]);
+    const res = await platinumPrintReceiptRaw([serialNo], undefined, true);
     if (!res.ok) {
       throw new Error('Could not fetch receipt PDF from billing system');
     }

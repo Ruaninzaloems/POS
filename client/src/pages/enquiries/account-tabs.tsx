@@ -1165,7 +1165,7 @@ export function BalanceDebtTab({ accountId, accountNumber }: { accountId: number
   });
 
   const openPdfReceipt = async (serialNo: number, label?: string) => {
-    const res = await platinumPrintReceiptRaw([serialNo]);
+    const res = await platinumPrintReceiptRaw([serialNo], undefined, true);
     if (!res.ok) {
       throw new Error('Could not fetch receipt PDF from billing system');
     }

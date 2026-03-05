@@ -1096,26 +1096,33 @@ export async function registerRoutes(
       const session = requireAuth(req, res); if (!session) return;
       let receiptIds: number[];
       let receiptNos: string[] = [];
+      let isReprint = false;
       if (Array.isArray(req.body)) {
         receiptIds = req.body;
       } else if (req.body && Array.isArray(req.body.ids)) {
         receiptIds = req.body.ids;
         receiptNos = req.body.receiptNos || [];
+        isReprint = req.body.isReprint === true;
       } else {
-        return res.status(400).json({ message: "Request body must be an array of receipt serial numbers or { ids, receiptNos }" });
+        return res.status(400).json({ message: "Request body must be an array of receipt serial numbers or { ids, receiptNos, isReprint }" });
       }
       if (receiptIds.length === 0) {
         return res.status(400).json({ message: "No receipt IDs provided" });
       }
-      if (receiptNos.length > 0) {
-        console.log(`[print-receipt] Receipt IDs: [${receiptIds.join(', ')}], Receipt Nos: [${receiptNos.join(', ')}]`);
-      }
+      console.log(`[print-receipt] Receipt IDs: [${receiptIds.join(', ')}], Receipt Nos: [${receiptNos.join(', ')}], IsReprint: ${isReprint}`);
 
       const token = await refreshSessionToken(session);
       const apiUrl = getPlatinumApiUrl();
 
-      const fetchSingleReceiptPdf = async (id: number): Promise<Buffer | null> => {
+      const buildPrintReceiptPayload = (ids: number[], rNos?: string[], reprint?: boolean) => ({
+        Ids: ids.map(Number),
+        ReceiptNos: rNos || [],
+        IsReprint: reprint ?? isReprint,
+      });
+
+      const fetchSingleReceiptPdf = async (id: number, receiptNo?: string): Promise<Buffer | null> => {
         try {
+          const payload = buildPrintReceiptPayload([id], receiptNo ? [receiptNo] : [], true);
           const r = await fetch(`${apiUrl}/api/billing-payment/print-receipt`, {
             method: "POST",
             headers: {
@@ -1123,7 +1130,7 @@ export async function registerRoutes(
               "Content-Type": "application/json",
               Accept: "application/pdf,application/octet-stream,*/*",
             },
-            body: JSON.stringify([id]),
+            body: JSON.stringify(payload),
           });
           if (!r.ok) {
             console.warn(`[print-receipt] Failed to fetch receipt ${id}: HTTP ${r.status}`);
@@ -1189,6 +1196,8 @@ export async function registerRoutes(
       };
 
       if (receiptIds.length === 1) {
+        const payload = buildPrintReceiptPayload(receiptIds, receiptNos, isReprint);
+        console.log(`[print-receipt] Single receipt payload:`, JSON.stringify(payload));
         const pdfRes = await fetch(`${apiUrl}/api/billing-payment/print-receipt`, {
           method: "POST",
           headers: {
@@ -1196,7 +1205,7 @@ export async function registerRoutes(
             "Content-Type": "application/json",
             Accept: "application/pdf,application/octet-stream,*/*",
           },
-          body: JSON.stringify(receiptIds.map(Number)),
+          body: JSON.stringify(payload),
         });
 
         if (!pdfRes.ok) {
@@ -1229,7 +1238,8 @@ export async function registerRoutes(
       const allPdfBuffers: Buffer[] = [];
       for (let i = 0; i < receiptIds.length; i += BATCH_SIZE) {
         const batch = receiptIds.slice(i, i + BATCH_SIZE).map(Number);
-        const results = await Promise.all(batch.map(fetchSingleReceiptPdf));
+        const batchNos = receiptNos.slice(i, i + BATCH_SIZE);
+        const results = await Promise.all(batch.map((id, idx) => fetchSingleReceiptPdf(id, batchNos[idx])));
         for (const buf of results) {
           if (buf && buf.length > 100) allPdfBuffers.push(buf);
         }
@@ -1237,6 +1247,8 @@ export async function registerRoutes(
 
       if (allPdfBuffers.length === 0) {
         console.log(`[print-receipt] No individual PDFs fetched, falling back to bulk request`);
+        const bulkPayload = buildPrintReceiptPayload(receiptIds, receiptNos, isReprint);
+        console.log(`[print-receipt] Bulk fallback payload:`, JSON.stringify(bulkPayload));
         const pdfRes = await fetch(`${apiUrl}/api/billing-payment/print-receipt`, {
           method: "POST",
           headers: {
@@ -1244,7 +1256,7 @@ export async function registerRoutes(
             "Content-Type": "application/json",
             Accept: "application/pdf,application/octet-stream,*/*",
           },
-          body: JSON.stringify(receiptIds.map(Number)),
+          body: JSON.stringify(bulkPayload),
         });
         if (!pdfRes.ok) {
           const errorText = await pdfRes.text().catch(() => "");
@@ -1307,7 +1319,7 @@ export async function registerRoutes(
           "Content-Type": "application/json",
           Accept: "application/pdf",
         },
-        body: JSON.stringify([Number(receiptId)]),
+        body: JSON.stringify({ Ids: [Number(receiptId)], ReceiptNos: [], IsReprint: true }),
       });
 
       if (!pdfRes.ok) {
@@ -1754,14 +1766,6 @@ export async function registerRoutes(
     }
   });
 
-  // TODO: PLATINUM API NEEDED — Banks list endpoint
-  // Currently all Platinum bank endpoints return 500:
-  //   - /api/billing-payment-clearance/get-banks
-  //   - /api/BillingEnquiry/GetConstBanks
-  //   - /api/const-banks
-  // Request Platinum team to create: GET /api/billing-payment-clearance/get-banks
-  // Expected response: Array of { bankId: number, bankName: string, branchCode?: string }
-  // Used for: Clearance payment bank selection dropdown
   app.get("/api/platinum/billing-payment-clearance/get-banks", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
@@ -1771,13 +1775,19 @@ export async function registerRoutes(
         "/api/const-banks",
       ];
       for (const endpoint of endpoints) {
-        const data = await platinumGet(session, endpoint);
-        if (data && !data._error) {
-          return handlePlatinumResult(res, data);
+        try {
+          const data = await platinumGet(session, endpoint);
+          if (data && !data._error) {
+            console.log(`[get-banks] Success via ${endpoint} — returned ${Array.isArray(data) ? data.length : 'non-array'} items`);
+            return handlePlatinumResult(res, data);
+          }
+          console.warn(`[get-banks] ${endpoint} returned error:`, JSON.stringify(data).substring(0, 200));
+        } catch (endpointErr: any) {
+          console.warn(`[get-banks] ${endpoint} failed:`, endpointErr.message);
         }
       }
-      console.log('[get-banks] All Platinum bank endpoints unavailable.');
-      res.status(502).json({ message: "All Platinum bank endpoints returned errors", detail: "Tried: billing-payment-clearance/get-banks, BillingEnquiry/GetConstBanks, const-banks — all returned 500" });
+      console.error('[get-banks] All Platinum bank endpoints failed.');
+      res.status(502).json({ message: "All Platinum bank endpoints returned errors", detail: "Tried: billing-payment-clearance/get-banks, BillingEnquiry/GetConstBanks, const-banks" });
     } catch (e: any) {
       console.error('[get-banks] Platinum API unreachable:', e.message);
       res.status(502).json({ message: "Failed to fetch banks list", detail: e.message });
@@ -2349,7 +2359,7 @@ export async function registerRoutes(
                   'Content-Type': 'application/json',
                   Accept: 'application/pdf',
                 },
-                body: JSON.stringify([receiptId]),
+                body: JSON.stringify({ Ids: [receiptId], ReceiptNos: [], IsReprint: true }),
               });
 
               if (pdfRes.ok) {
@@ -5448,7 +5458,7 @@ export async function registerRoutes(
                 "Content-Type": "application/json",
                 Accept: "application/pdf",
               },
-              body: JSON.stringify([Number(serialNo)]),
+              body: JSON.stringify({ Ids: [Number(serialNo)], ReceiptNos: [], IsReprint: false }),
             });
             if (pdfRes.ok) {
               const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
