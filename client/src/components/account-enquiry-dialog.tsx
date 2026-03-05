@@ -138,7 +138,7 @@ export function AccountEnquiryDialog({ open, onClose, accountId }: AccountEnquir
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-[95vw] w-[1200px] h-[85vh] p-0 gap-0 flex flex-col overflow-hidden" data-testid="account-enquiry-dialog">
+      <DialogContent className="max-w-[95vw] w-[1200px] h-[85vh] p-0 gap-0 flex flex-col overflow-hidden [&>button.absolute]:hidden" data-testid="account-enquiry-dialog">
         <div className="shrink-0 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] px-5 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
             <div className="shrink-0 h-9 w-9 rounded-full bg-white/20 flex items-center justify-center text-white text-sm font-bold">
