@@ -917,18 +917,20 @@ export default function AllocateTransaction() {
           } catch {}
 
           updateProgress('Verifying user session...');
-          let userId = -1;
+          const VIRTUAL_CASHIER_USER_ID = -1;
+          let allocatingUserId = 0;
           try {
               const userInfo = await fetchPlatinumUserInfo();
-              if (userInfo?.user_ID) userId = userInfo.user_ID;
+              if (userInfo?.user_ID) allocatingUserId = userInfo.user_ID;
           } catch {}
 
-          if (userId <= 0) {
+          if (allocatingUserId <= 0) {
               toast({ title: 'User Session Error', description: 'Could not determine your user ID. Please log in again and retry.', variant: 'destructive' });
               setPosting(false);
               setPostingStatus('');
               return;
           }
+          console.log(`[Direct Deposit] Allocating as user ${allocatingUserId}, submitting with VirtualCashierUserId=${VIRTUAL_CASHIER_USER_ID}`);
 
           const now = new Date();
           const saFormatter = new Intl.DateTimeFormat('en-ZA', {
@@ -1010,7 +1012,7 @@ export default function AllocateTransaction() {
                   submitData = {
                       posItemId: transaction.posItem_ID,
                       reconId: transaction.bankReconID || 0,
-                      userId: userId,
+                      userId: VIRTUAL_CASHIER_USER_ID,
                       financialYear: finYear,
                       transactionDate,
                       paidAmount: line.amount,
@@ -1033,7 +1035,7 @@ export default function AllocateTransaction() {
                   submitData = {
                       posItemId: transaction.posItem_ID,
                       reconId: transaction.bankReconID || 0,
-                      userId: userId,
+                      userId: VIRTUAL_CASHIER_USER_ID,
                       financialYear: finYear,
                       transactionDate,
                       paidAmount: line.amount,

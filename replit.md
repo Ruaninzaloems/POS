@@ -61,6 +61,12 @@ The post-payment receipt flow is optimized for speed:
 - **Session polling paused during payment**: The 30-second session enforcement polling is suppressed while `transactionProcessing` is true, preventing interference during active payments.
 - **Receipt numbers passed to print API**: The `print-receipt` endpoint now accepts `{ ids, receiptNos }` format, passing receipt numbers alongside IDs for better receipt matching (mitigates a known Platinum API bug where `billing-payment/print-receipt` returns wrong PDFs for given IDs).
 
+### Direct Deposit Allocation
+Direct deposit manual allocations always use `VirtualCashierUserId = -1` as the cashier ID in the Platinum API submission payload. The real logged-in user ID is validated (user must be authenticated) but is only used for audit/logging — not passed to the Platinum API. All `/direct-deposits` paths are exempt from active cashier session enforcement; users can access and process direct deposit allocations without having an open cashier session. The allocation submission order is: Account/Prepaid → Group → Clearance → Direct Income → Cashbook.
+
+### No Silent Fallbacks
+All API calls must fail explicitly with clear error messages shown to the user. No hardcoded default data is used as a fallback when the Platinum API returns errors. This applies to payment types, payment options, bank lists, and all other configuration data.
+
 ### Account Enquiry Dialog
 A reusable `AccountEnquiryDialog` component (`client/src/components/account-enquiry-dialog.tsx`) provides a pop-out dialog with the full account enquiry tab system (Account, Balance/Debt, Transactions, Services, Property, etc.). It accepts an account number/ID, searches for the account via `searchAccounts`, and renders all enquiry tabs inside a large modal. Currently integrated into `view-receipts.tsx` — Bank Statement and EFT by Account tabs show an "Enquiry" button on account allocation rows, and the Receipt Search tab has clickable account numbers. The dialog does not require an active cashier session.
 

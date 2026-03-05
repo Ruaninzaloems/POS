@@ -52,7 +52,7 @@ export function PosLayout({ children }: PosLayoutProps) {
 
   const isPosPage = location === '/pos';
   const isReceiptingPage = isPosPage;
-  const sessionExemptPaths = ['/direct-deposits/manual/history'];
+  const sessionExemptPaths = ['/direct-deposits'];
   const sessionRequiredPaths = ['/pos', '/direct-deposits', '/third-party', '/bulk-allocation'];
   const isExempt = sessionExemptPaths.some(p => location === p || location.startsWith(p + '/'));
   const requiresActiveSession = !isExempt && sessionRequiredPaths.some(p => location === p || location.startsWith(p + '/'));
