@@ -3638,7 +3638,12 @@ export async function registerRoutes(
   app.post("/api/platinum/direct-deposit-bulk/get-unprocessed", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
+      console.log(`[dd-bulk-unprocessed] Request body:`, JSON.stringify(req.body));
       const data = await platinumPost(session, "/api/billing/direct-deposit-bulk-allocation/get-unprocessed-direct-deposits", req.body);
+      console.log(`[dd-bulk-unprocessed] Response type: ${typeof data}, isArray: ${Array.isArray(data)}, keys: ${data && typeof data === 'object' ? Object.keys(data).join(', ') : 'N/A'}`);
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        console.log(`[dd-bulk-unprocessed] Response shape: totalCount=${(data as any).totalCount}, first-level array keys:`, Object.entries(data).filter(([,v]) => Array.isArray(v)).map(([k, v]) => `${k}(${(v as any[]).length})`).join(', '));
+      }
       handlePlatinumResult(res, data);
     } catch (e: any) {
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });

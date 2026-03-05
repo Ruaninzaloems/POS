@@ -157,7 +157,7 @@ function AutoAllocationContent() {
         fromDate: fromDate.toISOString(),
         toDate: toDate.toISOString(),
       });
-      const batches = Array.isArray(data) ? data : (data as any)?.unProcessedBatches || (data as any)?.batches || [];
+      const batches = Array.isArray(data) ? data : (data as any)?.items || (data as any)?.unProcessedBatches || (data as any)?.batches || (data as any)?.value || (data as any)?.results || [];
       setUnprocessedBatches(batches);
 
       if (batches.length === 0) {
@@ -182,7 +182,7 @@ function AutoAllocationContent() {
         processedBatches: processedBatches,
       };
       const data = await platinumGetBulkProcessed(payload);
-      const batches = Array.isArray(data) ? data : (data as any)?.processedBatches || [];
+      const batches = Array.isArray(data) ? data : (data as any)?.items || (data as any)?.processedBatches || (data as any)?.value || (data as any)?.results || [];
       setProcessedBatches(batches);
       setActiveView('processed');
     } catch (e: any) {
