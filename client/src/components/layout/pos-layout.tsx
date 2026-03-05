@@ -52,8 +52,10 @@ export function PosLayout({ children }: PosLayoutProps) {
 
   const isPosPage = location === '/pos';
   const isReceiptingPage = isPosPage;
+  const sessionExemptPaths = ['/direct-deposits/manual/history'];
   const sessionRequiredPaths = ['/pos', '/direct-deposits', '/third-party', '/bulk-allocation'];
-  const requiresActiveSession = sessionRequiredPaths.some(p => location === p || location.startsWith(p + '/'));
+  const isExempt = sessionExemptPaths.some(p => location === p || location.startsWith(p + '/'));
+  const requiresActiveSession = !isExempt && sessionRequiredPaths.some(p => location === p || location.startsWith(p + '/'));
 
   const prevLocationRef = React.useRef(location);
   useEffect(() => {
