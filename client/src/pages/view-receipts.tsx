@@ -439,6 +439,7 @@ export default function ViewReceipts() {
                     const toDate = now.toISOString().split('T')[0];
                     const listResult = await fetchReceiptList({
                         receiptNo: receiptNo,
+                        cashierId: '0',
                         fromDate,
                         toDate,
                         page: 1,
@@ -456,7 +457,7 @@ export default function ViewReceipts() {
             }
 
             if (!serialNo) {
-                toast({ title: "Print Not Available", description: "EFT bank statement receipts cannot be reprinted via the billing system. The receipt number format is not supported for PDF generation.", variant: "destructive" });
+                toast({ title: "Print Not Available", description: "This EFT receipt could not be found in the receipt system for reprinting. It may not have been captured as a printable receipt.", variant: "destructive" });
                 return;
             }
             const res = await platinumPrintReceiptRaw([serialNo], [receiptNo]);
