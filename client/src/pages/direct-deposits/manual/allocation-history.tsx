@@ -341,8 +341,10 @@ export default function AllocationHistory() {
                   <div className="flex justify-between items-start gap-2 mb-2">
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-sm truncate">{tx.fileName}</div>
-                      <div className="text-xs text-muted-foreground font-mono mt-0.5">
-                        {formatDate(tx.fileDate)} | Ref: {tx.paymentReference}
+                      <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                        <span>{formatDate(tx.fileDate)}</span>
+                        <span className="text-[#D6D6D6]">|</span>
+                        <span className="text-[11px] font-medium tracking-wide text-[var(--pos-accent-dark)] bg-[var(--pos-accent-tint)] px-2 py-px rounded-full truncate max-w-[140px]" title={tx.paymentReference}>{tx.paymentReference}</span>
                       </div>
                     </div>
                     <span className="font-mono font-bold text-sm shrink-0">R {tx.allocatedAmount.toFixed(2)}</span>
@@ -400,7 +402,7 @@ export default function AllocationHistory() {
                                     )}
                                 </TableCell>
                                 <TableCell>
-                                    <Badge variant="outline" className="font-mono text-xs max-w-[140px] truncate" title={tx.paymentReference}>{tx.paymentReference}</Badge>
+                                    <span className="inline-flex items-center text-[11px] font-medium tracking-wide text-[var(--pos-accent-dark)] bg-[var(--pos-accent-tint)] px-2.5 py-0.5 rounded-full max-w-[180px] truncate" title={tx.paymentReference}>{tx.paymentReference}</span>
                                 </TableCell>
                                 <TableCell>
                                     <Badge variant="secondary" className={`border ${getProcessBadgeColor(tx.process)} shadow-none font-normal`}>
@@ -511,7 +513,7 @@ export default function AllocationHistory() {
                                 </div>
                                 <div className="grid grid-cols-3">
                                     <dt className="text-muted-foreground">Reference:</dt>
-                                    <dd className="col-span-2 font-mono bg-slate-100 w-fit px-1 rounded">{selectedTx.paymentReference}</dd>
+                                    <dd className="col-span-2"><span className="inline-flex items-center text-[11px] font-medium tracking-wide text-[var(--pos-accent-dark)] bg-[var(--pos-accent-tint)] px-2.5 py-0.5 rounded-full">{selectedTx.paymentReference}</span></dd>
                                 </div>
                                 <div className="grid grid-cols-3">
                                     <dt className="text-muted-foreground">File Date:</dt>
