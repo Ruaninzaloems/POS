@@ -2699,16 +2699,35 @@ export async function registerRoutes(
         const cashiers = Array.isArray(cashierData) ? cashierData : [];
         
         if (cashiers.length > 0) {
-          console.log(`[auth-dayend-cashier-list] Enriching ${cashiers.length} cashiers with reconcile status...`);
-          const reconcileResults = await Promise.allSettled(
-            cashiers.map((c: any) => {
-              const cid = c.id || c.cashierId || c.cashier_ID;
-              if (!cid) return Promise.resolve(null);
-              return platinumGet(session, "/api/billing/auth-day-end-reconcile/cashier-reconcile-by-cashierid", { cashierId: String(cid) });
-            })
-          );
+          console.log(`[auth-dayend-cashier-list] Enriching ${cashiers.length} cashiers with reconcile status and active session...`);
+          const [reconcileResults, detailsResults] = await Promise.all([
+            Promise.allSettled(
+              cashiers.map((c: any) => {
+                const cid = c.id || c.cashierId || c.cashier_ID;
+                if (!cid) return Promise.resolve(null);
+                return platinumGet(session, "/api/billing/auth-day-end-reconcile/cashier-reconcile-by-cashierid", { cashierId: String(cid) });
+              })
+            ),
+            Promise.allSettled(
+              cashiers.map((c: any) => {
+                const cid = c.id || c.cashierId || c.cashier_ID;
+                if (!cid) return Promise.resolve(null);
+                return platinumGet(session, "/api/ReceiptPrepaid/cashier-detailsById", { cashierId: String(cid) });
+              })
+            ),
+          ]);
           
           for (let i = 0; i < cashiers.length; i++) {
+            const detailResult = detailsResults[i];
+            if (detailResult.status === 'fulfilled' && detailResult.value && !detailResult.value._error) {
+              const det = detailResult.value;
+              cashiers[i].isActive = det.isActive === true;
+              cashiers[i].officeId = det.officeId || det.cashOfficeId || cashiers[i].officeId;
+              cashiers[i].userId = det.user_Id || det.userId || cashiers[i].userId;
+            } else {
+              cashiers[i].isActive = false;
+            }
+
             const result = reconcileResults[i];
             if (result.status === 'fulfilled' && result.value && !result.value._error) {
               const rec = result.value;
@@ -2728,15 +2747,15 @@ export async function registerRoutes(
                 cashiers[i].cardAmount = rec.cardAmount || rec.totalCreditAmt || cashiers[i].cardAmount || 0;
                 cashiers[i].declaredTotal = rec.declaredTotal || rec.cashierTotal || rec.totalDeclared || 0;
                 cashiers[i].variance = rec.variance || rec.varianceAmount || rec.totalVariance || 0;
-                console.log(`[auth-dayend-cashier-list] Cashier ${cashiers[i].name || cashiers[i].id}: reconcileId=${hasReconcile}, status="${cashiers[i].reconcileStatus}", totalAmount=${cashiers[i].totalAmount}, txCount=${cashiers[i].transactionCount}`);
+                console.log(`[auth-dayend-cashier-list] Cashier ${cashiers[i].name || cashiers[i].id}: active=${cashiers[i].isActive}, reconcileId=${hasReconcile}, status="${cashiers[i].reconcileStatus}", totalAmount=${cashiers[i].totalAmount}, txCount=${cashiers[i].transactionCount}`);
               } else {
                 cashiers[i].reconcileStatus = 'Not Submitted';
-                console.log(`[auth-dayend-cashier-list] Cashier ${cashiers[i].name || cashiers[i].id}: no reconcile record — Not Submitted`);
+                console.log(`[auth-dayend-cashier-list] Cashier ${cashiers[i].name || cashiers[i].id}: active=${cashiers[i].isActive}, no reconcile record — Not Submitted`);
               }
             } else {
               cashiers[i].reconcileStatus = 'Not Submitted';
               const errDetail = result.status === 'rejected' ? result.reason?.message : (result.value?._error || 'empty');
-              console.log(`[auth-dayend-cashier-list] Cashier ${cashiers[i].name || cashiers[i].id}: reconcile lookup failed (${errDetail}) — Not Submitted`);
+              console.log(`[auth-dayend-cashier-list] Cashier ${cashiers[i].name || cashiers[i].id}: active=${cashiers[i].isActive}, reconcile lookup failed (${errDetail}) — Not Submitted`);
             }
           }
         }

@@ -86,6 +86,7 @@ interface CashierShift {
   transactionCount: number;
   reconcileId: number | null;
   returnReason?: string | null;
+  hasActiveSession: boolean;
   rawData?: any;
 }
 
@@ -161,6 +162,7 @@ function mapCashierToShift(c: any, index: number, officeConfigs?: Record<string,
     transactionCount: txCount,
     reconcileId: rawReconcileId,
     returnReason,
+    hasActiveSession: c.isActive === true,
     rawData: c,
   };
 }
@@ -638,7 +640,12 @@ export default function SupervisorDashboard() {
     return Array.from(offices);
   }, [shifts]);
 
-  const filteredShifts = shifts.filter(shift => {
+  const activeShifts = shifts.filter(shift => {
+    if (shift.status === 'NOT_SUBMITTED' && !shift.hasActiveSession) return false;
+    return true;
+  });
+
+  const filteredShifts = activeShifts.filter(shift => {
     const matchesOffice = filterOffice === 'All' || shift.cashOffice === filterOffice;
     const matchesSearch = shift.cashierName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesVariance = !filterVariance || (shift.variance?.total || 0) !== 0;
@@ -667,10 +674,10 @@ export default function SupervisorDashboard() {
     return matchesOffice && matchesSearch && matchesVariance && matchesStatus && matchesDate;
   });
 
-  const pendingCount = shifts.filter(s => s.status === 'PENDING_APPROVAL').length;
-  const varianceCount = shifts.filter(s => (s.variance?.total || 0) !== 0 && s.status === 'PENDING_APPROVAL').length;
-  const totalPosted = shifts.filter(s => s.status === 'COMPLETED').reduce((sum, s) => sum + s.systemTotals.total, 0);
-  const totalSystemRevenue = shifts.reduce((sum, s) => sum + s.systemTotals.total, 0);
+  const pendingCount = activeShifts.filter(s => s.status === 'PENDING_APPROVAL').length;
+  const varianceCount = activeShifts.filter(s => (s.variance?.total || 0) !== 0 && s.status === 'PENDING_APPROVAL').length;
+  const totalPosted = activeShifts.filter(s => s.status === 'COMPLETED').reduce((sum, s) => sum + s.systemTotals.total, 0);
+  const totalSystemRevenue = activeShifts.reduce((sum, s) => sum + s.systemTotals.total, 0);
 
   const loadReviewData = useCallback(async (cashierId: string) => {
     setReviewLoading(true);
@@ -2038,7 +2045,7 @@ export default function SupervisorDashboard() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="All">All Cashiers</SelectItem>
-                                {shifts.map(s => (
+                                {activeShifts.map(s => (
                                     <SelectItem key={s.id} value={s.cashierName}>{s.cashierName}</SelectItem>
                                 ))}
                             </SelectContent>
