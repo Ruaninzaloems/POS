@@ -1593,7 +1593,7 @@ export default function SupervisorDashboard() {
           <Button variant="outline" className="gap-2 w-full md:w-auto" asChild>
               <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className={`gap-2 w-full md:w-auto ${filterVariance || filterStatus !== 'All' || filterDate !== 'All' ? 'bg-[#F2F4F7] border-slate-300' : ''}`}>
+                    <Button variant="outline" className={`gap-2 w-full md:w-auto ${filterVariance || filterStatus !== 'All' || filterDate !== 'All' ? 'bg-[#F2F4F7] border-[#D6D6D6]' : ''}`}>
                         <Filter className="w-4 h-4" />
                         More Filters
                         {(filterVariance || filterStatus !== 'All' || filterDate !== 'All') && (

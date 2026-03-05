@@ -671,7 +671,7 @@ export default function CashierDayEnd() {
                                     )}
 
                                     <div className="flex justify-end mt-4">
-                                        <div className="bg-[#F2F4F7] border-2 border-slate-300 rounded-lg px-6 py-3 text-right">
+                                        <div className="bg-[#F2F4F7] border-2 border-[#D6D6D6] rounded-lg px-6 py-3 text-right">
                                             <span className="text-sm text-slate-600 mr-4 flex items-center gap-1">Total Cash <HelpTip text="The total cash calculated from your denomination count above." /></span>
                                             <span className="text-lg font-bold font-mono text-slate-800">
                                                 R {cashOnHand.toFixed(2)}
@@ -681,7 +681,7 @@ export default function CashierDayEnd() {
                                 </CardContent>
                             </Card>
 
-                            <Card className="shadow-sm border-2 border-slate-300">
+                            <Card className="shadow-sm border-2 border-[#D6D6D6]">
                                 <CardContent className="py-5">
                                     <div className="px-1 sm:px-0 space-y-3">
                                         <div className="flex justify-between items-center py-2 border-b">
@@ -702,7 +702,7 @@ export default function CashierDayEnd() {
                                                 {totalCreditAmt.toFixed(2)}
                                             </span>
                                         </div>
-                                        <div className="flex justify-between items-center py-2 border-b-2 border-slate-400">
+                                        <div className="flex justify-between items-center py-2 border-b-2 border-[#D6D6D6]">
                                             <span className="text-sm font-bold text-slate-800 flex items-center gap-1">Grand Total (R) <HelpTip text="The difference between your counted cash and the system's expected amount. A zero variance is ideal." /></span>
                                             <span className="font-mono font-bold text-base bg-[var(--pos-accent-tint)] border-2 border-[var(--pos-accent)] px-4 py-1.5 rounded min-w-[120px] text-right text-[#2E2E2E]">
                                                 {grandTotal.toFixed(2)}

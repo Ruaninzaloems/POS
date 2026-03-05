@@ -548,7 +548,7 @@ export default function CashierSetup() {
                             <Input
                                 value={firstName}
                                 disabled
-                                className="bg-[#F2F4F7] border-slate-300 text-slate-800 font-medium"
+                                className="bg-[#F2F4F7] border-[#D6D6D6] text-slate-800 font-medium"
                                 data-testid="input-cashier-name"
                             />
                         </div>
@@ -558,7 +558,7 @@ export default function CashierSetup() {
                             <Input
                                 value={lastName}
                                 disabled
-                                className="bg-[#F2F4F7] border-slate-300 text-slate-800 font-medium"
+                                className="bg-[#F2F4F7] border-[#D6D6D6] text-slate-800 font-medium"
                                 data-testid="input-cashier-surname"
                             />
                         </div>
@@ -568,7 +568,7 @@ export default function CashierSetup() {
                             <Input
                                 value={String(userId)}
                                 disabled
-                                className="bg-[#F2F4F7] border-slate-300 text-slate-800 font-mono"
+                                className="bg-[#F2F4F7] border-[#D6D6D6] text-slate-800 font-mono"
                                 data-testid="input-cashier-id"
                             />
                         </div>

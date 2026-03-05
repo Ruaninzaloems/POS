@@ -891,7 +891,7 @@ export default function BillingDashboard() {
                                         className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${
                                             isActive
                                                 ? `bg-gradient-to-r ${cat.gradient} text-white shadow-lg scale-[1.02]`
-                                                : `bg-white border ${hasData ? 'border-[#D6D6D6] text-slate-700' : 'border-[#E5E5E5] text-slate-400'} hover:border-slate-300 hover:shadow-sm`
+                                                : `bg-white border ${hasData ? 'border-[#D6D6D6] text-slate-700' : 'border-[#E5E5E5] text-slate-400'} hover:border-[#D6D6D6] hover:shadow-sm`
                                         }`}
                                         data-testid={`pill-${cat.key}`}
                                     >

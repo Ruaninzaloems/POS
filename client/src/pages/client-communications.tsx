@@ -706,7 +706,7 @@ export default function ClientCommunications() {
                                   type="checkbox"
                                   checked={r.selected}
                                   onChange={() => toggleRecipient(r.id)}
-                                  className="mt-1 w-4 h-4 rounded border-slate-300 text-[var(--pos-accent)] focus:ring-[var(--pos-accent)]"
+                                  className="mt-1 w-4 h-4 rounded border-[#D6D6D6] text-[var(--pos-accent)] focus:ring-[var(--pos-accent)]"
                                   data-testid={`checkbox-recipient-${r.accountId}`}
                                 />
                                 <div className="flex-1 min-w-0">
