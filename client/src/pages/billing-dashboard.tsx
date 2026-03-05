@@ -699,7 +699,7 @@ function CategoryPanel({ category, subItems, isLoading }: { category: CategoryCo
                     <div className="space-y-0.5 mt-1">
                         {zeroCounts.map(item => (
                             <div key={item.key} className="flex items-center gap-3 px-3 py-1.5 text-sm text-slate-400">
-                                <span className="w-2 h-2 rounded-full bg-slate-200 shrink-0" />
+                                <span className="w-2 h-2 rounded-full bg-[#D6D6D6] shrink-0" />
                                 <span className="flex-1">{item.label}</span>
                                 <span className="text-xs">0</span>
                             </div>

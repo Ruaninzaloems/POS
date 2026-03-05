@@ -515,7 +515,7 @@ export default function ClientCommunications() {
               <HelpTip text="Choose whether to send via email (Mimecast) or SMS gateway." side="bottom" />
               <button
                 onClick={() => setMode('email')}
-                className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${mode === 'email' ? 'bg-white text-[var(--pos-accent)] shadow-sm border border-[#D6D6D6]' : 'text-slate-500 hover:text-slate-700 active:bg-slate-200'}`}
+                className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${mode === 'email' ? 'bg-white text-[var(--pos-accent)] shadow-sm border border-[#D6D6D6]' : 'text-slate-500 hover:text-slate-700 active:bg-[#F2F4F7]'}`}
                 data-testid="button-mode-email"
               >
                 <Mail className="w-3.5 h-3.5" />
@@ -523,7 +523,7 @@ export default function ClientCommunications() {
               </button>
               <button
                 onClick={() => setMode('sms')}
-                className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${mode === 'sms' ? 'bg-white text-green-700 shadow-sm border border-green-200' : 'text-slate-500 hover:text-slate-700 active:bg-slate-200'}`}
+                className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${mode === 'sms' ? 'bg-white text-green-700 shadow-sm border border-green-200' : 'text-slate-500 hover:text-slate-700 active:bg-[#F2F4F7]'}`}
                 data-testid="button-mode-sms"
               >
                 <MessageSquare className="w-3.5 h-3.5" />
@@ -570,7 +570,7 @@ export default function ClientCommunications() {
                           <span>Importing {importProgress.current} of {importProgress.total}...</span>
                           <span className="font-medium text-[var(--pos-accent)]">{importProgress.added} added</span>
                         </div>
-                        <div className="w-full bg-slate-200 rounded-full h-1.5">
+                        <div className="w-full bg-[#D6D6D6] rounded-full h-1.5">
                           <div className="bg-[var(--pos-accent)] h-1.5 rounded-full transition-all duration-300" style={{ width: `${Math.round((importProgress.current / importProgress.total) * 100)}%` }} />
                         </div>
                       </div>
@@ -582,7 +582,7 @@ export default function ClientCommunications() {
                           <span>Loading contacts {contactEnrichProgress.current} of {contactEnrichProgress.total}...</span>
                           <span className="font-medium text-emerald-600">{Math.round((contactEnrichProgress.current / contactEnrichProgress.total) * 100)}%</span>
                         </div>
-                        <div className="w-full bg-slate-200 rounded-full h-1.5">
+                        <div className="w-full bg-[#D6D6D6] rounded-full h-1.5">
                           <div className="bg-emerald-500 h-1.5 rounded-full transition-all duration-300" style={{ width: `${Math.round((contactEnrichProgress.current / contactEnrichProgress.total) * 100)}%` }} />
                         </div>
                       </div>

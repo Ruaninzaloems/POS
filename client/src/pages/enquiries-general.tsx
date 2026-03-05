@@ -872,7 +872,7 @@ function GeneralEnquiriesContent() {
                 <span className="hidden sm:inline">Back</span>
               </button>
 
-              <div className="h-6 w-px bg-slate-200 hidden sm:block" />
+              <div className="h-6 w-px bg-[#D6D6D6] hidden sm:block" />
 
               <div className="shrink-0 h-9 w-9 sm:h-11 sm:w-11 rounded-full bg-gradient-to-br from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-center text-white text-sm sm:text-base font-bold shadow-sm">
                 {accountName.charAt(0).toUpperCase()}
@@ -1296,7 +1296,7 @@ function GeneralEnquiriesContent() {
                 </button>
                 <button
                   onClick={() => { setCriteria({}); setQuickQuery(''); setResults([]); setHasSearched(false); setSearchError(null); setFieldSearchOpen(false); setMobileFormCollapsed(true); }}
-                  className="h-8 sm:h-7 px-4 sm:px-3 rounded-lg sm:rounded bg-slate-200 hover:bg-slate-300 active:bg-slate-400 text-slate-700 text-xs sm:text-[11px] font-medium transition-colors"
+                  className="h-8 sm:h-7 px-4 sm:px-3 rounded-lg sm:rounded bg-[#F2F4F7] hover:bg-[#D6D6D6] active:bg-[#D6D6D6] text-slate-700 text-xs sm:text-[11px] font-medium transition-colors"
                   data-testid="button-field-clear"
                 >
                   Clear

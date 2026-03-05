@@ -948,7 +948,7 @@ export default function ViewReceipts() {
 
                                         {bankNoteSearching && (
                                             <div>
-                                                <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                                                <div className="w-full bg-[#D6D6D6] rounded-full h-1.5 overflow-hidden">
                                                     <div className="bg-emerald-600 h-1.5 rounded-full animate-pulse" style={{ width: '100%', animation: 'indeterminate 1.5s ease-in-out infinite' }} />
                                                 </div>
                                                 <p className="text-xs text-emerald-600 mt-2 flex items-center gap-2">
@@ -1018,7 +1018,7 @@ export default function ViewReceipts() {
                                                                     {payTypeLabel && <span>Type: {payTypeLabel}</span>}
                                                                 </div>
                                                                 {status && (
-                                                                    <div className={`text-[10px] font-semibold px-2 py-0.5 rounded-full inline-block ${status.includes('Not Allocated') ? 'bg-orange-100 text-orange-700' : status.includes('Account') ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
+                                                                    <div className={`text-[10px] font-semibold px-2 py-0.5 rounded-full inline-block ${status.includes('Not Allocated') ? 'bg-orange-100 text-orange-700' : status.includes('Account') ? 'bg-green-100 text-green-700' : 'bg-[#F2F4F7] text-slate-700'}`}>
                                                                         {status}
                                                                     </div>
                                                                 )}
@@ -1094,7 +1094,7 @@ export default function ViewReceipts() {
                                                                         <TableCell className="text-[11px] text-slate-600">{payTypeLabel || '-'}</TableCell>
                                                                         <TableCell className="text-[10px]">
                                                                             {status ? (
-                                                                                <span className={`px-1.5 py-0.5 rounded-full font-semibold ${status.includes('Not Allocated') ? 'bg-orange-100 text-orange-700' : status.includes('Account') ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
+                                                                                <span className={`px-1.5 py-0.5 rounded-full font-semibold ${status.includes('Not Allocated') ? 'bg-orange-100 text-orange-700' : status.includes('Account') ? 'bg-green-100 text-green-700' : 'bg-[#F2F4F7] text-slate-700'}`}>
                                                                                     {status}
                                                                                 </span>
                                                                             ) : '-'}
@@ -1287,7 +1287,7 @@ export default function ViewReceipts() {
 
                                         {eftSearching && (
                                             <div>
-                                                <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                                                <div className="w-full bg-[#D6D6D6] rounded-full h-1.5 overflow-hidden">
                                                     <div className="bg-teal-600 h-1.5 rounded-full animate-pulse" style={{ width: '100%', animation: 'indeterminate 1.5s ease-in-out infinite' }} />
                                                 </div>
                                                 <p className="text-xs text-teal-600 mt-2 flex items-center gap-2">

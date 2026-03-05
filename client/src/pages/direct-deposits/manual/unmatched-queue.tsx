@@ -576,7 +576,7 @@ export default function UnmatchedQueue() {
                  <span className="text-xs hidden sm:inline">Refresh</span>
              </Button>
 
-             <div className="hidden sm:block h-8 w-px bg-slate-200" />
+             <div className="hidden sm:block h-8 w-px bg-[#D6D6D6]" />
 
              <div className="flex gap-1">
                <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-400 hover:text-emerald-600" title="Export CSV" onClick={() => handleDownload('excel')} data-testid="button-export-excel">

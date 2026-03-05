@@ -900,7 +900,7 @@ export default function ThirdPartyPaymentProcessing() {
                     </div>
 
                     <Tabs value={activeFilter} onValueChange={(v) => setActiveFilter(v as FilterTab)} className="w-full">
-                      <TabsList className="bg-slate-200/70 h-8">
+                      <TabsList className="bg-[#F2F4F7] h-8">
                         <TabsTrigger value="all" className="text-xs h-7 px-3" data-testid="tab-all">
                           All ({counts.total})
                         </TabsTrigger>
@@ -926,7 +926,7 @@ export default function ThirdPartyPaymentProcessing() {
                       <Loader2 className="h-6 w-6 animate-spin text-[var(--pos-accent)]" />
                       <div className="text-sm font-medium">{loadProgress.step || 'Loading...'}</div>
                       <div className="w-full max-w-md">
-                        <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                        <div className="h-2 bg-[#D6D6D6] rounded-full overflow-hidden">
                           <div
                             className="h-full bg-[var(--pos-accent)] rounded-full transition-all duration-300 ease-out"
                             style={{ width: `${loadProgress.percent}%` }}

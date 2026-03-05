@@ -54,7 +54,7 @@ function TransferOfOwnershipSection({ transfers, fmt, fmtDate }: { transfers: an
           const statusVal = t.status ?? t.transferStatus ?? '-';
           const statusColor = statusVal === 'Approve' || statusVal === 'Approved' ? 'bg-green-100 text-green-700'
             : statusVal === 'Rejected' || statusVal === 'Cancelled' ? 'bg-red-100 text-red-700'
-            : statusVal === 'Pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600';
+            : statusVal === 'Pending' ? 'bg-amber-100 text-amber-700' : 'bg-[#F2F4F7] text-slate-600';
           return (
             <div key={i} className="border border-[#D6D6D6] rounded-lg p-3 space-y-1.5" data-testid={`mobile-transfer-${i}`}>
               <div className="flex items-center justify-between">
@@ -105,7 +105,7 @@ function TransferOfOwnershipSection({ transfers, fmt, fmtDate }: { transfers: an
                         ? 'bg-red-100 text-red-700'
                         : (t.status ?? t.transferStatus ?? '') === 'Pending'
                           ? 'bg-amber-100 text-amber-700'
-                          : 'bg-slate-100 text-slate-600'
+                          : 'bg-[#F2F4F7] text-slate-600'
                   }`}>
                     {t.status ?? t.transferStatus ?? '-'}
                   </span>
@@ -930,7 +930,7 @@ export function HandoverTab({ accountId }: { accountId: number }) {
               <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Amount</span><span className="text-slate-800 font-semibold text-right font-mono">{fmt(h.handoverAmount ?? h.amount ?? 0)}</span></div>
               <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Handed Over</span><span className="text-slate-800 font-semibold text-right">{fmtDate(h.handedOverDate ?? h.handoverDate)}</span></div>
               <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Attorney</span><span className="text-slate-800 font-semibold text-right">{h.attorney ?? h.attorneyName ?? '-'}</span></div>
-              <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Status</span><span className="text-right"><span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${(h.status ?? h.handoverStatus) === 'Active' ? 'bg-green-100 text-green-700' : (h.status ?? h.handoverStatus) === 'Terminated' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}>{h.status ?? h.handoverStatus ?? '-'}</span></span></div>
+              <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Status</span><span className="text-right"><span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${(h.status ?? h.handoverStatus) === 'Active' ? 'bg-green-100 text-green-700' : (h.status ?? h.handoverStatus) === 'Terminated' ? 'bg-red-100 text-red-700' : 'bg-[#F2F4F7] text-slate-600'}`}>{h.status ?? h.handoverStatus ?? '-'}</span></span></div>
               <div className="flex justify-between text-[11px]"><span className="text-slate-500 font-medium">Date Created</span><span className="text-slate-800 font-semibold text-right">{fmtDate(h.dateCreated ?? h.createdDate ?? h.capturedDate)}</span></div>
             </div>
           ))}
@@ -972,7 +972,7 @@ export function HandoverTab({ accountId }: { accountId: number }) {
                     <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${
                       (h.status ?? h.handoverStatus) === 'Active' ? 'bg-green-100 text-green-700' :
                       (h.status ?? h.handoverStatus) === 'Terminated' ? 'bg-red-100 text-red-700' :
-                      'bg-slate-100 text-slate-600'
+                      'bg-[#F2F4F7] text-slate-600'
                     }`}>
                       {h.status ?? h.handoverStatus ?? '-'}
                     </span>

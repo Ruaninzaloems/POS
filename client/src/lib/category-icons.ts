@@ -73,7 +73,7 @@ const ICON_MAPPINGS: IconMapping[] = [
   { keywords: ['animal', 'dog', 'cat', 'pet', 'kennel', 'pound', 'vet'], icon: Dog, color: 'text-amber-700', bg: 'bg-amber-100' },
   { keywords: ['camp', 'resort', 'caravan', 'chalet', 'holiday', 'accommod', 'tourism', 'tourist'], icon: Tent, color: 'text-teal-700', bg: 'bg-teal-100' },
   { keywords: ['land', 'property', 'erf', 'plot', 'subdivis', 'cadastr', 'survey', 'rezoning', 'zoning'], icon: MapPin, color: 'text-violet-700', bg: 'bg-violet-100' },
-  { keywords: ['rates', 'valuation', 'assessment', 'municipal tax', 'levy'], icon: Landmark, color: 'text-slate-700', bg: 'bg-slate-100' },
+  { keywords: ['rates', 'valuation', 'assessment', 'municipal tax', 'levy'], icon: Landmark, color: 'text-slate-700', bg: 'bg-[#F2F4F7]' },
   { keywords: ['library', 'book', 'education', 'school', 'bursary', 'scholar', 'training'], icon: GraduationCap, color: 'text-purple-700', bg: 'bg-purple-100' },
   { keywords: ['sport', 'stadium', 'gym', 'pool', 'swim', 'recreation', 'field', 'court'], icon: Dumbbell, color: 'text-sky-700', bg: 'bg-sky-100' },
   { keywords: ['health', 'clinic', 'medical', 'hospital', 'ambulanc', 'sanitat'], icon: HeartPulse, color: 'text-rose-700', bg: 'bg-rose-100' },
@@ -92,16 +92,16 @@ const ICON_MAPPINGS: IconMapping[] = [
   { keywords: ['inspect', 'audit', 'check', 'exam', 'test', 'report', 'review'], icon: ClipboardList, color: 'text-orange-700', bg: 'bg-orange-100' },
   { keywords: ['advertis', 'signage', 'sign', 'banner', 'billboard', 'poster', 'notice'], icon: Megaphone, color: 'text-pink-700', bg: 'bg-pink-100' },
   { keywords: ['photo', 'copy', 'print', 'fax', 'document', 'stationery'], icon: Camera, color: 'text-gray-700', bg: 'bg-gray-100' },
-  { keywords: ['maintain', 'repair', 'service', 'fix', 'restor'], icon: Wrench, color: 'text-slate-700', bg: 'bg-slate-100' },
+  { keywords: ['maintain', 'repair', 'service', 'fix', 'restor'], icon: Wrench, color: 'text-slate-700', bg: 'bg-[#F2F4F7]' },
   { keywords: ['construc', 'excavat', 'dig', 'earth', 'soil'], icon: Shovel, color: 'text-amber-800', bg: 'bg-amber-50' },
   { keywords: ['event', 'function', 'hall', 'venue', 'facility', 'community'], icon: Users, color: 'text-indigo-700', bg: 'bg-indigo-100' },
   { keywords: ['child', 'crèche', 'creche', 'youth', 'junior'], icon: Baby, color: 'text-pink-600', bg: 'bg-pink-100' },
   { keywords: ['environment', 'conservation', 'eco', 'nature', 'bio'], icon: Leaf, color: 'text-green-700', bg: 'bg-green-100' },
   { keywords: ['storm', 'flood', 'rain', 'weather'], icon: CloudRain, color: 'text-blue-600', bg: 'bg-blue-100' },
   { keywords: ['beach', 'coast', 'sea', 'ocean', 'harbour', 'harbor', 'marine', 'river', 'dam'], icon: Waves, color: 'text-blue-600', bg: 'bg-blue-100' },
-  { keywords: ['road', 'street', 'pavement', 'sidewalk', 'bridge', 'infra'], icon: Route, color: 'text-slate-600', bg: 'bg-slate-100' },
+  { keywords: ['road', 'street', 'pavement', 'sidewalk', 'bridge', 'infra'], icon: Route, color: 'text-slate-600', bg: 'bg-[#F2F4F7]' },
   { keywords: ['ticket', 'admission', 'entry', 'access', 'gate'], icon: Ticket, color: 'text-purple-600', bg: 'bg-purple-100' },
-  { keywords: ['legal', 'court', 'attorney', 'solicitor', 'advocate'], icon: Scale, color: 'text-slate-700', bg: 'bg-slate-100' },
+  { keywords: ['legal', 'court', 'attorney', 'solicitor', 'advocate'], icon: Scale, color: 'text-slate-700', bg: 'bg-[#F2F4F7]' },
 ];
 
 const DEFAULT_ICON = { icon: CreditCard, color: 'text-emerald-700', bg: 'bg-emerald-100' };

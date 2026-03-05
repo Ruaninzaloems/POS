@@ -1359,7 +1359,7 @@ export default function AllocateTransaction() {
                                     className={`inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
                                         isActive
                                             ? 'bg-slate-900 text-white shadow-sm'
-                                            : 'bg-[#F2F4F7] text-slate-500 hover:bg-slate-200 hover:text-slate-700'
+                                            : 'bg-[#F2F4F7] text-slate-500 hover:bg-[#F2F4F7] hover:text-slate-700'
                                     }`}
                                 >
                                     <Icon className="w-3 h-3" />
