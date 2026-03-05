@@ -1747,20 +1747,10 @@ export async function registerRoutes(
       }
 
       console.warn(`[cashier-payment-types] Platinum billing-payment/payment-types returned error. Response:`, JSON.stringify(data).substring(0, 500));
-      console.log(`[cashier-payment-types] Returning default payment types as fallback`);
-      const defaultTypes = [
-        { posPaymentType_ID: 1, posPaymentTypeDesc: "Cash", isTicked: true, enabled: true },
-        { posPaymentType_ID: 3, posPaymentTypeDesc: "Credit Card", isTicked: true, enabled: true },
-      ];
-      return res.json({ source: "default-fallback", data: defaultTypes });
+      return res.status(502).json({ message: "Platinum API returned no payment types data", detail: JSON.stringify(data).substring(0, 500) });
     } catch (e: any) {
       console.error(`[cashier-payment-types] Error:`, e.message);
-      console.log(`[cashier-payment-types] Returning default payment types as fallback`);
-      const defaultTypes = [
-        { posPaymentType_ID: 1, posPaymentTypeDesc: "Cash", isTicked: true, enabled: true },
-        { posPaymentType_ID: 3, posPaymentTypeDesc: "Credit Card", isTicked: true, enabled: true },
-      ];
-      return res.json({ source: "default-fallback", data: defaultTypes });
+      return res.status(502).json({ message: "Failed to fetch cashier payment types", detail: e.message });
     }
   });
 
@@ -1786,11 +1776,11 @@ export async function registerRoutes(
           return handlePlatinumResult(res, data);
         }
       }
-      console.log('[get-banks] All Platinum bank endpoints unavailable — returning empty. Awaiting Platinum API implementation.');
-      res.json([]);
+      console.log('[get-banks] All Platinum bank endpoints unavailable.');
+      res.status(502).json({ message: "All Platinum bank endpoints returned errors", detail: "Tried: billing-payment-clearance/get-banks, BillingEnquiry/GetConstBanks, const-banks — all returned 500" });
     } catch (e: any) {
-      console.log('[get-banks] Platinum API unreachable — returning empty:', e.message);
-      res.json([]);
+      console.error('[get-banks] Platinum API unreachable:', e.message);
+      res.status(502).json({ message: "Failed to fetch banks list", detail: e.message });
     }
   });
 

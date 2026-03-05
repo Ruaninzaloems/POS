@@ -726,7 +726,7 @@ export default function CashierSetup() {
                                                 </div>
                                             </div>
                                             {paymentTypesSource && !configLoading && (
-                                                <Badge variant="outline" className={`text-[9px] px-1 py-0 ${paymentTypesSource === 'default-fallback' ? 'text-amber-500 border-amber-200' : 'text-violet-400 border-violet-200'}`} data-testid="types-source">{paymentTypesSource === 'office' ? 'Office' : paymentTypesSource === 'platinum' ? 'API' : paymentTypesSource === 'default-fallback' ? 'Default' : paymentTypesSource}</Badge>
+                                                <Badge variant="outline" className="text-[9px] px-1 py-0 text-violet-400 border-violet-200" data-testid="types-source">{paymentTypesSource === 'office' ? 'Office' : paymentTypesSource === 'platinum' ? 'API' : paymentTypesSource}</Badge>
                                             )}
                                         </div>
                                         {configLoading ? (
