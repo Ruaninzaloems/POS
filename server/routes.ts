@@ -1156,32 +1156,34 @@ export async function registerRoutes(
         }
       };
 
-      const validatePdfContent = async (pdfBuffer: Buffer, expectedReceiptNos: string[]): Promise<boolean> => {
-        if (expectedReceiptNos.length === 0) return true;
+      const validatePdfNotEmpty = async (pdfBuffer: Buffer): Promise<boolean> => {
         try {
-          const pdfParse = (await import('pdf-parse')).default;
-          const parsed = await pdfParse(pdfBuffer);
-          const text = parsed.text || '';
-          const normalizedText = text.replace(/\s+/g, ' ').toLowerCase();
-          for (const rn of expectedReceiptNos) {
-            const normalizedRn = rn.replace(/\s+/g, '').toLowerCase();
-            const parts = normalizedRn.split('/');
-            if (parts.length === 2) {
-              if (normalizedText.includes(parts[0]) && normalizedText.includes(parts[1])) {
-                console.log(`[print-receipt] PDF validation passed — found receipt number parts ${parts[0]}/${parts[1]} in PDF text`);
-                return true;
-              }
-            }
-            if (normalizedText.replace(/\s+/g, '').includes(normalizedRn)) {
-              console.log(`[print-receipt] PDF validation passed — found receipt number ${rn} in PDF text`);
-              return true;
+          if (pdfBuffer.length < 500) {
+            console.warn(`[print-receipt] PDF too small (${pdfBuffer.length} bytes) — likely empty`);
+            return false;
+          }
+          const doc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
+          const pages = doc.getPages();
+          if (pages.length === 0) {
+            console.warn(`[print-receipt] PDF has 0 pages — empty`);
+            return false;
+          }
+          for (const page of pages) {
+            const ops = page.node.normalizedEntries();
+            const contents = ops.Contents;
+            if (contents) {
+              const contentRef = contents.toString();
+              if (contentRef && contentRef.length > 20) return true;
             }
           }
-          const snippet = text.substring(0, 500).replace(/\n/g, ' | ');
-          console.warn(`[print-receipt] PDF validation FAILED — expected receipt nos [${expectedReceiptNos.join(', ')}] not found in PDF. PDF text snippet: ${snippet}`);
+          const pdfString = pdfBuffer.toString('ascii');
+          const streamCount = (pdfString.match(/stream\r?\n/g) || []).length;
+          const endstreamCount = (pdfString.match(/endstream/g) || []).length;
+          if (streamCount > 1 && endstreamCount > 1) return true;
+          console.warn(`[print-receipt] PDF appears to have no meaningful content (${pages.length} pages, ${streamCount} streams, ${pdfBuffer.length} bytes)`);
           return false;
         } catch (e: any) {
-          console.warn(`[print-receipt] PDF text extraction failed (allowing PDF through): ${e.message}`);
+          console.warn(`[print-receipt] PDF validation error (allowing through): ${e.message}`);
           return true;
         }
       };
@@ -1205,15 +1207,13 @@ export async function registerRoutes(
 
         const rawBuffer = Buffer.from(await pdfRes.arrayBuffer());
 
-        if (receiptNos.length > 0) {
-          const isValid = await validatePdfContent(rawBuffer, receiptNos);
-          if (!isValid) {
-            return res.status(409).json({ 
-              message: "Wrong receipt returned by billing system", 
-              detail: `Requested receipt ${receiptNos.join(', ')} (ID: ${receiptIds.join(', ')}) but the billing system returned a PDF for a different transaction. Use local receipt instead.`,
-              wrongReceipt: true
-            });
-          }
+        const isNotEmpty = await validatePdfNotEmpty(rawBuffer);
+        if (!isNotEmpty) {
+          return res.status(409).json({ 
+            message: "Empty receipt PDF returned by billing system", 
+            detail: `The billing system returned a blank PDF for receipt ${receiptNos.join(', ') || receiptIds.join(', ')}. This receipt may not be available for reprinting.`,
+            emptyReceipt: true
+          });
         }
 
         const pdfBuffer = await cropReceiptPages(rawBuffer);

@@ -424,14 +424,11 @@ export default function ViewReceipts() {
             return;
         }
         try {
-            let serialNo = r.cashbookTransactionID || r.CashbookTransactionID || r.receiptId || r.ReceiptId || r.receipt_ID || 0;
-            serialNo = Number(serialNo) || 0;
+            let serialNo = 0;
 
-            if (!serialNo) {
-                const numericReceiptNo = Number(receiptNo);
-                if (!isNaN(numericReceiptNo) && numericReceiptNo > 0) {
-                    serialNo = numericReceiptNo;
-                }
+            const numericReceiptNo = Number(receiptNo);
+            if (!isNaN(numericReceiptNo) && numericReceiptNo > 0 && String(numericReceiptNo) === receiptNo.trim()) {
+                serialNo = numericReceiptNo;
             }
 
             if (!serialNo) {
@@ -459,7 +456,7 @@ export default function ViewReceipts() {
             }
 
             if (!serialNo) {
-                toast({ title: "Print Failed", description: "Could not resolve receipt serial number for PDF. The receipt number format may not be supported for reprinting.", variant: "destructive" });
+                toast({ title: "Print Not Available", description: "EFT bank statement receipts cannot be reprinted via the billing system. The receipt number format is not supported for PDF generation.", variant: "destructive" });
                 return;
             }
             const res = await platinumPrintReceiptRaw([serialNo], [receiptNo]);
@@ -470,8 +467,8 @@ export default function ViewReceipts() {
                 return;
             }
             const blob = await res.blob();
-            if (blob.size < 100) {
-                toast({ title: "Print Failed", description: "The billing system returned an empty PDF.", variant: "destructive" });
+            if (blob.size < 500) {
+                toast({ title: "Print Failed", description: "The billing system returned an empty PDF for this EFT receipt.", variant: "destructive" });
                 return;
             }
             const pdfUrl = URL.createObjectURL(blob);
