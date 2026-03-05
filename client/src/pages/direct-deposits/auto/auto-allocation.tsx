@@ -200,6 +200,7 @@ function AutoAllocationContent() {
     setProcessing(true);
     setProcessingBatchNum(batch.num);
     setError(null);
+    const beforeUnallocated = batch.billingUnAllocated;
     try {
       const payload = {
         userId: userId,
@@ -208,19 +209,56 @@ function AutoAllocationContent() {
         processedBatches: processedBatches,
       };
       const result = await platinumBulkReconcile(payload);
-      toast({ title: 'Reconciliation complete', description: `Batch ${batch.num} processed successfully` });
+      console.log('[DD-Auto] Reconcile API response:', JSON.stringify(result).substring(0, 2000));
 
-      if (result?.unProcessedBatches) setUnprocessedBatches(result.unProcessedBatches);
-      if (result?.processedBatches) setProcessedBatches(result.processedBatches);
+      if (result?._error || result?.isSuccess === false) {
+        const errMsg = result?.detail || result?.message || result?.statusText || 'API returned an error';
+        toast({ title: 'Reconciliation failed', description: errMsg, variant: 'destructive' });
+        return;
+      }
 
-      await handleFetchUnprocessed();
+      const updatedUnprocessed = result?.unProcessedBatches || result?.items || [];
+      const updatedProcessed = result?.processedBatches || [];
+
+      if (updatedUnprocessed.length > 0) setUnprocessedBatches(updatedUnprocessed);
+      if (updatedProcessed.length > 0) setProcessedBatches(updatedProcessed);
+
+      const refreshData = await platinumGetBulkUnprocessed({
+        fromDate: fromDate.toISOString(),
+        toDate: toDate.toISOString(),
+      });
+      const refreshedBatches = Array.isArray(refreshData) ? refreshData : (refreshData as any)?.items || (refreshData as any)?.unProcessedBatches || (refreshData as any)?.batches || (refreshData as any)?.value || (refreshData as any)?.results || [];
+      setUnprocessedBatches(refreshedBatches);
+
+      const matchingBatch = refreshedBatches.find((b: any) => b.num === batch.num);
+      const afterUnallocated = matchingBatch?.billingUnAllocated ?? null;
+
+      if (afterUnallocated !== null && afterUnallocated >= beforeUnallocated) {
+        toast({
+          title: 'Reconciliation did not reduce unallocated items',
+          description: `Batch ${batch.num}: ${beforeUnallocated} unallocated before, ${afterUnallocated} after. The items may not have matched any billing accounts. Check each item manually.`,
+          variant: 'destructive',
+        });
+      } else if (afterUnallocated === null) {
+        toast({
+          title: 'Batch fully processed',
+          description: `Batch ${batch.num} is no longer in the unprocessed queue — all ${beforeUnallocated} item(s) were allocated.`,
+        });
+      } else {
+        const allocated = beforeUnallocated - afterUnallocated;
+        toast({
+          title: 'Reconciliation partially complete',
+          description: `Batch ${batch.num}: ${allocated} of ${beforeUnallocated} item(s) allocated. ${afterUnallocated} item(s) remain unallocated.`,
+          variant: afterUnallocated > 0 ? 'destructive' : 'default',
+        });
+      }
     } catch (e: any) {
       toast({ title: 'Reconciliation failed', description: e.message, variant: 'destructive' });
     } finally {
       setProcessing(false);
       setProcessingBatchNum(null);
     }
-  }, [userId, unprocessedBatches, processedBatches, toast, handleFetchUnprocessed]);
+  }, [userId, unprocessedBatches, processedBatches, fromDate, toDate, toast]);
 
   const handlePrint = useCallback(async (batch: ProcessedBatch) => {
     setPrinting(true);

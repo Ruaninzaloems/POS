@@ -3663,9 +3663,15 @@ export async function registerRoutes(
   app.post("/api/platinum/direct-deposit-bulk/reconcile", async (req, res) => {
     try {
       const session = requireAuth(req, res); if (!session) return;
+      const batchNum = req.body?.selectedItem?.num || 'unknown';
+      const unallocCount = req.body?.selectedItem?.billingUnAllocated || 0;
+      console.log(`[dd-bulk-reconcile] Processing batch ${batchNum} — ${unallocCount} unallocated items, userId=${req.body?.userId}`);
       const data = await platinumPost(session, "/api/billing/direct-deposit-bulk-allocation/reconcile-processed-data", req.body);
+      console.log(`[dd-bulk-reconcile] Response type: ${typeof data}, isArray: ${Array.isArray(data)}, keys: ${data && typeof data === 'object' ? Object.keys(data).join(', ') : 'N/A'}`);
+      console.log(`[dd-bulk-reconcile] Response (first 2000 chars):`, JSON.stringify(data).substring(0, 2000));
       handlePlatinumResult(res, data);
     } catch (e: any) {
+      console.error(`[dd-bulk-reconcile] FAILED:`, e.message);
       res.status(502).json({ message: "Platinum API unreachable", detail: e.message });
     }
   });
