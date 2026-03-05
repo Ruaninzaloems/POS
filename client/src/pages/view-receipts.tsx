@@ -1089,13 +1089,6 @@ export default function ViewReceipts() {
 
                                         {selectedBankNoteItem && (
                                             <div data-testid="bank-note-receipt-detail">
-                                                <div className="text-xs font-semibold text-emerald-700 mb-2 flex items-center gap-2">
-                                                    <FileText className="w-3.5 h-3.5" />
-                                                    EFT Receipt Detail
-                                                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0 ml-auto" onClick={() => setSelectedBankNoteItem(null)}>
-                                                        <X className="w-3.5 h-3.5" />
-                                                    </Button>
-                                                </div>
                                                 {(() => {
                                                     const r = selectedBankNoteItem as any;
                                                     const receiptNo = r.receiptNo ?? r.ReceiptNo ?? '';
@@ -1115,86 +1108,100 @@ export default function ViewReceipts() {
                                                     const payTypeLabel = payTypeId === 1 ? 'Cash' : payTypeId === 3 ? 'Credit Card' : payTypeId === 2 ? 'EFT' : payTypeId === 5 ? 'EFT' : payTypeId > 0 ? `Type ${payTypeId}` : 'Unknown';
                                                     const bankReconID = r.bankReconID ?? r.BankReconID ?? '';
                                                     const billingAllocated = r.billingAllocated ?? r.BillingAllocated ?? false;
+                                                    const fmtDate = (d: string, withTime?: boolean) => {
+                                                        if (!d) return '-';
+                                                        try {
+                                                            return new Date(d).toLocaleDateString('en-ZA', {
+                                                                day: '2-digit', month: 'short', year: 'numeric',
+                                                                ...(withTime ? { hour: '2-digit', minute: '2-digit' } : {}),
+                                                            });
+                                                        } catch { return d; }
+                                                    };
+                                                    const fmtAmt = (n: number) => `R ${n.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
                                                     return (
-                                                        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-4 sm:p-6 max-w-2xl">
-                                                            <div className="flex items-center justify-between mb-4 pb-3 border-b border-emerald-200">
-                                                                <div>
-                                                                    <h3 className="text-lg font-bold text-emerald-800">{muniInfo?.name || ''}</h3>
-                                                                    <p className="text-xs text-emerald-600">EFT / Bank Statement Receipt</p>
+                                                        <div className="bg-white border border-[#D6D6D6] rounded-xl shadow-sm overflow-hidden">
+                                                            <div className="px-4 py-2.5 bg-gradient-to-r from-[var(--pos-accent)] to-[var(--pos-accent-dark)] flex items-center justify-between">
+                                                                <div className="flex items-center gap-2">
+                                                                    <FileText className="w-4 h-4 text-white/80" />
+                                                                    <span className="text-xs font-semibold text-white tracking-wide">EFT Receipt Detail</span>
+                                                                    <span className="text-[10px] text-white/60 ml-1">{muniInfo?.name || ''}</span>
                                                                 </div>
-                                                                <div className={`px-3 py-1 rounded-full text-xs font-semibold ${status.includes('Not Allocated') ? 'bg-orange-100 text-orange-700 border border-orange-300' : status.includes('Account') ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-slate-100 text-slate-700 border border-slate-300'}`}>
-                                                                    {billingAllocated ? 'Allocated' : 'Not Allocated'} - {status || 'Unknown'}
-                                                                </div>
-                                                            </div>
-                                                            <div className="grid grid-cols-2 gap-3 text-sm">
-                                                                <div>
-                                                                    <span className="text-[10px] uppercase text-slate-500 font-semibold">Receipt Number</span>
-                                                                    <p className="font-mono font-bold text-emerald-800 text-base">{receiptNo || 'N/A'}</p>
-                                                                </div>
-                                                                <div>
-                                                                    <span className="text-[10px] uppercase text-slate-500 font-semibold">Account ID</span>
-                                                                    <p className="font-mono font-bold text-slate-800 text-base">{accountId > 0 ? accountId : 'N/A'}</p>
-                                                                </div>
-                                                                <div>
-                                                                    <span className="text-[10px] uppercase text-slate-500 font-semibold">Paid Amount</span>
-                                                                    <p className="font-mono font-bold text-emerald-700 text-lg">R {paidAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</p>
-                                                                </div>
-                                                                <div>
-                                                                    <span className="text-[10px] uppercase text-slate-500 font-semibold">Bank Amount</span>
-                                                                    <p className="font-mono font-bold text-[#6B6B6B] text-lg">R {bankAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</p>
-                                                                </div>
-                                                                <div>
-                                                                    <span className="text-[10px] uppercase text-slate-500 font-semibold">Date Allocated</span>
-                                                                    <p className="font-mono text-slate-700">{dateAllocated ? new Date(dateAllocated).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</p>
-                                                                </div>
-                                                                <div>
-                                                                    <span className="text-[10px] uppercase text-slate-500 font-semibold">Bank Statement Date</span>
-                                                                    <p className="font-mono text-slate-700">{bankDate ? new Date(bankDate).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</p>
-                                                                </div>
-                                                                <div>
-                                                                    <span className="text-[10px] uppercase text-slate-500 font-semibold">Payment Method</span>
-                                                                    <p className="font-mono text-slate-700">{payTypeLabel}</p>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${status.includes('Not Allocated') ? 'bg-orange-100 text-orange-700' : status.includes('Account') ? 'bg-green-100 text-green-700' : 'bg-white/20 text-white'}`}>
+                                                                        {billingAllocated ? 'Allocated' : 'Not Allocated'} — {status || 'Unknown'}
+                                                                    </span>
+                                                                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-white/70 hover:text-white hover:bg-white/10" onClick={() => setSelectedBankNoteItem(null)}>
+                                                                        <X className="w-3.5 h-3.5" />
+                                                                    </Button>
                                                                 </div>
                                                             </div>
-                                                            <div className="mt-3 pt-3 border-t border-emerald-200 space-y-2">
-                                                                <div>
-                                                                    <span className="text-[10px] uppercase text-slate-500 font-semibold">Bank Statement Note</span>
-                                                                    <p className="font-mono text-xs bg-white/60 rounded px-2 py-1.5 text-emerald-800 border border-emerald-100">{bankNote || '-'}</p>
+                                                            <div className="px-4 py-3">
+                                                                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-x-4 gap-y-2">
+                                                                    <div>
+                                                                        <div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Receipt No</div>
+                                                                        <div className="font-mono font-bold text-[var(--pos-accent-dark)] text-sm mt-0.5">{receiptNo || 'N/A'}</div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Account</div>
+                                                                        <div className="font-mono font-semibold text-slate-800 text-sm mt-0.5">{accountId > 0 ? accountId : 'N/A'}</div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Paid Amount</div>
+                                                                        <div className="font-mono font-bold text-green-700 text-sm mt-0.5">{fmtAmt(paidAmount)}</div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Bank Amount</div>
+                                                                        <div className="font-mono font-semibold text-slate-700 text-sm mt-0.5">{fmtAmt(bankAmount)}</div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Allocated</div>
+                                                                        <div className="text-xs text-slate-700 mt-0.5">{fmtDate(dateAllocated, true)}</div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Bank Date</div>
+                                                                        <div className="text-xs text-slate-700 mt-0.5">{fmtDate(bankDate)}</div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Payment</div>
+                                                                        <div className="text-xs text-slate-700 mt-0.5">{payTypeLabel}</div>
+                                                                    </div>
                                                                 </div>
-                                                                {cashbookDoc && (
-                                                                    <div className="flex gap-4">
-                                                                        <div>
-                                                                            <span className="text-[10px] uppercase text-slate-500 font-semibold">Cashbook Ref</span>
-                                                                            <p className="font-mono text-xs text-slate-700">{cashbookDoc}</p>
-                                                                        </div>
-                                                                        {cashbookDesc && (
+                                                                {(bankNote || cashbookDoc || miscDesc) && (
+                                                                    <div className="mt-2.5 pt-2.5 border-t border-[#E5E5E5] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-2">
+                                                                        {bankNote && (
+                                                                            <div className="sm:col-span-2">
+                                                                                <div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Bank Statement Note</div>
+                                                                                <div className="font-mono text-xs text-slate-800 bg-[#F7F7F7] rounded px-2 py-1 mt-0.5 border border-[#E5E5E5]">{bankNote}</div>
+                                                                            </div>
+                                                                        )}
+                                                                        {cashbookDoc && (
                                                                             <div>
-                                                                                <span className="text-[10px] uppercase text-slate-500 font-semibold">Cashbook</span>
-                                                                                <p className="font-mono text-xs text-slate-700">{cashbookDesc.trim()}</p>
+                                                                                <div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Cashbook</div>
+                                                                                <div className="font-mono text-xs text-slate-700 mt-0.5">{cashbookDoc}{cashbookDesc ? ` — ${cashbookDesc.trim()}` : ''}</div>
                                                                             </div>
                                                                         )}
                                                                         {bankReconID && (
                                                                             <div>
-                                                                                <span className="text-[10px] uppercase text-slate-500 font-semibold">Recon ID</span>
-                                                                                <p className="font-mono text-xs text-slate-700">{bankReconID}</p>
+                                                                                <div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Recon ID</div>
+                                                                                <div className="font-mono text-xs text-slate-700 mt-0.5">{bankReconID}</div>
+                                                                            </div>
+                                                                        )}
+                                                                        {miscDesc && (
+                                                                            <div className="sm:col-span-2">
+                                                                                <div className="text-[9px] uppercase tracking-wider text-slate-400 font-semibold">Miscellaneous Group</div>
+                                                                                <div className="text-xs text-slate-700 mt-0.5">{miscDesc}</div>
                                                                             </div>
                                                                         )}
                                                                     </div>
                                                                 )}
-                                                                {miscDesc && (
-                                                                    <div>
-                                                                        <span className="text-[10px] uppercase text-slate-500 font-semibold">Miscellaneous Group</span>
-                                                                        <p className="font-mono text-xs text-slate-700">{miscDesc}</p>
-                                                                    </div>
-                                                                )}
                                                             </div>
-                                                            <div className="mt-4 pt-3 border-t border-emerald-200 flex gap-2">
-                                                                <Button size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handlePrintBankNoteReceipt(selectedBankNoteItem)} data-testid="button-print-banknote-receipt">
-                                                                    <Printer className="w-3.5 h-3.5" />
+                                                            <div className="px-4 py-2 bg-[#F7F7F7] border-t border-[#E5E5E5] flex items-center gap-2">
+                                                                <Button size="sm" className="gap-1.5 bg-[var(--pos-accent)] hover:bg-[var(--pos-accent-dark)] text-white h-7 text-xs" onClick={() => handlePrintBankNoteReceipt(selectedBankNoteItem)} data-testid="button-print-banknote-receipt">
+                                                                    <Printer className="w-3 h-3" />
                                                                     Print Receipt
                                                                 </Button>
-                                                                <Button variant="outline" size="sm" className="gap-1.5 text-slate-600" onClick={() => setSelectedBankNoteItem(null)}>
-                                                                    <X className="w-3.5 h-3.5" />
+                                                                <Button variant="outline" size="sm" className="gap-1.5 text-slate-500 h-7 text-xs border-[#D6D6D6]" onClick={() => setSelectedBankNoteItem(null)}>
+                                                                    <X className="w-3 h-3" />
                                                                     Close
                                                                 </Button>
                                                             </div>
