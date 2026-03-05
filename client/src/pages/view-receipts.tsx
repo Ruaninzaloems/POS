@@ -417,29 +417,63 @@ export default function ViewReceipts() {
 
     const handlePrintBankNoteReceipt = async (item: BankStatementNoteResult) => {
         const r = item as any;
-        const receiptNo = r.receiptNo ?? r.ReceiptNo ?? '';
+        const receiptNo = String(r.receiptNo ?? r.ReceiptNo ?? '');
 
         if (!receiptNo) {
             toast({ title: "Print Failed", description: "No receipt number found for this EFT entry.", variant: "destructive" });
             return;
         }
         try {
-            let serialNo = Number(receiptNo);
-            if (!serialNo || isNaN(serialNo)) {
-                const searchRes = await searchReceiptNumbers(String(receiptNo));
-                const found: any = Array.isArray(searchRes) ? searchRes[0] : null;
-                serialNo = found?.serialNo || found?.receiptId || found?.id || 0;
-            }
+            let serialNo = r.cashbookTransactionID || r.CashbookTransactionID || r.receiptId || r.ReceiptId || r.receipt_ID || 0;
+            serialNo = Number(serialNo) || 0;
+
             if (!serialNo) {
-                toast({ title: "Print Failed", description: "Could not resolve receipt serial number for PDF.", variant: "destructive" });
+                const numericReceiptNo = Number(receiptNo);
+                if (!isNaN(numericReceiptNo) && numericReceiptNo > 0) {
+                    serialNo = numericReceiptNo;
+                }
+            }
+
+            if (!serialNo) {
+                try {
+                    const now = new Date();
+                    const twoYearsAgo = new Date(now.getFullYear() - 2, now.getMonth(), now.getDate());
+                    const fromDate = twoYearsAgo.toISOString().split('T')[0];
+                    const toDate = now.toISOString().split('T')[0];
+                    const listResult = await fetchReceiptList({
+                        receiptNo: receiptNo,
+                        fromDate,
+                        toDate,
+                        page: 1,
+                        pageSize: 5,
+                    });
+                    const match = listResult.items.find(
+                        (i: any) => String(i.receiptNo || '') === receiptNo || String(i.receipt_no || '') === receiptNo
+                    ) || listResult.items[0];
+                    if (match) {
+                        serialNo = Number(match.receiptId || match.serialNo || match.id || 0) || 0;
+                    }
+                } catch (e) {
+                    console.warn('[EFT Print] Receipt list lookup failed:', e);
+                }
+            }
+
+            if (!serialNo) {
+                toast({ title: "Print Failed", description: "Could not resolve receipt serial number for PDF. The receipt number format may not be supported for reprinting.", variant: "destructive" });
                 return;
             }
-            const res = await platinumPrintReceiptRaw([serialNo], receiptNo ? [String(receiptNo)] : undefined);
+            const res = await platinumPrintReceiptRaw([serialNo], [receiptNo]);
             if (!res.ok) {
-                toast({ title: "Print Failed", description: "Could not fetch receipt PDF from billing system.", variant: "destructive" });
+                let detail = '';
+                try { const errJson = await res.json(); detail = errJson.detail || errJson.message || ''; } catch { detail = `HTTP ${res.status}`; }
+                toast({ title: "Print Failed", description: `Could not fetch receipt PDF: ${detail || 'Unknown error'}`, variant: "destructive" });
                 return;
             }
             const blob = await res.blob();
+            if (blob.size < 100) {
+                toast({ title: "Print Failed", description: "The billing system returned an empty PDF.", variant: "destructive" });
+                return;
+            }
             const pdfUrl = URL.createObjectURL(blob);
             const pdfTab = window.open(pdfUrl, '_blank');
             if (!pdfTab) {
@@ -451,7 +485,7 @@ export default function ViewReceipts() {
             toast({ title: "Receipt Ready", description: `EFT receipt ${receiptNo} opened for printing.` });
         } catch (e: any) {
             console.error('EFT receipt fetch failed:', e);
-            toast({ title: "Print Failed", description: "Could not retrieve receipt PDF from the API.", variant: "destructive" });
+            toast({ title: "Print Failed", description: `Could not retrieve receipt PDF: ${e.message || 'Unknown error'}`, variant: "destructive" });
         }
     };
 
