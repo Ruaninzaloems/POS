@@ -8,6 +8,7 @@ import { ArrowLeft, Plus, Trash2, CheckCircle, AlertCircle, Upload, X, Loader2, 
 import { AllocationLine, Account, ClearanceCostSchedule, platinumGetPosItemDetails, platinumSubmitDirectDepositAllocation, platinumLoadDetailsPaymentGrouping, platinumLoadDetailsPaymentGroupingInstitutionData, platinumLoadDetailsConsumerServices, platinumLoadConfirmPaymentDetails, platinumLoadDetailsClearance, platinumGetClearanceDetailsInfo, platinumGetConsumerDetailsData, platinumDDAccountAutocomplete, platinumDDOldAccountAutocomplete, platinumDDClearanceAutocomplete, platinumSearchClearanceIds, platinumGetClearanceData, platinumGetGroupPaymentDetails, fetchMiscPaymentGroups, rebuildFullAccount, platinumSearchAccountsPayment, fetchActiveFinYear, fetchPlatinumUserInfo } from '@/lib/external-api';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
+import { AccountEnquiryDialog } from '@/components/account-enquiry-dialog';
 
 interface BankReconPosItem {
   posItem_ID: number;
@@ -88,6 +89,7 @@ export default function AllocateTransaction() {
   const csvFileInputRef = useRef<HTMLInputElement>(null);
   const csvCancelRef = useRef(false);
   
+  const [enquiryAccountId, setEnquiryAccountId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -1755,9 +1757,18 @@ export default function AllocateTransaction() {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="text-sm font-medium text-slate-700 truncate">{line.description || line.accountNo}</div>
-                                            <div className="text-xs text-muted-foreground font-mono">{line.accountNo}</div>
+                                            {line.allocationType === 'ACCOUNT' || line.allocationType === 'PREPAID' ? (
+                                                <button className="text-xs text-[var(--pos-accent-dark)] hover:underline cursor-pointer font-mono" onClick={() => setEnquiryAccountId(String(line.accountNo))} data-testid={`mobile-line-enquiry-${idx}`}>{line.accountNo}</button>
+                                            ) : (
+                                                <div className="text-xs text-muted-foreground font-mono">{line.accountNo}</div>
+                                            )}
                                         </div>
                                         <span className="font-mono text-sm font-semibold text-slate-800 shrink-0">R {line.amount.toFixed(2)}</span>
+                                        {(line.allocationType === 'ACCOUNT' || line.allocationType === 'PREPAID') && (
+                                            <Button variant="outline" size="icon" className="h-7 w-7 text-[var(--pos-accent-dark)] border-[var(--pos-accent-light)] hover:bg-[var(--pos-accent-tint)] shrink-0 rounded-lg" onClick={() => setEnquiryAccountId(String(line.accountNo))} data-testid={`mobile-line-enquiry-btn-${idx}`}>
+                                                <Search className="w-3 h-3" />
+                                            </Button>
+                                        )}
                                         <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50 shrink-0 rounded-lg" onClick={() => handleRemoveLine(line.id)}>
                                             <Trash2 className="w-3.5 h-3.5" />
                                         </Button>
@@ -1773,7 +1784,7 @@ export default function AllocateTransaction() {
                                         <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Description</th>
                                         <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Type</th>
                                         <th className="text-right text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Amount</th>
-                                        <th className="px-3 py-3 w-10"></th>
+                                        <th className="px-3 py-3 w-20"></th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
@@ -1783,7 +1794,11 @@ export default function AllocateTransaction() {
                                                 <span className="text-xs text-muted-foreground">{startIdx + idx + 1}</span>
                                             </td>
                                             <td className="px-5 py-3">
-                                                <span className="font-mono text-sm text-slate-700">{line.accountNo}</span>
+                                                {line.allocationType === 'ACCOUNT' || line.allocationType === 'PREPAID' ? (
+                                                    <button className="font-mono text-sm text-[var(--pos-accent-dark)] hover:underline cursor-pointer font-medium" onClick={() => setEnquiryAccountId(String(line.accountNo))} data-testid={`link-line-enquiry-${idx}`}>{line.accountNo}</button>
+                                                ) : (
+                                                    <span className="font-mono text-sm text-slate-700">{line.accountNo}</span>
+                                                )}
                                             </td>
                                             <td className="px-5 py-3">
                                                 <span className="text-sm text-slate-500 truncate block max-w-[300px]">{line.description}</span>
@@ -1806,9 +1821,17 @@ export default function AllocateTransaction() {
                                                 <span className="font-mono text-sm font-semibold text-slate-800">R {line.amount.toFixed(2)}</span>
                                             </td>
                                             <td className="px-3 py-3">
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all rounded-lg" onClick={() => handleRemoveLine(line.id)}>
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                </Button>
+                                                <div className="flex items-center gap-1 justify-end">
+                                                    {(line.allocationType === 'ACCOUNT' || line.allocationType === 'PREPAID') && (
+                                                        <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 gap-1 text-[var(--pos-accent-dark)] border-[var(--pos-accent-light)] hover:bg-[var(--pos-accent-tint)] opacity-0 group-hover:opacity-100 transition-all" onClick={() => setEnquiryAccountId(String(line.accountNo))} data-testid={`button-line-enquiry-${idx}`}>
+                                                            <Search className="w-3 h-3" />
+                                                            Enquiry
+                                                        </Button>
+                                                    )}
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all rounded-lg" onClick={() => handleRemoveLine(line.id)}>
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </Button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -2129,6 +2152,11 @@ export default function AllocateTransaction() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AccountEnquiryDialog
+          open={enquiryAccountId !== null}
+          onClose={() => setEnquiryAccountId(null)}
+          accountId={enquiryAccountId || ''}
+      />
     </PosLayout>
   );
 }
